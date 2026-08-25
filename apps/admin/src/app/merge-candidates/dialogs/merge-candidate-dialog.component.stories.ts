@@ -157,7 +157,10 @@ export const Playground: Story = {
     await expect(await canvas.findAllByRole('checkbox')).toHaveLength(6);
     await userEvent.click(canvas.getByRole('button', { name: 'Unificar' }));
     await expect(closeDialog).toHaveBeenCalledWith(
-      expect.objectContaining({ targetPersonId: 'person-a', migrateFields: expect.arrayContaining(['IDENTITY_DOCUMENT', 'USER_ID']) }),
+      expect.objectContaining({
+        targetPersonId: 'person-a',
+        migrateFields: expect.arrayContaining(['IDENTITY_DOCUMENT', 'USER_ID']),
+      }),
     );
   },
 };

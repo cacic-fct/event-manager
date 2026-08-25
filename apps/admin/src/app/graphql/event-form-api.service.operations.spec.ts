@@ -30,9 +30,12 @@ describe('EventFormApiService operation contracts', () => {
 
     await expect(firstValueFrom(service.previousSubscriberCount(input))).resolves.toBe(12);
 
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query EventFormPreviousSubscriberCount'), {
-      input,
-    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('query EventFormPreviousSubscriberCount'),
+      {
+        input,
+      },
+    );
     const query = graphqlHttp.request.mock.calls[0][0] as string;
     expect(query).toContain('eventFormPreviousSubscriberCount');
   });

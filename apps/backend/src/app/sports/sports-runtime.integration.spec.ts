@@ -164,12 +164,7 @@ describe('sports runtime integration', () => {
     const currentUserReads = moduleRef.get(SportsCurrentUserReadResolver);
 
     await expect(
-      currentUserReads.currentUserSportsTournamentDetail(
-        { req: { user: actor } },
-        'tournament-1',
-        undefined,
-        null,
-      ),
+      currentUserReads.currentUserSportsTournamentDetail({ req: { user: actor } }, 'tournament-1', undefined, null),
     ).resolves.toEqual({ id: 'tournament-1' });
 
     expect(sportsRead.currentUserTournament).toHaveBeenCalledWith(

@@ -74,8 +74,7 @@ export class OralAttendanceOfflineService {
     return database.oralAttendanceDecisions
       .filter(
         (item) =>
-          !item.syncedAt &&
-          (item.queuedByUserId === uploaderUserId || Boolean(item.collectorCredential?.trim())),
+          !item.syncedAt && (item.queuedByUserId === uploaderUserId || Boolean(item.collectorCredential?.trim())),
       )
       .sortBy('queuedAt');
   }

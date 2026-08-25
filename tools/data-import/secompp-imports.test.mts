@@ -33,7 +33,17 @@ test('preserves CLI help and inline database URLs containing equals signs', () =
 
 test('maps SECOMPP 1 parent, child, people, subscriptions, and attendance', () => {
   const { majorEvents, majorEventIdByLegacy, majorEventStartByLegacy } = mapMajorEvents(
-    [{ idEvent: 10, name: 'Evento', start: '2026-08-16', end: '2026-08-17', location: 'Sala', link: null, description: '<b>Desc</b>' }],
+    [
+      {
+        idEvent: 10,
+        name: 'Evento',
+        start: '2026-08-16',
+        end: '2026-08-17',
+        location: 'Sala',
+        link: null,
+        description: '<b>Desc</b>',
+      },
+    ],
     now,
   );
   const { lectureSeeds, shortcourseSeeds } = mapEventSeeds(
@@ -78,16 +88,51 @@ test('maps SECOMPP 1 parent, child, people, subscriptions, and attendance', () =
 test('maps SECOMPP 2 temporal fields, placeholder people, and parent ranges', () => {
   const majorEventIdByYearRef = mapMajorEventIds([{ idAno_Referencia: 4, ano: 2025 }]);
   const minicursos = mapMinicursos(
-    [{ idMinicurso: 9, idAno_ReferenciaFK: 4, data: '2025-10-03', hora_inicio: '14:00', hora_termino: '16:30', nome: 'Curso', descricao: null, cargahoraria: 2, vagas: 10, local: 'Lab', create_time: '2025-09-01 10:00:00' }],
+    [
+      {
+        idMinicurso: 9,
+        idAno_ReferenciaFK: 4,
+        data: '2025-10-03',
+        hora_inicio: '14:00',
+        hora_termino: '16:30',
+        nome: 'Curso',
+        descricao: null,
+        cargahoraria: 2,
+        vagas: 10,
+        local: 'Lab',
+        create_time: '2025-09-01 10:00:00',
+      },
+    ],
     majorEventIdByYearRef,
     now,
   );
   const palestras = mapPalestras(
-    [{ idPalestra: 5, idAno_ReferenciaFK: 4, data: '2025-10-04', hora_inicio: '09:00:00', hora_termino: '10:00:00', nome: 'Talk', descricao: null, local: null, CPFusuarioFK: '98765432100', create_time: null }],
+    [
+      {
+        idPalestra: 5,
+        idAno_ReferenciaFK: 4,
+        data: '2025-10-04',
+        hora_inicio: '09:00:00',
+        hora_termino: '10:00:00',
+        nome: 'Talk',
+        descricao: null,
+        local: null,
+        CPFusuarioFK: '98765432100',
+        create_time: null,
+      },
+    ],
     majorEventIdByYearRef,
     now,
   );
-  const events = buildSecompp2EventRows(minicursos, palestras, new Map([['MINICURSO', 'group-course'], ['PALESTRA', 'group-talk']]), now);
+  const events = buildSecompp2EventRows(
+    minicursos,
+    palestras,
+    new Map([
+      ['MINICURSO', 'group-course'],
+      ['PALESTRA', 'group-talk'],
+    ]),
+    now,
+  );
   const majorEvents = buildMajorEventRows(
     [{ idAno_Referencia: 4, ano: 2025, create_time: null }],
     majorEventIdByYearRef,

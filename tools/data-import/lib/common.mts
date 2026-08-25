@@ -93,7 +93,10 @@ export function formatCounter(
 ): string {
   const entries = counter instanceof Map ? [...counter.entries()] : Object.entries(counter ?? {});
   if (entries.length === 0) return 'none';
-  return entries.sort(([left], [right]) => left.localeCompare(right)).map(([key, value]) => `${key}=${value}`).join(', ');
+  return entries
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${value}`)
+    .join(', ');
 }
 
 export function parseEnvFile(envPath: string): Record<string, string> {
@@ -154,7 +157,9 @@ export function sanitizePostgresUrl(databaseUrl: string): string {
   return parsed.toString();
 }
 
-export function resolveDatabaseUrlFromEnvOptions(options: Pick<DatabaseOptions, 'databaseUrl' | 'envFile'> = {}): string {
+export function resolveDatabaseUrlFromEnvOptions(
+  options: Pick<DatabaseOptions, 'databaseUrl' | 'envFile'> = {},
+): string {
   if (options?.databaseUrl) return options.databaseUrl;
   const envPath = options?.envFile ?? '.env';
   const envValues = parseEnvFile(envPath);

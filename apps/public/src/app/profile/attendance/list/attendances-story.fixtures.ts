@@ -1,6 +1,10 @@
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { createPublicStoryEvent, createPublicStoryMajorEvent, publicStoryDate } from '../../../testing/public-event-story-fixtures';
+import {
+  createPublicStoryEvent,
+  createPublicStoryMajorEvent,
+  publicStoryDate,
+} from '../../../testing/public-event-story-fixtures';
 
 export type AttendancesStoryState = 'ready' | 'offline' | 'loading' | 'error';
 

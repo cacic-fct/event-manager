@@ -6,17 +6,16 @@
     <h1 class="global-toolbar-title">Mapa de eventos</h1>
     <span class="global-toolbar-spacer"></span>
     @if (filterCount() > 0) {
-      <span class="filter-summary" aria-label="Filtros ativos">{{ filterCount() }}</span>
-    }
-    @if (isOffline()) {
-      <button
-        matIconButton
-        type="button"
-        aria-label="Você está off-line"
-        matTooltip="Você está off-line"
-        (click)="showOfflineInfo()">
-        <mat-icon>cloud_off</mat-icon>
-      </button>
+    <span class="filter-summary" aria-label="Filtros ativos">{{ filterCount() }}</span>
+    } @if (isOffline()) {
+    <button
+      matIconButton
+      type="button"
+      aria-label="Você está off-line"
+      matTooltip="Você está off-line"
+      (click)="showOfflineInfo()">
+      <mat-icon>cloud_off</mat-icon>
+    </button>
     }
   </mat-toolbar>
 
@@ -27,39 +26,43 @@
       role="region"
       aria-label="Mapa interativo de eventos"
       [attr.aria-busy]="!mapInteractionReady()"></div>
-    <a
-      class="map-attribution"
-      href="https://www.openstreetmap.org/copyright"
-      target="_blank"
-      rel="noopener noreferrer">
+    <a class="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
       © OpenStreetMap
     </a>
 
-    @let currentState = state();
-    @if (currentState.status === 'loading') {
-      <mat-progress-bar class="loading-bar" mode="indeterminate" aria-label="Carregando eventos no mapa" />
+    @let currentState = state(); @if (currentState.status === 'loading') {
+    <mat-progress-bar class="loading-bar" mode="indeterminate" aria-label="Carregando eventos no mapa" />
     } @else if (currentState.status === 'error') {
-      <section class="map-message" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ currentState.message }}</p>
-      </section>
+    <section class="map-message" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ currentState.message }}</p>
+    </section>
     }
 
     <nav class="fab-container" [class.open]="utilityMenuOpen()" aria-label="Controles do mapa">
       @if (utilityMenuOpen()) {
-        <button class="fab-overlay" type="button" aria-label="Fechar menu" (click)="closeUtilityMenu()"></button>
-      }
-
-      @if (utilityMenuMounted()) {
+      <button class="fab-overlay" type="button" aria-label="Fechar menu" (click)="closeUtilityMenu()"></button>
+      } @if (utilityMenuMounted()) {
       <div
         id="map-utility-actions"
         class="fab-menu"
         [class.visible]="utilityMenuOpen()"
         (transitionend)="onUtilityMenuTransitionEnd($event)">
-        <button mat-mini-fab type="button" matTooltip="Centralizar eventos" aria-label="Centralizar eventos" [disabled]="!mapInteractionReady()" (click)="centerEvents()">
+        <button
+          mat-mini-fab
+          type="button"
+          matTooltip="Centralizar eventos"
+          aria-label="Centralizar eventos"
+          [disabled]="!mapInteractionReady()"
+          (click)="centerEvents()">
           <mat-icon>center_focus_strong</mat-icon>
         </button>
-        <button mat-mini-fab type="button" matTooltip="Filtrar eventos" aria-label="Filtrar eventos" (click)="openFilters()">
+        <button
+          mat-mini-fab
+          type="button"
+          matTooltip="Filtrar eventos"
+          aria-label="Filtrar eventos"
+          (click)="openFilters()">
           <mat-icon>filter_list</mat-icon>
         </button>
         <button
@@ -77,10 +80,28 @@
       </div>
       }
 
-      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Aumentar zoom" matTooltip="Aumentar zoom" matTooltipPosition="left" [disableRipple]="true" [disabled]="!mapInteractionReady()" (click)="zoomBy(1)">
+      <button
+        class="main-fab zoom-fab"
+        mat-fab
+        type="button"
+        aria-label="Aumentar zoom"
+        matTooltip="Aumentar zoom"
+        matTooltipPosition="left"
+        [disableRipple]="true"
+        [disabled]="!mapInteractionReady()"
+        (click)="zoomBy(1)">
         <mat-icon>add</mat-icon>
       </button>
-      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Diminuir zoom" matTooltip="Diminuir zoom" matTooltipPosition="left" [disableRipple]="true" [disabled]="!mapInteractionReady()" (click)="zoomBy(-1)">
+      <button
+        class="main-fab zoom-fab"
+        mat-fab
+        type="button"
+        aria-label="Diminuir zoom"
+        matTooltip="Diminuir zoom"
+        matTooltipPosition="left"
+        [disableRipple]="true"
+        [disabled]="!mapInteractionReady()"
+        (click)="zoomBy(-1)">
         <mat-icon>remove</mat-icon>
       </button>
 
@@ -101,7 +122,7 @@
 
     <section class="accessible-event-list" aria-label="Eventos visíveis no mapa">
       @for (event of filteredEvents(); track event.id) {
-        <button type="button" (click)="openEventFromList(event)">{{ event.name }}</button>
+      <button type="button" (click)="openEventFromList(event)">{{ event.name }}</button>
       }
     </section>
   </div>

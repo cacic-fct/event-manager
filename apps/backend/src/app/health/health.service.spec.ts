@@ -23,9 +23,11 @@ describe('HealthService', () => {
     ['redis', undefined, new Error('redis unavailable')],
   ])('reports a non-sensitive readiness failure for %s', async (dependency, databaseError, redisError) => {
     const prisma = {
-      $queryRaw: jest.fn().mockImplementation(() =>
-        databaseError ? Promise.reject(databaseError) : Promise.resolve([{ '?column?': 1 }]),
-      ),
+      $queryRaw: jest
+        .fn()
+        .mockImplementation(() =>
+          databaseError ? Promise.reject(databaseError) : Promise.resolve([{ '?column?': 1 }]),
+        ),
     };
     const redis = {
       ping: jest.fn().mockImplementation(() => (redisError ? Promise.reject(redisError) : Promise.resolve('PONG'))),

@@ -53,7 +53,9 @@ describe('PersonSearchComponent', () => {
   it('hides identity details and only shows the empty state after a completed search', () => {
     const fixture = TestBed.createComponent(PersonSearchComponent);
     fixture.componentRef.setInput('showIdentitySummary', false);
-    fixture.componentRef.setInput('results', [{ id: 'person-1', name: 'Ada', identityDocument: '123.456.789-00' }] as never);
+    fixture.componentRef.setInput('results', [
+      { id: 'person-1', name: 'Ada', identityDocument: '123.456.789-00' },
+    ] as never);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('123.456.789-00');

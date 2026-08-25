@@ -264,7 +264,10 @@ function buildMajorEvent(args: MajorEventStoryArgs, index: number): PublicMajorE
 
   return createStoryPublicMajorEvent(index, {
     id: `major-event-story-${index + 1}`,
-    name: index === 0 ? args.name : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} · ${faker.word.adjective()}`,
+    name:
+      index === 0
+        ? args.name
+        : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} · ${faker.word.adjective()}`,
     emoji: index === 0 ? args.emoji : ['💻', '🔬', '🌎'][index % 3],
     description: index === 0 ? args.description : faker.lorem.sentences(2),
     rankedSubscriptionEnabled: args.rankedSubscriptionEnabled,

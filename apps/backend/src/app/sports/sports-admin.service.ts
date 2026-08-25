@@ -80,9 +80,8 @@ export class SportsAdminService {
     this.registrations.updateRegistration(...args);
   readonly assignCategoryRole = (...args: Parameters<SportsRegistrationAdminService['assignCategoryRole']>) =>
     this.registrations.assignCategoryRole(...args);
-  readonly updateAthleteProfile = (
-    ...args: Parameters<SportsRegistrationAdminService['updateAthleteProfile']>
-  ) => this.registrations.updateAthleteProfile(...args);
+  readonly updateAthleteProfile = (...args: Parameters<SportsRegistrationAdminService['updateAthleteProfile']>) =>
+    this.registrations.updateAthleteProfile(...args);
   readonly updateOwnAthleteProfile = (...args: Parameters<SportsRegistrationAdminService['updateOwnAthleteProfile']>) =>
     this.registrations.updateOwnAthleteProfile(...args);
   readonly deleteRegistration = (...args: Parameters<SportsRegistrationAdminService['deleteRegistration']>) =>

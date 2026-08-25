@@ -4,12 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { findCurrentAuditEntityRecord, updateAuditEntityRecord } from './audit-log.entity-records';
 import { getAuditLogRevertConfig } from './audit-log.revert-config';
 
-type AuditEntityDelegateName =
-  | 'people'
-  | 'event'
-  | 'majorEvent'
-  | 'eventGroup'
-  | 'placePreset';
+type AuditEntityDelegateName = 'people' | 'event' | 'majorEvent' | 'eventGroup' | 'placePreset';
 
 type AuditEntityDelegate = {
   findUnique: jest.Mock;
@@ -72,7 +67,11 @@ describe('findCurrentAuditEntityRecord', () => {
 
   it('keeps legacy permission-grant audit snapshots historical only', async () => {
     await expect(
-      findCurrentAuditEntityRecord(createPrismaMock() as unknown as PrismaService, AuditLogEntityType.PERMISSION_GRANT, 'grant-1'),
+      findCurrentAuditEntityRecord(
+        createPrismaMock() as unknown as PrismaService,
+        AuditLogEntityType.PERMISSION_GRANT,
+        'grant-1',
+      ),
     ).resolves.toBeNull();
   });
 });
@@ -108,7 +107,12 @@ describe('updateAuditEntityRecord', () => {
 
   it('does not generically restore legacy permission grants', async () => {
     await expect(
-      updateAuditEntityRecord(createPrismaMock() as unknown as Prisma.TransactionClient, AuditLogEntityType.PERMISSION_GRANT, 'grant-1', {}),
+      updateAuditEntityRecord(
+        createPrismaMock() as unknown as Prisma.TransactionClient,
+        AuditLogEntityType.PERMISSION_GRANT,
+        'grant-1',
+        {},
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

@@ -109,15 +109,17 @@ describe('AttendanceApiService operation contracts', () => {
     const scannerInput = { eventId, code: 'AZTEC-123' };
     const manualInput = { eventId, value: 'Ada Lovelace', personId: 'person-1' };
 
-    await expect(firstValueFrom(service.listEventAttendanceOralRoster(eventId))).resolves.toEqual([attendanceFixture()]);
+    await expect(firstValueFrom(service.listEventAttendanceOralRoster(eventId))).resolves.toEqual([
+      attendanceFixture(),
+    ]);
     await expect(firstValueFrom(service.setEventOralAttendances(oralInputs))).resolves.toEqual([attendanceFixture()]);
     await expect(firstValueFrom(service.getEventAttendanceAnalytics(eventId))).resolves.toEqual(analyticsFixture());
-    await expect(firstValueFrom(service.listAttendanceReviewEventSummaries())).resolves.toEqual([reviewSummaryFixture()]);
+    await expect(firstValueFrom(service.listAttendanceReviewEventSummaries())).resolves.toEqual([
+      reviewSummaryFixture(),
+    ]);
     await expect(
       firstValueFrom(service.reviewAttendanceFlag('flag-1', eventId, 'RESOLVED', 'Reviewed by admin')),
-    ).resolves.toEqual(
-      reviewItemFixture(),
-    );
+    ).resolves.toEqual(reviewItemFixture());
     await expect(firstValueFrom(service.createEventAttendanceFromScannerCode(scannerInput))).resolves.toEqual(
       attendanceFixture(),
     );
@@ -128,15 +130,22 @@ describe('AttendanceApiService operation contracts', () => {
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('query EventAttendanceOralRoster'), {
       eventId,
     });
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('mutation SetEventOralAttendances'), {
-      inputs: oralInputs,
-    });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('mutation SetEventOralAttendances'),
+      {
+        inputs: oralInputs,
+      },
+    );
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(3, expect.stringContaining('query EventAttendanceAnalytics'), {
       eventId,
       windowStart: null,
       windowEnd: null,
     });
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(4, expect.stringContaining('query AttendanceReviewEventSummaries'));
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('query AttendanceReviewEventSummaries'),
+    );
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(5, expect.stringContaining('mutation ReviewAttendanceFlag'), {
       flagId: 'flag-1',
       eventId,
@@ -205,24 +214,28 @@ describe('AttendanceApiService operation contracts', () => {
     await expect(firstValueFrom(service.listOfflineEventAttendanceSubmissions(eventId))).resolves.toEqual([
       offlineSubmissionFixture(),
     ]);
-    await expect(firstValueFrom(service.updateOfflineEventAttendanceSubmission('offline-1', offlineInput))).resolves.toEqual(
-      offlineSubmissionFixture(),
-    );
+    await expect(
+      firstValueFrom(service.updateOfflineEventAttendanceSubmission('offline-1', offlineInput)),
+    ).resolves.toEqual(offlineSubmissionFixture());
     await expect(firstValueFrom(service.approveOfflineEventAttendanceSubmission('offline-1'))).resolves.toEqual(
       offlineSubmissionFixture(),
     );
-    await expect(firstValueFrom(service.approveOfflineEventAttendanceSubmissions(['offline-1', 'offline-2']))).resolves.toEqual([
-      offlineSubmissionFixture(),
-    ]);
-    await expect(firstValueFrom(service.rejectOfflineEventAttendanceSubmission('offline-1', 'Sem correspondência'))).resolves.toEqual(
-      offlineSubmissionFixture(),
-    );
-    await expect(firstValueFrom(service.rejectOfflineEventAttendanceSubmissions(['offline-1'], null))).resolves.toEqual([
-      offlineSubmissionFixture(),
-    ]);
-    await expect(firstValueFrom(service.listEventAttendanceScannerFeed(eventId))).resolves.toEqual([scannerFeedFixture()]);
     await expect(
-      firstValueFrom(service.listMajorEventUserAttendances('major-event-1', { personId: 'person-1', skip: 1, take: 10 })),
+      firstValueFrom(service.approveOfflineEventAttendanceSubmissions(['offline-1', 'offline-2'])),
+    ).resolves.toEqual([offlineSubmissionFixture()]);
+    await expect(
+      firstValueFrom(service.rejectOfflineEventAttendanceSubmission('offline-1', 'Sem correspondência')),
+    ).resolves.toEqual(offlineSubmissionFixture());
+    await expect(firstValueFrom(service.rejectOfflineEventAttendanceSubmissions(['offline-1'], null))).resolves.toEqual(
+      [offlineSubmissionFixture()],
+    );
+    await expect(firstValueFrom(service.listEventAttendanceScannerFeed(eventId))).resolves.toEqual([
+      scannerFeedFixture(),
+    ]);
+    await expect(
+      firstValueFrom(
+        service.listMajorEventUserAttendances('major-event-1', { personId: 'person-1', skip: 1, take: 10 }),
+      ),
     ).resolves.toEqual([majorEventAttendanceFixture()]);
 
     expect(graphqlHttp.request).toHaveBeenCalledWith(
@@ -237,14 +250,16 @@ describe('AttendanceApiService operation contracts', () => {
       expect.stringContaining('mutation ImportMajorEventSubscriptionsFromCsv'),
       { input: majorCsvInput },
     );
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query ListEventAttendances'),
-      { eventId, status: 'PRESENT', skip: 2, take: 10 },
-    );
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query EventAttendanceCount'),
-      { eventId, status: 'PRESENT' },
-    );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query ListEventAttendances'), {
+      eventId,
+      status: 'PRESENT',
+      skip: 2,
+      take: 10,
+    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query EventAttendanceCount'), {
+      eventId,
+      status: 'PRESENT',
+    });
     expect(graphqlHttp.request).toHaveBeenCalledWith(
       expect.stringContaining('mutation UpdateOfflineEventAttendanceSubmission'),
       { submissionId: 'offline-1', input: offlineInput },
@@ -265,14 +280,15 @@ describe('AttendanceApiService operation contracts', () => {
       expect.stringContaining('mutation RejectOfflineEventAttendanceSubmissions'),
       { submissionIds: ['offline-1'], reason: null },
     );
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query EventAttendanceScannerFeed'),
-      { eventId },
-    );
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query ListMajorEventUserAttendances'),
-      { majorEventId: 'major-event-1', personId: 'person-1', skip: 1, take: 10 },
-    );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query EventAttendanceScannerFeed'), {
+      eventId,
+    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query ListMajorEventUserAttendances'), {
+      majorEventId: 'major-event-1',
+      personId: 'person-1',
+      skip: 1,
+      take: 10,
+    });
   });
 
   it('watches analytics for an encoded event and requested fixed interval', async () => {
@@ -286,7 +302,7 @@ describe('AttendanceApiService operation contracts', () => {
 
     expect(source.url).toBe(
       '/api/event-attendances/events/event%20%2F%201/analytics/events' +
-      '?windowStart=2026-08-16T12%3A00%3A00.000Z&windowEnd=2026-08-16T13%3A00%3A00.000Z',
+        '?windowStart=2026-08-16T12%3A00%3A00.000Z&windowEnd=2026-08-16T13%3A00%3A00.000Z',
     );
     expect(source.init).toEqual({ withCredentials: true });
     source.emitMessage({ type: 'event-attendance-analytics', snapshot: analyticsFixture(null, window) });
@@ -347,10 +363,7 @@ function majorCsvImportFixture() {
   };
 }
 
-function analyticsFixture(
-  windowMinutes: number | null = null,
-  window: { start: string; end: string } | null = null,
-) {
+function analyticsFixture(windowMinutes: number | null = null, window: { start: string; end: string } | null = null) {
   return {
     eventId: 'event-1',
     eventName: 'Evento',

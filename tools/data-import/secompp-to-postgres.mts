@@ -141,14 +141,29 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
     const value = inlineValue ?? argv[++index];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
     switch (name) {
-      case '--input': options.input = value; break;
-      case '--database-url': options.databaseUrl = value; break;
-      case '--db-host': options.dbHost = value; break;
-      case '--db-port': options.dbPort = Number(value); break;
-      case '--db-name': options.dbName = value; break;
-      case '--db-user': options.dbUser = value; break;
-      case '--db-password': options.dbPassword = value; break;
-      default: throw new Error(`Unknown option: ${name}`);
+      case '--input':
+        options.input = value;
+        break;
+      case '--database-url':
+        options.databaseUrl = value;
+        break;
+      case '--db-host':
+        options.dbHost = value;
+        break;
+      case '--db-port':
+        options.dbPort = Number(value);
+        break;
+      case '--db-name':
+        options.dbName = value;
+        break;
+      case '--db-user':
+        options.dbUser = value;
+        break;
+      case '--db-password':
+        options.dbPassword = value;
+        break;
+      default:
+        throw new Error(`Unknown option: ${name}`);
     }
   }
   if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535) {
@@ -177,7 +192,10 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
 export async function buildPayload(sqlPath: string): Promise<LegacyImportPayload> {
   const parsed = await parseInsertRowsByTable(sqlPath, REQUIRED_TABLES);
   const now = utcNow();
-  const { majorEvents, majorEventIdByLegacy, majorEventStartByLegacy } = mapMajorEvents(tableRows(parsed, 'events'), now);
+  const { majorEvents, majorEventIdByLegacy, majorEventStartByLegacy } = mapMajorEvents(
+    tableRows(parsed, 'events'),
+    now,
+  );
   const { lectureSeeds, shortcourseSeeds } = mapEventSeeds(
     tableRows(parsed, 'lectures'),
     tableRows(parsed, 'shortcourses'),
@@ -188,11 +206,7 @@ export async function buildPayload(sqlPath: string): Promise<LegacyImportPayload
   const eventGroups = buildEventGroups(now);
   const eventGroupIdByType = new Map<string, string>(eventGroups.map((row) => [row.type, row.id]));
   const { people, userIdToPersonId } = mapPeople(tableRows(parsed, 'details'), tableRows(parsed, 'users'), now);
-  const {
-    majorEventSubscriptions,
-    skippedMajorSubscriptions,
-    paidByMajorEvent,
-  } = mapMajorEventSubscriptions(
+  const { majorEventSubscriptions, skippedMajorSubscriptions, paidByMajorEvent } = mapMajorEventSubscriptions(
     tableRows(parsed, 'users_registered'),
     userIdToPersonId,
     majorEventIdByLegacy,
@@ -334,8 +348,20 @@ export function mapEventSeeds(
 
 export function buildEventGroups(now: Date): LegacyEventGroup[] {
   return [
-    { id: buildPrefixedId(PREFIX, 'event-group', 'palestras'), name: 'Palestras (SECOMPP legado 1)', type: 'PALESTRA', createdAt: now, updatedAt: now },
-    { id: buildPrefixedId(PREFIX, 'event-group', 'minicursos'), name: 'Minicursos (SECOMPP legado 1)', type: 'MINICURSO', createdAt: now, updatedAt: now },
+    {
+      id: buildPrefixedId(PREFIX, 'event-group', 'palestras'),
+      name: 'Palestras (SECOMPP legado 1)',
+      type: 'PALESTRA',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: buildPrefixedId(PREFIX, 'event-group', 'minicursos'),
+      name: 'Minicursos (SECOMPP legado 1)',
+      type: 'MINICURSO',
+      createdAt: now,
+      updatedAt: now,
+    },
   ];
 }
 
@@ -416,10 +442,16 @@ export function mapMajorEventSubscriptions(
   for (const row of legacyRows) {
     const userId = decimalToInt(row.idUserFK);
     const legacyEventId = decimalToInt(row.idEventFK);
-    if (userId == null || legacyEventId == null) { skipped += 1; continue; }
+    if (userId == null || legacyEventId == null) {
+      skipped += 1;
+      continue;
+    }
     const personId = userIdToPersonId.get(userId);
     const majorEventId = majorEventIdByLegacy.get(legacyEventId);
-    if (!personId || !majorEventId) { skipped += 1; continue; }
+    if (!personId || !majorEventId) {
+      skipped += 1;
+      continue;
+    }
     const amountPaid = decimalToInt(row.amount);
     if (amountPaid != null && amountPaid > 0) paidByMajorEvent.set(majorEventId, true);
     const statusRaw = (coerceText(row.status) ?? '').toUpperCase();
@@ -437,7 +469,11 @@ export function mapMajorEventSubscriptions(
       createdById: null,
     });
   }
-  return { majorEventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)), skippedMajorSubscriptions: skipped, paidByMajorEvent };
+  return {
+    majorEventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    skippedMajorSubscriptions: skipped,
+    paidByMajorEvent,
+  };
 }
 
 export function mapEventSubscriptions(
@@ -451,14 +487,23 @@ export function mapEventSubscriptions(
   for (const row of legacyRows) {
     const userId = decimalToInt(row.idUserFK);
     const shortcourseId = decimalToInt(row.idShortcourseFK);
-    if (userId == null || shortcourseId == null) { skipped += 1; continue; }
+    if (userId == null || shortcourseId == null) {
+      skipped += 1;
+      continue;
+    }
     const personId = userIdToPersonId.get(userId);
     const seed = shortcourseSeeds.get(shortcourseId);
-    if (!personId || !seed) { skipped += 1; continue; }
+    if (!personId || !seed) {
+      skipped += 1;
+      continue;
+    }
     const id = deterministicPrefixedId(PREFIX, `legacy1-event-sub:shortcourse:${userId}:${shortcourseId}`);
     rowsById.set(id, { id, eventId: seed.id, personId, createdAt: seed.startDate ?? fallbackNow, createdById: null });
   }
-  return { eventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)), skippedEventSubscriptions: skipped };
+  return {
+    eventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    skippedEventSubscriptions: skipped,
+  };
 }
 
 export function buildEventRows(
@@ -514,23 +559,36 @@ export function mapEventAttendances(
 ): AttendanceMapping {
   const rowsByPair = new Map<string, LegacyEventAttendance>();
   let skipped = 0;
-  const add = (
-    row: ParsedSqlRow,
-    activityColumn: string,
-    seeds: ReadonlyMap<number, EventSeed>,
-  ): void => {
+  const add = (row: ParsedSqlRow, activityColumn: string, seeds: ReadonlyMap<number, EventSeed>): void => {
     const userId = decimalToInt(row.idUserFK);
     const activityId = decimalToInt(row[activityColumn]);
-    if (userId == null || activityId == null) { skipped += 1; return; }
+    if (userId == null || activityId == null) {
+      skipped += 1;
+      return;
+    }
     const personId = userIdToPersonId.get(userId);
     const seed = seeds.get(activityId);
-    if (!personId || !seed) { skipped += 1; return; }
+    if (!personId || !seed) {
+      skipped += 1;
+      return;
+    }
     const key = `${personId}\u0000${seed.id}`;
-    rowsByPair.set(key, { personId, eventId: seed.id, attendedAt: seed.startDate ?? fallbackNow, createdAt: seed.startDate ?? fallbackNow, createdById: null });
+    rowsByPair.set(key, {
+      personId,
+      eventId: seed.id,
+      attendedAt: seed.startDate ?? fallbackNow,
+      createdAt: seed.startDate ?? fallbackNow,
+      createdById: null,
+    });
   };
   lectureRows.forEach((row) => add(row, 'idLectureFK', lectureSeeds));
   shortcourseRows.forEach((row) => add(row, 'idShortcourseFK', shortcourseSeeds));
-  return { eventAttendances: [...rowsByPair.values()].sort((left, right) => `${left.personId}\u0000${left.eventId}`.localeCompare(`${right.personId}\u0000${right.eventId}`)), skippedAttendances: skipped };
+  return {
+    eventAttendances: [...rowsByPair.values()].sort((left, right) =>
+      `${left.personId}\u0000${left.eventId}`.localeCompare(`${right.personId}\u0000${right.eventId}`),
+    ),
+    skippedAttendances: skipped,
+  };
 }
 
 export function mapEventLecturers(
@@ -543,23 +601,30 @@ export function mapEventLecturers(
 ): LecturerMapping {
   const rowsByPair = new Map<string, LegacyEventLecturer>();
   let skipped = 0;
-  const add = (
-    row: ParsedSqlRow,
-    activityColumn: string,
-    seeds: ReadonlyMap<number, EventSeed>,
-  ): void => {
+  const add = (row: ParsedSqlRow, activityColumn: string, seeds: ReadonlyMap<number, EventSeed>): void => {
     const userId = decimalToInt(row.idUserFK);
     const activityId = decimalToInt(row[activityColumn]);
-    if (userId == null || activityId == null) { skipped += 1; return; }
+    if (userId == null || activityId == null) {
+      skipped += 1;
+      return;
+    }
     const personId = userIdToPersonId.get(userId);
     const seed = seeds.get(activityId);
-    if (!personId || !seed) { skipped += 1; return; }
+    if (!personId || !seed) {
+      skipped += 1;
+      return;
+    }
     const key = `${seed.id}\u0000${personId}`;
     rowsByPair.set(key, { eventId: seed.id, personId, createdAt: seed.startDate ?? fallbackNow, createdById: null });
   };
   lectureRows.forEach((row) => add(row, 'idLectureFK', lectureSeeds));
   shortcourseRows.forEach((row) => add(row, 'idShortcourseFK', shortcourseSeeds));
-  return { eventLecturers: [...rowsByPair.values()].sort((left, right) => `${left.eventId}\u0000${left.personId}`.localeCompare(`${right.eventId}\u0000${right.personId}`)), skippedLecturers: skipped };
+  return {
+    eventLecturers: [...rowsByPair.values()].sort((left, right) =>
+      `${left.eventId}\u0000${left.personId}`.localeCompare(`${right.eventId}\u0000${right.personId}`),
+    ),
+    skippedLecturers: skipped,
+  };
 }
 
 function printPayloadSummary(payload: LegacyImportPayload): void {

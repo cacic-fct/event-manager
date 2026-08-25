@@ -185,7 +185,9 @@ describe('SportsTeamAdminService', () => {
         }),
       );
       expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-2', participantId: 'participant-1' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ teamId: 'team-2', participantId: 'participant-1' }),
+        }),
       );
       expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ eligibility: SportsEligibilityStatus.INELIGIBLE }) }),

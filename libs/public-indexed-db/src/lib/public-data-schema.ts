@@ -304,9 +304,7 @@ export function hasOfflineSportsAttendanceCollectorProof(
   return Boolean(input.collectorPersonId && input.collectorCredential);
 }
 
-export function isOfflineSportsOfficialCheckIn(
-  input: OfflineSportsCheckIn,
-): input is OfflineSportsOfficialCheckIn {
+export function isOfflineSportsOfficialCheckIn(input: OfflineSportsCheckIn): input is OfflineSportsOfficialCheckIn {
   return 'officialAssignmentId' in input;
 }
 

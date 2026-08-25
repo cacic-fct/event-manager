@@ -20,9 +20,7 @@ export function normalizeSportsAthleteProfilePatch(input: SportsAthleteProfilePa
   }
 
   return {
-    ...(input.shirtNumber !== undefined
-      ? { shirtNumber: normalizeShirtNumber(input.shirtNumber) }
-      : {}),
+    ...(input.shirtNumber !== undefined ? { shirtNumber: normalizeShirtNumber(input.shirtNumber) } : {}),
     ...(input.gameNickname !== undefined
       ? { gameNickname: normalizeProfileText(input.gameNickname, 'apelido no jogo', 80) }
       : {}),

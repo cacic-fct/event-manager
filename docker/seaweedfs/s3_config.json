@@ -8,13 +8,7 @@
           "secretKey": "xyz"
         }
       ],
-      "actions": [
-        "Admin",
-        "Read:event-manager",
-        "Write:event-manager",
-        "List:event-manager",
-        "Tagging:event-manager"
-      ]
+      "actions": ["Admin", "Read:event-manager", "Write:event-manager", "List:event-manager", "Tagging:event-manager"]
     }
   ]
 }

@@ -22,7 +22,10 @@ function isAdminApiRequest(url: string): boolean {
 
   try {
     const parsed = new URL(url, globalThis.location?.origin ?? 'http://localhost');
-    return parsed.origin === globalThis.location?.origin && (parsed.pathname === '/api' || parsed.pathname.startsWith('/api/'));
+    return (
+      parsed.origin === globalThis.location?.origin &&
+      (parsed.pathname === '/api' || parsed.pathname.startsWith('/api/'))
+    );
   } catch {
     return false;
   }

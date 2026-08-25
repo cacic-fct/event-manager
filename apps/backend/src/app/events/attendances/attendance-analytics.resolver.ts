@@ -1,4 +1,8 @@
-import { AttendanceReviewEventSummary, AttendanceReviewItem, EventAttendanceAnalyticsSnapshot } from '@cacic-fct/shared-data-types';
+import {
+  AttendanceReviewEventSummary,
+  AttendanceReviewItem,
+  EventAttendanceAnalyticsSnapshot,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceReviewFlagStatus } from '@prisma/client';

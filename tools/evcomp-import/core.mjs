@@ -22,7 +22,12 @@ export function normalizeAcademicId(value) {
 
 export function normalizeName(value) {
   return typeof value === 'string'
-    ? value.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().replace(/\s+/g, ' ').toLowerCase()
+    ? value
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
     : '';
 }
 
@@ -54,16 +59,18 @@ export function resolvePerson(sourcePerson, targetPeople) {
     return { status: 'conflict', candidates: identifierCandidates, matchedBy: 'identifier' };
   }
   if (emailMatches.length === 1) {
-    return { status: 'matched', person: emailMatches[0], matchedBy: academicMatches.length ? 'email+academicId' : 'email' };
+    return {
+      status: 'matched',
+      person: emailMatches[0],
+      matchedBy: academicMatches.length ? 'email+academicId' : 'email',
+    };
   }
   if (academicMatches.length === 1) {
     return { status: 'matched', person: academicMatches[0], matchedBy: 'academicId' };
   }
 
   const sourceName = normalizeName(sourcePerson.name);
-  const nameCandidates = sourceName
-    ? targetPeople.filter((person) => normalizeName(person.name) === sourceName)
-    : [];
+  const nameCandidates = sourceName ? targetPeople.filter((person) => normalizeName(person.name) === sourceName) : [];
   return { status: 'unmatched', nameCandidates };
 }
 

@@ -114,7 +114,9 @@ describe('SportsTeamLogoController', () => {
     const downloadHandler = SportsTeamLogoController.prototype.download;
 
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, uploadHandler)).toEqual([Permission.SportsTeam.Update]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, pendingDownloadHandler)).toEqual([Permission.SportsTeam.Review]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, pendingDownloadHandler)).toEqual([
+      Permission.SportsTeam.Review,
+    ]);
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, downloadHandler)).toEqual([Permission.SportsTeam.Read]);
     expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, uploadHandler) as RateLimitMetadata).toEqual({
       policy: RATE_LIMIT_POLICIES.receiptUpload,

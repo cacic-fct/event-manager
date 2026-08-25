@@ -45,14 +45,7 @@ type NominatimSearchResult = Readonly<{
 @Component({
   selector: 'app-location-coordinate-picker-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
     <h2 mat-dialog-title>Selecionar localização no mapa</h2>
     <mat-dialog-content>
@@ -84,13 +77,46 @@ type NominatimSearchResult = Readonly<{
     </mat-dialog-actions>
   `,
   styles: `
-    mat-dialog-content { display: grid; gap: 12px; min-width: min(680px, calc(100vw - 48px)); }
-    .search-bar { display: flex; gap: 8px; align-items: center; }
-    .search-bar mat-form-field { flex: 1; }
-    .map { height: min(56vh, 480px); min-height: 320px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, currentColor 8%, transparent); }
-    .coordinates, .search-error { margin: 0; color: var(--mat-sys-on-surface-variant); }
-    .search-error { color: var(--mat-sys-error); }
-    @media (max-width: 599px) { mat-dialog-content { min-width: 0; } .search-bar { align-items: stretch; flex-direction: column; } .map { min-height: 280px; } }
+    mat-dialog-content {
+      display: grid;
+      gap: 12px;
+      min-width: min(680px, calc(100vw - 48px));
+    }
+    .search-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .search-bar mat-form-field {
+      flex: 1;
+    }
+    .map {
+      height: min(56vh, 480px);
+      min-height: 320px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: color-mix(in srgb, currentColor 8%, transparent);
+    }
+    .coordinates,
+    .search-error {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .search-error {
+      color: var(--mat-sys-error);
+    }
+    @media (max-width: 599px) {
+      mat-dialog-content {
+        min-width: 0;
+      }
+      .search-bar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .map {
+        min-height: 280px;
+      }
+    }
   `,
 })
 export class LocationCoordinatePickerDialogComponent implements OnDestroy {
@@ -101,7 +127,8 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
 
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly dialogRef = inject<MatDialogRef<LocationCoordinatePickerDialogComponent, LocationCoordinates>>(MatDialogRef);
+  private readonly dialogRef =
+    inject<MatDialogRef<LocationCoordinatePickerDialogComponent, LocationCoordinates>>(MatDialogRef);
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
   private readonly markerIconUrl = this.isBrowser
     ? new URL('assets/shared/pin.svg', this.document.baseURI).toString()
@@ -176,8 +203,15 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
       { default: VectorSource },
       { Icon, Style },
     ] = await Promise.all([
-      import('ol/Feature'), import('ol/Map'), import('ol/View'), import('ol/geom/Point'), import('ol/layer'),
-      import('ol/proj'), import('ol/source/OSM'), import('ol/source/Vector'), import('ol/style'),
+      import('ol/Feature'),
+      import('ol/Map'),
+      import('ol/View'),
+      import('ol/geom/Point'),
+      import('ol/layer'),
+      import('ol/proj'),
+      import('ol/source/OSM'),
+      import('ol/source/Vector'),
+      import('ol/style'),
     ]);
 
     const markerSource = new VectorSource();
@@ -185,7 +219,17 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
       markerSource.clear();
       if (!coordinates) return;
       const marker = new Feature({ geometry: new Point(fromLonLat([coordinates.longitude, coordinates.latitude])) });
-      marker.setStyle(new Style({ image: new Icon({ anchor: [400, 700], anchorXUnits: 'pixels', anchorYUnits: 'pixels', src: this.markerIconUrl, scale: 0.065 }) }));
+      marker.setStyle(
+        new Style({
+          image: new Icon({
+            anchor: [400, 700],
+            anchorXUnits: 'pixels',
+            anchorYUnits: 'pixels',
+            src: this.markerIconUrl,
+            scale: 0.065,
+          }),
+        }),
+      );
       markerSource.addFeature(marker);
     };
     this.setMarker = updateMarker;
@@ -217,7 +261,9 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
     this.setMarker?.(coordinates);
     if (centerMap) {
       void import('ol/proj').then(({ fromLonLat }) => {
-        const map = this.map as (MapInstance & { getView(): { animate(options: { center: number[]; zoom: number }): void } }) | null;
+        const map = this.map as
+          | (MapInstance & { getView(): { animate(options: { center: number[]; zoom: number }): void } })
+          | null;
         map?.getView().animate({
           center: fromLonLat([coordinates.longitude, coordinates.latitude]),
           zoom: DEFAULT_MAP_ZOOM,

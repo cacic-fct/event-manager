@@ -1,9 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  EventFormTargetType,
-} from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, EventFormTargetType } from '@prisma/client';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';

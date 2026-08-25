@@ -94,10 +94,20 @@ function createScanner(overrides: Partial<Record<keyof ScannerDependencies, unkn
       listCollectionEvents: makeMock().mockReturnValue(of([collectionEvent()])),
       listFeed: makeMock().mockReturnValue(of([])),
       registerManual: makeMock().mockReturnValue(
-        of({ eventId: 'event-1', personId: 'person-1', attendedAt: publicFixtureDateFromNow(0, 12), category: 'REGULAR' }),
+        of({
+          eventId: 'event-1',
+          personId: 'person-1',
+          attendedAt: publicFixtureDateFromNow(0, 12),
+          category: 'REGULAR',
+        }),
       ),
       registerScannerCode: makeMock().mockReturnValue(
-        of({ eventId: 'event-1', personId: 'person-1', attendedAt: publicFixtureDateFromNow(0, 12), category: 'REGULAR' }),
+        of({
+          eventId: 'event-1',
+          personId: 'person-1',
+          attendedAt: publicFixtureDateFromNow(0, 12),
+          category: 'REGULAR',
+        }),
       ),
       watchFeed: makeMock().mockReturnValue(of([])),
     },
@@ -164,11 +174,15 @@ function syncQueued(component: AttendanceScanner) {
 }
 
 function retryQueued(component: AttendanceScanner, item: OfflineAttendanceQueueItem) {
-  return (component as unknown as { retryQueuedAttendance: (value: OfflineAttendanceQueueItem) => Promise<void> }).retryQueuedAttendance(item);
+  return (
+    component as unknown as { retryQueuedAttendance: (value: OfflineAttendanceQueueItem) => Promise<void> }
+  ).retryQueuedAttendance(item);
 }
 
 function removeQueued(component: AttendanceScanner, item: OfflineAttendanceQueueItem) {
-  return (component as unknown as { removeQueuedAttendance: (value: OfflineAttendanceQueueItem) => Promise<void> }).removeQueuedAttendance(item);
+  return (
+    component as unknown as { removeQueuedAttendance: (value: OfflineAttendanceQueueItem) => Promise<void> }
+  ).removeQueuedAttendance(item);
 }
 
 describe('AttendanceScanner operations', () => {
@@ -210,7 +224,9 @@ describe('AttendanceScanner operations', () => {
     component.ngOnInit();
     await vi.waitFor(() => expect(component.event()).toEqual(cached));
 
-    expect(deps.snackbar.open).not.toHaveBeenCalledWith('Não foi possível carregar o evento.', 'Fechar', { duration: 3500 });
+    expect(deps.snackbar.open).not.toHaveBeenCalledWith('Não foi possível carregar o evento.', 'Fechar', {
+      duration: 3500,
+    });
   });
 
   it('reports a missing cached event after a collection API failure', async () => {
@@ -220,7 +236,9 @@ describe('AttendanceScanner operations', () => {
 
     component.ngOnInit();
     await vi.waitFor(() =>
-      expect(deps.snackbar.open).toHaveBeenCalledWith('Não foi possível carregar o evento.', 'Fechar', { duration: 3500 }),
+      expect(deps.snackbar.open).toHaveBeenCalledWith('Não foi possível carregar o evento.', 'Fechar', {
+        duration: 3500,
+      }),
     );
   });
 
@@ -228,7 +246,12 @@ describe('AttendanceScanner operations', () => {
     const present = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' as const };
     const { component, deps } = createScanner();
     deps.api.registerScannerCode.mockReturnValue(
-      of({ eventId: 'event-1', personId: 'person-1', attendedAt: publicFixtureDateFromNow(0, 12), category: 'NON_SUBSCRIBED' }),
+      of({
+        eventId: 'event-1',
+        personId: 'person-1',
+        attendedAt: publicFixtureDateFromNow(0, 12),
+        category: 'NON_SUBSCRIBED',
+      }),
     );
     deps.api.listFeed.mockReturnValue(of([present]));
 
@@ -361,7 +384,11 @@ describe('AttendanceScanner operations', () => {
     expect(deps.feedback.show).toHaveBeenCalledWith('duplicate');
     expect(deps.dialog.open).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ width: 'min(32rem, 94vw)', disableClose: true, data: { message: 'Pessoa tem registros duplicados.' } }),
+      expect.objectContaining({
+        width: 'min(32rem, 94vw)',
+        disableClose: true,
+        data: { message: 'Pessoa tem registros duplicados.' },
+      }),
     );
     expect(deps.snackbar.open).not.toHaveBeenCalled();
 
@@ -433,25 +460,24 @@ describe('AttendanceScanner operations', () => {
       queueStatusLabel: (status: OfflineAttendanceQueueItem['status']) => string;
       roleLabel: (role: string | null | undefined) => string;
     };
-    expect(['CSV_IMPORT', 'EVENT_DUPLICATION', 'MANUAL_INPUT', 'ORAL_CALL', 'SCANNER', 'ONLINE_CODE', 'UNKNOWN', null, undefined].map((method) => labels.methodLabel(method))).toEqual([
-      'CSV',
-      'duplicação de evento',
-      'manual',
-      'chamada oral',
-      'scanner',
-      'código online',
-      '-',
-      '-',
-      '-',
-    ]);
-    expect(['PENDING', 'SYNCING', 'DUPLICATE', 'CONFLICT', 'FORBIDDEN', 'FAILED'].map((status) => labels.queueStatusLabel(status as OfflineAttendanceQueueItem['status']))).toEqual([
-      'pendente',
-      'sincronizando',
-      'já registrada',
-      'conflito',
-      'sem permissão',
-      'falhou',
-    ]);
+    expect(
+      [
+        'CSV_IMPORT',
+        'EVENT_DUPLICATION',
+        'MANUAL_INPUT',
+        'ORAL_CALL',
+        'SCANNER',
+        'ONLINE_CODE',
+        'UNKNOWN',
+        null,
+        undefined,
+      ].map((method) => labels.methodLabel(method)),
+    ).toEqual(['CSV', 'duplicação de evento', 'manual', 'chamada oral', 'scanner', 'código online', '-', '-', '-']);
+    expect(
+      ['PENDING', 'SYNCING', 'DUPLICATE', 'CONFLICT', 'FORBIDDEN', 'FAILED'].map((status) =>
+        labels.queueStatusLabel(status as OfflineAttendanceQueueItem['status']),
+      ),
+    ).toEqual(['pendente', 'sincronizando', 'já registrada', 'conflito', 'sem permissão', 'falhou']);
     expect(labels.roleLabel(null)).toBe('-');
   });
 

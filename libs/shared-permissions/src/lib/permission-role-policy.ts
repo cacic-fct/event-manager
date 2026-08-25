@@ -57,11 +57,9 @@ export const EVENT_MANAGER_SYSTEM_ROLES = [
     name: 'Gestor de grande evento',
     description: 'Coordena estrutura, publicação, formulários e operação de um grande evento.',
     emoji: '🎪',
-    permissions: uniquePermissions(
-      preset('major-event-admin'),
-      preset('event-structure-manager'),
-      [Permission.RelatedPerson.Read],
-    ),
+    permissions: uniquePermissions(preset('major-event-admin'), preset('event-structure-manager'), [
+      Permission.RelatedPerson.Read,
+    ]),
     assignable: true,
     external: false,
   },
@@ -116,27 +114,23 @@ const sameResourceReadDependencies = Object.fromEntries(
   }),
 ) as Partial<Record<Permission, PermissionRequirement>>;
 
-export const EVENT_MANAGER_HARD_PERMISSION_DEPENDENCIES: Readonly<
-  Partial<Record<Permission, PermissionRequirement>>
-> = {
-  ...sameResourceReadDependencies,
-  [Permission.Certificate.Reissue]: [Permission.Certificate.Read, Permission.Certificate.Issue],
-  [Permission.EventForm.Publish]: [Permission.EventForm.Read, Permission.EventForm.Update],
-  [Permission.EventForm.Export]: [Permission.EventForm.Read, Permission.EventForm.Results],
-  [Permission.MergeCandidate.Merge]: [Permission.MergeCandidate.Read, Permission.MergeCandidate.Update],
-  [Permission.MergeCandidate.Undo]: [Permission.MergeCandidate.Read, Permission.MergeCandidate.Merge],
-  [Permission.PlacePreset.Merge]: [
-    Permission.PlacePreset.Read,
-    Permission.PlacePreset.Update,
-    Permission.PlacePreset.Delete,
-  ],
-  [Permission.SportsTournament.Duplicate]: [
-    Permission.SportsTournament.Read,
-    Permission.SportsTournament.Create,
-  ],
-  [Permission.SportsCategory.Duplicate]: [Permission.SportsCategory.Read, Permission.SportsCategory.Create],
-  [Permission.SportsTeam.Duplicate]: [Permission.SportsTeam.Read, Permission.SportsTeam.Create],
-};
+export const EVENT_MANAGER_HARD_PERMISSION_DEPENDENCIES: Readonly<Partial<Record<Permission, PermissionRequirement>>> =
+  {
+    ...sameResourceReadDependencies,
+    [Permission.Certificate.Reissue]: [Permission.Certificate.Read, Permission.Certificate.Issue],
+    [Permission.EventForm.Publish]: [Permission.EventForm.Read, Permission.EventForm.Update],
+    [Permission.EventForm.Export]: [Permission.EventForm.Read, Permission.EventForm.Results],
+    [Permission.MergeCandidate.Merge]: [Permission.MergeCandidate.Read, Permission.MergeCandidate.Update],
+    [Permission.MergeCandidate.Undo]: [Permission.MergeCandidate.Read, Permission.MergeCandidate.Merge],
+    [Permission.PlacePreset.Merge]: [
+      Permission.PlacePreset.Read,
+      Permission.PlacePreset.Update,
+      Permission.PlacePreset.Delete,
+    ],
+    [Permission.SportsTournament.Duplicate]: [Permission.SportsTournament.Read, Permission.SportsTournament.Create],
+    [Permission.SportsCategory.Duplicate]: [Permission.SportsCategory.Read, Permission.SportsCategory.Create],
+    [Permission.SportsTeam.Duplicate]: [Permission.SportsTeam.Read, Permission.SportsTeam.Create],
+  };
 
 export const EVENT_MANAGER_CONTEXT_PERMISSION_DEPENDENCIES = [
   {

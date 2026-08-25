@@ -5,10 +5,7 @@ import { SseReplayService } from '../realtime/sse-replay.service';
 @Injectable()
 export class EventFormResultEventsService {
   private readonly logger = new Logger(EventFormResultEventsService.name);
-  private readonly resultSubjects = new Map<
-    string,
-    { subject: Subject<MessageEvent>; subscriberCount: number }
-  >();
+  private readonly resultSubjects = new Map<string, { subject: Subject<MessageEvent>; subscriberCount: number }>();
 
   constructor(private readonly replay: SseReplayService) {}
 

@@ -54,24 +54,35 @@ describe('LgpdController', () => {
   });
 
   it.each([
-    ['scheduleDeletion', 'scheduleDeletion', { userId: 'subject-1', email: 'subject@example.com', event: 'account-deletion.schedule', requestId: 'request-1' }],
-    ['hardDelete', 'hardDelete', { userId: 'subject-1', email: 'subject@example.com', event: 'account-deletion.delete', requestId: 'request-1' }],
-  ] as const)('forwards %s deletion requests and preserves the service result', async (operation, serviceMethod, body) => {
-    const request = { user: authenticatedUser({ sub: 'lgpd-service' }) };
-    const result = { status: 'success', requestId: body.requestId, retainedCategories: ['certificates'] };
-    lgpdService[serviceMethod].mockResolvedValue(result);
+    [
+      'scheduleDeletion',
+      'scheduleDeletion',
+      { userId: 'subject-1', email: 'subject@example.com', event: 'account-deletion.schedule', requestId: 'request-1' },
+    ],
+    [
+      'hardDelete',
+      'hardDelete',
+      { userId: 'subject-1', email: 'subject@example.com', event: 'account-deletion.delete', requestId: 'request-1' },
+    ],
+  ] as const)(
+    'forwards %s deletion requests and preserves the service result',
+    async (operation, serviceMethod, body) => {
+      const request = { user: authenticatedUser({ sub: 'lgpd-service' }) };
+      const result = { status: 'success', requestId: body.requestId, retainedCategories: ['certificates'] };
+      lgpdService[serviceMethod].mockResolvedValue(result);
 
-    const response =
-      operation === 'scheduleDeletion'
-        ? await controller.scheduleDeletion(request as never, body)
-        : await controller.hardDelete(request as never, body);
+      const response =
+        operation === 'scheduleDeletion'
+          ? await controller.scheduleDeletion(request as never, body)
+          : await controller.hardDelete(request as never, body);
 
-    expect(response).toBe(result);
-    expect(keycloakAuthService.assertMachineToMachinePrincipal).toHaveBeenCalledWith(request.user, {
-      requiredRoles: ['lgpd:delete'],
-    });
-    expect(lgpdService[serviceMethod]).toHaveBeenCalledWith(body);
-  });
+      expect(response).toBe(result);
+      expect(keycloakAuthService.assertMachineToMachinePrincipal).toHaveBeenCalledWith(request.user, {
+        requiredRoles: ['lgpd:delete'],
+      });
+      expect(lgpdService[serviceMethod]).toHaveBeenCalledWith(body);
+    },
+  );
 
   it.each([
     ['userData', 'lgpd:read'],
@@ -110,10 +121,11 @@ describe('LgpdController', () => {
     lgpdService.scheduleDeletion.mockRejectedValue(failure);
 
     await expect(
-      controller.scheduleDeletion(
-        { user: authenticatedUser({ sub: 'lgpd-service' }) } as never,
-        { userId: 'subject-1', event: 'account-deletion.schedule', requestId: 'request-1' },
-      ),
+      controller.scheduleDeletion({ user: authenticatedUser({ sub: 'lgpd-service' }) } as never, {
+        userId: 'subject-1',
+        event: 'account-deletion.schedule',
+        requestId: 'request-1',
+      }),
     ).rejects.toBe(failure);
   });
 

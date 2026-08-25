@@ -68,11 +68,10 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
 
     await expect(resolver().currentUserAttendanceOralRoster('event-1', context as never)).resolves.toBe(roster);
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith(context);
-    expect(authorizationPolicy.assertAttendanceCollectorForEvent).toHaveBeenCalledWith(
-      'event-1',
-      'collector-person',
-      { enforceCollectionWindow: true, user: actor },
-    );
+    expect(authorizationPolicy.assertAttendanceCollectorForEvent).toHaveBeenCalledWith('event-1', 'collector-person', {
+      enforceCollectionWindow: true,
+      user: actor,
+    });
     expect(prisma.event.findUnique).toHaveBeenCalledWith({
       where: { id: 'event-1' },
       select: { shouldAllowOralAttendance: true },
@@ -83,9 +82,9 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
   it('does not expose the oral roster when oral attendance is disabled', async () => {
     prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: false });
 
-    await expect(
-      resolver().currentUserAttendanceOralRoster('event-1', context as never),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(resolver().currentUserAttendanceOralRoster('event-1', context as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     expect(getAttendanceOralRoster).not.toHaveBeenCalled();
   });
 
@@ -149,10 +148,7 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
 
     prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: true });
     await expect(
-      resolver().collectCurrentUserOralAttendance(
-        { ...input(), collectedByUserId: 'another-user' },
-        context as never,
-      ),
+      resolver().collectCurrentUserOralAttendance({ ...input(), collectedByUserId: 'another-user' }, context as never),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(eventAttendance.upsert).not.toHaveBeenCalled();
   });
@@ -184,9 +180,9 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
     eventAttendance.findUnique.mockResolvedValue(null);
     eventAttendance.upsert.mockResolvedValueOnce(results[0]).mockResolvedValueOnce(results[1]);
 
-    await expect(
-      resolver().collectCurrentUserOralAttendances([first, second], context as never),
-    ).resolves.toEqual(results);
+    await expect(resolver().collectCurrentUserOralAttendances([first, second], context as never)).resolves.toEqual(
+      results,
+    );
 
     expect(findAttendanceOralRosterPersonIds).toHaveBeenCalledWith(prisma, 'event-1', ['person-1', 'person-2']);
     expect(eventAttendance.upsert).toHaveBeenCalledTimes(2);

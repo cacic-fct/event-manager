@@ -110,10 +110,8 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             venue,
             isPubliclyListed: publishImmediately,
             shouldIssueCertificate: category.eventGroup.shouldIssueCertificate,
-            publicationState:
-              publishImmediately ? PublicationState.PUBLISHED : PublicationState.DRAFT,
-            publishedAt:
-              publishImmediately ? new Date() : null,
+            publicationState: publishImmediately ? PublicationState.PUBLISHED : PublicationState.DRAFT,
+            publishedAt: publishImmediately ? new Date() : null,
             actorId,
           });
       const match = await tx.sportsMatch.create({

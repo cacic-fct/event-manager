@@ -49,7 +49,10 @@ const meta: Meta<AttendanceStatisticsStoryArgs> = {
     eventName: { control: 'text', if: { arg: 'requestState', eq: 'ready' } },
     presentCount: { control: { type: 'range', min: 0, max: 2_000, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
     noShowCount: { control: { type: 'range', min: 0, max: 1_000, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
-    pendingOfflineCount: { control: { type: 'range', min: 0, max: 100, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    pendingOfflineCount: {
+      control: { type: 'range', min: 0, max: 100, step: 1 },
+      if: { arg: 'requestState', eq: 'ready' },
+    },
     reviewCount: { control: { type: 'range', min: 0, max: 12, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
     collectorCount: { control: { type: 'range', min: 0, max: 16, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
     historyMinutes: { control: 'select', options: [60, 240, 1_440, 10_080] },
@@ -133,7 +136,8 @@ export const ConnectionError: Story = {
 export const LongContentOnMobile: Story = {
   name: 'Conteúdo extenso no celular',
   args: {
-    eventName: 'Credenciamento integrado dos cursos de Ciência da Computação, Sistemas de Informação e comunidades convidadas',
+    eventName:
+      'Credenciamento integrado dos cursos de Ciência da Computação, Sistemas de Informação e comunidades convidadas',
     collectorCount: 8,
     reviewCount: 6,
   },
@@ -143,7 +147,7 @@ export const LongContentOnMobile: Story = {
 
 function createStoryProviders(args: AttendanceStatisticsStoryArgs) {
   const snapshot = createSnapshot(args);
-  const response = <T>(value: T) => args.responseDelay > 0 ? of(value).pipe(delay(args.responseDelay)) : of(value);
+  const response = <T>(value: T) => (args.responseDelay > 0 ? of(value).pipe(delay(args.responseDelay)) : of(value));
   return [
     provideRouter([]),
     { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ eventId }) } } },
@@ -152,13 +156,15 @@ function createStoryProviders(args: AttendanceStatisticsStoryArgs) {
       useValue: {
         watchEventAttendanceAnalytics: () => {
           if (args.requestState === 'loading') return NEVER;
-          if (args.requestState === 'error') return throwError(() => new Error('A conexão com a central foi interrompida.'));
+          if (args.requestState === 'error')
+            return throwError(() => new Error('A conexão com a central foi interrompida.'));
           return response(snapshot);
         },
         getEventAttendanceAnalytics: () => response(snapshot),
-        reviewAttendanceFlag: () => args.actionFails
-          ? throwError(() => new Error('Não foi possível concluir a revisão.'))
-          : response(snapshot.reviewItems[0]),
+        reviewAttendanceFlag: () =>
+          args.actionFails
+            ? throwError(() => new Error('Não foi possível concluir a revisão.'))
+            : response(snapshot.reviewItems[0]),
       },
     },
     { provide: PermissionsService, useValue: { has: () => args.canReview } },

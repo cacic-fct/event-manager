@@ -177,12 +177,23 @@ describe('SportsMatchOperationCommandValidation', () => {
 
   it('rejects a readiness override from a lineup manager or with an invalid flag', () => {
     expect(() =>
-      service.validate(SportsMatchActionType.START, { readinessOverride: true }, SportsMatchState.SCHEDULED, 'LINEUP_MANAGER', {
-        readiness: { ready: true, issues: [] },
-      }),
+      service.validate(
+        SportsMatchActionType.START,
+        { readinessOverride: true },
+        SportsMatchState.SCHEDULED,
+        'LINEUP_MANAGER',
+        {
+          readiness: { ready: true, issues: [] },
+        },
+      ),
     ).toThrow('Somente a arbitragem ou administradores podem substituir a prontidão.');
     expect(() =>
-      service.validate(SportsMatchActionType.START, { readinessOverride: 'yes' }, SportsMatchState.SCHEDULED, 'OFFICIAL'),
+      service.validate(
+        SportsMatchActionType.START,
+        { readinessOverride: 'yes' },
+        SportsMatchState.SCHEDULED,
+        'OFFICIAL',
+      ),
     ).toThrow('readinessOverride deve ser booleano.');
   });
 

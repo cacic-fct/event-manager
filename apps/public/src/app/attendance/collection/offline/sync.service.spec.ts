@@ -202,9 +202,11 @@ describe('AttendanceOfflineSyncService', () => {
 
     expect(queue.listUploadable).toHaveBeenCalledWith('uploader-user');
     expect(queue.markSyncing).toHaveBeenCalledWith('collector-user', ['retained-1']);
-    expect(queue.applyCommitResults).toHaveBeenCalledWith('collector-user', [
-      { clientId: 'retained-1', eventId: 'event-1', status: 'CREATED' },
-    ], 'uploader-user');
+    expect(queue.applyCommitResults).toHaveBeenCalledWith(
+      'collector-user',
+      [{ clientId: 'retained-1', eventId: 'event-1', status: 'CREATED' }],
+      'uploader-user',
+    );
     expect(commitOfflineAttendances).toHaveBeenCalledWith([
       expect.objectContaining({
         clientId: 'retained-1',

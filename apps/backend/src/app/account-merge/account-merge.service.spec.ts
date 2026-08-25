@@ -135,9 +135,11 @@ describe('AccountMergeService', () => {
         },
       ]);
 
-    await (service as unknown as {
-      movePermissionRelations: (transaction: unknown, targetId: string, sourceId: string) => Promise<unknown>;
-    }).movePermissionRelations(tx, 'target-person', 'source-person');
+    await (
+      service as unknown as {
+        movePermissionRelations: (transaction: unknown, targetId: string, sourceId: string) => Promise<unknown>;
+      }
+    ).movePermissionRelations(tx, 'target-person', 'source-person');
 
     expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
       where: { id: 'source-assignment' },
@@ -493,7 +495,9 @@ describe('AccountMergeService', () => {
     await expect(
       service['coalesceEventGroupSubscriptions'](tx as never, 'target-person', 'source-person'),
     ).resolves.toEqual([]);
-    await expect(service['coalesceEventSubscriptions'](tx as never, 'target-person', 'source-person')).resolves.toEqual([]);
+    await expect(service['coalesceEventSubscriptions'](tx as never, 'target-person', 'source-person')).resolves.toEqual(
+      [],
+    );
     await expect(
       service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person'),
     ).resolves.toEqual([]);

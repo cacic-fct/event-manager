@@ -19,7 +19,9 @@ export type AdminErrorDialogData = {
     </div>
     <mat-dialog-content>
       <p>{{ data.message }}</p>
-      <p class="error-dialog-guidance">Revise os dados e tente novamente. Se o problema continuar, contate o suporte.</p>
+      <p class="error-dialog-guidance">
+        Revise os dados e tente novamente. Se o problema continuar, contate o suporte.
+      </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-flat-button mat-dialog-close cdkFocusInitial type="button">Entendi</button>

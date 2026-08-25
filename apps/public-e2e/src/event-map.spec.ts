@@ -157,45 +157,49 @@ async function clickMapMarker(page: Page, eventId: string): Promise<void> {
   const map = page.getByRole('region', { name: 'Mapa interativo de eventos' });
   await expect(map).toHaveAttribute('aria-busy', 'false');
   let markerPixel: number[] | null = null;
-  await expect.poll(async () => {
-    markerPixel = await page.evaluate((expectedEventId) => {
-      interface FeatureLike {
-        get(key: string): unknown;
-      }
-      const eventMap = (globalThis as typeof globalThis & {
-        __eventMap?: {
-          forEachFeatureAtPixel<T>(
-            pixel: number[],
-            callback: (feature: FeatureLike) => T | undefined,
-          ): T | undefined;
-          getSize(): number[] | undefined;
-        };
-      }).__eventMap;
-      const size = eventMap?.getSize();
-      if (!eventMap || !size) {
-        return null;
-      }
-      for (let y = 0; y < size[1]; y += 4) {
-        for (let x = 0; x < size[0]; x += 4) {
-          const hit = eventMap.forEachFeatureAtPixel(
-            [x, y],
-            (feature) => {
+  await expect
+    .poll(async () => {
+      markerPixel = await page.evaluate((expectedEventId) => {
+        interface FeatureLike {
+          get(key: string): unknown;
+        }
+        const eventMap = (
+          globalThis as typeof globalThis & {
+            __eventMap?: {
+              forEachFeatureAtPixel<T>(
+                pixel: number[],
+                callback: (feature: FeatureLike) => T | undefined,
+              ): T | undefined;
+              getSize(): number[] | undefined;
+            };
+          }
+        ).__eventMap;
+        const size = eventMap?.getSize();
+        if (!eventMap || !size) {
+          return null;
+        }
+        for (let y = 0; y < size[1]; y += 4) {
+          for (let x = 0; x < size[0]; x += 4) {
+            const hit = eventMap.forEachFeatureAtPixel([x, y], (feature) => {
               const directEvent = feature.get('mapEvent') as { id?: string } | undefined;
               const members = (feature.get('features') as FeatureLike[] | undefined) ?? [];
-              return directEvent?.id ?? members
-                .map((member) => member.get('mapEvent') as { id?: string } | undefined)
-                .find((event) => event?.id === expectedEventId)?.id;
-            },
-          );
-          if (hit === expectedEventId) {
-            return [x, y];
+              return (
+                directEvent?.id ??
+                members
+                  .map((member) => member.get('mapEvent') as { id?: string } | undefined)
+                  .find((event) => event?.id === expectedEventId)?.id
+              );
+            });
+            if (hit === expectedEventId) {
+              return [x, y];
+            }
           }
         }
-      }
-      return null;
-    }, eventId);
-    return markerPixel !== null;
-  }).toBe(true);
+        return null;
+      }, eventId);
+      return markerPixel !== null;
+    })
+    .toBe(true);
   if (!markerPixel) {
     throw new Error(`Could not locate the map marker for ${eventId}.`);
   }

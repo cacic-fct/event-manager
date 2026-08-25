@@ -114,13 +114,13 @@ function storyParameters(context: GroupPreviewStoryContext) {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({
-            data: {
-              publicationPreview: buildPreview(context.args),
-            },
-          }),
-        ),
+          http.post('/api/graphql', () =>
+            HttpResponse.json({
+              data: {
+                publicationPreview: buildPreview(context.args),
+              },
+            }),
+          ),
         ],
       },
     },

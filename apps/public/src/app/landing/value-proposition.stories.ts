@@ -101,6 +101,8 @@ export const StatisticsUnavailable: Story = {
 export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('heading', { name: 'Eventos universitários facilitados' })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('heading', { name: 'Eventos universitários facilitados' }),
+    ).toBeVisible();
   },
 };

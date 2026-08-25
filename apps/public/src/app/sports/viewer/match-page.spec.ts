@@ -83,12 +83,16 @@ describe('SportsMatchPage', () => {
   });
 
   it('renders a scheduled match as upcoming without exposing live-only controls', () => {
-    getMatch.mockReturnValue(of(createSportsViewerMatch({
-      state: 'SCHEDULED',
-      scoreboard: { homeScore: 0, awayScore: 0, activePeriod: null, periods: [] },
-      timerStartedAt: null,
-      periodTimers: [],
-    })));
+    getMatch.mockReturnValue(
+      of(
+        createSportsViewerMatch({
+          state: 'SCHEDULED',
+          scoreboard: { homeScore: 0, awayScore: 0, activePeriod: null, periods: [] },
+          timerStartedAt: null,
+          periodTimers: [],
+        }),
+      ),
+    );
     const fixture = TestBed.createComponent(SportsMatchPage);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;

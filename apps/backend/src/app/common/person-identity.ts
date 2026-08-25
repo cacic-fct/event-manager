@@ -7,7 +7,10 @@ export type PersonIdentityMatch = {
 };
 
 export function normalizeIdentityDocumentForLookup(value: string): string {
-  return value.normalize('NFKC').replace(/[^\p{L}\p{N}]/gu, '').toUpperCase();
+  return value
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}]/gu, '')
+    .toUpperCase();
 }
 
 export async function findPeopleByCanonicalIdentityDocument(

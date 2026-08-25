@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
 import { EventOralAttendanceInput } from '@cacic-fct/shared-data-types';
 
-export function buildOfflineOralAttendanceReceiptMarker(input: Pick<
-  EventOralAttendanceInput,
-  'clientId' | 'eventId' | 'personId' | 'status' | 'collectedAt'
->): string {
+export function buildOfflineOralAttendanceReceiptMarker(
+  input: Pick<EventOralAttendanceInput, 'clientId' | 'eventId' | 'personId' | 'status' | 'collectedAt'>,
+): string {
   return `oral-attendance-receipt:${createHash('sha256')
     .update(
       JSON.stringify({

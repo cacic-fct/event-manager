@@ -83,7 +83,10 @@ describe('MyDayStore request control', () => {
 
     expect(store.cooldownSeconds()).toBe(12);
     expect(store.state()).toEqual(
-      expect.objectContaining({ status: 'error', message: 'Muitas tentativas. Aguarde 12 segundos para tentar novamente.' }),
+      expect.objectContaining({
+        status: 'error',
+        message: 'Muitas tentativas. Aguarde 12 segundos para tentar novamente.',
+      }),
     );
   });
 

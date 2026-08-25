@@ -19,14 +19,10 @@ export function subscriptionSuccessRoute(
       commands: ['/tournament', tournament.id, 'subscribe'],
       queryParams: {
         paymentTier: selectedTier.name,
-        ...(majorEvent.isPaymentRequired
-          ? { returnUrl: `/major-event/${majorEvent.id}/payment` }
-          : {}),
+        ...(majorEvent.isPaymentRequired ? { returnUrl: `/major-event/${majorEvent.id}/payment` } : {}),
       },
     };
   }
 
-  return majorEvent.isPaymentRequired
-    ? { commands: ['/major-event', majorEvent.id, 'payment'] }
-    : null;
+  return majorEvent.isPaymentRequired ? { commands: ['/major-event', majorEvent.id, 'payment'] } : null;
 }

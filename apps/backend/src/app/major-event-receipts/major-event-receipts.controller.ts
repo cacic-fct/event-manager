@@ -577,13 +577,10 @@ export class MajorEventReceiptsController {
     const normalizedMajorEventId = majorEventId?.trim() || undefined;
 
     const scope = this.replay.scope('receipt-validation-queue', normalizedMajorEventId);
-    const snapshots = this.sharedQueueSnapshots.get(scope) ?? this.createSharedQueueSnapshot(scope, normalizedMajorEventId);
+    const snapshots =
+      this.sharedQueueSnapshots.get(scope) ?? this.createSharedQueueSnapshot(scope, normalizedMajorEventId);
 
-    return this.replay.replay(
-      scope,
-      lastEventId,
-      snapshots,
-    );
+    return this.replay.replay(scope, lastEventId, snapshots);
   }
 
   @Get(':receiptId/image')

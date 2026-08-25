@@ -17,10 +17,7 @@ describe('PublicPlatformStatsService', () => {
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue('OK'),
     };
-    const service = new PublicPlatformStatsService(
-      prisma as unknown as PrismaService,
-      redis as unknown as Redis,
-    );
+    const service = new PublicPlatformStatsService(prisma as unknown as PrismaService, redis as unknown as Redis);
 
     return { prisma, redis, service };
   };
@@ -90,9 +87,7 @@ describe('PublicPlatformStatsService', () => {
     const { prisma, redis, service } = createContext();
     const resolver = new PublicPlatformStatsResolver(service);
     const stats = { peopleCount: 1, eventsCount: 2, majorEventsCount: 3, certificatesCount: 4 };
-    redis.get.mockResolvedValue(
-      JSON.stringify({ ...stats, generatedAt: '2026-07-16T12:00:00.000Z' }),
-    );
+    redis.get.mockResolvedValue(JSON.stringify({ ...stats, generatedAt: '2026-07-16T12:00:00.000Z' }));
     prisma.people.count.mockResolvedValue(1);
     prisma.event.count.mockResolvedValue(2);
     prisma.majorEvent.count.mockResolvedValue(3);

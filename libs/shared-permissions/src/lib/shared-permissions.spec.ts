@@ -423,13 +423,14 @@ describe('shared permissions contract', () => {
   });
 
   it('keeps cross-resource dependencies explicit and role templates type-safe', () => {
-    expect(getMissingContextPermissionDependencies([Permission.EventLecturer.Create, Permission.EventLecturer.Read]))
-      .toEqual([
-        expect.objectContaining({
-          permission: Permission.EventLecturer.Create,
-          requires: [Permission.RelatedPerson.Read],
-        }),
-      ]);
+    expect(
+      getMissingContextPermissionDependencies([Permission.EventLecturer.Create, Permission.EventLecturer.Read]),
+    ).toEqual([
+      expect.objectContaining({
+        permission: Permission.EventLecturer.Create,
+        requires: [Permission.RelatedPerson.Read],
+      }),
+    ]);
     const templateIds = new Set(EVENT_MANAGER_ROLE_TEMPLATES.map((template) => template.id));
     expect(templateIds.size).toBe(EVENT_MANAGER_ROLE_TEMPLATES.length);
     expect(
@@ -439,7 +440,8 @@ describe('shared permissions contract', () => {
     ).toBe(true);
     expect(
       EVENT_MANAGER_ROLE_TEMPLATES.every(
-        (template) => getMissingContextPermissionDependencies(expandHardPermissionDependencies(template.permissions)).length === 0,
+        (template) =>
+          getMissingContextPermissionDependencies(expandHardPermissionDependencies(template.permissions)).length === 0,
       ),
     ).toBe(true);
     expect(EVENT_MANAGER_SYSTEM_ROLES[0]).toEqual(

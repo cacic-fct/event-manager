@@ -175,33 +175,38 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
   async selectMatch(match: SportsMatchSummary, options: { navigate?: boolean } = {}): Promise<void> {
     this.cancelOfficialEdit();
     const selectionRevision = this.beginSelection();
-    await this.run('Não foi possível carregar a partida.', async () => {
-      const read = await firstValueFrom(this.api.matchReview(match.id));
-      if (selectionRevision !== this.selectionRevision) {
-        return;
-      }
-      this.matchReview.set(read);
-      this.selectedMatchId.set(match.id);
-      this.matchForm.patchValue({
-        id: match.id,
-        categoryId: match.categoryId,
-        name: match.event?.name ?? 'Partida',
-        startDate: toLocalDate(match.event?.startDate),
-        endDate: toLocalDate(match.event?.endDate),
-        stageId: match.stageId ?? '',
-        venueId: match.venueId ?? '',
-        homeRegistrationId: match.homeRegistrationId ?? '',
-        awayRegistrationId: match.awayRegistrationId ?? '',
-        roundNumber: match.roundNumber ?? 1,
-        bracketPosition: match.bracketPosition ?? 1,
-        groupKey: match.groupKey ?? '',
-        state: match.state,
-        notes: match.notes ?? '',
-        livestreamProvider: match.livestreamProvider ?? '',
-        livestreamUrl: match.livestreamUrl ?? '',
-      });
-      await this.loadMatchRegistrations(read, selectionRevision);
-    }, true, true);
+    await this.run(
+      'Não foi possível carregar a partida.',
+      async () => {
+        const read = await firstValueFrom(this.api.matchReview(match.id));
+        if (selectionRevision !== this.selectionRevision) {
+          return;
+        }
+        this.matchReview.set(read);
+        this.selectedMatchId.set(match.id);
+        this.matchForm.patchValue({
+          id: match.id,
+          categoryId: match.categoryId,
+          name: match.event?.name ?? 'Partida',
+          startDate: toLocalDate(match.event?.startDate),
+          endDate: toLocalDate(match.event?.endDate),
+          stageId: match.stageId ?? '',
+          venueId: match.venueId ?? '',
+          homeRegistrationId: match.homeRegistrationId ?? '',
+          awayRegistrationId: match.awayRegistrationId ?? '',
+          roundNumber: match.roundNumber ?? 1,
+          bracketPosition: match.bracketPosition ?? 1,
+          groupKey: match.groupKey ?? '',
+          state: match.state,
+          notes: match.notes ?? '',
+          livestreamProvider: match.livestreamProvider ?? '',
+          livestreamUrl: match.livestreamUrl ?? '',
+        });
+        await this.loadMatchRegistrations(read, selectionRevision);
+      },
+      true,
+      true,
+    );
     if (selectionRevision !== this.selectionRevision) {
       return;
     }

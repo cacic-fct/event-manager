@@ -298,17 +298,20 @@ export class PeopleResolver {
     };
     const updated = await this.prisma.$transaction(async (tx) => {
       const person = await tx.people.update({ where: { id }, data, select: PERSON_AUDIT_SELECT });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.PERSON,
-        entityId: id,
-        entityLabel: person.name,
-        operation: AuditLogOperation.UPDATE,
-        actor: this.getUser(context),
-        before: existing,
-        after: person,
-        scope: { permission: Permission.RelatedPerson.Update, ...target },
-        summary: 'Pessoa relacionada ao escopo atualizada.',
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.PERSON,
+          entityId: id,
+          entityLabel: person.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: existing,
+          after: person,
+          scope: { permission: Permission.RelatedPerson.Update, ...target },
+          summary: 'Pessoa relacionada ao escopo atualizada.',
+        },
+        tx,
+      );
       return person;
     });
     await this.typesenseSearch.upsertPerson({
@@ -621,13 +624,20 @@ export class PeopleResolver {
       majorEventId: majorEventId?.trim() || undefined,
       eventGroupId: eventGroupId?.trim() || undefined,
     };
-    if (Number(Boolean(target.eventId)) + Number(Boolean(target.majorEventId)) + Number(Boolean(target.eventGroupId)) !== 1) {
+    if (
+      Number(Boolean(target.eventId)) + Number(Boolean(target.majorEventId)) + Number(Boolean(target.eventGroupId)) !==
+      1
+    ) {
       throw new BadRequestException('Informe exatamente um evento, grupo de eventos ou grande evento.');
     }
     return target;
   }
 
-  private buildRelatedPersonWhere(target: { eventId?: string; majorEventId?: string; eventGroupId?: string }): Prisma.PeopleWhereInput {
+  private buildRelatedPersonWhere(target: {
+    eventId?: string;
+    majorEventId?: string;
+    eventGroupId?: string;
+  }): Prisma.PeopleWhereInput {
     const eventWhere: Prisma.EventWhereInput = target.eventId
       ? { id: target.eventId, deletedAt: null }
       : target.eventGroupId
@@ -646,16 +656,40 @@ export class PeopleResolver {
         ...(target.majorEventId
           ? [
               { majorEventSubscriptions: { some: { deletedAt: null, majorEventId: target.majorEventId } } },
-              { eventGroupSubscriptions: { some: { deletedAt: null, eventGroup: { majorEventId: target.majorEventId, deletedAt: null } } } },
-              { sportsTournamentParticipants: { some: { deletedAt: null, tournament: { majorEventId: target.majorEventId } } } },
-              { sportsOfficialAssignments: { some: { active: true, revokedAt: null, tournament: { majorEventId: target.majorEventId } } } },
+              {
+                eventGroupSubscriptions: {
+                  some: { deletedAt: null, eventGroup: { majorEventId: target.majorEventId, deletedAt: null } },
+                },
+              },
+              {
+                sportsTournamentParticipants: {
+                  some: { deletedAt: null, tournament: { majorEventId: target.majorEventId } },
+                },
+              },
+              {
+                sportsOfficialAssignments: {
+                  some: { active: true, revokedAt: null, tournament: { majorEventId: target.majorEventId } },
+                },
+              },
             ]
           : []),
         ...(target.eventGroupId
-          ? [{ sportsOfficialAssignments: { some: { active: true, revokedAt: null, category: { eventGroupId: target.eventGroupId } } } }]
+          ? [
+              {
+                sportsOfficialAssignments: {
+                  some: { active: true, revokedAt: null, category: { eventGroupId: target.eventGroupId } },
+                },
+              },
+            ]
           : []),
         ...(target.eventId
-          ? [{ sportsOfficialAssignments: { some: { active: true, revokedAt: null, match: { eventId: target.eventId } } } }]
+          ? [
+              {
+                sportsOfficialAssignments: {
+                  some: { active: true, revokedAt: null, match: { eventId: target.eventId } },
+                },
+              },
+            ]
           : []),
       ],
     };

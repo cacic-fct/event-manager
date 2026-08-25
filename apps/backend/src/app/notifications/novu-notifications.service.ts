@@ -368,10 +368,7 @@ export class NovuNotificationsService {
     }
   }
 
-  private subscriptionAction(
-    majorEventId: string,
-    status: SubscriptionStatus,
-  ): { label: string; url: string } {
+  private subscriptionAction(majorEventId: string, status: SubscriptionStatus): { label: string; url: string } {
     const encodedMajorEventId = encodeURIComponent(majorEventId);
 
     switch (status) {

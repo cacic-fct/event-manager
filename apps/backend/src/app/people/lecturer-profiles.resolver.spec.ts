@@ -32,9 +32,9 @@ describe('LecturerProfilesResolver current-user operations', () => {
   });
 
   it('guards administrator reads and writes with distinct person permissions', () => {
-    expect(
-      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, LecturerProfilesResolver.prototype.lecturerProfile),
-    ).toEqual([Permission.Person.Read]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, LecturerProfilesResolver.prototype.lecturerProfile)).toEqual([
+      Permission.Person.Read,
+    ]);
     expect(
       Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, LecturerProfilesResolver.prototype.upsertLecturerProfile),
     ).toEqual([Permission.Person.Update]);

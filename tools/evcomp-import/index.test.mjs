@@ -35,11 +35,10 @@ test('a later run retries a registration after its person is created', () => {
     mappings.events,
     mappings.activities,
   );
-  assert.deepEqual(secondRun.map((operation) => operation.kind), [
-    'majorEventSubscriptions',
-    'eventSubscriptions',
-    'eventSelections',
-  ]);
+  assert.deepEqual(
+    secondRun.map((operation) => operation.kind),
+    ['majorEventSubscriptions', 'eventSubscriptions', 'eventSelections'],
+  );
 });
 
 test('an already imported natural key is skipped on the next run', async () => {

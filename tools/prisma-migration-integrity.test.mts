@@ -93,24 +93,33 @@ try {
   assert.match(constraints.get('major_events_date_check')?.constraintDefinition ?? '', /startDate.*endDate/);
   assert.match(constraints.get('amount_paid_positive')?.constraintDefinition ?? '', /amountPaid.*>= 0/);
   for (const constraintName of ['events_date_check', 'major_events_date_check', 'amount_paid_positive']) {
-    assert.equal(constraints.get(constraintName)?.validated, true, `${constraintName} should validate on a fresh database.`);
+    assert.equal(
+      constraints.get(constraintName)?.validated,
+      true,
+      `${constraintName} should validate on a fresh database.`,
+    );
   }
 
   const now = Date.now();
   const validStart = new Date(now + 60_000);
   const validEnd = new Date(now + 120_000);
-  await pool.query(
-    `INSERT INTO "people" ("id", "name", "updatedAt") VALUES ($1, $2, $3), ($4, $5, $6)`,
-    [personId, 'Migration integrity person', validStart, `${personId}-second`, 'Migration integrity person 2', validStart],
-  );
+  await pool.query(`INSERT INTO "people" ("id", "name", "updatedAt") VALUES ($1, $2, $3), ($4, $5, $6)`, [
+    personId,
+    'Migration integrity person',
+    validStart,
+    `${personId}-second`,
+    'Migration integrity person 2',
+    validStart,
+  ]);
   await pool.query(
     `INSERT INTO "major_events" ("id", "name", "startDate", "endDate", "updatedAt") VALUES ($1, $2, $3, $4, $5)`,
     [majorEventId, 'Migration integrity major event', validStart, validEnd, validStart],
   );
-  await pool.query(
-    `INSERT INTO "event_groups" ("id", "name", "updatedAt") VALUES ($1, $2, $3)`,
-    [eventGroupId, 'Migration integrity event group', validStart],
-  );
+  await pool.query(`INSERT INTO "event_groups" ("id", "name", "updatedAt") VALUES ($1, $2, $3)`, [
+    eventGroupId,
+    'Migration integrity event group',
+    validStart,
+  ]);
   await pool.query(
     `INSERT INTO "events" ("id", "name", "startDate", "endDate", "eventGroupId", "updatedAt")
      VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -149,14 +158,16 @@ try {
   );
 
   const eventSubscriptionAttempts = await Promise.allSettled([
-    pool.query(
-      `INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`,
-      [`${fixturePrefix}-event-subscription-1`, eventId, personId],
-    ),
-    pool.query(
-      `INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`,
-      [`${fixturePrefix}-event-subscription-2`, eventId, personId],
-    ),
+    pool.query(`INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`, [
+      `${fixturePrefix}-event-subscription-1`,
+      eventId,
+      personId,
+    ]),
+    pool.query(`INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`, [
+      `${fixturePrefix}-event-subscription-2`,
+      eventId,
+      personId,
+    ]),
   ]);
   assert.equal(
     eventSubscriptionAttempts.filter((result) => result.status === 'fulfilled').length,
@@ -172,14 +183,16 @@ try {
   );
 
   const groupSubscriptionAttempts = await Promise.allSettled([
-    pool.query(
-      `INSERT INTO "event_group_subscriptions" ("id", "eventGroupId", "personId") VALUES ($1, $2, $3)`,
-      [`${fixturePrefix}-group-subscription-1`, eventGroupId, `${personId}-second`],
-    ),
-    pool.query(
-      `INSERT INTO "event_group_subscriptions" ("id", "eventGroupId", "personId") VALUES ($1, $2, $3)`,
-      [`${fixturePrefix}-group-subscription-2`, eventGroupId, `${personId}-second`],
-    ),
+    pool.query(`INSERT INTO "event_group_subscriptions" ("id", "eventGroupId", "personId") VALUES ($1, $2, $3)`, [
+      `${fixturePrefix}-group-subscription-1`,
+      eventGroupId,
+      `${personId}-second`,
+    ]),
+    pool.query(`INSERT INTO "event_group_subscriptions" ("id", "eventGroupId", "personId") VALUES ($1, $2, $3)`, [
+      `${fixturePrefix}-group-subscription-2`,
+      eventGroupId,
+      `${personId}-second`,
+    ]),
   ]);
   assert.equal(
     groupSubscriptionAttempts.filter((result) => result.status === 'fulfilled').length,

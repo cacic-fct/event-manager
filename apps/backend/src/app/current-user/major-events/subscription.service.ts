@@ -451,172 +451,173 @@ export class CurrentUserMajorEventSubscriptionService {
     personId: string,
     paymentInfoTableExists: boolean,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents] = await Promise.all([
-      this.prisma.majorEventSubscription.findMany({
-        where: {
-          personId,
-          deletedAt: null,
-          majorEvent: {
-            ...PUBLIC_MAJOR_EVENT_WHERE,
-          },
-        },
-        select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.eventLecturer.findMany({
-        where: {
-          personId,
-          event: {
+    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents] =
+      await Promise.all([
+        this.prisma.majorEventSubscription.findMany({
+          where: {
+            personId,
             deletedAt: null,
             majorEvent: {
               ...PUBLIC_MAJOR_EVENT_WHERE,
             },
           },
-        },
-        select: {
-          event: {
-            select: {
-              majorEventId: true,
+          select: this.getMajorEventSubscriptionSelect(paymentInfoTableExists),
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        this.prisma.eventLecturer.findMany({
+          where: {
+            personId,
+            event: {
+              deletedAt: null,
               majorEvent: {
-                select: MAJOR_EVENT_BASE_SELECT,
+                ...PUBLIC_MAJOR_EVENT_WHERE,
               },
             },
           },
-        },
-        orderBy: {
-          event: {
-            startDate: 'desc',
-          },
-        },
-      }),
-      this.prisma.certificate.findMany({
-        where: {
-          personId,
-          deletedAt: null,
-          config: {
-            deletedAt: null,
-            scope: CertificateScope.MAJOR_EVENT,
-            majorEvent: {
-              ...PUBLIC_MAJOR_EVENT_WHERE,
-            },
-          },
-        },
-        select: {
-          config: {
-            select: {
-              majorEventId: true,
-              majorEvent: {
-                select: MAJOR_EVENT_BASE_SELECT,
-              },
-            },
-          },
-        },
-        orderBy: {
-          issuedAt: 'desc',
-        },
-      }),
-      this.prisma.eventAttendance.findMany({
-        where: {
-          personId,
-          status: 'PRESENT',
-          event: {
-            deletedAt: null,
-            majorEvent: {
-              ...PUBLIC_MAJOR_EVENT_WHERE,
-            },
-          },
-        },
-        select: {
-          event: {
-            select: {
-              majorEventId: true,
-              majorEvent: {
-                select: MAJOR_EVENT_BASE_SELECT,
-              },
-            },
-          },
-        },
-        orderBy: {
-          attendedAt: 'desc',
-        },
-      }),
-      this.prisma.sportsTournament.findMany({
-        where: {
-          deletedAt: null,
-          status: { not: SportsTournamentStatus.DRAFT },
-          majorEvent: {
-            ...PUBLIC_MAJOR_EVENT_WHERE,
-          },
-          OR: [
-            {
-              teams: {
-                some: {
-                  deletedAt: null,
-                  representatives: {
-                    some: {
-                      personId,
-                      active: true,
-                      revokedAt: null,
-                    },
-                  },
+          select: {
+            event: {
+              select: {
+                majorEventId: true,
+                majorEvent: {
+                  select: MAJOR_EVENT_BASE_SELECT,
                 },
               },
             },
-            {
-              officials: {
-                some: {
-                  personId,
-                  active: true,
-                  revokedAt: null,
+          },
+          orderBy: {
+            event: {
+              startDate: 'desc',
+            },
+          },
+        }),
+        this.prisma.certificate.findMany({
+          where: {
+            personId,
+            deletedAt: null,
+            config: {
+              deletedAt: null,
+              scope: CertificateScope.MAJOR_EVENT,
+              majorEvent: {
+                ...PUBLIC_MAJOR_EVENT_WHERE,
+              },
+            },
+          },
+          select: {
+            config: {
+              select: {
+                majorEventId: true,
+                majorEvent: {
+                  select: MAJOR_EVENT_BASE_SELECT,
                 },
               },
             },
-            {
-              participants: {
-                some: {
-                  personId,
-                  deletedAt: null,
-                  status: SportsParticipantStatus.ACTIVE,
-                  teamMemberships: {
-                    some: {
-                      deletedAt: null,
-                      status: SportsTeamMemberStatus.APPROVED,
-                      team: {
-                        deletedAt: null,
+          },
+          orderBy: {
+            issuedAt: 'desc',
+          },
+        }),
+        this.prisma.eventAttendance.findMany({
+          where: {
+            personId,
+            status: 'PRESENT',
+            event: {
+              deletedAt: null,
+              majorEvent: {
+                ...PUBLIC_MAJOR_EVENT_WHERE,
+              },
+            },
+          },
+          select: {
+            event: {
+              select: {
+                majorEventId: true,
+                majorEvent: {
+                  select: MAJOR_EVENT_BASE_SELECT,
+                },
+              },
+            },
+          },
+          orderBy: {
+            attendedAt: 'desc',
+          },
+        }),
+        this.prisma.sportsTournament.findMany({
+          where: {
+            deletedAt: null,
+            status: { not: SportsTournamentStatus.DRAFT },
+            majorEvent: {
+              ...PUBLIC_MAJOR_EVENT_WHERE,
+            },
+            OR: [
+              {
+                teams: {
+                  some: {
+                    deletedAt: null,
+                    representatives: {
+                      some: {
+                        personId,
+                        active: true,
+                        revokedAt: null,
                       },
                     },
                   },
                 },
               },
-            },
-          ],
-        },
-        select: {
-          majorEventId: true,
-          majorEvent: {
-            select: MAJOR_EVENT_BASE_SELECT,
-          },
-          teams: {
-            where: {
-              deletedAt: null,
-              representatives: {
-                some: {
-                  personId,
-                  active: true,
-                  revokedAt: null,
+              {
+                officials: {
+                  some: {
+                    personId,
+                    active: true,
+                    revokedAt: null,
+                  },
                 },
               },
+              {
+                participants: {
+                  some: {
+                    personId,
+                    deletedAt: null,
+                    status: SportsParticipantStatus.ACTIVE,
+                    teamMemberships: {
+                      some: {
+                        deletedAt: null,
+                        status: SportsTeamMemberStatus.APPROVED,
+                        team: {
+                          deletedAt: null,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          select: {
+            majorEventId: true,
+            majorEvent: {
+              select: MAJOR_EVENT_BASE_SELECT,
             },
-            select: {
-              id: true,
-              name: true,
+            teams: {
+              where: {
+                deletedAt: null,
+                representatives: {
+                  some: {
+                    personId,
+                    active: true,
+                    revokedAt: null,
+                  },
+                },
+              },
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     const subscribedMajorEventIds = new Set(subscriptions.map((subscription) => subscription.majorEventId));
     const lecturerMajorEventIds = new Set(

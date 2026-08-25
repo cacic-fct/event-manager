@@ -75,26 +75,33 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async selectTeam(team: SportsTeamSummary, options: { navigate?: boolean } = {}): Promise<void> {
     const selectionRevision = this.beginSelection();
-    await this.run('Não foi possível carregar a equipe.', async () => {
-      const read = await firstValueFrom(this.api.team(team.id));
-      if (selectionRevision !== this.selectionRevision) {
-        return;
-      }
-      if (!read?.team) {
-        throw new Error('A resposta da equipe não trouxe os dados esperados.');
-      }
-      this.teamRead.set(read);
-      this.selectedTeamId.set(team.id);
-      this.initializeRegistrationDraft(read);
-      this.teamForm.patchValue({
-        id: read.team.id,
-        name: read.team.name,
-        institution: read.team.institution ?? '',
-        status: read.team.status,
-      });
-      this.registrationForm.controls.teamId.setValue(team.id);
-      this.focusRegistrationCategory(read.registrations[0]?.categoryId ?? this.tournamentRead()?.categories[0]?.id ?? '');
-    }, true, true);
+    await this.run(
+      'Não foi possível carregar a equipe.',
+      async () => {
+        const read = await firstValueFrom(this.api.team(team.id));
+        if (selectionRevision !== this.selectionRevision) {
+          return;
+        }
+        if (!read?.team) {
+          throw new Error('A resposta da equipe não trouxe os dados esperados.');
+        }
+        this.teamRead.set(read);
+        this.selectedTeamId.set(team.id);
+        this.initializeRegistrationDraft(read);
+        this.teamForm.patchValue({
+          id: read.team.id,
+          name: read.team.name,
+          institution: read.team.institution ?? '',
+          status: read.team.status,
+        });
+        this.registrationForm.controls.teamId.setValue(team.id);
+        this.focusRegistrationCategory(
+          read.registrations[0]?.categoryId ?? this.tournamentRead()?.categories[0]?.id ?? '',
+        );
+      },
+      true,
+      true,
+    );
     if (
       selectionRevision === this.selectionRevision &&
       options.navigate !== false &&

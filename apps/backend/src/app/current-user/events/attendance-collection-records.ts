@@ -50,16 +50,16 @@ export async function createAttendance(params: {
           attendanceCategories: params.attendanceCategories,
           input: params.input,
           afterWrite: async (attendance, transaction) => {
-          if ((params.input.status ?? EventAttendanceStatus.PRESENT) === EventAttendanceStatus.PRESENT) {
-            checkInStarted =
-              (await startSportsMatchCheckInFromAthleteAttendance({
-                tx: transaction,
-                eventId: attendance.eventId,
-                personId: attendance.personId,
-                updatedById: params.input.committedById ?? params.input.createdById,
-              })) || checkInStarted;
-          }
-          await params.afterCreate?.(attendance, transaction);
+            if ((params.input.status ?? EventAttendanceStatus.PRESENT) === EventAttendanceStatus.PRESENT) {
+              checkInStarted =
+                (await startSportsMatchCheckInFromAthleteAttendance({
+                  tx: transaction,
+                  eventId: attendance.eventId,
+                  personId: attendance.personId,
+                  updatedById: params.input.committedById ?? params.input.createdById,
+                })) || checkInStarted;
+            }
+            await params.afterCreate?.(attendance, transaction);
           },
         });
       })(),

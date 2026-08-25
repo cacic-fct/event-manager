@@ -53,10 +53,7 @@ export class HealthService {
       return await Promise.race([
         operation,
         new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(
-            () => reject(new Error(`${dependency} health check timed out.`)),
-            HEALTH_CHECK_TIMEOUT_MS,
-          );
+          timer = setTimeout(() => reject(new Error(`${dependency} health check timed out.`)), HEALTH_CHECK_TIMEOUT_MS);
           timer.unref();
         }),
       ]);

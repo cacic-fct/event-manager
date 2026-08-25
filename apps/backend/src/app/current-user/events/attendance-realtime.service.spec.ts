@@ -43,16 +43,20 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 
   it('rejects oversized filter lists and caps connections per identity', () => {
     const { service } = createService();
-    expect(() => service.stream({ headers: {} } as Request, Array.from({ length: 51 }, (_, i) => `event-${i}`), [])).toThrow(
-      'no máximo 50',
-    );
+    expect(() =>
+      service.stream(
+        { headers: {} } as Request,
+        Array.from({ length: 51 }, (_, i) => `event-${i}`),
+        [],
+      ),
+    ).toThrow('no máximo 50');
 
     const subscriptions = Array.from({ length: 10 }, () =>
       service.stream({ ip: '198.51.100.10', headers: {} } as Request, [], ['event-1']).subscribe(),
     );
-    expect(() =>
-      service.stream({ ip: '198.51.100.10', headers: {} } as Request, [], ['event-1']),
-    ).toThrow('Limite de conexões SSE');
+    expect(() => service.stream({ ip: '198.51.100.10', headers: {} } as Request, [], ['event-1'])).toThrow(
+      'Limite de conexões SSE',
+    );
     subscriptions.forEach((subscription) => subscription.unsubscribe());
   });
 
@@ -209,11 +213,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     prisma.event.findMany.mockResolvedValueOnce([{ id: 'event-1' }]);
     mapper.mapPublicEvent.mockReturnValueOnce({ id: 'event-1' });
 
-    const stream = service.stream(
-      { headers: { authorization: 'Bearer access-token' } } as Request,
-      [],
-      [],
-    );
+    const stream = service.stream({ headers: { authorization: 'Bearer access-token' } } as Request, [], []);
 
     await expect(firstValueFrom(stream.pipe(take(1)))).resolves.toEqual(
       expect.objectContaining({ data: expect.objectContaining({ event: 'pendingOnlineAttendancesChanged' }) }),
@@ -227,11 +227,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     auth.authenticateSession.mockRejectedValueOnce(new Error('session store unavailable'));
     const errors: unknown[] = [];
     const subscription = service
-      .stream(
-        { headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-1` } } as Request,
-        [],
-        [],
-      )
+      .stream({ headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-1` } } as Request, [], [])
       .subscribe({ error: (error) => errors.push(error) });
 
     await flushPromises();

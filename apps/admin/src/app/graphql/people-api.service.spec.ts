@@ -68,9 +68,7 @@ describe('PeopleApiService', () => {
     await expect(firstValueFrom(service.getPerson('person-detail'))).resolves.toEqual(
       personFixture({ id: 'person-detail' }),
     );
-    await expect(firstValueFrom(service.createPerson(input))).resolves.toEqual(
-      personFixture({ id: 'person-created' }),
-    );
+    await expect(firstValueFrom(service.createPerson(input))).resolves.toEqual(personFixture({ id: 'person-created' }));
     await expect(firstValueFrom(service.updatePerson('person-1', input))).resolves.toEqual(
       personFixture({ id: 'person-updated' }),
     );

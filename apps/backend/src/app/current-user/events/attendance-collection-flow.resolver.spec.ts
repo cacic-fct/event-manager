@@ -3,10 +3,7 @@ import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 import { issueOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
-import {
-  commitReceiptMarker,
-  parseCommitReceiptMarker,
-} from './attendance-collection-offline-submissions';
+import { commitReceiptMarker, parseCommitReceiptMarker } from './attendance-collection-offline-submissions';
 import {
   buildOfflineSubmissionRecord,
   collectorPerson,
@@ -21,12 +18,12 @@ import {
 describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
   const context = { req: { user: { sub: 'collector-user' } } };
   const offlineCollectorCredential = issueOfflineAttendanceCollectorCredential({
-  eventId: 'event-1',
-  collectorPersonId: 'collector-person',
-  collectorUserId: 'offline-user',
-  issuedAt: new Date('2026-05-20T00:00:00.000Z'),
-  expiresAt: new Date('2027-01-01T00:00:00.000Z'),
-});
+    eventId: 'event-1',
+    collectorPersonId: 'collector-person',
+    collectorUserId: 'offline-user',
+    issuedAt: new Date('2026-05-20T00:00:00.000Z'),
+    expiresAt: new Date('2027-01-01T00:00:00.000Z'),
+  });
 
   it('round-trips committed offline receipt markers', () => {
     const marker = commitReceiptMarker('CREATED', 'payload-hash');
@@ -476,16 +473,12 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     });
     const tx = createTxMock({ personId: 'person-1', eventId: 'event-1' });
     tx.offlineEventAttendanceSubmission = prisma.offlineEventAttendanceSubmission as never;
-    prisma.offlineEventAttendanceSubmission.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(receipt);
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(receipt);
     prisma.$transaction.mockImplementation((callback) => callback(tx));
 
     await expect(
       resolver.commitCurrentUserOfflineAttendances({ attendances: [item] }, context as never),
-    ).resolves.toEqual([
-      expect.objectContaining({ clientId: 'queue-race', status: 'CREATED' }),
-    ]);
+    ).resolves.toEqual([expect.objectContaining({ clientId: 'queue-race', status: 'CREATED' })]);
     expect(tx.eventAttendance.create).not.toHaveBeenCalled();
   });
 
@@ -1189,7 +1182,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
   });
 });
 jest.mock('../../authorization/effective-role-scopes', () => ({
-  findActiveRolePermissionScopes: jest.fn((prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
-    prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([])),
+  findActiveRolePermissionScopes: jest.fn(
+    (prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
+      prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
+  ),
   resolveRoleIdsForPermission: jest.fn().mockResolvedValue([]),
 }));

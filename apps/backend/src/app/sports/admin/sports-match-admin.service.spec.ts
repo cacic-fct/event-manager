@@ -39,12 +39,9 @@ describe('SportsMatchAdminService publication', () => {
     await expect(createService().publishMatch('match-1', actor)).resolves.toEqual({ id: 'match-1' });
 
     expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', actor, 'edit');
-    expect(publication.setEventPublicationState).toHaveBeenCalledWith(
-      'event-1',
-      PublicationState.PUBLISHED,
-      actor,
-      { isPubliclyListed: true },
-    );
+    expect(publication.setEventPublicationState).toHaveBeenCalledWith('event-1', PublicationState.PUBLISHED, actor, {
+      isPubliclyListed: true,
+    });
   });
 
   it('does not publish a match while its public parent chain is still draft', async () => {
@@ -67,11 +64,8 @@ describe('SportsMatchAdminService publication', () => {
   it('unpublishes the backing event and hides it from the public site', async () => {
     await expect(createService().unpublishMatch('match-1', actor)).resolves.toEqual({ id: 'match-1' });
 
-    expect(publication.setEventPublicationState).toHaveBeenCalledWith(
-      'event-1',
-      PublicationState.UNPUBLISHED,
-      actor,
-      { isPubliclyListed: false },
-    );
+    expect(publication.setEventPublicationState).toHaveBeenCalledWith('event-1', PublicationState.UNPUBLISHED, actor, {
+      isPubliclyListed: false,
+    });
   });
 });

@@ -9,18 +9,13 @@ import { unByKey } from 'ol/Observable';
 import { fromLonLat } from 'ol/proj';
 import VectorSource from 'ol/source/Vector';
 import { Circle, Fill, Icon, Stroke, Style } from 'ol/style';
-import {
-  PublicMapGeolocationService,
-  PublicMapUserLocation,
-} from './public-map-geolocation.service';
+import { PublicMapGeolocationService, PublicMapUserLocation } from './public-map-geolocation.service';
 
 const LOCATION_BLUE = '#0b57d0';
 const HIDDEN_STYLE = new Style();
 const MIN_ACCURACY_CIRCLE_ZOOM = 14;
 
-export type PublicUserLocationStartResult =
-  | Readonly<{ success: true }>
-  | Readonly<{ success: false; error: string }>;
+export type PublicUserLocationStartResult = Readonly<{ success: true }> | Readonly<{ success: false; error: string }>;
 
 @Service()
 export class PublicUserLocationLayerService {

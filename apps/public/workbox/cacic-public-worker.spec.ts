@@ -442,9 +442,11 @@ describe('cacic-public-worker', () => {
       purgeOnQuotaError: true,
     });
 
-    const cachePlugin = (tileHandler.options['plugins'] as Array<{
-      cacheWillUpdate?: (context: { response: Response }) => Promise<Response | null>;
-    }>)[0];
+    const cachePlugin = (
+      tileHandler.options['plugins'] as Array<{
+        cacheWillUpdate?: (context: { response: Response }) => Promise<Response | null>;
+      }>
+    )[0];
     const blockedResponse = new Response('blocked', {
       status: 200,
       headers: {
@@ -485,9 +487,7 @@ describe('cacic-public-worker', () => {
     expect(harness.openedCaches.get('openstreetmap-tiles')?.put).toHaveBeenCalledTimes(2);
     expect(harness.cacheExpirations).toHaveLength(2);
     expect(harness.cacheExpirations.every(({ cacheName }) => cacheName === 'openstreetmap-tiles')).toBe(true);
-    expect(harness.cacheExpirations.every(({ updateTimestamp }) => updateTimestamp.mock.calls.length === 1)).toBe(
-      true,
-    );
+    expect(harness.cacheExpirations.every(({ updateTimestamp }) => updateTimestamp.mock.calls.length === 1)).toBe(true);
   });
 
   it('does not cache blocked OpenStreetMap responses that return HTTP 200', async () => {

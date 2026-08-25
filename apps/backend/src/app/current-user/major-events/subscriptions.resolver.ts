@@ -26,10 +26,7 @@ import {
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import {
-  PUBLIC_MAJOR_EVENT_WHERE,
-  publicRegularSubscriptionEventWhere,
-} from '../../public-events/models';
+import { PUBLIC_MAJOR_EVENT_WHERE, publicRegularSubscriptionEventWhere } from '../../public-events/models';
 import { EventFormsService } from '../../event-forms/event-forms.service';
 
 export function isConfirmedSportsOnlySubscription(subscription: {

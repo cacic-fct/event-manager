@@ -60,28 +60,38 @@ export function createAttendanceStatisticsSnapshot(
       start: atMinuteOffset(
         Math.round((index - Math.min(24, options.historyMinutes) + 1) * Math.max(1, options.historyMinutes / 24)),
       ),
-      count: options.presentCount === 0 ? 0 : faker.number.int({ min: 1, max: Math.max(2, options.collectorCount * 5) }),
+      count:
+        options.presentCount === 0 ? 0 : faker.number.int({ min: 1, max: Math.max(2, options.collectorCount * 5) }),
     })).filter((bucket) => bucket.count > 0),
-    scansByHour: options.presentCount === 0 ? [] : Array.from({ length: Math.min(24, Math.max(1, Math.ceil(options.historyMinutes / 60))) }, (_, index) => ({
-      start: atMinuteOffset((index + 1) * -60),
-      count: faker.number.int({ min: 10, max: Math.max(10, options.presentCount) }),
-    })),
+    scansByHour:
+      options.presentCount === 0
+        ? []
+        : Array.from({ length: Math.min(24, Math.max(1, Math.ceil(options.historyMinutes / 60))) }, (_, index) => ({
+            start: atMinuteOffset((index + 1) * -60),
+            count: faker.number.int({ min: 10, max: Math.max(10, options.presentCount) }),
+          })),
     collectors,
-    methods: options.presentCount === 0 ? [] : [
-      { method: 'SCANNER', count: Math.max(0, options.presentCount - options.pendingOfflineCount) },
-      { method: 'MANUAL_INPUT', count: Math.min(options.presentCount, options.pendingOfflineCount) },
-    ],
-    heatmapPoints: options.presentCount === 0 ? [] : Array.from({ length: Math.min(5, Math.max(1, options.collectorCount)) }, (_, index) => ({
-      latitude: -22.1208 + index * 0.0002,
-      longitude: -51.4079 - index * 0.0002,
-      count: faker.number.int({ min: 5, max: Math.max(5, options.presentCount) }),
-      averageAccuracyMeters: faker.number.int({ min: 8, max: 45 }),
-    })),
+    methods:
+      options.presentCount === 0
+        ? []
+        : [
+            { method: 'SCANNER', count: Math.max(0, options.presentCount - options.pendingOfflineCount) },
+            { method: 'MANUAL_INPUT', count: Math.min(options.presentCount, options.pendingOfflineCount) },
+          ],
+    heatmapPoints:
+      options.presentCount === 0
+        ? []
+        : Array.from({ length: Math.min(5, Math.max(1, options.collectorCount)) }, (_, index) => ({
+            latitude: -22.1208 + index * 0.0002,
+            longitude: -51.4079 - index * 0.0002,
+            count: faker.number.int({ min: 5, max: Math.max(5, options.presentCount) }),
+            averageAccuracyMeters: faker.number.int({ min: 8, max: 45 }),
+          })),
     reviewItems: Array.from({ length: options.reviewCount }, (_, index) => ({
       id: `review-${index + 1}`,
       eventId,
       kind: reviewKinds[index % reviewKinds.length] ?? 'UNUSUAL_VOLUME',
-      severity: index % 4 === 1 ? 'CRITICAL' as const : index % 4 === 2 ? 'INFO' as const : 'WARNING' as const,
+      severity: index % 4 === 1 ? ('CRITICAL' as const) : index % 4 === 2 ? ('INFO' as const) : ('WARNING' as const),
       status: 'PENDING' as const,
       title: reviewTitles[index % reviewTitles.length] ?? 'Sinal operacional',
       summary: `${faker.person.fullName()} registrou um padrão que merece confirmação da equipe organizadora.`,

@@ -117,7 +117,9 @@ type Story = StoryObj<CsvImportResultStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('10 inscrições criadas, 4 atualizadas, 2 duplicadas, 1 falhas.')).toBeVisible();
+    await expect(
+      await canvas.findByText('10 inscrições criadas, 4 atualizadas, 2 duplicadas, 1 falhas.'),
+    ).toBeVisible();
     await expect(await canvas.findAllByRole('listitem')).toHaveLength(3);
   },
 };
@@ -127,7 +129,13 @@ export const SuccessOnly: Story = {
 };
 
 export const UpdatesAndDuplicates: Story = {
-  args: { createdSubscriptionCount: 0, updatedSubscriptionCount: 250, duplicateCount: 80, failedCount: 0, failedRowCount: 0 },
+  args: {
+    createdSubscriptionCount: 0,
+    updatedSubscriptionCount: 250,
+    duplicateCount: 80,
+    failedCount: 0,
+    failedRowCount: 0,
+  },
 };
 
 export const FailuresOnly: Story = {

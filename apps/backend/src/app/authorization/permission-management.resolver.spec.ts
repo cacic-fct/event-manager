@@ -4,8 +4,13 @@ import { PermissionManagementResolver } from './permission-management.resolver';
 
 describe('PermissionManagementResolver', () => {
   const management = {
-    listRoles: jest.fn(), listGroups: jest.fn(), listScopeTargets: jest.fn(), saveRole: jest.fn(), saveGroup: jest.fn(),
-    archiveRole: jest.fn(), archiveGroup: jest.fn(),
+    listRoles: jest.fn(),
+    listGroups: jest.fn(),
+    listScopeTargets: jest.fn(),
+    saveRole: jest.fn(),
+    saveGroup: jest.fn(),
+    archiveRole: jest.fn(),
+    archiveGroup: jest.fn(),
   };
   const resolver = new PermissionManagementResolver(management as never);
   const context = { req: { user: { sub: 'actor-1' } } } as never;
@@ -29,11 +34,14 @@ describe('PermissionManagementResolver', () => {
   });
 
   it('protects every operation with permission-management grants', () => {
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.permissionRoles))
-      .toEqual([Permission.PermissionGrant.Read]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.savePermissionRole))
-      .toEqual([]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.archivePermissionGroup))
-      .toEqual([Permission.PermissionGrant.Delete]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.permissionRoles),
+    ).toEqual([Permission.PermissionGrant.Read]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.savePermissionRole),
+    ).toEqual([]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.archivePermissionGroup),
+    ).toEqual([Permission.PermissionGrant.Delete]);
   });
 });

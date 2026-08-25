@@ -221,11 +221,20 @@ function createAttentionItems(count: number): MyDayAttentionItem[] {
   });
 }
 
-function createWeatherAlerts(count: number, event: MyDayEvent | null | undefined, forecastTime: Date): MyDayWeatherAlert[] {
+function createWeatherAlerts(
+  count: number,
+  event: MyDayEvent | null | undefined,
+  forecastTime: Date,
+): MyDayWeatherAlert[] {
   const templates = [
     { kind: 'RAIN' as const, title: 'Pode chover', advice: 'Leve um guarda-chuva.', materialIcon: 'rainy' },
     { kind: 'UV' as const, title: 'Índice UV elevado', advice: 'Use protetor solar.', materialIcon: 'sunny' },
-    { kind: 'HEAT' as const, title: 'Calor intenso', advice: 'Leve água e procure sombra.', materialIcon: 'thermostat' },
+    {
+      kind: 'HEAT' as const,
+      title: 'Calor intenso',
+      advice: 'Leve água e procure sombra.',
+      materialIcon: 'thermostat',
+    },
     { kind: 'COLD' as const, title: 'Queda de temperatura', advice: 'Leve um agasalho.', materialIcon: 'ac_unit' },
   ];
   const eventId = event?.id ?? 'my-day-story-weather';

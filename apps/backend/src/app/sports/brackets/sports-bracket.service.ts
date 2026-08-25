@@ -126,7 +126,13 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
       switch (category.format) {
         case SportsFormat.SINGLE_ELIMINATION:
           stageIds = [
-            await this.persistSingleElimination(tx, category, { ...input, participants }, teamNameByRegistration, actorId),
+            await this.persistSingleElimination(
+              tx,
+              category,
+              { ...input, participants },
+              teamNameByRegistration,
+              actorId,
+            ),
           ];
           break;
         case SportsFormat.ROUND_ROBIN:
@@ -151,9 +157,7 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
           );
           break;
         case SportsFormat.SWISS:
-          stageIds = [
-            await this.persistInitialSwissRound(tx, category, participants, teamNameByRegistration, actorId),
-          ];
+          stageIds = [await this.persistInitialSwissRound(tx, category, participants, teamNameByRegistration, actorId)];
           break;
         case SportsFormat.CUSTOM:
           stageIds = [

@@ -14,10 +14,7 @@ import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/sl
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  CalendarDefaultItemViewPreference,
-  CalendarPreferencesStorageService,
-} from '@cacic-fct/public-indexed-db';
+import { CalendarDefaultItemViewPreference, CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import {
   AuthService,
   CalendarFeedReenableChoice,

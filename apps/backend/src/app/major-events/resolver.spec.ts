@@ -745,9 +745,9 @@ describe('MajorEventsResolver', () => {
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.eventFormLinkPriceTier.count.mockResolvedValue(1);
 
-    await expect(
-      resolver.updateMajorEvent('major-1', { price: null } as never, context() as never),
-    ).rejects.toThrow('Detach forms from the affected price tiers');
+    await expect(resolver.updateMajorEvent('major-1', { price: null } as never, context() as never)).rejects.toThrow(
+      'Detach forms from the affected price tiers',
+    );
 
     expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
     expect(tx.majorEventPrice.deleteMany).not.toHaveBeenCalled();

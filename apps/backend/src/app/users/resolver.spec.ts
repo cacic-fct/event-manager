@@ -13,7 +13,9 @@ describe('UsersResolver', () => {
   });
 
   it('requires user read permission for both collection and detail operations', () => {
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, UsersResolver.prototype.users)).toEqual([Permission.User.Read]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, UsersResolver.prototype.users)).toEqual([
+      Permission.User.Read,
+    ]);
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, UsersResolver.prototype.user)).toEqual([Permission.User.Read]);
   });
 

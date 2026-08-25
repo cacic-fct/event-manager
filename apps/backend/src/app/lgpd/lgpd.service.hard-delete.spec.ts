@@ -344,11 +344,7 @@ describe('LgpdService hard delete', () => {
       }),
     });
     expect(s3.deleteFile).not.toHaveBeenCalled();
-    expect(context.storageCleanup.enqueueInTransaction).toHaveBeenCalledWith(
-      tx,
-      'erase-1',
-      ['receipts/old.png'],
-    );
+    expect(context.storageCleanup.enqueueInTransaction).toHaveBeenCalledWith(tx, 'erase-1', ['receipts/old.png']);
     expect(context.storageCleanup.reconcile).toHaveBeenCalledTimes(1);
     expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
       where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },

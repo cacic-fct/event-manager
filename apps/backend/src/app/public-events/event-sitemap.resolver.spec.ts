@@ -15,9 +15,10 @@ describe('EventSitemapResolver', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, EventSitemapResolver.prototype.publicEventSitemap)).toEqual([
       RateLimitGuard,
     ]);
-    expect(
-      Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, EventSitemapResolver.prototype.publicEventSitemap),
-    ).toEqual({ policy: RATE_LIMIT_POLICIES.publicEvents, resources: [] });
+    expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, EventSitemapResolver.prototype.publicEventSitemap)).toEqual({
+      policy: RATE_LIMIT_POLICIES.publicEvents,
+      resources: [],
+    });
     await expect(resolver.publicEventSitemap(4)).resolves.toBe(page);
     expect(getPage).toHaveBeenCalledWith(4);
   });

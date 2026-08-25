@@ -182,7 +182,9 @@ export class PublicationTransitionService {
       this.logger.warn(`Publication committed but sitemap refresh failed: ${formatFailure(sitemapResult.reason)}`);
     }
     if (searchResult.status === 'rejected') {
-      this.logger.warn(`Publication committed but search synchronization failed: ${formatFailure(searchResult.reason)}`);
+      this.logger.warn(
+        `Publication committed but search synchronization failed: ${formatFailure(searchResult.reason)}`,
+      );
     }
   }
 

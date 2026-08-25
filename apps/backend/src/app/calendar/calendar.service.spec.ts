@@ -14,8 +14,10 @@ import {
 } from './calendar.models';
 
 jest.mock('../authorization/effective-role-scopes', () => ({
-  findActiveRolePermissionScopes: jest.fn((prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
-    prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([])),
+  findActiveRolePermissionScopes: jest.fn(
+    (prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
+      prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([]),
+  ),
 }));
 const activeScopes = jest.mocked(findActiveRolePermissionScopes);
 

@@ -103,16 +103,10 @@ export function openStreetMapTileWarmupUrls(latitude: number, longitude: number)
 
   return WARMUP_ZOOMS.flatMap((zoom) => {
     const tileCount = 2 ** zoom;
-    const centerX = Math.max(
-      0,
-      Math.min(tileCount - 1, Math.floor(((longitude + 180) / 360) * tileCount)),
-    );
+    const centerX = Math.max(0, Math.min(tileCount - 1, Math.floor(((longitude + 180) / 360) * tileCount)));
     const centerY = Math.max(
       0,
-      Math.min(
-        tileCount - 1,
-        Math.floor(((1 - Math.asinh(Math.tan(latitudeRadians)) / Math.PI) / 2) * tileCount),
-      ),
+      Math.min(tileCount - 1, Math.floor(((1 - Math.asinh(Math.tan(latitudeRadians)) / Math.PI) / 2) * tileCount)),
     );
 
     return WARMUP_OFFSETS.map(([xOffset, yOffset]) => {

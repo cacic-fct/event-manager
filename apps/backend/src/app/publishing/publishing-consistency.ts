@@ -99,11 +99,7 @@ export function buildPublicationConsistencyWarnings(input: {
       });
     }
 
-    if (
-      event.publicationState === 'SCHEDULED' &&
-      event.scheduledPublishAt &&
-      event.scheduledPublishAt <= input.now
-    ) {
+    if (event.publicationState === 'SCHEDULED' && event.scheduledPublishAt && event.scheduledPublishAt <= input.now) {
       warnings.push({
         type: isSportsMatch ? 'OVERDUE_SCHEDULED_SPORTS_MATCH_PUBLICATION' : 'OVERDUE_SCHEDULED_PUBLICATION',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',

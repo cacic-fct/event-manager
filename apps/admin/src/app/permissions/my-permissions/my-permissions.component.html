@@ -14,8 +14,11 @@
         <span matListItemTitle>{{ permission.label }}</span>
         <div matListItemMeta class="permission-action-icons">
           @for (action of permission.actions; track action.scope) {
-            <span [attr.aria-label]="permission.label + ': ' + action.label"
-              [matTooltip]="action.label" matTooltipPosition="above" class="permission-icon">
+            <span
+              [attr.aria-label]="permission.label + ': ' + action.label"
+              [matTooltip]="action.label"
+              matTooltipPosition="above"
+              class="permission-icon">
               <mat-icon>{{ action.icon }}</mat-icon>
             </span>
           }
@@ -33,7 +36,9 @@
   <details class="raw-permissions">
     <summary>Detalhes técnicos</summary>
     <mat-chip-set class="raw-chip-list">
-      @for (permission of rawPermissions(); track permission) { <mat-chip>{{ permission }}</mat-chip> }
+      @for (permission of rawPermissions(); track permission) {
+        <mat-chip>{{ permission }}</mat-chip>
+      }
     </mat-chip-set>
   </details>
 </section>

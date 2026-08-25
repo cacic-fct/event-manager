@@ -37,7 +37,9 @@
               <lib-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
               @if (group.isSportsCategory) {
-                <mat-icon matTooltip="Modalidade de torneio esportivo" aria-label="Modalidade de torneio esportivo">sports</mat-icon>
+                <mat-icon matTooltip="Modalidade de torneio esportivo" aria-label="Modalidade de torneio esportivo"
+                  >sports</mat-icon
+                >
               }
             </span>
             <span matListItemLine>
@@ -233,9 +235,7 @@
           <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
             Emitir certificados para presentes não inscritos?
           </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent">
-            Um certificado por evento
-          </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent"> Um certificado por evento </mat-checkbox>
           <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
         </div>
       </form>

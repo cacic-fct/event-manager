@@ -10,11 +10,10 @@ import { closeBackendResources } from './app/bootstrap/backend-lifecycle';
 
 const CONVERT_LEGACY_EVENT_DESCRIPTIONS_COMMAND = 'convert-legacy-event-descriptions';
 async function bootstrap() {
-  const [{ createBackendHttpApp, getBackendGlobalPrefix }, { startEventManagerGrpcServer }] =
-    await Promise.all([
-      import('./app/bootstrap/backend-http-app.js'),
-      import('./app/grpc/event-manager-grpc.server.js'),
-    ]);
+  const [{ createBackendHttpApp, getBackendGlobalPrefix }, { startEventManagerGrpcServer }] = await Promise.all([
+    import('./app/bootstrap/backend-http-app.js'),
+    import('./app/grpc/event-manager-grpc.server.js'),
+  ]);
   let app: INestApplication | undefined;
   let grpcServer: Server | undefined;
   let shutdownStarted = false;

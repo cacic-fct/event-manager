@@ -29,29 +29,36 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
       actorId: 'collector-1',
     };
     const prisma = {
-      event: { findFirst: jest.fn().mockResolvedValue({
-        id: 'event-1',
-        name: 'Evento',
-        emoji: '🎫',
-        startDate: new Date('2026-08-16T12:00:00.000Z'),
-        latitude: -22.121,
-        longitude: -51.408,
-        allowSubscription: true,
-        majorEventId: null,
-        autoSubscribe: false,
-        sportsMatch: null,
-      }) },
-      eventAttendance: { findMany: jest.fn()
-        .mockResolvedValueOnce(selectedAttendances)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ personId: 'person-1' }, { personId: 'person-2' }]) },
-      offlineEventAttendanceSubmission: { findMany: jest.fn().mockResolvedValue([
-        { id: 'offline-1', submittedAt: new Date('2026-08-16T17:58:00.000Z') },
-      ]) },
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'event-1',
+          name: 'Evento',
+          emoji: '🎫',
+          startDate: new Date('2026-08-16T12:00:00.000Z'),
+          latitude: -22.121,
+          longitude: -51.408,
+          allowSubscription: true,
+          majorEventId: null,
+          autoSubscribe: false,
+          sportsMatch: null,
+        }),
+      },
+      eventAttendance: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce(selectedAttendances)
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([{ personId: 'person-1' }, { personId: 'person-2' }]),
+      },
+      offlineEventAttendanceSubmission: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'offline-1', submittedAt: new Date('2026-08-16T17:58:00.000Z') }]),
+      },
       user: { findMany: jest.fn().mockResolvedValue([{ id: 'collector-1', name: 'Marina Costa' }]) },
-      eventSubscription: { findMany: jest.fn().mockResolvedValue([
-        { personId: 'person-1' }, { personId: 'person-2' }, { personId: 'person-3' },
-      ]) },
+      eventSubscription: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ personId: 'person-1' }, { personId: 'person-2' }, { personId: 'person-3' }]),
+      },
       majorEventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
       auditLogEntry: { findMany: jest.fn().mockResolvedValue([]) },
       attendanceReviewFlag: {
@@ -65,9 +72,12 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
 
     const result = await service.snapshot('event-1', { start, end });
 
-    expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      where: { eventId: 'event-1', attendedAt: { gte: start, lte: end } },
-    }));
+    expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: { eventId: 'event-1', attendedAt: { gte: start, lte: end } },
+      }),
+    );
     expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(3, {
       where: { eventId: 'event-1', status: 'PRESENT' },
       select: { personId: true },
@@ -187,12 +197,7 @@ describe('attendance analytics location fairness', () => {
   });
 });
 
-function attendance(input: {
-  minute: number;
-  latitude: number;
-  longitude: number;
-  accuracyMeters?: number;
-}) {
+function attendance(input: { minute: number; latitude: number; longitude: number; accuracyMeters?: number }) {
   const attendedAt = new Date(Date.UTC(2026, 7, 16, 18, input.minute));
   return {
     personId: `person-${input.minute}`,

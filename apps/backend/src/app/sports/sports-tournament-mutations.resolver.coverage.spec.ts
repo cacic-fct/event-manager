@@ -27,11 +27,9 @@ describe('SportsTournamentMutationsResolver category update boundary', () => {
 
     await expect(harness.resolver.updateCategory(input as never, harness.context as never)).resolves.toBe('category-1');
 
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsCategory.Update],
-      { sportsCategoryId: 'category-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsCategory.Update], {
+      sportsCategoryId: 'category-1',
+    });
     expect(harness.admin.updateCategory).toHaveBeenCalledWith(
       'category-1',
       {

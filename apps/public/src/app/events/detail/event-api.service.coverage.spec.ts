@@ -70,7 +70,9 @@ describe('EventApiService uncovered operations', () => {
     const attendance = { eventId: 'event-1', attendedAt: publicFixtureDateFromNow(0, 12) };
 
     expect(request.request.body.query).toContain('mutation ConfirmCurrentUserOnlineAttendance');
-    expect(request.request.body.query).toContain('confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code })');
+    expect(request.request.body.query).toContain(
+      'confirmCurrentUserOnlineAttendance(input: { eventId: $eventId, code: $code })',
+    );
     expect(request.request.body.variables).toEqual({ eventId: 'event-1', code: 'one-time-code' });
     request.flush({ data: { confirmCurrentUserOnlineAttendance: attendance } });
 

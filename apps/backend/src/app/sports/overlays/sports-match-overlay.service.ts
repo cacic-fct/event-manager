@@ -170,9 +170,8 @@ export class SportsMatchOverlayService {
   }
 
   contentSecurityPolicy(matchId: string): string {
-    const demoImageSource = matchId === SPORTS_MATCH_OVERLAY_DEMO_ID
-      ? ` ${SPORTS_MATCH_OVERLAY_DEMO_IMAGE_SOURCE}`
-      : '';
+    const demoImageSource =
+      matchId === SPORTS_MATCH_OVERLAY_DEMO_ID ? ` ${SPORTS_MATCH_OVERLAY_DEMO_IMAGE_SOURCE}` : '';
     return [
       "default-src 'none'",
       "base-uri 'none'",

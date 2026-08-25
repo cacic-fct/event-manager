@@ -552,8 +552,16 @@ describe('EventAttendancesMutationsResolver', () => {
         req: { user: { sub: 'admin-user' } },
       } as never),
     ).resolves.toEqual([
-      expect.objectContaining({ submissionId: 'submission-1', success: true, submission: expect.objectContaining({ status: 'COMMITTED' }) }),
-      expect.objectContaining({ submissionId: 'submission-2', success: true, submission: expect.objectContaining({ status: 'COMMITTED' }) }),
+      expect.objectContaining({
+        submissionId: 'submission-1',
+        success: true,
+        submission: expect.objectContaining({ status: 'COMMITTED' }),
+      }),
+      expect.objectContaining({
+        submissionId: 'submission-2',
+        success: true,
+        submission: expect.objectContaining({ status: 'COMMITTED' }),
+      }),
     ]);
 
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(2);

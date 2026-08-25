@@ -19,11 +19,8 @@
   <mat-icon>check_circle</mat-icon>
   <h2>{{ isEditing() ? 'Solicitação atualizada' : 'Solicitação enviada' }}</h2>
   <p>
-    {{
-      isEditing()
-        ? 'Sua edição foi enviada para nova análise da organização.'
-        : 'A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da aprovação.'
-    }}
+    {{ isEditing() ? 'Sua edição foi enviada para nova análise da organização.' : 'A organização ainda precisa aprovar
+    sua participação. Se houver cobrança, o pagamento será liberado depois da aprovação.' }}
   </p>
   <a mat-flat-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true">Voltar ao torneio</a>
 </main>
@@ -71,8 +68,7 @@
       <p>Status: {{ applicationStatusLabel(application()!.status) }}.</p>
       @if (application()!.paymentStatus; as paymentStatus) {
       <p>Pagamento: {{ paymentStatusLabel(paymentStatus) }}.</p>
-      }
-      @if (application()!.reviewMessage; as reviewMessage) {
+      } @if (application()!.reviewMessage; as reviewMessage) {
       <p>{{ reviewMessage }}</p>
       }
     </div>
@@ -138,7 +134,9 @@
       <div class="empty-options" role="status">
         <mat-icon>sports</mat-icon>
         @if (form.controls.requestedTeamId.value) {
-        <span>Você pode solicitar entrada na equipe agora e escolher modalidades quando elas estiverem disponíveis.</span>
+        <span
+          >Você pode solicitar entrada na equipe agora e escolher modalidades quando elas estiverem disponíveis.</span
+        >
         } @else {
         <span>Nenhuma modalidade está disponível para autoinscrição.</span>
         }
@@ -155,11 +153,8 @@
         }
       </mat-select>
       <mat-hint>
-        @if (paymentTierLocked()) {
-          Esta faixa foi escolhida na inscrição das atividades.
-        } @else {
-          O pagamento só será liberado após a aprovação.
-        }
+        @if (paymentTierLocked()) { Esta faixa foi escolhida na inscrição das atividades. } @else { O pagamento só será
+        liberado após a aprovação. }
       </mat-hint>
     </mat-form-field>
     } @else if (currentData.tournament.isPaymentRequired) {
@@ -190,9 +185,7 @@
       }
     </section>
     }
-    <button mat-flat-button type="submit" [disabled]="!canSubmit()">
-      {{ submitButtonLabel() }}
-    </button>
+    <button mat-flat-button type="submit" [disabled]="!canSubmit()">{{ submitButtonLabel() }}</button>
   </form>
 </main>
 }

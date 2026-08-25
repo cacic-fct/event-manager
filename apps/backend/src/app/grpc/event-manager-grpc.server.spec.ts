@@ -67,9 +67,8 @@ describe('gRPC call lifecycle', () => {
     >;
 
     const error = await new Promise<Error & { code?: status }>((resolve) => {
-      handler(
-        { cancelled: true, metadata: new Metadata(), request: {} } as never,
-        (callbackError) => resolve(callbackError as Error & { code?: status }),
+      handler({ cancelled: true, metadata: new Metadata(), request: {} } as never, (callbackError) =>
+        resolve(callbackError as Error & { code?: status }),
       );
     });
 

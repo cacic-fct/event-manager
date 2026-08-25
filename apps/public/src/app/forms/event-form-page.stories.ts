@@ -111,23 +111,23 @@ const meta: Meta<EventFormPageStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          if (activeArgs.state === 'loading') {
-            await delay('infinite');
-          }
+          http.post('/api/graphql', async ({ request }) => {
+            if (activeArgs.state === 'loading') {
+              await delay('infinite');
+            }
 
-          if (activeArgs.latencyMs > 0) {
-            await delay(activeArgs.latencyMs);
-          }
+            if (activeArgs.latencyMs > 0) {
+              await delay(activeArgs.latencyMs);
+            }
 
-          const body = (await request.json()) as { query?: string };
-          const query = body.query ?? '';
-          if (activeArgs.state === 'error' && query.includes('CurrentUserEventForms')) {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o formulário.' }] });
-          }
+            const body = (await request.json()) as { query?: string };
+            const query = body.query ?? '';
+            if (activeArgs.state === 'error' && query.includes('CurrentUserEventForms')) {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o formulário.' }] });
+            }
 
-          return HttpResponse.json({ data: graphqlData(query, activeArgs) });
-        }),
+            return HttpResponse.json({ data: graphqlData(query, activeArgs) });
+          }),
         ],
       },
     },
@@ -198,9 +198,7 @@ export const DenseQuestionnaire: Story = {
   args: { questionCount: 20, optionCount: 8, requiredEvery: 2, latencyMs: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      (await canvas.findAllByRole('heading', { level: 3 })).length,
-    ).toBe(20);
+    await expect((await canvas.findAllByRole('heading', { level: 3 })).length).toBe(20);
   },
 };
 

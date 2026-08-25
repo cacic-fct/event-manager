@@ -23,10 +23,7 @@ import {
   normalizeOptionalString,
 } from './attendance-collection-context';
 import { createAttendance, toEventAttendance } from './attendance-collection-records';
-import {
-  OfflineAttendanceSubmissions,
-  parseCommitReceiptMarker,
-} from './attendance-collection-offline-submissions';
+import { OfflineAttendanceSubmissions, parseCommitReceiptMarker } from './attendance-collection-offline-submissions';
 import { notifySportsMatchAttendanceMutation } from '../../sports/operations/sports-match-attendance';
 import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 import { verifyOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
@@ -144,14 +141,10 @@ export class OfflineAttendanceCommitter {
             include: { event: true, person: true },
           });
           if (receipt?.status === 'PENDING' && !this.submissions.matchesPendingReceipt(item, receipt)) {
-            throw new ExistingOfflineCommitResult(
-              await this.resultForExistingReceipt(item, payloadHash, receipt, tx),
-            );
+            throw new ExistingOfflineCommitResult(await this.resultForExistingReceipt(item, payloadHash, receipt, tx));
           }
           if (receipt && receipt.status !== 'PENDING') {
-            throw new ExistingOfflineCommitResult(
-              await this.resultForExistingReceipt(item, payloadHash, receipt, tx),
-            );
+            throw new ExistingOfflineCommitResult(await this.resultForExistingReceipt(item, payloadHash, receipt, tx));
           }
         },
         input: {

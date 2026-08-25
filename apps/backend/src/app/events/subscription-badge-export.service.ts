@@ -238,16 +238,13 @@ export class SubscriptionBadgeExportService {
 
     if (target.kind === 'event') {
       return this.prisma.eventSubscription
-      .findMany({
+        .findMany({
           where: {
             eventId: target.eventId,
             deletedAt: null,
             ...(cursor
               ? {
-                  OR: [
-                    { createdAt: { lt: cursor.createdAt } },
-                    { createdAt: cursor.createdAt, id: { gt: cursor.id } },
-                  ],
+                  OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { gt: cursor.id } }],
                 }
               : {}),
           },
@@ -290,10 +287,7 @@ export class SubscriptionBadgeExportService {
           deletedAt: null,
           ...(cursor
             ? {
-                OR: [
-                  { createdAt: { lt: cursor.createdAt } },
-                  { createdAt: cursor.createdAt, id: { gt: cursor.id } },
-                ],
+                OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { gt: cursor.id } }],
               }
             : {}),
         },

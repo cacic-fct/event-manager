@@ -19,10 +19,10 @@ import {
 import type { LegacyImportPayload, LegacyPostgresClient } from './legacy-sql.mts';
 
 test('parses quoted parentheses, commas, escapes, and NULL values', () => {
-  assert.deepEqual(
-    parseValuesBlock("(1,'Ana (teste), D\\'Ávila',NULL),(2,'a''b',-3.50)"),
-    [[1, "Ana (teste), D'Ávila", null], [2, "a'b", '-3.50']],
-  );
+  assert.deepEqual(parseValuesBlock("(1,'Ana (teste), D\\'Ávila',NULL),(2,'a''b',-3.50)"), [
+    [1, "Ana (teste), D'Ávila", null],
+    [2, "a'b", '-3.50'],
+  ]);
 });
 
 test('decodes backslash escapes once so literal backslashes are preserved', () => {
@@ -52,7 +52,7 @@ test('parses MySQL temporal values as UTC and normalizes legacy names', () => {
   assert.equal(parseMysqlDate('2026-08-16')?.toISOString(), '2026-08-16T00:00:00.000Z');
   assert.deepEqual(parseMysqlTime('14:30'), { hours: 14, minutes: 30, seconds: 0 });
   assert.equal(parseMysqlDatetime('2026-08-16 14:30:00')?.toISOString(), '2026-08-16T14:30:00.000Z');
-  assert.equal(normalizePersonName("MARIA DA SILVA II"), 'Maria da Silva II');
+  assert.equal(normalizePersonName('MARIA DA SILVA II'), 'Maria da Silva II');
 });
 
 test('keeps the old URL-namespace UUIDv5 seed contract', () => {
@@ -100,9 +100,6 @@ test('commits successful writes and rolls back failed writes with an injected cl
       return { rows: [] };
     },
   };
-  await assert.rejects(
-    writeLegacySqlPayload(failedClient, structuredClone(emptyPayload)),
-    /commit failed/,
-  );
+  await assert.rejects(writeLegacySqlPayload(failedClient, structuredClone(emptyPayload)), /commit failed/);
   assert.deepEqual(failedQueries, ['BEGIN', 'COMMIT', 'ROLLBACK']);
 });

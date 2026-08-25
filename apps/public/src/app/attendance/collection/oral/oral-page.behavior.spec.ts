@@ -2,7 +2,11 @@ import { WritableSignal, computed, signal } from '@angular/core';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { OralAttendanceDecision, OralAttendancePerson } from '@cacic-fct/shared-angular';
 import { of, throwError } from 'rxjs';
-import { AttendanceCollectionEvent, AttendanceCollectionLocation, AttendanceScannerFeedItem } from '../attendance-collection-api.service';
+import {
+  AttendanceCollectionEvent,
+  AttendanceCollectionLocation,
+  AttendanceScannerFeedItem,
+} from '../attendance-collection-api.service';
 import { OralAttendancePage } from './oral-page';
 
 type OralDependencies = {
@@ -66,7 +70,13 @@ function createPage(overrides: Partial<Record<keyof OralDependencies, unknown>> 
       listCollectionEvents: makeMock().mockReturnValue(of([collectionEvent()])),
       listOralRoster: makeMock().mockReturnValue(of([])),
     },
-    auth: { user: makeMock().mockReturnValue({ sub: 'collector-1', preferredUsername: 'coletor', email: 'collector@example.test' }) },
+    auth: {
+      user: makeMock().mockReturnValue({
+        sub: 'collector-1',
+        preferredUsername: 'coletor',
+        email: 'collector@example.test',
+      }),
+    },
     collectionEventsQueue: { getCollectionEvent: makeMock().mockResolvedValue(collectionEvent()) },
     destroyRef: { onDestroy: makeMock() },
     manualQueue: { enqueue: makeMock().mockResolvedValue(undefined) },
@@ -118,9 +128,11 @@ function stateOf(page: OralAttendancePage) {
 }
 
 function registerDecision(page: OralAttendancePage, person: OralAttendancePerson, decision: OralAttendanceDecision) {
-  return (page as unknown as {
-    registerDecision: (value: OralAttendancePerson, status: OralAttendanceDecision) => Promise<void>;
-  }).registerDecision(person, decision);
+  return (
+    page as unknown as {
+      registerDecision: (value: OralAttendancePerson, status: OralAttendanceDecision) => Promise<void>;
+    }
+  ).registerDecision(person, decision);
 }
 
 function registerManual(page: OralAttendancePage, value: string) {
@@ -134,7 +146,14 @@ function goBack(page: OralAttendancePage) {
 describe('OralAttendancePage operations', () => {
   it('loads the allowed roster, preserves server decisions, overlays unsynced decisions, and caches people', async () => {
     const roster: AttendanceScannerFeedItem[] = [
-      { personId: 'person-1', eventId: 'event-oral', fullName: '', identityDocument: 'ID-1', unespRole: 'STUDENT', status: 'PRESENT' },
+      {
+        personId: 'person-1',
+        eventId: 'event-oral',
+        fullName: '',
+        identityDocument: 'ID-1',
+        unespRole: 'STUDENT',
+        status: 'PRESENT',
+      },
       { personId: 'person-2', eventId: 'event-oral', fullName: 'Pessoa Dois', status: null },
     ];
     const { page, deps, state } = createPage();

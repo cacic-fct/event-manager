@@ -337,6 +337,6 @@ export class SportsMatchCorrectionDialogComponent {
       'NO_SHOW',
       'OTHER',
     ];
-    return type === 'FORFEIT' ? 'FORFEIT' : reasons.find((reason) => reason === value) ?? 'SCORE';
+    return type === 'FORFEIT' ? 'FORFEIT' : (reasons.find((reason) => reason === value) ?? 'SCORE');
   }
 }

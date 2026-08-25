@@ -97,18 +97,14 @@ export class CurrentUserAttendanceCollectionResolver {
     }
     return events.map((event) => {
       const result = { ...event } as CurrentUserAttendanceCollectionEvent;
-      Object.defineProperty(
-        result,
-        'offlineCollectorCredential',
-        {
-          value: issueOfflineAttendanceCollectorCredential({
-            eventId: event.eventId,
-            collectorPersonId: person.id,
-            collectorUserId,
-          }),
-          enumerable: false,
-        },
-      );
+      Object.defineProperty(result, 'offlineCollectorCredential', {
+        value: issueOfflineAttendanceCollectorCredential({
+          eventId: event.eventId,
+          collectorPersonId: person.id,
+          collectorUserId,
+        }),
+        enumerable: false,
+      });
       return result;
     });
   }
@@ -189,8 +185,7 @@ export class CurrentUserAttendanceCollectionResolver {
           summary: 'Presença registrada pelo coletor via scanner.',
           prisma: tx,
         }),
-      afterCheckInStarted: (attendance) =>
-        notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
+      afterCheckInStarted: (attendance) => notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
     });
   }
 
@@ -227,8 +222,7 @@ export class CurrentUserAttendanceCollectionResolver {
           summary: 'Presença registrada pelo coletor manualmente.',
           prisma: tx,
         }),
-      afterCheckInStarted: (attendance) =>
-        notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
+      afterCheckInStarted: (attendance) => notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
     });
   }
 
@@ -381,7 +375,10 @@ export class CurrentUserAttendanceCollectionResolver {
     const idempotentClientIds = new Set<string>();
     for (const input of inputs) {
       const receipt = await this.findOralReceipt(input, actorId);
-      if (receipt?.status === 'COMMITTED' && receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+      if (
+        receipt?.status === 'COMMITTED' &&
+        receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)
+      ) {
         throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
       }
       if (receipt?.status === 'COMMITTED' && input.clientId) {
@@ -405,10 +402,16 @@ export class CurrentUserAttendanceCollectionResolver {
             where: { clientId: input.clientId },
             select: { status: true, rejectionReason: true },
           });
-          if (receipt?.status === 'COMMITTED' && receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+          if (
+            receipt?.status === 'COMMITTED' &&
+            receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)
+          ) {
             throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
           }
-          if (receipt?.status === 'COMMITTED' && receipt.rejectionReason === buildOfflineOralAttendanceReceiptMarker(input)) {
+          if (
+            receipt?.status === 'COMMITTED' &&
+            receipt.rejectionReason === buildOfflineOralAttendanceReceiptMarker(input)
+          ) {
             const existing = await tx.eventAttendance.findUnique({
               where: { personId_eventId: { personId: input.personId, eventId } },
             });
@@ -496,10 +499,7 @@ export class CurrentUserAttendanceCollectionResolver {
     return requireAttendanceCollector(this.collectionDeps, eventId, context, enforceCollectionWindow);
   }
 
-  private assertOralCollectorProvenance(
-    input: EventOralAttendanceInput,
-    actorId: string | undefined,
-  ): void {
+  private assertOralCollectorProvenance(input: EventOralAttendanceInput, actorId: string | undefined): void {
     if (!actorId) {
       throw new BadRequestException('O coletor informado deve ser o usuário autenticado.');
     }
@@ -568,5 +568,4 @@ export class CurrentUserAttendanceCollectionResolver {
       },
     });
   }
-
 }

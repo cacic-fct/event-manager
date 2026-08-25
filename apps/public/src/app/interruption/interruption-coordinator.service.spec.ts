@@ -43,9 +43,7 @@ describe('selectNextInterruption', () => {
     expect(
       selectNextInterruption([attendance, requiredForm], { currentUrl: '/sports/operate/match-1?mode=CHECK_IN' }),
     ).toBeNull();
-    expect(
-      selectNextInterruption([attendance, requiredForm], { currentUrl: '/sports/team/team-1' }),
-    ).toBeNull();
+    expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/sports/team/team-1' })).toBeNull();
   });
 
   it('still permits urgent interruptions on protected normal-flow pages', () => {

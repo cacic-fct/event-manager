@@ -484,7 +484,11 @@ export class AccountMergeService {
     const insertedLectureRows = await this.copyMissingLectures(tx, targetPersonId, sourceLectures);
     await tx.eventLecturer.deleteMany({ where: { personId: sourcePersonId } });
 
-    const movedEventGroupSubscriptionIds = await this.coalesceEventGroupSubscriptions(tx, targetPersonId, sourcePersonId);
+    const movedEventGroupSubscriptionIds = await this.coalesceEventGroupSubscriptions(
+      tx,
+      targetPersonId,
+      sourcePersonId,
+    );
     const movedEventSubscriptionIds = await this.coalesceEventSubscriptions(tx, targetPersonId, sourcePersonId);
     const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
       tx,
@@ -522,13 +526,15 @@ export class AccountMergeService {
     tx: Prisma.TransactionClient,
     targetPersonId: string,
     sourcePersonId: string,
-  ): Promise<Pick<
-    MovedRelationsSnapshot,
-    | 'movedRoleAssignmentIds'
-    | 'archivedRoleAssignmentIds'
-    | 'movedPermissionGroupMembershipIds'
-    | 'archivedPermissionGroupMembershipIds'
-  >> {
+  ): Promise<
+    Pick<
+      MovedRelationsSnapshot,
+      | 'movedRoleAssignmentIds'
+      | 'archivedRoleAssignmentIds'
+      | 'movedPermissionGroupMembershipIds'
+      | 'archivedPermissionGroupMembershipIds'
+    >
+  > {
     const movedRoleAssignmentIds: string[] = [];
     const archivedRoleAssignmentIds: string[] = [];
     const assignments = await tx.eventManagerRoleAssignment.findMany({
@@ -556,7 +562,11 @@ export class AccountMergeService {
     });
     const conflictsByRoleId = new Map<string, typeof assignments>();
     for (const conflict of await tx.eventManagerRoleAssignment.findMany({
-      where: { personId: targetPersonId, roleId: { in: assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
+      where: {
+        personId: targetPersonId,
+        roleId: { in: assignments.map((assignment) => assignment.roleId) },
+        archivedAt: null,
+      },
       select: {
         id: true,
         roleId: true,
@@ -587,10 +597,7 @@ export class AccountMergeService {
       const conflict = conflictsByRoleId
         .get(assignment.roleId)
         ?.find((candidate) =>
-          permissionRelationValiditiesOverlapOrTouch(
-            sourceValidity,
-            normalizePermissionRelationValidity(candidate),
-          ),
+          permissionRelationValiditiesOverlapOrTouch(sourceValidity, normalizePermissionRelationValidity(candidate)),
         );
       if (conflict) {
         const targetValidity = normalizePermissionRelationValidity(conflict);
@@ -614,7 +621,10 @@ export class AccountMergeService {
           }
           await tx.eventManagerRoleAssignmentScope.update({ where: { id: scope.id }, data: effectiveValidity });
           const scopeKey = permissionRelationScopeKey(scope);
-          targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
+          targetScopes.set(scopeKey, [
+            ...(targetScopes.get(scopeKey) ?? []),
+            { id: scope.id, validity: effectiveValidity },
+          ]);
         }
 
         for (const scope of assignment.scopes ?? []) {
@@ -650,7 +660,10 @@ export class AccountMergeService {
             where: { id: scope.id },
             data: { assignmentId: conflict.id, ...effectiveValidity },
           });
-          targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
+          targetScopes.set(scopeKey, [
+            ...(targetScopes.get(scopeKey) ?? []),
+            { id: scope.id, validity: effectiveValidity },
+          ]);
         }
 
         const mergedValidity = unionPermissionRelationValidity(sourceValidity, targetValidity);
@@ -666,7 +679,10 @@ export class AccountMergeService {
         });
         archivedRoleAssignmentIds.push(assignment.id);
       } else {
-        await tx.eventManagerRoleAssignment.update({ where: { id: assignment.id }, data: { personId: targetPersonId } });
+        await tx.eventManagerRoleAssignment.update({
+          where: { id: assignment.id },
+          data: { personId: targetPersonId },
+        });
         movedRoleAssignmentIds.push(assignment.id);
       }
     }
@@ -679,7 +695,11 @@ export class AccountMergeService {
     });
     const conflictsByGroupId = new Map<string, typeof memberships>();
     for (const conflict of await tx.eventManagerPermissionGroupMember.findMany({
-      where: { personId: targetPersonId, groupId: { in: memberships.map((membership) => membership.groupId) }, archivedAt: null },
+      where: {
+        personId: targetPersonId,
+        groupId: { in: memberships.map((membership) => membership.groupId) },
+        archivedAt: null,
+      },
       select: { id: true, groupId: true, validFrom: true, validUntil: true, unlimited: true },
     })) {
       const groupConflicts = conflictsByGroupId.get(conflict.groupId) ?? [];
@@ -712,7 +732,10 @@ export class AccountMergeService {
         });
         archivedPermissionGroupMembershipIds.push(membership.id);
       } else {
-        await tx.eventManagerPermissionGroupMember.update({ where: { id: membership.id }, data: { personId: targetPersonId } });
+        await tx.eventManagerPermissionGroupMember.update({
+          where: { id: membership.id },
+          data: { personId: targetPersonId },
+        });
         movedPermissionGroupMembershipIds.push(membership.id);
       }
     }
@@ -895,8 +918,7 @@ export class AccountMergeService {
         await tx.eventGroupSubscription.update({
           where: { id: conflict.id },
           data: {
-            imageLicenseAgreementAccepted:
-              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+            imageLicenseAgreementAccepted: conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
           },
         });
         await tx.eventSubscription.updateMany({
@@ -929,8 +951,7 @@ export class AccountMergeService {
         await tx.eventSubscription.update({
           where: { id: conflict.id },
           data: {
-            imageLicenseAgreementAccepted:
-              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+            imageLicenseAgreementAccepted: conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
           },
         });
         await tx.eventSubscription.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
@@ -965,17 +986,11 @@ export class AccountMergeService {
             desiredCourses: conflict.desiredCourses ?? row.desiredCourses,
             desiredLectures: conflict.desiredLectures ?? row.desiredLectures,
             desiredUncategorized: conflict.desiredUncategorized ?? row.desiredUncategorized,
-            imageLicenseAgreementAccepted:
-              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+            imageLicenseAgreementAccepted: conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
             subscriptionStatus: this.mergeSubscriptionStatus(conflict.subscriptionStatus, row.subscriptionStatus),
           },
         });
-        await this.mergeMajorEventSubscriptionChildren(
-          tx,
-          conflict.id,
-          row.id,
-          targetPersonId,
-        );
+        await this.mergeMajorEventSubscriptionChildren(tx, conflict.id, row.id, targetPersonId);
         await tx.majorEventSubscription.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
       } else {
         await tx.majorEventSubscription.update({ where: { id: row.id }, data: { personId: targetPersonId } });

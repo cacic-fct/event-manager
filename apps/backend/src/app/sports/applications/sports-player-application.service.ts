@@ -269,9 +269,12 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
 
       if (
         decision === 'APPROVE' &&
-        ([SportsApplicationStatus.WAITING_PAYMENT, SportsApplicationStatus.ACTIVE] as readonly SportsApplicationStatus[]).includes(
-          application.status,
-        )
+        (
+          [
+            SportsApplicationStatus.WAITING_PAYMENT,
+            SportsApplicationStatus.ACTIVE,
+          ] as readonly SportsApplicationStatus[]
+        ).includes(application.status)
       ) {
         return this.getApplication(tx, application.id);
       }

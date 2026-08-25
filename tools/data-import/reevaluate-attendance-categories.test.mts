@@ -8,13 +8,8 @@ import {
   normalizeName,
   selectChangedAttendances,
 } from './reevaluate-attendance-categories.mts';
-import type {
-  DatabaseClient,
-} from './firestore-to-postgres.mts';
-import type {
-  AttendanceUpdateRow,
-  FirestoreAttendanceRow,
-} from './reevaluate-attendance-categories.mts';
+import type { DatabaseClient } from './firestore-to-postgres.mts';
+import type { AttendanceUpdateRow, FirestoreAttendanceRow } from './reevaluate-attendance-categories.mts';
 
 const timestamp = (seconds: number) => ({ __datatype__: 'timestamp', value: { _seconds: seconds } });
 
@@ -32,25 +27,31 @@ test('applies attendance category precedence in source collection order', () => 
       },
     },
   });
-  assert.deepEqual(rows.map((row) => [row.legacyPersonId, row.category]), [
-    ['u1', 'REGULAR'],
-    ['u2', 'NON_SUBSCRIBED'],
-    ['u3', 'NON_PAYING'],
-  ]);
+  assert.deepEqual(
+    rows.map((row) => [row.legacyPersonId, row.category]),
+    [
+      ['u1', 'REGULAR'],
+      ['u2', 'NON_SUBSCRIBED'],
+      ['u3', 'NON_PAYING'],
+    ],
+  );
 });
 
 test('matches accented names and millisecond-normalized timestamps', async () => {
   assert.equal(normalizeName('João Café'), 'joao cafe');
-  const sourceRows: FirestoreAttendanceRow[] = [{
-    legacyEventId: 'legacy-event',
-    eventName: 'João Café',
-    eventStartDate: new Date(1_700_000_000_123),
-    legacyPersonId: 'legacy-person',
-    category: 'REGULAR',
-  }];
+  const sourceRows: FirestoreAttendanceRow[] = [
+    {
+      legacyEventId: 'legacy-event',
+      eventName: 'João Café',
+      eventStartDate: new Date(1_700_000_000_123),
+      legacyPersonId: 'legacy-person',
+      category: 'REGULAR',
+    },
+  ];
   const db: DatabaseClient = {
     async query(sql: string) {
-      if (sql.includes('FROM events')) return { rows: [{ id: 'event-1', name: 'Joao Cafe', startDate: new Date(1_700_000_000_123) }] };
+      if (sql.includes('FROM events'))
+        return { rows: [{ id: 'event-1', name: 'Joao Cafe', startDate: new Date(1_700_000_000_123) }] };
       if (sql.includes('FROM people')) return { rows: [{ id: 'person-1', externalRef: 'legacy-person' }] };
       throw new Error(`Unexpected SQL: ${sql}`);
     },
@@ -72,22 +73,32 @@ test('filters changed UNKNOWN rows and supports non-unknown override', async () 
   const db: DatabaseClient = {
     async query(sql: string) {
       if (sql.includes('category::text')) {
-        return { rows: [
-          { personId: 'p1', eventId: 'e1', category: 'UNKNOWN' },
-          { personId: 'p2', eventId: 'e2', category: 'REGULAR' },
-          { personId: 'p3', eventId: 'e3', category: 'REGULAR' },
-        ] };
+        return {
+          rows: [
+            { personId: 'p1', eventId: 'e1', category: 'UNKNOWN' },
+            { personId: 'p2', eventId: 'e2', category: 'REGULAR' },
+            { personId: 'p3', eventId: 'e3', category: 'REGULAR' },
+          ],
+        };
       }
-      return { rows: [
-        { personId: 'p1', eventId: 'e1' },
-        { personId: 'p2', eventId: 'e2' },
-        { personId: 'p3', eventId: 'e3' },
-      ] };
+      return {
+        rows: [
+          { personId: 'p1', eventId: 'e1' },
+          { personId: 'p2', eventId: 'e2' },
+          { personId: 'p3', eventId: 'e3' },
+        ],
+      };
     },
   };
   const existing = (await filterExistingAttendances(db, matched)).existing;
-  assert.deepEqual((await selectChangedAttendances(db, existing)).map((row) => row.personId), ['p1']);
-  assert.deepEqual((await selectChangedAttendances(db, existing, { includeNonUnknown: true })).map((row) => row.personId), ['p1', 'p2']);
+  assert.deepEqual(
+    (await selectChangedAttendances(db, existing)).map((row) => row.personId),
+    ['p1'],
+  );
+  assert.deepEqual(
+    (await selectChangedAttendances(db, existing, { includeNonUnknown: true })).map((row) => row.personId),
+    ['p1', 'p2'],
+  );
 });
 
 test('applies only category updates with parameters', async () => {

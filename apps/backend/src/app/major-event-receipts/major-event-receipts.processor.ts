@@ -90,9 +90,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
       orderBy: { uploadedAt: 'asc' },
       take: 100,
     });
-    const results = await Promise.allSettled(
-      receipts.map((receipt) => this.enqueuePendingReceipt(receipt.id)),
-    );
+    const results = await Promise.allSettled(receipts.map((receipt) => this.enqueuePendingReceipt(receipt.id)));
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         this.logger.warn(
@@ -105,7 +103,12 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
   private async enqueuePendingReceipt(receiptId: string): Promise<void> {
     const jobId = buildBullMqJobId('receipt-processing', receiptId);
     const queue = this.receiptQueue as Queue & {
-      getJob?: (id: string) => Promise<{ getState: () => Promise<string>; remove: () => Promise<void>; retry: (state: 'failed') => Promise<void> } | undefined>;
+      getJob?: (
+        id: string,
+      ) => Promise<
+        | { getState: () => Promise<string>; remove: () => Promise<void>; retry: (state: 'failed') => Promise<void> }
+        | undefined
+      >;
     };
     const existing = await queue.getJob?.(jobId);
     if (existing) {

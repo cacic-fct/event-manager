@@ -36,9 +36,9 @@ export class LgpdStorageCleanupService implements OnModuleInit {
         name: LGPD_STORAGE_CLEANUP_RECONCILE_JOB,
         data: {} as never,
         opts: {
-        removeOnComplete: true,
-        removeOnFail: 50,
-      },
+          removeOnComplete: true,
+          removeOnFail: 50,
+        },
       },
     );
   }

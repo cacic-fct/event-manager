@@ -204,13 +204,7 @@ export function categoryFormValidator(control: AbstractControl): ValidationError
   }
   const minimum = control.get('minimumRosterSize')?.value;
   const maximum = control.get('maximumRosterSize')?.value;
-  if (
-    typeof minimum === 'number' &&
-    typeof maximum === 'number' &&
-    minimum > 0 &&
-    maximum > 0 &&
-    minimum > maximum
-  ) {
+  if (typeof minimum === 'number' && typeof maximum === 'number' && minimum > 0 && maximum > 0 && minimum > maximum) {
     return { invalidRosterRange: true };
   }
   return null;
@@ -438,11 +432,7 @@ function mergeJsonObject(value: string | null | undefined, patch: Record<string,
   return JSON.stringify({ ...safeObject(value), ...patch });
 }
 
-function dateRangeError(
-  start: unknown,
-  end: unknown,
-  required = false,
-): ValidationErrors | null {
+function dateRangeError(start: unknown, end: unknown, required = false): ValidationErrors | null {
   if (!start || !end) {
     return required || Boolean(start) !== Boolean(end) ? { incompleteDateRange: true } : null;
   }

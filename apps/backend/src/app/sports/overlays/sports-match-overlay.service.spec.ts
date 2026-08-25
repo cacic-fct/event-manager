@@ -228,33 +228,35 @@ describe('SportsMatchOverlayService', () => {
     );
     const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toEqual(expect.arrayContaining([
-      'sports-match-overlay-document',
-      'sports-match-overlay-head',
-      'sports-match-overlay-charset',
-      'sports-match-overlay-viewport',
-      'sports-match-overlay-title',
-      'sports-match-overlay-stylesheet',
-      'sports-match-overlay-body',
-      'sports-match-overlay',
-      'sports-match-overlay-home-team',
-      'sports-match-overlay-home-icon',
-      'sports-match-overlay-home-logo',
-      'sports-match-overlay-home-icon-placeholder',
-      'sports-match-overlay-home-name',
-      'sports-match-overlay-home-score',
-      'sports-match-overlay-center',
-      'sports-match-overlay-state',
-      'sports-match-overlay-stopwatch',
-      'sports-match-overlay-period',
-      'sports-match-overlay-away-team',
-      'sports-match-overlay-away-score',
-      'sports-match-overlay-away-name',
-      'sports-match-overlay-away-icon',
-      'sports-match-overlay-away-logo',
-      'sports-match-overlay-away-icon-placeholder',
-      'sports-match-overlay-runtime',
-    ]));
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'sports-match-overlay-document',
+        'sports-match-overlay-head',
+        'sports-match-overlay-charset',
+        'sports-match-overlay-viewport',
+        'sports-match-overlay-title',
+        'sports-match-overlay-stylesheet',
+        'sports-match-overlay-body',
+        'sports-match-overlay',
+        'sports-match-overlay-home-team',
+        'sports-match-overlay-home-icon',
+        'sports-match-overlay-home-logo',
+        'sports-match-overlay-home-icon-placeholder',
+        'sports-match-overlay-home-name',
+        'sports-match-overlay-home-score',
+        'sports-match-overlay-center',
+        'sports-match-overlay-state',
+        'sports-match-overlay-stopwatch',
+        'sports-match-overlay-period',
+        'sports-match-overlay-away-team',
+        'sports-match-overlay-away-score',
+        'sports-match-overlay-away-name',
+        'sports-match-overlay-away-icon',
+        'sports-match-overlay-away-logo',
+        'sports-match-overlay-away-icon-placeholder',
+        'sports-match-overlay-runtime',
+      ]),
+    );
     expect(sportsRead.publicMatch).not.toHaveBeenCalled();
   });
 });

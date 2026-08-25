@@ -1,6 +1,10 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { sportsAdminOfficialAssignmentRecord, sportsAdminReadRecords, sportsTestDate } from '../testing/sports-backend.fixtures';
+import {
+  sportsAdminOfficialAssignmentRecord,
+  sportsAdminReadRecords,
+  sportsTestDate,
+} from '../testing/sports-backend.fixtures';
 import { SportsReadAdminService } from './sports-read-admin.service';
 import { SportsReadAdminListService } from './sports-read-admin-list.service';
 
@@ -94,13 +98,11 @@ describe('SportsReadAdminService', () => {
       },
     };
     authorization.accessibleEventTargets.mockResolvedValue(null);
-    authorization.assertPermissions.mockImplementation(
-      async (_user: unknown, permissions: string[]) => {
-        if (permissions.includes(Permission.Person.Read)) {
-          throw new ForbiddenException();
-        }
-      },
-    );
+    authorization.assertPermissions.mockImplementation(async (_user: unknown, permissions: string[]) => {
+      if (permissions.includes(Permission.Person.Read)) {
+        throw new ForbiddenException();
+      }
+    });
     prisma.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1' });
     prisma.sportsCategory.findMany.mockResolvedValue([]);
     prisma.sportsOfficialAssignment.findMany.mockResolvedValue([official]);

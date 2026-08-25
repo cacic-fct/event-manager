@@ -118,9 +118,7 @@ export function getMajorEventStatusLine(
 
   return formatStatusLine([
     hasAttendance ? 'Presença registrada' : undefined,
-    hasPendingSubscriptionStatus
-      ? getSubscriptionStatusSummaryLabel(subscription.subscriptionStatus ?? '')
-      : undefined,
+    hasPendingSubscriptionStatus ? getSubscriptionStatusSummaryLabel(subscription.subscriptionStatus ?? '') : undefined,
     ...getFeedParticipationStatusLabels(subscription.participation, hasAttendance, !hasPendingSubscriptionStatus),
   ]);
 }

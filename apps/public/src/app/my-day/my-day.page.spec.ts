@@ -152,12 +152,7 @@ function myDayFixture(): CurrentUserMyDay {
     selectedDate: '2026-08-16',
     minimumDate: '2026-07-16',
     hasContent: true,
-    currentEvent: event(
-      'current',
-      'Credenciamento',
-      '2026-08-16T18:00:00-03:00',
-      '2026-08-16T18:30:00-03:00',
-    ),
+    currentEvent: event('current', 'Credenciamento', '2026-08-16T18:00:00-03:00', '2026-08-16T18:30:00-03:00'),
     nextEvent: event('next', 'Palestra sobre IA', '2026-08-16T19:00:00-03:00', '2026-08-16T20:00:00-03:00'),
     laterEvents: [event('later', 'Basquete', '2026-08-16T21:00:00-03:00', '2026-08-16T22:00:00-03:00')],
     attention: [

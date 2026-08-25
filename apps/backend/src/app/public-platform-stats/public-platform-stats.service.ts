@@ -91,7 +91,12 @@ export class PublicPlatformStatsService {
     ]);
     const stats = { peopleCount, eventsCount, majorEventsCount, certificatesCount };
 
-    await this.redis.set(CACHE_KEY, JSON.stringify({ ...stats, generatedAt: generatedAt.toISOString() }), 'EX', CACHE_TTL_SECONDS);
+    await this.redis.set(
+      CACHE_KEY,
+      JSON.stringify({ ...stats, generatedAt: generatedAt.toISOString() }),
+      'EX',
+      CACHE_TTL_SECONDS,
+    );
     return stats;
   }
 }

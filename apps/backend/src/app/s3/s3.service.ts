@@ -336,9 +336,7 @@ function readAwsMetadata(error: unknown): {
           : typeof record['name'] === 'string'
             ? record['name']
             : undefined,
-    statusCode:
-      typeof metadataRecord?.['httpStatusCode'] === 'number' ? metadataRecord['httpStatusCode'] : undefined,
-    requestId:
-      typeof metadataRecord?.['requestId'] === 'string' ? metadataRecord['requestId'] : undefined,
+    statusCode: typeof metadataRecord?.['httpStatusCode'] === 'number' ? metadataRecord['httpStatusCode'] : undefined,
+    requestId: typeof metadataRecord?.['requestId'] === 'string' ? metadataRecord['requestId'] : undefined,
   };
 }

@@ -153,9 +153,10 @@ describe('MergeCandidatesResolver', () => {
     const candidate = candidateFixture();
     mergeCandidate.findUnique.mockResolvedValueOnce(candidate);
 
-    await expect(
-      resolver().deleteMergeCandidate('candidate-1', { req: { user: actor } } as never),
-    ).resolves.toEqual({ deleted: true, id: 'candidate-1' });
+    await expect(resolver().deleteMergeCandidate('candidate-1', { req: { user: actor } } as never)).resolves.toEqual({
+      deleted: true,
+      id: 'candidate-1',
+    });
     expect(mergeCandidate.delete).toHaveBeenCalledWith({ where: { id: 'candidate-1' } });
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({ operation: AuditLogOperation.DELETE, before: candidate, actor }),
@@ -163,9 +164,9 @@ describe('MergeCandidatesResolver', () => {
     );
 
     mergeCandidate.findUnique.mockResolvedValueOnce(null);
-    await expect(
-      resolver().deleteMergeCandidate('missing', { req: { user: actor } } as never),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(resolver().deleteMergeCandidate('missing', { req: { user: actor } } as never)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   function resolver(): MergeCandidatesResolver {

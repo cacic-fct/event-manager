@@ -27,15 +27,15 @@ describe('AnalyticsService', () => {
     await expect(service.forwardEnvelope('admin', createRequest())).rejects.toThrow('required');
     await expect(service.forwardEnvelope('admin', createRequest(Buffer.alloc(0)))).rejects.toThrow('required');
     await expect(service.forwardEnvelope('admin', createRequest(Buffer.from('envelope')))).rejects.toThrow('Malformed');
-    await expect(
-      service.forwardEnvelope('unknown-project', createRequest(validEnvelope())),
-    ).rejects.toThrow('Unknown monitoring project');
-    await expect(
-      service.forwardEnvelope(['admin', 'public'] as never, createRequest(validEnvelope())),
-    ).rejects.toThrow('Unknown monitoring project');
-    await expect(
-      service.forwardEnvelope('admin', createRequest(Buffer.alloc(1_024 * 1_024 + 1))),
-    ).rejects.toThrow('too large');
+    await expect(service.forwardEnvelope('unknown-project', createRequest(validEnvelope()))).rejects.toThrow(
+      'Unknown monitoring project',
+    );
+    await expect(service.forwardEnvelope(['admin', 'public'] as never, createRequest(validEnvelope()))).rejects.toThrow(
+      'Unknown monitoring project',
+    );
+    await expect(service.forwardEnvelope('admin', createRequest(Buffer.alloc(1_024 * 1_024 + 1)))).rejects.toThrow(
+      'too large',
+    );
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -83,9 +83,7 @@ describe('AnalyticsService', () => {
 
   it('logs and rejects when GlitchTip rejects the envelope', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-    fetchMock.mockResolvedValue(
-      createFetchResponse(503, 'Service Unavailable', 'upstream unavailable'),
-    );
+    fetchMock.mockResolvedValue(createFetchResponse(503, 'Service Unavailable', 'upstream unavailable'));
 
     await expect(service.forwardEnvelope('admin', createRequest(validEnvelope()))).rejects.toBeInstanceOf(
       BadGatewayException,

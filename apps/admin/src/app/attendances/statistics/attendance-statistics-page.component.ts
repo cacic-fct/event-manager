@@ -25,10 +25,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import * as echarts from 'echarts';
 import type { ECharts, EChartsOption } from 'echarts';
 import { firstValueFrom, Subscription } from 'rxjs';
-import {
-  AttendanceApiService,
-  type AttendanceAnalyticsTimeWindow,
-} from '../../graphql/attendance-api.service';
+import { AttendanceApiService, type AttendanceAnalyticsTimeWindow } from '../../graphql/attendance-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
 import { observeEChartsTheme, readEChartsThemeColor } from '../../shared/echarts-theme-colors';
 import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
@@ -143,9 +140,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     this.connectionError.set(null);
     try {
       this.snapshot.set(
-        await firstValueFrom(
-          this.api.getEventAttendanceAnalytics(this.eventId, this.selectedTimeWindow()),
-        ),
+        await firstValueFrom(this.api.getEventAttendanceAnalytics(this.eventId, this.selectedTimeWindow())),
       );
       this.liveUpdateGeneration.update((generation) => generation + 1);
       this.scheduleChartRender();
@@ -171,17 +166,34 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   methodLabel(method: string): string {
-    return ({
-      CSV_IMPORT: 'Importação CSV', EVENT_DUPLICATION: 'Duplicação', MANUAL_INPUT: 'Entrada manual',
-      ORAL_CALL: 'Chamada oral', SCANNER: 'Leitor de crachá', ONLINE_CODE: 'Código on-line', UNKNOWN: 'Não identificado',
-    } as Record<string, string>)[method] ?? method;
+    return (
+      (
+        {
+          CSV_IMPORT: 'Importação CSV',
+          EVENT_DUPLICATION: 'Duplicação',
+          MANUAL_INPUT: 'Entrada manual',
+          ORAL_CALL: 'Chamada oral',
+          SCANNER: 'Leitor de crachá',
+          ONLINE_CODE: 'Código on-line',
+          UNKNOWN: 'Não identificado',
+        } as Record<string, string>
+      )[method] ?? method
+    );
   }
 
   reviewKindLabel(kind: string): string {
-    return ({
-      UNUSUAL_VOLUME: 'Volume incomum', REPEATED_SCAN_ATTEMPTS: 'Leituras repetidas', OFFLINE_BACKLOG: 'Fila off-line',
-      ATTENDANCE_REMOVAL: 'Remoção', DISTANT_LOCATION: 'Localização', IMPROBABLE_MATCH_OPERATION: 'Operação esportiva',
-    } as Record<string, string>)[kind] ?? kind;
+    return (
+      (
+        {
+          UNUSUAL_VOLUME: 'Volume incomum',
+          REPEATED_SCAN_ATTEMPTS: 'Leituras repetidas',
+          OFFLINE_BACKLOG: 'Fila off-line',
+          ATTENDANCE_REMOVAL: 'Remoção',
+          DISTANT_LOCATION: 'Localização',
+          IMPROBABLE_MATCH_OPERATION: 'Operação esportiva',
+        } as Record<string, string>
+      )[kind] ?? kind
+    );
   }
 
   methodSummary(methods: EventAttendanceAnalyticsSnapshot['collectors'][number]['methods']): string {
@@ -288,19 +300,26 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
         axisLabel: { color: colors.muted, formatter: (value: number) => this.timeAxisLabel(value, data) },
         axisLine: { lineStyle: { color: colors.grid } },
       },
-      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.grid } } },
-      series: [{
-        type: 'line',
-        name: 'Presenças/min',
-        data: seriesData,
-        connectNulls: false,
-        smooth: false,
-        showSymbol: data.length <= 240,
-        symbolSize: 7,
-        lineStyle: { width: 3, color: colors.primary },
-        itemStyle: { color: colors.primary },
-        areaStyle: { color: colors.primary, opacity: 0.12 },
-      }],
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: colors.muted },
+        splitLine: { lineStyle: { color: colors.grid } },
+      },
+      series: [
+        {
+          type: 'line',
+          name: 'Presenças/min',
+          data: seriesData,
+          connectNulls: false,
+          smooth: false,
+          showSymbol: data.length <= 240,
+          symbolSize: 7,
+          lineStyle: { width: 3, color: colors.primary },
+          itemStyle: { color: colors.primary },
+          areaStyle: { color: colors.primary, opacity: 0.12 },
+        },
+      ],
     };
   }
 
@@ -315,8 +334,20 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
         axisLabel: { color: colors.muted, formatter: (value: number) => this.timeAxisLabel(value, data) },
         axisLine: { lineStyle: { color: colors.grid } },
       },
-      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.grid } } },
-      series: [{ type: 'bar', name: 'Presenças', data: data.map((item) => [item.start, item.count]), itemStyle: { color: colors.tertiary, borderRadius: [4, 4, 0, 0] } }],
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: colors.muted },
+        splitLine: { lineStyle: { color: colors.grid } },
+      },
+      series: [
+        {
+          type: 'bar',
+          name: 'Presenças',
+          data: data.map((item) => [item.start, item.count]),
+          itemStyle: { color: colors.tertiary, borderRadius: [4, 4, 0, 0] },
+        },
+      ],
     };
   }
 
@@ -326,9 +357,26 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     return {
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       grid: { left: 8, right: 18, top: 12, bottom: 8, containLabel: true },
-      xAxis: { type: 'value', minInterval: 1, axisLabel: { color: colors.muted }, splitLine: { lineStyle: { color: colors.grid } } },
-      yAxis: { type: 'category', data: collectors.map((item) => item.name), axisLabel: { color: colors.muted, width: 130, overflow: 'truncate' }, axisLine: { lineStyle: { color: colors.grid } } },
-      series: [{ type: 'bar', name: 'Presenças', data: collectors.map((item) => item.count), itemStyle: { color: colors.primary, borderRadius: [0, 4, 4, 0] } }],
+      xAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: colors.muted },
+        splitLine: { lineStyle: { color: colors.grid } },
+      },
+      yAxis: {
+        type: 'category',
+        data: collectors.map((item) => item.name),
+        axisLabel: { color: colors.muted, width: 130, overflow: 'truncate' },
+        axisLine: { lineStyle: { color: colors.grid } },
+      },
+      series: [
+        {
+          type: 'bar',
+          name: 'Presenças',
+          data: collectors.map((item) => item.count),
+          itemStyle: { color: colors.primary, borderRadius: [0, 4, 4, 0] },
+        },
+      ],
     };
   }
 
@@ -338,7 +386,16 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     return {
       tooltip: { trigger: 'item' },
       legend: { bottom: 0, textStyle: { color: colors.muted } },
-      series: [{ type: 'pie', radius: ['42%', '72%'], center: ['50%', '43%'], avoidLabelOverlap: true, label: { color: colors.text, formatter: '{b}\n{c}' }, data: methods.map((item) => ({ name: this.methodLabel(item.method), value: item.count })) }],
+      series: [
+        {
+          type: 'pie',
+          radius: ['42%', '72%'],
+          center: ['50%', '43%'],
+          avoidLabelOverlap: true,
+          label: { color: colors.text, formatter: '{b}\n{c}' },
+          data: methods.map((item) => ({ name: this.methodLabel(item.method), value: item.count })),
+        },
+      ],
     };
   }
 
@@ -354,10 +411,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
         this.throughputSelectionInProgress = false;
         if (!selectedWindow) return;
         const currentWindow = this.selectedTimeWindow();
-        if (
-          currentWindow?.start === selectedWindow.start &&
-          currentWindow.end === selectedWindow.end
-        ) return;
+        if (currentWindow?.start === selectedWindow.start && currentWindow.end === selectedWindow.end) return;
         this.selectedTimeWindow.set(selectedWindow);
       });
     }
@@ -398,16 +452,14 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     return points;
   }
 
-  private timeAxisLabel(
-    value: number,
-    data: EventAttendanceAnalyticsSnapshot['scansPerMinute'],
-  ): string {
+  private timeAxisLabel(value: number, data: EventAttendanceAnalyticsSnapshot['scansPerMinute']): string {
     const first = data[0];
     const last = data[data.length - 1];
     const span = first && last ? new Date(last.start).getTime() - new Date(first.start).getTime() : 0;
-    const options: Intl.DateTimeFormatOptions = span >= 24 * 60 * 60_000
-      ? { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }
-      : { hour: '2-digit', minute: '2-digit' };
+    const options: Intl.DateTimeFormatOptions =
+      span >= 24 * 60 * 60_000
+        ? { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }
+        : { hour: '2-digit', minute: '2-digit' };
     return new Intl.DateTimeFormat('pt-BR', options).format(new Date(value));
   }
 
@@ -426,7 +478,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
 export function timeWindowFromBrushEvent(event: unknown): AttendanceAnalyticsTimeWindow | null {
   const range = (event as BrushEndEvent | null)?.areas?.[0]?.coordRange;
   if (!Array.isArray(range) || range.length !== 2) return null;
-  const values = range.map((value) => value instanceof Date ? value.getTime() : Number(value));
+  const values = range.map((value) => (value instanceof Date ? value.getTime() : Number(value)));
   const first = values[0];
   const second = values[1];
   if (first === undefined || second === undefined || !Number.isFinite(first) || !Number.isFinite(second)) {

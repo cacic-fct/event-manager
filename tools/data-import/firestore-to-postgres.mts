@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { connectPostgres, databaseUrlFromOptions, isMain, normalizeWgs84Coordinates } from './lib/common.mts';
@@ -332,7 +331,8 @@ export function parseInteger(value: unknown): number | null {
 
 export function parseFloatValue(value: unknown): number | null {
   if (value === null || value === undefined) return null;
-  const number = typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : Number(String(value).trim());
+  const number =
+    typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : Number(String(value).trim());
   return Number.isFinite(number) ? number : null;
 }
 
@@ -377,7 +377,7 @@ export function parseFirestoreTimestamp(value: unknown): Date | null {
   const secondsNumber = Number(seconds);
   const nanosecondsNumber = Number(nanoseconds);
   if (!Number.isFinite(secondsNumber) || !Number.isFinite(nanosecondsNumber)) return null;
-  const date = new Date(Math.round((secondsNumber * 1000) + (nanosecondsNumber / 1_000_000)));
+  const date = new Date(Math.round(secondsNumber * 1000 + nanosecondsNumber / 1_000_000));
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -386,7 +386,7 @@ export function parseEventIdFromReference(reference: unknown): string | null {
   const refValue = coerceText(reference.value);
   if (refValue === null) return null;
   const parts = refValue.split('/');
-  return parts.length >= 2 && parts[0] === 'events' ? parts[1] ?? null : null;
+  return parts.length >= 2 && parts[0] === 'events' ? (parts[1] ?? null) : null;
 }
 
 export function extractSubcollection(rawDoc: unknown, name: string): LegacyCollection {
@@ -403,9 +403,7 @@ export function extractEventGroupEventIds(eventGroup: unknown): string[] {
   if (!isRecord(eventGroup)) return [];
   const rawIds = eventGroup.groupEventIDs || eventGroup.groupEventIds;
   if (!Array.isArray(rawIds)) return [];
-  return rawIds
-    .map((value) => coerceText(value))
-    .filter((value): value is string => value !== null);
+  return rawIds.map((value) => coerceText(value)).filter((value): value is string => value !== null);
 }
 
 export function extractEventGroupMainEventId(eventGroup: unknown): string | null {
@@ -434,13 +432,20 @@ export function mapSubscriptionStatus(rawStatus: unknown): SubscriptionStatus {
   }
   const status = parseInteger(rawStatus);
   switch (status) {
-    case 0: return 'WAITING_RECEIPT_UPLOAD';
-    case 1: return 'RECEIPT_UNDER_REVIEW';
-    case 2: return 'CONFIRMED';
-    case 3: return 'REJECTED_INVALID_RECEIPT';
-    case 4: return 'REJECTED_NO_SLOTS';
-    case 5: return 'REJECTED_SCHEDULE_CONFLICT';
-    default: return 'REJECTED_GENERIC';
+    case 0:
+      return 'WAITING_RECEIPT_UPLOAD';
+    case 1:
+      return 'RECEIPT_UNDER_REVIEW';
+    case 2:
+      return 'CONFIRMED';
+    case 3:
+      return 'REJECTED_INVALID_RECEIPT';
+    case 4:
+      return 'REJECTED_NO_SLOTS';
+    case 5:
+      return 'REJECTED_SCHEDULE_CONFLICT';
+    default:
+      return 'REJECTED_GENERIC';
   }
 }
 
@@ -467,11 +472,15 @@ function comparePair(left: { first: string; second: string }, right: { first: st
   return 0;
 }
 
-function sortedSeedValues<T extends { personId: string; eventId?: string; eventGroupId?: string }>(seedMap: Map<string, T>): T[] {
-  return [...seedMap.values()].sort((left, right) => comparePair(
-    { first: left.personId, second: left.eventId ?? left.eventGroupId ?? '' },
-    { first: right.personId, second: right.eventId ?? right.eventGroupId ?? '' },
-  ));
+function sortedSeedValues<T extends { personId: string; eventId?: string; eventGroupId?: string }>(
+  seedMap: Map<string, T>,
+): T[] {
+  return [...seedMap.values()].sort((left, right) =>
+    comparePair(
+      { first: left.personId, second: left.eventId ?? left.eventGroupId ?? '' },
+      { first: right.personId, second: right.eventId ?? right.eventGroupId ?? '' },
+    ),
+  );
 }
 
 function earliestDate(left: Date, right: Date): Date {
@@ -494,14 +503,19 @@ export function parseFirestoreSource(input: JsonRecord | string | URL): JsonReco
   return typeof input === 'string' || input instanceof URL ? loadFirestoreExport(input) : input;
 }
 
-export function buildPayload(input: JsonRecord | string | URL, { now = utcNow() }: BuildPayloadOptions = {}): ImportPayload {
+export function buildPayload(
+  input: JsonRecord | string | URL,
+  { now = utcNow() }: BuildPayloadOptions = {},
+): ImportPayload {
   const source = parseFirestoreSource(input);
   if (!isRecord(source)) throw new Error('Expected Firestore export JSON to be an object.');
   const { rawMajorEvents, rawEvents, rawUsers } = extractCollections(source);
   const fallbackNow = now instanceof Date ? new Date(now.getTime()) : new Date(now);
   const idGenerator = new StableUuidGenerator();
   const mappings = {
-    majorEventIds: new Map(sortedKeys(rawMajorEvents).map((legacyId) => [legacyId, idGenerator.forSeed(`major-event:${legacyId}`)])),
+    majorEventIds: new Map(
+      sortedKeys(rawMajorEvents).map((legacyId) => [legacyId, idGenerator.forSeed(`major-event:${legacyId}`)]),
+    ),
     eventIds: new Map(sortedKeys(rawEvents).map((legacyId) => [legacyId, idGenerator.forSeed(`event:${legacyId}`)])),
     eventGroupIds: new Map(),
     personIds: new Map(),
@@ -571,7 +585,11 @@ export function buildPeopleFromUsers(
     if (!existing) {
       peopleRowsById.set(personId, {
         id: personId,
-        name: coerceText(rawUser.fullName) || coerceText(rawUser.displayName) || coerceText(rawUser.email) || `Legacy User ${canonicalLegacyId}`,
+        name:
+          coerceText(rawUser.fullName) ||
+          coerceText(rawUser.displayName) ||
+          coerceText(rawUser.email) ||
+          `Legacy User ${canonicalLegacyId}`,
         email: coerceText(rawUser.email),
         phone: normalizePhone(rawUser.phone),
         identityDocument: normalizeIdentityDocument(rawUser.cpf),
@@ -643,23 +661,20 @@ export function mapMajorEvents(
     const majorEventId = mappings.majorEventIds.get(legacyMajorEventId);
     if (!majorEventId) continue;
     const name = coerceText(rawMajorEvent.name) || `Legacy Major Event ${legacyMajorEventId}`;
-    const startDate = parseFirestoreTimestamp(rawMajorEvent.eventStartDate)
-      || parseFirestoreTimestamp(rawMajorEvent.dateStart)
-      || parseFirestoreTimestamp(rawMajorEvent.createdOn)
-      || fallbackNow;
-    const endDate = parseFirestoreTimestamp(rawMajorEvent.eventEndDate)
-      || parseFirestoreTimestamp(rawMajorEvent.dateEnd)
-      || startDate;
+    const startDate =
+      parseFirestoreTimestamp(rawMajorEvent.eventStartDate) ||
+      parseFirestoreTimestamp(rawMajorEvent.dateStart) ||
+      parseFirestoreTimestamp(rawMajorEvent.createdOn) ||
+      fallbackNow;
+    const endDate =
+      parseFirestoreTimestamp(rawMajorEvent.eventEndDate) ||
+      parseFirestoreTimestamp(rawMajorEvent.dateEnd) ||
+      startDate;
     const createdAt = parseFirestoreTimestamp(rawMajorEvent.createdOn) || fallbackNow;
     const [contactInfo, contactType] = mapContactInfo(rawMajorEvent.contactInfo);
     const paymentInfo = isRecord(rawMajorEvent.paymentInfo) ? rawMajorEvent.paymentInfo : {};
     const rawPrice = rawMajorEvent.price;
-    const [majorEventPrice, eventPriceTiers] = buildMajorEventPriceRows(
-      majorEventId,
-      rawPrice,
-      idGenerator,
-      createdAt,
-    );
+    const [majorEventPrice, eventPriceTiers] = buildMajorEventPriceRows(majorEventId, rawPrice, idGenerator, createdAt);
 
     majorEvents.push({
       id: majorEventId,
@@ -699,12 +714,12 @@ export function mapMajorEvents(
       if (majorSubSeen.has(subscriptionKey)) continue;
       majorSubSeen.add(subscriptionKey);
       const payment = isRecord(rawSubscription.payment) ? rawSubscription.payment : {};
-      const createdAtSub = parseFirestoreTimestamp(rawSubscription.time)
-        || parseFirestoreTimestamp(payment.time)
-        || fallbackNow;
-      const paymentDate = parseFirestoreTimestamp(payment.validationTime)
-        || parseFirestoreTimestamp(payment.validationDate)
-        || parseFirestoreTimestamp(payment.time);
+      const createdAtSub =
+        parseFirestoreTimestamp(rawSubscription.time) || parseFirestoreTimestamp(payment.time) || fallbackNow;
+      const paymentDate =
+        parseFirestoreTimestamp(payment.validationTime) ||
+        parseFirestoreTimestamp(payment.validationDate) ||
+        parseFirestoreTimestamp(payment.time);
       const createdByIdSub = coerceText(payment.author);
       majorEventSubscriptions.push({
         id: idGenerator.forSeed(`major-event-subscription:${majorEventId}:${personId}`),
@@ -795,9 +810,8 @@ export function mapEvents(
     const eventId = mappings.eventIds.get(legacyEventId);
     if (!eventId) continue;
     const name = coerceText(rawEvent.name) || `Legacy Event ${legacyEventId}`;
-    const startDate = parseFirestoreTimestamp(rawEvent.eventStartDate)
-      || parseFirestoreTimestamp(rawEvent.createdOn)
-      || fallbackNow;
+    const startDate =
+      parseFirestoreTimestamp(rawEvent.eventStartDate) || parseFirestoreTimestamp(rawEvent.createdOn) || fallbackNow;
     const endDate = parseFirestoreTimestamp(rawEvent.eventEndDate) || startDate;
     const createdAt = parseFirestoreTimestamp(rawEvent.createdOn) || fallbackNow;
 
@@ -896,7 +910,7 @@ export function mapEvents(
   }
 
   const eventGroups = [...mappings.eventGroupIds.entries()]
-    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([name, id]) => ({
       id,
       name,
@@ -905,7 +919,14 @@ export function mapEvents(
       updatedAt: fallbackNow,
     }));
 
-  return { eventGroups, events, unknownMajorEventRefs, eventSubscriptionSeeds, eventGroupSubscriptionSeeds, eventGroupEventIds };
+  return {
+    eventGroups,
+    events,
+    unknownMajorEventRefs,
+    eventSubscriptionSeeds,
+    eventGroupSubscriptionSeeds,
+    eventGroupEventIds,
+  };
 }
 
 export function mapEventSubscriptions(
@@ -975,7 +996,14 @@ export function mapEventSubscriptions(
     if (!subscriptionId) continue;
     const eventIds = [...(eventGroupEventIds.get(seed.eventGroupId) ?? new Set())].sort();
     for (const eventId of eventIds) {
-      upsertEventSubscriptionSeed(eventSubscriptionSeeds, seed.personId, eventId, seed.createdAt, seed.createdById, subscriptionId);
+      upsertEventSubscriptionSeed(
+        eventSubscriptionSeeds,
+        seed.personId,
+        eventId,
+        seed.createdAt,
+        seed.createdById,
+        subscriptionId,
+      );
     }
   }
 
@@ -1146,7 +1174,8 @@ export function inferIsPaymentRequired(paymentInfo: unknown, price: unknown): bo
   if (isRecord(price)) {
     const singlePrice = parseInteger(price.single);
     if (singlePrice !== null) return singlePrice > 0;
-    if (Array.isArray(price.tiers)) return price.tiers.some((tier) => isRecord(tier) && (parseInteger(tier.price) || 0) > 0);
+    if (Array.isArray(price.tiers))
+      return price.tiers.some((tier) => isRecord(tier) && (parseInteger(tier.price) || 0) > 0);
   }
   return false;
 }
@@ -1182,14 +1211,16 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
   let client: DatabaseClient;
   let ownsClient = false;
   if (typeof databaseOrClient === 'string') {
-    client = await connectPostgres(databaseOrClient) as unknown as DatabaseClient;
+    client = (await connectPostgres(databaseOrClient)) as unknown as DatabaseClient;
     ownsClient = true;
   } else {
     client = databaseOrClient;
   }
   await client.query('BEGIN');
   try {
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO major_events (
         id, name, "startDate", "endDate", description, emoji,
         "subscriptionStartDate", "subscriptionEndDate",
@@ -1210,53 +1241,95 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
         "isPaymentRequired"=EXCLUDED."isPaymentRequired",
         "additionalPaymentInfo"=EXCLUDED."additionalPaymentInfo",
         "createdById"=EXCLUDED."createdById", "updatedAt"=EXCLUDED."updatedAt"
-    `, payload.majorEvents, (row) => [
-      row.id, row.name, row.startDate, row.endDate, row.description, row.emoji,
-      row.subscriptionStartDate, row.subscriptionEndDate, row.maxCoursesPerAttendee,
-      row.maxLecturesPerAttendee, row.buttonText, row.buttonLink, row.contactInfo,
-      row.contactType, row.isPaymentRequired, row.additionalPaymentInfo, row.createdAt,
-      row.createdById, row.updatedAt,
-    ]);
+    `,
+      payload.majorEvents,
+      (row) => [
+        row.id,
+        row.name,
+        row.startDate,
+        row.endDate,
+        row.description,
+        row.emoji,
+        row.subscriptionStartDate,
+        row.subscriptionEndDate,
+        row.maxCoursesPerAttendee,
+        row.maxLecturesPerAttendee,
+        row.buttonText,
+        row.buttonLink,
+        row.contactInfo,
+        row.contactType,
+        row.isPaymentRequired,
+        row.additionalPaymentInfo,
+        row.createdAt,
+        row.createdById,
+        row.updatedAt,
+      ],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO payment_info (id, "bankName", agency, account, holder, document, "majorEventId")
       VALUES ($1,$2,$3,$4,$5,$6,$7)
       ON CONFLICT ("majorEventId") DO UPDATE SET
         "bankName"=EXCLUDED."bankName", agency=EXCLUDED.agency, account=EXCLUDED.account,
         holder=EXCLUDED.holder, document=EXCLUDED.document
-    `, payload.paymentInfos, (row) => [row.id, row.bankName, row.agency, row.account, row.holder, row.document, row.majorEventId]);
+    `,
+      payload.paymentInfos,
+      (row) => [row.id, row.bankName, row.agency, row.account, row.holder, row.document, row.majorEventId],
+    );
 
     if (payload.majorEventPrices.length > 0) {
-      await client.query(`
+      await client.query(
+        `
         DELETE FROM price_tiers
         WHERE "priceId" IN (
           SELECT id FROM major_event_prices WHERE "majorEventId" = ANY($1::text[])
         )
-      `, [payload.majorEventPrices.map((row) => row.majorEventId)]);
+      `,
+        [payload.majorEventPrices.map((row) => row.majorEventId)],
+      );
     }
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO major_event_prices (id, "majorEventId", type, "createdAt")
       VALUES ($1,$2,$3,$4)
       ON CONFLICT ("majorEventId") DO UPDATE SET
         id=EXCLUDED.id, type=EXCLUDED.type, "createdAt"=EXCLUDED."createdAt"
-    `, payload.majorEventPrices, (row) => [row.id, row.majorEventId, row.type, row.createdAt]);
+    `,
+      payload.majorEventPrices,
+      (row) => [row.id, row.majorEventId, row.type, row.createdAt],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO price_tiers (id, "priceId", name, value)
       VALUES ($1,$2,$3,$4)
       ON CONFLICT (id) DO UPDATE SET
         "priceId"=EXCLUDED."priceId", name=EXCLUDED.name, value=EXCLUDED.value
-    `, payload.priceTiers, (row) => [row.id, row.priceId, row.name, row.value]);
+    `,
+      payload.priceTiers,
+      (row) => [row.id, row.priceId, row.name, row.value],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO event_groups (id, name, emoji, "createdAt", "updatedAt")
       VALUES ($1,$2,$3,$4,$5)
       ON CONFLICT (id) DO UPDATE SET
         name=EXCLUDED.name, emoji=EXCLUDED.emoji, "updatedAt"=EXCLUDED."updatedAt"
-    `, payload.eventGroups, (row) => [row.id, row.name, row.emoji, row.createdAt, row.updatedAt]);
+    `,
+      payload.eventGroups,
+      (row) => [row.id, row.name, row.emoji, row.createdAt, row.updatedAt],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO events (
         id, name, "creditMinutes", "startDate", "endDate", type, emoji,
         description, "shortDescription", latitude, longitude, "locationDescription",
@@ -1283,17 +1356,44 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
         "isPubliclyListed"=EXCLUDED."isPubliclyListed", "youtubeCode"=EXCLUDED."youtubeCode",
         "buttonText"=EXCLUDED."buttonText", "buttonLink"=EXCLUDED."buttonLink",
         "createdById"=EXCLUDED."createdById", "updatedAt"=EXCLUDED."updatedAt"
-    `, payload.events, (row) => [
-      row.id, row.name, row.creditMinutes, row.startDate, row.endDate, row.type, row.emoji,
-      row.description, row.shortDescription, row.latitude, row.longitude, row.locationDescription,
-      row.majorEventId, row.eventGroupId, row.allowSubscription, row.slots,
-      row.shouldIssueCertificate, row.shouldCollectAttendance, row.isOnlineAttendanceAllowed,
-      row.onlineAttendanceCode, row.onlineAttendanceStartDate, row.onlineAttendanceEndDate,
-      row.isPubliclyListed, row.youtubeCode, row.buttonText, row.buttonLink, row.createdAt,
-      row.createdById, row.updatedAt,
-    ]);
+    `,
+      payload.events,
+      (row) => [
+        row.id,
+        row.name,
+        row.creditMinutes,
+        row.startDate,
+        row.endDate,
+        row.type,
+        row.emoji,
+        row.description,
+        row.shortDescription,
+        row.latitude,
+        row.longitude,
+        row.locationDescription,
+        row.majorEventId,
+        row.eventGroupId,
+        row.allowSubscription,
+        row.slots,
+        row.shouldIssueCertificate,
+        row.shouldCollectAttendance,
+        row.isOnlineAttendanceAllowed,
+        row.onlineAttendanceCode,
+        row.onlineAttendanceStartDate,
+        row.onlineAttendanceEndDate,
+        row.isPubliclyListed,
+        row.youtubeCode,
+        row.buttonText,
+        row.buttonLink,
+        row.createdAt,
+        row.createdById,
+        row.updatedAt,
+      ],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO people (
         id, name, email, phone, "identityDocument", "academicId", "externalRef", "createdAt", "updatedAt"
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -1301,12 +1401,24 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
         name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone,
         "identityDocument"=EXCLUDED."identityDocument", "academicId"=EXCLUDED."academicId",
         "externalRef"=EXCLUDED."externalRef", "updatedAt"=EXCLUDED."updatedAt"
-    `, payload.people, (row) => [
-      row.id, row.name, row.email, row.phone, row.identityDocument, row.academicId,
-      row.externalRef, row.createdAt, row.updatedAt,
-    ]);
+    `,
+      payload.people,
+      (row) => [
+        row.id,
+        row.name,
+        row.email,
+        row.phone,
+        row.identityDocument,
+        row.academicId,
+        row.externalRef,
+        row.createdAt,
+        row.updatedAt,
+      ],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO major_event_subscriptions (
         id, "majorEventId", "personId", "amountPaid", "paymentDate", "paymentTier",
         "subscriptionStatus", "createdAt", "createdById"
@@ -1316,37 +1428,60 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
         "amountPaid"=EXCLUDED."amountPaid", "paymentDate"=EXCLUDED."paymentDate",
         "paymentTier"=EXCLUDED."paymentTier", "subscriptionStatus"=EXCLUDED."subscriptionStatus",
         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `, payload.majorEventSubscriptions, (row) => [
-      row.id, row.majorEventId, row.personId, row.amountPaid, row.paymentDate,
-      row.paymentTier, row.subscriptionStatus, row.createdAt, row.createdById,
-    ]);
+    `,
+      payload.majorEventSubscriptions,
+      (row) => [
+        row.id,
+        row.majorEventId,
+        row.personId,
+        row.amountPaid,
+        row.paymentDate,
+        row.paymentTier,
+        row.subscriptionStatus,
+        row.createdAt,
+        row.createdById,
+      ],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO event_group_subscriptions (id, "eventGroupId", "personId", "createdAt", "createdById")
       VALUES ($1,$2,$3,$4,$5)
       ON CONFLICT (id) DO UPDATE SET
         "eventGroupId"=EXCLUDED."eventGroupId", "personId"=EXCLUDED."personId",
         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `, payload.eventGroupSubscriptions, (row) => [row.id, row.eventGroupId, row.personId, row.createdAt, row.createdById]);
+    `,
+      payload.eventGroupSubscriptions,
+      (row) => [row.id, row.eventGroupId, row.personId, row.createdAt, row.createdById],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO event_subscriptions (id, "eventId", "personId", "eventGroupSubscriptionId", "createdAt", "createdById")
       VALUES ($1,$2,$3,$4,$5,$6)
       ON CONFLICT (id) DO UPDATE SET
         "eventId"=EXCLUDED."eventId", "personId"=EXCLUDED."personId",
         "eventGroupSubscriptionId"=EXCLUDED."eventGroupSubscriptionId",
         "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"
-    `, payload.eventSubscriptions, (row) => [
-      row.id, row.eventId, row.personId, row.eventGroupSubscriptionId, row.createdAt, row.createdById,
-    ]);
+    `,
+      payload.eventSubscriptions,
+      (row) => [row.id, row.eventId, row.personId, row.eventGroupSubscriptionId, row.createdAt, row.createdById],
+    );
 
-    await executeMany(client, `
+    await executeMany(
+      client,
+      `
       INSERT INTO event_attendances ("personId", "eventId", "attendedAt", "createdAt", "createdById")
       VALUES ($1,$2,$3,$4,$5)
       ON CONFLICT ("personId", "eventId") DO UPDATE SET
         "attendedAt"=EXCLUDED."attendedAt", "createdAt"=EXCLUDED."createdAt",
         "createdById"=EXCLUDED."createdById"
-    `, payload.eventAttendances, (row) => [row.personId, row.eventId, row.attendedAt, row.createdAt, row.createdById]);
+    `,
+      payload.eventAttendances,
+      (row) => [row.personId, row.eventId, row.attendedAt, row.createdAt, row.createdById],
+    );
 
     await client.query('COMMIT');
   } catch (error) {
@@ -1393,25 +1528,44 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Fire
     const equalsIndex = argument.indexOf('=');
     const option = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const valueOptions = new Set([
-      '--input', '--database-url', '--db-host', '--db-port', '--db-name', '--db-user', '--db-password',
+      '--input',
+      '--database-url',
+      '--db-host',
+      '--db-port',
+      '--db-name',
+      '--db-user',
+      '--db-password',
     ]);
     if (!valueOptions.has(option)) throw new Error(`Unknown option: ${argument}`);
     const value = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : parseOptionValue(argv, index, option);
     if (equalsIndex < 0) index += 1;
     switch (option) {
-      case '--input': options.input = value; break;
-      case '--database-url': options.databaseUrl = value; break;
-      case '--db-host': options.dbHost = value; break;
+      case '--input':
+        options.input = value;
+        break;
+      case '--database-url':
+        options.databaseUrl = value;
+        break;
+      case '--db-host':
+        options.dbHost = value;
+        break;
       case '--db-port': {
         const parsed = Number(value);
         if (!Number.isInteger(parsed) || parsed <= 0) throw new Error('--db-port must be a positive integer.');
         options.dbPort = parsed;
         break;
       }
-      case '--db-name': options.dbName = value; break;
-      case '--db-user': options.dbUser = value; break;
-      case '--db-password': options.dbPassword = value; break;
-      default: throw new Error(`Unknown option: ${argument}`);
+      case '--db-name':
+        options.dbName = value;
+        break;
+      case '--db-user':
+        options.dbUser = value;
+        break;
+      case '--db-password':
+        options.dbPassword = value;
+        break;
+      default:
+        throw new Error(`Unknown option: ${argument}`);
     }
   }
   return options;
@@ -1419,22 +1573,22 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Fire
 
 function printPreparedRows(payload: ImportPayload): void {
   console.log(
-    'Prepared rows -> '
-      + `major_events=${payload.majorEvents.length}, `
-      + `payment_infos=${payload.paymentInfos.length}, `
-      + `major_event_prices=${payload.majorEventPrices.length}, `
-      + `price_tiers=${payload.priceTiers.length}, `
-      + `event_groups=${payload.eventGroups.length}, `
-      + `events=${payload.events.length}, `
-      + `people=${payload.people.length}, `
-      + `major_event_subscriptions=${payload.majorEventSubscriptions.length}, `
-      + `event_group_subscriptions=${payload.eventGroupSubscriptions.length}, `
-      + `event_subscriptions=${payload.eventSubscriptions.length}, `
-      + `event_attendances=${payload.eventAttendances.length}, `
-      + `generated_fallback_people=${payload.generatedFallbackPeople}, `
-      + `events_with_unknown_major_ref=${payload.unknownMajorEventRefs}, `
-      + `skipped_user_major_event_refs=${payload.skippedUserMajorEventRefs}, `
-      + `skipped_user_event_refs=${payload.skippedUserEventRefs}`,
+    'Prepared rows -> ' +
+      `major_events=${payload.majorEvents.length}, ` +
+      `payment_infos=${payload.paymentInfos.length}, ` +
+      `major_event_prices=${payload.majorEventPrices.length}, ` +
+      `price_tiers=${payload.priceTiers.length}, ` +
+      `event_groups=${payload.eventGroups.length}, ` +
+      `events=${payload.events.length}, ` +
+      `people=${payload.people.length}, ` +
+      `major_event_subscriptions=${payload.majorEventSubscriptions.length}, ` +
+      `event_group_subscriptions=${payload.eventGroupSubscriptions.length}, ` +
+      `event_subscriptions=${payload.eventSubscriptions.length}, ` +
+      `event_attendances=${payload.eventAttendances.length}, ` +
+      `generated_fallback_people=${payload.generatedFallbackPeople}, ` +
+      `events_with_unknown_major_ref=${payload.unknownMajorEventRefs}, ` +
+      `skipped_user_major_event_refs=${payload.skippedUserMajorEventRefs}, ` +
+      `skipped_user_event_refs=${payload.skippedUserEventRefs}`,
   );
 }
 

@@ -136,22 +136,22 @@ const meta: Meta<MatchStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async () => {
-          if (activeArgs.loadMode === 'loading') {
-            await delay('infinite');
-          }
-          if (activeArgs.latencyMs > 0) {
-            await delay(activeArgs.latencyMs);
-          }
-          if (activeArgs.loadMode === 'error') {
+          http.post('/api/graphql', async () => {
+            if (activeArgs.loadMode === 'loading') {
+              await delay('infinite');
+            }
+            if (activeArgs.latencyMs > 0) {
+              await delay(activeArgs.latencyMs);
+            }
+            if (activeArgs.loadMode === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'A partida não está disponível para visualização.' }],
+              });
+            }
             return HttpResponse.json({
-              errors: [{ message: 'A partida não está disponível para visualização.' }],
+              data: { publicSportsMatchDetail: controlledMatch() },
             });
-          }
-          return HttpResponse.json({
-            data: { publicSportsMatchDetail: controlledMatch() },
-          });
-        }),
+          }),
         ],
       },
     },

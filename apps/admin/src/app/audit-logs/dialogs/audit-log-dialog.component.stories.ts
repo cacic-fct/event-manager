@@ -131,29 +131,29 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as GraphqlBody;
-          await delay(activeArgs.responseDelay);
+          http.post('/api/graphql', async ({ request }) => {
+            const body = (await request.json()) as GraphqlBody;
+            await delay(activeArgs.responseDelay);
 
-          if (body.query?.includes('RevertAuditLogEntry')) {
-            revertedEntryId = 'audit-entry-1';
-            return HttpResponse.json({ data: { revertAuditLogEntry: buildRevertEntry(activeArgs) } });
-          }
+            if (body.query?.includes('RevertAuditLogEntry')) {
+              revertedEntryId = 'audit-entry-1';
+              return HttpResponse.json({ data: { revertAuditLogEntry: buildRevertEntry(activeArgs) } });
+            }
 
-          if (!body.query?.includes('AuditLogEntries')) {
-            return HttpResponse.json({ data: {} });
-          }
+            if (!body.query?.includes('AuditLogEntries')) {
+              return HttpResponse.json({ data: {} });
+            }
 
-          if (activeArgs.requestState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível consultar o histórico simulado.' }] });
-          }
+            if (activeArgs.requestState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível consultar o histórico simulado.' }] });
+            }
 
-          return HttpResponse.json({
-            data: {
-              auditLogEntries: activeArgs.requestState === 'empty' ? [] : buildEntries(activeArgs),
-            },
-          });
-        }),
+            return HttpResponse.json({
+              data: {
+                auditLogEntries: activeArgs.requestState === 'empty' ? [] : buildEntries(activeArgs),
+              },
+            });
+          }),
         ],
       },
     },

@@ -189,9 +189,7 @@ export async function parseInsertRowsByTable(
         if (row.length !== columnNames.length) continue;
         const tableRows = result[tableName];
         if (tableRows === undefined) throw new Error(`Unexpected SQL table '${tableName}'.`);
-        tableRows.push(
-          Object.fromEntries(columnNames.map((column, index) => [column, row[index]])) as ParsedSqlRow,
-        );
+        tableRows.push(Object.fromEntries(columnNames.map((column, index) => [column, row[index]])) as ParsedSqlRow);
       }
     }
     position = statementEnd + 1;
@@ -379,14 +377,7 @@ export function cleanIdentifier(rawIdentifier: string): string {
   return rawIdentifier.trim().replace(/^`|`$/gu, '');
 }
 
-function makeUtcDate(
-  year: number,
-  month: number,
-  day: number,
-  hours = 0,
-  minutes = 0,
-  seconds = 0,
-): Date | null {
+function makeUtcDate(year: number, month: number, day: number, hours = 0, minutes = 0, seconds = 0): Date | null {
   const date = new Date(0);
   date.setUTCHours(hours, minutes, seconds, 0);
   date.setUTCFullYear(year, month - 1, day);
@@ -594,7 +585,16 @@ export async function writeLegacySqlPayload(
          name=EXCLUDED.name, "startDate"=EXCLUDED."startDate", "endDate"=EXCLUDED."endDate",
          description=EXCLUDED.description, "isPaymentRequired"=EXCLUDED."isPaymentRequired", "updatedAt"=EXCLUDED."updatedAt"`,
       payload.majorEvents,
-      (row) => [row.id, row.name, row.startDate, row.endDate, row.description, row.isPaymentRequired, row.createdAt, row.updatedAt],
+      (row) => [
+        row.id,
+        row.name,
+        row.startDate,
+        row.endDate,
+        row.description,
+        row.isPaymentRequired,
+        row.createdAt,
+        row.updatedAt,
+      ],
     );
     await insertRows(
       db,
@@ -666,7 +666,16 @@ export async function writeLegacySqlPayload(
          name=EXCLUDED.name, email=EXCLUDED.email, "identityDocument"=EXCLUDED."identityDocument",
          "academicId"=EXCLUDED."academicId", "updatedAt"=EXCLUDED."updatedAt"`,
       payload.people,
-      (row) => [row.id, row.name, row.email, row.identityDocument, row.academicId, row.externalRef, row.createdAt, row.updatedAt],
+      (row) => [
+        row.id,
+        row.name,
+        row.email,
+        row.identityDocument,
+        row.academicId,
+        row.externalRef,
+        row.createdAt,
+        row.updatedAt,
+      ],
     );
     await insertRows(
       db,
@@ -678,7 +687,17 @@ export async function writeLegacySqlPayload(
          "paymentDate"=EXCLUDED."paymentDate", "paymentTier"=EXCLUDED."paymentTier", "subscriptionStatus"=EXCLUDED."subscriptionStatus",
          "createdAt"=EXCLUDED."createdAt", "createdById"=EXCLUDED."createdById"`,
       payload.majorEventSubscriptions,
-      (row) => [row.id, row.majorEventId, row.personId, row.amountPaid, row.paymentDate, row.paymentTier, row.subscriptionStatus, row.createdAt, row.createdById],
+      (row) => [
+        row.id,
+        row.majorEventId,
+        row.personId,
+        row.amountPaid,
+        row.paymentDate,
+        row.paymentTier,
+        row.subscriptionStatus,
+        row.createdAt,
+        row.createdById,
+      ],
     );
     await insertRows(
       db,

@@ -1,10 +1,7 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@angular/core';
-import {
-  CalendarDefaultItemViewPreference,
-  CalendarPreferencesStorageService,
-} from '@cacic-fct/public-indexed-db';
+import { CalendarDefaultItemViewPreference, CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
@@ -154,50 +151,50 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as GraphqlBody;
-          const query = body.query ?? '';
+          http.post('/api/graphql', async ({ request }) => {
+            const body = (await request.json()) as GraphqlBody;
+            const query = body.query ?? '';
 
-          if (activeArgs.requestState === 'loading') {
-            await delay('infinite');
-          }
+            if (activeArgs.requestState === 'loading') {
+              await delay('infinite');
+            }
 
-          await delay(activeArgs.responseDelay);
+            await delay(activeArgs.responseDelay);
 
-          if (query.includes('SetCurrentUserCalendarFeedEnabled')) {
-            enabledOverride = Boolean(body.variables?.['enabled']);
-            return HttpResponse.json({
-              data: {
-                setCurrentUserCalendarFeedEnabled: buildSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('SetCurrentUserCalendarFeedEnabled')) {
+              enabledOverride = Boolean(body.variables?.['enabled']);
+              return HttpResponse.json({
+                data: {
+                  setCurrentUserCalendarFeedEnabled: buildSettings(activeArgs),
+                },
+              });
+            }
 
-          if (query.includes('RotateCurrentUserCalendarFeedKey')) {
-            rotationVersion += 1;
-            return HttpResponse.json({
-              data: {
-                rotateCurrentUserCalendarFeedKey: buildSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('RotateCurrentUserCalendarFeedKey')) {
+              rotationVersion += 1;
+              return HttpResponse.json({
+                data: {
+                  rotateCurrentUserCalendarFeedKey: buildSettings(activeArgs),
+                },
+              });
+            }
 
-          if (activeArgs.requestState === 'error') {
-            return HttpResponse.json({
-              errors: [{ message: 'Não foi possível carregar as preferências de calendário simuladas.' }],
-            });
-          }
+            if (activeArgs.requestState === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'Não foi possível carregar as preferências de calendário simuladas.' }],
+              });
+            }
 
-          if (query.includes('CurrentUserCalendarFeedSettings')) {
-            return HttpResponse.json({
-              data: {
-                currentUserCalendarFeedSettings: buildSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('CurrentUserCalendarFeedSettings')) {
+              return HttpResponse.json({
+                data: {
+                  currentUserCalendarFeedSettings: buildSettings(activeArgs),
+                },
+              });
+            }
 
-          return HttpResponse.json({ data: {} });
-        }),
+            return HttpResponse.json({ data: {} });
+          }),
         ],
       },
     },

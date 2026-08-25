@@ -73,8 +73,7 @@
           }
         }
         @if (
-          (workspace.teamRead() && workspace.canUpdateTeam()) ||
-          (!workspace.teamRead() && workspace.canCreateTeam())
+          (workspace.teamRead() && workspace.canUpdateTeam()) || (!workspace.teamRead() && workspace.canCreateTeam())
         ) {
           <button
             mat-flat-button
@@ -110,12 +109,12 @@
         </div>
         @if (workspace.canUpdateTeam()) {
           <label class="material-upload">
-          <input
-            type="file"
-            accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
-            (change)="uploadTeamLogo($event)" />
-          <mat-icon>upload</mat-icon>
-          Enviar escudo
+            <input
+              type="file"
+              accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
+              (change)="uploadTeamLogo($event)" />
+            <mat-icon>upload</mat-icon>
+            Enviar escudo
           </label>
         }
       </div>
@@ -129,22 +128,22 @@
           [formGroup]="workspace.representativeForm"
           class="person-search"
           (ngSubmit)="workspace.assignRepresentative()">
-        <app-person-search
-          label="Buscar pessoa autorizada"
-          [query]="workspace.representativeForm.controls.personQuery.value"
-          [results]="workspace.peopleTarget() === 'representative' ? workspace.people() : []"
-          [loading]="workspace.loading()"
-          [disabled]="!workspace.canSearchPeople()"
-          resultActionLabel="Selecionar representante"
-          (queryChange)="workspace.representativeForm.controls.personQuery.setValue($event)"
-          (searchRequested)="workspace.searchPeople($event, 'representative')"
-          (personSelected)="workspace.pickPerson($event, 'representative')" />
-        <button
-          mat-stroked-button
-          type="submit"
-          [disabled]="workspace.loading() || workspace.representativeForm.invalid">
-          <mat-icon>person_add</mat-icon>Atribuir
-        </button>
+          <app-person-search
+            label="Buscar pessoa autorizada"
+            [query]="workspace.representativeForm.controls.personQuery.value"
+            [results]="workspace.peopleTarget() === 'representative' ? workspace.people() : []"
+            [loading]="workspace.loading()"
+            [disabled]="!workspace.canSearchPeople()"
+            resultActionLabel="Selecionar representante"
+            (queryChange)="workspace.representativeForm.controls.personQuery.setValue($event)"
+            (searchRequested)="workspace.searchPeople($event, 'representative')"
+            (personSelected)="workspace.pickPerson($event, 'representative')" />
+          <button
+            mat-stroked-button
+            type="submit"
+            [disabled]="workspace.loading() || workspace.representativeForm.invalid">
+            <mat-icon>person_add</mat-icon>Atribuir
+          </button>
         </form>
       }
       <div class="person-list">
@@ -174,23 +173,26 @@
       <mat-divider />
       <div class="subsection-title">
         <h4>Elenco conhecido</h4>
-        <p>Defina a identificação padrão de cada atleta por modalidade para reutilizá-la nas escalações e páginas públicas.</p>
+        <p>
+          Defina a identificação padrão de cada atleta por modalidade para reutilizá-la nas escalações e páginas
+          públicas.
+        </p>
       </div>
       @if (workspace.canUpdateTeam()) {
         <form [formGroup]="workspace.memberForm" class="person-search" (ngSubmit)="workspace.addTeamMember()">
-        <app-person-search
-          label="Buscar pessoa para o elenco"
-          [query]="workspace.memberForm.controls.personQuery.value"
-          [results]="workspace.peopleTarget() === 'member' ? workspace.people() : []"
-          [loading]="workspace.loading()"
-          [disabled]="!workspace.canSearchPeople()"
-          resultActionLabel="Selecionar para o elenco"
-          (queryChange)="workspace.memberForm.controls.personQuery.setValue($event)"
-          (searchRequested)="workspace.searchPeople($event, 'member')"
-          (personSelected)="workspace.pickPerson($event, 'member')" />
-        <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.memberForm.invalid">
-          <mat-icon>person_add</mat-icon>Adicionar
-        </button>
+          <app-person-search
+            label="Buscar pessoa para o elenco"
+            [query]="workspace.memberForm.controls.personQuery.value"
+            [results]="workspace.peopleTarget() === 'member' ? workspace.people() : []"
+            [loading]="workspace.loading()"
+            [disabled]="!workspace.canSearchPeople()"
+            resultActionLabel="Selecionar para o elenco"
+            (queryChange)="workspace.memberForm.controls.personQuery.setValue($event)"
+            (searchRequested)="workspace.searchPeople($event, 'member')"
+            (personSelected)="workspace.pickPerson($event, 'member')" />
+          <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.memberForm.invalid">
+            <mat-icon>person_add</mat-icon>Adicionar
+          </button>
         </form>
       }
       <div class="member-grid">
@@ -266,7 +268,15 @@
                   } @else {
                     <form
                       class="member-profile-editor"
-                      (submit)="$event.preventDefault(); workspace.updateGameProfile(modality, gameNicknameInput.value, gameAccountNameInput.value, gameAccountUrlInput.value)">
+                      (submit)="
+                        $event.preventDefault();
+                        workspace.updateGameProfile(
+                          modality,
+                          gameNicknameInput.value,
+                          gameAccountNameInput.value,
+                          gameAccountUrlInput.value
+                        )
+                      ">
                       <div class="member-profile-heading">
                         <lib-twemoji [emoji]="modality.categoryEmoji" aria-hidden="true" />
                         <span>
@@ -277,11 +287,7 @@
                       <div class="member-profile-fields">
                         <mat-form-field subscriptSizing="dynamic">
                           <mat-label>Nickname exibido</mat-label>
-                          <input
-                            #gameNicknameInput
-                            matInput
-                            maxlength="80"
-                            [value]="modality.gameNickname ?? ''" />
+                          <input #gameNicknameInput matInput maxlength="80" [value]="modality.gameNickname ?? ''" />
                         </mat-form-field>
                         <mat-form-field subscriptSizing="dynamic">
                           <mat-label>Nome da conta</mat-label>
@@ -370,7 +376,9 @@
                 <lib-twemoji [emoji]="option.category.eventGroup?.emoji ?? '🏅'" aria-hidden="true" />
                 <span>
                   <strong>{{ option.category.name }}</strong>
-                  @if (option.category.division) { <small>{{ option.category.division }}</small> }
+                  @if (option.category.division) {
+                    <small>{{ option.category.division }}</small>
+                  }
                 </span>
               </span>
             </mat-checkbox>
@@ -402,13 +410,13 @@
       </div>
       @if (workspace.canManageRegistrationSelections()) {
         <div class="registration-actions">
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.saveRegistrationSelections()"
-          [disabled]="workspace.loading() || !workspace.registrationOptions().length">
-          <mat-icon>save</mat-icon>Salvar modalidades
-        </button>
+          <button
+            mat-flat-button
+            type="button"
+            (click)="workspace.saveRegistrationSelections()"
+            [disabled]="workspace.loading() || !workspace.registrationOptions().length">
+            <mat-icon>save</mat-icon>Salvar modalidades
+          </button>
         </div>
       }
       <div [formGroup]="workspace.registrationForm" class="compact-form">

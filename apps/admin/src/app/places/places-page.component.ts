@@ -107,7 +107,10 @@ export class PlacesPageComponent implements OnDestroy {
   protected openLocationPicker(): void {
     const location = this.location();
     this.dialog
-      .open(LocationCoordinatePickerDialogComponent, { data: { coordinates: location }, maxWidth: 'calc(100vw - 32px)' })
+      .open(LocationCoordinatePickerDialogComponent, {
+        data: { coordinates: location },
+        maxWidth: 'calc(100vw - 32px)',
+      })
       .afterClosed()
       .subscribe((result: LocationCoordinates | undefined) => {
         if (!result) return;

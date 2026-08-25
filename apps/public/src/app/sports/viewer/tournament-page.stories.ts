@@ -65,9 +65,7 @@ function controlledTournament() {
     name: activeArgs.name,
     teams: activeArgs.showTeams ? tournament.teams.slice(0, activeArgs.teamCount) : [],
     matches: tournament.matches.slice(0, activeArgs.matchCount),
-    overallScores: activeArgs.showOverallScore
-      ? tournament.overallScores.slice(0, activeArgs.overallScoreRows)
-      : [],
+    overallScores: activeArgs.showOverallScore ? tournament.overallScores.slice(0, activeArgs.overallScoreRows) : [],
     categories: tournament.categories.slice(0, activeArgs.categoryCount).map((category) => ({
       ...category,
       rulesText: activeArgs.showRules ? category.rulesText : null,
@@ -129,22 +127,22 @@ const meta: Meta<TournamentStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async () => {
-          if (activeArgs.loadMode === 'loading') {
-            await delay('infinite');
-          }
-          if (activeArgs.loadMode === 'error') {
+          http.post('/api/graphql', async () => {
+            if (activeArgs.loadMode === 'loading') {
+              await delay('infinite');
+            }
+            if (activeArgs.loadMode === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'O torneio não está disponível para visualização.' }],
+              });
+            }
+            if (activeArgs.responseDelay > 0) {
+              await delay(activeArgs.responseDelay);
+            }
             return HttpResponse.json({
-              errors: [{ message: 'O torneio não está disponível para visualização.' }],
+              data: { publicSportsTournamentDetail: controlledTournament() },
             });
-          }
-          if (activeArgs.responseDelay > 0) {
-            await delay(activeArgs.responseDelay);
-          }
-          return HttpResponse.json({
-            data: { publicSportsTournamentDetail: controlledTournament() },
-          });
-        }),
+          }),
         ],
       },
     },
@@ -194,16 +192,16 @@ export const WithoutPublishedMatches: Story = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({
-            data: {
-              publicSportsTournamentDetail: createSportsViewerTournament({
-                matches: [],
-                categories: [],
-              }),
-            },
-          }),
-        ),
+          http.post('/api/graphql', () =>
+            HttpResponse.json({
+              data: {
+                publicSportsTournamentDetail: createSportsViewerTournament({
+                  matches: [],
+                  categories: [],
+                }),
+              },
+            }),
+          ),
         ],
       },
     },

@@ -151,12 +151,13 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
     const collectedByUserId = input.collectedByUserId ?? actorId;
-    const existingReceipt = input.clientId && this.prisma.offlineEventAttendanceSubmission
-      ? await this.prisma.offlineEventAttendanceSubmission.findUnique({
-          where: { clientId: input.clientId },
-          select: { status: true, rejectionReason: true },
-        })
-      : null;
+    const existingReceipt =
+      input.clientId && this.prisma.offlineEventAttendanceSubmission
+        ? await this.prisma.offlineEventAttendanceSubmission.findUnique({
+            where: { clientId: input.clientId },
+            select: { status: true, rejectionReason: true },
+          })
+        : null;
     if (existingReceipt?.status === 'COMMITTED') {
       if (existingReceipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
         throw new ConflictException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
@@ -259,7 +260,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         where: { clientId: input.clientId },
         select: { status: true, rejectionReason: true },
       });
-      if (receipt?.status === 'COMMITTED' && receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+      if (
+        receipt?.status === 'COMMITTED' &&
+        receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)
+      ) {
         throw new ConflictException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
       }
       if (receipt?.status === 'COMMITTED') {
@@ -1150,11 +1154,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       const credential = input.collectorCredential
         ? verifyOfflineAttendanceCollectorCredential(input.collectorCredential, input.collectedAt)
         : null;
-      if (
-        !credential ||
-        credential.eventId !== input.eventId ||
-        credential.collectorUserId !== collectedByUserId
-      ) {
+      if (!credential || credential.eventId !== input.eventId || credential.collectorUserId !== collectedByUserId) {
         throw new BadRequestException('A credencial assinada do coletor off-line não corresponde à decisão.');
       }
     } catch (error: unknown) {

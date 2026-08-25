@@ -22,7 +22,10 @@ describe('OralAttendancePage', () => {
         { provide: AttendanceOfflineQueueService, useValue: { enqueue } },
         { provide: OralAttendanceOfflineService, useValue: { enqueue, watchPending: () => of([]) } },
         { provide: AttendanceCollectionApiService, useValue: {} },
-        { provide: AttendanceCollectionAccessService, useValue: { getPreciseLocation: vi.fn().mockResolvedValue({ latitude: 0, longitude: 0, accuracyMeters: 1 }) } },
+        {
+          provide: AttendanceCollectionAccessService,
+          useValue: { getPreciseLocation: vi.fn().mockResolvedValue({ latitude: 0, longitude: 0, accuracyMeters: 1 }) },
+        },
         { provide: AttendanceOfflineSyncService, useValue: { syncPending: vi.fn() } },
         { provide: NetworkStatusService, useValue: { isOnline: () => false } },
         { provide: MatSnackBar, useValue: snackbar },
@@ -30,13 +33,16 @@ describe('OralAttendancePage', () => {
     });
     const page = TestBed.runInInjectionContext(() => new OralAttendancePage());
     (page as unknown as { event: { set: (value: { eventId: string }) => void } }).event.set({ eventId: 'event-1' });
-    await (page as unknown as { registerDecision: (person: { personId: string }, decision: 'PRESENT') => Promise<void> }).registerDecision(
-      { personId: 'person-1' },
-      'PRESENT',
-    );
+    await (
+      page as unknown as { registerDecision: (person: { personId: string }, decision: 'PRESENT') => Promise<void> }
+    ).registerDecision({ personId: 'person-1' }, 'PRESENT');
 
     expect(enqueue).toHaveBeenCalled();
-    expect(snackbar.open).toHaveBeenCalledWith(expect.stringContaining('Não foi possível salvar'), 'Fechar', expect.any(Object));
+    expect(snackbar.open).toHaveBeenCalledWith(
+      expect.stringContaining('Não foi possível salvar'),
+      'Fechar',
+      expect.any(Object),
+    );
   });
 
   it.each([null, false])(

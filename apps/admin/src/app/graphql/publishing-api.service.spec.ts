@@ -68,9 +68,13 @@ describe('PublicationApiService', () => {
       expect.stringContaining('mutation RunPublicationBulkOperation'),
       { input: bulkInput },
     );
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(4, expect.stringContaining('mutation CreatePublicationPreview'), {
-      input: previewInput,
-    });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('mutation CreatePublicationPreview'),
+      {
+        input: previewInput,
+      },
+    );
 
     const workspaceQuery = graphqlHttp.request.mock.calls[0][0] as string;
     expect(workspaceQuery).toContain('publicationWorkspace');
@@ -81,10 +85,7 @@ describe('PublicationApiService', () => {
   it('omits workspace variables when no filters are supplied', async () => {
     await expect(firstValueFrom(service.getWorkspace())).resolves.toEqual(workspaceFixture());
 
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query PublicationWorkspace'),
-      undefined,
-    );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query PublicationWorkspace'), undefined);
     expect(graphqlHttp.request.mock.calls[0]).toHaveLength(2);
   });
 

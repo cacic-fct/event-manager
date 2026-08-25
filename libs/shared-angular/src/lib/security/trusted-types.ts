@@ -1,11 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Service,
-  PLATFORM_ID,
-  inject,
-  makeEnvironmentProviders,
-  provideEnvironmentInitializer,
-} from '@angular/core';
+import { Service, PLATFORM_ID, inject, makeEnvironmentProviders, provideEnvironmentInitializer } from '@angular/core';
 
 const EXTERNAL_SCRIPT_URLS = new Set([
   'https://a.cacic.com.br/b.js',

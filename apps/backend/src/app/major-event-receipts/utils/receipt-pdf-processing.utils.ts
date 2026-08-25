@@ -62,7 +62,10 @@ export function assertReceiptPdfPageCount(pageCount: number): void {
   }
 }
 
-async function withReceiptPdf<T>(buffer: Buffer, operation: (inputPath: string, directory: string) => Promise<T>): Promise<T> {
+async function withReceiptPdf<T>(
+  buffer: Buffer,
+  operation: (inputPath: string, directory: string) => Promise<T>,
+): Promise<T> {
   const directory = await fs.mkdtemp(join(tmpdir(), 'cacic-receipt-'));
   const inputPath = join(directory, 'receipt.pdf');
 
@@ -115,7 +118,9 @@ async function readReceiptPdfPageCount(inputPath: string): Promise<number> {
     }
 
     if (isCommandLimitError(error)) {
-      throw new ReceiptPdfProcessingError('A leitura das páginas do PDF do comprovante excedeu os limites de segurança.');
+      throw new ReceiptPdfProcessingError(
+        'A leitura das páginas do PDF do comprovante excedeu os limites de segurança.',
+      );
     }
 
     throw new ReceiptPdfProcessingError('Não foi possível ler as páginas do PDF do comprovante.');
@@ -159,7 +164,10 @@ async function renderPdfPreview(inputPath: string, directory: string, pageCount:
       { timeout: RECEIPT_PDF_PROCESSING_TIMEOUT_MS, maxBuffer: 64 * 1024 },
     );
     const pageFileNames = (await fs.readdir(directory))
-      .map((fileName) => ({ fileName, pageNumber: Number.parseInt(/^preview-(\d+)\.png$/.exec(fileName)?.[1] ?? '', 10) }))
+      .map((fileName) => ({
+        fileName,
+        pageNumber: Number.parseInt(/^preview-(\d+)\.png$/.exec(fileName)?.[1] ?? '', 10),
+      }))
       .filter(({ pageNumber }) => Number.isSafeInteger(pageNumber))
       .sort((first, second) => first.pageNumber - second.pageNumber);
     if (pageFileNames.length !== pageCount) {

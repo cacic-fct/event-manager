@@ -31,7 +31,8 @@ export function observeEChartsTheme(element: HTMLElement, refresh: () => void): 
   observer.observe(document.documentElement, observerOptions);
   observer.observe(document.body, observerOptions);
 
-  const colorSchemeQuery = typeof view.matchMedia === 'function' ? view.matchMedia('(prefers-color-scheme: dark)') : null;
+  const colorSchemeQuery =
+    typeof view.matchMedia === 'function' ? view.matchMedia('(prefers-color-scheme: dark)') : null;
   colorSchemeQuery?.addEventListener('change', scheduleRefresh);
 
   return () => {
