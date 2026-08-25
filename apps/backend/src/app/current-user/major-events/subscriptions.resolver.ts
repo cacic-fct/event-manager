@@ -188,10 +188,6 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     await this.frozenResources.assertMajorEventMutable(input.majorEventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const now = new Date();
-    let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
-    if (selectedEventIds.length === 0) {
-      throw new BadRequestException('At least one event must be selected for the major-event subscription.');
-    }
 
     const paymentInfoTableExists = await this.publicEvents.hasPaymentInfoTable();
     let majorEvent = await this.prisma.majorEvent.findFirst({
@@ -212,25 +208,84 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       );
     }
 
-    const existingSubscriptionBeforeWindow = await this.prisma.majorEventSubscription.findFirst({
-      where: {
-        majorEventId: input.majorEventId,
-        personId: person.id,
-        deletedAt: null,
-        subscriptionStatus: { not: SubscriptionStatus.CANCELED },
-      },
-      select: {
-        imageLicenseAgreementAccepted: true,
-      },
-    });
-    const isImageLicenseAgreementUpdate =
+    const isSubscriptionWindowClosed =
+      (majorEvent.subscriptionStartDate != null && now < majorEvent.subscriptionStartDate) ||
+      (majorEvent.subscriptionEndDate != null && now > majorEvent.subscriptionEndDate);
+    const shouldAttemptConsentOnlyUpdate =
       majorEvent.requiresImageLicenseAgreement &&
       input.imageLicenseAgreementAccepted === true &&
-      existingSubscriptionBeforeWindow != null &&
-      !existingSubscriptionBeforeWindow.imageLicenseAgreementAccepted &&
+      isSubscriptionWindowClosed &&
       majorEvent.endDate > now;
-    if (!isImageLicenseAgreementUpdate) {
-      this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
+    if (shouldAttemptConsentOnlyUpdate) {
+      const acceptedSubscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+        const transactionNow = new Date();
+        const transactionMajorEvent = await tx.majorEvent.findFirst({
+          where: {
+            ...PUBLIC_MAJOR_EVENT_WHERE,
+            id: input.majorEventId,
+          },
+          select: this.publicEvents.getMajorEventSelect(paymentInfoTableExists),
+        });
+        if (!transactionMajorEvent) {
+          throw new NotFoundException(`Major event ${input.majorEventId} was not found.`);
+        }
+
+        const transactionWindowClosed =
+          (transactionMajorEvent.subscriptionStartDate != null &&
+            transactionNow < transactionMajorEvent.subscriptionStartDate) ||
+          (transactionMajorEvent.subscriptionEndDate != null &&
+            transactionNow > transactionMajorEvent.subscriptionEndDate);
+        if (
+          !transactionMajorEvent.requiresImageLicenseAgreement ||
+          transactionMajorEvent.endDate <= transactionNow ||
+          !transactionWindowClosed
+        ) {
+          return null;
+        }
+
+        const existingSubscription = await tx.majorEventSubscription.findFirst({
+          where: {
+            majorEventId: input.majorEventId,
+            personId: person.id,
+            deletedAt: null,
+            subscriptionStatus: { not: SubscriptionStatus.CANCELED },
+            imageLicenseAgreementAccepted: false,
+          },
+          select: { id: true },
+        });
+        if (!existingSubscription) {
+          return null;
+        }
+
+        return tx.majorEventSubscription.update({
+          where: { id: existingSubscription.id },
+          data: { imageLicenseAgreementAccepted: true },
+          select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
+        });
+      });
+
+      if (acceptedSubscription) {
+        const { selectedEvents, notSubscribedEvents } =
+          await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(person.id, input.majorEventId);
+        return {
+          id: acceptedSubscription.id,
+          majorEventId: acceptedSubscription.majorEventId,
+          majorEvent: this.mapper.mapPublicMajorEvent(acceptedSubscription.majorEvent),
+          subscriptionStatus: acceptedSubscription.subscriptionStatus,
+          amountPaid: acceptedSubscription.amountPaid ?? undefined,
+          paymentDate: acceptedSubscription.paymentDate ?? undefined,
+          paymentTier: acceptedSubscription.paymentTier ?? undefined,
+          imageLicenseAgreementAccepted: acceptedSubscription.imageLicenseAgreementAccepted,
+          selectedEvents,
+          notSubscribedEvents,
+        };
+      }
+    }
+    this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
+
+    let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
+    if (selectedEventIds.length === 0) {
+      throw new BadRequestException('At least one event must be selected for the major-event subscription.');
     }
 
     let isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
@@ -325,26 +380,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         );
       }
 
-      const transactionExistingSubscriptionBeforeWindow = await tx.majorEventSubscription.findFirst({
-        where: {
-          majorEventId: input.majorEventId,
-          personId: person.id,
-          deletedAt: null,
-          subscriptionStatus: { not: SubscriptionStatus.CANCELED },
-        },
-        select: {
-          imageLicenseAgreementAccepted: true,
-        },
-      });
-      const transactionIsImageLicenseAgreementUpdate =
-        transactionMajorEvent.requiresImageLicenseAgreement &&
-        input.imageLicenseAgreementAccepted === true &&
-        transactionExistingSubscriptionBeforeWindow != null &&
-        !transactionExistingSubscriptionBeforeWindow.imageLicenseAgreementAccepted &&
-        transactionMajorEvent.endDate > transactionNow;
-      if (!transactionIsImageLicenseAgreementUpdate) {
-        this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(transactionMajorEvent);
-      }
+      this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(transactionMajorEvent);
 
       const transactionAllSubscriptionEvents = await tx.event.findMany({
         where: {
