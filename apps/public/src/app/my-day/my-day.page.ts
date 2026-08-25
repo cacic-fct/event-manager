@@ -1,12 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  PLATFORM_ID,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
@@ -140,7 +133,6 @@ export class MyDayPage {
     this.routeTrees.set(route, tree);
     return tree;
   }
-
 }
 
 function millisecondsUntilNextMinute(now = new Date()): number {

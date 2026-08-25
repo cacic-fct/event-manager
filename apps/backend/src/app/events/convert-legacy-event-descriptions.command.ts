@@ -1,9 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  cleanLegacyEventShortDescription,
-  convertLegacyEventDescription,
-} from './legacy-event-description-converter';
+import { cleanLegacyEventShortDescription, convertLegacyEventDescription } from './legacy-event-description-converter';
 
 const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 1_000;
@@ -60,9 +57,7 @@ export async function convertLegacyEventDescriptionsCommand(args: string[]): Pro
   };
   let cursor: string | undefined;
 
-  Logger.log(
-    `Legacy event description conversion started in ${options.apply ? 'APPLY' : 'DRY-RUN'} mode.`,
-  );
+  Logger.log(`Legacy event description conversion started in ${options.apply ? 'APPLY' : 'DRY-RUN'} mode.`);
 
   try {
     await prisma.$connect();

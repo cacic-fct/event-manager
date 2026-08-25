@@ -174,9 +174,7 @@ export function sportsPublicTournamentRecord(overrides: Record<string, unknown> 
       isPaymentRequired: true,
       majorEventPrices: [
         {
-          tiers: [
-            { id: 'student', name: 'Estudante', value: 2500, includesSportsRegistration: true },
-          ],
+          tiers: [{ id: 'student', name: 'Estudante', value: 2500, includesSportsRegistration: true }],
         },
       ],
     },

@@ -48,7 +48,10 @@ test('reads standard extended MySQL dump inserts without a live database', () =>
   const snapshot = parseEvcompSqlDump(sql);
   assert.equal(snapshot.people.length, 1);
   assert.equal(snapshot.people[0].name, "Ana D'Ávila");
-  assert.deepEqual(snapshot.registrations.map((item) => item.sourceActivityId), [30, 31]);
+  assert.deepEqual(
+    snapshot.registrations.map((item) => item.sourceActivityId),
+    [30, 31],
+  );
   assert.equal(snapshot.registrations[0].createdAt.toISOString(), '2026-08-16T18:00:00.000Z');
   assert.equal(snapshot.attendances[0].recordedAt.toISOString(), '2026-08-16T19:00:00.000Z');
   assert.equal(snapshot.lecturers.length, 1);

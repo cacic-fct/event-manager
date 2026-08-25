@@ -1,14 +1,6 @@
 import '@angular/compiler';
-import {
-  EnvironmentInjector,
-  PLATFORM_ID,
-  createEnvironmentInjector,
-  runInInjectionContext,
-} from '@angular/core';
-import {
-  PublicMapTileCacheWarmupService,
-  openStreetMapTileWarmupUrls,
-} from './public-map-tile-cache-warmup.service';
+import { EnvironmentInjector, PLATFORM_ID, createEnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { PublicMapTileCacheWarmupService, openStreetMapTileWarmupUrls } from './public-map-tile-cache-warmup.service';
 
 interface PostedServiceWorkerMessage {
   type: string;
@@ -58,9 +50,7 @@ describe('PublicMapTileCacheWarmupService', () => {
 
     expect(urls).toHaveLength(10);
     expect(new Set(urls).size).toBe(10);
-    expect(urls.every((url) => /^https:\/\/tile\.openstreetmap\.org\/(16|18)\/\d+\/\d+\.png$/.test(url))).toBe(
-      true,
-    );
+    expect(urls.every((url) => /^https:\/\/tile\.openstreetmap\.org\/(16|18)\/\d+\/\d+\.png$/.test(url))).toBe(true);
   });
 
   it('shares successful warmups without posting the same location twice', async () => {

@@ -46,12 +46,35 @@ import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
     }
   `,
   styles: `
-    :host { display: block; min-width: 0; }
-    .attendance-heatmap { width: 100%; min-height: 360px; background: var(--mat-sys-surface-container); }
-    .map-empty { min-height: 280px; display: grid; place-content: center; justify-items: center; gap: 8px; color: var(--mat-sys-on-surface-variant); text-align: center; }
-    .map-empty .material-symbols-outlined { font-size: 2rem; }
-    .map-empty p { margin: 0; }
-    @media (max-width: 720px) { .attendance-heatmap { min-height: 300px; } }
+    :host {
+      display: block;
+      min-width: 0;
+    }
+    .attendance-heatmap {
+      width: 100%;
+      min-height: 360px;
+      background: var(--mat-sys-surface-container);
+    }
+    .map-empty {
+      min-height: 280px;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 8px;
+      color: var(--mat-sys-on-surface-variant);
+      text-align: center;
+    }
+    .map-empty .material-symbols-outlined {
+      font-size: 2rem;
+    }
+    .map-empty p {
+      margin: 0;
+    }
+    @media (max-width: 720px) {
+      .attendance-heatmap {
+        min-height: 300px;
+      }
+    }
   `,
 })
 export class AttendanceHeatmapComponent implements OnDestroy {
@@ -118,9 +141,8 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       return feature;
     });
     const projectedPoints = points.map((point) => fromLonLat([point.longitude, point.latitude]));
-    const eventCenter = eventLatitude != null && eventLongitude != null
-      ? fromLonLat([eventLongitude, eventLatitude])
-      : null;
+    const eventCenter =
+      eventLatitude != null && eventLongitude != null ? fromLonLat([eventLongitude, eventLatitude]) : null;
     const center = eventCenter ?? projectedPoints[0];
     const layers: BaseLayer[] = [
       new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
@@ -137,13 +159,15 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       const eventFeature = new Feature({
         geometry: new Point(fromLonLat([eventLongitude, eventLatitude])),
       });
-      eventFeature.setStyle(new Style({
-        image: new CircleStyle({
-          radius: 7,
-          fill: new Fill({ color: '#ffffff' }),
-          stroke: new Stroke({ color: '#1b5e20', width: 3 }),
+      eventFeature.setStyle(
+        new Style({
+          image: new CircleStyle({
+            radius: 7,
+            fill: new Fill({ color: '#ffffff' }),
+            stroke: new Stroke({ color: '#1b5e20', width: 3 }),
+          }),
         }),
-      }));
+      );
       layers.push(new VectorLayer({ source: new VectorSource({ features: [eventFeature] }) }));
     }
 

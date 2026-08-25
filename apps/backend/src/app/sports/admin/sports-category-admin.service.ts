@@ -61,7 +61,11 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           })
         : await tx.eventGroup.create({
             data: {
-              name: this.backingEventGroupName(tournament.majorEvent?.name ?? 'Torneio esportivo', name, input.division),
+              name: this.backingEventGroupName(
+                tournament.majorEvent?.name ?? 'Torneio esportivo',
+                name,
+                input.division,
+              ),
               emoji: input.emoji?.trim() || this.defaultSportEmoji(input.sport),
               shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
               createdById: actorId,
@@ -281,17 +285,23 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
       if (updated.count !== 1) {
         throw new ConflictException('A modalidade mudou. Recarregue e tente novamente.');
       }
-      if (name !== undefined || input.division !== undefined || input.emoji !== undefined || input.shouldIssueCertificate !== undefined) {
-        const tournamentPolicy = input.shouldIssueCertificate === null
-          ? await tx.sportsTournament.findUniqueOrThrow({
-              where: { id: existing.tournamentId },
-              select: { shouldIssueCertificate: true },
-            })
-          : null;
+      if (
+        name !== undefined ||
+        input.division !== undefined ||
+        input.emoji !== undefined ||
+        input.shouldIssueCertificate !== undefined
+      ) {
+        const tournamentPolicy =
+          input.shouldIssueCertificate === null
+            ? await tx.sportsTournament.findUniqueOrThrow({
+                where: { id: existing.tournamentId },
+                select: { shouldIssueCertificate: true },
+              })
+            : null;
         const effectiveCertificatePolicy =
           input.shouldIssueCertificate === undefined
             ? false
-            : input.shouldIssueCertificate ?? tournamentPolicy?.shouldIssueCertificate ?? false;
+            : (input.shouldIssueCertificate ?? tournamentPolicy?.shouldIssueCertificate ?? false);
         await tx.eventGroup.update({
           where: { id: existing.eventGroupId },
           data: {

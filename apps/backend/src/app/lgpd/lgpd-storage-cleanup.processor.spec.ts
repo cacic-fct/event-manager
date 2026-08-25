@@ -10,7 +10,10 @@ describe('LgpdStorageCleanupProcessor', () => {
   });
 
   it('dispatches reconcile and valid object jobs', async () => {
-    const cleanup = { reconcile: jest.fn().mockResolvedValue(undefined), process: jest.fn().mockResolvedValue(undefined) };
+    const cleanup = {
+      reconcile: jest.fn().mockResolvedValue(undefined),
+      process: jest.fn().mockResolvedValue(undefined),
+    };
     const processor = new LgpdStorageCleanupProcessor(cleanup as never);
 
     await processor.process({ name: 'reconcile', data: {} } as never);

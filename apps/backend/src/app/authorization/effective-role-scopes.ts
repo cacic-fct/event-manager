@@ -73,17 +73,12 @@ export async function findActiveRolePermissionScopes(
   const filter = permissions ? new Set(permissions) : null;
   return assignments.flatMap((assignment) =>
     [...(rolePermissions.get(assignment.roleId) ?? [])].flatMap((permission) =>
-      filter && !filter.has(permission)
-        ? []
-        : assignment.scopes.map((scope) => ({ permission, ...scope })),
+      filter && !filter.has(permission) ? [] : assignment.scopes.map((scope) => ({ permission, ...scope })),
     ),
   );
 }
 
-export async function resolveRoleIdsForPermission(
-  prisma: PrismaService,
-  permission: Permission,
-): Promise<string[]> {
+export async function resolveRoleIdsForPermission(prisma: PrismaService, permission: Permission): Promise<string[]> {
   const effective = await resolveEffectiveRolePermissions(prisma);
   return [...effective.entries()].filter(([, permissions]) => permissions.has(permission)).map(([roleId]) => roleId);
 }
@@ -109,11 +104,14 @@ async function resolveEffectiveRolePermissions(prisma: PrismaService): Promise<M
     const definition = role.systemKey
       ? EVENT_MANAGER_SYSTEM_ROLE_BY_KEY.get(role.systemKey as EventManagerSystemRoleKey)
       : null;
-    const direct = (definition?.permissions ?? role.permissions.map((item) => item.permission))
-      .filter((permission): permission is Permission => EVENT_MANAGER_PERMISSION_SET.has(permission as Permission));
+    const direct = (definition?.permissions ?? role.permissions.map((item) => item.permission)).filter(
+      (permission): permission is Permission => EVENT_MANAGER_PERMISSION_SET.has(permission as Permission),
+    );
     const permissions = new Set(direct);
     const next = new Set(visiting).add(roleId);
-    role.parentLinks.forEach((link) => visit(link.parentRoleId, next).forEach((permission) => permissions.add(permission)));
+    role.parentLinks.forEach((link) =>
+      visit(link.parentRoleId, next).forEach((permission) => permissions.add(permission)),
+    );
     const expanded = expandHardPermissionDependencies(permissions);
     resolved.set(roleId, expanded);
     return expanded;

@@ -90,7 +90,12 @@ test('excludes the recursive output directory and keeps relative output names', 
     const files = iterInputCsvPaths(directory, '*.csv', true, output);
     assert.deepEqual(files, [resolve(directory, 'nested/two.csv'), resolve(directory, 'one.csv')].sort());
     assert.equal(
-      buildOutputPath(resolve(directory, 'nested/two.csv'), resolve(directory), resolve(directory, 'crossed'), '_crossed'),
+      buildOutputPath(
+        resolve(directory, 'nested/two.csv'),
+        resolve(directory),
+        resolve(directory, 'crossed'),
+        '_crossed',
+      ),
       resolve(directory, 'crossed/nested/two_crossed.csv'),
     );
   } finally {

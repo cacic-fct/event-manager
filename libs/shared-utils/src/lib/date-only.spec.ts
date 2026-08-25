@@ -1,9 +1,4 @@
-import {
-  formatDateOnly,
-  formatDateOnlyForDisplay,
-  formatDateOnlyUtcBoundary,
-  parseDateOnly,
-} from './date-only';
+import { formatDateOnly, formatDateOnlyForDisplay, formatDateOnlyUtcBoundary, parseDateOnly } from './date-only';
 
 describe('date-only utilities', () => {
   it('round-trips a calendar date without using UTC serialization', () => {

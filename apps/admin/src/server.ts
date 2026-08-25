@@ -4,10 +4,7 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import {
-  applyCspToHtmlResponse,
-  OPENSTREETMAP_TILE_REFERRER_POLICY,
-} from '@cacic-fct/shared-utils';
+import { applyCspToHtmlResponse, OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 import express from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';

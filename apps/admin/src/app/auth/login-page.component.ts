@@ -1,5 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, InjectionToken, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  InjectionToken,
+  PLATFORM_ID,
+  inject,
+  isDevMode,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';

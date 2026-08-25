@@ -261,18 +261,17 @@ export class PublicMapGeolocationService {
     }
     this.orientationHandler = (event) => {
       const compassHeading = (event as DeviceOrientationEventWithCompass).webkitCompassHeading;
-      const rawHeading = typeof compassHeading === 'number' && Number.isFinite(compassHeading)
-        ? compassHeading
-        : event.alpha === null
-          ? null
-          : 360 - event.alpha;
+      const rawHeading =
+        typeof compassHeading === 'number' && Number.isFinite(compassHeading)
+          ? compassHeading
+          : event.alpha === null
+            ? null
+            : 360 - event.alpha;
       if (rawHeading === null) {
         return;
       }
       const heading = ((rawHeading % 360) + 360) % 360;
-      this.zone.run(() =>
-        this.orientation.set({ heading, absolute: event.absolute, timestamp: Date.now() }),
-      );
+      this.zone.run(() => this.orientation.set({ heading, absolute: event.absolute, timestamp: Date.now() }));
     };
     window.addEventListener('deviceorientation', this.orientationHandler, true);
     this.isTrackingOrientation.set(true);
@@ -330,9 +329,7 @@ export class PublicMapGeolocationService {
     };
   }
 
-  private toPositionOptions(
-    options: Required<Omit<PublicMapTrackingOptions, 'trackOrientation'>>,
-  ): PositionOptions {
+  private toPositionOptions(options: Required<Omit<PublicMapTrackingOptions, 'trackOrientation'>>): PositionOptions {
     return {
       enableHighAccuracy: options.enableHighAccuracy,
       timeout: options.timeout,

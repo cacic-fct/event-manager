@@ -134,9 +134,7 @@ export function parseCsvText(
 
   const rows: CsvRow[] = dataRecords.map((values, index) => {
     if (values.length > headers.length) {
-      throw new CsvError(
-        `CSV row ${index + 2} has ${values.length} fields but the header has ${headers.length}.`,
-      );
+      throw new CsvError(`CSV row ${index + 2} has ${values.length} fields but the header has ${headers.length}.`);
     }
     const row: CsvRow = {};
     headers.forEach((header, headerIndex) => {
@@ -173,10 +171,7 @@ export async function writeCsvAtomic(
   rows: readonly CsvRow[],
 ): Promise<void> {
   await mkdir(dirname(filePath), { recursive: true });
-  const temporaryPath = join(
-    dirname(filePath),
-    `.${basename(filePath)}.${process.pid}.${randomUUID()}.tmp`,
-  );
+  const temporaryPath = join(dirname(filePath), `.${basename(filePath)}.${process.pid}.${randomUUID()}.tmp`);
   try {
     await writeFile(temporaryPath, serializeCsv(fieldnames, rows), { encoding: 'utf8', mode: 0o600 });
     await rename(temporaryPath, filePath);

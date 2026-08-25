@@ -56,27 +56,27 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as { query?: string };
+          http.post('/api/graphql', async ({ request }) => {
+            const body = (await request.json()) as { query?: string };
 
-          if (body.query?.includes('ReissueAllCertificates')) {
-            if (activeArgs.operationState === 'loading') await delay('infinite');
-            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
-            if (activeArgs.operationState === 'error') {
-              return HttpResponse.json({ errors: [{ message: 'Não foi possível reemitir os certificados.' }] });
-            }
-            return HttpResponse.json({
-              data: {
-                reissueAllCertificates: {
-                  configCount: activeArgs.configCount,
-                  certificateCount: activeArgs.certificateCount,
+            if (body.query?.includes('ReissueAllCertificates')) {
+              if (activeArgs.operationState === 'loading') await delay('infinite');
+              if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+              if (activeArgs.operationState === 'error') {
+                return HttpResponse.json({ errors: [{ message: 'Não foi possível reemitir os certificados.' }] });
+              }
+              return HttpResponse.json({
+                data: {
+                  reissueAllCertificates: {
+                    configCount: activeArgs.configCount,
+                    certificateCount: activeArgs.certificateCount,
+                  },
                 },
-              },
-            });
-          }
+              });
+            }
 
-          return HttpResponse.json({ data: {} });
-        }),
+            return HttpResponse.json({ data: {} });
+          }),
         ],
       },
     },

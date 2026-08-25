@@ -9,9 +9,17 @@ import { PeopleService } from './people.service';
 
 describe('PeopleService after permission management extraction', () => {
   const person = {
-    id: 'person-1', name: 'Ana Souza', email: 'ana@example.com', secondaryEmails: [], phone: null,
-    identityDocument: null, academicId: null, userId: null, createdAt: '2026-08-17T12:00:00.000Z',
-    updatedAt: '2026-08-17T12:00:00.000Z', lecturerProfile: null,
+    id: 'person-1',
+    name: 'Ana Souza',
+    email: 'ana@example.com',
+    secondaryEmails: [],
+    phone: null,
+    identityDocument: null,
+    academicId: null,
+    userId: null,
+    createdAt: '2026-08-17T12:00:00.000Z',
+    updatedAt: '2026-08-17T12:00:00.000Z',
+    lecturerProfile: null,
   };
   const api = {
     listPeopleSummaries: vi.fn().mockReturnValue(of([person])),

@@ -2,11 +2,7 @@ import { BadRequestException, ForbiddenException, UnauthorizedException, type Ar
 import { validate } from 'class-validator';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { AccountMergeController } from './account-merge.controller';
-import {
-  AccountMergeAcknowledgementDto,
-  AccountMergeNotificationDto,
-  AccountMergeScoreRequestDto,
-} from './dto';
+import { AccountMergeAcknowledgementDto, AccountMergeNotificationDto, AccountMergeScoreRequestDto } from './dto';
 import { ALLOW_NON_ONBOARDED_KEY, REQUIRED_ROLES_KEY } from '../auth/auth.constants';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
@@ -86,27 +82,32 @@ describe('AccountMergeController', () => {
   it.each([
     ['score', 'account-merge:score', 'scoreAccountMergeCandidates'],
     ['merge', 'account-merge:write', 'acknowledgeAccountMerge'],
-  ] as const)('does not call the %s service operation when M2M authentication fails', async (operation, role, serviceMethod) => {
-    keycloakAuthService.assertMachineToMachinePrincipal.mockImplementation(() => {
-      throw operation === 'score'
-        ? new UnauthorizedException('Missing service credentials.')
-        : new ForbiddenException('Missing required M2M role.');
-    });
+  ] as const)(
+    'does not call the %s service operation when M2M authentication fails',
+    async (operation, role, serviceMethod) => {
+      keycloakAuthService.assertMachineToMachinePrincipal.mockImplementation(() => {
+        throw operation === 'score'
+          ? new UnauthorizedException('Missing service credentials.')
+          : new ForbiddenException('Missing required M2M role.');
+      });
 
-    const invocation =
-      operation === 'score'
-        ? controller.score({ user: undefined } as never, { userIds: ['candidate-a'] })
-        : controller.merge({ user: undefined } as never, {
-            eventId: 'merge-event-1',
-            type: 'account.merged',
-            oldUserId: 'old-user',
-            newUserId: 'new-user',
-            occurredAt: publicFixtureDateFromNow(1),
-          });
+      const invocation =
+        operation === 'score'
+          ? controller.score({ user: undefined } as never, { userIds: ['candidate-a'] })
+          : controller.merge({ user: undefined } as never, {
+              eventId: 'merge-event-1',
+              type: 'account.merged',
+              oldUserId: 'old-user',
+              newUserId: 'new-user',
+              occurredAt: publicFixtureDateFromNow(1),
+            });
 
-    await expect(invocation).rejects.toBeInstanceOf(operation === 'score' ? UnauthorizedException : ForbiddenException);
-    expect(accountMergeService[serviceMethod]).not.toHaveBeenCalled();
-  });
+      await expect(invocation).rejects.toBeInstanceOf(
+        operation === 'score' ? UnauthorizedException : ForbiddenException,
+      );
+      expect(accountMergeService[serviceMethod]).not.toHaveBeenCalled();
+    },
+  );
 
   it('propagates account-merge service failures without exposing a second payload', async () => {
     const failure = new BadRequestException('Inconsistent merge event.');
@@ -127,10 +128,7 @@ describe('AccountMergeController', () => {
 
   it('rejects invalid score and merge DTOs through the configured REST validation contract', async () => {
     await expect(
-      REST_VALIDATION_PIPE.transform(
-        { userIds: ['candidate-a', 7] },
-        bodyMetadata(AccountMergeScoreRequestDto),
-      ),
+      REST_VALIDATION_PIPE.transform({ userIds: ['candidate-a', 7] }, bodyMetadata(AccountMergeScoreRequestDto)),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       REST_VALIDATION_PIPE.transform(
@@ -159,7 +157,9 @@ describe('AccountMergeController', () => {
   });
 });
 
-function bodyMetadata(metatype: typeof AccountMergeScoreRequestDto | typeof AccountMergeNotificationDto): ArgumentMetadata {
+function bodyMetadata(
+  metatype: typeof AccountMergeScoreRequestDto | typeof AccountMergeNotificationDto,
+): ArgumentMetadata {
   return {
     type: 'body',
     metatype,

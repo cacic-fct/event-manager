@@ -95,10 +95,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         input.loserAdvancesToSide === undefined ? match.loserAdvancesToSide : input.loserAdvancesToSide;
       this.assertAdvancementTargetPair(winnerAdvancesToId, winnerAdvancesToSide, 'vencedor');
       this.assertAdvancementTargetPair(loserAdvancesToId, loserAdvancesToSide, 'perdedor');
-      await this.assertAdvancementTargets(tx, match.categoryId, match.id, [
-        winnerAdvancesToId,
-        loserAdvancesToId,
-      ]);
+      await this.assertAdvancementTargets(tx, match.categoryId, match.id, [winnerAdvancesToId, loserAdvancesToId]);
       const livestreamProvider =
         input.livestreamProvider === undefined ? match.livestreamProvider : input.livestreamProvider;
       const requestedLivestreamUrl =

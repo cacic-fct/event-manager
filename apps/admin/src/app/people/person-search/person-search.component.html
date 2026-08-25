@@ -37,7 +37,9 @@
         <span>
           <strong>{{ person.name }}</strong>
           <small>{{ person.email || 'Sem e-mail principal' }}</small>
-          @if (showIdentitySummary()) { <small>{{ identitySummary(person) }}</small> }
+          @if (showIdentitySummary()) {
+            <small>{{ identitySummary(person) }}</small>
+          }
         </span>
         <mat-icon aria-hidden="true">{{ resultActionIcon() }}</mat-icon>
       </button>

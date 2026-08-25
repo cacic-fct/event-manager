@@ -1,9 +1,4 @@
-import {
-  SportsMatchState,
-  SportsPaymentStatus,
-  SportsReviewStatus,
-  SportsRosterRole,
-} from '@prisma/client';
+import { SportsMatchState, SportsPaymentStatus, SportsReviewStatus, SportsRosterRole } from '@prisma/client';
 import { sportsTestDate } from '../testing/sports-backend.fixtures';
 import { evaluateSportsMatchReadiness } from './sports-match-readiness';
 
@@ -16,9 +11,7 @@ describe('evaluateSportsMatchReadiness', () => {
       rosters: [
         {
           registrationId: 'registration-home',
-          entries: [
-            rosterEntry('home-1', 'home-person-1', true, SportsPaymentStatus.PAID),
-          ],
+          entries: [rosterEntry('home-1', 'home-person-1', true, SportsPaymentStatus.PAID)],
         },
         {
           registrationId: 'registration-away',
@@ -57,7 +50,10 @@ describe('evaluateSportsMatchReadiness', () => {
         }),
         expect.objectContaining({ code: 'PAYMENT', registrationId: 'registration-away', missing: 1 }),
         expect.objectContaining({ code: 'OFFICIAL_ATTENDANCE', missing: 1, actual: 1 }),
-        expect.objectContaining({ code: 'PRIOR_BRACKET_RESULT', message: 'Aguardando resultado aprovado da partida anterior.' }),
+        expect.objectContaining({
+          code: 'PRIOR_BRACKET_RESULT',
+          message: 'Aguardando resultado aprovado da partida anterior.',
+        }),
       ]),
     );
   });
@@ -139,12 +135,7 @@ describe('evaluateSportsMatchReadiness', () => {
   });
 });
 
-function rosterEntry(
-  id: string,
-  personId: string,
-  checkedIn: boolean,
-  paymentStatus: SportsPaymentStatus,
-) {
+function rosterEntry(id: string, personId: string, checkedIn: boolean, paymentStatus: SportsPaymentStatus) {
   return {
     id,
     role: SportsRosterRole.PLAYER,
@@ -163,9 +154,7 @@ function official(id: string, personId: string, checkedIn: boolean) {
     personId,
     role: 'REFEREE',
     person: {
-      attendances: checkedIn
-        ? [{ status: 'PRESENT', attendedAt: sportsTestDate(-60_000) }]
-        : [],
+      attendances: checkedIn ? [{ status: 'PRESENT', attendedAt: sportsTestDate(-60_000) }] : [],
     },
   };
 }

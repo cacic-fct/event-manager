@@ -37,9 +37,7 @@ describe('WeatherProcessor', () => {
   it('rejects unrelated queue jobs', async () => {
     const processor = createProcessor();
 
-    await expect(processor.process({ name: 'unknown', data: {} } as never)).rejects.toThrow(
-      'Unsupported weather job',
-    );
+    await expect(processor.process({ name: 'unknown', data: {} } as never)).rejects.toThrow('Unsupported weather job');
 
     expect(refreshEventWeatherById).not.toHaveBeenCalled();
     expect(scheduleUpcomingEventRefreshes).not.toHaveBeenCalled();

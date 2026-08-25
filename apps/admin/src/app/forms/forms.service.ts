@@ -860,8 +860,7 @@ export class FormsService {
         link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
           ? (link.allowLecturerManualPublish ?? false)
           : false,
-      priceTierIds:
-        link.targetType === 'MAJOR_EVENT' && link.insertInSubscriptionFlow ? (link.priceTierIds ?? []) : [],
+      priceTierIds: link.targetType === 'MAJOR_EVENT' && link.insertInSubscriptionFlow ? (link.priceTierIds ?? []) : [],
     };
 
     if (link.targetType === 'EVENT') {

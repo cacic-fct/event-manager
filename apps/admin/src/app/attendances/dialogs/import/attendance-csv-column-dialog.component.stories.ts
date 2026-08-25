@@ -132,21 +132,19 @@ function createDialogData(host: AttendanceCsvColumnDialogStoryHostComponent): At
     { length: Math.min(Math.max(host.headerCount(), 0), 12) },
     (_, index) => standardHeaders[index] ?? `Coluna ${index + 1}`,
   );
-  const previewRows = Array.from(
-    { length: Math.min(Math.max(host.previewRowCount(), 0), 30) },
-    (_, rowIndex) =>
-      Object.fromEntries(
-        headers.map((header, headerIndex) => {
-          const empty = host.emptyValueEvery() > 0 && (rowIndex + 1) % host.emptyValueEvery() === 0;
-          const value =
-            headerIndex === 0
-              ? host.longValues()
-                ? `${faker.person.fullName()} de Albuquerque Vasconcelos — representante da comunidade universitária`
-                : faker.person.fullName()
-              : faker.internet.email();
-          return [header, empty ? '' : value];
-        }),
-      ),
+  const previewRows = Array.from({ length: Math.min(Math.max(host.previewRowCount(), 0), 30) }, (_, rowIndex) =>
+    Object.fromEntries(
+      headers.map((header, headerIndex) => {
+        const empty = host.emptyValueEvery() > 0 && (rowIndex + 1) % host.emptyValueEvery() === 0;
+        const value =
+          headerIndex === 0
+            ? host.longValues()
+              ? `${faker.person.fullName()} de Albuquerque Vasconcelos — representante da comunidade universitária`
+              : faker.person.fullName()
+            : faker.internet.email();
+        return [header, empty ? '' : value];
+      }),
+    ),
   );
 
   return {

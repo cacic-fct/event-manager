@@ -30,7 +30,8 @@ describe('AttendancesApiService uncovered operations', () => {
     const result = firstValueFrom(service.getMajorEventDetails('major-1'));
 
     const detailsRequest = http.expectOne(
-      (request) => request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventDetails'),
+      (request) =>
+        request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventDetails'),
     );
     expect(detailsRequest.request.body.variables).toEqual({ majorEventId: 'major-1' });
     detailsRequest.flush({
@@ -63,7 +64,8 @@ describe('AttendancesApiService uncovered operations', () => {
     });
 
     const feedRequest = http.expectOne(
-      (request) => request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventFeedItem'),
+      (request) =>
+        request.url === '/api/graphql' && String(request.body?.query).includes('CurrentUserMajorEventFeedItem'),
     );
     expect(feedRequest.request.body.variables).toBeUndefined();
     feedRequest.flush({

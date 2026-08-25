@@ -487,7 +487,7 @@ describe('offline public data access integration', () => {
     );
   });
 
-  it('keeps another collector\'s item retryable when the current uploader is forbidden', async () => {
+  it("keeps another collector's item retryable when the current uploader is forbidden", async () => {
     const service = injectService(AttendanceOfflineQueueService);
     await database.attendanceQueue.put(
       queueItem('shared-device', 'SYNCING', {
@@ -739,7 +739,7 @@ describe('offline public data access integration', () => {
       await expect(attendanceQueue.applyCommitResults('user-1', [])).resolves.toBeUndefined();
       await expect(attendanceQueue.remove('user-1', 'offline')).resolves.toBeUndefined();
       await expect(attendanceQueue.retry('user-1', 'offline')).resolves.toBeUndefined();
-    await expect(userData.getLatestUserSnapshot('user-1')).resolves.toBeNull();
+      await expect(userData.getLatestUserSnapshot('user-1')).resolves.toBeNull();
       await expect(userData.getAttendanceFeed('user-1')).resolves.toBeNull();
       await expect(userData.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
       await expect(userData.purgeUserData()).resolves.toBeUndefined();

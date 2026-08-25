@@ -97,10 +97,9 @@ describe('AccountProfileUpdateController', () => {
     currentUserContext.syncProfileUpdate.mockRejectedValue(failure);
 
     await expect(
-      controller.updated(
-        { user: authenticatedUser({ sub: 'account-service' }) } as never,
-        { userId: 'keycloak-user-1' },
-      ),
+      controller.updated({ user: authenticatedUser({ sub: 'account-service' }) } as never, {
+        userId: 'keycloak-user-1',
+      }),
     ).rejects.toBe(failure);
   });
 

@@ -9,9 +9,10 @@ describe('parseLegacyEventDescriptionConversionOptions', () => {
   });
 
   it('accepts explicit apply mode and a custom batch size', () => {
-    expect(
-      parseLegacyEventDescriptionConversionOptions(['--apply', '--batch-size', '250']),
-    ).toEqual({ apply: true, batchSize: 250 });
+    expect(parseLegacyEventDescriptionConversionOptions(['--apply', '--batch-size', '250'])).toEqual({
+      apply: true,
+      batchSize: 250,
+    });
   });
 
   it.each([

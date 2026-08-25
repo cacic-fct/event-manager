@@ -97,8 +97,10 @@ async function findOfflineAttendanceReviewRecipients(params: {
     },
   });
   const assignedUserIds = assignments.flatMap((assignment) => [
-    ...(assignment.person && !assignment.person.deletedAt && assignment.person.userId ? [assignment.person.userId] : []),
-    ...(assignment.group?.members.flatMap((member) => member.person.userId ? [member.person.userId] : []) ?? []),
+    ...(assignment.person && !assignment.person.deletedAt && assignment.person.userId
+      ? [assignment.person.userId]
+      : []),
+    ...(assignment.group?.members.flatMap((member) => (member.person.userId ? [member.person.userId] : [])) ?? []),
   ]);
   const users = await params.prisma.user.findMany({
     where: { OR: [{ role: UserRole.ADMIN }, { id: { in: assignedUserIds } }] },

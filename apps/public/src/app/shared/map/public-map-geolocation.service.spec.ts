@@ -85,7 +85,11 @@ describe('PublicMapGeolocationService', () => {
     await expect(first).resolves.toMatchObject({ latitude: -22.12103, longitude: -51.40775, heading: 82, speed: 2.5 });
     await expect(second).resolves.toEqual(await first);
     expect(getCurrentPosition).toHaveBeenCalledTimes(1);
-    expect(getCurrentPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: true, timeout: 9_000, maximumAge: 1_000 });
+    expect(getCurrentPosition.mock.calls[0][2]).toEqual({
+      enableHighAccuracy: true,
+      timeout: 9_000,
+      maximumAge: 1_000,
+    });
     expect(service.permission()).toBe('granted');
     expect(service.isRequesting()).toBe(false);
   });

@@ -26,7 +26,6 @@
         <mat-icon>groups</mat-icon>
         Carregar pessoas
       </button>
-
     </form>
 
     <mat-list class="subscription-list categorized-list">
@@ -56,9 +55,7 @@
               </span>
             }
             @if (workspace.getMajorEventCurrentAssessmentLabel(attendance); as currentAssessment) {
-              <span matListItemLine class="attendance-item-line">
-                Situação atual: {{ currentAssessment }}
-              </span>
+              <span matListItemLine class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
             } @else if (group.category === 'UNKNOWN') {
               <span matListItemLine class="attendance-item-line">
                 Situação atual: varia entre as atividades frequentadas.
@@ -106,7 +103,11 @@
           <h3>{{ selectedAttendance.person?.name ?? 'Pessoa' }}</h3>
           <p>
             {{ workspace.selectedMajorEventAttendances().length }}
-            {{ workspace.selectedMajorEventAttendances().length === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
+            {{
+              workspace.selectedMajorEventAttendances().length === 1
+                ? 'atividade frequentada'
+                : 'atividades frequentadas'
+            }}
           </p>
         </div>
         @if (selectedAttendance.subscriptionId && permissions.has(Permission.Subscription.Read)) {
@@ -144,15 +145,19 @@
               }
               · {{ workspace.getAttendanceCategoryLabel(eventAttendance.category) }}
             </span>
-            @if (workspace.getAttendanceCategoryHistoricalExplanation(eventAttendance.category); as historicalExplanation) {
+            @if (
+              workspace.getAttendanceCategoryHistoricalExplanation(eventAttendance.category);
+              as historicalExplanation
+            ) {
               <span matListItemLine class="attendance-item-line">
                 Classificação histórica: {{ historicalExplanation }}
               </span>
             }
-            @if (workspace.getAttendanceCurrentAssessmentLabel(eventAttendance.currentAssessment); as currentAssessment) {
-              <span matListItemLine class="attendance-item-line">
-                Situação atual: {{ currentAssessment }}
-              </span>
+            @if (
+              workspace.getAttendanceCurrentAssessmentLabel(eventAttendance.currentAssessment);
+              as currentAssessment
+            ) {
+              <span matListItemLine class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
             }
           </mat-list-item>
         } @empty {

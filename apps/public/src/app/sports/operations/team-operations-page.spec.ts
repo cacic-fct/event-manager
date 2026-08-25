@@ -19,7 +19,9 @@ describe('SportsTeamOperationsPage', () => {
       providers: [
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ teamId: 'team-home' }), queryParamMap: convertToParamMap({}) } },
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ teamId: 'team-home' }), queryParamMap: convertToParamMap({}) },
+          },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -87,10 +89,7 @@ function createPage(): SportsTeamOperationsPage {
   return TestBed.runInInjectionContext(() => new SportsTeamOperationsPage());
 }
 
-function pageWithStartedMatch(
-  workspace: ReturnType<typeof createRepresentativeTeamWorkspace>,
-  matchId: string,
-): void {
+function pageWithStartedMatch(workspace: ReturnType<typeof createRepresentativeTeamWorkspace>, matchId: string): void {
   workspace.matches = workspace.matches.map((match) =>
     match.id === matchId ? { ...match, state: 'LIVE' as const } : match,
   );

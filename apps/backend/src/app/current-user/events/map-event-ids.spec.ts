@@ -54,22 +54,14 @@ describe('currentUserMapEventWhere', () => {
             {
               eventGroup: {
                 eventManagerRoleAssignmentScopes: {
-                  some: activeScopedManagerGrantWhere(
-                    'user-1',
-                    EventManagerPermissionScope.EVENT_GROUP,
-                    now,
-                  ),
+                  some: activeScopedManagerGrantWhere('user-1', EventManagerPermissionScope.EVENT_GROUP, now),
                 },
               },
             },
             {
               majorEvent: {
                 eventManagerRoleAssignmentScopes: {
-                  some: activeScopedManagerGrantWhere(
-                    'user-1',
-                    EventManagerPermissionScope.MAJOR_EVENT,
-                    now,
-                  ),
+                  some: activeScopedManagerGrantWhere('user-1', EventManagerPermissionScope.MAJOR_EVENT, now),
                 },
               },
             },
@@ -136,9 +128,7 @@ describe('currentUserMapEventWhere', () => {
             assignment: expect.objectContaining({
               archivedAt: null,
               role: { archivedAt: null },
-              OR: expect.arrayContaining([
-                { person: { userId: 'user-1', deletedAt: null } },
-              ]),
+              OR: expect.arrayContaining([{ person: { userId: 'user-1', deletedAt: null } }]),
             }),
           }),
         ]),

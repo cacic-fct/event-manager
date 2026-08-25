@@ -587,12 +587,7 @@ export class MajorEventsService {
     return (value / 100).toFixed(2);
   }
 
-  private createPriceTierGroup(
-    id: string | null,
-    name: string,
-    value: string,
-    includesSportsRegistration: boolean,
-  ) {
+  private createPriceTierGroup(id: string | null, name: string, value: string, includesSportsRegistration: boolean) {
     return this.formBuilder.nonNullable.group({
       id: [id],
       name: [name],

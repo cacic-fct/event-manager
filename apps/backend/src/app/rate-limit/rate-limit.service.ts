@@ -124,9 +124,7 @@ export class RateLimitService {
     try {
       const resourceParts = this.normalizeResourceParts(input.resourceParts);
       const globalResult = await this.consumeRedis({ ...input, resourceParts: [] });
-      const resourceResult = resourceParts.length
-        ? await this.consumeRedis({ ...input, resourceParts })
-        : undefined;
+      const resourceResult = resourceParts.length ? await this.consumeRedis({ ...input, resourceParts }) : undefined;
       const rawResult = this.combineDecisions(globalResult, resourceResult);
       const wouldBlock = !rawResult.allowed;
       if (disabled && wouldBlock) {

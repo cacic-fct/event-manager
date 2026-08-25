@@ -60,10 +60,7 @@ export async function submitResponseForPerson(
   await assertPersonCanAnswerLink(prisma, personId, link, {
     allowFutureSubscriber: options.requireSubscriptionFlowLink && link.insertInSubscriptionFlow,
   });
-  const answers = normalizeAnswers(
-    input.answersJson,
-    form.elements as unknown as FormElement[],
-  );
+  const answers = normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[]);
   const responseSource = link.insertInSubscriptionFlow
     ? ContractResponseSource.SUBSCRIPTION_FLOW
     : ContractResponseSource.PUBLIC_FORM;

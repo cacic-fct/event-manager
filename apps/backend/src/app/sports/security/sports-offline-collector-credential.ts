@@ -72,7 +72,11 @@ export function verifySportsOfflineCollectorCredential(credential: string): Spor
     const now = Date.now();
     const issuedAt = new Date(payload.issuedAt).getTime();
     const expiresAt = new Date(payload.expiresAt).getTime();
-    if (payload.keyVersion !== credentialKeyVersion() || issuedAt > now + CREDENTIAL_CLOCK_SKEW_MS || expiresAt < now - CREDENTIAL_CLOCK_SKEW_MS) {
+    if (
+      payload.keyVersion !== credentialKeyVersion() ||
+      issuedAt > now + CREDENTIAL_CLOCK_SKEW_MS ||
+      expiresAt < now - CREDENTIAL_CLOCK_SKEW_MS
+    ) {
       throw invalidCredential();
     }
     return payload;
@@ -129,7 +133,9 @@ function credentialKeyVersion(): string {
 
 function credentialTtlMs(): number {
   const configured = Number.parseInt(process.env.SPORTS_OFFLINE_COLLECTOR_CREDENTIAL_TTL_MS ?? '', 10);
-  return Number.isSafeInteger(configured) && configured > 0 ? Math.min(configured, 7 * 24 * 60 * 60_000) : DEFAULT_CREDENTIAL_TTL_MS;
+  return Number.isSafeInteger(configured) && configured > 0
+    ? Math.min(configured, 7 * 24 * 60 * 60_000)
+    : DEFAULT_CREDENTIAL_TTL_MS;
 }
 
 function validIdentifier(value: unknown): value is string {

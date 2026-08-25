@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
-
 import process from 'node:process';
-import {
-  chunks,
-  connectPostgres,
-  databaseUrlFromOptions,
-  formatCounter,
-  isMain,
-} from './lib/common.mts';
+import { chunks, connectPostgres, databaseUrlFromOptions, formatCounter, isMain } from './lib/common.mts';
 import {
   coerceBool,
   coerceText,
@@ -18,11 +11,7 @@ import {
   parseFirestoreTimestamp,
   sortedKeys,
 } from './firestore-to-postgres.mts';
-import type {
-  DatabaseClient,
-  DatabaseQueryResult,
-  LegacyCollection,
-} from './firestore-to-postgres.mts';
+import type { DatabaseClient, DatabaseQueryResult, LegacyCollection } from './firestore-to-postgres.mts';
 
 export type AttendanceCategory = 'REGULAR' | 'NON_SUBSCRIBED' | 'NON_PAYING';
 
@@ -102,7 +91,7 @@ export const NON_SUBSCRIBED_COLLECTIONS = [
 export function loadRawEvents(inputPath: string | URL): LegacyCollection {
   const source = loadFirestoreExport(inputPath);
   const collections = source.__collections__ ?? {};
-  const rawEvents = isRecord(collections) ? collections.events ?? {} : {};
+  const rawEvents = isRecord(collections) ? (collections.events ?? {}) : {};
   if (!isRecord(rawEvents)) throw new Error("Expected '__collections__.events' to be an object.");
   return rawEvents;
 }
@@ -113,8 +102,8 @@ export function buildFirestoreAttendances(rawEvents: LegacyCollection): Firestor
     const rawEvent = rawEvents[legacyEventId];
     if (!isRecord(rawEvent)) continue;
     const eventName = coerceText(rawEvent.name) || `Legacy Event ${legacyEventId}`;
-    const eventStartDate = parseFirestoreTimestamp(rawEvent.eventStartDate)
-      || parseFirestoreTimestamp(rawEvent.createdOn);
+    const eventStartDate =
+      parseFirestoreTimestamp(rawEvent.eventStartDate) || parseFirestoreTimestamp(rawEvent.createdOn);
     if (eventStartDate === null) continue;
     const subscriptions = extractSubcollection(rawEvent, 'subscriptions');
     const allowSubscription = coerceBool(rawEvent.allowSubscription);
@@ -122,9 +111,8 @@ export function buildFirestoreAttendances(rawEvents: LegacyCollection): Firestor
 
     const attendance = extractSubcollection(rawEvent, 'attendance');
     for (const legacyPersonId of sortedKeys(attendance)) {
-      const category = allowSubscription && !Object.hasOwn(subscriptions, legacyPersonId)
-        ? 'NON_SUBSCRIBED'
-        : 'REGULAR';
+      const category =
+        allowSubscription && !Object.hasOwn(subscriptions, legacyPersonId) ? 'NON_SUBSCRIBED' : 'REGULAR';
       eventRows.set(legacyPersonId, {
         legacyEventId,
         eventName,
@@ -163,9 +151,10 @@ export function buildFirestoreAttendances(rawEvents: LegacyCollection): Firestor
 }
 
 export function normalizeDatetime(value: unknown): Date {
-  const date = value instanceof Date
-    ? value
-    : new Date(typeof value === 'number' || typeof value === 'string' ? value : String(value));
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(typeof value === 'number' || typeof value === 'string' ? value : String(value));
   if (Number.isNaN(date.getTime())) throw new Error(`Invalid datetime: ${String(value)}`);
   return new Date(date.getTime());
 }
@@ -230,7 +219,9 @@ export async function matchAttendances(
   });
   for (const event of sortedEventKeys) {
     const normalizedFirestoreName = normalizeName(event.eventName);
-    const matches = allDbEvents.filter((row) => normalizeName(row.name) === normalizedFirestoreName && sameDatetime(row.startDate, event.eventStartDate));
+    const matches = allDbEvents.filter(
+      (row) => normalizeName(row.name) === normalizedFirestoreName && sameDatetime(row.startDate, event.eventStartDate),
+    );
     if (matches.length === 1) {
       const [match] = matches;
       if (match) eventIdByLegacyId.set(event.legacyEventId, match.id);
@@ -249,12 +240,15 @@ export async function matchAttendances(
   const legacyPersonIds = [...new Set(firestoreAttendances.map((row) => row.legacyPersonId))].sort();
   const personIdByExternalRef = new Map();
   for (const chunk of chunks(legacyPersonIds, 1000)) {
-    const result = await db.query(`
+    const result = await db.query(
+      `
       SELECT id, "externalRef"
       FROM people
       WHERE "externalRef" = ANY($1::text[])
         AND "deletedAt" IS NULL
-    `, [chunk]);
+    `,
+      [chunk],
+    );
     for (const row of rowsOf(result)) {
       const values = dbPersonValues(row);
       if (values) personIdByExternalRef.set(values.externalRef, values.id);
@@ -288,13 +282,16 @@ export async function filterExistingAttendances(
 ): Promise<ExistingAttendanceResult> {
   const existingPairs = new Set<string>();
   for (const chunk of chunks(matched, 1000)) {
-    const result = await db.query(`
+    const result = await db.query(
+      `
       SELECT "personId", "eventId"
       FROM event_attendances
       WHERE ("personId", "eventId") IN (
         SELECT * FROM UNNEST($1::text[], $2::text[])
       )
-    `, [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)]);
+    `,
+      [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
+    );
     for (const row of rowsOf(result)) {
       const values = Array.isArray(row) ? [row[0], row[1]] : isRecord(row) ? [row.personId, row.eventId] : [];
       if (values.length === 2) existingPairs.add(JSON.stringify([values[0], values[1]]));
@@ -313,13 +310,16 @@ export async function selectChangedAttendances(
 ): Promise<AttendanceUpdateRow[]> {
   const currentCategoryByPair = new Map<string, unknown>();
   for (const chunk of chunks(existing, 1000)) {
-    const result = await db.query(`
+    const result = await db.query(
+      `
       SELECT "personId", "eventId", category::text
       FROM event_attendances
       WHERE ("personId", "eventId") IN (
         SELECT * FROM UNNEST($1::text[], $2::text[])
       )
-    `, [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)]);
+    `,
+      [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
+    );
     for (const row of rowsOf(result)) {
       if (Array.isArray(row)) currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), row[2]);
       else if (isRecord(row)) currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), row.category);
@@ -335,12 +335,15 @@ export async function selectChangedAttendances(
 
 export async function applyUpdates(db: DatabaseClient, updates: readonly AttendanceUpdateRow[]): Promise<void> {
   for (const row of updates) {
-    await db.query(`
+    await db.query(
+      `
       UPDATE event_attendances
       SET category = $1::"AttendanceCategory"
       WHERE "personId" = $2
         AND "eventId" = $3
-    `, [row.category, row.personId, row.eventId]);
+    `,
+      [row.category, row.personId, row.eventId],
+    );
   }
 }
 
@@ -348,7 +351,9 @@ export function printUnmatchedEvents(unmatchedEvents: readonly UnmatchedEvent[])
   if (unmatchedEvents.length === 0) return;
   console.log('Unmatched events:');
   for (const event of unmatchedEvents) {
-    console.log(`- ${event.legacyEventId} | ${event.name} | ${normalizeDatetime(event.startDate).toISOString()} | ${event.reason} | name_candidates=${event.candidateCount}`);
+    console.log(
+      `- ${event.legacyEventId} | ${event.name} | ${normalizeDatetime(event.startDate).toISOString()} | ${event.reason} | name_candidates=${event.candidateCount}`,
+    );
   }
 }
 
@@ -389,24 +394,42 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Reev
     const equalsIndex = argument.indexOf('=');
     const option = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const valueOptions = new Set([
-      '--input', '--database-url', '--db-host', '--db-port', '--db-name', '--db-user', '--db-password',
+      '--input',
+      '--database-url',
+      '--db-host',
+      '--db-port',
+      '--db-name',
+      '--db-user',
+      '--db-password',
     ]);
     if (!valueOptions.has(option)) throw new Error(`Unknown option: ${argument}`);
     const value = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : parseOptionValue(argv, index, option);
     if (equalsIndex < 0) index += 1;
     switch (option) {
-      case '--input': options.input = value; break;
-      case '--database-url': options.databaseUrl = value; break;
-      case '--db-host': options.dbHost = value; break;
+      case '--input':
+        options.input = value;
+        break;
+      case '--database-url':
+        options.databaseUrl = value;
+        break;
+      case '--db-host':
+        options.dbHost = value;
+        break;
       case '--db-port': {
         const parsed = Number(value);
         if (!Number.isInteger(parsed) || parsed <= 0) throw new Error('--db-port must be a positive integer.');
         options.dbPort = parsed;
         break;
       }
-      case '--db-name': options.dbName = value; break;
-      case '--db-user': options.dbUser = value; break;
-      case '--db-password': options.dbPassword = value; break;
+      case '--db-name':
+        options.dbName = value;
+        break;
+      case '--db-user':
+        options.dbUser = value;
+        break;
+      case '--db-password':
+        options.dbPassword = value;
+        break;
     }
   }
   return options;
@@ -415,17 +438,20 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Reev
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<void> {
   const options = parseArgs(argv);
   if (options.help) {
-    console.log('Usage: bun run data-import -- reevaluate-attendance-categories [--input PATH] [--apply] [--include-non-unknown] [database options]');
+    console.log(
+      'Usage: bun run data-import -- reevaluate-attendance-categories [--input PATH] [--apply] [--include-non-unknown] [database options]',
+    );
     return;
   }
   const databaseUrl = databaseUrlFromOptions(options);
   const rawEvents = loadRawEvents(options.input);
   const firestoreAttendances = buildFirestoreAttendances(rawEvents);
   const categoryCounter = new Map();
-  for (const row of firestoreAttendances) categoryCounter.set(row.category, (categoryCounter.get(row.category) ?? 0) + 1);
+  for (const row of firestoreAttendances)
+    categoryCounter.set(row.category, (categoryCounter.get(row.category) ?? 0) + 1);
   console.log(`Firestore category intent -> ${formatCounter(categoryCounter)}`);
 
-  const db = await connectPostgres(databaseUrl) as unknown as DatabaseClient;
+  const db = (await connectPostgres(databaseUrl)) as unknown as DatabaseClient;
   try {
     await db.query('BEGIN');
     try {

@@ -58,7 +58,9 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
     this.assertUniqueCatalog(discoveredTemplates);
 
     const searchDocuments = await this.prisma.$transaction(async (transaction) => {
-      await transaction.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('certificate-template-registry'))`);
+      await transaction.$executeRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('certificate-template-registry'))`,
+      );
       const synchronized: TemplateSearchDocument[] = [];
       for (const template of discoveredTemplates) {
         synchronized.push(...(await this.synchronizeTemplate(template, transaction)));
@@ -218,9 +220,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
         where: { id: config.id },
         data: {
           certificateFields:
-            Object.keys(normalizedFields).length > 0
-              ? (normalizedFields as Prisma.InputJsonObject)
-              : Prisma.DbNull,
+            Object.keys(normalizedFields).length > 0 ? (normalizedFields as Prisma.InputJsonObject) : Prisma.DbNull,
         },
       });
     }
@@ -257,10 +257,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
     const pendingTemplates = await prisma.certificateTemplate.findMany({
       where: {
         contentChecksum: 'pending-metadata',
-        OR: [
-          { certificateConfigs: { some: {} } },
-          { certificates: { some: {} } },
-        ],
+        OR: [{ certificateConfigs: { some: {} } }, { certificates: { some: {} } }],
       },
       select: { id: true, name: true },
     });

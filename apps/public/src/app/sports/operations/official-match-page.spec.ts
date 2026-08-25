@@ -338,9 +338,7 @@ describe('OfficialSportsMatchPage', () => {
     await component.toggleOfficialCheckIn(official);
     fixture.detectChanges();
 
-    expect(officialCheckIns).toEqual([
-      expect.objectContaining({ officialAssignmentId: official.id, present: true }),
-    ]);
+    expect(officialCheckIns).toEqual([expect.objectContaining({ officialAssignmentId: official.id, present: true })]);
     expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: true }));
     await component.toggleOfficialCheckIn(component.officialCheckInEntries()[0]);
 
@@ -350,7 +348,8 @@ describe('OfficialSportsMatchPage', () => {
     ]);
     expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
     expect(
-      (fixture.debugElement.query(By.css('.check-in-official-grid button')).nativeElement as HTMLButtonElement).disabled,
+      (fixture.debugElement.query(By.css('.check-in-official-grid button')).nativeElement as HTMLButtonElement)
+        .disabled,
     ).toBe(false);
   });
 
@@ -377,9 +376,7 @@ describe('OfficialSportsMatchPage', () => {
 
     expect(checkIns).toHaveLength(1);
     expect(checkIns[0]).toEqual(expect.objectContaining({ rosterEntryId: athlete.id, present: !athlete.checkedIn }));
-    expect(officialCheckIns).toEqual([
-      expect.objectContaining({ officialAssignmentId: official.id, present: false }),
-    ]);
+    expect(officialCheckIns).toEqual([expect.objectContaining({ officialAssignmentId: official.id, present: false })]);
   });
 
   it('synchronizes athlete and official attendance for the same person', async () => {
@@ -436,17 +433,13 @@ describe('OfficialSportsMatchPage', () => {
 
     await component.toggleCheckIn(athlete);
 
-    expect(checkIns).toEqual([
-      expect.objectContaining({ rosterEntryId: athlete.id, present: !athlete.checkedIn }),
-    ]);
+    expect(checkIns).toEqual([expect.objectContaining({ rosterEntryId: athlete.id, present: !athlete.checkedIn })]);
     expect(officialCheckIns).toEqual([]);
     expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
 
     await component.toggleOfficialCheckIn(official);
 
-    expect(officialCheckIns).toEqual([
-      expect.objectContaining({ officialAssignmentId: official.id, present: true }),
-    ]);
+    expect(officialCheckIns).toEqual([expect.objectContaining({ officialAssignmentId: official.id, present: true })]);
     expect(component.homeCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
   });
 

@@ -60,7 +60,6 @@ describe('PublicMapCacheService', () => {
     expect(service.read('events')).toBeNull();
     expect(setItem).not.toHaveBeenCalled();
   });
-
 });
 
 function createService(platformId: 'browser' | 'server'): PublicMapCacheService {

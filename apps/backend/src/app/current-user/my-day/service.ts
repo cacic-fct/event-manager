@@ -58,11 +58,7 @@ export class CurrentUserMyDayService {
       return this.emptyResult(generatedAt, normalizedDate, minimumDate);
     }
 
-    const associatedWhere = currentUserAssociatedEventWhere(
-      person.id,
-      user?.id ?? authenticatedUser.sub,
-      generatedAt,
-    );
+    const associatedWhere = currentUserAssociatedEventWhere(person.id, user?.id ?? authenticatedUser.sub, generatedAt);
     const [availableEventCount, events, pendingActions] = await Promise.all([
       this.prisma.event.count({
         where: {
@@ -137,10 +133,7 @@ export class CurrentUserMyDayService {
     };
   }
 
-  private async loadPendingActions(
-    personId: string,
-    minimumStart: Date,
-  ): Promise<CurrentUserMyDayAttentionItem[]> {
+  private async loadPendingActions(personId: string, minimumStart: Date): Promise<CurrentUserMyDayAttentionItem[]> {
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         personId,
@@ -213,9 +206,7 @@ export class CurrentUserMyDayService {
         });
       }
 
-      if (
-        requiresMajorEventImageLicenseAgreement(subscription)
-      ) {
+      if (requiresMajorEventImageLicenseAgreement(subscription)) {
         items.push({
           id: `image-license:${subscription.id}`,
           kind: 'SUBSCRIPTION',
@@ -355,12 +346,7 @@ export class CurrentUserMyDayService {
     }
 
     const sportsActions: CurrentUserMyDayAction[] = [];
-    if (
-      sportsMatch &&
-      isOfficial &&
-      sportsRoute?.matchId === sportsMatch.id &&
-      sportsRoute.mode !== 'MATCH_DETAIL'
-    ) {
+    if (sportsMatch && isOfficial && sportsRoute?.matchId === sportsMatch.id && sportsRoute.mode !== 'MATCH_DETAIL') {
       sportsActions.push({
         kind: 'SPORTS_OPERATE',
         label: 'Gerenciar partida',

@@ -69,10 +69,7 @@ export class SilentSsoService {
         cleanup();
         resolve(resultUrl.searchParams.get('sso') === 'none' ? 'unauthenticated' : 'authenticated');
       };
-      const timeoutId = window.setTimeout(
-        () => fail(new Error('Silent SSO check timed out.')),
-        this.timeoutMs,
-      );
+      const timeoutId = window.setTimeout(() => fail(new Error('Silent SSO check timed out.')), this.timeoutMs);
 
       iframe.addEventListener('error', () => fail(new Error('Silent SSO iframe failed to load.')), { once: true });
       window.addEventListener('message', handleMessage);

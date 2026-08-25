@@ -78,42 +78,42 @@ const meta: Meta<PlacesTabStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          if (activeArgs.apiState === 'loading') await delay('infinite');
-          if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
-          const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-          const query = body.query ?? '';
-          if (activeArgs.apiState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar os locais.' }] });
-          }
-          const items = places(activeArgs);
+          http.post('/api/graphql', async ({ request }) => {
+            if (activeArgs.apiState === 'loading') await delay('infinite');
+            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+            const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+            const query = body.query ?? '';
+            if (activeArgs.apiState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar os locais.' }] });
+            }
+            const items = places(activeArgs);
 
-          if (query.includes('ListPlacePresets')) {
-            return HttpResponse.json({ data: { placePresets: items } });
-          }
+            if (query.includes('ListPlacePresets')) {
+              return HttpResponse.json({ data: { placePresets: items } });
+            }
 
-          if (query.includes('GetPlacePreset')) {
-            return HttpResponse.json({ data: { placePreset: items[0] ?? placePreset(0) } });
-          }
+            if (query.includes('GetPlacePreset')) {
+              return HttpResponse.json({ data: { placePreset: items[0] ?? placePreset(0) } });
+            }
 
-          if (query.includes('CreatePlacePreset')) {
-            return HttpResponse.json({ data: { createPlacePreset: placePreset(99) } });
-          }
+            if (query.includes('CreatePlacePreset')) {
+              return HttpResponse.json({ data: { createPlacePreset: placePreset(99) } });
+            }
 
-          if (query.includes('UpdatePlacePreset')) {
-            return HttpResponse.json({ data: { updatePlacePreset: items[0] ?? placePreset(0) } });
-          }
+            if (query.includes('UpdatePlacePreset')) {
+              return HttpResponse.json({ data: { updatePlacePreset: items[0] ?? placePreset(0) } });
+            }
 
-          if (query.includes('DeletePlacePreset')) {
-            return HttpResponse.json({ data: { deletePlacePreset: { deleted: true, id: 'place-1' } } });
-          }
+            if (query.includes('DeletePlacePreset')) {
+              return HttpResponse.json({ data: { deletePlacePreset: { deleted: true, id: 'place-1' } } });
+            }
 
-          if (query.includes('MergePlacePreset')) {
-            return HttpResponse.json({ data: { mergePlacePreset: { deleted: true, id: 'place-2' } } });
-          }
+            if (query.includes('MergePlacePreset')) {
+              return HttpResponse.json({ data: { mergePlacePreset: { deleted: true, id: 'place-2' } } });
+            }
 
-          return HttpResponse.json({ data: {} });
-        }),
+            return HttpResponse.json({ data: {} });
+          }),
         ],
       },
     },

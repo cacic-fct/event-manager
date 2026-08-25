@@ -207,16 +207,46 @@ describe('SportsMatchRosterWriteService', () => {
   });
 
   it.each([
-    ['pending team member', { status: SportsTeamMemberStatus.PENDING, participantStatus: SportsParticipantStatus.ACTIVE }],
-    ['rejected team member', { status: SportsTeamMemberStatus.REJECTED, participantStatus: SportsParticipantStatus.ACTIVE }],
-    ['suspended team member', { status: SportsTeamMemberStatus.SUSPENDED, participantStatus: SportsParticipantStatus.ACTIVE }],
-    ['withdrawn team member', { status: SportsTeamMemberStatus.WITHDRAWN, participantStatus: SportsParticipantStatus.ACTIVE }],
-    ['pending participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.PENDING }],
-    ['approved but inactive participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.APPROVED }],
-    ['waiting-payment participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WAITING_PAYMENT }],
-    ['rejected participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.REJECTED }],
-    ['suspended participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.SUSPENDED }],
-    ['withdrawn participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WITHDRAWN }],
+    [
+      'pending team member',
+      { status: SportsTeamMemberStatus.PENDING, participantStatus: SportsParticipantStatus.ACTIVE },
+    ],
+    [
+      'rejected team member',
+      { status: SportsTeamMemberStatus.REJECTED, participantStatus: SportsParticipantStatus.ACTIVE },
+    ],
+    [
+      'suspended team member',
+      { status: SportsTeamMemberStatus.SUSPENDED, participantStatus: SportsParticipantStatus.ACTIVE },
+    ],
+    [
+      'withdrawn team member',
+      { status: SportsTeamMemberStatus.WITHDRAWN, participantStatus: SportsParticipantStatus.ACTIVE },
+    ],
+    [
+      'pending participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.PENDING },
+    ],
+    [
+      'approved but inactive participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.APPROVED },
+    ],
+    [
+      'waiting-payment participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WAITING_PAYMENT },
+    ],
+    [
+      'rejected participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.REJECTED },
+    ],
+    [
+      'suspended participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.SUSPENDED },
+    ],
+    [
+      'withdrawn participant',
+      { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WITHDRAWN },
+    ],
   ])('rejects a trusted administrator roster fallback for a %s', async (_name, state) => {
     tx.sportsRegistrationMember.findMany.mockResolvedValue([]);
     tx.sportsRegistration.findFirst.mockResolvedValue({

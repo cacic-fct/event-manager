@@ -148,9 +148,7 @@ export class SportsRealtimeController {
     }
 
     const scopes = [
-      ...(targets.majorEventIds.size > 0
-        ? [{ majorEventId: { in: [...targets.majorEventIds] } }]
-        : []),
+      ...(targets.majorEventIds.size > 0 ? [{ majorEventId: { in: [...targets.majorEventIds] } }] : []),
       ...(targets.eventGroupIds.size > 0 || targets.eventIds.size > 0
         ? [
             {
@@ -158,9 +156,7 @@ export class SportsRealtimeController {
                 some: {
                   deletedAt: null,
                   OR: [
-                    ...(targets.eventGroupIds.size > 0
-                      ? [{ eventGroupId: { in: [...targets.eventGroupIds] } }]
-                      : []),
+                    ...(targets.eventGroupIds.size > 0 ? [{ eventGroupId: { in: [...targets.eventGroupIds] } }] : []),
                     ...(targets.eventIds.size > 0
                       ? [
                           {

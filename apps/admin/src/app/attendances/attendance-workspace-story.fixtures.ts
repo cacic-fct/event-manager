@@ -171,7 +171,11 @@ function createAttendanceWorkspaceMock(
     canApproveOfflineAttendanceSubmission: (submission: { resolutionError?: string | null }) =>
       !submission.resolutionError,
     offlineSubmissionIssueLabel: (issue: string | null | undefined) =>
-      issue === 'LOCATION_MISSING' ? 'Sem localização' : issue === 'DUPLICATE_ATTENDANCE' ? 'Presença duplicada' : 'Revisão manual',
+      issue === 'LOCATION_MISSING'
+        ? 'Sem localização'
+        : issue === 'DUPLICATE_ATTENDANCE'
+          ? 'Presença duplicada'
+          : 'Revisão manual',
     loadMajorEventUserAttendancesFromFirstPage: fn(async () => undefined),
     previousMajorEventUserAttendancesPage: fn(async () => undefined),
     nextMajorEventUserAttendancesPage: fn(async () => undefined),

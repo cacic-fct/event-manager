@@ -37,6 +37,10 @@ export class PendingPermissionChangesService {
   async save(): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
-    try { await this.saveCallback?.(); } finally { this.saving.set(false); }
+    try {
+      await this.saveCallback?.();
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

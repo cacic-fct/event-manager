@@ -144,53 +144,53 @@ export class AttendanceOfflineSyncService {
 
     let failedCount = 0;
     const itemsByEvent = new Map<string, typeof items>();
-      for (const item of items) {
-        const eventItems = itemsByEvent.get(item.eventId) ?? [];
-        eventItems.push(item);
-        itemsByEvent.set(item.eventId, eventItems);
-      }
+    for (const item of items) {
+      const eventItems = itemsByEvent.get(item.eventId) ?? [];
+      eventItems.push(item);
+      itemsByEvent.set(item.eventId, eventItems);
+    }
 
-      for (const eventItems of itemsByEvent.values()) {
-        for (let offset = 0; offset < eventItems.length; offset += 1000) {
-          const batch = eventItems.slice(offset, offset + 1000);
-          let lastError: unknown;
-          let synced = false;
-          for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt++) {
-            try {
-              await firstValueFrom(
-                this.api.registerOralBatch(
-                  batch.map((item) => ({
-                    clientId: item.clientId,
-                    eventId: item.eventId,
-                    personId: item.personId,
-                    status: item.status,
-                    collectedAt: item.collectedAt,
-                    collectedByUserId: item.queuedByUserId,
-                    location: item.location,
-                    collectorCredential: item.collectorCredential,
-                  })),
-                ),
-              );
-              await this.oralQueue.markSynced(batch.map((item) => item.clientId));
-              synced = true;
-              break;
-            } catch (error: unknown) {
-              lastError = error;
-              if (attempt < MAX_SYNC_ATTEMPTS) {
-                await this.waitBeforeRetry(attempt);
-              }
+    for (const eventItems of itemsByEvent.values()) {
+      for (let offset = 0; offset < eventItems.length; offset += 1000) {
+        const batch = eventItems.slice(offset, offset + 1000);
+        let lastError: unknown;
+        let synced = false;
+        for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt++) {
+          try {
+            await firstValueFrom(
+              this.api.registerOralBatch(
+                batch.map((item) => ({
+                  clientId: item.clientId,
+                  eventId: item.eventId,
+                  personId: item.personId,
+                  status: item.status,
+                  collectedAt: item.collectedAt,
+                  collectedByUserId: item.queuedByUserId,
+                  location: item.location,
+                  collectorCredential: item.collectorCredential,
+                })),
+              ),
+            );
+            await this.oralQueue.markSynced(batch.map((item) => item.clientId));
+            synced = true;
+            break;
+          } catch (error: unknown) {
+            lastError = error;
+            if (attempt < MAX_SYNC_ATTEMPTS) {
+              await this.waitBeforeRetry(attempt);
             }
           }
-
-          if (!synced) {
-            failedCount += batch.length;
-            const message = lastError instanceof Error ? lastError.message : 'Falha de sincronização.';
-            await this.oralQueue.recordFailure(
-              batch.map((item) => item.clientId),
-              message,
-            );
-          }
         }
+
+        if (!synced) {
+          failedCount += batch.length;
+          const message = lastError instanceof Error ? lastError.message : 'Falha de sincronização.';
+          await this.oralQueue.recordFailure(
+            batch.map((item) => item.clientId),
+            message,
+          );
+        }
+      }
     }
 
     if (failedCount > 0 && this.isCurrentRun(userId, generation)) {
@@ -304,14 +304,12 @@ export class AttendanceOfflineSyncService {
         const resultByClientId = new Map(results.map((result) => [result.clientId, result]));
         const missingAcknowledgements = remaining.filter((item) => !resultByClientId.has(item.clientId));
         if (missingAcknowledgements.length > 0) {
-          await this.forEachAttendanceOwner(
-            missingAcknowledgements,
-            (ownerUserId, ownerClientIds) =>
-              this.queue.recordSyncFailure(
-                ownerUserId,
-                ownerClientIds,
-                'O servidor não confirmou o recebimento desta presença.',
-              ),
+          await this.forEachAttendanceOwner(missingAcknowledgements, (ownerUserId, ownerClientIds) =>
+            this.queue.recordSyncFailure(
+              ownerUserId,
+              ownerClientIds,
+              'O servidor não confirmou o recebimento desta presença.',
+            ),
           );
         }
 
@@ -489,8 +487,6 @@ export class AttendanceOfflineSyncService {
       clientIds.push(item.clientId);
       clientIdsByOwner.set(item.queuedByUserId, clientIds);
     }
-    await Promise.all(
-      [...clientIdsByOwner].map(([ownerUserId, clientIds]) => operation(ownerUserId, clientIds)),
-    );
+    await Promise.all([...clientIdsByOwner].map(([ownerUserId, clientIds]) => operation(ownerUserId, clientIds)));
   }
 }

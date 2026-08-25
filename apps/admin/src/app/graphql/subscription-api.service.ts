@@ -134,16 +134,26 @@ export class SubscriptionApiService {
               }`,
               {
                 tournamentId,
-                statuses: ['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED', 'WAITING_PAYMENT', 'ACTIVE', 'WITHDRAWN'],
+                statuses: [
+                  'PENDING',
+                  'APPROVED',
+                  'CHANGES_REQUESTED',
+                  'REJECTED',
+                  'WAITING_PAYMENT',
+                  'ACTIVE',
+                  'WITHDRAWN',
+                ],
               },
             )
             .pipe(
-              map((data): MajorEventSportsSubscriptionWorkspace => ({
-                tournamentId,
-                teams: data.adminSportsTournamentRead.teams.filter((team) => team.status === 'ACTIVE'),
-                applications: data.adminSportsPlayerApplicationQueue,
-                participants: data.adminSportsTournamentRead.participants,
-              })),
+              map(
+                (data): MajorEventSportsSubscriptionWorkspace => ({
+                  tournamentId,
+                  teams: data.adminSportsTournamentRead.teams.filter((team) => team.status === 'ACTIVE'),
+                  applications: data.adminSportsPlayerApplicationQueue,
+                  participants: data.adminSportsTournamentRead.participants,
+                }),
+              ),
             );
         }),
       );

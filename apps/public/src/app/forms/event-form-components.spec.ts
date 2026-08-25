@@ -1,11 +1,7 @@
 import '@angular/compiler';
 import { computed, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
-import type {
-  FormElement,
-  FormElementType,
-  FormResponseAnswer,
-} from '@cacic-fct/form-contracts';
+import type { FormElement, FormElementType, FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { EVENT_FORM_ELEMENT_LABELS } from '@cacic-fct/shared-angular/event-forms';
 import { EventFormBuilderComponent } from '@cacic-fct/shared-angular/event-forms';
@@ -452,17 +448,31 @@ function rendererElements(): FormElement[] {
   return [
     element('short', 'shortText', 'Texto'),
     element('long', 'longText', 'Texto longo'),
-    element('single', 'singleChoice', 'Escolha', { options: [option('option-1', 'Opção 1'), option('option-2', 'Opção 2')] }),
+    element('single', 'singleChoice', 'Escolha', {
+      options: [option('option-1', 'Opção 1'), option('option-2', 'Opção 2')],
+    }),
     element('multiple', 'multipleChoice', 'Múltipla', {
       options: [option('option-1', 'Opção 1'), option('option-2', 'Opção 2')],
     }),
     element('single-grid', 'singleSelectionGrid', 'Grade única', {
-      settings: { grid: { rows: [option('row-1', 'Linha 1')], columns: [option('column-1', 'Coluna 1'), option('column-2', 'Coluna 2')] } },
+      settings: {
+        grid: {
+          rows: [option('row-1', 'Linha 1')],
+          columns: [option('column-1', 'Coluna 1'), option('column-2', 'Coluna 2')],
+        },
+      },
     }),
     element('multiple-grid', 'multipleSelectionGrid', 'Grade múltipla', {
-      settings: { grid: { rows: [option('row-1', 'Linha 1')], columns: [option('column-1', 'Coluna 1'), option('column-2', 'Coluna 2')] } },
+      settings: {
+        grid: {
+          rows: [option('row-1', 'Linha 1')],
+          columns: [option('column-1', 'Coluna 1'), option('column-2', 'Coluna 2')],
+        },
+      },
     }),
-    element('dropdown', 'selectionDropdown', 'Lista', { options: [option('option-1', 'Opção 1'), option('option-2', 'Opção 2')] }),
+    element('dropdown', 'selectionDropdown', 'Lista', {
+      options: [option('option-1', 'Opção 1'), option('option-2', 'Opção 2')],
+    }),
     element('scale', 'linearScale', 'Escala', { settings: { linearScale: { min: 1, max: 5 } } }),
     element('stars', 'starRating', 'Estrelas', { settings: { starRating: { max: 5 } } }),
     element('date', 'date', 'Data'),
@@ -484,12 +494,7 @@ function rendererElements(): FormElement[] {
   ];
 }
 
-function element(
-  id: string,
-  type: FormElementType,
-  title: string,
-  overrides: Partial<FormElement> = {},
-): FormElement {
+function element(id: string, type: FormElementType, title: string, overrides: Partial<FormElement> = {}): FormElement {
   return {
     id,
     type,

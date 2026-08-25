@@ -161,9 +161,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
       },
       take: 3,
     });
-    const canonicalIdentityPeople = digits
-      ? await findPeopleByCanonicalIdentityDocument(this.prisma, value)
-      : [];
+    const canonicalIdentityPeople = digits ? await findPeopleByCanonicalIdentityDocument(this.prisma, value) : [];
 
     const resolvedPersonIds = new Set(
       [...people, ...canonicalIdentityPeople].map((person) => person.mergedIntoId ?? person.id),

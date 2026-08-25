@@ -53,7 +53,9 @@ describe('backend process lifecycle', () => {
       tryShutdown: jest.fn((callback: () => void) => callback()),
     };
 
-    await expect(closeBackendResources(app as never, server as never)).rejects.toThrow('Backend resource cleanup failed');
+    await expect(closeBackendResources(app as never, server as never)).rejects.toThrow(
+      'Backend resource cleanup failed',
+    );
     expect(app.close).toHaveBeenCalledTimes(1);
   });
 });

@@ -92,24 +92,13 @@ describe('SubscriptionApiService', () => {
       applications: [applicationFixture()],
       participants: [participantFixture()],
     });
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('query MajorEventSportsTournament'),
-    );
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('query MajorEventSportsTournament'));
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('query MajorEventSportsSubscriptions'),
       {
         tournamentId: 'tournament-1',
-        statuses: [
-          'PENDING',
-          'APPROVED',
-          'CHANGES_REQUESTED',
-          'REJECTED',
-          'WAITING_PAYMENT',
-          'ACTIVE',
-          'WITHDRAWN',
-        ],
+        statuses: ['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED', 'WAITING_PAYMENT', 'ACTIVE', 'WITHDRAWN'],
       },
     );
   });
@@ -159,13 +148,16 @@ describe('SubscriptionApiService', () => {
     await expect(firstValueFrom(service.createMajorEventSubscription(majorCreateInput))).resolves.toEqual(
       majorSubscriptionFixture({ id: 'major-sub-created' }),
     );
-    await expect(firstValueFrom(service.updateMajorEventSubscription('major-sub-1', majorUpdateInput))).resolves.toEqual(
-      majorSubscriptionFixture({ id: 'major-sub-updated' }),
-    );
+    await expect(
+      firstValueFrom(service.updateMajorEventSubscription('major-sub-1', majorUpdateInput)),
+    ).resolves.toEqual(majorSubscriptionFixture({ id: 'major-sub-updated' }));
 
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('mutation ReviewMajorEventSportsApplication'), {
-      input: reviewInput,
-    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('mutation ReviewMajorEventSportsApplication'),
+      {
+        input: reviewInput,
+      },
+    );
     expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('mutation SetSportsParticipantTeam'), {
       input: assignmentInput,
     });
@@ -174,9 +166,12 @@ describe('SubscriptionApiService', () => {
       skip: 2,
       take: 20,
     });
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('mutation CreateWorkspaceEventSubscription'), {
-      input: eventInput,
-    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('mutation CreateWorkspaceEventSubscription'),
+      {
+        input: eventInput,
+      },
+    );
     expect(graphqlHttp.request).toHaveBeenCalledWith(
       expect.stringContaining('query WorkspaceMajorEventSubscriptions'),
       { majorEventId: 'major-1', query: 'Ada', skip: 1, take: 10 },

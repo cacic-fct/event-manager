@@ -61,7 +61,11 @@ describe('MergeCandidateApiService', () => {
       candidateFixture({ status: 'PENDING' }),
     );
 
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('query ListMergeCandidates'), filters);
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('query ListMergeCandidates'),
+      filters,
+    );
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('mutation UpdateMergeCandidate'), {
       id: 'candidate-1',
       input: updateInput,

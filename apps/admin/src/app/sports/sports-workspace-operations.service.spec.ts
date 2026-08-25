@@ -105,7 +105,9 @@ describe('SportsWorkspaceService operations', () => {
         },
       ]);
 
-      expect(workspace.majorEventWorkspaceItems().map((item) => [item.majorEvent.name, Boolean(item.tournament)])).toEqual([
+      expect(
+        workspace.majorEventWorkspaceItems().map((item) => [item.majorEvent.name, Boolean(item.tournament)]),
+      ).toEqual([
         ['Jogos configurados', true],
         ['Jogos disponíveis', false],
       ]);
@@ -915,9 +917,7 @@ describe('SportsWorkspaceService operations', () => {
     });
 
     it('derives staff save state from create versus update permissions', () => {
-      permissions.has.mockImplementation(
-        (permission) => permission === Permission.SportsOfficial.Create,
-      );
+      permissions.has.mockImplementation((permission) => permission === Permission.SportsOfficial.Create);
       const review = createAdminSportsMatchReview();
       const official = {
         ...createAdminSportsTournamentRead().officials[0],

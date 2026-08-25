@@ -118,9 +118,7 @@ describe('WeatherService', () => {
     const forecastOptions = forecastRequest[1];
     expect(forecastUrl).toContain('https://api.open-meteo.com/v1/forecast');
     expect(forecastOptions.signal).toBeDefined();
-    expect(new URL(forecastUrl).searchParams.get('hourly')).toBe(
-      'temperature_2m,weather_code,uv_index',
-    );
+    expect(new URL(forecastUrl).searchParams.get('hourly')).toBe('temperature_2m,weather_code,uv_index');
     expect(redis.set).toHaveBeenCalledWith(
       'weather:event:event-1',
       expect.stringContaining('"temperature":22'),
@@ -148,9 +146,7 @@ describe('WeatherService', () => {
       }),
     } as unknown as Response);
 
-    const requests = Promise.all(
-      Array.from({ length: 100 }, () => service.getPublicEventWeather('event-1')),
-    );
+    const requests = Promise.all(Array.from({ length: 100 }, () => service.getPublicEventWeather('event-1')));
     await requests;
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(1);

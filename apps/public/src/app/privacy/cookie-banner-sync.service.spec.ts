@@ -59,10 +59,9 @@ describe('CookieBannerSyncService', () => {
   it('returns false without recording synchronization when the backend rejects acceptance', async () => {
     const service = TestBed.inject(CookieBannerSyncService);
     const acceptance = firstValueFrom(service.acceptCookieBanner('user-1'));
-    httpTesting.expectOne('/api/privacy/cookie-banner/accept').flush(
-      { message: 'unavailable' },
-      { status: 503, statusText: 'Unavailable' },
-    );
+    httpTesting
+      .expectOne('/api/privacy/cookie-banner/accept')
+      .flush({ message: 'unavailable' }, { status: 503, statusText: 'Unavailable' });
 
     await expect(acceptance).resolves.toBe(false);
     expect(window.localStorage.getItem('cacic.cookieBanner.synced.user-1')).toBeNull();

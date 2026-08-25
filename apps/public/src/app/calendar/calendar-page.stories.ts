@@ -152,40 +152,40 @@ function storyParameters(context: CalendarStoryContext) {
       handlers: {
         graphql: [
           http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-          if (context.args.apiState === 'loading') {
-            await delay('infinite');
-          }
-          if (context.args.latencyMs > 0) {
-            await delay(context.args.latencyMs);
-          }
-          if (context.args.apiState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o calendário.' }] });
-          }
-          if (body.query?.includes('CurrentUserCalendarSubscribedEvents')) {
-            const eventIds = createCalendarStoryEvents(context.args)
-              .slice(0, context.args.subscribedCount)
-              .map((event) => ({ event: { id: event.id } }));
-            return HttpResponse.json({
-              data: {
-                currentUserSubscribedItems: eventIds,
-                currentUserMajorEventSubscriptions: [],
-              },
-            });
-          }
+            const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+            if (context.args.apiState === 'loading') {
+              await delay('infinite');
+            }
+            if (context.args.latencyMs > 0) {
+              await delay(context.args.latencyMs);
+            }
+            if (context.args.apiState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o calendário.' }] });
+            }
+            if (body.query?.includes('CurrentUserCalendarSubscribedEvents')) {
+              const eventIds = createCalendarStoryEvents(context.args)
+                .slice(0, context.args.subscribedCount)
+                .map((event) => ({ event: { id: event.id } }));
+              return HttpResponse.json({
+                data: {
+                  currentUserSubscribedItems: eventIds,
+                  currentUserMajorEventSubscriptions: [],
+                },
+              });
+            }
 
-          if (body.query?.includes('publicCalendarEvents')) {
-            return HttpResponse.json({
-              data: {
-                publicCalendarEvents: filterCalendarEvents(
-                  createCalendarStoryEvents(context.args),
-                  body.variables ?? {},
-                ),
-              },
-            });
-          }
+            if (body.query?.includes('publicCalendarEvents')) {
+              return HttpResponse.json({
+                data: {
+                  publicCalendarEvents: filterCalendarEvents(
+                    createCalendarStoryEvents(context.args),
+                    body.variables ?? {},
+                  ),
+                },
+              });
+            }
 
-          return HttpResponse.json({ data: {} });
+            return HttpResponse.json({ data: {} });
           }),
         ],
       },

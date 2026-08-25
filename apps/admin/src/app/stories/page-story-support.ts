@@ -528,9 +528,12 @@ function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
         ? 'Programação extensa criada para validar formulários administrativos com títulos e descrições longas em diferentes larguras.'
         : adapted.description,
       isPaymentRequired: args.requiresPayment && index % 2 === 0,
-      sportsTournament: args.sportsEvery > 0 && index % args.sportsEvery === 0 ? { id: `tournament-${index + 1}` } : null,
-      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
-      endDate: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
+      sportsTournament:
+        args.sportsEvery > 0 && index % args.sportsEvery === 0 ? { id: `tournament-${index + 1}` } : null,
+      createdAt:
+        args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+      endDate:
+        args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
     };
   });
 }
@@ -538,7 +541,8 @@ function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
 function buildEventGroups(args: PageStoryArgs): EventGroup[] {
   return createStoryPublicEventGroups({ count: args.itemCount }).map((group, index) => {
     const adapted = adaptEventGroup(group);
-    const shouldIssueCertificate = args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
+    const shouldIssueCertificate =
+      args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
     return {
       ...adapted,
       name: args.longContent
@@ -547,7 +551,8 @@ function buildEventGroups(args: PageStoryArgs): EventGroup[] {
       shouldIssueCertificate,
       shouldIssueCertificateForEachEvent: shouldIssueCertificate && index % 2 === 0,
       shouldIssuePartialCertificate: shouldIssueCertificate && index % 3 === 0,
-      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+      createdAt:
+        args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
     };
   });
 }
@@ -560,7 +565,8 @@ function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups
       majorEvents.find((majorEvent) => majorEvent.id === eventItem.majorEventId) ?? null,
       eventGroups.find((eventGroup) => eventGroup.id === eventItem.eventGroupId) ?? null,
     );
-    const shouldIssueCertificate = args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
+    const shouldIssueCertificate =
+      args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
     return {
       ...adapted,
       name: args.longContent
@@ -573,8 +579,10 @@ function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups
       latitude: args.coordinates ? -22.1211 + index * 0.0002 : null,
       longitude: args.coordinates ? -51.4086 + index * 0.0002 : null,
       shouldIssueCertificate,
-      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
-      endDate: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
+      createdAt:
+        args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+      endDate:
+        args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
     };
   });
 }

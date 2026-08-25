@@ -89,8 +89,7 @@ describe('event form results helpers', () => {
 
   it('does not create chart buckets for incremental date, time, or scheduling answers', () => {
     const elements = ['date', 'time', 'scheduling'].map(
-      (type, index) =>
-        ({ id: `element-${index}`, type, title: type, required: false, options: [] }) as FormElement,
+      (type, index) => ({ id: `element-${index}`, type, title: type, required: false, options: [] }) as FormElement,
     );
     const accumulator = new FormResultSummaryAccumulator(elements);
 
@@ -99,9 +98,7 @@ describe('event form results helpers', () => {
     } as never);
 
     expect(accumulator.toSummary(false).questions).toEqual(
-      elements.map((element) =>
-        expect.objectContaining({ elementId: element.id, answeredCount: 1, buckets: [] }),
-      ),
+      elements.map((element) => expect.objectContaining({ elementId: element.id, answeredCount: 1, buckets: [] })),
     );
   });
 });

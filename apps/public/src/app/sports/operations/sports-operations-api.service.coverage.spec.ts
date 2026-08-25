@@ -183,11 +183,15 @@ describe('SportsOperationsApiService uncovered operations', () => {
   });
 
   it('joins sports GraphQL errors and rejects responses without data', async () => {
-    const errorResult = firstValueFrom(api.submitRoster({ matchId: 'match-1', registrationId: 'registration-1', entries: [] }));
+    const errorResult = firstValueFrom(
+      api.submitRoster({ matchId: 'match-1', registrationId: 'registration-1', entries: [] }),
+    );
     http.expectOne('/api/graphql').flush({ errors: [{ message: 'Conflito' }, { message: 'Revisão necessária' }] });
     await expect(errorResult).rejects.toThrow('Conflito Revisão necessária');
 
-    const missingResult = firstValueFrom(api.reviewTeamApplication({ applicationId: 'application-1', teamId: 'team-1', approved: true }));
+    const missingResult = firstValueFrom(
+      api.reviewTeamApplication({ applicationId: 'application-1', teamId: 'team-1', approved: true }),
+    );
     http.expectOne('/api/graphql').flush({});
     await expect(missingResult).rejects.toThrow('A resposta do servidor não trouxe os dados esperados.');
   });

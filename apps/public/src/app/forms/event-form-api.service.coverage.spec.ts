@@ -170,7 +170,9 @@ describe('PublicEventFormApiService uncovered GraphQL operations', () => {
     const result = firstValueFrom(
       service.getCurrentUserResults({ formId: 'form-1', targetType: 'EVENT', eventId: 'event-1' }),
     );
-    http.expectOne('/api/graphql').flush({ errors: [{ message: 'Formulário indisponível' }, { message: 'Acesso negado' }] });
+    http
+      .expectOne('/api/graphql')
+      .flush({ errors: [{ message: 'Formulário indisponível' }, { message: 'Acesso negado' }] });
 
     await expect(result).rejects.toThrow('Formulário indisponível\nAcesso negado');
   });

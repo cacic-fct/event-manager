@@ -145,7 +145,10 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
           throw new BadRequestException('Somente a arbitragem ou administradores podem substituir a prontidão.');
         }
         const overrideReason = payload['readinessOverrideReason'];
-        if (overrideReason !== undefined && (typeof overrideReason !== 'string' || overrideReason.trim().length > 500)) {
+        if (
+          overrideReason !== undefined &&
+          (typeof overrideReason !== 'string' || overrideReason.trim().length > 500)
+        ) {
           throw new BadRequestException('O motivo da substituição da prontidão deve ter no máximo 500 caracteres.');
         }
       } else if (match.readiness && !match.readiness.ready) {

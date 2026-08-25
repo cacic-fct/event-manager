@@ -53,7 +53,7 @@ describe('SportsLifecycleMutationsResolver', () => {
     await expect(invoke.call(resolver, 'entity-1', 4, context)).resolves.toBe(true);
 
     expect(policy.assertPermissions).toHaveBeenCalledWith(actor, [permission], { [targetKey]: 'entity-1' });
-    expect((admin[method] as jest.Mock)).toHaveBeenCalledWith('entity-1', 4, actor);
+    expect(admin[method] as jest.Mock).toHaveBeenCalledWith('entity-1', 4, actor);
     expect(mutationEvents.publishForEntity).toHaveBeenCalledWith(entity, 'entity-1', true);
   });
 
@@ -87,12 +87,9 @@ describe('SportsLifecycleMutationsResolver', () => {
       ),
     ).resolves.toBe('score-entry-2');
 
-    expect(policy.assertPermissions).toHaveBeenNthCalledWith(
-      1,
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(policy.assertPermissions).toHaveBeenNthCalledWith(1, actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(admin.createTournamentScoreEntry).toHaveBeenCalledWith(
       expect.objectContaining({ tournamentId: 'tournament-1' }),
       actor,
@@ -111,11 +108,9 @@ describe('SportsLifecycleMutationsResolver', () => {
 
     await expect(resolver.deleteVenue('venue-1', 'tournament-1', 6, context as never)).resolves.toBe(true);
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(policy.assertPermissions).toHaveBeenCalledWith(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(admin.deleteVenue).toHaveBeenCalledWith('venue-1', 6, actor, 'tournament-1');
     expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('VENUE', 'venue-1', true);
   });
@@ -123,15 +118,13 @@ describe('SportsLifecycleMutationsResolver', () => {
   it('soft-deletes score entries only after tournament-scoped authorization', async () => {
     const resolver = createResolver();
 
-    await expect(resolver.deleteTournamentScoreEntry('score-entry-1', 'tournament-1', 3, context as never)).resolves.toBe(
-      true,
-    );
+    await expect(
+      resolver.deleteTournamentScoreEntry('score-entry-1', 'tournament-1', 3, context as never),
+    ).resolves.toBe(true);
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(policy.assertPermissions).toHaveBeenCalledWith(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(admin.deleteTournamentScoreEntry).toHaveBeenCalledWith('score-entry-1', 'tournament-1', 3, actor);
     expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('SCORE_ENTRY', 'score-entry-1', true);
   });

@@ -98,7 +98,10 @@ describe('EventsPageComponent', () => {
     expect(publishButton?.disabled).toBe(true);
   });
 
-  async function configureComponent(mode: PageStoryMode, dialog: Partial<MatDialog> = { open: vi.fn() }): Promise<void> {
+  async function configureComponent(
+    mode: PageStoryMode,
+    dialog: Partial<MatDialog> = { open: vi.fn() },
+  ): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],
       providers: [

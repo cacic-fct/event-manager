@@ -68,9 +68,7 @@ describe('SubscriptionsService', () => {
       setSportsParticipantTeam: vi.fn(() => of('ok')),
       reviewSportsApplication: vi.fn(() => of('ok')),
       downloadEventSubscriptionBadgeArchive: vi.fn(() => of({ blob: new Blob(['zip']), fileName: 'event.zip' })),
-      downloadMajorEventSubscriptionBadgeArchive: vi.fn(() =>
-        of({ blob: new Blob(['zip']), fileName: 'major.zip' }),
-      ),
+      downloadMajorEventSubscriptionBadgeArchive: vi.fn(() => of({ blob: new Blob(['zip']), fileName: 'major.zip' })),
     };
     eventApi = {
       listEvents: vi.fn(() => of([event])),
@@ -368,9 +366,7 @@ describe('SubscriptionsService', () => {
       afterClosed: () =>
         of({ subscriptionStatus: 'CONFIRMED', columnMapping: { subscribedEventIdsHeader: 'eventos' } }),
     });
-    attendanceApi.importMajorEventSubscriptionsFromCsv.mockReturnValueOnce(
-      throwError(() => new Error('CSV inválido')),
-    );
+    attendanceApi.importMajorEventSubscriptionsFromCsv.mockReturnValueOnce(throwError(() => new Error('CSV inválido')));
     await service.importMajorEventSubscriptionsFromCsv(file);
     expect(feedback.error).toHaveBeenCalledWith(expect.any(Error), 'Não foi possível importar o CSV.');
     expect(service.isImportingCsv()).toBe(false);

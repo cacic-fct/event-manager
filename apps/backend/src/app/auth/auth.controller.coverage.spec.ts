@@ -56,9 +56,7 @@ describe('AuthController getMe boundary', () => {
   });
 
   it('rejects a request without an authenticated identity before projecting anything', () => {
-    expect(() => controller.getMe({} as never)).toThrow(
-      new ForbiddenException('User is not authenticated.'),
-    );
+    expect(() => controller.getMe({} as never)).toThrow(new ForbiddenException('User is not authenticated.'));
   });
 });
 

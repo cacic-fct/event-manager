@@ -32,9 +32,7 @@ export function requiredMajorEventImageLicenseAgreementWhere(
   };
 }
 
-export function requiresMajorEventImageLicenseAgreement(
-  subscription: MajorEventImageLicenseAgreementState,
-): boolean {
+export function requiresMajorEventImageLicenseAgreement(subscription: MajorEventImageLicenseAgreementState): boolean {
   return (
     subscription.majorEvent.requiresImageLicenseAgreement &&
     !subscription.imageLicenseAgreementAccepted &&

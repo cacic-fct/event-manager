@@ -72,11 +72,7 @@ describe('SportsReadCurrentUserService', () => {
   it('filters self-subscription categories to active registrations of the selected team', async () => {
     const tournament = {
       ...sportsCurrentUserTournamentFixture(),
-      categories: [
-        { id: 'category-available' },
-        { id: 'category-unregistered' },
-        { id: 'category-finished' },
-      ],
+      categories: [{ id: 'category-available' }, { id: 'category-unregistered' }, { id: 'category-finished' }],
     };
     publicReader.publicTournament.mockResolvedValue(tournament);
     prisma.sportsCategory.findMany.mockResolvedValue([{ id: 'category-available' }]);

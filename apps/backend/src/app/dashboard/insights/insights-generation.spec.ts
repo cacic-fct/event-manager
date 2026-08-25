@@ -286,16 +286,10 @@ describe('DashboardInsightsService generation', () => {
         take: 30,
       }),
     );
-    expect(
-      prisma.eventGroup.findMany.mock.calls.some(
-        ([query]) => query.where?.sportsCategory?.is === null,
-      ),
-    ).toBe(true);
-    expect(
-      prisma.event.findMany.mock.calls.filter(
-        ([query]) => query.where?.sportsMatch?.is === null,
-      ),
-    ).toHaveLength(3);
+    expect(prisma.eventGroup.findMany.mock.calls.some(([query]) => query.where?.sportsCategory?.is === null)).toBe(
+      true,
+    );
+    expect(prisma.event.findMany.mock.calls.filter(([query]) => query.where?.sportsMatch?.is === null)).toHaveLength(3);
     expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');
     expect(result.permissions).toEqual(
       expect.arrayContaining([

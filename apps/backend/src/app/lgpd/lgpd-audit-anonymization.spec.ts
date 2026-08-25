@@ -33,9 +33,6 @@ describe('synchronizeAnonymizedAuditEntries', () => {
         ['audit-1'],
       ),
     ).rejects.toThrow('typesense down');
-    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'audit-1' }),
-      true,
-    );
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(expect.objectContaining({ id: 'audit-1' }), true);
   });
 });

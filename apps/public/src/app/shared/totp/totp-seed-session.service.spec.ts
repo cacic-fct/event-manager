@@ -50,7 +50,16 @@ describe('TotpSeedSessionService', () => {
     await Promise.resolve();
     await Promise.resolve();
     auth.user.mockReturnValue({ sub: 'user-b' });
-    resolveSeed({ userId: 'user-a', primaryEmail: 'a@example.com', seed: 'seed', algorithm: 'SHA512', digits: 6, periodSeconds: 30, serverTime: new Date(), sessionExpiresAt: Date.now() + 10_000 });
+    resolveSeed({
+      userId: 'user-a',
+      primaryEmail: 'a@example.com',
+      seed: 'seed',
+      algorithm: 'SHA512',
+      digits: 6,
+      periodSeconds: 30,
+      serverTime: new Date(),
+      sessionExpiresAt: Date.now() + 10_000,
+    });
 
     await expect(request).resolves.toBeNull();
     expect(replaceSeed).not.toHaveBeenCalled();
@@ -69,7 +78,10 @@ describe('TotpSeedSessionService', () => {
         },
         { provide: NetworkStatusService, useValue: { isOnline: () => false } },
         { provide: TotpApiService, useValue: { getSeed: vi.fn(() => of(null)) } },
-        { provide: TotpSeedCacheService, useValue: { clearExpiredSeeds, clearSeeds: vi.fn(), clearSeedsExcept: vi.fn() } },
+        {
+          provide: TotpSeedCacheService,
+          useValue: { clearExpiredSeeds, clearSeeds: vi.fn(), clearSeedsExcept: vi.fn() },
+        },
       ],
     });
     const service = TestBed.inject(TotpSeedSessionService);

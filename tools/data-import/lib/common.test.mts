@@ -16,7 +16,13 @@ import {
 test('builds a PostgreSQL URL from the shared defaults and options', () => {
   assert.equal(databaseUrlFromOptions({}), 'postgresql://postgres:postgres@localhost:5432/postgres');
   assert.equal(
-    databaseUrlFromOptions({ dbUser: 'user@example.com', dbPassword: 'p@ss word', dbHost: 'db', dbPort: 5433, dbName: 'fct' }),
+    databaseUrlFromOptions({
+      dbUser: 'user@example.com',
+      dbPassword: 'p@ss word',
+      dbHost: 'db',
+      dbPort: 5433,
+      dbName: 'fct',
+    }),
     'postgresql://user%40example.com:p%40ss%20word@db:5433/fct',
   );
   assert.equal(databaseUrlFromOptions({ databaseUrl: 'postgresql://direct/db' }), 'postgresql://direct/db');
@@ -53,6 +59,14 @@ test('resolves a DATABASE_URL from the requested env file', () => {
 
 test('chunks arrays and formats sorted counters', () => {
   assert.deepEqual([...chunks([1, 2, 3, 4, 5], 2)], [[1, 2], [3, 4], [5]]);
-  assert.equal(formatCounter(new Map([['REGULAR', 2], ['NON_PAYING', 1]])), 'NON_PAYING=1, REGULAR=2');
+  assert.equal(
+    formatCounter(
+      new Map([
+        ['REGULAR', 2],
+        ['NON_PAYING', 1],
+      ]),
+    ),
+    'NON_PAYING=1, REGULAR=2',
+  );
   assert.throws(() => [...chunks([1], 0)], /positive integer/);
 });

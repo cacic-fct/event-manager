@@ -121,10 +121,7 @@ export class MajorEvent {
     );
   }
 
-  canEditSubscription(
-    majorEvent: PublicMajorEvent,
-    subscription: CurrentUserMajorEventSubscription,
-  ): boolean {
+  canEditSubscription(majorEvent: PublicMajorEvent, subscription: CurrentUserMajorEventSubscription): boolean {
     if (subscription.subscriptionStatus === 'CANCELED') {
       return false;
     }
@@ -132,9 +129,7 @@ export class MajorEvent {
       return true;
     }
     return Boolean(
-      majorEvent.sportsTournament &&
-        majorEvent.hasEvents !== false &&
-        (subscription.selectedEvents?.length ?? 0) === 0
+      majorEvent.sportsTournament && majorEvent.hasEvents !== false && (subscription.selectedEvents?.length ?? 0) === 0,
     );
   }
 
@@ -161,10 +156,7 @@ export class MajorEvent {
       : this.isSubscriptionOpen(majorEvent) && majorEvent.regularSubscriptionOpen !== false;
   }
 
-  subscriptionActionLabel(
-    majorEvent: PublicMajorEvent,
-    action: 'login' | 'create' | 'edit' | 'closed',
-  ): string {
+  subscriptionActionLabel(majorEvent: PublicMajorEvent, action: 'login' | 'create' | 'edit' | 'closed'): string {
     if (majorEvent.hasEvents === false) {
       return action === 'login' ? 'Entrar para solicitar inscrição' : 'Solicitar inscrição no torneio';
     }

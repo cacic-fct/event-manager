@@ -35,9 +35,9 @@ describe('CurrentUserCertificatesResolver', () => {
     currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: null });
     const subject = resolver();
 
-    await expect(
-      subject.currentUserCertificates(CertificateScope.EVENT, 'event-1', context as never),
-    ).resolves.toEqual([]);
+    await expect(subject.currentUserCertificates(CertificateScope.EVENT, 'event-1', context as never)).resolves.toEqual(
+      [],
+    );
     await expect(subject.currentUserStandaloneCertificateFolders(context as never)).resolves.toEqual([]);
 
     expect(certificate.findMany).not.toHaveBeenCalled();
@@ -49,14 +49,7 @@ describe('CurrentUserCertificatesResolver', () => {
     certificate.findMany.mockResolvedValueOnce(records);
 
     await expect(
-      resolver().currentUserCertificates(
-        CertificateScope.EVENT,
-        ' event-1 ',
-        context as never,
-        ' config-1 ',
-        5,
-        20,
-      ),
+      resolver().currentUserCertificates(CertificateScope.EVENT, ' event-1 ', context as never, ' config-1 ', 5, 20),
     ).resolves.toEqual([{ id: 'certificate-1' }, { id: 'certificate-2' }]);
 
     expect(validation.assertSupportedScope).toHaveBeenCalledWith(CertificateScope.EVENT);
@@ -118,9 +111,9 @@ describe('CurrentUserCertificatesResolver', () => {
     certificate.findFirst.mockResolvedValueOnce({ id: 'certificate-1' });
     downloadService.downloadCertificate.mockResolvedValueOnce(expected);
 
-    await expect(
-      resolver().downloadCurrentUserCertificate(' certificate-1 ', context as never),
-    ).resolves.toBe(expected);
+    await expect(resolver().downloadCurrentUserCertificate(' certificate-1 ', context as never)).resolves.toBe(
+      expected,
+    );
     expect(certificate.findFirst).toHaveBeenCalledWith({
       where: { id: 'certificate-1', personId: 'person-1', deletedAt: null },
       select: { id: true },
@@ -153,9 +146,9 @@ describe('CurrentUserCertificatesResolver', () => {
 
     certificate.findFirst.mockResolvedValueOnce({ id: 'certificate-1' });
     downloadService.downloadCertificate.mockRejectedValueOnce(new Error('Arquivo indisponível.'));
-    await expect(
-      resolver().downloadCurrentUserCertificate('certificate-1', context as never),
-    ).rejects.toThrow('Arquivo indisponível.');
+    await expect(resolver().downloadCurrentUserCertificate('certificate-1', context as never)).rejects.toThrow(
+      'Arquivo indisponível.',
+    );
   });
 
   function resolver(): CurrentUserCertificatesResolver {

@@ -287,7 +287,9 @@ describe('SportsTeamLogoService representative queue', () => {
   it('does not delete a logo object that a concurrent winner committed', async () => {
     const png = await sharp({
       create: { width: 32, height: 32, channels: 4, background: '#1565c0' },
-    }).png().toBuffer();
+    })
+      .png()
+      .toBuffer();
     prisma.sportsTeam.findFirst
       .mockResolvedValueOnce({
         id: 'team-1',

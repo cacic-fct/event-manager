@@ -1,5 +1,11 @@
 import { Service, OnDestroy } from '@angular/core';
-import { ActivatedRouteSnapshot, DetachedRouteHandle, NavigationStart, RouteReuseStrategy, Router } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  DetachedRouteHandle,
+  NavigationStart,
+  RouteReuseStrategy,
+  Router,
+} from '@angular/router';
 import { Subscription } from 'rxjs';
 
 type StoredHandle = {

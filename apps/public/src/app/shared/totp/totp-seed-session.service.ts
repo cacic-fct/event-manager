@@ -136,11 +136,7 @@ export class TotpSeedSessionService {
     await this.cache.clearSeedsExcept(userId);
   }
 
-  private async prepareSeedForCurrentUser(
-    userId: string | null,
-    isOnline: boolean,
-    generation: number,
-  ): Promise<void> {
+  private async prepareSeedForCurrentUser(userId: string | null, isOnline: boolean, generation: number): Promise<void> {
     if (!isOnline || !userId || this.preparedUserId === userId) {
       return;
     }
@@ -158,9 +154,6 @@ export class TotpSeedSessionService {
   }
 
   private isCurrentGeneration(userId: string | null, generation?: number): boolean {
-    return (
-      this.auth.user()?.sub === userId &&
-      (generation === undefined || generation === this.authGeneration)
-    );
+    return this.auth.user()?.sub === userId && (generation === undefined || generation === this.authGeneration);
   }
 }

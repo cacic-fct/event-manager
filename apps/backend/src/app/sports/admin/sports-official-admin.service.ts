@@ -343,7 +343,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
     matchCategoryId: string | null,
   ): SportsOfficialScope {
     return {
-      categoryId: matchId ? categoryId ?? matchCategoryId : categoryId,
+      categoryId: matchId ? (categoryId ?? matchCategoryId) : categoryId,
       matchId,
     };
   }

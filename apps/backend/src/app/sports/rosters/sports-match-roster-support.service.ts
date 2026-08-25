@@ -41,9 +41,7 @@ export abstract class SportsMatchRosterSupportService {
     if (result.some((entry) => !entry.registrationMemberId)) {
       throw new BadRequestException('Integrante inválido na escalação.');
     }
-    if (
-      new Set(result.map((entry) => entry.teamMemberId ?? entry.registrationMemberId)).size !== result.length
-    ) {
+    if (new Set(result.map((entry) => entry.teamMemberId ?? entry.registrationMemberId)).size !== result.length) {
       throw new BadRequestException('Uma pessoa não pode aparecer duas vezes na mesma escalação.');
     }
     if (

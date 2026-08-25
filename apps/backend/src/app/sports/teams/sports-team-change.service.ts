@@ -256,146 +256,146 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
     let outcome;
     try {
       outcome = await runSerializableSportsTransaction(this.prisma, async (tx) => {
-      const request = await tx.sportsTeamChangeRequest.findUnique({
-        where: { id: requestId },
-        include: {
-          identityClaims: true,
-          team: {
-            include: {
-              tournament: {
-                include: {
-                  majorEvent: {
-                    select: {
-                      id: true,
+        const request = await tx.sportsTeamChangeRequest.findUnique({
+          where: { id: requestId },
+          include: {
+            identityClaims: true,
+            team: {
+              include: {
+                tournament: {
+                  include: {
+                    majorEvent: {
+                      select: {
+                        id: true,
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      });
-      if (
-        !request ||
-        !(
-          [
-            SportsTeamChangeRequestStatus.PENDING,
-            SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
-            SportsTeamChangeRequestStatus.CONFLICT,
-          ] as SportsTeamChangeRequestStatus[]
-        ).includes(request.status)
-      ) {
-        throw new NotFoundException(`Pending sports team change request ${requestId} was not found.`);
-      }
-      if (
-        options.expectedRequestRevision !== undefined &&
-        request.requestRevision !== options.expectedRequestRevision
-      ) {
-        throw new ConflictException('A solicitação mudou. Recarregue os dados antes de analisá-la.');
-      }
+        });
+        if (
+          !request ||
+          !(
+            [
+              SportsTeamChangeRequestStatus.PENDING,
+              SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+              SportsTeamChangeRequestStatus.CONFLICT,
+            ] as SportsTeamChangeRequestStatus[]
+          ).includes(request.status)
+        ) {
+          throw new NotFoundException(`Pending sports team change request ${requestId} was not found.`);
+        }
+        if (
+          options.expectedRequestRevision !== undefined &&
+          request.requestRevision !== options.expectedRequestRevision
+        ) {
+          throw new ConflictException('A solicitação mudou. Recarregue os dados antes de analisá-la.');
+        }
 
-      if (
-        decision === 'APPROVE' &&
-        (request.team.tournament.deletedAt ||
-          request.team.tournament.finishedAt ||
-          ([SportsTournamentStatus.FINISHED, SportsTournamentStatus.CANCELED] as SportsTournamentStatus[]).includes(
-            request.team.tournament.status,
-          ))
-      ) {
-        throw new ConflictException(
-          'Solicitações de equipes não podem ser aprovadas em um torneio finalizado ou cancelado.',
+        if (
+          decision === 'APPROVE' &&
+          (request.team.tournament.deletedAt ||
+            request.team.tournament.finishedAt ||
+            ([SportsTournamentStatus.FINISHED, SportsTournamentStatus.CANCELED] as SportsTournamentStatus[]).includes(
+              request.team.tournament.status,
+            ))
+        ) {
+          throw new ConflictException(
+            'Solicitações de equipes não podem ser aprovadas em um torneio finalizado ou cancelado.',
+          );
+        }
+
+        if (decision !== 'APPROVE') {
+          const status =
+            decision === 'REJECT'
+              ? SportsTeamChangeRequestStatus.REJECTED
+              : SportsTeamChangeRequestStatus.CHANGES_REQUESTED;
+          const reviewed = await tx.sportsTeamChangeRequest.update({
+            where: { id: request.id },
+            data: {
+              status,
+              pendingKey: decision === 'REJECT' ? null : request.pendingKey,
+              reviewedAt: new Date(),
+              reviewedById: actorId,
+              reviewMessage: options.message?.trim() || null,
+            },
+          });
+          await this.recordReviewAudit(tx, request, actor, status);
+          return { kind: 'SUCCESS' as const, value: reviewed };
+        }
+
+        const delta = this.normalizeDelta(
+          options.resolvedDelta ?? this.readDelta(request.delta),
+          request.type === SportsTeamChangeRequestType.LOGO,
+          request.type,
         );
-      }
+        const conflictingFields = this.findConflictingFields(
+          request.baseFieldRevisions,
+          request.team.fieldRevisions,
+          delta,
+        );
+        if (conflictingFields.length > 0 && !options.forceConflicts) {
+          const conflicted = await tx.sportsTeamChangeRequest.update({
+            where: { id: request.id },
+            data: {
+              status: SportsTeamChangeRequestStatus.CONFLICT,
+              reviewMessage: `Conflito nos campos: ${conflictingFields.join(', ')}.`,
+            },
+          });
+          await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.CONFLICT);
+          return {
+            kind: 'CONFLICT' as const,
+            conflictingFields,
+            request: conflicted,
+          };
+        }
 
-      if (decision !== 'APPROVE') {
-        const status =
-          decision === 'REJECT'
-            ? SportsTeamChangeRequestStatus.REJECTED
-            : SportsTeamChangeRequestStatus.CHANGES_REQUESTED;
-        const reviewed = await tx.sportsTeamChangeRequest.update({
+        const resultingRevision = request.team.revision + 1;
+        const teamFields = this.buildTeamUpdate(delta);
+        const updated = await tx.sportsTeam.updateMany({
+          where: {
+            id: request.teamId,
+            revision: request.team.revision,
+            deletedAt: null,
+          },
+          data: {
+            ...teamFields,
+            revision: { increment: 1 },
+            fieldRevisions: this.toJson(this.bumpFieldRevisions(request.team.fieldRevisions, delta, resultingRevision)),
+            updatedById: actorId,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException('A equipe mudou durante a aprovação. Tente novamente.');
+        }
+
+        if (request.type === SportsTeamChangeRequestType.MEMBER_ADD) {
+          await this.resolveAndAddMembers(tx, request, delta.categoryIds ?? [], actorId);
+        } else if (
+          request.type === SportsTeamChangeRequestType.MEMBER_UPDATE ||
+          request.type === SportsTeamChangeRequestType.MEMBER_REMOVE
+        ) {
+          await this.applyMemberChanges(tx, request.teamId, request.type, delta.memberChanges ?? [], actorId);
+        } else if (request.type === SportsTeamChangeRequestType.CATEGORY_ROLE) {
+          await this.applyCategoryRoleChanges(tx, request, delta.categoryRoleChanges ?? [], actorId);
+        }
+
+        const approved = await tx.sportsTeamChangeRequest.update({
           where: { id: request.id },
           data: {
-            status,
-            pendingKey: decision === 'REJECT' ? null : request.pendingKey,
+            status: SportsTeamChangeRequestStatus.APPROVED,
+            pendingKey: null,
             reviewedAt: new Date(),
             reviewedById: actorId,
             reviewMessage: options.message?.trim() || null,
+            resolvedDelta: this.toJson(delta),
+            resultingRevision,
           },
         });
-        await this.recordReviewAudit(tx, request, actor, status);
-        return { kind: 'SUCCESS' as const, value: reviewed };
-      }
-
-      const delta = this.normalizeDelta(
-        options.resolvedDelta ?? this.readDelta(request.delta),
-        request.type === SportsTeamChangeRequestType.LOGO,
-        request.type,
-      );
-      const conflictingFields = this.findConflictingFields(
-        request.baseFieldRevisions,
-        request.team.fieldRevisions,
-        delta,
-      );
-      if (conflictingFields.length > 0 && !options.forceConflicts) {
-        const conflicted = await tx.sportsTeamChangeRequest.update({
-          where: { id: request.id },
-          data: {
-            status: SportsTeamChangeRequestStatus.CONFLICT,
-            reviewMessage: `Conflito nos campos: ${conflictingFields.join(', ')}.`,
-          },
-        });
-        await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.CONFLICT);
-        return {
-          kind: 'CONFLICT' as const,
-          conflictingFields,
-          request: conflicted,
-        };
-      }
-
-      const resultingRevision = request.team.revision + 1;
-      const teamFields = this.buildTeamUpdate(delta);
-      const updated = await tx.sportsTeam.updateMany({
-        where: {
-          id: request.teamId,
-          revision: request.team.revision,
-          deletedAt: null,
-        },
-        data: {
-          ...teamFields,
-          revision: { increment: 1 },
-          fieldRevisions: this.toJson(this.bumpFieldRevisions(request.team.fieldRevisions, delta, resultingRevision)),
-          updatedById: actorId,
-        },
-      });
-      if (updated.count !== 1) {
-        throw new ConflictException('A equipe mudou durante a aprovação. Tente novamente.');
-      }
-
-      if (request.type === SportsTeamChangeRequestType.MEMBER_ADD) {
-        await this.resolveAndAddMembers(tx, request, delta.categoryIds ?? [], actorId);
-      } else if (
-        request.type === SportsTeamChangeRequestType.MEMBER_UPDATE ||
-        request.type === SportsTeamChangeRequestType.MEMBER_REMOVE
-      ) {
-        await this.applyMemberChanges(tx, request.teamId, request.type, delta.memberChanges ?? [], actorId);
-      } else if (request.type === SportsTeamChangeRequestType.CATEGORY_ROLE) {
-        await this.applyCategoryRoleChanges(tx, request, delta.categoryRoleChanges ?? [], actorId);
-      }
-
-      const approved = await tx.sportsTeamChangeRequest.update({
-        where: { id: request.id },
-        data: {
-          status: SportsTeamChangeRequestStatus.APPROVED,
-          pendingKey: null,
-          reviewedAt: new Date(),
-          reviewedById: actorId,
-          reviewMessage: options.message?.trim() || null,
-          resolvedDelta: this.toJson(delta),
-          resultingRevision,
-        },
-      });
-      await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.APPROVED);
-      return { kind: 'SUCCESS' as const, value: approved };
+        await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.APPROVED);
+        return { kind: 'SUCCESS' as const, value: approved };
       });
     } catch (error: unknown) {
       if (promotedLogo && queuedLogo) {

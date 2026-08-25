@@ -336,10 +336,7 @@ export class CurrentUserEventSubscriptionsResolver {
       return null;
     }
 
-    return this.mapper.mapCurrentUserEventGroupSubscription(
-      subscription,
-      events,
-    );
+    return this.mapper.mapCurrentUserEventGroupSubscription(subscription, events);
   }
 
   @Mutation(() => CurrentUserEventGroupSubscription, {

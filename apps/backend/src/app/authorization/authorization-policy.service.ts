@@ -155,9 +155,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
 
     const grants = await this.findActiveGrants(user.sub, requirements);
     const grantedPermissions = new Set(
-      grants
-        .filter((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)
-        .map((grant) => grant.permission),
+      grants.filter((grant) => grant.scope === EventManagerPermissionScope.GLOBAL).map((grant) => grant.permission),
     );
     return requirements.filter((permission) => grantedPermissions.has(permission));
   }

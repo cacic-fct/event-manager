@@ -145,7 +145,9 @@ describe('ReceiptUploadService', () => {
     });
     jest
       .spyOn(receiptPdfProcessing, 'assertReceiptPdfPageCountWithinLimit')
-      .mockRejectedValue(new receiptPdfProcessing.ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'));
+      .mockRejectedValue(
+        new receiptPdfProcessing.ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'),
+      );
 
     await expect(service.uploadReceipt('major-1', createPdfFile(), user)).rejects.toThrow(
       'Envie um arquivo com no máximo 10 páginas.',

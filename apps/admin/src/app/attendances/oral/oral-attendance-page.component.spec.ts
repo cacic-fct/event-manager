@@ -68,10 +68,9 @@ describe('AdminOralAttendancePageComponent lifecycle', () => {
     });
     const component = TestBed.inject(AdminOralAttendancePageComponent);
     component.ngOnInit();
-    (component as unknown as { registerDecision: (person: { personId: string }, decision: 'PRESENT') => void }).registerDecision(
-      { personId: 'person-1' },
-      'PRESENT',
-    );
+    (
+      component as unknown as { registerDecision: (person: { personId: string }, decision: 'PRESENT') => void }
+    ).registerDecision({ personId: 'person-1' }, 'PRESENT');
 
     vi.advanceTimersByTime(300);
     expect(setEventOralAttendances).toHaveBeenCalledTimes(1);

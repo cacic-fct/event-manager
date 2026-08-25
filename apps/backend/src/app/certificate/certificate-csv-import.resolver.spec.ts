@@ -64,11 +64,7 @@ describe('CertificateCsvImportResolver', () => {
     });
 
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
-    expect(issuingService.issueManualForPeopleWithResults).toHaveBeenCalledWith(
-      'config-1',
-      ['person-1'],
-      'issuer-1',
-    );
+    expect(issuingService.issueManualForPeopleWithResults).toHaveBeenCalledWith('config-1', ['person-1'], 'issuer-1');
   });
 
   it('returns ambiguous people for explicit resolution before issuing certificates', async () => {
@@ -131,9 +127,9 @@ describe('CertificateCsvImportResolver', () => {
 
   it('detects delimiters outside quoted commas and preserves multiline fields', () => {
     const { resolver } = createResolver();
-    const parsed = (resolver as unknown as { parseCsv: (content: string) => { headers: string[]; rows: Record<string, string>[] } }).parseCsv(
-      'Nome;E-mail\n"Last, First";ana@example.com\n"Linha\nquebrada";bruna@example.com',
-    );
+    const parsed = (
+      resolver as unknown as { parseCsv: (content: string) => { headers: string[]; rows: Record<string, string>[] } }
+    ).parseCsv('Nome;E-mail\n"Last, First";ana@example.com\n"Linha\nquebrada";bruna@example.com');
 
     expect(parsed.headers).toEqual(['Nome', 'E-mail']);
     expect(parsed.rows).toEqual([

@@ -9,7 +9,9 @@ describe('PermissionManagementApiService', () => {
 
   beforeEach(() => {
     graphql.request.mockReset();
-    TestBed.configureTestingModule({ providers: [PermissionManagementApiService, { provide: GraphqlHttpService, useValue: graphql }] });
+    TestBed.configureTestingModule({
+      providers: [PermissionManagementApiService, { provide: GraphqlHttpService, useValue: graphql }],
+    });
     service = TestBed.inject(PermissionManagementApiService);
   });
 

@@ -31,24 +31,15 @@ export const NON_EVENT_KEYS = new Set([
   'sext',
 ]);
 
-const EVENT_COLUMN_PATTERN = /^(segunda|terca|quarta|quinta|sexta)\s*-\s*(manha|tarde)\b|^(mesa redonda|palestra .+periodo noturno)\b/iu;
+const EVENT_COLUMN_PATTERN =
+  /^(segunda|terca|quarta|quinta|sexta)\s*-\s*(manha|tarde)\b|^(mesa redonda|palestra .+periodo noturno)\b/iu;
 const VAGAS_SUFFIX_PATTERN = /\s*\(\s*\d+\s+vagas?\s*\)$/iu;
 const SCHEDULE_SUFFIX_PATTERN = /\s*\(([^()]*)\)\s*$/u;
 const DB_PART_SUFFIX_PATTERN = /\s*-\s*parte\s*(1|2)\s*$/iu;
 const LEADING_ARTICLE_PATTERN = /^(a|o)\s+/iu;
 const PART_1_PATTERN = /\b(primeira\s+parte|1a\s+parte|1\s+parte|parte\s*1)\b/u;
 const PART_2_PATTERN = /\b(segunda\s+parte|2a\s+parte|2\s+parte|parte\s*2)\b/u;
-const SCHEDULE_HINTS = new Set([
-  'parte',
-  'segunda',
-  'terca',
-  'quarta',
-  'quinta',
-  'sexta',
-  'manha',
-  'tarde',
-  'feira',
-]);
+const SCHEDULE_HINTS = new Set(['parte', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'manha', 'tarde', 'feira']);
 const STOP_WORDS = new Set([
   'a',
   'ao',
@@ -157,13 +148,7 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
     eventYear: 2025,
     help: false,
   };
-  const valueFlags = new Set([
-    '--input',
-    '--output',
-    '--env-file',
-    '--database-url',
-    '--event-year',
-  ]);
+  const valueFlags = new Set(['--input', '--output', '--env-file', '--database-url', '--event-year']);
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === undefined) continue;
@@ -259,7 +244,10 @@ export function computeBaseKey(value: string): [string, EventPartNumber] {
   const partNumber = detectPartNumber(value);
   let base = normalizeSpaces(value).replace(VAGAS_SUFFIX_PATTERN, '');
   base = stripScheduleSuffixParentheses(base);
-  base = base.replace(DB_PART_SUFFIX_PATTERN, '').trim().replace(/[ .,:;]+$/u, '');
+  base = base
+    .replace(DB_PART_SUFFIX_PATTERN, '')
+    .trim()
+    .replace(/[ .,:;]+$/u, '');
   let baseKey = normalizeEventName(base);
   baseKey = baseKey.replace(LEADING_ARTICLE_PATTERN, '').replace(/^[ -]+|[ -]+$/gu, '');
   return [baseKey, partNumber];
@@ -272,7 +260,11 @@ export function isNonEventValue(value: unknown): boolean {
 export function extractEventName(rawValue: unknown): string | null {
   if (rawValue == null) return null;
   const text = normalizeSpaces(String(rawValue).normalize('NFKC'));
-  if (!text || text.toLocaleLowerCase('und').startsWith('http://') || text.toLocaleLowerCase('und').startsWith('https://')) {
+  if (
+    !text ||
+    text.toLocaleLowerCase('und').startsWith('http://') ||
+    text.toLocaleLowerCase('und').startsWith('https://')
+  ) {
     return null;
   }
   if (isNonEventValue(text)) return null;
@@ -358,7 +350,8 @@ function longestCommonSubstring(
       const otherStart = bi - length + 1;
       if (
         length > best.length ||
-        (length === best.length && (matchStart < best.aStart || (matchStart === best.aStart && otherStart < best.bStart)))
+        (length === best.length &&
+          (matchStart < best.aStart || (matchStart === best.aStart && otherStart < best.bStart)))
       ) {
         best = { length, aStart: matchStart, bStart: otherStart };
       }
@@ -382,14 +375,7 @@ function sequenceMatcherMatches(
   return (
     match.length +
     sequenceMatcherMatches(a, b, aStart, match.aStart, bStart, match.bStart) +
-    sequenceMatcherMatches(
-      a,
-      b,
-      match.aStart + match.length,
-      aEnd,
-      match.bStart + match.length,
-      bEnd,
-    )
+    sequenceMatcherMatches(a, b, match.aStart + match.length, aEnd, match.bStart + match.length, bEnd)
   );
 }
 
@@ -500,11 +486,7 @@ export function resolveEventNames(
   return { eventIdByInputName, missingEventNames, ambiguousEventNames, eventRows, eventsByFullKey };
 }
 
-function printResolutionErrors({
-  missingEventNames,
-  ambiguousEventNames,
-  eventsByFullKey,
-}: EventResolution): void {
+function printResolutionErrors({ missingEventNames, ambiguousEventNames, eventsByFullKey }: EventResolution): void {
   if (missingEventNames.length === 0 && ambiguousEventNames.length === 0) return;
   if (missingEventNames.length > 0) {
     process.stderr.write('ERROR: Some events were not found in database:\n');
@@ -512,7 +494,9 @@ function printResolutionErrors({
     for (const missingName of missingEventNames) {
       const suggestionKeys = getCloseMatches(normalizeEventName(missingName), keys, 3, 0.65);
       if (suggestionKeys.length > 0) {
-        const suggestions = suggestionKeys.flatMap((key) => (eventsByFullKey.get(key) ?? []).map((row) => row.eventName));
+        const suggestions = suggestionKeys.flatMap((key) =>
+          (eventsByFullKey.get(key) ?? []).map((row) => row.eventName),
+        );
         process.stderr.write(`  - ${missingName} (did you mean: ${suggestions.join(', ')})\n`);
       } else {
         process.stderr.write(`  - ${missingName}\n`);
@@ -522,7 +506,9 @@ function printResolutionErrors({
   if (ambiguousEventNames.length > 0) {
     process.stderr.write('ERROR: Some event names matched multiple database rows:\n');
     for (const [inputName, matches] of ambiguousEventNames) {
-      process.stderr.write(`  - ${inputName} -> ${matches.map((row) => `${row.eventName} [${row.eventId}]`).join(', ')}\n`);
+      process.stderr.write(
+        `  - ${inputName} -> ${matches.map((row) => `${row.eventName} [${row.eventId}]`).join(', ')}\n`,
+      );
     }
   }
   process.stderr.write('ERROR: Continuing and writing CSV with only resolved event IDs.\n');
@@ -583,13 +569,11 @@ export async function runSecompp25(args: Secompp25Args): Promise<CsvRow[]> {
       subscribedEventsId: JSON.stringify(dedupePreservingOrder([...selectedEventIds, ...commonEventIds])),
     };
   });
-  await writeCsvAtomic(resolve(args.output), [
-    'fullName',
-    'email',
-    'enrollmentNumber',
-    'identityDocument',
-    'subscribedEventsId',
-  ], outputRows);
+  await writeCsvAtomic(
+    resolve(args.output),
+    ['fullName', 'email', 'enrollmentNumber', 'identityDocument', 'subscribedEventsId'],
+    outputRows,
+  );
   process.stdout.write(`Wrote ${outputRows.length} rows to ${args.output}\n`);
   return outputRows;
 }

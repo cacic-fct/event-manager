@@ -124,7 +124,9 @@ export class Attendances {
   readonly isCertificateArchiveDownloadDisabled = computed(
     () => this.isDownloadingCertificates() || this.certificateArchiveCooldownSeconds() > 0,
   );
-  readonly certificateArchiveCooldownTime = computed(() => this.formatCooldown(this.certificateArchiveCooldownSeconds()));
+  readonly certificateArchiveCooldownTime = computed(() =>
+    this.formatCooldown(this.certificateArchiveCooldownSeconds()),
+  );
   readonly certificateArchiveDownloadButtonLabel = computed(() => {
     if (this.isDownloadingCertificates()) {
       return 'Preparando certificados';
@@ -169,9 +171,7 @@ export class Attendances {
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
 
-  readonly activeFilterCount = computed(
-    () => this.selectedTypeFilters().length + this.selectedStatusFilters().length,
-  );
+  readonly activeFilterCount = computed(() => this.selectedTypeFilters().length + this.selectedStatusFilters().length);
 
   readonly visibleParticipations = computed(() => {
     const state = this.feedState();
@@ -301,7 +301,7 @@ export class Attendances {
               ? 'Nenhum certificado disponível para download.'
               : retryAfterSeconds > 0
                 ? 'Aguarde antes de solicitar outro arquivo de certificados.'
-              : 'Não foi possível baixar seus certificados.';
+                : 'Não foi possível baixar seus certificados.';
           this.snackBar.open(message, 'Fechar', { duration: 5000 });
         },
       });
@@ -443,10 +443,7 @@ export class Attendances {
     };
   }
 
-  private eventFeedItem(
-    item: SubscribedItem,
-    attendances: SubscriptionsFeed['attendances'],
-  ): ParticipationFeedItem {
+  private eventFeedItem(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): ParticipationFeedItem {
     const isSingleEvent = item.__typename === 'SubscribedSingleEventItem';
     const firstEvent = isSingleEvent ? item.event : item.events[0];
     const lastEvent = isSingleEvent ? item.event : item.events[item.events.length - 1];

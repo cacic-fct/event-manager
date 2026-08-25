@@ -72,8 +72,8 @@ describe('CertificateNotificationJobsService', () => {
       certificateName: 'Config',
       targetName: 'Evento',
       issuedAt: '2026-05-23T15:30:00.000Z',
-        recipient: { subscriberId: 'person-1' },
-        outboxId: 'outbox-1',
+      recipient: { subscriberId: 'person-1' },
+      outboxId: 'outbox-1',
     });
 
     expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith(
@@ -92,7 +92,11 @@ describe('CertificateNotificationJobsService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    const service = new CertificateNotificationJobsService({ add: jest.fn() } as never, notifications as never, prisma as never);
+    const service = new CertificateNotificationJobsService(
+      { add: jest.fn() } as never,
+      notifications as never,
+      prisma as never,
+    );
 
     await expect(
       service.deliver({
@@ -108,7 +112,10 @@ describe('CertificateNotificationJobsService', () => {
     expect(prisma.certificateNotificationOutbox.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'outbox-1', status: 'PROCESSING' },
-        data: expect.objectContaining({ status: 'PENDING', lastError: expect.stringContaining('was not acknowledged') }),
+        data: expect.objectContaining({
+          status: 'PENDING',
+          lastError: expect.stringContaining('was not acknowledged'),
+        }),
       }),
     );
   });
@@ -123,8 +130,8 @@ describe('CertificateNotificationJobsService', () => {
         certificateName: 'Config',
         targetName: 'Evento',
         issuedAt: '2026-05-23T15:30:00.000Z',
-      recipient: { subscriberId: 'person-1' },
-      outboxId: 'outbox-1',
+        recipient: { subscriberId: 'person-1' },
+        outboxId: 'outbox-1',
       }),
     ).resolves.toBeUndefined();
   });

@@ -65,11 +65,7 @@
           (workspace.categoryRead() && workspace.canUpdateCategory()) ||
           (!workspace.categoryRead() && workspace.canCreateCategory())
         ) {
-          <button
-            mat-flat-button
-            type="button"
-            (click)="workspace.saveCategory()"
-            [disabled]="workspace.loading()">
+          <button mat-flat-button type="button" (click)="workspace.saveCategory()" [disabled]="workspace.loading()">
             <mat-icon>save</mat-icon>Salvar
           </button>
         }
@@ -364,8 +360,7 @@
         ><mat-label>Mínimo</mat-label><input matInput type="number" min="0" formControlName="minimumRosterSize"
       /></mat-form-field>
       <mat-form-field
-        ><mat-label>Máximo</mat-label><input matInput type="number" min="0" formControlName="maximumRosterSize"
-        />
+        ><mat-label>Máximo</mat-label><input matInput type="number" min="0" formControlName="maximumRosterSize" />
         @if (workspace.categoryForm.hasError('invalidRosterRange')) {
           <mat-error>O máximo precisa ser maior que o mínimo.</mat-error>
         }

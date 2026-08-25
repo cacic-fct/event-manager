@@ -52,10 +52,13 @@ test('reports ambiguous base matches and preserves token matching order', () => 
     { id: 'two', name: 'A Curso de Dados - Parte 2' },
   ]);
   assert.equal(findTokenMatches('curso dados', null, rows).length, 2);
-  const resolution = resolveEventNames(['Curso de Dados'], [
-    { id: 'one', name: 'A Curso de Dados - Parte 1' },
-    { id: 'two', name: 'A Curso de Dados - Parte 2' },
-  ]);
+  const resolution = resolveEventNames(
+    ['Curso de Dados'],
+    [
+      { id: 'one', name: 'A Curso de Dados - Parte 1' },
+      { id: 'two', name: 'A Curso de Dados - Parte 2' },
+    ],
+  );
   assert.equal(resolution.ambiguousEventNames.length, 1);
   assert.equal(resolution.missingEventNames.length, 0);
 });
@@ -68,7 +71,12 @@ test('uses a SequenceMatcher-compatible ratio and parameterized PostgreSQL query
     {
       async query(value) {
         query = value;
-        return { rows: [{ id: 'event-1', name: 'Event' }, { id: 2, name: 'ignored' }] };
+        return {
+          rows: [
+            { id: 'event-1', name: 'Event' },
+            { id: 2, name: 'ignored' },
+          ],
+        };
       },
     },
     2025,

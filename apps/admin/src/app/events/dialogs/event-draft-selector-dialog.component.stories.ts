@@ -75,7 +75,11 @@ const eventFixture: Event = {
 function draftFixture(index: number, args: EventDraftSelectorStoryArgs): EventDraft {
   faker.seed(20260816 + args.draftCount * 100 + index);
   const name = `${args.draftNamePrefix.trim() ? `${args.draftNamePrefix.trim()} ` : ''}${
-    args.longContent ? faker.company.catchPhrase() : index === 1 ? 'Oficina de Publicação revisada' : `Variação ${index}`
+    args.longContent
+      ? faker.company.catchPhrase()
+      : index === 1
+        ? 'Oficina de Publicação revisada'
+        : `Variação ${index}`
   }`;
   return {
     id: `draft-${index}`,

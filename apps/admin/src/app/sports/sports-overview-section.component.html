@@ -6,11 +6,7 @@
         <p>O estado controla o ciclo do torneio; o período de inscrições pode seguir o grande evento ou ser próprio.</p>
       </div>
       @if (workspace.canUpdateTournament()) {
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.saveTournament()"
-          [disabled]="workspace.loading()">
+        <button mat-flat-button type="button" (click)="workspace.saveTournament()" [disabled]="workspace.loading()">
           <mat-icon>save</mat-icon>
           Salvar
         </button>
@@ -34,11 +30,16 @@
           <mat-option value="CUSTOM">Personalizar para este torneio</mat-option>
         </mat-select>
         <mat-hint>
-          @let inherited = workspace.inheritedRegistrationDates(); @if (inherited.startDate && inherited.endDate) {
+          @let inherited = workspace.inheritedRegistrationDates();
+          @if (inherited.startDate && inherited.endDate) {
             {{ inherited.startDate | date: 'short' }} a {{ inherited.endDate | date: 'short' }}
-          } @else if (inherited.startDate) { A partir de {{ inherited.startDate | date: 'short' }} } @else if
-          (inherited.endDate) { Até {{ inherited.endDate | date: 'short' }} } @else { Sem datas definidas no grande
-          evento. }
+          } @else if (inherited.startDate) {
+            A partir de {{ inherited.startDate | date: 'short' }}
+          } @else if (inherited.endDate) {
+            Até {{ inherited.endDate | date: 'short' }}
+          } @else {
+            Sem datas definidas no grande evento.
+          }
         </mat-hint>
       </mat-form-field>
       @if (workspace.tournamentForm.controls.registrationScheduleMode.value === 'CUSTOM') {
@@ -72,9 +73,7 @@
           <mat-option value="BOTH">Por modalidade e geral</mat-option>
         </mat-select>
       </mat-form-field>
-      <mat-checkbox formControlName="selfSubscriptionEnabled">
-        Permitir autoinscrição de participantes
-      </mat-checkbox>
+      <mat-checkbox formControlName="selfSubscriptionEnabled"> Permitir autoinscrição de participantes </mat-checkbox>
       <mat-checkbox formControlName="allowPlayerMultipleTeams">
         Permitir uma mesma pessoa em mais de uma equipe
       </mat-checkbox>
@@ -121,45 +120,42 @@
     </div>
     @if (workspace.canUpdateScore()) {
       <form [formGroup]="workspace.scoreEntryForm" class="compact-form" (ngSubmit)="workspace.createScoreEntry()">
-      <div class="sports-subsection-heading span-2">
-        <div>
-          <h4>Novo ajuste</h4>
-          <p>Registre uma pontuação manual ou penalidade com o motivo.</p>
+        <div class="sports-subsection-heading span-2">
+          <div>
+            <h4>Novo ajuste</h4>
+            <p>Registre uma pontuação manual ou penalidade com o motivo.</p>
+          </div>
+          <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.scoreEntryForm.invalid">
+            Registrar ajuste
+          </button>
         </div>
-        <button
-          mat-stroked-button
-          type="submit"
-          [disabled]="workspace.loading() || workspace.scoreEntryForm.invalid">
-          Registrar ajuste
-        </button>
-      </div>
-      <mat-form-field>
-        <mat-label>Equipe</mat-label>
-        <mat-select formControlName="teamId">
-          @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
-            <mat-option [value]="team.id">
-              <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="20" />
-              {{ team.name }}
-            </mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Origem</mat-label>
-        <mat-select formControlName="source">
-          <mat-option value="MANUAL">Ajuste manual</mat-option>
-          <mat-option value="PENALTY">Penalidade</mat-option>
-          <mat-option value="PLACEMENT">Colocação</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field>
-        <mat-label>Pontos</mat-label>
-        <input matInput type="number" formControlName="points" />
-      </mat-form-field>
-      <mat-form-field class="span-2">
-        <mat-label>Motivo do ajuste</mat-label>
-        <input matInput formControlName="reason" />
-      </mat-form-field>
+        <mat-form-field>
+          <mat-label>Equipe</mat-label>
+          <mat-select formControlName="teamId">
+            @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
+              <mat-option [value]="team.id">
+                <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="20" />
+                {{ team.name }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Origem</mat-label>
+          <mat-select formControlName="source">
+            <mat-option value="MANUAL">Ajuste manual</mat-option>
+            <mat-option value="PENALTY">Penalidade</mat-option>
+            <mat-option value="PLACEMENT">Colocação</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Pontos</mat-label>
+          <input matInput type="number" formControlName="points" />
+        </mat-form-field>
+        <mat-form-field class="span-2">
+          <mat-label>Motivo do ajuste</mat-label>
+          <input matInput formControlName="reason" />
+        </mat-form-field>
       </form>
     }
   </aside>

@@ -25,9 +25,21 @@ import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
   selector: 'app-permission-management-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatButtonModule, MatCheckboxModule, MatChipsModule, MatDividerModule, MatFormFieldModule, MatIconModule,
-    MatInputModule, MatListModule, MatProgressSpinnerModule, MatSelectModule, MatTabsModule, MatTooltipModule,
-    TwemojiComponent, PersonSearchComponent, UnsavedChangesBarComponent,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatListModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatTabsModule,
+    MatTooltipModule,
+    TwemojiComponent,
+    PersonSearchComponent,
+    UnsavedChangesBarComponent,
   ],
   providers: [PermissionManagementStore],
   host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
@@ -43,7 +55,9 @@ export class PermissionManagementPageComponent {
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
 
-  constructor() { void this.store.load(this.route.snapshot.paramMap.get('personId') ?? undefined); }
+  constructor() {
+    void this.store.load(this.route.snapshot.paramMap.get('personId') ?? undefined);
+  }
 
   protected async openNewRoleDialog(): Promise<void> {
     const reference = this.dialog.open(RoleTemplateDialogComponent, { width: 'min(44rem, calc(100vw - 2rem))' });
@@ -58,8 +72,13 @@ export class PermissionManagementPageComponent {
   protected inheritedFrom(permission: Permission): string {
     const draft = this.store.roleDraft();
     if (!draft) return '';
-    return this.store.roles()
-      .filter((role) => draft.parentRoleIds.includes(role.id) && [...role.permissions, ...role.inheritedPermissions].includes(permission))
+    return this.store
+      .roles()
+      .filter(
+        (role) =>
+          draft.parentRoleIds.includes(role.id) &&
+          [...role.permissions, ...role.inheritedPermissions].includes(permission),
+      )
       .map((role) => role.name)
       .join(', ');
   }

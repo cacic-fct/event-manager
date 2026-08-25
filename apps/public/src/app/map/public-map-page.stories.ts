@@ -287,7 +287,11 @@ export const LiveLocation: Story = {
     const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
     await expect(locationButton).not.toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(locationButton);
-    await expectLocationFeatures(['public-user-location-dot', 'public-user-location-accuracy', 'public-user-location-direction']);
+    await expectLocationFeatures([
+      'public-user-location-dot',
+      'public-user-location-accuracy',
+      'public-user-location-direction',
+    ]);
   },
 };
 
@@ -298,7 +302,10 @@ export const Locating: Story = {
     const canvas = within(canvasElement);
     await expectReadyMap(canvasElement, defaultArgs.eventCount);
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
-    await expect(await canvas.findByRole('button', { name: 'Usar minha localização' })).toHaveAttribute('aria-busy', 'true');
+    await expect(await canvas.findByRole('button', { name: 'Usar minha localização' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
   },
 };
 
@@ -306,7 +313,10 @@ export const LocationDenied: Story = {
   name: 'Permissão de localização bloqueada',
   args: { locationState: 'denied' },
   play: async ({ canvasElement }) => {
-    await expectLocationUnavailable(canvasElement, 'A localização está bloqueada. Libere a permissão nas configurações do navegador.');
+    await expectLocationUnavailable(
+      canvasElement,
+      'A localização está bloqueada. Libere a permissão nas configurações do navegador.',
+    );
   },
 };
 
@@ -326,7 +336,9 @@ export const LocationError: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Usar minha localização' }));
-    await expect(await within(document.body).findByText('Não foi possível determinar a localização simulada.')).toBeVisible();
+    await expect(
+      await within(document.body).findByText('Não foi possível determinar a localização simulada.'),
+    ).toBeVisible();
   },
 };
 
@@ -357,7 +369,9 @@ export const OfflineCache: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await expectReadyMap(canvasElement, args.eventCount);
-    await expect(await within(document.body).findByText(/dados exibidos no mapa podem estar desatualizados/i)).toBeVisible();
+    await expect(
+      await within(document.body).findByText(/dados exibidos no mapa podem estar desatualizados/i),
+    ).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Você está off-line' })).toBeVisible();
   },
 };
@@ -372,7 +386,11 @@ export const Loading: Story = {
 export const ApiError: Story = {
   args: { apiState: 'error' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar o mapa de eventos. Tente novamente em instantes.')).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText(
+        'Não foi possível carregar o mapa de eventos. Tente novamente em instantes.',
+      ),
+    ).toBeVisible();
   },
 };
 
@@ -448,9 +466,11 @@ async function expectClusterWithAtLeast(memberCount: number): Promise<void> {
 
 function clusterSizes(): number[] {
   return mapLayers().flatMap((layer) => {
-    const source = (layer as unknown as {
-      getSource?: () => { getFeatures?: () => Array<{ get: (name: string) => unknown }> } | null;
-    }).getSource?.();
+    const source = (
+      layer as unknown as {
+        getSource?: () => { getFeatures?: () => Array<{ get: (name: string) => unknown }> } | null;
+      }
+    ).getSource?.();
     return (source?.getFeatures?.() ?? []).flatMap((feature) => {
       const members = feature.get('features');
       return Array.isArray(members) ? [members.length] : [];
@@ -461,9 +481,11 @@ function clusterSizes(): number[] {
 async function expectLocationFeatures(expectedIds: string[]): Promise<void> {
   await waitFor(() => {
     const featureIds = mapLayers().flatMap((layer) => {
-      const source = (layer as unknown as {
-        getSource?: () => { getFeatures?: () => Array<{ getId: () => string | number | undefined }> } | null;
-      }).getSource?.();
+      const source = (
+        layer as unknown as {
+          getSource?: () => { getFeatures?: () => Array<{ getId: () => string | number | undefined }> } | null;
+        }
+      ).getSource?.();
       return (source?.getFeatures?.() ?? []).map((feature) => String(feature.getId()));
     });
     expect(featureIds).toEqual(expect.arrayContaining(expectedIds));

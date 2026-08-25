@@ -98,7 +98,8 @@ class CertificateDialogStoryHost {
           useValue: {
             getCurrentUserCertificatesForTargets: () => {
               if (args.state === 'loading') return NEVER;
-              if (args.state === 'error') return throwError(() => new Error('Não foi possível carregar os certificados.'));
+              if (args.state === 'error')
+                return throwError(() => new Error('Não foi possível carregar os certificados.'));
               return of(certificates);
             },
             downloadCurrentUserCertificate: () =>

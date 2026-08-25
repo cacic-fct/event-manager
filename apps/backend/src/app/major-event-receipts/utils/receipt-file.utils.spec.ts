@@ -90,7 +90,12 @@ describe('receipt-file utils', () => {
     heic.writeUInt32BE(16, 0);
     heic.write('ftyp', 4, 'ascii');
     heic.write('heic', 8, 'ascii');
-    const file = { buffer: heic, mimetype: 'application/octet-stream', originalname: 'receipt.heic', size: heic.length };
+    const file = {
+      buffer: heic,
+      mimetype: 'application/octet-stream',
+      originalname: 'receipt.heic',
+      size: heic.length,
+    };
     expect(() => assertValidReceiptUpload(file)).not.toThrow();
     expect(file.mimetype).toBe('image/heic');
 

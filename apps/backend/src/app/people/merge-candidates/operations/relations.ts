@@ -325,7 +325,10 @@ export async function moveRelations(
         }
         await tx.eventManagerRoleAssignmentScope.update({ where: { id: scope.id }, data: effectiveValidity });
         const scopeKey = permissionRelationScopeKey(scope);
-        targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
+        targetScopes.set(scopeKey, [
+          ...(targetScopes.get(scopeKey) ?? []),
+          { id: scope.id, validity: effectiveValidity },
+        ]);
       }
 
       for (const scope of assignment.scopes ?? []) {
@@ -361,7 +364,10 @@ export async function moveRelations(
           where: { id: scope.id },
           data: { assignmentId: conflict.id, ...effectiveValidity },
         });
-        targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
+        targetScopes.set(scopeKey, [
+          ...(targetScopes.get(scopeKey) ?? []),
+          { id: scope.id, validity: effectiveValidity },
+        ]);
       }
 
       await tx.eventManagerRoleAssignment.update({
@@ -403,10 +409,7 @@ export async function moveRelations(
       const archivedAt = new Date();
       await tx.eventManagerPermissionGroupMember.update({
         where: { id: conflict.id },
-        data: unionPermissionRelationValidity(
-          membershipValidity,
-          normalizePermissionRelationValidity(conflict),
-        ),
+        data: unionPermissionRelationValidity(membershipValidity, normalizePermissionRelationValidity(conflict)),
       });
       await tx.eventManagerPermissionGroupMember.update({
         where: { id: membership.id },
@@ -414,7 +417,10 @@ export async function moveRelations(
       });
       archivedPermissionGroupMembershipIds.push(membership.id);
     } else {
-      await tx.eventManagerPermissionGroupMember.update({ where: { id: membership.id }, data: { personId: targetPersonId } });
+      await tx.eventManagerPermissionGroupMember.update({
+        where: { id: membership.id },
+        data: { personId: targetPersonId },
+      });
       movedPermissionGroupMembershipIds.push(membership.id);
     }
   }
@@ -450,12 +456,8 @@ export async function moveRelations(
 function overlappingValidityWhere(validity: ReturnType<typeof normalizePermissionRelationValidity>) {
   return {
     AND: [
-      ...(validity.validUntil
-        ? [{ OR: [{ validFrom: null }, { validFrom: { lte: validity.validUntil } }] }]
-        : []),
-      ...(validity.validFrom
-        ? [{ OR: [{ validUntil: null }, { validUntil: { gte: validity.validFrom } }] }]
-        : []),
+      ...(validity.validUntil ? [{ OR: [{ validFrom: null }, { validFrom: { lte: validity.validUntil } }] }] : []),
+      ...(validity.validFrom ? [{ OR: [{ validUntil: null }, { validUntil: { gte: validity.validFrom } }] }] : []),
     ],
   };
 }

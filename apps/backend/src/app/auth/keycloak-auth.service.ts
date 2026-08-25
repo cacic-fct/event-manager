@@ -68,10 +68,7 @@ export class KeycloakAuthService {
     10_000,
   );
   private readonly jwksCacheTtlMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_CACHE_TTL_MS, 600_000);
-  private readonly jwksFetchTimeoutMs = this.parsePositiveIntegerEnv(
-    process.env.KEYCLOAK_JWKS_FETCH_TIMEOUT_MS,
-    5_000,
-  );
+  private readonly jwksFetchTimeoutMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_FETCH_TIMEOUT_MS, 5_000);
   private readonly jwksUnknownKidCooldownMs = this.parsePositiveIntegerEnv(
     process.env.KEYCLOAK_JWKS_UNKNOWN_KID_COOLDOWN_MS,
     5_000,

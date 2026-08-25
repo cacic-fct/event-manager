@@ -707,9 +707,9 @@ export class AttendancesService {
 
   private async reviewOfflineAttendanceSubmissionBatches(
     submissionIds: readonly string[],
-    reviewBatch: (submissionIds: string[]) => Promise<
-      Array<{ submissionId: string; success: boolean; error?: string | null }>
-    >,
+    reviewBatch: (
+      submissionIds: string[],
+    ) => Promise<Array<{ submissionId: string; success: boolean; error?: string | null }>>,
   ): Promise<void> {
     const failures: Array<{ submissionId: string; error?: string | null }> = [];
     for (let index = 0; index < submissionIds.length; index += OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE) {

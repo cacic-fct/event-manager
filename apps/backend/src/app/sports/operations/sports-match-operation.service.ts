@@ -174,9 +174,7 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       if (decision === SportsReviewStatus.APPROVED) {
         const current = await this.loadProjection(tx, action.matchId, true, action.sequence);
         const readiness =
-          action.type === SportsMatchActionType.START
-            ? await loadSportsMatchReadiness(tx, action.matchId)
-            : undefined;
+          action.type === SportsMatchActionType.START ? await loadSportsMatchReadiness(tx, action.matchId) : undefined;
         this.validateCommand(action.type, payload, current, { ...action.match, readiness }, 'ADMIN');
       }
       const reviewed = await tx.sportsMatchAction.update({

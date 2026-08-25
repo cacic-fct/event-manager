@@ -1,9 +1,38 @@
-.permissions-shell { display: grid; gap: 1rem; padding-block: 1rem; }
-.permission-intro { display: flex; gap: 0.75rem; align-items: flex-start; }
-.permission-intro h3, .permission-intro p { margin: 0; }
-.permission-intro p { margin-top: 0.25rem; color: var(--mat-sys-on-surface-variant); }
-.permissions-list { border: 1px solid var(--mat-sys-outline-variant); border-radius: 8px; overflow: hidden; }
-.permission-action-icons { display: flex; align-items: center; gap: 0.25rem; }
-.permission-icon { cursor: default; }
-.raw-permissions { margin-top: 0.5rem; }
-.raw-chip-list { display: block; margin-top: 0.75rem; }
+.permissions-shell {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1rem;
+}
+.permission-intro {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.permission-intro h3,
+.permission-intro p {
+  margin: 0;
+}
+.permission-intro p {
+  margin-top: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+.permissions-list {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.permission-action-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.permission-icon {
+  cursor: default;
+}
+.raw-permissions {
+  margin-top: 0.5rem;
+}
+.raw-chip-list {
+  display: block;
+  margin-top: 0.75rem;
+}

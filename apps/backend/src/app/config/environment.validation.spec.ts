@@ -39,7 +39,11 @@ describe('validateBackendEnvironment', () => {
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       }),
     ).toThrow(
-      ['PUBLIC_APP_ORIGIN is required.', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.', 'OFFLINE_ATTENDANCE_COLLECTOR_SECRET is required.'].join('\n- '),
+      [
+        'PUBLIC_APP_ORIGIN is required.',
+        'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.',
+        'OFFLINE_ATTENDANCE_COLLECTOR_SECRET is required.',
+      ].join('\n- '),
     );
   });
 
@@ -168,9 +172,7 @@ describe('validateBackendEnvironment', () => {
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         ACCOUNT_MANAGER_GRPC_URL: '[::1]:50051',
       }),
-    ).toEqual(
-      expect.objectContaining({ ACCOUNT_MANAGER_GRPC_URL: '[::1]:50051' }),
-    );
+    ).toEqual(expect.objectContaining({ ACCOUNT_MANAGER_GRPC_URL: '[::1]:50051' }));
 
     expect(() =>
       validateBackendEnvironment({

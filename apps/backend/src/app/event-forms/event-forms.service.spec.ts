@@ -850,10 +850,7 @@ describe('EventFormsService', () => {
             some: expect.objectContaining({
               AND: expect.arrayContaining([
                 {
-                  OR: [
-                    { priceTiers: { none: {} } },
-                    { priceTiers: { some: { priceTierId: 'tier-student' } } },
-                  ],
+                  OR: [{ priceTiers: { none: {} } }, { priceTiers: { some: { priceTierId: 'tier-student' } } }],
                 },
               ]),
             }),

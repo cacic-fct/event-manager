@@ -136,10 +136,13 @@ describe('PublicMapPage', () => {
       'Fechar',
       expect.objectContaining({ duration: 5000 }),
     );
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
-      queryParams: expect.objectContaining({ participacao: null }),
-      replaceUrl: true,
-    }));
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({ participacao: null }),
+        replaceUrl: true,
+      }),
+    );
   });
 
   it('opens the consistent filter dialog, persists its URL state, and exposes filtered empty copy', async () => {
@@ -159,10 +162,13 @@ describe('PublicMapPage', () => {
       data: { filters: { audience: 'ALL', date: 'ALL' }, isAuthenticated: true },
     });
     expect(component.filters()).toEqual({ audience: 'MINE', date: 'TODAY' });
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
-      queryParams: { participacao: 'meus', periodo: 'hoje', evento: null },
-      replaceUrl: true,
-    }));
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { participacao: 'meus', periodo: 'hoje', evento: null },
+        replaceUrl: true,
+      }),
+    );
     expect(snackBar.open).toHaveBeenCalledWith(
       'Nenhum evento corresponde aos filtros.',
       'Fechar',
@@ -216,7 +222,11 @@ describe('PublicMapPage', () => {
     await component.locate();
 
     expect(locationLayer.startAndCenter).toHaveBeenCalledWith(expect.objectContaining(map), 18);
-    expect(snackBar.open).toHaveBeenCalledWith('Sinal indisponível.', 'Fechar', expect.objectContaining({ duration: 6000 }));
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Sinal indisponível.',
+      'Fechar',
+      expect.objectContaining({ duration: 6000 }),
+    );
   });
 
   it('clamps zoom controls and navigates back to the menu', async () => {
@@ -283,18 +293,20 @@ describe('PublicMapPage', () => {
     expect(locationLayer.destroy).toHaveBeenCalledOnce();
   });
 
-  async function createPage(options: {
-    query?: Record<string, string>;
-    isAuthenticated?: boolean;
-    eventsResponse?: Observable<PublicMapEvent[]>;
-    mineResponse?: Observable<Set<string>>;
-    isUsingSavedData?: boolean;
-    isOnline?: boolean;
-    storedState?: StoredPublicMapState | null;
-    dialogResult?: { audience: 'ALL' | 'MINE'; date: 'ALL' | 'TODAY' };
-    permission?: 'prompt' | 'granted' | 'denied' | 'unsupported';
-    locationResult?: { success: boolean; error?: string };
-  } = {}): Promise<PublicMapPage> {
+  async function createPage(
+    options: {
+      query?: Record<string, string>;
+      isAuthenticated?: boolean;
+      eventsResponse?: Observable<PublicMapEvent[]>;
+      mineResponse?: Observable<Set<string>>;
+      isUsingSavedData?: boolean;
+      isOnline?: boolean;
+      storedState?: StoredPublicMapState | null;
+      dialogResult?: { audience: 'ALL' | 'MINE'; date: 'ALL' | 'TODAY' };
+      permission?: 'prompt' | 'granted' | 'denied' | 'unsupported';
+      locationResult?: { success: boolean; error?: string };
+    } = {},
+  ): Promise<PublicMapPage> {
     authenticated = signal(options.isAuthenticated ?? false);
     user = signal(options.isAuthenticated ? { sub: 'user-1' } : null);
     api = {
@@ -383,6 +395,6 @@ function setPrivateMap(component: PublicMapPage, map: unknown): void {
   (component as unknown as { map: unknown }).map = {
     setTarget: vi.fn(),
     dispose: vi.fn(),
-    ...map as object,
+    ...(map as object),
   };
 }

@@ -18,7 +18,10 @@ describe('AuthOnlineStatusService', () => {
   });
 
   it.each([true, false])('reports navigator connectivity in the browser when onLine is %s', (online) => {
-    const injector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'browser' }], rootEnvironmentInjector);
+    const injector = createEnvironmentInjector(
+      [{ provide: PLATFORM_ID, useValue: 'browser' }],
+      rootEnvironmentInjector,
+    );
     const descriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
     Object.defineProperty(Navigator.prototype, 'onLine', { configurable: true, get: () => online });
 

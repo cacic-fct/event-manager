@@ -150,7 +150,8 @@ export const LoadError: Story = {
 export const LongContentMobile: Story = {
   args: {
     name: 'Atividade interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
-    shortDescription: 'Uma descrição extensa para validar a apresentação de dados de participação em dispositivos móveis.',
+    shortDescription:
+      'Uma descrição extensa para validar a apresentação de dados de participação em dispositivos móveis.',
     isLecturer: true,
     subscriberCount: 4_250,
     attendanceCount: 3_987,
@@ -175,19 +176,21 @@ function storyParameters(context: MoreInfoStoryContext) {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          if (context.args.apiState === 'loading') {
-            await delay('infinite');
-          }
-          if (context.args.latencyMs > 0) {
-            await delay(context.args.latencyMs);
-          }
-          const body = (await request.json()) as { query?: string };
-          if (context.args.apiState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar os detalhes da participação.' }] });
-          }
-          return HttpResponse.json({ data: moreInfoGraphqlData(body.query ?? '', context.args) });
-        }),
+          http.post('/api/graphql', async ({ request }) => {
+            if (context.args.apiState === 'loading') {
+              await delay('infinite');
+            }
+            if (context.args.latencyMs > 0) {
+              await delay(context.args.latencyMs);
+            }
+            const body = (await request.json()) as { query?: string };
+            if (context.args.apiState === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'Não foi possível carregar os detalhes da participação.' }],
+              });
+            }
+            return HttpResponse.json({ data: moreInfoGraphqlData(body.query ?? '', context.args) });
+          }),
         ],
       },
     },

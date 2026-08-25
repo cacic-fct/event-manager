@@ -160,7 +160,8 @@ export async function buildPersonLinkedResourceGroups(
       ...memberships.map((membership) => ({
         id: membership.id,
         label: membership.group.name,
-        description: membership.group.assignments.map((assignment) => assignment.role.name).join(', ') || 'Sem cargos ativos',
+        description:
+          membership.group.assignments.map((assignment) => assignment.role.name).join(', ') || 'Sem cargos ativos',
         status: 'Grupo',
         createdAt: membership.createdAt,
       })),

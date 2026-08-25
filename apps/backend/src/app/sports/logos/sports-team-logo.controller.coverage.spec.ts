@@ -51,9 +51,7 @@ describe('SportsTeamRepresentativeLogoController boundary operations', () => {
     access.requireTeamRepresentative.mockResolvedValue({ actor });
     logos.submitRepresentativeUpload.mockResolvedValue(result);
 
-    await expect(
-      controller.submitChange('team-1', 7, 11, file, request as never),
-    ).resolves.toBe(result);
+    await expect(controller.submitChange('team-1', 7, 11, file, request as never)).resolves.toBe(result);
 
     expect(access.requireTeamRepresentative).toHaveBeenCalledWith({ req: request }, 'team-1');
     expect(logos.submitRepresentativeUpload).toHaveBeenCalledWith('team-1', 7, 11, file, 'representative-person');
@@ -133,9 +131,14 @@ describe('SportsTeamRepresentativeLogoController boundary operations', () => {
     access.requireTeamRepresentativeReader.mockRejectedValue(accessFailure);
 
     await expect(
-      controller.downloadCurrent('team-1', 'd'.repeat(64), { user: { sub: 'user-1' } } as never, {
-        setHeader: jest.fn(),
-      } as never),
+      controller.downloadCurrent(
+        'team-1',
+        'd'.repeat(64),
+        { user: { sub: 'user-1' } } as never,
+        {
+          setHeader: jest.fn(),
+        } as never,
+      ),
     ).rejects.toBe(accessFailure);
     expect(logos.download).not.toHaveBeenCalled();
 
@@ -143,9 +146,14 @@ describe('SportsTeamRepresentativeLogoController boundary operations', () => {
     access.requireTeamRepresentativeReader.mockResolvedValue({ actor: { id: 'representative-person' } });
     logos.download.mockRejectedValue(storageFailure);
     await expect(
-      controller.downloadCurrent('team-1', 'e'.repeat(64), { user: { sub: 'user-1' } } as never, {
-        setHeader: jest.fn(),
-      } as never),
+      controller.downloadCurrent(
+        'team-1',
+        'e'.repeat(64),
+        { user: { sub: 'user-1' } } as never,
+        {
+          setHeader: jest.fn(),
+        } as never,
+      ),
     ).rejects.toBe(storageFailure);
   });
 });

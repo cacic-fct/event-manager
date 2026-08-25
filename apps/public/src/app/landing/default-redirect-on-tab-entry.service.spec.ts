@@ -77,11 +77,7 @@ describe('DefaultRedirectOnTabEntryService', () => {
     service.start();
 
     events.next(
-      new NavigationEnd(
-        1,
-        '/calendar?noredirect=1&view=agenda#today',
-        '/calendar?noredirect=1&view=agenda#today',
-      ),
+      new NavigationEnd(1, '/calendar?noredirect=1&view=agenda#today', '/calendar?noredirect=1&view=agenda#today'),
     );
 
     expect(resolve).not.toHaveBeenCalled();

@@ -40,49 +40,51 @@ test('parses MySQL booleans without treating string zero as true', () => {
 });
 
 test('matches by academic ID when email has no match', () => {
-  const result = resolvePerson(
-    { academicId: '123456789', email: 'missing@example.com', name: 'Other' },
-    [person(), person({ id: 'target-2', academicId: null, email: 'other@example.com' })],
-  );
+  const result = resolvePerson({ academicId: '123456789', email: 'missing@example.com', name: 'Other' }, [
+    person(),
+    person({ id: 'target-2', academicId: null, email: 'other@example.com' }),
+  ]);
   assert.equal(result.status, 'matched');
   assert.equal(result.person.id, 'target-1');
   assert.equal(result.matchedBy, 'academicId');
 });
 
 test('reports conflicting email and academic ID instead of guessing', () => {
-  const result = resolvePerson(
-    { academicId: '123456789', email: 'other@example.com', name: 'Other' },
-    [person(), person({ id: 'target-2', academicId: null, email: 'other@example.com' })],
-  );
+  const result = resolvePerson({ academicId: '123456789', email: 'other@example.com', name: 'Other' }, [
+    person(),
+    person({ id: 'target-2', academicId: null, email: 'other@example.com' }),
+  ]);
   assert.equal(result.status, 'conflict');
-  assert.deepEqual(result.candidates.map((candidate) => candidate.id), ['target-1', 'target-2']);
+  assert.deepEqual(
+    result.candidates.map((candidate) => candidate.id),
+    ['target-1', 'target-2'],
+  );
 });
 
 test('matches primary and secondary emails case-insensitively', () => {
-  const result = resolvePerson(
-    { academicId: null, email: 'ALT@EXAMPLE.COM', name: 'Other' },
-    [person({ academicId: null, secondaryEmails: ['alt@example.com'] })],
-  );
+  const result = resolvePerson({ academicId: null, email: 'ALT@EXAMPLE.COM', name: 'Other' }, [
+    person({ academicId: null, secondaryEmails: ['alt@example.com'] }),
+  ]);
   assert.equal(result.status, 'matched');
   assert.equal(result.matchedBy, 'email');
 });
 
 test('reports ambiguous identifiers instead of choosing a person', () => {
-  const result = resolvePerson(
-    { academicId: '123', email: '', name: 'Same' },
-    [person({ academicId: '123' }), person({ id: 'target-2', academicId: '123' })],
-  );
+  const result = resolvePerson({ academicId: '123', email: '', name: 'Same' }, [
+    person({ academicId: '123' }),
+    person({ id: 'target-2', academicId: '123' }),
+  ]);
   assert.equal(result.status, 'ambiguous');
   assert.equal(result.candidates.length, 2);
 });
 
 test('uses equal names only as manual-review candidates', () => {
-  const result = resolvePerson(
-    { academicId: null, email: 'missing@example.com', name: 'Joao da Silva' },
-    [person()],
-  );
+  const result = resolvePerson({ academicId: null, email: 'missing@example.com', name: 'Joao da Silva' }, [person()]);
   assert.equal(result.status, 'unmatched');
-  assert.deepEqual(result.nameCandidates.map((candidate) => candidate.id), ['target-1']);
+  assert.deepEqual(
+    result.nameCandidates.map((candidate) => candidate.id),
+    ['target-1'],
+  );
 });
 
 test('validates mappings and MySQL identifiers', () => {
