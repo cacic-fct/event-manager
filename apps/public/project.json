@@ -148,7 +148,7 @@
       "options": {
         "port": 4400,
         "configDir": "apps/public/.storybook",
-        "browserTarget": "public:build-storybook",
+        "browserTarget": "public:build-application",
         "compodoc": true,
         "compodocArgs": ["-e", "json", "-d", "apps/public/.storybook/compodoc"],
         "styles": ["apps/public/src/styles.scss"]
@@ -166,7 +166,7 @@
         "outputDir": "dist/storybook/public",
         "configDir": "apps/public/.storybook",
         "tsConfig": "apps/public/.storybook/tsconfig.json",
-        "browserTarget": "public:build-storybook",
+        "browserTarget": "public:build-application",
         "compodoc": false,
         "styles": ["apps/public/src/styles.scss"]
       },

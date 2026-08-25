@@ -112,7 +112,7 @@
       "options": {
         "port": 4400,
         "configDir": "apps/admin/.storybook",
-        "browserTarget": "admin:build-storybook",
+        "browserTarget": "admin:build",
         "compodoc": true,
         "compodocArgs": ["-e", "json", "-d", "apps/public/.storybook/compodoc"],
         "styles": [
@@ -135,7 +135,7 @@
         "outputDir": "dist/storybook/admin",
         "configDir": "apps/admin/.storybook",
         "tsConfig": "apps/admin/.storybook/tsconfig.json",
-        "browserTarget": "admin:build-storybook",
+        "browserTarget": "admin:build",
         "compodoc": false,
         "styles": [
           "@fontsource/material-symbols-outlined",
