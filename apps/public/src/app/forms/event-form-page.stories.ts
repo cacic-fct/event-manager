@@ -23,6 +23,7 @@ interface EventFormPageStoryArgs {
   responseCount: number;
   requiredEvery: number;
   longLabels: boolean;
+  withImages: boolean;
 }
 
 const defaultArgs: EventFormPageStoryArgs = {
@@ -36,6 +37,25 @@ const defaultArgs: EventFormPageStoryArgs = {
   responseCount: 12,
   requiredEvery: 2,
   longLabels: false,
+  withImages: false,
+};
+
+const publicLandscapeImage = {
+  id: 'public-shared-image',
+  url: 'https://placehold.co/1200x675',
+  width: 1200,
+  height: 675,
+  altText: 'Material visual de referência da atividade',
+  caption: 'Consulte esta referência antes de responder.',
+};
+
+const publicPortraitImage = {
+  id: 'public-portrait-image',
+  url: 'https://placehold.co/900x1200',
+  width: 900,
+  height: 1200,
+  altText: 'Cartaz vertical da atividade',
+  caption: 'Cartaz completo em formato vertical.',
 };
 
 let activeArgs = defaultArgs;
@@ -73,6 +93,7 @@ const meta: Meta<EventFormPageStoryArgs> = {
     responseCount: { control: { type: 'range', min: 0, max: 500, step: 1 } },
     requiredEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
     longLabels: { control: 'boolean' },
+    withImages: { control: 'boolean' },
   },
   decorators: [
     applicationConfig({
@@ -198,6 +219,22 @@ export const LongLabelsMobile: Story = {
   globals: { theme: 'dark', motion: 'reduced' },
 };
 
+export const FormAndQuestionImages: Story = {
+  args: { withImages: true, latencyMs: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('img', { name: publicPortraitImage.altText })).toBeVisible();
+    await expect(await canvas.findAllByRole('img', { name: publicLandscapeImage.altText })).toHaveLength(2);
+    await expect(await canvas.findByText(/reutilizada na pergunta sem duplicar/i)).toBeVisible();
+  },
+};
+
+export const FormAndQuestionImagesMobile: Story = {
+  args: { withImages: true, latencyMs: 0, longLabels: true },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
 function graphqlData(query: string, args: EventFormPageStoryArgs): Record<string, unknown> {
   const form = storyForm(args);
   if (query.includes('CurrentUserEventForms')) {
@@ -277,6 +314,15 @@ function storyForm(args: EventFormPageStoryArgs) {
             ? `Conte com detalhes como a atividade contribuiu para ${faker.company.catchPhrase().toLocaleLowerCase('pt-BR')}`
             : faker.lorem.sentence({ min: 3, max: 7 }),
       required: args.requiredEvery > 0 && index % Math.round(args.requiredEvery) === 0,
+      descriptionImages:
+        args.withImages && index === 0
+          ? [
+              {
+                ...publicLandscapeImage,
+                caption: 'Imagem reutilizada na pergunta sem duplicar o arquivo armazenado.',
+              },
+            ]
+          : [],
       options: choice
         ? Array.from({ length: optionCount }, (_, optionIndex) => ({
             id: index === 0 && optionIndex === 0 ? 'excellent' : `q-${index + 1}-option-${optionIndex + 1}`,
@@ -296,6 +342,7 @@ function storyForm(args: EventFormPageStoryArgs) {
     id: 'form-story',
     name: args.formName,
     description: args.description,
+    descriptionImages: args.withImages ? [publicPortraitImage, publicLandscapeImage] : [],
     allowResponseEdits: args.allowResponseEdits,
     resultsPublic: resultsReleased,
     elementsJson: JSON.stringify(elements),

@@ -324,6 +324,7 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
     id: 'form-1',
     name: 'Avaliação do evento',
     description: 'Conte como foi sua experiência.',
+    descriptionImages: [],
     elementsJson: JSON.stringify([
       {
         id: 'rating',

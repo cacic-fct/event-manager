@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { EventFormRendererComponent } from './event-form-renderer.component';
 
 type EventFormRendererStoryArgs = {
@@ -12,6 +12,24 @@ type EventFormRendererStoryArgs = {
   formSubmitted: ReturnType<typeof fn>;
   answersChange: ReturnType<typeof fn>;
 };
+
+const sharedLandscapeImage = {
+  id: 'shared-form-image',
+  url: 'https://placehold.co/1200x675',
+  width: 1200,
+  height: 675,
+  altText: 'Diagrama de referência para responder às perguntas',
+  caption: 'A mesma imagem pode apoiar mais de uma pergunta.',
+} satisfies FormImage;
+
+const portraitImage = {
+  id: 'portrait-form-image',
+  url: 'https://placehold.co/900x1200',
+  width: 900,
+  height: 1200,
+  altText: 'Cartaz vertical com informações da atividade',
+  caption: 'Exemplo de imagem vertical preservando toda a composição.',
+} satisfies FormImage;
 
 const elements: FormElement[] = [
   { id: 'section', type: 'section', title: 'Dados do participante', required: false, options: [] },
@@ -194,5 +212,46 @@ export const DarkReducedMotion: Story = {
     formSubmitted: fn(),
     answersChange: fn(),
   },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const ResponsiveQuestionImages: Story = {
+  args: {
+    elements: [
+      {
+        id: 'image-section',
+        type: 'section',
+        title: 'Material de referência',
+        description: 'Observe as imagens antes de responder.',
+        descriptionImages: [portraitImage],
+        required: false,
+        options: [],
+      },
+      { ...elements[1], descriptionImages: [sharedLandscapeImage] },
+      {
+        ...elements[2],
+        descriptionImages: [
+          {
+            ...sharedLandscapeImage,
+            caption: 'O mesmo arquivo, reutilizado sem duplicar o objeto armazenado.',
+          },
+        ],
+      },
+    ],
+    initialAnswers: [],
+    formSubmitted: fn(),
+    answersChange: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('img', { name: portraitImage.altText })).toBeVisible();
+    await expect(canvas.getAllByRole('img', { name: sharedLandscapeImage.altText })).toHaveLength(2);
+    await expect(canvas.getByText(/reutilizado sem duplicar/i)).toBeVisible();
+  },
+};
+
+export const ResponsiveQuestionImagesMobile: Story = {
+  ...ResponsiveQuestionImages,
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
 };

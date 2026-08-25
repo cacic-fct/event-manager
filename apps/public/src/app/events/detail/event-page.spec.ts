@@ -155,6 +155,7 @@ function subscriptionFormFixture(): PublicEventForm {
     id: 'form-1',
     name: 'Pesquisa de camiseta',
     description: null,
+    descriptionImages: [],
     elementsJson: JSON.stringify([
       {
         id: 'shirt-size',

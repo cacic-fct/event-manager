@@ -5,6 +5,7 @@ import {
   EventFormResponse as EventFormResponseModel,
   EventFormTargetSummary,
 } from '@cacic-fct/shared-data-types';
+import { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
 import { EventFormSigilo, EventFormTargetType, Prisma } from '@prisma/client';
 import {
   EventFormLinkRecord,
@@ -17,10 +18,21 @@ import { arePublicResultsReleasedForLink } from './event-form-results-visibility
 import { isSameTarget } from './event-form-targets';
 
 export function toEventFormModel(form: EventFormRecord): EventFormModel {
+  const assetsById = new Map(form.images.map((image) => [image.id, image]));
+  const elements = Array.isArray(form.elements)
+    ? (form.elements as unknown as FormElement[]).map((element) => ({
+        ...element,
+        descriptionImages: hydrateImages(element.descriptionImages, assetsById),
+      }))
+    : [];
   return {
     id: form.id,
     name: form.name,
     description: form.description,
+    descriptionImages: hydrateImages(
+      Array.isArray(form.descriptionImages) ? (form.descriptionImages as FormImageReference[]) : [],
+      assetsById,
+    ),
     ownerEventId: form.ownerEventId,
     ownerMajorEventId: form.ownerMajorEventId,
     owner: form.ownerEvent
@@ -28,7 +40,7 @@ export function toEventFormModel(form: EventFormRecord): EventFormModel {
       : form.ownerMajorEvent
         ? toTargetSummary(EventFormTargetType.MAJOR_EVENT, form.ownerMajorEvent)
         : null,
-    elementsJson: JSON.stringify(form.elements),
+    elementsJson: JSON.stringify(elements),
     sigilo: form.sigilo,
     responseMode: form.responseMode,
     resultsPublic: form.resultsPublic,
@@ -45,6 +57,25 @@ export function toEventFormModel(form: EventFormRecord): EventFormModel {
     createdById: form.createdById,
     updatedAt: form.updatedAt,
     updatedById: form.updatedById,
+  };
+}
+
+function hydrateImages(
+  references: readonly FormImageReference[] | undefined,
+  assetsById: ReadonlyMap<string, EventFormRecord['images'][number]>,
+): FormImage[] {
+  return (references ?? []).flatMap((reference) => {
+    const asset = assetsById.get(reference.id);
+    return asset ? [{ ...toImageModel(asset), altText: reference.altText, caption: reference.caption }] : [];
+  });
+}
+
+function toImageModel(image: EventFormRecord['images'][number]): FormImage {
+  return {
+    id: image.id,
+    url: `/api/event-forms/images/${encodeURIComponent(image.id)}`,
+    width: image.width,
+    height: image.height,
   };
 }
 

@@ -17,6 +17,14 @@ const PUBLIC_EVENT_FORM_FIELDS = `
   id
   name
   description
+  descriptionImages {
+    id
+    url
+    width
+    height
+    altText
+    caption
+  }
   elementsJson
   sigilo
   responseMode

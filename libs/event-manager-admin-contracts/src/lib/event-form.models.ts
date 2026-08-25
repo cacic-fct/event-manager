@@ -1,4 +1,4 @@
-import type { FormElement } from '@cacic-fct/form-contracts';
+import type { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
 import type { PublicationState } from './event.models';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
@@ -40,6 +40,7 @@ export interface EventForm {
   id: string;
   name: string;
   description?: string | null;
+  descriptionImages: FormImage[];
   ownerEventId?: string | null;
   ownerMajorEventId?: string | null;
   owner?: EventFormTargetSummary | null;
@@ -124,6 +125,7 @@ interface EventFormInputBase {
   id?: string | null;
   name?: string | null;
   description?: string | null;
+  descriptionImagesJson?: string | null;
   elementsJson?: string | null;
   sigilo?: EventFormSigilo | null;
   responseMode?: EventFormResponseMode | null;
@@ -162,4 +164,9 @@ export function parseFormElementsJson(value: string | null | undefined): FormEle
 
 export function serializeFormElements(elements: readonly FormElement[]): string {
   return JSON.stringify(elements);
+}
+
+export function serializeFormImageReferences(images: readonly FormImage[]): string {
+  const references: FormImageReference[] = images.map(({ id, altText, caption }) => ({ id, altText, caption }));
+  return JSON.stringify(references);
 }

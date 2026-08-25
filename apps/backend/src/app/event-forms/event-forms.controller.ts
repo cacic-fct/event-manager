@@ -1,10 +1,33 @@
-import { Controller, Get, Header, Headers, MessageEvent, Param, Query, Req, Res, Sse } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  Headers,
+  MessageEvent,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  Sse,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProperty,
+  ApiPropertyOptional,
   ApiProduces,
   ApiQuery,
   ApiTags,
@@ -18,8 +41,25 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { EventFormsService } from './event-forms.service';
 import { SseReplayService } from '../realtime/sse-replay.service';
+import { EventFormImagesService } from './event-form-images.service';
+import {
+  MAX_EVENT_FORM_IMAGE_FILE_SIZE_BYTES,
+  UploadedEventFormImageFile,
+  isAllowedEventFormImageMimeType,
+} from './event-form-image.utils';
 
 type RequestWithUser = Request & { user?: AuthenticatedUser };
+
+class EventFormImageUploadBodyDto {
+  @ApiProperty({ description: 'Imagem da descrição do formulário ou de um item.', type: 'string', format: 'binary' })
+  file!: unknown;
+
+  @ApiPropertyOptional({ description: 'Evento proprietário ao criar um formulário.' })
+  ownerEventId?: string;
+
+  @ApiPropertyOptional({ description: 'Grande evento proprietário ao criar um formulário.' })
+  ownerMajorEventId?: string;
+}
 
 @ApiTags('event-forms')
 @Controller('event-forms')
@@ -27,7 +67,101 @@ export class EventFormsController {
   constructor(
     private readonly forms: EventFormsService,
     private readonly replay: SseReplayService,
+    private readonly images: EventFormImagesService,
   ) {}
+
+  @Post('images')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_EVENT_FORM_IMAGE_FILE_SIZE_BYTES, files: 1 },
+      fileFilter: (_request, file: UploadedEventFormImageFile, callback) => {
+        if (!isAllowedEventFormImageMimeType(file.mimetype)) {
+          callback(new BadRequestException('A imagem precisa estar em um formato raster suportado.'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  @ApiOperation({ summary: 'Enviar uma imagem temporária durante a criação de um formulário' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: EventFormImageUploadBodyDto })
+  @ApiCreatedResponse({ description: 'Metadados da imagem AVIF temporária armazenada no S3.' })
+  uploadPendingImage(
+    @UploadedFile() file: UploadedEventFormImageFile | undefined,
+    @Body() body: EventFormImageUploadBodyDto,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.images.uploadPending(file, request.user, body);
+  }
+
+  @Get('images/:imageId')
+  @Header('Cache-Control', 'private, max-age=86400')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({ summary: 'Ler uma imagem de formulário pelo identificador permanente' })
+  async getImageById(
+    @Param('imageId') imageId: string,
+    @Req() request: RequestWithUser,
+    @Res() response: Response,
+  ): Promise<void> {
+    const image = await this.images.downloadById(imageId, request.user);
+    response.setHeader('Content-Type', image.contentType);
+    if (image.contentLength !== undefined) response.setHeader('Content-Length', String(image.contentLength));
+    await pipeline(image.stream, response);
+  }
+
+  @Post(':formId/images')
+  @RequirePermissions(Permission.EventForm.Update)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_EVENT_FORM_IMAGE_FILE_SIZE_BYTES, files: 1 },
+      fileFilter: (_request, file: UploadedEventFormImageFile, callback) => {
+        if (!isAllowedEventFormImageMimeType(file.mimetype)) {
+          callback(new BadRequestException('A imagem precisa estar em um formato raster suportado.'), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  @ApiOperation({ summary: 'Enviar uma imagem permanente para um formulário' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: EventFormImageUploadBodyDto })
+  @ApiCreatedResponse({ description: 'Metadados da imagem AVIF armazenada no S3.' })
+  uploadImage(
+    @Param('formId') formId: string,
+    @UploadedFile() file: UploadedEventFormImageFile | undefined,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.images.upload(formId, file, request.user);
+  }
+
+  @Delete(':formId/images/:imageId')
+  @RequirePermissions(Permission.EventForm.Update)
+  @ApiOperation({ summary: 'Excluir uma imagem de formulário' })
+  deleteImage(
+    @Param('formId') formId: string,
+    @Param('imageId') imageId: string,
+    @Req() request: RequestWithUser,
+  ): Promise<void> {
+    return this.images.delete(formId, imageId, request.user);
+  }
+
+  @Get(':formId/images/:imageId')
+  @Header('Cache-Control', 'private, max-age=86400')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({ summary: 'Ler uma imagem permanente de formulário' })
+  async getImage(
+    @Param('formId') formId: string,
+    @Param('imageId') imageId: string,
+    @Req() request: RequestWithUser,
+    @Res() response: Response,
+  ): Promise<void> {
+    const image = await this.images.download(formId, imageId, request.user);
+    response.setHeader('Content-Type', image.contentType);
+    if (image.contentLength !== undefined) response.setHeader('Content-Length', String(image.contentLength));
+    await pipeline(image.stream, response);
+  }
 
   @Sse(':formId/results/events')
   @RequirePermissions(Permission.EventForm.Results)

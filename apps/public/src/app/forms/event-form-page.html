@@ -18,11 +18,13 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else {
-  <header>
-    @if (currentState.form.description) {
-    <p>{{ currentState.form.description }}</p>
-    }
+  @if (currentState.form.description || currentState.form.descriptionImages.length) {
+  <header class="form-introduction">
+    <lib-event-form-description-content
+      [text]="currentState.form.description ?? undefined"
+      [images]="currentState.form.descriptionImages" />
   </header>
+  }
 
   @if (currentState.canAnswer && currentState.canEditResponse) {
   <lib-event-form-renderer

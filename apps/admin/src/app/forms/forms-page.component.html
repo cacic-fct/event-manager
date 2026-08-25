@@ -119,7 +119,7 @@
             <button
               mat-stroked-button
               type="button"
-              [disabled]="!canEditSelected() || workspace.loading()"
+              [disabled]="!canEditSelected() || workspace.loading() || !workspace.canSave()"
               (click)="workspace.saveDraft()">
               <mat-icon>edit_note</mat-icon>
               Rascunho
@@ -136,7 +136,7 @@
               <button
                 mat-flat-button
                 type="button"
-                [disabled]="!canEditSelected() || workspace.loading()"
+                [disabled]="!canEditSelected() || workspace.loading() || !workspace.canSave()"
                 (click)="workspace.save()">
                 <mat-icon>save</mat-icon>
                 Salvar
@@ -167,6 +167,65 @@
               <mat-label>Descrição</mat-label>
               <textarea matInput rows="2" formControlName="description"></textarea>
             </mat-form-field>
+
+            <section class="form-image-editor span-2" aria-labelledby="form-images-title">
+              <div class="surface-heading">
+                <div>
+                  <h5 id="form-images-title">Imagens da descrição</h5>
+                  <span>Estas imagens aparecem antes das perguntas em tamanho amplo.</span>
+                </div>
+                <input
+                  #formImageInput
+                  hidden
+                  type="file"
+                  accept="image/avif,image/bmp,image/gif,image/heic,image/heif,image/jpeg,image/png,image/svg+xml,image/tiff,image/webp"
+                  (change)="workspace.uploadImage(formImageInput.files?.[0] ?? null); formImageInput.value = ''" />
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="workspace.uploadingImageTarget() === 'form'"
+                  (click)="formImageInput.click()">
+                  <mat-icon>add_photo_alternate</mat-icon>
+                  Imagem
+                </button>
+              </div>
+
+              @if (workspace.uploadingImageTarget() === 'form') {
+                <mat-progress-bar mode="indeterminate" aria-label="Enviando imagem do formulário" />
+              }
+
+              @for (image of workspace.descriptionImages(); track $index) {
+                <div class="form-image-row">
+                  <lib-event-form-description-content [images]="[image]" />
+                  <div class="form-image-fields">
+                    <mat-form-field>
+                      <mat-label>Texto alternativo</mat-label>
+                      <input
+                        matInput
+                        [value]="image.altText ?? ''"
+                        (input)="workspace.updateDescriptionImageText(image.id, 'altText', $event)" />
+                    </mat-form-field>
+                    <mat-form-field>
+                      <mat-label>Legenda</mat-label>
+                      <input
+                        matInput
+                        [value]="image.caption ?? ''"
+                        (input)="workspace.updateDescriptionImageText(image.id, 'caption', $event)" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Remover imagem da descrição"
+                      aria-label="Remover imagem da descrição"
+                      (click)="workspace.removeImage(image)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-note">Nenhuma imagem na descrição do formulário.</p>
+              }
+            </section>
 
             <mat-form-field>
               <mat-label>Pertence a</mat-label>
@@ -459,6 +518,9 @@
           <div class="tab-panel">
             <lib-event-form-builder
               [elements]="workspace.elements()"
+              [uploadingImageTarget]="workspace.uploadingImageTarget()"
+              (imageUpload)="workspace.uploadImage($event.file, $event.elementId)"
+              (imageRemove)="workspace.removeImage($event.image, $event.elementId)"
               (elementsChange)="workspace.updateElements($event)" />
           </div>
         </mat-tab>
@@ -467,6 +529,9 @@
             <span class="workspace-tab-label"><mat-icon>visibility</mat-icon>Prévia</span>
           </ng-template>
           <div class="tab-panel">
+            <lib-event-form-description-content
+              [text]="workspace.form.controls.description.value || undefined"
+              [images]="workspace.descriptionImages()" />
             <lib-event-form-renderer [elements]="workspace.elements()" submitLabel="Enviar respostas de teste" />
           </div>
         </mat-tab>

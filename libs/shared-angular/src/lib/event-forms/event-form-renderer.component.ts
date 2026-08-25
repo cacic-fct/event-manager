@@ -24,6 +24,7 @@ import {
   isRequiredFormAnswerMissing,
   setAnswerValue,
 } from './event-form-utils';
+import { EventFormDescriptionContentComponent } from './event-form-description-content.component';
 
 @Component({
   selector: 'lib-event-form-renderer',
@@ -39,6 +40,7 @@ import {
     MatRadioModule,
     MatSelectModule,
     MatTooltipModule,
+    EventFormDescriptionContentComponent,
   ],
   template: `
     <form class="event-form-renderer" (submit)="submit($event)">
@@ -50,13 +52,17 @@ import {
         <section class="form-item" [class.form-item--section]="element.type === 'section'">
           @if (element.type === 'section') {
             <h2>{{ element.title }}</h2>
-            @if (element.description) {
-              <p>{{ element.description }}</p>
+            @if (element.description || element.descriptionImages?.length) {
+              <lib-event-form-description-content
+                [text]="element.description"
+                [images]="element.descriptionImages ?? []" />
             }
           } @else if (element.type === 'statement') {
             <p class="statement">{{ element.title }}</p>
-            @if (element.description) {
-              <p class="description">{{ element.description }}</p>
+            @if (element.description || element.descriptionImages?.length) {
+              <lib-event-form-description-content
+                [text]="element.description"
+                [images]="element.descriptionImages ?? []" />
             }
           } @else {
             <div class="question-heading">
@@ -70,6 +76,12 @@ import {
                 <span class="required">Obrigatória</span>
               }
             </div>
+
+            @if (element.descriptionImages?.length) {
+              <lib-event-form-description-content
+                class="question-images"
+                [images]="element.descriptionImages" />
+            }
 
             @if (readOnly()) {
               <p class="answer-preview">{{ answerDisplay(element) }}</p>
@@ -325,6 +337,10 @@ import {
       justify-content: space-between;
       gap: 16px;
       margin-bottom: 12px;
+    }
+
+    .question-images {
+      margin-bottom: 16px;
     }
 
     .required {

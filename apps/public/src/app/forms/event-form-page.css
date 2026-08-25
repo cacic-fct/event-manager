@@ -28,6 +28,13 @@ header p {
   font: var(--mat-sys-label-large);
 }
 
+.form-introduction {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  padding: clamp(16px, 3vw, 24px);
+}
+
 h1 {
   font: var(--mat-sys-headline-small);
   margin: 0;

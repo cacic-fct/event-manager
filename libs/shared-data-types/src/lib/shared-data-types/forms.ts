@@ -124,6 +124,27 @@ export class RequiredImageLicenseAgreementInterruption {
 }
 
 @ObjectType()
+export class EventFormImage {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  url!: string;
+
+  @Field(() => Int)
+  width!: number;
+
+  @Field(() => Int)
+  height!: number;
+
+  @Field(() => String, { nullable: true })
+  altText?: string | null;
+
+  @Field(() => String, { nullable: true })
+  caption?: string | null;
+}
+
+@ObjectType()
 export class EventForm {
   @Field(() => String)
   id!: string;
@@ -133,6 +154,9 @@ export class EventForm {
 
   @Field(() => String, { nullable: true })
   description?: string | null;
+
+  @Field(() => [EventFormImage])
+  descriptionImages!: EventFormImage[];
 
   @Field(() => String, { nullable: true })
   ownerEventId?: string | null;
@@ -356,6 +380,10 @@ export class EventFormInput {
   @Field(() => String, { nullable: true })
   @MaxLength(5_000)
   description?: string | null;
+
+  @Field(() => String, { nullable: true })
+  @MaxLength(100_000)
+  descriptionImagesJson?: string | null;
 
   @Field(() => String, { nullable: true })
   ownerEventId?: string | null;

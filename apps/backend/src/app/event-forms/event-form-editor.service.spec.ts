@@ -18,6 +18,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
+import { EventFormImagesService } from './event-form-images.service';
 
 type EventFormLinkInput = NonNullable<EventFormInput['links']>[number];
 
@@ -26,6 +27,7 @@ describe('EventFormEditorService', () => {
   let prisma: ReturnType<typeof createPrisma>;
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let auditLog: ReturnType<typeof createAuditLog>;
+  let images: ReturnType<typeof createImages>;
 
   const authenticatedUser: AuthenticatedUser = {
     realm_access: { roles: [] },
@@ -49,10 +51,12 @@ describe('EventFormEditorService', () => {
     prisma = createPrisma();
     authorizationPolicy = createAuthorizationPolicy();
     auditLog = createAuditLog();
+    images = createImages();
     service = new EventFormEditorService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as unknown as jest.Mocked<AuditLogService>,
+      images as unknown as jest.Mocked<EventFormImagesService>,
     );
   });
 
@@ -482,6 +486,13 @@ function createAuditLog() {
   };
 }
 
+function createImages() {
+  return {
+    reconcile: jest.fn().mockResolvedValue([]),
+    deleteObjectsBestEffort: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function formInput(overrides: Partial<EventFormInput> = {}): EventFormInput {
   return {
     name: 'Pesquisa de camiseta',
@@ -542,6 +553,7 @@ function formRecord(
     id: options.id ?? 'form-1',
     name: options.name ?? 'Pesquisa de camiseta',
     description: options.description ?? null,
+    descriptionImages: [],
     ownerEventId,
     ownerMajorEventId,
     ownerEvent: ownerEventId
@@ -561,6 +573,7 @@ function formRecord(
         }
       : null,
     elements: options.elements ?? [],
+    images: [],
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
     responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,

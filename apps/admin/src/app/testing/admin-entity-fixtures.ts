@@ -577,6 +577,7 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
     updatedAt: adminFixtureDate,
     updatedById: 'fixture-admin',
     ...overrides,
+    descriptionImages: overrides.descriptionImages ?? [],
   };
 }
 

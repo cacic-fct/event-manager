@@ -1,4 +1,5 @@
 import type { DateTimeString, GraphqlVariables } from './common';
+import type { FormImage } from '@cacic-fct/form-contracts';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
 export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
@@ -40,6 +41,7 @@ export interface PublicEventForm {
   id: string;
   name: string;
   description?: string | null;
+  descriptionImages: FormImage[];
   elementsJson: string;
   sigilo: EventFormSigilo;
   responseMode: EventFormResponseMode;

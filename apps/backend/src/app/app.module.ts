@@ -78,6 +78,7 @@ import { EventDraftsService } from './events/event-drafts.service';
 import { EventPostCommitEffectsService } from './events/event-post-commit-effects.service';
 import { EventFormsController } from './event-forms/event-forms.controller';
 import { EventFormEditorService } from './event-forms/event-form-editor.service';
+import { EventFormImagesService } from './event-forms/event-form-images.service';
 import { EventFormListingsService } from './event-forms/event-form-listings.service';
 import { EventFormNotificationService } from './event-forms/event-form-notification.service';
 import { EventFormPublicationWorkflowService } from './event-forms/event-form-publication-workflow.service';
@@ -481,6 +482,7 @@ const schedulerProviders = useInMemoryTestInfra
     SubscriptionBadgeExportService,
     EventFormsResolver,
     EventFormEditorService,
+    EventFormImagesService,
     EventFormListingsService,
     EventFormsService,
     EventFormNotificationService,

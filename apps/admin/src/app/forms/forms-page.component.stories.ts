@@ -11,7 +11,7 @@ import {
   Event,
   MajorEvent,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { type FormElement } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage } from '@cacic-fct/form-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
@@ -43,6 +43,7 @@ interface FormsStoryArgs {
   resultsLive: boolean;
   allowResponseEdits: boolean;
   lecturerPublish: boolean;
+  withImages: boolean;
 }
 
 const defaultArgs: FormsStoryArgs = {
@@ -56,7 +57,17 @@ const defaultArgs: FormsStoryArgs = {
   resultsLive: false,
   allowResponseEdits: false,
   lecturerPublish: true,
+  withImages: false,
 };
+
+const reusableStoryImage = {
+  id: 'story-form-image',
+  url: 'https://placehold.co/1200x675',
+  width: 1200,
+  height: 675,
+  altText: 'Mapa de referência do espaço do evento',
+  caption: 'Acesso principal pelo bloco de laboratórios.',
+} satisfies FormImage;
 
 const eventFormPermissions: PermissionScope[] = [
   Permission.EventForm.Read,
@@ -96,6 +107,7 @@ const meta: Meta<FormsStoryArgs> = {
     resultsLive: { control: 'boolean' },
     allowResponseEdits: { control: 'boolean' },
     lecturerPublish: { control: 'boolean' },
+    withImages: { control: 'boolean' },
   },
   decorators: [
     (story, context) =>
@@ -166,6 +178,21 @@ export const MajorEventFiltered: Story = {
   },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement, { selectedFormPublished: false }),
+};
+
+export const PublishedFormDraftWithImages: Story = {
+  args: {
+    withImages: true,
+    selectedIndex: 0,
+  },
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole('img', { name: reusableStoryImage.altText })).toHaveLength(2);
+    await expect(canvas.getByText('Imagens da descrição')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Rascunho' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /^salvar$/i })).not.toBeInTheDocument();
+  },
 };
 
 async function exerciseFormsStory(
@@ -240,7 +267,8 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
   const selectedForm = forms[selectedIndex(args.selectedIndex, forms.length)] ?? null;
   const selectedResults = selectedForm ? buildResults(selectedForm, args) : null;
   const form = createEditorForm(formBuilder);
-  const elements = signal<FormElement[]>(selectedForm ? buildElements() : []);
+  const elements = signal<FormElement[]>(selectedForm ? buildElements(args.withImages) : []);
+  const descriptionImages = signal<FormImage[]>(selectedForm?.descriptionImages ?? []);
   const links = signal<EventFormLinkDraft[]>(selectedForm ? linkDrafts(selectedForm.links) : []);
   const selectedFormSignal = signal<EventForm | null>(selectedForm);
   const selectedResultsSignal = signal<EventFormResults | null>(selectedResults);
@@ -253,6 +281,8 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     selectedForm: selectedFormSignal,
     selectedResults: selectedResultsSignal,
     elements,
+    descriptionImages,
+    uploadingImageTarget: signal<string | null>(null),
     links,
     events: signal(events),
     majorEvents: signal(majorEvents),
@@ -261,6 +291,8 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     targetFilter: signal<{ eventId?: string; majorEventId?: string } | null>(null),
     selectedFormPublished: computed(() => selectedFormSignal()?.publicationState === 'PUBLISHED'),
     selectedFormScheduled: computed(() => selectedFormSignal()?.publicationState === 'SCHEDULED'),
+    hasUntitledQuestions: computed(() => elements().some((element) => !element.title.trim())),
+    canSave: computed(() => form.valid && elements().every((element) => element.title.trim().length > 0)),
     filtersForm: formBuilder.nonNullable.group({ query: [''] }),
     form,
     initialize: async () => undefined,
@@ -270,6 +302,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       selectedFormSignal.set(null);
       selectedResultsSignal.set(null);
       elements.set([]);
+      descriptionImages.set([]);
       links.set([]);
       patchForm(form, null);
     },
@@ -279,12 +312,36 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     selectForm: async (nextForm: EventForm) => {
       selectedFormSignal.set(nextForm);
       selectedResultsSignal.set(buildResults(nextForm, args));
-      elements.set(buildElements());
+      elements.set(buildElements(args.withImages));
+      descriptionImages.set(nextForm.descriptionImages ?? []);
       links.set(linkDrafts(nextForm.links));
       patchForm(form, nextForm);
     },
     updateElements: (nextElements: FormElement[]) => {
       elements.set(nextElements);
+    },
+    uploadImage: async () => undefined,
+    removeImage: async (image: FormImage, elementId?: string) => {
+      if (elementId) {
+        elements.update((current) =>
+          current.map((element) =>
+            element.id === elementId
+              ? {
+                  ...element,
+                  descriptionImages: (element.descriptionImages ?? []).filter((item) => item.id !== image.id),
+                }
+              : element,
+          ),
+        );
+      } else {
+        descriptionImages.update((current) => current.filter((item) => item.id !== image.id));
+      }
+    },
+    updateDescriptionImageText: (imageId: string, key: 'altText' | 'caption', event: InputEvent) => {
+      const value = event.target instanceof HTMLInputElement ? event.target.value : '';
+      descriptionImages.update((current) =>
+        current.map((image) => (image.id === imageId ? { ...image, [key]: value || undefined } : image)),
+      );
     },
     addLink: (targetType: EventFormTargetType) => {
       links.update((current) => [
@@ -341,7 +398,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
         : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento'),
   } satisfies Partial<FormsService>;
 
-  return service as FormsService;
+  return service as unknown as FormsService;
 }
 
 function routeParams(target: FormsStoryTarget): Record<string, string> {
@@ -377,6 +434,7 @@ function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEve
       id: `form-${index + 1}`,
       name: index === 0 ? 'Pesquisa de camiseta' : `Formulário ${index + 1}`,
       description: index === 0 ? 'Coleta dados operacionais da inscrição.' : 'Coleta respostas do público-alvo.',
+      descriptionImages: args.withImages && index === 0 ? [reusableStoryImage] : [],
       ownerEventId: targetType === 'EVENT' ? event.id : null,
       ownerMajorEventId: targetType === 'MAJOR_EVENT' ? majorEvent.id : null,
       sigilo: args.sigilo,
@@ -419,13 +477,16 @@ function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEve
   });
 }
 
-function buildElements(): FormElement[] {
+function buildElements(withImages = false): FormElement[] {
   return [
     {
       id: 'shirt-size',
       type: 'singleChoice',
       title: 'Tamanho da camiseta',
       description: 'Escolha o tamanho desejado.',
+      descriptionImages: withImages
+        ? [{ ...reusableStoryImage, caption: 'A mesma imagem também pode aparecer junto a uma pergunta.' }]
+        : [],
       required: true,
       options: [
         { id: 'p', label: 'P' },

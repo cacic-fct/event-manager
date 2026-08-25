@@ -13,6 +13,7 @@ import type {
 } from '@cacic-fct/event-manager-public-contracts';
 import {
   EventFormRendererComponent,
+  EventFormDescriptionContentComponent,
   answerValue,
   isRequiredFormAnswerMissing,
   parseFormElementsJson,
@@ -81,6 +82,7 @@ interface ConfirmSubscriptionListDay {
     MatIconModule,
     MatListModule,
     EventFormRendererComponent,
+    EventFormDescriptionContentComponent,
   ],
   templateUrl: './confirm-dialog.html',
   styleUrl: './confirm-dialog.css',

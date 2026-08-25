@@ -32,6 +32,7 @@ model EventForm {
   id          String  @id @default(uuid(7))
   name        String
   description String?
+  descriptionImages Json @default("[]")
 
   ownerEvent   Event?  @relation("EventFormOwnerEvent", fields: [ownerEventId], references: [id], onDelete: Restrict)
   ownerEventId String?
@@ -57,6 +58,7 @@ model EventForm {
   links                           EventFormLink[]
   responses                       EventFormResponse[]
   drafts                          EventFormDraft[]
+  images                          EventFormImage[]
   sportsCategoryRegistrationForms SportsCategory[]    @relation("SportsCategoryRegistrationForm")
 
   deletedAt DateTime?
@@ -72,6 +74,28 @@ model EventForm {
   @@index([publicationState])
   @@index([scheduledPublishAt])
   @@map("event_forms")
+}
+
+model EventFormImage {
+  id               String    @id @default(uuid(7))
+  form             EventForm? @relation(fields: [formId], references: [id], onDelete: Cascade)
+  formId           String?
+  objectKey        String                  @unique
+  sha256           String
+  originalFileName String
+  originalMimeType String
+  mimeType         String
+  sizeBytes        Int
+  width            Int
+  height           Int
+  createdById      String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([formId, sha256])
+  @@index([createdById, sha256])
+  @@index([createdAt])
+  @@map("event_form_images")
 }
 
 model EventFormLink {
