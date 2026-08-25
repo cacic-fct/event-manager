@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { detectImageMimeType } from '@cacic-fct/shared-utils';
 import { extname } from 'path';
 import { MAX_RECEIPT_FILE_SIZE_BYTES, UploadedReceiptFile } from '../receipt.types';
 
@@ -12,6 +13,7 @@ const ALLOWED_RECEIPT_MIME_TYPES = new Set([
   'image/tiff',
   'image/webp',
   'image/heic',
+  'image/heif',
 ]);
 
 export function assertValidReceiptUpload(file: UploadedReceiptFile | undefined): asserts file is UploadedReceiptFile {
@@ -53,6 +55,7 @@ export function extensionForMimeType(mimeType: string): string | undefined {
     'image/webp': 'webp',
     'application/pdf': 'pdf',
     'image/heic': 'heic',
+    'image/heif': 'heif',
   };
 
   return extensions[mimeType.toLowerCase()];
@@ -76,52 +79,11 @@ function isPdfReceiptUpload(mimeType: string, fileName: string): boolean {
 }
 
 function detectReceiptMimeType(buffer: Buffer): string | undefined {
-  if (buffer.length < 4) {
-    return undefined;
-  }
-
-  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-    return 'image/png';
-  }
-
   // A PDF signature is only valid at byte zero. Searching a prefix permits
   // ZIP/polyglot payloads to reach native PDF processing tools.
   if (buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
     return 'application/pdf';
   }
-
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return 'image/jpeg';
-  }
-
-  if (buffer.subarray(0, 6).toString('ascii') === 'GIF87a' || buffer.subarray(0, 6).toString('ascii') === 'GIF89a') {
-    return 'image/gif';
-  }
-
-  if (buffer.subarray(0, 2).toString('ascii') === 'BM') {
-    return 'image/bmp';
-  }
-
-  if (
-    buffer.subarray(0, 4).equals(Buffer.from([0x49, 0x49, 0x2a, 0x00])) ||
-    buffer.subarray(0, 4).equals(Buffer.from([0x4d, 0x4d, 0x00, 0x2a]))
-  ) {
-    return 'image/tiff';
-  }
-
-  if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
-    return 'image/webp';
-  }
-
-  if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
-    const brand = buffer.subarray(8, 12).toString('ascii');
-    if (brand === 'avif' || brand === 'avis') {
-      return 'image/avif';
-    }
-    if (['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'].includes(brand)) {
-      return 'image/heic';
-    }
-  }
-
-  return undefined;
+  const detectedMimeType = detectImageMimeType(buffer);
+  return detectedMimeType === 'image/svg+xml' ? undefined : detectedMimeType;
 }
