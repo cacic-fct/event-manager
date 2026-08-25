@@ -50,12 +50,16 @@ export class EventFormEditorService {
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
     const elements = parseElementsJson(input.elementsJson ?? '[]');
     assertQuestionsHaveTitles(elements);
-    const descriptionImages = parseEventFormImageReferences(input.descriptionImagesJson);
+    const submittedDescriptionImages =
+      input.descriptionImagesJson === undefined || input.descriptionImagesJson === null
+        ? null
+        : parseEventFormImageReferences(input.descriptionImagesJson);
     const target = normalizeOwner(input);
     const actorId = user?.sub;
 
     if (input.id) {
       const existing = await requireEventForm(this.prisma, input.id);
+      const descriptionImages = submittedDescriptionImages ?? storedImageReferences(existing.descriptionImages);
       const nextLinks = input.links ?? [];
       const shouldReplaceLinks = input.links !== undefined && input.links !== null;
       const resultsPublic = input.resultsPublic ?? existing.resultsPublic;
@@ -133,6 +137,7 @@ export class EventFormEditorService {
       majorEventId: target.ownerMajorEventId ?? undefined,
       allowScopedCollection: true,
     });
+    const descriptionImages = submittedDescriptionImages ?? [];
     await assertCanManageLinkedTargets(this.authorizationPolicy, user, input.links ?? [], Permission.EventForm.Create);
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -299,4 +304,8 @@ function storedElements(elements: readonly FormElement[]): Prisma.InputJsonValue
       ...(caption ? { caption } : {}),
     })),
   })) as unknown as Prisma.InputJsonValue;
+}
+
+function storedImageReferences(value: Prisma.JsonValue): ReturnType<typeof parseEventFormImageReferences> {
+  return parseEventFormImageReferences(JSON.stringify(Array.isArray(value) ? value : []));
 }

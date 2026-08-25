@@ -16,6 +16,7 @@ import {
 } from './event-form-records';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { isSameTarget } from './event-form-targets';
+import { toEventFormImageModel } from './event-form-image.utils';
 
 export function toEventFormModel(form: EventFormRecord): EventFormModel {
   const assetsById = new Map(form.images.map((image) => [image.id, image]));
@@ -66,17 +67,8 @@ function hydrateImages(
 ): FormImage[] {
   return (references ?? []).flatMap((reference) => {
     const asset = assetsById.get(reference.id);
-    return asset ? [{ ...toImageModel(asset), altText: reference.altText, caption: reference.caption }] : [];
+    return asset ? [{ ...toEventFormImageModel(asset), altText: reference.altText, caption: reference.caption }] : [];
   });
-}
-
-function toImageModel(image: EventFormRecord['images'][number]): FormImage {
-  return {
-    id: image.id,
-    url: `/api/event-forms/images/${encodeURIComponent(image.id)}`,
-    width: image.width,
-    height: image.height,
-  };
 }
 
 export function toPublicEventFormModel(form: EventFormModel, target?: TargetInput): EventFormModel {

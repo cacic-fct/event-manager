@@ -157,7 +157,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                 <button
                   mat-stroked-button
                   type="button"
-                  [disabled]="uploadingImageTarget() === element.id"
+                  [disabled]="uploadingImageTarget() !== null"
                   (click)="imageInput.click()">
                   <mat-icon>add_photo_alternate</mat-icon>
                   Imagem

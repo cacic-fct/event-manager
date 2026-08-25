@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { FormImage } from '@cacic-fct/form-contracts';
 import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
 import sharp from 'sharp';
 
@@ -38,6 +39,8 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/tiff',
   'image/webp',
 ]);
+export const EVENT_FORM_IMAGE_FORMAT_ERROR =
+  'A imagem precisa estar em um formato suportado: AVIF, BMP, GIF, HEIC, HEIF, JPEG, PNG, SVG, TIFF ou WebP.';
 
 export function isAllowedEventFormImageMimeType(mimeType: string): boolean {
   return ALLOWED_IMAGE_MIME_TYPES.has(mimeType.toLowerCase());
@@ -49,15 +52,11 @@ export async function convertEventFormImageToAvif(file: UploadedEventFormImageFi
   height: number;
   originalMimeType: string;
 }> {
-  assertValidImageUpload(file);
-  const originalMimeType = detectImageMimeType(file.buffer);
-  if (!originalMimeType) {
-    throw new BadRequestException('A imagem precisa estar em um formato raster suportado.');
-  }
+  const { file: validFile, mimeType: originalMimeType } = assertValidImageUpload(file);
 
   if (originalMimeType === 'image/svg+xml') {
     try {
-      assertSafeSvg(file.buffer);
+      assertSafeSvg(validFile.buffer);
     } catch (error: unknown) {
       if (error instanceof UnsafeSvgError) {
         throw new BadRequestException('O SVG não pode conter scripts, entidades, conteúdo HTML ou recursos externos.');
@@ -65,8 +64,8 @@ export async function convertEventFormImageToAvif(file: UploadedEventFormImageFi
       throw error;
     }
   }
-  const metadata = await readProcessableImageMetadata(file.buffer, originalMimeType);
-  const operation = createSharp(file.buffer, originalMimeType).rotate();
+  const metadata = await readProcessableImageMetadata(validFile.buffer, originalMimeType);
+  const operation = createSharp(validFile.buffer, originalMimeType).rotate();
   if (originalMimeType === 'image/svg+xml') {
     const longEdge = Math.max(metadata.width, metadata.height);
     const targetLongEdge = Math.min(
@@ -102,7 +101,7 @@ export function buildEventFormImageObjectKey(formId: string, imageId: string): s
 
 function assertValidImageUpload(
   file: UploadedEventFormImageFile | undefined,
-): asserts file is UploadedEventFormImageFile {
+): { file: UploadedEventFormImageFile; mimeType: string } {
   if (!file) {
     throw new BadRequestException('Selecione uma imagem para enviar.');
   }
@@ -111,9 +110,18 @@ function assertValidImageUpload(
   }
   const detectedMimeType = detectImageMimeType(file.buffer);
   if (!detectedMimeType || !ALLOWED_IMAGE_MIME_TYPES.has(detectedMimeType)) {
-    throw new BadRequestException('A imagem precisa estar em um formato raster suportado.');
+    throw new BadRequestException(EVENT_FORM_IMAGE_FORMAT_ERROR);
   }
-  file.mimetype = detectedMimeType;
+  return { file, mimeType: detectedMimeType };
+}
+
+export function toEventFormImageModel(image: { id: string; width: number; height: number }): FormImage {
+  return {
+    id: image.id,
+    url: `/api/event-forms/images/${encodeURIComponent(image.id)}`,
+    width: image.width,
+    height: image.height,
+  };
 }
 
 function createSharp(buffer: Buffer, mimeType?: string): ReturnType<typeof sharp> {

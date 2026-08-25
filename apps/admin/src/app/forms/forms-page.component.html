@@ -179,11 +179,11 @@
                   hidden
                   type="file"
                   accept="image/avif,image/bmp,image/gif,image/heic,image/heif,image/jpeg,image/png,image/svg+xml,image/tiff,image/webp"
-                  (change)="workspace.uploadImage(formImageInput.files?.[0] ?? null); formImageInput.value = ''" />
+                  (change)="handleFormImageUpload(formImageInput)" />
                 <button
                   mat-stroked-button
                   type="button"
-                  [disabled]="workspace.uploadingImageTarget() === 'form'"
+                  [disabled]="workspace.uploadingImageTarget() !== null"
                   (click)="formImageInput.click()">
                   <mat-icon>add_photo_alternate</mat-icon>
                   Imagem
@@ -194,27 +194,26 @@
                 <mat-progress-bar mode="indeterminate" aria-label="Enviando imagem do formulário" />
               }
 
-              @for (image of workspace.descriptionImages(); track $index) {
+              @for (image of workspace.descriptionImages(); track image.id) {
                 <div class="form-image-row">
-                  <lib-event-form-description-content [images]="[image]" />
+                  <lib-event-form-description-content [images]="workspace.singleImage(image)" />
                   <div class="form-image-fields">
                     <mat-form-field>
                       <mat-label>Texto alternativo</mat-label>
                       <input
                         matInput
-                        [value]="image.altText ?? ''"
-                        (input)="workspace.updateDescriptionImageText(image.id, 'altText', $event)" />
+                        [formControl]="workspace.imageTextControl(image, 'altText')" />
                     </mat-form-field>
                     <mat-form-field>
                       <mat-label>Legenda</mat-label>
                       <input
                         matInput
-                        [value]="image.caption ?? ''"
-                        (input)="workspace.updateDescriptionImageText(image.id, 'caption', $event)" />
+                        [formControl]="workspace.imageTextControl(image, 'caption')" />
                     </mat-form-field>
                     <button
                       mat-icon-button
                       type="button"
+                      [disabled]="workspace.uploadingImageTarget() !== null"
                       matTooltip="Remover imagem da descrição"
                       aria-label="Remover imagem da descrição"
                       (click)="workspace.removeImage(image)">
