@@ -12,6 +12,7 @@ import {
   WorkspaceMajorEventSubscriptionEvent,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { ReceiptValidationApiService } from '../graphql/receipt-validation-api.service';
+import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { WorkspacePermissionScope, PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../testing/admin-entity-fixtures';
@@ -178,7 +179,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventEditForm = new FormGroup({
     subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
     amountPaid: new FormControl<number | null>(1.2),
-    paymentDate: new FormControl<string | null>('2026-05-19'),
+    paymentDate: new FormControl<Date | null>(parseDateOnly('2026-05-19')),
     paymentTier: new FormControl<string | null>('Estudante'),
     imageLicenseAgreementAccepted: new FormControl(false, { nonNullable: true }),
   });
@@ -195,8 +196,8 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const service = {
     majorEvents,
     eventFiltersForm: new FormGroup({
-      startDateFrom: new FormControl('', { nonNullable: true }),
-      startDateUntil: new FormControl('', { nonNullable: true }),
+      startDateFrom: new FormControl<Date | null>(null),
+      startDateUntil: new FormControl<Date | null>(null),
       isInGroup: new FormControl('ALL', { nonNullable: true }),
       isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
       query: new FormControl('', { nonNullable: true }),
@@ -281,7 +282,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       majorEventEditForm.patchValue({
         subscriptionStatus: subscription?.subscriptionStatus ?? 'CONFIRMED',
         amountPaid: subscription?.amountPaid == null ? null : subscription.amountPaid / 100,
-        paymentDate: subscription?.paymentDate?.slice(0, 10) ?? null,
+        paymentDate: parseDateOnly(subscription?.paymentDate?.slice(0, 10)),
         paymentTier: subscription?.paymentTier ?? null,
         imageLicenseAgreementAccepted: Boolean(subscription?.imageLicenseAgreementAccepted),
       });
@@ -313,7 +314,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       majorEventEditForm.patchValue({
         subscriptionStatus: subscription?.subscriptionStatus ?? 'CONFIRMED',
         amountPaid: subscription?.amountPaid == null ? null : subscription.amountPaid / 100,
-        paymentDate: subscription?.paymentDate?.slice(0, 10) ?? null,
+        paymentDate: parseDateOnly(subscription?.paymentDate?.slice(0, 10)),
         paymentTier: subscription?.paymentTier ?? null,
         imageLicenseAgreementAccepted: Boolean(subscription?.imageLicenseAgreementAccepted),
       });

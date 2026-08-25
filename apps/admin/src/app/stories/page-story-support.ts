@@ -455,12 +455,12 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     attendanceCollectorSearchResults: signal(people.slice(1)),
     groupLecturerSuggestions: signal(people.slice(2)),
     suggestedGroupLecturers: computed(() => people.slice(2)),
-    eventFiltersForm: formBuilder.nonNullable.group({
-      startDateFrom: [''],
-      startDateUntil: [''],
-      isInGroup: ['ALL'],
-      isInMajorEvent: ['ALL'],
-      query: [''],
+    eventFiltersForm: formBuilder.group({
+      startDateFrom: formBuilder.control<Date | null>(null),
+      startDateUntil: formBuilder.control<Date | null>(null),
+      isInGroup: formBuilder.nonNullable.control('ALL'),
+      isInMajorEvent: formBuilder.nonNullable.control('ALL'),
+      query: formBuilder.nonNullable.control(''),
     }),
     eventForm,
     majorEventLookupForm: formBuilder.nonNullable.group({ query: [''] }),

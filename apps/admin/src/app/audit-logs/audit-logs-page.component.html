@@ -48,12 +48,16 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Data inicial</mat-label>
-        <input matInput type="date" formControlName="dateFrom" />
+        <input matInput [matDatepicker]="dateFromPicker" formControlName="dateFrom" />
+        <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker" />
+        <mat-datepicker #dateFromPicker />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Data final</mat-label>
-        <input matInput type="date" formControlName="dateTo" />
+        <input matInput [matDatepicker]="dateToPicker" formControlName="dateTo" />
+        <mat-datepicker-toggle matIconSuffix [for]="dateToPicker" />
+        <mat-datepicker #dateToPicker />
       </mat-form-field>
 
       <mat-form-field appearance="outline">

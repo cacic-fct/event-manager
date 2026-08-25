@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +15,7 @@ import {
   type FormElementType,
   type FormSchedulingInviteeMode,
 } from '@cacic-fct/form-contracts';
+import { formatDateOnly, parseDateOnly } from '@cacic-fct/shared-utils';
 import {
   cloneFormElements,
   createEventFormElement,
@@ -29,6 +31,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
+    MatDatepickerModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -332,9 +335,11 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                       <mat-label>Data</mat-label>
                       <input
                         matInput
-                        type="date"
-                        [value]="window.date"
-                        (input)="updateAvailability(element.id, window.id, 'date', $event)" />
+                        [matDatepicker]="availabilityDatePicker"
+                        [value]="parseDateOnly(window.date)"
+                        (dateChange)="updateAvailabilityDate(element.id, window.id, $event.value)" />
+                      <mat-datepicker-toggle matIconSuffix [for]="availabilityDatePicker" />
+                      <mat-datepicker #availabilityDatePicker />
                     </mat-form-field>
                     <mat-form-field appearance="outline">
                       <mat-label>Início</mat-label>
@@ -710,6 +715,24 @@ export class EventFormBuilderComponent {
       },
     }));
   }
+
+  updateAvailabilityDate(elementId: string, availabilityId: string, date: Date | null): void {
+    const value = formatDateOnly(date) ?? '';
+    this.updateElement(elementId, (element) => ({
+      ...element,
+      settings: {
+        ...element.settings,
+        scheduling: {
+          ...this.ensureScheduling(element),
+          availability: this.ensureScheduling(element).availability.map((window) =>
+            window.id === availabilityId ? { ...window, date: value } : window,
+          ),
+        },
+      },
+    }));
+  }
+
+  parseDateOnly = parseDateOnly;
 
   usesOptions(type: FormElementType): boolean {
     return type === 'singleChoice' || type === 'multipleChoice' || type === 'selectionDropdown';

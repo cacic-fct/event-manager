@@ -20,6 +20,9 @@ import { provideCacicObservability, startCacicAnalytics } from '@cacic-fct/share
 import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angular/privacy/startup';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
 import { requestActivityInterceptor } from './feedback/request-activity.interceptor';
 
@@ -51,6 +54,8 @@ const buildIdentifyData = (user: AuthenticatedUser) => ({
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
+    { provide: MAT_DATE_LOCALE, useValue: ptBR },
+    provideDateFnsAdapter(),
     provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([requestActivityInterceptor, authInterceptor])),

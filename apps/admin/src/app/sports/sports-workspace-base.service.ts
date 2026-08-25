@@ -16,6 +16,7 @@ import {
   getSportsPreset,
 } from '@cacic-fct/shared-data-types/sports-metadata';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
@@ -50,8 +51,8 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 
 interface SportsMajorEventWorkspaceFilters {
   query: string;
-  startDateFrom: string;
-  startDateUntil: string;
+  startDateFrom: Date | null;
+  startDateUntil: Date | null;
   configuration: SportsMajorEventConfigurationFilter;
 }
 
@@ -100,16 +101,16 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly selectedTeamId = signal('');
   readonly selectedMatchId = signal('');
   readonly majorEventWorkspacePagination = createWorkspaceListPagination();
-  readonly majorEventWorkspaceFilterForm = this.fb.nonNullable.group({
-    query: [''],
-    startDateFrom: [''],
-    startDateUntil: [''],
-    configuration: ['ALL' as SportsMajorEventConfigurationFilter],
+  readonly majorEventWorkspaceFilterForm = this.fb.group({
+    query: this.fb.nonNullable.control(''),
+    startDateFrom: this.fb.control<Date | null>(null),
+    startDateUntil: this.fb.control<Date | null>(null),
+    configuration: this.fb.nonNullable.control<SportsMajorEventConfigurationFilter>('ALL'),
   });
   private readonly majorEventWorkspaceFilters = signal<SportsMajorEventWorkspaceFilters>({
     query: '',
-    startDateFrom: '',
-    startDateUntil: '',
+    startDateFrom: null,
+    startDateUntil: null,
     configuration: 'ALL',
   });
   readonly majorEventWorkspaceItems = computed<SportsMajorEventWorkspaceItem[]>(() => {
@@ -397,8 +398,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.majorEventWorkspaceFilterForm.reset(
       {
         query: '',
-        startDateFrom: '',
-        startDateUntil: '',
+        startDateFrom: null,
+        startDateUntil: null,
         configuration: 'ALL',
       },
       { emitEvent: false },
@@ -466,10 +467,12 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   private async loadMajorEventWorkspaceData(): Promise<void> {
     const filters = this.majorEventWorkspaceFilters();
     const query = filters.query.trim();
+    const startDateFrom = dateFilterIso(filters.startDateFrom, 'start');
+    const startDateUntil = dateFilterIso(filters.startDateUntil, 'end');
     const majorEventFilters = {
       ...(query ? { query } : {}),
-      ...(filters.startDateFrom ? { startDateFrom: dateFilterIso(filters.startDateFrom, 'start') } : {}),
-      ...(filters.startDateUntil ? { startDateUntil: dateFilterIso(filters.startDateUntil, 'end') } : {}),
+      ...(startDateFrom ? { startDateFrom } : {}),
+      ...(startDateUntil ? { startDateUntil } : {}),
       take: 100,
     };
     const tournamentFilters = {
@@ -765,15 +768,15 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected abstract watchTournament(tournamentId: string): void;
 }
 
-function dateFilterIso(value: string, boundary: 'start' | 'end'): string {
-  return `${value}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}Z`;
+function dateFilterIso(value: Date | null, boundary: 'start' | 'end'): string | undefined {
+  return formatDateOnlyUtcBoundary(value, boundary) ?? undefined;
 }
 
-function dateBoundary(value: string, boundary: 'start' | 'end'): number | null {
+function dateBoundary(value: Date | null, boundary: 'start' | 'end'): number | null {
   if (!value) {
     return null;
   }
 
-  const timestamp = new Date(dateFilterIso(value, boundary)).getTime();
-  return Number.isNaN(timestamp) ? null : timestamp;
+  const iso = dateFilterIso(value, boundary);
+  return iso ? Date.parse(iso) : null;
 }

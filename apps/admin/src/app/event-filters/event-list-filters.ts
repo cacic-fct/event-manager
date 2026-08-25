@@ -1,10 +1,11 @@
 import { FormControl, FormGroup } from '@angular/forms';
+import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
 
 export type EventMembershipFilter = 'ALL' | 'YES' | 'NO';
 
 export type EventFiltersForm = FormGroup<{
-  startDateFrom: FormControl<string>;
-  startDateUntil: FormControl<string>;
+  startDateFrom: FormControl<Date | null>;
+  startDateUntil: FormControl<Date | null>;
   isInGroup: FormControl<string>;
   isInMajorEvent: FormControl<string>;
   query: FormControl<string>;
@@ -23,8 +24,8 @@ export interface EventListApiFilters {
 export function buildEventListFilters(raw: EventFiltersForm['value'], take = 200): EventListApiFilters {
   return {
     query: raw.query?.trim() || undefined,
-    startDateFrom: raw.startDateFrom ? new Date(`${raw.startDateFrom}T00:00:00.000Z`).toISOString() : undefined,
-    startDateUntil: raw.startDateUntil ? new Date(`${raw.startDateUntil}T23:59:59.999Z`).toISOString() : undefined,
+    startDateFrom: formatDateOnlyUtcBoundary(raw.startDateFrom, 'start') ?? undefined,
+    startDateUntil: formatDateOnlyUtcBoundary(raw.startDateUntil, 'end') ?? undefined,
     isInGroup: toOptionalBoolean(raw.isInGroup),
     isInMajorEvent: toOptionalBoolean(raw.isInMajorEvent),
     take,
@@ -34,8 +35,8 @@ export function buildEventListFilters(raw: EventFiltersForm['value'], take = 200
 export function resetEventFiltersForm(form: EventFiltersForm, options?: { emitEvent?: boolean }): void {
   form.reset(
     {
-      startDateFrom: '',
-      startDateUntil: '',
+      startDateFrom: null,
+      startDateUntil: null,
       isInGroup: 'ALL',
       isInMajorEvent: 'ALL',
       query: '',

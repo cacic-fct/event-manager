@@ -140,12 +140,12 @@ export class AttendancesService {
 
   readonly majorEvents = this.majorEventsService.majorEvents;
 
-  readonly attendanceEventFiltersForm = this.formBuilder.nonNullable.group({
-    startDateFrom: [''],
-    startDateUntil: [''],
-    isInGroup: ['ALL'],
-    isInMajorEvent: ['ALL'],
-    query: [''],
+  readonly attendanceEventFiltersForm = this.formBuilder.group({
+    startDateFrom: this.formBuilder.control<Date | null>(null),
+    startDateUntil: this.formBuilder.control<Date | null>(null),
+    isInGroup: this.formBuilder.nonNullable.control('ALL'),
+    isInMajorEvent: this.formBuilder.nonNullable.control('ALL'),
+    query: this.formBuilder.nonNullable.control(''),
   });
 
   readonly attendanceEventResults = signal<Event[]>([]);

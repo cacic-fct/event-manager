@@ -344,6 +344,7 @@ describe('shared event form renderer operations', () => {
       { elementId: 'stars', value: 4 },
       { elementId: 'single-grid', value: { 'row-1': 'column-1' } },
       { elementId: 'multiple-grid', value: { 'row-1': ['column-1', 'column-2'] } },
+      { elementId: 'date', value: '2026-05-20' },
       { elementId: 'schedule', value: { slotId: 'window-1:09:00-09:30', invitees: [] } },
     ];
     const { component } = rendererHarness(elements, initialAnswers);
@@ -355,6 +356,7 @@ describe('shared event form renderer operations', () => {
     expect(component.answerDisplay(elements[8])).toBe('4');
     expect(component.answerDisplay(elements[4])).toBe('Linha 1: Coluna 1');
     expect(component.answerDisplay(elements[5])).toBe('Linha 1: Coluna 1, Coluna 2');
+    expect(component.answerDisplay(elements[9])).toBe('20/05/2026');
     expect(component.answerDisplay(elements[11])).toContain('09:00-09:30');
     expect(component.answerDisplay(element('empty', 'shortText', 'Vazia'))).toBe('Sem resposta');
     expect(component.linearScaleValues(elements[7])).toEqual([1, 2, 3, 4, 5]);

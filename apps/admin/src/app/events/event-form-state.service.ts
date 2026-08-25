@@ -7,12 +7,12 @@ export class EventFormStateService {
   private readonly formBuilder = inject(FormBuilder);
 
   createEventFiltersForm() {
-    return this.formBuilder.nonNullable.group({
-      startDateFrom: [''],
-      startDateUntil: [''],
-      isInGroup: ['ALL'],
-      isInMajorEvent: ['ALL'],
-      query: [''],
+    return this.formBuilder.group({
+      startDateFrom: this.formBuilder.control<Date | null>(null),
+      startDateUntil: this.formBuilder.control<Date | null>(null),
+      isInGroup: this.formBuilder.nonNullable.control('ALL'),
+      isInMajorEvent: this.formBuilder.nonNullable.control('ALL'),
+      query: this.formBuilder.nonNullable.control(''),
     });
   }
 

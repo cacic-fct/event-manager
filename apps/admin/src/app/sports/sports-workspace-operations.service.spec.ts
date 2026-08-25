@@ -3,6 +3,7 @@ import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -165,8 +166,8 @@ describe('SportsWorkspaceService operations', () => {
       api.tournaments.mockReturnValue(of([configuredListItem]));
       workspace.majorEventWorkspaceFilterForm.patchValue({
         query: 'Copa',
-        startDateFrom: '2026-10-01',
-        startDateUntil: '2026-12-31',
+        startDateFrom: parseDateOnly('2026-10-01'),
+        startDateUntil: parseDateOnly('2026-12-31'),
         configuration: 'UNCONFIGURED',
       });
 

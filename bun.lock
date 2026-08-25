@@ -12,6 +12,7 @@
         "@angular/core": "22.1.2",
         "@angular/forms": "22.1.2",
         "@angular/material": "22.1.2",
+        "@angular/material-date-fns-adapter": "22.1.2",
         "@angular/platform-browser": "22.1.2",
         "@angular/platform-server": "22.1.2",
         "@angular/router": "22.1.2",
@@ -226,6 +227,8 @@
     "@angular/language-service": ["@angular/language-service@22.1.2", "", {}, "sha512-5TIeUhO3xJVaAOEfwq8xFLlAy7Jlg2W62daw2LE+uoZOxsdabQLk+sBrzyy8hYf0HOYuKDiT1FxDC4C00imH8A=="],
 
     "@angular/material": ["@angular/material@22.1.2", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/cdk": "22.1.2", "@angular/common": "^22.0.0 || ^23.0.0", "@angular/core": "^22.0.0 || ^23.0.0", "@angular/forms": "^22.0.0 || ^23.0.0", "@angular/platform-browser": "^22.0.0 || ^23.0.0", "rxjs": "^6.5.3 || ^7.4.0" } }, "sha512-KX0bVUppfwjDfUepsjpG1CAQGUGHI0l5e0QYpFcskB+1wNRCocBGsIO1br5z6neYu0rzsbhtWocjCeH05gwi7w=="],
+
+    "@angular/material-date-fns-adapter": ["@angular/material-date-fns-adapter@22.1.2", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/core": "^22.0.0 || ^23.0.0", "@angular/material": "22.1.2", "date-fns": ">2.20.0 <5.0" } }, "sha512-luKRUEqRs0hAG24sozZHFl7M1kDplDFmMIPCsP8sWN3X3DmcLufD3yfD8ZDHyzwEh4EpMmrKzdW3Ocs8aV2VEw=="],
 
     "@angular/platform-browser": ["@angular/platform-browser@22.1.2", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/animations": "22.1.2", "@angular/common": "22.1.2", "@angular/core": "22.1.2" }, "optionalPeers": ["@angular/animations"] }, "sha512-MQO735ve/tk4gLsWbw8NyBD/DxPfbbmf1pM/vp6K7tZz2xyysMXilqF/k8PBdQBZVOofST8S13inZHQ35nHuRA=="],
 

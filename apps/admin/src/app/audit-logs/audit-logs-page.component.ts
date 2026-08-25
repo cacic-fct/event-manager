@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, sign
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
+import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
 import { AuditLogApiService, AuditLogExplorerInput } from '../graphql/audit-log-api.service';
 import {
   AuditLogEntityType,
@@ -36,8 +38,8 @@ type AuditLogFilterForm = {
   entity: FormControl<string>;
   entityType: FormControl<AuditLogEntityType | ''>;
   operation: FormControl<AuditLogOperation | ''>;
-  dateFrom: FormControl<string>;
-  dateTo: FormControl<string>;
+  dateFrom: FormControl<Date | null>;
+  dateTo: FormControl<Date | null>;
   revertedStatus: FormControl<AuditLogExplorerRevertedStatus>;
 };
 
@@ -48,6 +50,7 @@ type AuditLogFilterForm = {
     ReactiveFormsModule,
     MatButtonModule,
     MatChipsModule,
+    MatDatepickerModule,
     MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
@@ -75,8 +78,8 @@ export class AuditLogsPageComponent {
     entity: new FormControl('', { nonNullable: true }),
     entityType: new FormControl('', { nonNullable: true }),
     operation: new FormControl('', { nonNullable: true }),
-    dateFrom: new FormControl('', { nonNullable: true }),
-    dateTo: new FormControl('', { nonNullable: true }),
+    dateFrom: new FormControl<Date | null>(null),
+    dateTo: new FormControl<Date | null>(null),
     revertedStatus: new FormControl('ALL', { nonNullable: true }),
   });
 
@@ -124,8 +127,8 @@ export class AuditLogsPageComponent {
       entity: '',
       entityType: '',
       operation: '',
-      dateFrom: '',
-      dateTo: '',
+      dateFrom: null,
+      dateTo: null,
       revertedStatus: 'ALL',
     });
     this.skip.set(0);
@@ -226,8 +229,8 @@ export class AuditLogsPageComponent {
       entity: this.normalized(value.entity),
       entityType: value.entityType || undefined,
       operation: value.operation || undefined,
-      dateFrom: this.dateBoundary(value.dateFrom, 'start'),
-      dateTo: this.dateBoundary(value.dateTo, 'end'),
+      dateFrom: formatDateOnlyUtcBoundary(value.dateFrom, 'start') ?? undefined,
+      dateTo: formatDateOnlyUtcBoundary(value.dateTo, 'end') ?? undefined,
       revertedStatus: value.revertedStatus,
       skip: this.skip(),
       take: this.take(),
@@ -237,14 +240,5 @@ export class AuditLogsPageComponent {
   private normalized(value: string): string | undefined {
     const normalized = value.trim();
     return normalized || undefined;
-  }
-
-  private dateBoundary(value: string, boundary: 'start' | 'end'): string | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    const suffix = boundary === 'start' ? 'T00:00:00.000' : 'T23:59:59.999';
-    return new Date(`${value}${suffix}`).toISOString();
   }
 }

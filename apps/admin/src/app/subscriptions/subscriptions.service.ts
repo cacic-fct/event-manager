@@ -42,6 +42,7 @@ import { buildSubscriberCsv, SubscriberCsvExportDialogOptions } from './subscrib
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { formatDateOnly, parseDateOnly } from '@cacic-fct/shared-utils';
 import { PermissionsService } from '../permissions/permissions.service';
 import type { SportsApplication } from '../sports/sports.models';
 import { SportsTextDialogComponent } from '../sports/sports-text-dialog.component';
@@ -71,12 +72,12 @@ export class SubscriptionsService {
   private readonly permissions = inject(PermissionsService);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
-  readonly eventFiltersForm = this.formBuilder.nonNullable.group({
-    startDateFrom: [''],
-    startDateUntil: [''],
-    isInGroup: ['ALL'],
-    isInMajorEvent: ['ALL'],
-    query: [''],
+  readonly eventFiltersForm = this.formBuilder.group({
+    startDateFrom: this.formBuilder.control<Date | null>(null),
+    startDateUntil: this.formBuilder.control<Date | null>(null),
+    isInGroup: this.formBuilder.nonNullable.control('ALL'),
+    isInMajorEvent: this.formBuilder.nonNullable.control('ALL'),
+    query: this.formBuilder.nonNullable.control(''),
   });
   readonly eventResults = signal<Event[]>([]);
   readonly eventResultsPagination = createWorkspaceListPagination();
@@ -118,7 +119,7 @@ export class SubscriptionsService {
       Validators.required,
     ]),
     amountPaid: this.formBuilder.control<number | null>(null),
-    paymentDate: this.formBuilder.control<string | null>(null),
+    paymentDate: this.formBuilder.control<Date | null>(null),
     paymentTier: this.formBuilder.control<string | null>(null),
     imageLicenseAgreementAccepted: this.formBuilder.nonNullable.control(false),
   });
@@ -473,7 +474,7 @@ export class SubscriptionsService {
     this.majorEventEditForm.reset({
       subscriptionStatus: subscription.subscriptionStatus,
       amountPaid: this.fromCentsToCurrencyInput(subscription.amountPaid),
-      paymentDate: subscription.paymentDate?.slice(0, 10) ?? null,
+      paymentDate: parseDateOnly(subscription.paymentDate?.slice(0, 10)),
       paymentTier: subscription.paymentTier ?? null,
       imageLicenseAgreementAccepted: Boolean(subscription.imageLicenseAgreementAccepted),
     });
@@ -573,7 +574,7 @@ export class SubscriptionsService {
     const input = {
       subscriptionStatus: formValue.subscriptionStatus,
       amountPaid: this.toCents(formValue.amountPaid),
-      paymentDate: formValue.paymentDate,
+      paymentDate: formatDateOnly(formValue.paymentDate),
       paymentTier: formValue.paymentTier,
       imageLicenseAgreementAccepted: formValue.imageLicenseAgreementAccepted,
       selectedEventIds,

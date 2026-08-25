@@ -25,6 +25,9 @@ import {
 import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/privacy/config';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AuthReconnectLoginService } from './auth/auth-reconnect-login.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/self-registration/coordinator.service';
@@ -125,6 +128,8 @@ function readServerEnvironmentValue(key: string): string {
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
+    { provide: MAT_DATE_LOCALE, useValue: ptBR },
+    provideDateFnsAdapter(),
     { provide: PUBLIC_FEATURE_FLAG_CONFIG, useValue: publicFeatureFlagConfig },
     provideClientHydration(withNoIncrementalHydration()),
     provideBrowserGlobalErrorListeners(),

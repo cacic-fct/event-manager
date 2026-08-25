@@ -2,6 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { LOCALE_ID, inject, provideAppInitializer } from '@angular/core';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation } from '@angular/router';
@@ -14,6 +16,7 @@ import { applicationConfig } from '@storybook/angular';
 import { NEVER, of } from 'rxjs';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { publicHandlers } from './storybook-mocks';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 const [publicGraphqlHandler, ...publicRestHandlers] = publicHandlers;
 
@@ -253,6 +256,8 @@ const preview: Preview = {
   decorators: [
     applicationConfig({
       providers: [
+        { provide: MAT_DATE_LOCALE, useValue: ptBR },
+        provideDateFnsAdapter(),
         provideHttpClient(),
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),

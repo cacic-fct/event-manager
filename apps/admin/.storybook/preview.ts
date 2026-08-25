@@ -1,5 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { inject, provideAppInitializer } from '@angular/core';
+import { MAT_DATE_LOCALE } from '@angular/material/core';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
@@ -10,6 +12,7 @@ import type { Preview } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
 
@@ -178,6 +181,8 @@ const preview: Preview = {
   decorators: [
     applicationConfig({
       providers: [
+        { provide: MAT_DATE_LOCALE, useValue: ptBR },
+        provideDateFnsAdapter(),
         provideHttpClient(),
         provideNoopAnimations(),
         provideRouter([], withDisabledInitialNavigation()),

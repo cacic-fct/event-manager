@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { of, throwError } from 'rxjs';
 import {
   adminFixtureDateFromNow,
@@ -241,7 +242,7 @@ describe('SubscriptionsService', () => {
     service.majorEventEditForm.patchValue({
       subscriptionStatus: 'CONFIRMED',
       amountPaid: 1.2,
-      paymentDate: adminFixtureDateFromNow(2).slice(0, 10),
+      paymentDate: parseDateOnly(adminFixtureDateFromNow(2).slice(0, 10)),
       paymentTier: 'Aluno',
       imageLicenseAgreementAccepted: true,
     });

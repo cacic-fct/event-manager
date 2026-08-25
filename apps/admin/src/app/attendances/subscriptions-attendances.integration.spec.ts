@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { of } from 'rxjs';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -153,7 +154,7 @@ describe('workspace subscription and attendance management integration', () => {
       subscriptionStatus: 'CONFIRMED',
       amountPaid: 40,
       imageLicenseAgreementAccepted: false,
-      paymentDate: '2026-05-20',
+      paymentDate: parseDateOnly('2026-05-20'),
       paymentTier: 'Aluno',
     });
     attendancesService.majorEventAttendanceForm.controls.majorEventId.setValue('major-event-1');

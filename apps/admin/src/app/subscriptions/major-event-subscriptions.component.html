@@ -497,7 +497,9 @@
 
             <mat-form-field>
               <mat-label>Data do pagamento</mat-label>
-              <input matInput type="date" formControlName="paymentDate" [readonly]="!workspace.editMode()" />
+              <input matInput [matDatepicker]="paymentDatePicker" formControlName="paymentDate" [readonly]="!workspace.editMode()" />
+              <mat-datepicker-toggle matIconSuffix [for]="paymentDatePicker" [disabled]="!workspace.editMode()" />
+              <mat-datepicker #paymentDatePicker />
             </mat-form-field>
 
             <mat-form-field>

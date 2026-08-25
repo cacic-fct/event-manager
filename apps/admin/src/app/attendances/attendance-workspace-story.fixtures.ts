@@ -95,12 +95,12 @@ function createAttendanceWorkspaceMock(
 
   const mock = {
     majorEvents: () => [createMajorEvent()],
-    attendanceEventFiltersForm: formBuilder.nonNullable.group({
-      startDateFrom: [''],
-      startDateUntil: [''],
-      isInGroup: ['ALL'],
-      isInMajorEvent: ['ALL'],
-      query: [''],
+    attendanceEventFiltersForm: formBuilder.group({
+      startDateFrom: formBuilder.control<Date | null>(null),
+      startDateUntil: formBuilder.control<Date | null>(null),
+      isInGroup: formBuilder.nonNullable.control('ALL'),
+      isInMajorEvent: formBuilder.nonNullable.control('ALL'),
+      query: formBuilder.nonNullable.control(''),
     }),
     attendanceEventResults: events,
     attendanceEventResultsPagination: createPagination(() => events().length),

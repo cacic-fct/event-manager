@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { LocationCoordinatePickerDialogComponent } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
@@ -102,6 +103,7 @@ describe('EventsPageComponent', () => {
       imports: [EventsPageComponent],
       providers: [
         provideNoopAnimations(),
+        provideDateFnsAdapter(),
         ...createPageStoryProviders({
           ...defaultPageStoryArgs,
           mode,

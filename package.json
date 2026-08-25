@@ -35,6 +35,7 @@
     "@angular/core": "22.1.2",
     "@angular/forms": "22.1.2",
     "@angular/material": "22.1.2",
+    "@angular/material-date-fns-adapter": "22.1.2",
     "@angular/platform-browser": "22.1.2",
     "@angular/platform-server": "22.1.2",
     "@angular/router": "22.1.2",

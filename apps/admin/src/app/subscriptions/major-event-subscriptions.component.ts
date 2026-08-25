@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,6 +29,7 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,

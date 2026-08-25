@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +16,7 @@ import {
   type FormSchedulingAnswer,
   type FormSchedulingInvitee,
 } from '@cacic-fct/form-contracts';
+import { formatDateOnly, formatDateOnlyForDisplay, parseDateOnly } from '@cacic-fct/shared-utils';
 import {
   answerValue,
   createSchedulingSlots,
@@ -29,6 +31,7 @@ import {
   imports: [
     FormsModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -196,9 +199,11 @@ import {
                     <mat-label>Data</mat-label>
                     <input
                       matInput
-                      type="date"
-                      [value]="stringAnswer(element.id)"
-                      (input)="setStringAnswer(element.id, $event)" />
+                      [matDatepicker]="answerDatePicker"
+                      [value]="parseDateOnly(stringAnswer(element.id))"
+                      (dateChange)="setDateAnswer(element.id, $event.value)" />
+                    <mat-datepicker-toggle matIconSuffix [for]="answerDatePicker" />
+                    <mat-datepicker #answerDatePicker />
                   </mat-form-field>
                 }
                 @case ('time') {
@@ -427,6 +432,12 @@ export class EventFormRendererComponent {
     this.setAnswer(elementId, value);
   }
 
+  setDateAnswer(elementId: string, date: Date | null): void {
+    this.setAnswer(elementId, formatDateOnly(date) ?? '');
+  }
+
+  parseDateOnly = parseDateOnly;
+
   stringAnswer(elementId: string): string {
     const value = answerValue(this.answers(), elementId);
     return typeof value === 'string' ? value : '';
@@ -547,6 +558,9 @@ export class EventFormRendererComponent {
     }
 
     if (typeof value === 'string') {
+      if (element.type === 'date') {
+        return formatDateOnlyForDisplay(value) ?? value;
+      }
       return this.optionLabel(element, value);
     }
 

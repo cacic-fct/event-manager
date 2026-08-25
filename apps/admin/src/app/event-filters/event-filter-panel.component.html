@@ -7,12 +7,16 @@
 
   <mat-form-field>
     <mat-label>De</mat-label>
-    <input matInput type="date" formControlName="startDateFrom" />
+    <input matInput [matDatepicker]="startDateFromPicker" formControlName="startDateFrom" />
+    <mat-datepicker-toggle matIconSuffix [for]="startDateFromPicker" />
+    <mat-datepicker #startDateFromPicker />
   </mat-form-field>
 
   <mat-form-field>
     <mat-label>Até</mat-label>
-    <input matInput type="date" formControlName="startDateUntil" />
+    <input matInput [matDatepicker]="startDateUntilPicker" formControlName="startDateUntil" />
+    <mat-datepicker-toggle matIconSuffix [for]="startDateUntilPicker" />
+    <mat-datepicker #startDateUntilPicker />
   </mat-form-field>
 
   <mat-form-field>

@@ -1,4 +1,5 @@
 import { FormControl, FormGroup } from '@angular/forms';
+import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { buildEventListFilters, resetEventFiltersForm, type EventFiltersForm } from './event-list-filters';
 
 describe('event list filters', () => {
@@ -7,8 +8,8 @@ describe('event list filters', () => {
       buildEventListFilters(
         {
           query: '  oficina angular  ',
-          startDateFrom: '2026-05-20',
-          startDateUntil: '2026-05-21',
+          startDateFrom: parseDateOnly('2026-05-20'),
+          startDateUntil: parseDateOnly('2026-05-21'),
           isInGroup: 'YES',
           isInMajorEvent: 'NO',
         },
@@ -28,8 +29,8 @@ describe('event list filters', () => {
     expect(
       buildEventListFilters({
         query: '   ',
-        startDateFrom: '',
-        startDateUntil: '',
+        startDateFrom: null,
+        startDateUntil: null,
         isInGroup: 'ALL',
         isInMajorEvent: 'ALL',
       }),
@@ -45,8 +46,8 @@ describe('event list filters', () => {
 
   it('resets a filters form to the default query state', () => {
     const form: EventFiltersForm = new FormGroup({
-      startDateFrom: new FormControl('2026-05-20', { nonNullable: true }),
-      startDateUntil: new FormControl('2026-05-21', { nonNullable: true }),
+      startDateFrom: new FormControl<Date | null>(parseDateOnly('2026-05-20')),
+      startDateUntil: new FormControl<Date | null>(parseDateOnly('2026-05-21')),
       isInGroup: new FormControl('YES', { nonNullable: true }),
       isInMajorEvent: new FormControl('NO', { nonNullable: true }),
       query: new FormControl('Angular', { nonNullable: true }),
@@ -55,8 +56,8 @@ describe('event list filters', () => {
     resetEventFiltersForm(form);
 
     expect(form.getRawValue()).toEqual({
-      startDateFrom: '',
-      startDateUntil: '',
+      startDateFrom: null,
+      startDateUntil: null,
       isInGroup: 'ALL',
       isInMajorEvent: 'ALL',
       query: '',
