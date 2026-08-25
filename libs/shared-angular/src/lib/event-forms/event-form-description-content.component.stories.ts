@@ -44,6 +44,8 @@ export default meta;
 
 type Story = StoryObj<EventFormDescriptionContentComponent>;
 
+export const Playground: Story = {};
+
 export const LandscapeAndPortrait: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

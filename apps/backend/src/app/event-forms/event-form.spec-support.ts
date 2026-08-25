@@ -13,6 +13,8 @@ export function formRecord(overrides: Record<string, unknown> = {}): EventFormRe
     ownerEvent: { id: 'event-1', name: 'Credenciamento', emoji: null, majorEventId: null, eventGroupId: null },
     ownerMajorEvent: null,
     elements: [],
+    descriptionImages: [],
+    images: [],
     sigilo: EventFormSigilo.PUBLIC,
     responseMode: EventFormResponseMode.SINGLE_PER_TARGET,
     resultsPublic: true,
