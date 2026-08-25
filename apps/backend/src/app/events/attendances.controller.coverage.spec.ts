@@ -11,8 +11,8 @@ describe('EventAttendancesController streamScannerFeed', () => {
 
   beforeEach(() => {
     replay = {
-      scope: jest.fn((channel: string, eventId: string, identity: string | undefined) =>
-        `${channel}:${eventId}:${identity ?? ''}`,
+      scope: jest.fn(
+        (channel: string, eventId: string, identity: string | undefined) => `${channel}:${eventId}:${identity ?? ''}`,
       ),
       replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: unknown) => source),
     };
@@ -71,10 +71,12 @@ describe('EventAttendancesController streamScannerFeed', () => {
 
     await expect(
       firstValueFrom(
-        controller.streamScannerFeed('event-1', undefined, {
-          user: { sub: 'collector-user' },
-          headers: { cookie: 'session-cookie' },
-        } as never).pipe(take(1)),
+        controller
+          .streamScannerFeed('event-1', undefined, {
+            user: { sub: 'collector-user' },
+            headers: { cookie: 'session-cookie' },
+          } as never)
+          .pipe(take(1)),
       ),
     ).rejects.toBe(failure);
   });

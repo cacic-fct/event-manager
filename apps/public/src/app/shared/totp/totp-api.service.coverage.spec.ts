@@ -41,10 +41,9 @@ describe('TotpApiService', () => {
 
   it('propagates seed endpoint failures without inventing a fallback seed', async () => {
     const result = firstValueFrom(service.getSeed());
-    http.expectOne('/api/totp/seed').flush(
-      { message: 'Sessão expirada' },
-      new HttpErrorResponse({ status: 401, statusText: 'Unauthorized' }),
-    );
+    http
+      .expectOne('/api/totp/seed')
+      .flush({ message: 'Sessão expirada' }, new HttpErrorResponse({ status: 401, statusText: 'Unauthorized' }));
 
     await expect(result).rejects.toMatchObject({ status: 401, statusText: 'Unauthorized' });
   });

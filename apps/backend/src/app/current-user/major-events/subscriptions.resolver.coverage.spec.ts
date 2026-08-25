@@ -46,9 +46,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     harness.currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
     harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(true);
     harness.prisma.majorEventSubscription.findMany.mockResolvedValue([subscription]);
-    harness.majorEventSubscriptions.getSelectedEventsByMajorEvent.mockResolvedValue(
-      new Map([['major-1', [event]]]),
-    );
+    harness.majorEventSubscriptions.getSelectedEventsByMajorEvent.mockResolvedValue(new Map([['major-1', [event]]]));
     harness.mapper.mapPublicMajorEvent.mockReturnValue(publicMajorEvent);
 
     await expect(harness.resolver.currentUserMajorEventSubscriptions({ req: {} } as never)).resolves.toEqual([
@@ -67,10 +65,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     ]);
 
     expect(harness.publicEvents.getMajorEventSubscriptionSelect).toHaveBeenCalledWith(true);
-    expect(harness.majorEventSubscriptions.getSelectedEventsByMajorEvent).toHaveBeenCalledWith(
-      'person-1',
-      ['major-1'],
-    );
+    expect(harness.majorEventSubscriptions.getSelectedEventsByMajorEvent).toHaveBeenCalledWith('person-1', ['major-1']);
   });
 
   it('returns an empty list when the person has no active major-event subscriptions', async () => {
@@ -127,10 +122,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
       notSubscribedEvents,
     });
 
-    expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).toHaveBeenCalledWith(
-      'person-1',
-      'major-1',
-    );
+    expect(harness.majorEventSubscriptions.getMajorEventSubscriptionEvents).toHaveBeenCalledWith('person-1', 'major-1');
   });
 
   it('returns null for a public major event with no current-user subscription', async () => {
@@ -162,17 +154,12 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     harness.majorEventSubscriptions.normalizeSelectedEventIds.mockReturnValue([]);
 
     await expect(
-      harness.resolver.upsertCurrentUserMajorEventSubscription(
-        { majorEventId: 'major-1', selectedEventIds: [] },
-        { req: {} } as never,
-      ),
+      harness.resolver.upsertCurrentUserMajorEventSubscription({ majorEventId: 'major-1', selectedEventIds: [] }, {
+        req: {},
+      } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(harness.frozenResources.assertMajorEventMutable).toHaveBeenCalledWith(
-      'major-1',
-      harness.user,
-      'edit',
-    );
+    expect(harness.frozenResources.assertMajorEventMutable).toHaveBeenCalledWith('major-1', harness.user, 'edit');
     expect(harness.prisma.majorEvent.findFirst).toHaveBeenCalled();
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -252,9 +239,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
     harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
     harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
-    harness.prisma.event.findMany
-      .mockResolvedValueOnce([selectedEvent])
-      .mockResolvedValueOnce([]);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]);
     harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
       operation(tx),
     );
@@ -295,11 +280,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
       harness.user,
     );
     expect(harness.eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
-    expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith(
-      'major-1',
-      'person-1',
-      tx,
-    );
+    expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith('major-1', 'person-1', tx);
   });
 
   it('returns the active winner when the major-subscription unique index rejects a concurrent create', async () => {
@@ -363,9 +344,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
 
-    harness.prisma.majorEvent.findFirst.mockResolvedValue(
-      majorEventRecord({ requiresImageLicenseAgreement: true }),
-    );
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord({ requiresImageLicenseAgreement: true }));
     await expect(
       harness.resolver.upsertCurrentUserMajorEventSubscription(
         { majorEventId: 'major-1', selectedEventIds: ['event-1'] },
@@ -396,7 +375,6 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
   });
-
 });
 
 function createHarness() {

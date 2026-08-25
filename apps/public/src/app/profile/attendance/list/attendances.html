@@ -135,8 +135,7 @@
               <span class="warning-icon" role="img" [attr.aria-label]="warning.text" [matTooltip]="warning.text">
                 <mat-icon aria-hidden="true">{{ warning.icon }}</mat-icon>
               </span>
-              }
-              @for (status of statusItems(item.statusLine); track status.label) {
+              } @for (status of statusItems(item.statusLine); track status.label) {
               <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
                 <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
               </span>

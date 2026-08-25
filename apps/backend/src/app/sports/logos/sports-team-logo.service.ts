@@ -227,66 +227,66 @@ export class SportsTeamLogoService {
     let updated;
     try {
       updated = await runSerializableSportsTransaction(this.prisma, async (tx) => {
-      const nextRevision = team.revision + 1;
-      const update = await tx.sportsTeam.updateMany({
-        where: {
-          id: team.id,
-          revision: expectedRevision,
-          deletedAt: null,
-        },
-        data: {
-          logoObjectKey: objectKey,
-          logoSha256: sha256,
-          logoMimeType: image.mimeType,
-          logoSizeBytes: image.buffer.length,
-          revision: { increment: 1 },
-          fieldRevisions: this.bumpLogoFieldRevision(team.fieldRevisions, nextRevision),
-          updatedById: actorId,
-        },
-      });
-      if (update.count !== 1) {
-        throw new ConflictException('A equipe mudou durante o envio. Recarregue os dados e tente novamente.');
-      }
+        const nextRevision = team.revision + 1;
+        const update = await tx.sportsTeam.updateMany({
+          where: {
+            id: team.id,
+            revision: expectedRevision,
+            deletedAt: null,
+          },
+          data: {
+            logoObjectKey: objectKey,
+            logoSha256: sha256,
+            logoMimeType: image.mimeType,
+            logoSizeBytes: image.buffer.length,
+            revision: { increment: 1 },
+            fieldRevisions: this.bumpLogoFieldRevision(team.fieldRevisions, nextRevision),
+            updatedById: actorId,
+          },
+        });
+        if (update.count !== 1) {
+          throw new ConflictException('A equipe mudou durante o envio. Recarregue os dados e tente novamente.');
+        }
 
-      const result = await tx.sportsTeam.findUniqueOrThrow({
-        where: { id: team.id },
-        select: {
-          id: true,
-          revision: true,
-          logoObjectKey: true,
-          logoSha256: true,
-          logoMimeType: true,
-          logoSizeBytes: true,
-        },
-      });
-      await this.auditLog.record(
-        {
-          entityType: AuditLogEntityType.SPORTS_TEAM,
-          entityId: team.id,
-          entityLabel: team.name,
-          operation: AuditLogOperation.UPDATE,
-          actor,
-          before: {
-            revision: team.revision,
-            logoSha256: team.logoSha256,
-            logoMimeType: team.logoMimeType,
-            logoSizeBytes: team.logoSizeBytes,
+        const result = await tx.sportsTeam.findUniqueOrThrow({
+          where: { id: team.id },
+          select: {
+            id: true,
+            revision: true,
+            logoObjectKey: true,
+            logoSha256: true,
+            logoMimeType: true,
+            logoSizeBytes: true,
           },
-          after: {
-            revision: result.revision,
-            logoSha256: result.logoSha256,
-            logoMimeType: result.logoMimeType,
-            logoSizeBytes: result.logoSizeBytes,
+        });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.SPORTS_TEAM,
+            entityId: team.id,
+            entityLabel: team.name,
+            operation: AuditLogOperation.UPDATE,
+            actor,
+            before: {
+              revision: team.revision,
+              logoSha256: team.logoSha256,
+              logoMimeType: team.logoMimeType,
+              logoSizeBytes: team.logoSizeBytes,
+            },
+            after: {
+              revision: result.revision,
+              logoSha256: result.logoSha256,
+              logoMimeType: result.logoMimeType,
+              logoSizeBytes: result.logoSizeBytes,
+            },
+            summary: 'Logo imutável da equipe atualizado.',
+            scope: {
+              permission: Permission.SportsTeam.Update,
+              majorEventId: team.tournament.majorEventId,
+            },
           },
-          summary: 'Logo imutável da equipe atualizado.',
-          scope: {
-            permission: Permission.SportsTeam.Update,
-            majorEventId: team.tournament.majorEventId,
-          },
-        },
-        tx,
-      );
-      return result;
+          tx,
+        );
+        return result;
       });
     } catch (error: unknown) {
       if (uploadedObject) {
@@ -431,7 +431,10 @@ export class SportsTeamLogoService {
     return typeof key === 'string' && /^sports\/private\/team-logo-review\//.test(key) ? key : null;
   }
 
-  private readQueuedLogo(value: Prisma.JsonValue | undefined, expectedTeamId: string): {
+  private readQueuedLogo(
+    value: Prisma.JsonValue | undefined,
+    expectedTeamId: string,
+  ): {
     queuedObjectKey: string;
     sha256: string;
     mimeType: string;

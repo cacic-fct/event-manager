@@ -443,9 +443,7 @@ export class EventGroupsService {
         raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees:
         raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
-      shouldIssueCertificateForEachEvent:
-        raw.shouldIssueCertificate &&
-        raw.shouldIssueCertificateForEachEvent,
+      shouldIssueCertificateForEachEvent: raw.shouldIssueCertificate && raw.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
   }

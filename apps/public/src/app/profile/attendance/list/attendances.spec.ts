@@ -146,16 +146,12 @@ describe('Attendances', () => {
 
   it('keeps tournament-only participation on the major-event detail so subscription actions remain reachable', async () => {
     const { component } = await createFixture({ onlineFeed: sportsManagerSubscriptionsFeedFixture });
-    const tournamentOnlyItem = component.visibleParticipations().find(
-      (item) => item.title === 'Torneio com gestão esportiva',
-    );
+    const tournamentOnlyItem = component
+      .visibleParticipations()
+      .find((item) => item.title === 'Torneio com gestão esportiva');
     if (!tournamentOnlyItem) throw new Error('Expected a tournament fixture.');
 
-    expect(tournamentOnlyItem.route).toEqual([
-      '/profile/attendances',
-      'major-event',
-      'sports-major',
-    ]);
+    expect(tournamentOnlyItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
   });
 
   it('falls back to the last offline feed when the network request fails', async () => {
@@ -253,11 +249,7 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('1 de 2 participações');
-    expect(sportsManagerItem.route).toEqual([
-      '/profile/attendances',
-      'major-event',
-      'sports-major',
-    ]);
+    expect(sportsManagerItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
@@ -286,12 +278,8 @@ describe('Attendances', () => {
     expect(component.participationDateLine('2024-04-26T18:00:00', '2024-04-26T22:00:00')).toBe(
       '26 abr 2024, 18:00-22:00',
     );
-    expect(component.participationDateLine('2024-04-26T09:00:00', '2024-04-28T18:00:00')).toBe(
-      '26 a 28 abr 2024',
-    );
-    expect(component.participationDateLine('2024-04-30T09:00:00', '2024-05-02T18:00:00')).toBe(
-      '30 abr a 2 mai 2024',
-    );
+    expect(component.participationDateLine('2024-04-26T09:00:00', '2024-04-28T18:00:00')).toBe('26 a 28 abr 2024');
+    expect(component.participationDateLine('2024-04-30T09:00:00', '2024-05-02T18:00:00')).toBe('30 abr a 2 mai 2024');
   });
 
   it('expands and clears the filter panel without participation counters', async () => {

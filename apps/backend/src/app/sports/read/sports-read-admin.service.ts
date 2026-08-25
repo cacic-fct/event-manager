@@ -672,9 +672,7 @@ export class SportsReadAdminService {
   }
 
   private officialPersonSelect(includeContacts: boolean) {
-    return includeContacts
-      ? { id: true, name: true, email: true, phone: true }
-      : { id: true, name: true };
+    return includeContacts ? { id: true, name: true, email: true, phone: true } : { id: true, name: true };
   }
 
   private hasNoAccessibleTargets(targets: AccessibleEventGrantTargets | null): boolean {

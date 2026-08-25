@@ -187,7 +187,8 @@ function unary(
 
     const deadline = cancellableCall.getDeadline?.();
     const deadlineAt = deadline instanceof Date ? deadline.getTime() : deadline;
-    const deadlineDelay = typeof deadlineAt === 'number' && Number.isFinite(deadlineAt) ? deadlineAt - Date.now() : null;
+    const deadlineDelay =
+      typeof deadlineAt === 'number' && Number.isFinite(deadlineAt) ? deadlineAt - Date.now() : null;
     if (deadlineDelay != null && deadlineDelay <= 0) {
       abort(status.DEADLINE_EXCEEDED, 'gRPC request deadline exceeded.');
     }

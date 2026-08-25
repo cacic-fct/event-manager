@@ -235,7 +235,9 @@ export class EventFormResultsAccessService {
 
     const form = await requireEventForm(this.prisma, formId);
     const responseWhere = resultResponseWhere(form, { accessibleTargets: accessibleTargets ?? undefined });
-    const elements = (form.elements as unknown as FormElement[]).filter((element) => isFormAnswerElementType(element.type));
+    const elements = (form.elements as unknown as FormElement[]).filter((element) =>
+      isFormAnswerElementType(element.type),
+    );
 
     return Readable.from(this.streamCsvRows(form, responseWhere, elements));
   }
@@ -245,7 +247,9 @@ export class EventFormResultsAccessService {
     responseWhere: Prisma.EventFormResponseWhereInput,
     elements: readonly FormElement[],
   ): AsyncGenerator<string> {
-    yield `${eventFormCsvHeader(elements).map((cell) => csvCell(cell)).join(',')}\r\n`;
+    yield `${eventFormCsvHeader(elements)
+      .map((cell) => csvCell(cell))
+      .join(',')}\r\n`;
     let cursor: string | undefined;
     for (;;) {
       const responses = await this.prisma.eventFormResponse.findMany({
@@ -261,7 +265,9 @@ export class EventFormResultsAccessService {
 
       for (const response of responses) {
         const model = toResponseModel(response, form.sigilo, 'admin', { includeAnswers: true });
-        yield `${eventFormCsvRow(elements, model).map((cell) => csvCell(cell)).join(',')}\r\n`;
+        yield `${eventFormCsvRow(elements, model)
+          .map((cell) => csvCell(cell))
+          .join(',')}\r\n`;
       }
       if (responses.length < 500) {
         return;

@@ -53,10 +53,12 @@ export interface SportsTournamentSummary {
     subscriptionEndDate?: string | null;
     requiresImageLicenseAgreement: boolean;
     isPaymentRequired: boolean;
-    majorEventPrices?: {
-      id: string;
-      tiers: { id: string; name: string; value: number }[];
-    }[] | null;
+    majorEventPrices?:
+      | {
+          id: string;
+          tiers: { id: string; name: string; value: number }[];
+        }[]
+      | null;
   } | null;
 }
 

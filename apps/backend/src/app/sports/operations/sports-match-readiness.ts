@@ -136,11 +136,7 @@ export async function loadSportsMatchReadiness(
       active: true,
       revokedAt: null,
       person: { deletedAt: null },
-      OR: [
-        { matchId: match.id },
-        { categoryId: match.categoryId, matchId: null },
-        { categoryId: null, matchId: null },
-      ],
+      OR: [{ matchId: match.id }, { categoryId: match.categoryId, matchId: null }, { categoryId: null, matchId: null }],
     },
     select: {
       id: true,
@@ -176,7 +172,7 @@ export async function loadSportsMatchReadiness(
             personId: { in: rosterPersonIds },
           },
           select: { personId: true, status: true, attendedAt: true },
-        })) as Array<{ personId: string; status: string; attendedAt: Date }> )
+        })) as Array<{ personId: string; status: string; attendedAt: Date }>)
       : [];
 
   return evaluateSportsMatchReadiness({
@@ -317,7 +313,11 @@ export function evaluateSportsMatchReadiness(input: {
     if (unpaidPlayers.length > 0) {
       issues.push({
         code: SPORTS_MATCH_READINESS_ISSUE_CODES.PAYMENT,
-        message: missingCountMessage(unpaidPlayers.length, 'pagamento obrigatório pendente', 'pagamentos obrigatórios pendentes'),
+        message: missingCountMessage(
+          unpaidPlayers.length,
+          'pagamento obrigatório pendente',
+          'pagamentos obrigatórios pendentes',
+        ),
         registrationId,
         missing: unpaidPlayers.length,
         required: players.length,
@@ -401,5 +401,7 @@ function missingCountMessage(count: number, singular: string, plural: string): s
 }
 
 function asRecord(value: Prisma.JsonValue): Record<string, Prisma.JsonValue> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, Prisma.JsonValue>) : null;
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, Prisma.JsonValue>)
+    : null;
 }

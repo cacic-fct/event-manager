@@ -110,14 +110,14 @@ export class CertificateNotificationJobsService implements OnModuleInit {
       return;
     }
     const outbox = await this.prisma.certificateNotificationOutbox.findUnique({
-          where: {
-            certificateId_issuedAt: {
-              certificateId: certificate.id,
-              issuedAt: certificate.issuedAt,
-            },
-          },
-          select: { id: true },
-        });
+      where: {
+        certificateId_issuedAt: {
+          certificateId: certificate.id,
+          issuedAt: certificate.issuedAt,
+        },
+      },
+      select: { id: true },
+    });
     if (!outbox) {
       return;
     }
@@ -251,11 +251,15 @@ export class CertificateNotificationJobsService implements OnModuleInit {
     attempts: number,
     input: CertificateAvailableNotificationJob,
   ): Promise<void> {
-    await this.queue.add(CERTIFICATE_AVAILABLE_NOTIFICATION_JOB, { ...input, outboxId }, {
-      jobId: buildBullMqJobId('certificate-available', outboxId, attempts),
-      removeOnComplete: true,
-      removeOnFail: 50,
-    });
+    await this.queue.add(
+      CERTIFICATE_AVAILABLE_NOTIFICATION_JOB,
+      { ...input, outboxId },
+      {
+        jobId: buildBullMqJobId('certificate-available', outboxId, attempts),
+        removeOnComplete: true,
+        removeOnFail: 50,
+      },
+    );
   }
 
   private async markOutboxFailure(id: string, error: unknown): Promise<void> {

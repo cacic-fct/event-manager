@@ -320,14 +320,7 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
         : [];
       const currentUserId = this.auth.user()?.sub;
       const recoveredFromAnotherUser = items.filter((item) => item.queuedByUserId !== currentUserId);
-      this.pending.set(
-        new Map(
-          items.map((item) => [
-            item.personId,
-            item,
-          ]),
-        ),
-      );
+      this.pending.set(new Map(items.map((item) => [item.personId, item])));
       this.persistPending();
       if (recoveredFromAnotherUser.length) {
         this.snackbar.open(

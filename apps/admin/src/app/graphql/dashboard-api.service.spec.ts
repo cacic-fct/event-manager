@@ -25,9 +25,7 @@ describe('DashboardApiService', () => {
 
     await expect(firstValueFrom(service.getWorkspaceDashboardInsights())).resolves.toEqual(expected);
 
-    expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query WorkspaceDashboardInsights'),
-    );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query WorkspaceDashboardInsights'));
     const query = graphqlHttp.request.mock.calls[0][0] as string;
     expect(query).toContain('workspaceDashboardInsights');
     expect(query).toContain('pendingReceiptValidationsCount');

@@ -73,7 +73,8 @@ export const EquatorAndPrimeMeridian: Story = {
 export const LongLocationName: Story = {
   name: 'Nome de localização extenso',
   args: {
-    title: 'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho · Campus de Presidente Prudente',
+    title:
+      'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho · Campus de Presidente Prudente',
   },
   globals: { theme: 'dark', motion: 'reduced' },
   parameters: { viewport: { defaultViewport: 'mobile' } },

@@ -4,9 +4,11 @@ import { EventAttendancesMutationSupport } from './attendance-mutation-support';
 describe('EventAttendancesMutationSupport repeated attempts', () => {
   it('queues review only after the third duplicate attempt in five minutes', async () => {
     const prisma = {
-      $transaction: jest.fn().mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: '7.9.1' }),
-      ),
+      $transaction: jest
+        .fn()
+        .mockRejectedValue(
+          new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: '7.9.1' }),
+        ),
       attendanceScanAttemptCounter: {
         upsert: jest
           .fn()

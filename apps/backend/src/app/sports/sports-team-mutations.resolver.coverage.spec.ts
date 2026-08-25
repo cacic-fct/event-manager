@@ -32,11 +32,9 @@ describe('SportsTeamMutationsResolver team boundary operations', () => {
 
     await expect(harness.resolver.createTeam(input as never, harness.context as never)).resolves.toBe('team-1');
 
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsTeam.Create],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsTeam.Create], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(harness.admin.createTeam).toHaveBeenCalledWith(input, harness.actor);
     expect(harness.mutationEvents.publishForEntity).toHaveBeenCalledWith('TEAM', 'team-1', true);
   });
@@ -48,11 +46,9 @@ describe('SportsTeamMutationsResolver team boundary operations', () => {
 
     await expect(harness.resolver.updateTeam(input as never, harness.context as never)).resolves.toBe('team-1');
 
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsTeam.Update],
-      { sportsTeamId: 'team-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: 'team-1',
+    });
     expect(harness.admin.updateTeam).toHaveBeenCalledWith('team-1', input, harness.actor);
     expect(harness.mutationEvents.publishForEntity).toHaveBeenCalledWith('TEAM', 'team-1', true);
   });
@@ -64,11 +60,9 @@ describe('SportsTeamMutationsResolver team boundary operations', () => {
 
     await expect(harness.resolver.createTeamMember(input as never, harness.context as never)).resolves.toBe('member-1');
 
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsTeam.Update],
-      { sportsTeamId: 'team-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: 'team-1',
+    });
     expect(harness.admin.createTeamMember).toHaveBeenCalledWith('team-1', 'person-1', harness.actor);
     expect(harness.mutationEvents.publishForEntity).toHaveBeenCalledWith('TEAM', 'member-1', true);
   });
@@ -85,11 +79,9 @@ describe('SportsTeamMutationsResolver team boundary operations', () => {
       where: { id: 'member-1', deletedAt: null },
       select: { teamId: true },
     });
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsTeam.Update],
-      { sportsTeamId: 'team-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: 'team-1',
+    });
     expect(harness.admin.updateTeamMember).toHaveBeenCalledWith('member-1', 2, 'APPROVED', harness.actor);
     expect(harness.mutationEvents.publishForEntity).toHaveBeenCalledWith('TEAM', 'member-1', true);
   });
@@ -131,17 +123,17 @@ describe('SportsTeamMutationsResolver team boundary operations', () => {
     const harness = createHarness();
 
     await expect(
-      harness.resolver.createTeamMember(
-        { teamId: 'team-1', personId: null } as never,
-        harness.context as never,
-      ),
+      harness.resolver.createTeamMember({ teamId: 'team-1', personId: null } as never, harness.context as never),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(harness.policy.assertPermissions).not.toHaveBeenCalled();
     expect(harness.admin.createTeamMember).not.toHaveBeenCalled();
 
     harness.prisma.sportsTeamMember.findFirst.mockResolvedValue(null);
     await expect(
-      harness.resolver.updateTeamMember({ id: 'missing-member', expectedRevision: 1 } as never, harness.context as never),
+      harness.resolver.updateTeamMember(
+        { id: 'missing-member', expectedRevision: 1 } as never,
+        harness.context as never,
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(harness.policy.assertPermissions).not.toHaveBeenCalled();
     expect(harness.admin.updateTeamMember).not.toHaveBeenCalled();

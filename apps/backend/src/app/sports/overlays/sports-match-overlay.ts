@@ -75,8 +75,16 @@ function initializeSportsMatchOverlay(): void {
   }
 
   function initials(name: string): string {
-    const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
-    return (parts.slice(0, 2).map((part) => part.charAt(0)).join('') || '?').toLocaleUpperCase('pt-BR');
+    const parts = String(name || '?')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    return (
+      parts
+        .slice(0, 2)
+        .map((part) => part.charAt(0))
+        .join('') || '?'
+    ).toLocaleUpperCase('pt-BR');
   }
 
   function formatElapsed(value: number): string {
@@ -91,9 +99,10 @@ function initializeSportsMatchOverlay(): void {
     const base = Number(match?.elapsedBeforePauseMs) || 0;
     const timerStartedAtUnixMs = match?.timerStartedAtUnixMs;
     const startedAt = Number(timerStartedAtUnixMs);
-    const running = match?.state === 'LIVE' && timerStartedAtUnixMs != null && Number.isFinite(startedAt)
-      ? Math.max(0, Date.now() - startedAt)
-      : 0;
+    const running =
+      match?.state === 'LIVE' && timerStartedAtUnixMs != null && Number.isFinite(startedAt)
+        ? Math.max(0, Date.now() - startedAt)
+        : 0;
     return base + running;
   }
 
@@ -122,9 +131,9 @@ function initializeSportsMatchOverlay(): void {
       }
       const scoreElement = document.getElementById(elementId(side, 'score'));
       if (scoreElement instanceof HTMLElement) {
-        scoreElement.textContent = String(side === 'home'
-          ? (match.scoreboard?.homeScore ?? 0)
-          : (match.scoreboard?.awayScore ?? 0));
+        scoreElement.textContent = String(
+          side === 'home' ? (match.scoreboard?.homeScore ?? 0) : (match.scoreboard?.awayScore ?? 0),
+        );
         scoreElement.hidden = !config.showScore;
       }
       const iconElement = document.getElementById(elementId(side, 'icon'));
@@ -195,10 +204,16 @@ function initializeSportsMatchOverlay(): void {
   }
 
   const events = new EventSource(overlayEventsUrl);
-  events.onmessage = () => { void refresh(); };
-  events.onerror = () => { overlayRoot.dataset.connection = 'reconnecting'; };
+  events.onmessage = () => {
+    void refresh();
+  };
+  events.onerror = () => {
+    overlayRoot.dataset.connection = 'reconnecting';
+  };
   if (!isDemo) {
-    window.setInterval(() => { void refresh(); }, 20_000);
+    window.setInterval(() => {
+      void refresh();
+    }, 20_000);
   }
   window.setInterval(() => {
     if (match) {

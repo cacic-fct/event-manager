@@ -1,4 +1,10 @@
-import { BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException, type ArgumentMetadata } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+  type ArgumentMetadata,
+} from '@nestjs/common';
 import { EVENT_MANAGER_M2M_VOTING_ROLES } from '@cacic-fct/event-manager-m2m-contracts';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { VotingIntegrationController } from './controller';
@@ -126,9 +132,10 @@ describe('VotingIntegrationController', () => {
   it.each(['list', 'attendance', 'enrollment lookup', 'identifier lookup'] as const)(
     'does not call the voting service when M2M authentication fails: %s',
     async (operation) => {
-      const failure = operation === 'list'
-        ? new UnauthorizedException('Missing service credentials.')
-        : new ForbiddenException('Missing required M2M role.');
+      const failure =
+        operation === 'list'
+          ? new UnauthorizedException('Missing service credentials.')
+          : new ForbiddenException('Missing required M2M role.');
       keycloakAuthService.assertMachineToMachinePrincipal.mockImplementation(() => {
         throw failure;
       });
@@ -165,11 +172,9 @@ describe('VotingIntegrationController', () => {
     votingIntegrationService.checkAttendance.mockRejectedValue(failure);
 
     await expect(
-      controller.checkAttendance(
-        { user: authenticatedUser({ sub: 'voting-service' }) } as never,
-        'event-1',
-        { userId: 'user-1' },
-      ),
+      controller.checkAttendance({ user: authenticatedUser({ sub: 'voting-service' }) } as never, 'event-1', {
+        userId: 'user-1',
+      }),
     ).rejects.toBe(failure);
   });
 
@@ -184,7 +189,10 @@ describe('VotingIntegrationController', () => {
       REST_VALIDATION_PIPE.transform({ userId: 'x'.repeat(129) }, bodyMetadata(VotingAttendanceCheckRequestDto)),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      REST_VALIDATION_PIPE.transform({ enrollmentNumbers: ['20240001', 7] }, bodyMetadata(VotingPeopleLookupRequestDto)),
+      REST_VALIDATION_PIPE.transform(
+        { enrollmentNumbers: ['20240001', 7] },
+        bodyMetadata(VotingPeopleLookupRequestDto),
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       REST_VALIDATION_PIPE.transform(

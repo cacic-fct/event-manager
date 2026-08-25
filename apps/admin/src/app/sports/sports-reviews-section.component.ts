@@ -15,11 +15,14 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
 export class SportsReviewsSectionComponent extends SportsWorkspaceSection {
   protected pendingTeamChangeRequests(requests: SportsTeamRead['changeRequests']): SportsTeamRead['changeRequests'] {
     return requests.filter(
-      (request) => request.status === 'PENDING' || request.status === 'CONFLICT' || request.status === 'CHANGES_REQUESTED',
+      (request) =>
+        request.status === 'PENDING' || request.status === 'CONFLICT' || request.status === 'CHANGES_REQUESTED',
     );
   }
 
-  protected identityTypeLabel(type: SportsTeamRead['changeRequests'][number]['identityClaims'][number]['type']): string {
+  protected identityTypeLabel(
+    type: SportsTeamRead['changeRequests'][number]['identityClaims'][number]['type'],
+  ): string {
     return {
       EMAIL: 'E-mail',
       PHONE: 'Telefone',

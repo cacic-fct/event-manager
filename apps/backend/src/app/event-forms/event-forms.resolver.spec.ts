@@ -1,10 +1,7 @@
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import {
-  ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY,
-  REQUIRED_PERMISSIONS_KEY,
-} from '../auth/auth.constants';
+import { ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventFormsResolver } from './event-forms.resolver';
 
 describe('EventFormsResolver', () => {
@@ -51,10 +48,7 @@ describe('EventFormsResolver', () => {
 
     for (const [method, permission] of Object.entries(permissions)) {
       expect(
-        Reflect.getMetadata(
-          REQUIRED_PERMISSIONS_KEY,
-          EventFormsResolver.prototype[method as keyof EventFormsResolver],
-        ),
+        Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, EventFormsResolver.prototype[method as keyof EventFormsResolver]),
       ).toEqual([permission]);
     }
     expect(Reflect.getMetadata(ALLOW_SCOPED_COLLECTION_PERMISSIONS_KEY, EventFormsResolver.prototype.eventForms)).toBe(
@@ -147,10 +141,7 @@ describe('EventFormsResolver', () => {
     const scheduledPublishAt = publicFixtureDateFromNow(7);
     resolver.saveEventForm(formInput as never, reqContext as never);
     resolver.saveEventFormDraft(draftInput as never, requestContext as never);
-    resolver.publishEventForm(
-      { formId: 'form-1', scheduledPublishAt } as never,
-      reqContext as never,
-    );
+    resolver.publishEventForm({ formId: 'form-1', scheduledPublishAt } as never, reqContext as never);
     resolver.unpublishEventForm('form-1', requestContext as never);
     resolver.deleteEventForm('form-1', reqContext as never);
 

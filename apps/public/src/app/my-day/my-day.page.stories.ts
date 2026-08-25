@@ -133,7 +133,9 @@ export const LoadError: Story = {
 export const RateLimitNotice: Story = {
   args: { cooldownSeconds: 47 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/novas atualizações estarão disponíveis em 47 s/)).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText(/novas atualizações estarão disponíveis em 47 s/),
+    ).toBeVisible();
   },
 };
 

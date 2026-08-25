@@ -177,9 +177,7 @@ describe('attendance collection helpers', () => {
     ];
     const prisma = {
       eventManagerRoleAssignment: {
-        findMany: jest.fn().mockResolvedValue([
-          { person: { userId: 'reviewer-user' }, group: null },
-        ]),
+        findMany: jest.fn().mockResolvedValue([{ person: { userId: 'reviewer-user' }, group: null }]),
       },
       user: {
         findMany: jest.fn().mockResolvedValue(users),

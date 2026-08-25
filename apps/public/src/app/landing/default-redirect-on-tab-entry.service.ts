@@ -64,11 +64,7 @@ export class DefaultRedirectOnTabEntryService implements InterruptionFlow {
 
   resolve(context: InterruptionContext): Observable<Interruption | null> {
     const initialPath = this.initialTabPath;
-    if (
-      !initialPath ||
-      !this.auth.isAuthenticated() ||
-      this.pathFromUrl(context.currentUrl) !== initialPath
-    ) {
+    if (!initialPath || !this.auth.isAuthenticated() || this.pathFromUrl(context.currentUrl) !== initialPath) {
       return of(null);
     }
 

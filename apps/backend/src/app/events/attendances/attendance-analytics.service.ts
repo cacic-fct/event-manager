@@ -111,42 +111,35 @@ export class AttendanceAnalyticsService {
     const event = await this.findEvent(eventId);
     const generatedAt = new Date();
     const window = resolveAttendanceAnalyticsWindow(requestedWindow, generatedAt);
-    const reviewDetectionStart = new Date(
-      generatedAt.getTime() - REVIEW_DETECTION_WINDOW_MINUTES * 60_000,
-    );
+    const reviewDetectionStart = new Date(generatedAt.getTime() - REVIEW_DETECTION_WINDOW_MINUTES * 60_000);
 
-    const [windowAttendances, reviewDetectionAttendances, allPresentAttendances, pendingOfflineSubmissions] = await Promise.all([
-      this.prisma.eventAttendance.findMany({
-        where: { eventId, ...(window.attendedAt ? { attendedAt: window.attendedAt } : {}) },
-        select: analyticsAttendanceSelect,
-        orderBy: { attendedAt: 'asc' },
-      }),
-      this.prisma.eventAttendance.findMany({
-        where: { eventId, attendedAt: { gte: reviewDetectionStart } },
-        select: analyticsAttendanceSelect,
-        orderBy: { attendedAt: 'asc' },
-        take: MAX_ANALYTICS_ATTENDANCES,
-      }),
-      this.prisma.eventAttendance.findMany({
-        where: { eventId, status: 'PRESENT' },
-        select: { personId: true },
-      }),
-      this.prisma.offlineEventAttendanceSubmission.findMany({
-        where: { eventId, status: 'PENDING' },
-        select: { id: true, submittedAt: true },
-        orderBy: { submittedAt: 'asc' },
-        take: MAX_ANALYTICS_ATTENDANCES,
-      }),
-    ]);
+    const [windowAttendances, reviewDetectionAttendances, allPresentAttendances, pendingOfflineSubmissions] =
+      await Promise.all([
+        this.prisma.eventAttendance.findMany({
+          where: { eventId, ...(window.attendedAt ? { attendedAt: window.attendedAt } : {}) },
+          select: analyticsAttendanceSelect,
+          orderBy: { attendedAt: 'asc' },
+        }),
+        this.prisma.eventAttendance.findMany({
+          where: { eventId, attendedAt: { gte: reviewDetectionStart } },
+          select: analyticsAttendanceSelect,
+          orderBy: { attendedAt: 'asc' },
+          take: MAX_ANALYTICS_ATTENDANCES,
+        }),
+        this.prisma.eventAttendance.findMany({
+          where: { eventId, status: 'PRESENT' },
+          select: { personId: true },
+        }),
+        this.prisma.offlineEventAttendanceSubmission.findMany({
+          where: { eventId, status: 'PENDING' },
+          select: { id: true, submittedAt: true },
+          orderBy: { submittedAt: 'asc' },
+          take: MAX_ANALYTICS_ATTENDANCES,
+        }),
+      ]);
 
     const actorNames = await this.actorNames([...windowAttendances, ...reviewDetectionAttendances]);
-    await this.detectReviewFlags(
-      event,
-      reviewDetectionAttendances,
-      pendingOfflineSubmissions,
-      generatedAt,
-      actorNames,
-    );
+    await this.detectReviewFlags(event, reviewDetectionAttendances, pendingOfflineSubmissions, generatedAt, actorNames);
 
     const [subscribedPersonIds, reviewItems] = await Promise.all([
       this.subscribedPersonIds(event),
@@ -213,7 +206,15 @@ export class AttendanceAnalyticsService {
     return flags.flatMap((flag) => {
       const event = eventById.get(flag.eventId);
       return event
-        ? [{ eventId: event.id, eventName: event.name, emoji: event.emoji, startDate: event.startDate, pendingCount: flag._count._all }]
+        ? [
+            {
+              eventId: event.id,
+              eventName: event.name,
+              emoji: event.emoji,
+              startDate: event.startDate,
+              pendingCount: flag._count._all,
+            },
+          ]
         : [];
     });
   }
@@ -267,7 +268,13 @@ export class AttendanceAnalyticsService {
   }
 
   private async actorNames(attendances: AnalyticsAttendance[]): Promise<Map<string, string>> {
-    const actorIds = [...new Set(attendances.flatMap((attendance) => [attendance.createdById, attendance.committedById]).filter((id): id is string => Boolean(id)))];
+    const actorIds = [
+      ...new Set(
+        attendances
+          .flatMap((attendance) => [attendance.createdById, attendance.committedById])
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
     const actors = actorIds.length
       ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
       : [];
@@ -311,15 +318,10 @@ export class AttendanceAnalyticsService {
       const volume = volumeByActorMinute.get(volumeKey) ?? { actorId, minute, count: 0 };
       volume.count += 1;
       volumeByActorMinute.set(volumeKey, volume);
-
     }
 
     if (event.latitude !== null && event.longitude !== null) {
-      for (const pattern of findInconsistentLocationPatterns(
-        attendances,
-        event.latitude,
-        event.longitude,
-      )) {
+      for (const pattern of findInconsistentLocationPatterns(attendances, event.latitude, event.longitude)) {
         candidates.push({
           eventId: event.id,
           actorId: pattern.actorId.startsWith('method:') ? undefined : pattern.actorId,
@@ -353,7 +355,10 @@ export class AttendanceAnalyticsService {
       candidates.push({
         eventId: event.id,
         kind: AttendanceReviewFlagKind.OFFLINE_BACKLOG,
-        severity: pendingOffline.length >= LARGE_OFFLINE_BACKLOG ? AttendanceReviewFlagSeverity.CRITICAL : AttendanceReviewFlagSeverity.WARNING,
+        severity:
+          pendingOffline.length >= LARGE_OFFLINE_BACKLOG
+            ? AttendanceReviewFlagSeverity.CRITICAL
+            : AttendanceReviewFlagSeverity.WARNING,
         dedupeKey: `offline-backlog:${event.id}`,
         title: 'Fila off-line acumulada',
         summary: `${pendingOffline.length} envio(s) aguardam reconciliação; o mais antigo está pendente há ${oldestAgeMinutes} min.`,
@@ -367,7 +372,15 @@ export class AttendanceAnalyticsService {
         entityType: 'EVENT_ATTENDANCE',
         OR: [{ operation: 'DELETE' }, { groupedCount: { gte: 3 } }],
       },
-      select: { id: true, actorId: true, actorName: true, operation: true, groupedCount: true, lastRecordedAt: true, entityId: true },
+      select: {
+        id: true,
+        actorId: true,
+        actorName: true,
+        operation: true,
+        groupedCount: true,
+        lastRecordedAt: true,
+        entityId: true,
+      },
       orderBy: { lastRecordedAt: 'desc' },
       take: MAX_REVIEW_ITEMS,
     });
@@ -417,22 +430,28 @@ export class AttendanceAnalyticsService {
       orderBy: { lastRecordedAt: 'desc' },
       take: 500,
     });
-    await Promise.all(entries.flatMap((entry) => {
-      if (!entry.eventId) return [];
-      const removal = entry.operation === 'DELETE';
-      return [this.upsertFlag({
-        eventId: entry.eventId,
-        actorId: entry.actorId ?? undefined,
-        kind: removal ? AttendanceReviewFlagKind.ATTENDANCE_REMOVAL : AttendanceReviewFlagKind.REPEATED_SCAN_ATTEMPTS,
-        severity: removal ? AttendanceReviewFlagSeverity.WARNING : AttendanceReviewFlagSeverity.INFO,
-        dedupeKey: `${removal ? 'removal' : 'repeat'}:${entry.id}`,
-        title: removal ? 'Presença removida' : 'Tentativas repetidas de leitura',
-        summary: removal
-          ? `${entry.actorName} removeu uma presença; a ação auditada aguarda revisão humana.`
-          : `${entry.groupedCount} tentativas semelhantes foram agrupadas para a mesma presença.`,
-        details: { auditLogEntryId: entry.id, entityId: entry.entityId },
-      })];
-    }));
+    await Promise.all(
+      entries.flatMap((entry) => {
+        if (!entry.eventId) return [];
+        const removal = entry.operation === 'DELETE';
+        return [
+          this.upsertFlag({
+            eventId: entry.eventId,
+            actorId: entry.actorId ?? undefined,
+            kind: removal
+              ? AttendanceReviewFlagKind.ATTENDANCE_REMOVAL
+              : AttendanceReviewFlagKind.REPEATED_SCAN_ATTEMPTS,
+            severity: removal ? AttendanceReviewFlagSeverity.WARNING : AttendanceReviewFlagSeverity.INFO,
+            dedupeKey: `${removal ? 'removal' : 'repeat'}:${entry.id}`,
+            title: removal ? 'Presença removida' : 'Tentativas repetidas de leitura',
+            summary: removal
+              ? `${entry.actorName} removeu uma presença; a ação auditada aguarda revisão humana.`
+              : `${entry.groupedCount} tentativas semelhantes foram agrupadas para a mesma presença.`,
+            details: { auditLogEntryId: entry.id, entityId: entry.entityId },
+          }),
+        ];
+      }),
+    );
   }
 
   private async reviewItems(event: EventAnalyticsRecord): Promise<AttendanceReviewItem[]> {
@@ -451,33 +470,50 @@ export class AttendanceAnalyticsService {
           })
         : Promise.resolve([]),
     ]);
-    const actorIds = [...new Set([...flags.map((flag) => flag.actorId), ...sportsActions.map((action) => action.actorUserId)].filter((id): id is string => Boolean(id)))];
+    const actorIds = [
+      ...new Set(
+        [...flags.map((flag) => flag.actorId), ...sportsActions.map((action) => action.actorUserId)].filter(
+          (id): id is string => Boolean(id),
+        ),
+      ),
+    ];
     const actors = actorIds.length
       ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
       : [];
     const actorNameById = new Map(actors.map((actor) => [actor.id, actor.name]));
     return [
       ...flags.map((flag) => this.mapFlag(flag, actorNameById.get(flag.actorId ?? ''))),
-      ...sportsActions.map((action) => ({
-        id: `sports:${action.id}`,
-        eventId: event.id,
-        kind: 'IMPROBABLE_MATCH_OPERATION',
-        severity: action.offline ? 'WARNING' : 'INFO',
-        status: 'PENDING',
-        title: 'Operação esportiva precisa de revisão',
-        summary: `${action.type.replace(/_/g, ' ')} foi encaminhada pela validação da partida.`,
-        detectedAt: action.authoredAt,
-        actorId: action.actorUserId ?? undefined,
-        actorName: action.actorUserId ? actorNameById.get(action.actorUserId) : undefined,
-        deepLink: event.sportsMatch ? `/sports/${event.sportsMatch.category.tournamentId}` : undefined,
-      } satisfies AttendanceReviewItem)),
+      ...sportsActions.map(
+        (action) =>
+          ({
+            id: `sports:${action.id}`,
+            eventId: event.id,
+            kind: 'IMPROBABLE_MATCH_OPERATION',
+            severity: action.offline ? 'WARNING' : 'INFO',
+            status: 'PENDING',
+            title: 'Operação esportiva precisa de revisão',
+            summary: `${action.type.replace(/_/g, ' ')} foi encaminhada pela validação da partida.`,
+            detectedAt: action.authoredAt,
+            actorId: action.actorUserId ?? undefined,
+            actorName: action.actorUserId ? actorNameById.get(action.actorUserId) : undefined,
+            deepLink: event.sportsMatch ? `/sports/${event.sportsMatch.category.tournamentId}` : undefined,
+          }) satisfies AttendanceReviewItem,
+      ),
     ].slice(0, MAX_REVIEW_ITEMS);
   }
 
   private mapFlag(
     flag: {
-      id: string; eventId: string; kind: string; severity: string; status: string; title: string; summary: string;
-      detectedAt: Date; personId: string | null; actorId: string | null;
+      id: string;
+      eventId: string;
+      kind: string;
+      severity: string;
+      status: string;
+      title: string;
+      summary: string;
+      detectedAt: Date;
+      personId: string | null;
+      actorId: string | null;
     },
     actorName?: string,
   ): AttendanceReviewItem {
@@ -545,9 +581,7 @@ export function resolveAttendanceAnalyticsWindow(
     requested.windowMinutes < MIN_WINDOW_MINUTES ||
     requested.windowMinutes > MAX_WINDOW_MINUTES
   ) {
-    throw new BadRequestException(
-      `A janela deve ter entre ${MIN_WINDOW_MINUTES} e ${MAX_WINDOW_MINUTES} minutos.`,
-    );
+    throw new BadRequestException(`A janela deve ter entre ${MIN_WINDOW_MINUTES} e ${MAX_WINDOW_MINUTES} minutos.`);
   }
   const end = new Date(now);
   const start = new Date(end.getTime() - requested.windowMinutes * 60_000);
@@ -559,13 +593,18 @@ export function resolveAttendanceAnalyticsWindow(
   };
 }
 
-export function buildTimeBuckets(attendances: AnalyticsAttendance[], precision: 'minute' | 'hour'): AttendanceTimeBucket[] {
+export function buildTimeBuckets(
+  attendances: AnalyticsAttendance[],
+  precision: 'minute' | 'hour',
+): AttendanceTimeBucket[] {
   const counts = new Map<string, number>();
   for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
     const start = truncateDate(attendance.attendedAt, precision).toISOString();
     counts.set(start, (counts.get(start) ?? 0) + 1);
   }
-  return [...counts.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([start, count]) => ({ start: new Date(start), count }));
+  return [...counts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([start, count]) => ({ start: new Date(start), count }));
 }
 
 export function buildCollectorProductivity(
@@ -579,16 +618,18 @@ export function buildCollectorProductivity(
     collector.scans.push(attendance);
     collectors.set(actorId, collector);
   }
-  return [...collectors.values()].map(({ actorId, scans }) => ({
-    actorId,
-    name: actorNames.get(actorId) ?? collectorFallbackName(actorId),
-    count: scans.length,
-    firstScanAt: scans[0].attendedAt,
-    lastScanAt: scans[scans.length - 1].attendedAt,
-    methods: countMethods(scans),
-    onlineCount: scans.filter((attendance) => !isOfflineAttendance(attendance)).length,
-    offlineCount: scans.filter(isOfflineAttendance).length,
-  })).sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));
+  return [...collectors.values()]
+    .map(({ actorId, scans }) => ({
+      actorId,
+      name: actorNames.get(actorId) ?? collectorFallbackName(actorId),
+      count: scans.length,
+      firstScanAt: scans[0].attendedAt,
+      lastScanAt: scans[scans.length - 1].attendedAt,
+      methods: countMethods(scans),
+      onlineCount: scans.filter((attendance) => !isOfflineAttendance(attendance)).length,
+      offlineCount: scans.filter(isOfflineAttendance).length,
+    }))
+    .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));
 }
 
 export function countMethods(attendances: AnalyticsAttendance[]): AttendanceMethodCount[] {
@@ -596,11 +637,16 @@ export function countMethods(attendances: AnalyticsAttendance[]): AttendanceMeth
   for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
     counts.set(attendance.createdByMethod, (counts.get(attendance.createdByMethod) ?? 0) + 1);
   }
-  return [...counts.entries()].map(([method, count]) => ({ method, count })).sort((left, right) => right.count - left.count);
+  return [...counts.entries()]
+    .map(([method, count]) => ({ method, count }))
+    .sort((left, right) => right.count - left.count);
 }
 
 export function buildHeatmapPoints(attendances: AnalyticsAttendance[]): AttendanceHeatmapPoint[] {
-  const cells = new Map<string, { latitude: number; longitude: number; count: number; accuracyTotal: number; accuracyCount: number }>();
+  const cells = new Map<
+    string,
+    { latitude: number; longitude: number; count: number; accuracyTotal: number; accuracyCount: number }
+  >();
   for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
     if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) continue;
     const latitude = Number(attendance.collectedLatitude.toFixed(4));
@@ -632,10 +678,17 @@ function collectorFallbackName(actorId: string): string {
 }
 
 function methodLabel(method: AttendanceCreationMethod): string {
-  return ({
-    CSV_IMPORT: 'Importação CSV', EVENT_DUPLICATION: 'Duplicação do evento', MANUAL_INPUT: 'Entrada manual',
-    ORAL_CALL: 'Chamada oral', SCANNER: 'Leitor de crachá', ONLINE_CODE: 'Código on-line', UNKNOWN: 'Método não identificado',
-  } satisfies Record<AttendanceCreationMethod, string>)[method];
+  return (
+    {
+      CSV_IMPORT: 'Importação CSV',
+      EVENT_DUPLICATION: 'Duplicação do evento',
+      MANUAL_INPUT: 'Entrada manual',
+      ORAL_CALL: 'Chamada oral',
+      SCANNER: 'Leitor de crachá',
+      ONLINE_CODE: 'Código on-line',
+      UNKNOWN: 'Método não identificado',
+    } satisfies Record<AttendanceCreationMethod, string>
+  )[method];
 }
 
 function isOfflineAttendance(attendance: AnalyticsAttendance): boolean {
@@ -652,12 +705,19 @@ function truncateDate(date: Date, precision: 'minute' | 'hour'): Date {
   return result;
 }
 
-export function haversineMeters(fromLatitude: number, fromLongitude: number, toLatitude: number, toLongitude: number): number {
+export function haversineMeters(
+  fromLatitude: number,
+  fromLongitude: number,
+  toLatitude: number,
+  toLongitude: number,
+): number {
   const earthRadiusMeters = 6_371_000;
   const toRadians = (value: number) => (value * Math.PI) / 180;
   const latitudeDelta = toRadians(toLatitude - fromLatitude);
   const longitudeDelta = toRadians(toLongitude - fromLongitude);
-  const a = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(toRadians(fromLatitude)) * Math.cos(toRadians(toLatitude)) * Math.sin(longitudeDelta / 2) ** 2;
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(toRadians(fromLatitude)) * Math.cos(toRadians(toLatitude)) * Math.sin(longitudeDelta / 2) ** 2;
   return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -688,38 +748,27 @@ export function findInconsistentLocationPatterns(
       const currentLatitude = current.collectedLatitude;
       const currentLongitude = current.collectedLongitude;
       if (
-        previousLatitude === null || previousLongitude === null ||
-        currentLatitude === null || currentLongitude === null
-      ) continue;
+        previousLatitude === null ||
+        previousLongitude === null ||
+        currentLatitude === null ||
+        currentLongitude === null
+      )
+        continue;
       const seconds = (current.attendedAt.getTime() - previous.attendedAt.getTime()) / 1_000;
       if (seconds <= 0 || seconds > MAX_TRANSITION_SECONDS) continue;
 
-      const previousEventDistance = haversineMeters(
-        eventLatitude,
-        eventLongitude,
-        previousLatitude,
-        previousLongitude,
-      );
-      const currentEventDistance = haversineMeters(
-        eventLatitude,
-        eventLongitude,
-        currentLatitude,
-        currentLongitude,
-      );
+      const previousEventDistance = haversineMeters(eventLatitude, eventLongitude, previousLatitude, previousLongitude);
+      const currentEventDistance = haversineMeters(eventLatitude, eventLongitude, currentLatitude, currentLongitude);
       const accuracyAllowance =
         Math.max(LOCATION_ACCURACY_FLOOR_METERS, previous.collectedAccuracyMeters ?? 0) +
         Math.max(LOCATION_ACCURACY_FLOOR_METERS, current.collectedAccuracyMeters ?? 0);
       const transitionDistance = Math.max(
         0,
-        haversineMeters(
-          previousLatitude,
-          previousLongitude,
-          currentLatitude,
-          currentLongitude,
-        ) - accuracyAllowance,
+        haversineMeters(previousLatitude, previousLongitude, currentLatitude, currentLongitude) - accuracyAllowance,
       );
       const crossesEventBoundary =
-        (previousEventDistance <= LOCATION_NEAR_EVENT_METERS && currentEventDistance >= LOCATION_FAR_FROM_EVENT_METERS) ||
+        (previousEventDistance <= LOCATION_NEAR_EVENT_METERS &&
+          currentEventDistance >= LOCATION_FAR_FROM_EVENT_METERS) ||
         (currentEventDistance <= LOCATION_NEAR_EVENT_METERS && previousEventDistance >= LOCATION_FAR_FROM_EVENT_METERS);
       if (
         crossesEventBoundary &&

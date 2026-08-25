@@ -326,7 +326,9 @@ describe('CertificateDownloadService', () => {
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
-    jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockRejectedValue(new Error('close failed')) } as never);
+    jest
+      .mocked(chromium.launch)
+      .mockResolvedValue({ close: jest.fn().mockRejectedValue(new Error('close failed')) } as never);
     jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
       fileName: 'certificado.pdf',
       content: Buffer.from('pdf'),

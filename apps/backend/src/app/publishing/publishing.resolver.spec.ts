@@ -1,11 +1,7 @@
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { PublicationResolver } from './publishing.resolver';
-import type {
-  PublicationBulkInput,
-  PublicationPreviewInput,
-  PublicationStateInput,
-} from './publishing.models';
+import type { PublicationBulkInput, PublicationPreviewInput, PublicationStateInput } from './publishing.models';
 import { PublicationBulkOperation } from './publishing.models';
 import type { PublicationService } from './publishing.service';
 
@@ -73,7 +69,9 @@ describe('PublicationResolver', () => {
 
     await expect(resolver.setPublicationState(stateInput, context)).resolves.toEqual({ changed: true });
     await expect(resolver.runPublicationBulkOperation(bulkInput, context)).resolves.toEqual({ changed: true });
-    await expect(resolver.createPublicationPreview(previewInput, context)).resolves.toEqual({ previewToken: 'token-1' });
+    await expect(resolver.createPublicationPreview(previewInput, context)).resolves.toEqual({
+      previewToken: 'token-1',
+    });
 
     expect(publication.setPublicationState).toHaveBeenCalledWith(stateInput, context);
     expect(publication.runBulkOperation).toHaveBeenCalledWith(bulkInput, context);

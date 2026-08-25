@@ -154,7 +154,6 @@ export class WeatherService {
         },
       },
     );
-
   }
 
   private async getWeatherEvent(eventId: string): Promise<WeatherEvent | null> {

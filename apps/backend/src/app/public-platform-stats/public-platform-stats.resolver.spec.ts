@@ -10,9 +10,9 @@ describe('PublicPlatformStatsResolver', () => {
     const resolver = new PublicPlatformStatsResolver({ getPublicPlatformStats } as never);
 
     expect(Reflect.getMetadata(IS_PUBLIC_KEY, PublicPlatformStatsResolver)).toBe(true);
-    expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, PublicPlatformStatsResolver.prototype.publicPlatformStats)).toEqual(
-      { policy: RATE_LIMIT_POLICIES.publicEvents, resources: [] },
-    );
+    expect(
+      Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, PublicPlatformStatsResolver.prototype.publicPlatformStats),
+    ).toEqual({ policy: RATE_LIMIT_POLICIES.publicEvents, resources: [] });
     await expect(resolver.publicPlatformStats()).resolves.toBe(stats);
     expect(getPublicPlatformStats).toHaveBeenCalledTimes(1);
   });

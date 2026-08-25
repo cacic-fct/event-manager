@@ -162,9 +162,7 @@ export class AttendanceOfflineQueueService {
 
     const items = await database.attendanceQueue
       .filter(
-        (item) =>
-          (item.status === 'PENDING' || item.status === 'FAILED') &&
-          this.isUploadableBy(item, uploaderUserId),
+        (item) => (item.status === 'PENDING' || item.status === 'FAILED') && this.isUploadableBy(item, uploaderUserId),
       )
       .toArray();
     return this.sortOldestFirst(items).slice(0, limit);
@@ -193,9 +191,7 @@ export class AttendanceOfflineQueueService {
 
     return database.attendanceQueue
       .filter(
-        (item) =>
-          (item.status === 'PENDING' || item.status === 'FAILED') &&
-          this.isUploadableBy(item, uploaderUserId),
+        (item) => (item.status === 'PENDING' || item.status === 'FAILED') && this.isUploadableBy(item, uploaderUserId),
       )
       .count();
   }

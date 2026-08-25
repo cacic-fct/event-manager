@@ -341,109 +341,109 @@ function createStoryData(scenario: StoryScenario, args: RankedStoryArgs = active
 
 function rankedHandler() {
   return http.post('/api/graphql', async ({ request }) => {
-      const args = activeArgs;
-      if (args.apiState === 'loading') {
-        await delay('infinite');
-      }
-      if (args.latencyMs > 0) {
-        await delay(args.latencyMs);
-      }
-      if (args.apiState === 'error') {
-        return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar a inscrição preferencial.' }] });
-      }
-      const storyData = createStoryData(args.scenario, args);
-      const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-      const query = body.query ?? '';
-      const selectedEventIds = Array.isArray(body.variables?.['selectedEventIds'])
-        ? body.variables['selectedEventIds'].map(String)
-        : storyData.events.slice(0, 3).map((event) => event.id);
+    const args = activeArgs;
+    if (args.apiState === 'loading') {
+      await delay('infinite');
+    }
+    if (args.latencyMs > 0) {
+      await delay(args.latencyMs);
+    }
+    if (args.apiState === 'error') {
+      return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar a inscrição preferencial.' }] });
+    }
+    const storyData = createStoryData(args.scenario, args);
+    const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+    const query = body.query ?? '';
+    const selectedEventIds = Array.isArray(body.variables?.['selectedEventIds'])
+      ? body.variables['selectedEventIds'].map(String)
+      : storyData.events.slice(0, 3).map((event) => event.id);
 
-      if (query.includes('PublicMajorEventSubscriptionPage')) {
-        return HttpResponse.json({
-          data: {
-            publicMajorEventSubscriptionPage: {
-              majorEvent: storyData.majorEvent,
-              events: storyData.events,
-              subscriptionSummaries: storyData.events.map((event) => ({
-                eventId: event.id,
-                hasAvailableSlots: event.slotsAvailable == null || event.slotsAvailable > 0,
-                availableSlots: event.slotsAvailable,
-                projectedQueuePosition: (event.queueCount ?? 0) + 1,
-              })),
-            },
+    if (query.includes('PublicMajorEventSubscriptionPage')) {
+      return HttpResponse.json({
+        data: {
+          publicMajorEventSubscriptionPage: {
+            majorEvent: storyData.majorEvent,
+            events: storyData.events,
+            subscriptionSummaries: storyData.events.map((event) => ({
+              eventId: event.id,
+              hasAvailableSlots: event.slotsAvailable == null || event.slotsAvailable > 0,
+              availableSlots: event.slotsAvailable,
+              projectedQueuePosition: (event.queueCount ?? 0) + 1,
+            })),
           },
-        });
-      }
+        },
+      });
+    }
 
-      if (query.includes('CurrentUserMajorEventSubscription')) {
-        return HttpResponse.json({
-          data: {
-            currentUserMajorEventSubscription: storyData.subscription,
-          },
-        });
-      }
+    if (query.includes('CurrentUserMajorEventSubscription')) {
+      return HttpResponse.json({
+        data: {
+          currentUserMajorEventSubscription: storyData.subscription,
+        },
+      });
+    }
 
-      if (query.includes('CurrentUserEventForms')) {
-        const targetType = String(body.variables?.['targetType']);
-        const targetId =
-          targetType === 'EVENT' ? String(body.variables?.['eventId']) : String(body.variables?.['majorEventId']);
-        return HttpResponse.json({
-          data: {
-            currentUserEventForms: storyData.forms.filter((form) =>
-              form.links.some(
-                (link) =>
-                  link.targetType === targetType &&
-                  (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
-              ),
+    if (query.includes('CurrentUserEventForms')) {
+      const targetType = String(body.variables?.['targetType']);
+      const targetId =
+        targetType === 'EVENT' ? String(body.variables?.['eventId']) : String(body.variables?.['majorEventId']);
+      return HttpResponse.json({
+        data: {
+          currentUserEventForms: storyData.forms.filter((form) =>
+            form.links.some(
+              (link) =>
+                link.targetType === targetType &&
+                (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
             ),
-          },
-        });
-      }
+          ),
+        },
+      });
+    }
 
-      if (query.includes('UpsertCurrentUserRankedMajorEventSubscription')) {
-        const selectedEvents = storyData.events.filter((event) => selectedEventIds.includes(event.id));
-        return HttpResponse.json({
-          data: {
-            upsertCurrentUserMajorEventSubscription: {
-              id: 'subscription-major-1',
-              majorEventId: storyData.majorEvent.id,
-              subscriptionStatus: storyData.majorEvent.isPaymentRequired ? 'WAITING_RECEIPT_UPLOAD' : 'CONFIRMED',
-              amountPaid: null,
-              paymentDate: null,
-              paymentTier: body.variables?.['paymentTier'] ?? null,
-              majorEvent: storyData.majorEvent,
-              selectedEvents,
-              notSubscribedEvents: storyData.events.filter((event) => !selectedEventIds.includes(event.id)),
-            },
+    if (query.includes('UpsertCurrentUserRankedMajorEventSubscription')) {
+      const selectedEvents = storyData.events.filter((event) => selectedEventIds.includes(event.id));
+      return HttpResponse.json({
+        data: {
+          upsertCurrentUserMajorEventSubscription: {
+            id: 'subscription-major-1',
+            majorEventId: storyData.majorEvent.id,
+            subscriptionStatus: storyData.majorEvent.isPaymentRequired ? 'WAITING_RECEIPT_UPLOAD' : 'CONFIRMED',
+            amountPaid: null,
+            paymentDate: null,
+            paymentTier: body.variables?.['paymentTier'] ?? null,
+            majorEvent: storyData.majorEvent,
+            selectedEvents,
+            notSubscribedEvents: storyData.events.filter((event) => !selectedEventIds.includes(event.id)),
           },
-        });
-      }
+        },
+      });
+    }
 
-      if (query.includes('SubmitCurrentUserEventFormResponse')) {
-        const input = body.variables?.['input'] as Record<string, unknown>;
-        return HttpResponse.json({
-          data: {
-            submitCurrentUserEventFormResponse: {
-              id: `response-${String(input['formId'])}`,
-              formId: input['formId'],
-              linkId: input['linkId'] ?? null,
-              targetType: input['targetType'],
-              eventId: input['eventId'] ?? null,
-              majorEventId: input['majorEventId'] ?? null,
-              personId: 'person-storybook',
-              respondentName: 'Storybook User',
-              respondentEmail: 'storybook@example.com',
-              answersJson: input['answersJson'],
-              source: 'SUBSCRIPTION_FLOW',
-              submittedAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-            },
+    if (query.includes('SubmitCurrentUserEventFormResponse')) {
+      const input = body.variables?.['input'] as Record<string, unknown>;
+      return HttpResponse.json({
+        data: {
+          submitCurrentUserEventFormResponse: {
+            id: `response-${String(input['formId'])}`,
+            formId: input['formId'],
+            linkId: input['linkId'] ?? null,
+            targetType: input['targetType'],
+            eventId: input['eventId'] ?? null,
+            majorEventId: input['majorEventId'] ?? null,
+            personId: 'person-storybook',
+            respondentName: 'Storybook User',
+            respondentEmail: 'storybook@example.com',
+            answersJson: input['answersJson'],
+            source: 'SUBSCRIPTION_FLOW',
+            submittedAt: now.toISOString(),
+            updatedAt: now.toISOString(),
           },
-        });
-      }
+        },
+      });
+    }
 
-      return HttpResponse.json({ data: {} });
-    });
+    return HttpResponse.json({ data: {} });
+  });
 }
 
 const expectSelectionStep = async (canvasElement: HTMLElement) => {
@@ -565,7 +565,9 @@ export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/não foi possível carregar a inscrição preferencial/i)).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText(/não foi possível carregar a inscrição preferencial/i),
+    ).toBeVisible();
   },
 };
 

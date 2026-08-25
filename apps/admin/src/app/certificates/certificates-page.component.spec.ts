@@ -45,14 +45,14 @@ describe('CertificatesPageComponent', () => {
         },
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: of(convertToParamMap({ targetType: 'event', targetId: 'event-1', configId: 'config-1' })) },
+          useValue: {
+            paramMap: of(convertToParamMap({ targetType: 'event', targetId: 'event-1', configId: 'config-1' })),
+          },
         },
       ],
     });
 
-    page = TestBed.runInInjectionContext(
-      () => new CertificatesPageComponent(),
-    ) as unknown as typeof page;
+    page = TestBed.runInInjectionContext(() => new CertificatesPageComponent()) as unknown as typeof page;
   });
 
   it('loads route target and config selection through the workspace boundary', () => {

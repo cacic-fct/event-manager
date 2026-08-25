@@ -25,10 +25,7 @@ export function formatDateOnly(value: Date | null | undefined): string | null {
 /**
  * Converts a local calendar date to the UTC boundary expected by date-range APIs.
  */
-export function formatDateOnlyUtcBoundary(
-  value: Date | null | undefined,
-  boundary: DateOnlyBoundary,
-): string | null {
+export function formatDateOnlyUtcBoundary(value: Date | null | undefined, boundary: DateOnlyBoundary): string | null {
   const dateOnly = formatDateOnly(value);
   return dateOnly ? `${dateOnly}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}Z` : null;
 }

@@ -116,15 +116,15 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          if (activeArgs.apiState === 'loading') await delay('infinite');
-          if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
-          if (activeArgs.apiState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar as pessoas.' }] });
-          }
-          const body = (await request.json()) as GraphqlBody;
-          return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
-        }),
+          http.post('/api/graphql', async ({ request }) => {
+            if (activeArgs.apiState === 'loading') await delay('infinite');
+            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+            if (activeArgs.apiState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar as pessoas.' }] });
+            }
+            const body = (await request.json()) as GraphqlBody;
+            return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
+          }),
         ],
       },
     },

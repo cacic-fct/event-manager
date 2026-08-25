@@ -46,10 +46,7 @@ describe('SportsTournamentPage', () => {
     });
     const firstCategory = tournament.categories[0];
     if (!firstCategory) throw new Error('Expected a tournament category fixture.');
-    tournament.categories = [
-      firstCategory,
-      { ...firstCategory, id: 'category-second', name: 'Vôlei' },
-    ];
+    tournament.categories = [firstCategory, { ...firstCategory, id: 'category-second', name: 'Vôlei' }];
     getTournament.mockReturnValue(of(tournament));
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     const category = tournament.categories[0];

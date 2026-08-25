@@ -34,9 +34,12 @@ describe('CertificateApiService operation contracts', () => {
 
     await expect(firstValueFrom(service.issueManualCertificatesFromCsv(input))).resolves.toEqual(csvImportFixture());
 
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('mutation IssueManualCertificatesFromCsv'), {
-      input,
-    });
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('mutation IssueManualCertificatesFromCsv'),
+      {
+        input,
+      },
+    );
     const mutation = graphqlHttp.request.mock.calls[0][0] as string;
     expect(mutation).toContain('issueManualCertificatesFromCsv');
     expect(mutation).toContain('ambiguousValues');

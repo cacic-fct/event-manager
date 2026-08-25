@@ -287,17 +287,15 @@ export class SportsReadAdminMapper {
     };
   }
 
-  mapAdminRegistrationLineupMember(
-    record: {
-      id: string;
-      registrationMemberId: string | null;
-      teamMemberId: string;
-      role: AdminSportsRegistrationLineupMemberSummary['role'];
-      eligibility: AdminSportsRegistrationLineupMemberSummary['eligibility'];
-      shirtNumber?: string | null;
-      person: { id: string; name: string };
-    },
-  ): AdminSportsRegistrationLineupMemberSummary {
+  mapAdminRegistrationLineupMember(record: {
+    id: string;
+    registrationMemberId: string | null;
+    teamMemberId: string;
+    role: AdminSportsRegistrationLineupMemberSummary['role'];
+    eligibility: AdminSportsRegistrationLineupMemberSummary['eligibility'];
+    shirtNumber?: string | null;
+    person: { id: string; name: string };
+  }): AdminSportsRegistrationLineupMemberSummary {
     return {
       id: record.id,
       registrationMemberId: record.registrationMemberId,

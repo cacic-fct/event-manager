@@ -161,67 +161,67 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = (await request.json()) as GraphqlBody;
-          const query = body.query ?? '';
+          http.post('/api/graphql', async ({ request }) => {
+            const body = (await request.json()) as GraphqlBody;
+            const query = body.query ?? '';
 
-          if (activeArgs.requestState === 'loading') {
-            await delay('infinite');
-          }
+            if (activeArgs.requestState === 'loading') {
+              await delay('infinite');
+            }
 
-          await delay(activeArgs.responseDelay);
+            await delay(activeArgs.responseDelay);
 
-          if (query.includes('SetCurrentUserAdminCalendarFeedEnabled')) {
-            personalEnabledOverride = Boolean(body.variables?.['enabled']);
-            return HttpResponse.json({
-              data: {
-                setCurrentUserAdminCalendarFeedEnabled: buildCurrentUserSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('SetCurrentUserAdminCalendarFeedEnabled')) {
+              personalEnabledOverride = Boolean(body.variables?.['enabled']);
+              return HttpResponse.json({
+                data: {
+                  setCurrentUserAdminCalendarFeedEnabled: buildCurrentUserSettings(activeArgs),
+                },
+              });
+            }
 
-          if (query.includes('RotateCurrentUserAdminCalendarFeedKey')) {
-            rotationVersion += 1;
-            return HttpResponse.json({
-              data: {
-                rotateCurrentUserAdminCalendarFeedKey: buildCurrentUserSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('RotateCurrentUserAdminCalendarFeedKey')) {
+              rotationVersion += 1;
+              return HttpResponse.json({
+                data: {
+                  rotateCurrentUserAdminCalendarFeedKey: buildCurrentUserSettings(activeArgs),
+                },
+              });
+            }
 
-          if (query.includes('RotateSuperAdminCalendarFeedKey')) {
-            rotationVersion += 1;
-            return HttpResponse.json({
-              data: {
-                rotateSuperAdminCalendarFeedKey: buildSuperAdminSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('RotateSuperAdminCalendarFeedKey')) {
+              rotationVersion += 1;
+              return HttpResponse.json({
+                data: {
+                  rotateSuperAdminCalendarFeedKey: buildSuperAdminSettings(activeArgs),
+                },
+              });
+            }
 
-          if (activeArgs.requestState === 'error') {
-            return HttpResponse.json({
-              errors: [{ message: 'Não foi possível carregar as preferências de calendário simuladas.' }],
-            });
-          }
+            if (activeArgs.requestState === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'Não foi possível carregar as preferências de calendário simuladas.' }],
+              });
+            }
 
-          if (query.includes('CurrentUserAdminCalendarFeedSettings')) {
-            return HttpResponse.json({
-              data: {
-                currentUserAdminCalendarFeedSettings: buildCurrentUserSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('CurrentUserAdminCalendarFeedSettings')) {
+              return HttpResponse.json({
+                data: {
+                  currentUserAdminCalendarFeedSettings: buildCurrentUserSettings(activeArgs),
+                },
+              });
+            }
 
-          if (query.includes('SuperAdminCalendarFeedSettings')) {
-            return HttpResponse.json({
-              data: {
-                superAdminCalendarFeedSettings: buildSuperAdminSettings(activeArgs),
-              },
-            });
-          }
+            if (query.includes('SuperAdminCalendarFeedSettings')) {
+              return HttpResponse.json({
+                data: {
+                  superAdminCalendarFeedSettings: buildSuperAdminSettings(activeArgs),
+                },
+              });
+            }
 
-          return HttpResponse.json({ data: {} });
-        }),
+            return HttpResponse.json({ data: {} });
+          }),
         ],
       },
     },

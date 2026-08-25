@@ -8,15 +8,13 @@ describe('PermissionManagementService transaction safety', () => {
     const prisma = {
       $transaction: jest.fn((operation: (client: typeof tx) => Promise<unknown>) => operation(tx)),
     };
-    const service = new PermissionManagementService(
-      prisma as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new PermissionManagementService(prisma as never, {} as never, {} as never);
 
-    await (service as unknown as {
-      runPermissionGraphTransaction: <T>(operation: (client: typeof tx) => Promise<T>) => Promise<T>;
-    }).runPermissionGraphTransaction(async (client) => {
+    await (
+      service as unknown as {
+        runPermissionGraphTransaction: <T>(operation: (client: typeof tx) => Promise<T>) => Promise<T>;
+      }
+    ).runPermissionGraphTransaction(async (client) => {
       await client.$executeRaw();
       return 'committed';
     });

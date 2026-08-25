@@ -41,22 +41,30 @@ describe('MajorEventReceiptsResolver', () => {
   });
 
   it('declares the exact permissions for every receipt query and mutation', () => {
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.adminReceiptPendingValidationCount)).toEqual([
-      RECEIPT_ADMIN_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.adminReceiptValidationQueue)).toEqual([
-      RECEIPT_ADMIN_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.approveAdminReceipt)).toEqual([
-      RECEIPT_APPROVE_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.rejectAdminReceipt)).toEqual([
-      RECEIPT_REJECT_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.undoAdminReceiptValidationAction)).toEqual([
-      RECEIPT_UNDO_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.currentUserMajorEventReceipt)).toBeUndefined();
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        MajorEventReceiptsResolver.prototype.adminReceiptPendingValidationCount,
+      ),
+    ).toEqual([RECEIPT_ADMIN_PERMISSION]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.adminReceiptValidationQueue),
+    ).toEqual([RECEIPT_ADMIN_PERMISSION]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.approveAdminReceipt),
+    ).toEqual([RECEIPT_APPROVE_PERMISSION]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.rejectAdminReceipt),
+    ).toEqual([RECEIPT_REJECT_PERMISSION]);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        MajorEventReceiptsResolver.prototype.undoAdminReceiptValidationAction,
+      ),
+    ).toEqual([RECEIPT_UNDO_PERMISSION]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsResolver.prototype.currentUserMajorEventReceipt),
+    ).toBeUndefined();
   });
 
   it('returns the current user receipt projection and forwards the authenticated actor', async () => {
@@ -64,9 +72,7 @@ describe('MajorEventReceiptsResolver', () => {
     const result = { id: 'receipt-1', imageUrl: '/private/receipt-1' };
     receipts.getCurrentReceipt.mockResolvedValue(result);
 
-    await expect(
-      resolver.currentUserMajorEventReceipt('major-1', { req: { user } } as never),
-    ).resolves.toBe(result);
+    await expect(resolver.currentUserMajorEventReceipt('major-1', { req: { user } } as never)).resolves.toBe(result);
 
     expect(receipts.getCurrentReceipt).toHaveBeenCalledWith('major-1', user);
   });
@@ -179,7 +185,9 @@ describe('MajorEventReceiptsResolver', () => {
     const result = { subscriptionId: 'subscription-1', receipt: null };
     receipts.undoValidationAction.mockResolvedValue(result);
 
-    await expect(resolver.undoAdminReceiptValidationAction('action-1', { req: { user } } as never)).resolves.toBe(result);
+    await expect(resolver.undoAdminReceiptValidationAction('action-1', { req: { user } } as never)).resolves.toBe(
+      result,
+    );
 
     expect(frozenResources.assertReceiptValidationActionMutable).toHaveBeenCalledWith('action-1', user, 'edit');
     expect(receipts.undoValidationAction).toHaveBeenCalledWith('action-1', user);
@@ -190,10 +198,9 @@ describe('MajorEventReceiptsResolver', () => {
     frozenResources.assertMajorEventSubscriptionMutable.mockRejectedValue(failure);
 
     await expect(
-      resolver.approveAdminReceipt(
-        { subscriptionId: 'subscription-1', receiptId: 'receipt-1' },
-        { req: { user: { sub: 'validator-1' } } } as never,
-      ),
+      resolver.approveAdminReceipt({ subscriptionId: 'subscription-1', receiptId: 'receipt-1' }, {
+        req: { user: { sub: 'validator-1' } },
+      } as never),
     ).rejects.toBe(failure);
 
     expect(receipts.approveReceipt).not.toHaveBeenCalled();
@@ -204,10 +211,9 @@ describe('MajorEventReceiptsResolver', () => {
     receipts.approveReceipt.mockRejectedValue(failure);
 
     await expect(
-      resolver.approveAdminReceipt(
-        { subscriptionId: 'subscription-1', receiptId: 'receipt-1' },
-        { req: { user: { sub: 'validator-1' } } } as never,
-      ),
+      resolver.approveAdminReceipt({ subscriptionId: 'subscription-1', receiptId: 'receipt-1' }, {
+        req: { user: { sub: 'validator-1' } },
+      } as never),
     ).rejects.toBe(failure);
   });
 });

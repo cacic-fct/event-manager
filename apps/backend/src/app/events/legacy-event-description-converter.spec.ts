@@ -1,7 +1,4 @@
-import {
-  cleanLegacyEventShortDescription,
-  convertLegacyEventDescription,
-} from './legacy-event-description-converter';
+import { cleanLegacyEventShortDescription, convertLegacyEventDescription } from './legacy-event-description-converter';
 
 describe('legacy event description converter', () => {
   it('converts common HTML description formatting to Markdown', () => {
@@ -37,9 +34,7 @@ describe('legacy event description converter', () => {
 
   it('decodes standalone HTML entities while preserving null', () => {
     expect(convertLegacyEventDescription('Pesquisa &amp; extensão')).toBe('Pesquisa & extensão');
-    expect(cleanLegacyEventShortDescription('Pesquisa&nbsp;&amp;&nbsp;extensão')).toBe(
-      'Pesquisa & extensão',
-    );
+    expect(cleanLegacyEventShortDescription('Pesquisa&nbsp;&amp;&nbsp;extensão')).toBe('Pesquisa & extensão');
     expect(convertLegacyEventDescription(null)).toBeNull();
     expect(cleanLegacyEventShortDescription(null)).toBeNull();
   });
@@ -53,8 +48,7 @@ describe('legacy event description converter', () => {
   });
 
   it('does not reinterpret Markdown code or autolinks as legacy HTML', () => {
-    const markdown =
-      'Veja <https://example.com>.\n\n```html\n<strong>Exemplo</strong>\n```\n\nUse `<em>texto</em>`.';
+    const markdown = 'Veja <https://example.com>.\n\n```html\n<strong>Exemplo</strong>\n```\n\nUse `<em>texto</em>`.';
 
     expect(convertLegacyEventDescription(markdown)).toBe(markdown);
     expect(convertLegacyEventDescription(convertLegacyEventDescription(markdown))).toBe(markdown);

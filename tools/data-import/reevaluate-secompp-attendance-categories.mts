@@ -1,23 +1,8 @@
 #!/usr/bin/env node
 
-import {
-  buildPrefixedId,
-  coerceText,
-  decimalToInt,
-  parseInsertRowsByTable,
-} from './lib/legacy-sql.mts';
-import type {
-  LegacyPostgresClient,
-  ParsedSqlRow,
-  ParsedSqlTables,
-} from './lib/legacy-sql.mts';
-import {
-  chunks,
-  connectPostgres,
-  databaseUrlFromOptions,
-  formatCounter,
-  isMain,
-} from './lib/common.mts';
+import { buildPrefixedId, coerceText, decimalToInt, parseInsertRowsByTable } from './lib/legacy-sql.mts';
+import type { LegacyPostgresClient, ParsedSqlRow, ParsedSqlTables } from './lib/legacy-sql.mts';
+import { chunks, connectPostgres, databaseUrlFromOptions, formatCounter, isMain } from './lib/common.mts';
 
 const PREFIX = 'SYSCOMPP-1-';
 
@@ -102,33 +87,60 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === undefined) continue;
-    if (argument === '--help' || argument === '-h') { options.help = true; continue; }
-    if (argument === '--apply') { options.apply = true; continue; }
-    if (argument === '--include-non-unknown') { options.includeNonUnknown = true; continue; }
+    if (argument === '--help' || argument === '-h') {
+      options.help = true;
+      continue;
+    }
+    if (argument === '--apply') {
+      options.apply = true;
+      continue;
+    }
+    if (argument === '--include-non-unknown') {
+      options.includeNonUnknown = true;
+      continue;
+    }
     const equalsIndex = argument.indexOf('=');
     const name = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const inlineValue = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
     switch (name) {
-      case '--input': options.input = value; break;
-      case '--database-url': options.databaseUrl = value; break;
-      case '--db-host': options.dbHost = value; break;
-      case '--db-port': options.dbPort = Number(value); break;
-      case '--db-name': options.dbName = value; break;
-      case '--db-user': options.dbUser = value; break;
-      case '--db-password': options.dbPassword = value; break;
-      default: throw new Error(`Unknown option: ${name}`);
+      case '--input':
+        options.input = value;
+        break;
+      case '--database-url':
+        options.databaseUrl = value;
+        break;
+      case '--db-host':
+        options.dbHost = value;
+        break;
+      case '--db-port':
+        options.dbPort = Number(value);
+        break;
+      case '--db-name':
+        options.dbName = value;
+        break;
+      case '--db-user':
+        options.dbUser = value;
+        break;
+      case '--db-password':
+        options.dbPassword = value;
+        break;
+      default:
+        throw new Error(`Unknown option: ${name}`);
     }
   }
-  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535) throw new Error('--db-port must be a valid TCP port.');
+  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535)
+    throw new Error('--db-port must be a valid TCP port.');
   return options;
 }
 
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<unknown> {
   const options = parseArgs(argv);
   if (options.help) {
-    console.log('Usage: bun run data-import -- reevaluate-secompp-attendance-categories [--input PATH] [--apply] [--include-non-unknown] [database options]');
+    console.log(
+      'Usage: bun run data-import -- reevaluate-secompp-attendance-categories [--input PATH] [--apply] [--include-non-unknown] [database options]',
+    );
     return;
   }
   const parsed = await parseInsertRowsByTable(options.input, REQUIRED_TABLES);
@@ -177,33 +189,76 @@ export function buildLegacyAttendances(parsed: ParsedSqlTables): LegacyAttendanc
   const shortcourseEventByShortcourseId = buildActivityEventMap(tableRows(parsed, 'shortcourses'), 'idShortcourse');
   const paymentRequiredEventIds = buildPaymentRequiredEventIds(tableRows(parsed, 'users_registered'));
   const paidMajorPairs = buildStatusPairs(tableRows(parsed, 'users_registered'));
-  const confirmedShortcoursePairs = buildStatusPairs(tableRows(parsed, 'users_registered_shortcourses'), 'idShortcourseFK');
+  const confirmedShortcoursePairs = buildStatusPairs(
+    tableRows(parsed, 'users_registered_shortcourses'),
+    'idShortcourseFK',
+  );
   const rowsByPair = new Map<string, LegacyAttendance>();
   let skipped = 0;
 
   for (const row of tableRows(parsed, 'presence_lectures')) {
     const userId = decimalToInt(row.idUserFK);
     const lectureId = decimalToInt(row.idLectureFK);
-    if (userId == null || lectureId == null) { skipped += 1; continue; }
+    if (userId == null || lectureId == null) {
+      skipped += 1;
+      continue;
+    }
     const detailId = userDetailByUserId.get(userId);
     const legacyEventId = lectureEventByLectureId.get(lectureId);
-    if (detailId == null || legacyEventId == null) { skipped += 1; continue; }
+    if (detailId == null || legacyEventId == null) {
+      skipped += 1;
+      continue;
+    }
     const category = resolveLectureCategory(userId, legacyEventId, paymentRequiredEventIds, paidMajorPairs);
     const eventId = buildPrefixedId(PREFIX, 'event', 'lecture', lectureId);
-    rowsByPair.set(`${detailId}\u0000${eventId}`, { userId, detailId, eventId, legacyEventId, legacyActivityId: lectureId, kind: 'lecture', category });
+    rowsByPair.set(`${detailId}\u0000${eventId}`, {
+      userId,
+      detailId,
+      eventId,
+      legacyEventId,
+      legacyActivityId: lectureId,
+      kind: 'lecture',
+      category,
+    });
   }
   for (const row of tableRows(parsed, 'presence_shortcourses')) {
     const userId = decimalToInt(row.idUserFK);
     const shortcourseId = decimalToInt(row.idShortcourseFK);
-    if (userId == null || shortcourseId == null) { skipped += 1; continue; }
+    if (userId == null || shortcourseId == null) {
+      skipped += 1;
+      continue;
+    }
     const detailId = userDetailByUserId.get(userId);
     const legacyEventId = shortcourseEventByShortcourseId.get(shortcourseId);
-    if (detailId == null || legacyEventId == null) { skipped += 1; continue; }
-    const category = resolveShortcourseCategory(userId, legacyEventId, shortcourseId, paymentRequiredEventIds, paidMajorPairs, confirmedShortcoursePairs);
+    if (detailId == null || legacyEventId == null) {
+      skipped += 1;
+      continue;
+    }
+    const category = resolveShortcourseCategory(
+      userId,
+      legacyEventId,
+      shortcourseId,
+      paymentRequiredEventIds,
+      paidMajorPairs,
+      confirmedShortcoursePairs,
+    );
     const eventId = buildPrefixedId(PREFIX, 'event', 'shortcourse', shortcourseId);
-    rowsByPair.set(`${detailId}\u0000${eventId}`, { userId, detailId, eventId, legacyEventId, legacyActivityId: shortcourseId, kind: 'shortcourse', category });
+    rowsByPair.set(`${detailId}\u0000${eventId}`, {
+      userId,
+      detailId,
+      eventId,
+      legacyEventId,
+      legacyActivityId: shortcourseId,
+      kind: 'shortcourse',
+      category,
+    });
   }
-  return { legacyAttendances: [...rowsByPair.values()].sort((left, right) => `${left.detailId}\u0000${left.eventId}`.localeCompare(`${right.detailId}\u0000${right.eventId}`)), skippedAttendances: skipped };
+  return {
+    legacyAttendances: [...rowsByPair.values()].sort((left, right) =>
+      `${left.detailId}\u0000${left.eventId}`.localeCompare(`${right.detailId}\u0000${right.eventId}`),
+    ),
+    skippedAttendances: skipped,
+  };
 }
 
 export function buildUserDetailMap(rows: readonly ParsedSqlRow[]): Map<number, number> {
@@ -258,7 +313,9 @@ export function resolveLectureCategory(
   paymentRequiredEventIds: ReadonlySet<number>,
   paidMajorPairs: ReadonlySet<string>,
 ): AttendanceCategory {
-  return paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`) ? 'NON_PAYING' : 'REGULAR';
+  return paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`)
+    ? 'NON_PAYING'
+    : 'REGULAR';
 }
 
 export function resolveShortcourseCategory(
@@ -269,7 +326,8 @@ export function resolveShortcourseCategory(
   paidMajorPairs: ReadonlySet<string>,
   confirmedShortcoursePairs: ReadonlySet<string>,
 ): AttendanceCategory {
-  if (paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`)) return 'NON_PAYING';
+  if (paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`))
+    return 'NON_PAYING';
   if (!confirmedShortcoursePairs.has(`${userId}\u0000${legacyEventId}\u0000${shortcourseId}`)) return 'NON_SUBSCRIBED';
   return 'REGULAR';
 }
@@ -278,7 +336,9 @@ export async function matchAttendances(
   db: LegacyPostgresClient,
   legacyAttendances: readonly LegacyAttendance[],
 ): Promise<AttendanceMatchResult> {
-  const externalRefs = [...new Set(legacyAttendances.map((row) => buildPrefixedId(PREFIX, 'legacy-detail', row.detailId)))].sort();
+  const externalRefs = [
+    ...new Set(legacyAttendances.map((row) => buildPrefixedId(PREFIX, 'legacy-detail', row.detailId))),
+  ].sort();
   const eventIds = [...new Set(legacyAttendances.map((row) => row.eventId))].sort();
   const personIdByExternalRef = new Map<string, string>();
   const existingEventIds = new Set<string>();
@@ -300,10 +360,25 @@ export async function matchAttendances(
   const unmatchedPeople = new Set<number>();
   const unmatchedEvents = new Set<string>();
   for (const row of legacyAttendances) {
-    if (!existingEventIds.has(row.eventId)) { unmatchedEvents.add(row.eventId); continue; }
+    if (!existingEventIds.has(row.eventId)) {
+      unmatchedEvents.add(row.eventId);
+      continue;
+    }
     const personId = personIdByExternalRef.get(buildPrefixedId(PREFIX, 'legacy-detail', row.detailId));
-    if (!personId) { unmatchedPeople.add(row.detailId); continue; }
-    matched.push({ personId, eventId: row.eventId, category: row.category, userId: row.userId, detailId: row.detailId, legacyEventId: row.legacyEventId, legacyActivityId: row.legacyActivityId, kind: row.kind });
+    if (!personId) {
+      unmatchedPeople.add(row.detailId);
+      continue;
+    }
+    matched.push({
+      personId,
+      eventId: row.eventId,
+      category: row.category,
+      userId: row.userId,
+      detailId: row.detailId,
+      legacyEventId: row.legacyEventId,
+      legacyActivityId: row.legacyActivityId,
+      kind: row.kind,
+    });
   }
   return [matched, unmatchedPeople, unmatchedEvents];
 }
@@ -358,7 +433,8 @@ export async function applyUpdates(db: LegacyPostgresClient, updates: readonly M
 export function printUnmatchedPeople(unmatchedPeople: ReadonlySet<number>): void {
   if (!unmatchedPeople.size) return;
   console.log('Unmatched people externalRefs:');
-  for (const detailId of [...unmatchedPeople].sort((left, right) => left - right)) console.log(`- ${buildPrefixedId(PREFIX, 'legacy-detail', detailId)}`);
+  for (const detailId of [...unmatchedPeople].sort((left, right) => left - right))
+    console.log(`- ${buildPrefixedId(PREFIX, 'legacy-detail', detailId)}`);
 }
 
 export function printUnmatchedEvents(unmatchedEvents: ReadonlySet<string>): void {

@@ -4,22 +4,12 @@ import * as fs from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename, dirname, extname, relative, resolve } from 'node:path';
 import process from 'node:process';
-import {
-  CsvError,
-  readCsvFile,
-  writeCsvAtomic,
-} from './lib/csv.mts';
+import { CsvError, readCsvFile, writeCsvAtomic } from './lib/csv.mts';
 import type { CsvDocument, CsvRow } from './lib/csv.mts';
 import { isMain } from './lib/common.mts';
 import { normalizeSpaces, normalizeTextKey } from './lib/text.mts';
 
-const DEFAULT_NAME_COLUMN_KEYS = new Set([
-  'full name',
-  'fullname',
-  'nome completo',
-  'name',
-  'nome',
-]);
+const DEFAULT_NAME_COLUMN_KEYS = new Set(['full name', 'fullname', 'nome completo', 'name', 'nome']);
 const PEOPLE_COLUMNS = ['fullName', 'email', 'enrollmentNumber', 'identityDocument'] as const;
 const CROSS_COLUMNS = [
   'crossMatchedFullName',
@@ -187,9 +177,7 @@ export function findNameColumn(fieldnames: readonly string[], explicitColumn = '
   }
   const match = fieldnames.find((fieldname) => DEFAULT_NAME_COLUMN_KEYS.has(normalizeTextKey(fieldname)));
   if (match) return match;
-  throw new CrossPeopleInputError(
-    'Could not detect full-name column. Use --name-column to set it explicitly.',
-  );
+  throw new CrossPeopleInputError('Could not detect full-name column. Use --name-column to set it explicitly.');
 }
 
 export async function readPeopleLookup(peopleDbPath: string): Promise<PeopleLookupResult> {
@@ -337,8 +325,9 @@ export async function runCrossPeople(args: CrossPeopleArgs): Promise<CrossPeople
     throw new Error(`Input directory does not exist or is not a directory: ${inputDir}`);
   }
   const { lookup: peopleLookup, collisions } = await readPeopleLookup(peopleDbPath);
-  const inputPaths = iterInputCsvPaths(inputDir, args.glob, args.recursive, outputDir)
-    .filter((path) => resolve(path) !== peopleDbPath);
+  const inputPaths = iterInputCsvPaths(inputDir, args.glob, args.recursive, outputDir).filter(
+    (path) => resolve(path) !== peopleDbPath,
+  );
   if (inputPaths.length === 0) {
     throw new Error(`No CSV files found in ${inputDir} for pattern '${args.glob}'.`);
   }

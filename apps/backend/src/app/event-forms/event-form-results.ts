@@ -162,7 +162,10 @@ export function eventFormCsvHeader(elements: readonly FormElement[]): string[] {
 
 export function eventFormCsvRow(
   elements: readonly FormElement[],
-  response: Pick<EventFormResults['responses'][number], 'id' | 'respondentName' | 'respondentEmail' | 'submittedAt' | 'answersJson'>,
+  response: Pick<
+    EventFormResults['responses'][number],
+    'id' | 'respondentName' | 'respondentEmail' | 'submittedAt' | 'answersJson'
+  >,
 ): string[] {
   const answers = parseAnswersJson(response.answersJson);
   const answersByElementId = new Map(answers.map((answer) => [answer.elementId, answer.value]));

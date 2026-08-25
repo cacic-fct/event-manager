@@ -41,21 +41,28 @@ describe('MajorEventReceiptsController', () => {
       'major-events/:majorEventId',
     );
     expect(Reflect.getMetadata(METHOD_METADATA, MajorEventReceiptsController.prototype.uploadReceipt)).toBe(1);
-    expect(Reflect.getMetadata(PATH_METADATA, MajorEventReceiptsController.prototype.streamPendingValidationQueue)).toBe(
-      'admin/queue/events',
-    );
-    expect(Reflect.getMetadata(METHOD_METADATA, MajorEventReceiptsController.prototype.streamPendingValidationQueue)).toBe(
-      0,
-    );
+    expect(
+      Reflect.getMetadata(PATH_METADATA, MajorEventReceiptsController.prototype.streamPendingValidationQueue),
+    ).toBe('admin/queue/events');
+    expect(
+      Reflect.getMetadata(METHOD_METADATA, MajorEventReceiptsController.prototype.streamPendingValidationQueue),
+    ).toBe(0);
     expect(Reflect.getMetadata(PATH_METADATA, MajorEventReceiptsController.prototype.getReceiptImage)).toBe(
       ':receiptId/image',
     );
     expect(Reflect.getMetadata(METHOD_METADATA, MajorEventReceiptsController.prototype.getReceiptImage)).toBe(0);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsController.prototype.streamPendingValidationQueue)).toEqual([
-      RECEIPT_ADMIN_PERMISSION,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsController.prototype.uploadReceipt)).toBeUndefined();
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsController.prototype.getReceiptImage)).toBeUndefined();
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        MajorEventReceiptsController.prototype.streamPendingValidationQueue,
+      ),
+    ).toEqual([RECEIPT_ADMIN_PERMISSION]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsController.prototype.uploadReceipt),
+    ).toBeUndefined();
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, MajorEventReceiptsController.prototype.getReceiptImage),
+    ).toBeUndefined();
     expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, MajorEventReceiptsController.prototype.uploadReceipt)).toEqual({
       policy: RATE_LIMIT_POLICIES.receiptUpload,
       resources: [{ source: 'params', path: 'majorEventId' }],
@@ -138,9 +145,9 @@ describe('MajorEventReceiptsController', () => {
     const failure = new Error('Queue unavailable.');
     receipts.listPendingValidationQueue.mockRejectedValue(failure);
 
-    await expect(firstValueFrom(controller.streamPendingValidationQueue(undefined, undefined).pipe(take(1)))).rejects.toBe(
-      failure,
-    );
+    await expect(
+      firstValueFrom(controller.streamPendingValidationQueue(undefined, undefined).pipe(take(1))),
+    ).rejects.toBe(failure);
   });
 
   it('streams protected receipt images with content metadata and the owning actor', async () => {
@@ -153,7 +160,9 @@ describe('MajorEventReceiptsController', () => {
     };
     receipts.getReceiptImage.mockResolvedValue(image);
 
-    await expect(controller.getReceiptImage('receipt-1', { user } as never, response as never)).resolves.toBeUndefined();
+    await expect(
+      controller.getReceiptImage('receipt-1', { user } as never, response as never),
+    ).resolves.toBeUndefined();
 
     expect(receipts.getReceiptImage).toHaveBeenCalledWith('receipt-1', user);
     expect(response.type).toHaveBeenCalledWith('image/png');
@@ -217,7 +226,9 @@ describe('MajorEventReceiptsController', () => {
       const firstPoll = new Promise<{ pendingCount: number; items: never[] }>((resolve) => {
         resolveFirst = resolve;
       });
-      receipts.listPendingValidationQueue.mockReturnValueOnce(firstPoll).mockResolvedValue({ pendingCount: 0, items: [] });
+      receipts.listPendingValidationQueue
+        .mockReturnValueOnce(firstPoll)
+        .mockResolvedValue({ pendingCount: 0, items: [] });
       subscription = controller.streamPendingValidationQueue(undefined, undefined).subscribe();
       await Promise.resolve();
 

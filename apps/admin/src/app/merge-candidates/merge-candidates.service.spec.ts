@@ -98,11 +98,9 @@ describe('MergeCandidatesService', () => {
 
     expect(api.scanMergeCandidates).toHaveBeenCalledOnce();
     expect(api.listMergeCandidates).toHaveBeenCalledOnce();
-    expect(snackBar.open).toHaveBeenCalledWith(
-      '4 par(es) de possíveis duplicidades verificados.',
-      'Fechar',
-      { duration: 2500 },
-    );
+    expect(snackBar.open).toHaveBeenCalledWith('4 par(es) de possíveis duplicidades verificados.', 'Fechar', {
+      duration: 2500,
+    });
 
     snackBar.open.mockClear();
     await service.scanMergeCandidates(false);

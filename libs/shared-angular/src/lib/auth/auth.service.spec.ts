@@ -66,9 +66,7 @@ describe('AuthService silent SSO fallback', () => {
     const currentUrl = window.location.href;
     window.sessionStorage.setItem('cacic-eventos:onboarding-return-url', currentUrl);
     service.user.set({ sub: 'user-id', claims: { is_onboarded: false } });
-    const refresh = vi
-      .spyOn(service, 'refreshTokenSilently')
-      .mockReturnValue(of({ expiresAt: Date.now() + 60_000 }));
+    const refresh = vi.spyOn(service, 'refreshTokenSilently').mockReturnValue(of({ expiresAt: Date.now() + 60_000 }));
     const redirectToOnboarding = Reflect.get(service, 'redirectToOnboardingIfNeeded') as () => Promise<void>;
 
     await redirectToOnboarding.call(service);

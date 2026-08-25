@@ -432,10 +432,7 @@ describe('SportsMatchOperationService offline command log', () => {
         }),
       }),
     );
-    expect(auditLog.record).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: 'UPDATE' }),
-      tx,
-    );
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ operation: 'UPDATE' }), tx);
   });
 });
 

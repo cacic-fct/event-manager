@@ -88,18 +88,16 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     ),
   );
   const eventResults = signal<Event[]>(
-    Array.from({ length: eventCount }, (_, index) =>
-      ({
-        ...buildEvent(
+    Array.from({ length: eventCount }, (_, index) => ({
+      ...buildEvent(
         `event-${index + 1}`,
         options.longNames
           ? `Atividade interdisciplinar de arquitetura, acessibilidade e dados ${index + 1}`
           : (['Arquitetura Angular', 'GraphQL com NestJS', 'Acessibilidade digital'][index % 3] ?? 'Atividade'),
         ['💻', '📡', '♿'][index % 3] ?? '💻',
-        ),
-        isSportsMatch: (options.sportsEvery ?? 3) > 0 && index % (options.sportsEvery ?? 3) === 0,
-      }),
-    ),
+      ),
+      isSportsMatch: (options.sportsEvery ?? 3) > 0 && index % (options.sportsEvery ?? 3) === 0,
+    })),
   );
   const selectedEvent = signal<Event | null>(eventResults()[0] ?? null);
   const statuses: WorkspaceMajorEventSubscription['subscriptionStatus'][] = [

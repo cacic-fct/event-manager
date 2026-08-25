@@ -232,7 +232,10 @@ describe('AttendancesService', () => {
       selectedHeader: 'email',
       resolutions: [{ value: 'ada@example.com', personId: person.id }],
     });
-    expect(dialog.open).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ data: expect.anything() }));
+    expect(dialog.open).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ data: expect.anything() }),
+    );
     expect(service.isImportingCsv()).toBe(false);
 
     dialog.open.mockReset();
@@ -275,7 +278,12 @@ describe('AttendancesService', () => {
   it('reviews offline submissions with confirmation, cancellation, correction, and issue labels', async () => {
     const ready = createAdminOfflineEventAttendanceSubmission({ eventId: event.id }, event, person);
     const invalid = createAdminOfflineEventAttendanceSubmission(
-      { id: 'offline-invalid', eventId: event.id, resolutionError: 'Sem correspondência', resolutionIssue: 'PERSON_NOT_FOUND' },
+      {
+        id: 'offline-invalid',
+        eventId: event.id,
+        resolutionError: 'Sem correspondência',
+        resolutionIssue: 'PERSON_NOT_FOUND',
+      },
       event,
       person,
     );
@@ -320,8 +328,24 @@ describe('AttendancesService', () => {
         majorEventId: majorEvent.id,
         personId: person.id,
         attendances: [
-          { eventId: 'event-1', eventName: 'Evento 1', eventEmoji: '🎓', eventStartDate: event.startDate, attended: true, attendedAt: null, category: 'REGULAR' },
-          { eventId: 'event-2', eventName: 'Evento 2', eventEmoji: '💡', eventStartDate: event.startDate, attended: false, attendedAt: null, category: 'REGULAR' },
+          {
+            eventId: 'event-1',
+            eventName: 'Evento 1',
+            eventEmoji: '🎓',
+            eventStartDate: event.startDate,
+            attended: true,
+            attendedAt: null,
+            category: 'REGULAR',
+          },
+          {
+            eventId: 'event-2',
+            eventName: 'Evento 2',
+            eventEmoji: '💡',
+            eventStartDate: event.startDate,
+            attended: false,
+            attendedAt: null,
+            category: 'REGULAR',
+          },
         ],
       },
       person,

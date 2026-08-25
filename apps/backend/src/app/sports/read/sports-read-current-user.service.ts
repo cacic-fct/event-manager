@@ -383,10 +383,7 @@ export class SportsReadCurrentUserService {
     });
     const rosterEntryPersonIdById = new Map(
       match.rosters.flatMap((roster) =>
-        roster.entries.map((entry) => [
-          entry.id,
-          entry.registrationMember.teamMember.participant.personId,
-        ] as const),
+        roster.entries.map((entry) => [entry.id, entry.registrationMember.teamMember.participant.personId] as const),
       ),
     );
     const checkInAtByPersonId = this.checkInAtByPersonId(match.actions, rosterEntryPersonIdById);
@@ -524,10 +521,7 @@ export class SportsReadCurrentUserService {
         continue;
       }
       const checkedInAt = typeof payload['checkedInAt'] === 'string' ? new Date(payload['checkedInAt']) : null;
-      checkIns.set(
-        personId,
-        checkedInAt && !Number.isNaN(checkedInAt.getTime()) ? checkedInAt : null,
-      );
+      checkIns.set(personId, checkedInAt && !Number.isNaN(checkedInAt.getTime()) ? checkedInAt : null);
     }
     return checkIns;
   }

@@ -12,10 +12,7 @@ describe('EventAttendancesQueriesResolver', () => {
   beforeEach(() => {
     prisma = createFullPrisma();
     resolveCurrentAssessments = jest.fn().mockResolvedValue(new Map());
-    resolver = new EventAttendancesQueriesResolver(
-      prisma as never,
-      { resolveCurrentAssessments } as never,
-    );
+    resolver = new EventAttendancesQueriesResolver(prisma as never, { resolveCurrentAssessments } as never);
   });
 
   it('allows read-only attendance users to list offline submissions', () => {
@@ -77,9 +74,7 @@ describe('EventAttendancesQueriesResolver', () => {
         event: { id: 'event-1' },
       },
     ]);
-    resolveCurrentAssessments.mockResolvedValue(
-      new Map([['person-1:event-1', 'ACTIVITY_SUBSCRIPTION_MISSING']]),
-    );
+    resolveCurrentAssessments.mockResolvedValue(new Map([['person-1:event-1', 'ACTIVITY_SUBSCRIPTION_MISSING']]));
 
     await expect(resolver.eventAttendances(undefined, 'event-1')).resolves.toEqual([
       expect.objectContaining({
@@ -129,8 +124,18 @@ describe('EventAttendancesQueriesResolver', () => {
         subscriptionId: 'subscription-1',
         subscriptionStatus: SubscriptionStatus.CONFIRMED,
         attendances: [
-          expect.objectContaining({ eventId: 'event-1', eventEmoji: '🎉', attended: true, category: AttendanceCategory.REGULAR }),
-          expect.objectContaining({ eventId: 'event-2', eventEmoji: '🛠️', attended: false, category: AttendanceCategory.UNKNOWN }),
+          expect.objectContaining({
+            eventId: 'event-1',
+            eventEmoji: '🎉',
+            attended: true,
+            category: AttendanceCategory.REGULAR,
+          }),
+          expect.objectContaining({
+            eventId: 'event-2',
+            eventEmoji: '🛠️',
+            attended: false,
+            category: AttendanceCategory.UNKNOWN,
+          }),
         ],
       }),
     ]);

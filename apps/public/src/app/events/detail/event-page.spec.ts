@@ -45,9 +45,7 @@ async function createEventComponentFixture(
         useValue: {
           paramMap: of(convertToParamMap({ eventId: 'event-1', ...options.routeParams })),
           queryParamMap: of(convertToParamMap(queryParamMap)),
-          parent: options.parentRoutePath
-            ? { snapshot: { routeConfig: { path: options.parentRoutePath } } }
-            : null,
+          parent: options.parentRoutePath ? { snapshot: { routeConfig: { path: options.parentRoutePath } } } : null,
         },
       },
       {
@@ -358,20 +356,20 @@ describe('Event', () => {
     });
   });
 
-  it.each([
-    'major-event/:majorEventId/subscription',
-    'major-event/:majorEventId/ranked-subscription',
-  ])('keeps sports event details inside the registration flow for %s', async (parentRoutePath) => {
-    TestBed.resetTestingModule();
-    const eventPageData = defaultEventPageData();
-    eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
-    const newFixture = await createEventComponentFixture({}, { eventPageData, parentRoutePath });
-    await newFixture.whenStable();
+  it.each(['major-event/:majorEventId/subscription', 'major-event/:majorEventId/ranked-subscription'])(
+    'keeps sports event details inside the registration flow for %s',
+    async (parentRoutePath) => {
+      TestBed.resetTestingModule();
+      const eventPageData = defaultEventPageData();
+      eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
+      const newFixture = await createEventComponentFixture({}, { eventPageData, parentRoutePath });
+      await newFixture.whenStable();
 
-    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
-  });
+      expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    },
+  );
 
-  it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map']) (
+  it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map'])(
     'should reject unsafe back URL %s',
     async (unsafeBackUrl) => {
       TestBed.resetTestingModule();

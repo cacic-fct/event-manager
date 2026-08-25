@@ -381,7 +381,10 @@ describe('CurrentUserEventSubscriptionService', () => {
       event: { findFirst: jest.fn().mockResolvedValue(event) },
       eventSubscription: {
         findFirst: jest.fn().mockResolvedValue(subscription),
-        findMany: jest.fn().mockResolvedValueOnce([{ eventId: 'event-1' }]).mockResolvedValueOnce([]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ eventId: 'event-1' }])
+          .mockResolvedValueOnce([]),
         update: jest.fn(),
       },
       eventGroupSubscription: {

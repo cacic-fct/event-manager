@@ -192,9 +192,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
         },
         data: {
           ...(input.status !== undefined ? { status: input.status } : {}),
-          ...(input.registrationStartDate !== undefined
-            ? { registrationStartDate: input.registrationStartDate }
-            : {}),
+          ...(input.registrationStartDate !== undefined ? { registrationStartDate: input.registrationStartDate } : {}),
           ...(input.registrationEndDate !== undefined ? { registrationEndDate: input.registrationEndDate } : {}),
           ...(input.selfSubscriptionEnabled !== undefined
             ? { selfSubscriptionEnabled: input.selfSubscriptionEnabled }

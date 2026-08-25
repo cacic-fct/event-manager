@@ -471,8 +471,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           deletedAt: null,
         },
         data: {
-          state:
-            present && match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
+          state: present && match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
           revision: { increment: 1 },
           operationSequence: { increment: 1 },
           updatedById: uploaderPersonId,

@@ -26,14 +26,10 @@ describe('AttendanceAnalyticsController', () => {
     await expect(
       firstValueFrom(
         controller()
-          .streamAnalytics(
-            'event-1',
-            30,
-            undefined,
-            undefined,
-            'cursor-4',
-            { user: { sub: 'admin-1' }, headers: { cookie: 'session=secret' } } as never,
-          )
+          .streamAnalytics('event-1', 30, undefined, undefined, 'cursor-4', {
+            user: { sub: 'admin-1' },
+            headers: { cookie: 'session=secret' },
+          } as never)
           .pipe(take(1)),
       ),
     ).resolves.toEqual({ data: { type: 'event-attendance-analytics', snapshot } });
@@ -50,22 +46,13 @@ describe('AttendanceAnalyticsController', () => {
 
     await firstValueFrom(
       controller()
-        .streamAnalytics(
-          'event-1',
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          { headers: { cookie: 'session=cookie-user' } } as never,
-        )
+        .streamAnalytics('event-1', undefined, undefined, undefined, undefined, {
+          headers: { cookie: 'session=cookie-user' },
+        } as never)
         .pipe(take(1)),
     );
 
-    expect(replay.scope).toHaveBeenCalledWith(
-      'event-attendance-analytics',
-      'event-1:all',
-      'session=cookie-user',
-    );
+    expect(replay.scope).toHaveBeenCalledWith('event-attendance-analytics', 'event-1:all', 'session=cookie-user');
   });
 
   it('binds a fixed interval to both the snapshot and replay scope', async () => {
@@ -75,14 +62,10 @@ describe('AttendanceAnalyticsController', () => {
 
     await firstValueFrom(
       controller()
-        .streamAnalytics(
-          'event-1',
-          undefined,
-          start,
-          end,
-          undefined,
-          { user: { sub: 'admin-1' }, headers: {} } as never,
-        )
+        .streamAnalytics('event-1', undefined, start, end, undefined, {
+          user: { sub: 'admin-1' },
+          headers: {},
+        } as never)
         .pipe(take(1)),
     );
 
@@ -91,11 +74,7 @@ describe('AttendanceAnalyticsController', () => {
       start: new Date(start),
       end: new Date(end),
     });
-    expect(replay.scope).toHaveBeenCalledWith(
-      'event-attendance-analytics',
-      `event-1:${start}:${end}`,
-      'admin-1',
-    );
+    expect(replay.scope).toHaveBeenCalledWith('event-attendance-analytics', `event-1:${start}:${end}`, 'admin-1');
   });
 
   it('propagates snapshot failures through the SSE observable', async () => {

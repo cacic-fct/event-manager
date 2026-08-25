@@ -12,10 +12,7 @@ import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-ang
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import {
-  CurrentUserSportsPlayerApplication,
-  CurrentUserTournamentOperations,
-} from './sports-operations.types';
+import { CurrentUserSportsPlayerApplication, CurrentUserTournamentOperations } from './sports-operations.types';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
@@ -61,7 +58,9 @@ export class SportsSelfSubscriptionPage implements OnInit {
   private applicationLoaded = false;
   readonly isEditing = computed(() => {
     const status = this.application()?.status;
-    return status ? EDITABLE_APPLICATION_STATUSES.includes(status as (typeof EDITABLE_APPLICATION_STATUSES)[number]) : false;
+    return status
+      ? EDITABLE_APPLICATION_STATUSES.includes(status as (typeof EDITABLE_APPLICATION_STATUSES)[number])
+      : false;
   });
   readonly applicationIsReadOnly = computed(() => Boolean(this.application()) && !this.isEditing());
   readonly submitButtonLabel = computed(() => {

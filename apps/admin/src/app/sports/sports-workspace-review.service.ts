@@ -86,29 +86,30 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     }
     const majorEvent = tournament.tournament.majorEvent;
     const paymentTiers =
-      majorEvent?.majorEventPrices?.flatMap((price) => price.tiers).map((tier) => ({
-        name: tier.name,
-        value: tier.value,
-      })) ?? [];
+      majorEvent?.majorEventPrices
+        ?.flatMap((price) => price.tiers)
+        .map((tier) => ({
+          name: tier.name,
+          value: tier.value,
+        })) ?? [];
     const result = await firstValueFrom(
       this.dialog
-        .open<
+        .open<SportsApplicationEditDialogComponent, SportsApplicationEditDialogData, SportsApplicationEditDialogResult>(
           SportsApplicationEditDialogComponent,
-          SportsApplicationEditDialogData,
-          SportsApplicationEditDialogResult
-        >(SportsApplicationEditDialogComponent, {
-          data: {
-            application,
-            teams: tournament.teams.filter((team) => team.status === 'ACTIVE'),
-            categories: tournament.categories,
-            teamSummaries: tournament.teamSummaries,
-            paymentTiers,
-            allowNoTeam: tournament.tournament.selfSubscriptionAllowNoTeam,
-            allowNoCategory: tournament.tournament.selfSubscriptionAllowNoCategory,
-            paymentRequired: majorEvent?.isPaymentRequired === true,
+          {
+            data: {
+              application,
+              teams: tournament.teams.filter((team) => team.status === 'ACTIVE'),
+              categories: tournament.categories,
+              teamSummaries: tournament.teamSummaries,
+              paymentTiers,
+              allowNoTeam: tournament.tournament.selfSubscriptionAllowNoTeam,
+              allowNoCategory: tournament.tournament.selfSubscriptionAllowNoCategory,
+              paymentRequired: majorEvent?.isPaymentRequired === true,
+            },
+            maxWidth: 'min(96vw, 42rem)',
           },
-          maxWidth: 'min(96vw, 42rem)',
-        })
+        )
         .afterClosed(),
     );
     if (!result) {
@@ -116,11 +117,10 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     }
     await this.run('Não foi possível corrigir a inscrição.', async () => {
       await firstValueFrom(
-        this.api.mutate<string>(
-          'updateSportsPlayerApplicationReviewData',
-          'SportsPlayerApplicationAdminUpdateInput',
-          { applicationId: application.id, ...result },
-        ),
+        this.api.mutate<string>('updateSportsPlayerApplicationReviewData', 'SportsPlayerApplicationAdminUpdateInput', {
+          applicationId: application.id,
+          ...result,
+        }),
       );
       await this.loadApplications();
       this.notify('Dados da inscrição corrigidos.');
@@ -366,7 +366,10 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     });
   }
 
-  protected async loadMatchRegistrations(review: SportsMatchReview, selectionRevision = this.selectionRevision): Promise<void> {
+  protected async loadMatchRegistrations(
+    review: SportsMatchReview,
+    selectionRevision = this.selectionRevision,
+  ): Promise<void> {
     const ids = [review.match.homeRegistrationId, review.match.awayRegistrationId].filter((id): id is string =>
       Boolean(id),
     );
@@ -381,8 +384,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
           const roster = review.rosters.find((item) => item.registrationId === read.registration.id);
           return [
             read.registration.id,
-            roster?.entries.map((entry) => entry.registrationMemberId) ??
-              read.lineupMembers.map((member) => member.id),
+            roster?.entries.map((entry) => entry.registrationMemberId) ?? read.lineupMembers.map((member) => member.id),
           ];
         }),
       ),
@@ -571,8 +573,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumCaptains: raw.maximumCaptains || null,
       maximumCoaches: raw.maximumCoaches || null,
       allowPlayerMultipleTeams: raw.allowPlayerMultipleTeams,
-      shouldIssueCertificate:
-        raw.certificatePolicy === 'INHERIT' ? null : raw.certificatePolicy === 'ENABLED',
+      shouldIssueCertificate: raw.certificatePolicy === 'INHERIT' ? null : raw.certificatePolicy === 'ENABLED',
       athleteIdentifierMode: raw.athleteIdentifierMode,
       joiningInstructions: raw.joiningInstructions?.trim() || null,
       periodsEnabled: raw.periodsEnabled,

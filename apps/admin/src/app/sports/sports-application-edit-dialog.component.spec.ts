@@ -14,7 +14,10 @@ describe('SportsApplicationEditDialogComponent', () => {
       categories: [{ id: 'category-open' }, { id: 'category-closed' }],
       paymentTier: 'Lote legado',
     },
-    teams: [{ id: 'team-1', name: 'Equipe Azul' }, { id: 'team-2', name: 'Equipe Verde' }],
+    teams: [
+      { id: 'team-1', name: 'Equipe Azul' },
+      { id: 'team-2', name: 'Equipe Verde' },
+    ],
     categories: [
       { id: 'category-open', name: 'Futsal', status: 'REGISTRATION_OPEN' },
       { id: 'category-active', name: 'Vôlei', status: 'ACTIVE' },

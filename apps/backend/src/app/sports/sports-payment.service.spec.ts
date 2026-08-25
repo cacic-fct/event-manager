@@ -188,7 +188,12 @@ describe('SportsPaymentService', () => {
         requiresImageLicenseAgreement: false,
         deletedAt: null,
         majorEventPrices: [
-          { tiers: [{ name: 'Estudante', value: 20 }, { name: 'Profissional', value: 50 }] },
+          {
+            tiers: [
+              { name: 'Estudante', value: 20 },
+              { name: 'Profissional', value: 50 },
+            ],
+          },
         ],
       },
       playerApplications: [],

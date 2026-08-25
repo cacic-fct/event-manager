@@ -11,11 +11,7 @@ describe('SilentSsoService', () => {
     document.head.innerHTML = '<base href="/admin/">';
     document.body.innerHTML = '';
     injector = createEnvironmentInjector(
-      [
-        SilentSsoService,
-        { provide: DOCUMENT, useValue: document },
-        { provide: PLATFORM_ID, useValue: 'browser' },
-      ],
+      [SilentSsoService, { provide: DOCUMENT, useValue: document }, { provide: PLATFORM_ID, useValue: 'browser' }],
       rootEnvironmentInjector,
     );
   });

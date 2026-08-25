@@ -108,9 +108,7 @@
         }
       </dl>
       } @else if (statsState() === 'loading') {
-      <p class="value-proposition-stats-loading-message" role="status">
-        Carregando estatísticas da plataforma
-      </p>
+      <p class="value-proposition-stats-loading-message" role="status">Carregando estatísticas da plataforma</p>
       <div class="value-proposition-stats-loading" aria-hidden="true">
         @for (item of [1, 2, 3, 4]; track item) {
         <span class="value-proposition-stats-loading-item"></span>

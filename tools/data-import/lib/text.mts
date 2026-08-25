@@ -3,7 +3,9 @@ const NON_WORD_PATTERN = /[^\p{Letter}\p{Number}_\s]/gu;
 type NormalizationForm = 'NFC' | 'NFD' | 'NFKC' | 'NFKD';
 
 export function normalizeSpaces(value: unknown): string {
-  return String(value ?? '').replace(WHITESPACE_PATTERN, ' ').trim();
+  return String(value ?? '')
+    .replace(WHITESPACE_PATTERN, ' ')
+    .trim();
 }
 
 export function removeAccents(value: unknown, form: NormalizationForm = 'NFKD'): string {

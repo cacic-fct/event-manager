@@ -109,15 +109,16 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
       value.archivedPermissionGroupMembershipIds === undefined
         ? []
         : readStringArray(value, 'archivedPermissionGroupMembershipIds'),
-    roleAssignmentSnapshots: value.roleAssignmentSnapshots === undefined
-      ? []
-      : readRoleAssignmentSnapshots(value.roleAssignmentSnapshots),
-    roleAssignmentScopeSnapshots: value.roleAssignmentScopeSnapshots === undefined
-      ? []
-      : readRoleAssignmentScopeSnapshots(value.roleAssignmentScopeSnapshots),
-    permissionGroupMembershipSnapshots: value.permissionGroupMembershipSnapshots === undefined
-      ? []
-      : readPermissionGroupMembershipSnapshots(value.permissionGroupMembershipSnapshots),
+    roleAssignmentSnapshots:
+      value.roleAssignmentSnapshots === undefined ? [] : readRoleAssignmentSnapshots(value.roleAssignmentSnapshots),
+    roleAssignmentScopeSnapshots:
+      value.roleAssignmentScopeSnapshots === undefined
+        ? []
+        : readRoleAssignmentScopeSnapshots(value.roleAssignmentScopeSnapshots),
+    permissionGroupMembershipSnapshots:
+      value.permissionGroupMembershipSnapshots === undefined
+        ? []
+        : readPermissionGroupMembershipSnapshots(value.permissionGroupMembershipSnapshots),
   };
 }
 

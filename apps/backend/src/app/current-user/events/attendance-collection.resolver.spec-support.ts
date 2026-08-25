@@ -178,14 +178,14 @@ export function createPrisma(input: {
       findMany: jest.fn().mockResolvedValue(input.events ?? []),
     },
     offlineEventAttendanceSubmission: {
-      findUnique: jest.fn(
-        async (args: OfflineSubmissionFindUniqueArgs) => {
-          if ('clientId' in args.where) {
-            return [...offlineSubmissions.values()].find((submission) => submission.clientId === args.where.clientId) ?? null;
-          }
-          return offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null;
-        },
-      ),
+      findUnique: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) => {
+        if ('clientId' in args.where) {
+          return (
+            [...offlineSubmissions.values()].find((submission) => submission.clientId === args.where.clientId) ?? null
+          );
+        }
+        return offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null;
+      }),
       findUniqueOrThrow: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) => {
         const submission =
           'clientId' in args.where
@@ -264,8 +264,9 @@ export function createCollectionResolver(input: {
       throw input.transactionError;
     }
     const tx = createTxMock(input.transactionResult ?? { id: 'attendance-1' });
-    (tx as unknown as { offlineEventAttendanceSubmission: typeof prisma.offlineEventAttendanceSubmission }).offlineEventAttendanceSubmission =
-      prisma.offlineEventAttendanceSubmission;
+    (
+      tx as unknown as { offlineEventAttendanceSubmission: typeof prisma.offlineEventAttendanceSubmission }
+    ).offlineEventAttendanceSubmission = prisma.offlineEventAttendanceSubmission;
     return callback(tx);
   });
   const currentUserContext = {

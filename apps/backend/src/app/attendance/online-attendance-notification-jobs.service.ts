@@ -124,7 +124,9 @@ export class OnlineAttendanceNotificationJobsService {
       });
 
       for (let index = 0; index < events.length; index += SCHEDULING_CONCURRENCY) {
-        await Promise.all(events.slice(index, index + SCHEDULING_CONCURRENCY).map((event) => this.scheduleEvent(event)));
+        await Promise.all(
+          events.slice(index, index + SCHEDULING_CONCURRENCY).map((event) => this.scheduleEvent(event)),
+        );
       }
 
       cursor = events.length === PENDING_EVENT_PAGE_SIZE ? events.at(-1)?.id : undefined;

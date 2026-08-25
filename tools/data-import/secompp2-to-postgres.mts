@@ -117,25 +117,47 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === undefined) continue;
-    if (argument === '--help' || argument === '-h') { options.help = true; continue; }
-    if (argument === '--dry-run') { options.dryRun = true; continue; }
+    if (argument === '--help' || argument === '-h') {
+      options.help = true;
+      continue;
+    }
+    if (argument === '--dry-run') {
+      options.dryRun = true;
+      continue;
+    }
     const equalsIndex = argument.indexOf('=');
     const name = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const inlineValue = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
     if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
     switch (name) {
-      case '--input': options.input = value; break;
-      case '--database-url': options.databaseUrl = value; break;
-      case '--db-host': options.dbHost = value; break;
-      case '--db-port': options.dbPort = Number(value); break;
-      case '--db-name': options.dbName = value; break;
-      case '--db-user': options.dbUser = value; break;
-      case '--db-password': options.dbPassword = value; break;
-      default: throw new Error(`Unknown option: ${name}`);
+      case '--input':
+        options.input = value;
+        break;
+      case '--database-url':
+        options.databaseUrl = value;
+        break;
+      case '--db-host':
+        options.dbHost = value;
+        break;
+      case '--db-port':
+        options.dbPort = Number(value);
+        break;
+      case '--db-name':
+        options.dbName = value;
+        break;
+      case '--db-user':
+        options.dbUser = value;
+        break;
+      case '--db-password':
+        options.dbPassword = value;
+        break;
+      default:
+        throw new Error(`Unknown option: ${name}`);
     }
   }
-  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535) throw new Error('--db-port must be a valid TCP port.');
+  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535)
+    throw new Error('--db-port must be a valid TCP port.');
   return options;
 }
 
@@ -180,7 +202,12 @@ export async function buildPayload(sqlPath: string): Promise<LegacyImportPayload
     palestraSeeds,
     now,
   );
-  const { eventAttendances, skippedAttendances } = mapEventAttendances(tableRows(parsed, 'participacao_minicurso'), cpfToPersonId, minicursoSeeds, now);
+  const { eventAttendances, skippedAttendances } = mapEventAttendances(
+    tableRows(parsed, 'participacao_minicurso'),
+    cpfToPersonId,
+    minicursoSeeds,
+    now,
+  );
   const { eventLecturers, skippedLecturers } = mapEventLecturers(
     tableRows(parsed, 'ministrante_minicurso'),
     palestraSeeds,
@@ -189,7 +216,13 @@ export async function buildPayload(sqlPath: string): Promise<LegacyImportPayload
     now,
   );
   const events = buildEventRows(minicursoSeeds, palestraSeeds, eventGroupIdByType, now);
-  const majorEvents = buildMajorEventRows(tableRows(parsed, 'ano_referencia'), majorEventIdByYearRef, events, paidByMajorEvent, now);
+  const majorEvents = buildMajorEventRows(
+    tableRows(parsed, 'ano_referencia'),
+    majorEventIdByYearRef,
+    events,
+    paidByMajorEvent,
+    now,
+  );
   return {
     majorEvents,
     eventGroups,
@@ -363,10 +396,16 @@ export function mapMajorEventSubscriptions(
     const cpf = normalizeCpf(row.CPFdadosFK);
     const yearRefId = decimalToInt(row.idAno_ReferenciaFK);
     const inscriptionId = decimalToInt(row.idInscricao);
-    if (!cpf || yearRefId == null || inscriptionId == null) { skipped += 1; continue; }
+    if (!cpf || yearRefId == null || inscriptionId == null) {
+      skipped += 1;
+      continue;
+    }
     const personId = cpfToPersonId.get(cpf);
     const majorEventId = majorEventIdByYearRef.get(yearRefId);
-    if (!personId || !majorEventId) { skipped += 1; continue; }
+    if (!personId || !majorEventId) {
+      skipped += 1;
+      continue;
+    }
     const amountPaid = decimalToInt(row.total);
     if (amountPaid != null && amountPaid > 0) paidByMajorEvent.set(majorEventId, true);
     const status = decimalToInt(row.status) || 0;
@@ -384,7 +423,11 @@ export function mapMajorEventSubscriptions(
       createdById: null,
     });
   }
-  return { majorEventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)), skippedMajorSubscriptions: skipped, paidByMajorEvent };
+  return {
+    majorEventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    skippedMajorSubscriptions: skipped,
+    paidByMajorEvent,
+  };
 }
 
 export function mapEventSubscriptions(
@@ -397,24 +440,34 @@ export function mapEventSubscriptions(
 ): EventSubscriptionMapping {
   const rowsById = new Map<string, LegacyEventSubscription>();
   let skipped = 0;
-  const add = (
-    row: ParsedSqlRow,
-    idColumn: string,
-    kind: string,
-    seeds: ReadonlyMap<number, EventSeed>,
-  ): void => {
+  const add = (row: ParsedSqlRow, idColumn: string, kind: string, seeds: ReadonlyMap<number, EventSeed>): void => {
     const cpf = normalizeCpf(row.CPFusuarioFK);
     const activityId = decimalToInt(row[idColumn]);
-    if (!cpf || activityId == null) { skipped += 1; return; }
+    if (!cpf || activityId == null) {
+      skipped += 1;
+      return;
+    }
     const personId = cpfToPersonId.get(cpf);
     const seed = seeds.get(activityId);
-    if (!personId || !seed) { skipped += 1; return; }
+    if (!personId || !seed) {
+      skipped += 1;
+      return;
+    }
     const id = deterministicPrefixedId(PREFIX, `legacy2-event-sub:${kind}:${cpf}:${activityId}`);
-    rowsById.set(id, { id, eventId: seed.id, personId, createdAt: parseMysqlDatetime(row.create_time) ?? seed.startDate ?? fallbackNow, createdById: null });
+    rowsById.set(id, {
+      id,
+      eventId: seed.id,
+      personId,
+      createdAt: parseMysqlDatetime(row.create_time) ?? seed.startDate ?? fallbackNow,
+      createdById: null,
+    });
   };
   minicursoRows.forEach((row) => add(row, 'idMinicursoFK', 'minicurso', minicursoSeeds));
   palestraRows.forEach((row) => add(row, 'idPalestraFK', 'palestra', palestraSeeds));
-  return { eventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)), skippedEventSubscriptions: skipped };
+  return {
+    eventSubscriptions: [...rowsById.values()].sort((left, right) => left.id.localeCompare(right.id)),
+    skippedEventSubscriptions: skipped,
+  };
 }
 
 export function mapEventAttendances(
@@ -429,14 +482,31 @@ export function mapEventAttendances(
     if (decimalToInt(row.presenca) !== 1) continue;
     const cpf = normalizeCpf(row.CPFusuarioFK);
     const minicursoId = decimalToInt(row.idMinicursoFK);
-    if (!cpf || minicursoId == null) { skipped += 1; continue; }
+    if (!cpf || minicursoId == null) {
+      skipped += 1;
+      continue;
+    }
     const personId = cpfToPersonId.get(cpf);
     const seed = minicursoSeeds.get(minicursoId);
-    if (!personId || !seed) { skipped += 1; continue; }
+    if (!personId || !seed) {
+      skipped += 1;
+      continue;
+    }
     const attendedAt = parseMysqlDatetime(row.create_time) ?? seed.startDate ?? fallbackNow;
-    rowsByPair.set(`${personId}\u0000${seed.id}`, { personId, eventId: seed.id, attendedAt, createdAt: attendedAt, createdById: null });
+    rowsByPair.set(`${personId}\u0000${seed.id}`, {
+      personId,
+      eventId: seed.id,
+      attendedAt,
+      createdAt: attendedAt,
+      createdById: null,
+    });
   }
-  return { eventAttendances: [...rowsByPair.values()].sort((left, right) => `${left.personId}\u0000${left.eventId}`.localeCompare(`${right.personId}\u0000${right.eventId}`)), skippedAttendances: skipped };
+  return {
+    eventAttendances: [...rowsByPair.values()].sort((left, right) =>
+      `${left.personId}\u0000${left.eventId}`.localeCompare(`${right.personId}\u0000${right.eventId}`),
+    ),
+    skippedAttendances: skipped,
+  };
 }
 
 export function mapEventLecturers(
@@ -451,26 +521,57 @@ export function mapEventLecturers(
   for (const row of ministranteRows) {
     const cpf = normalizeCpf(row.CPFusuarioFK);
     const minicursoId = decimalToInt(row.idMinicursoFK);
-    if (!cpf || minicursoId == null) { skipped += 1; continue; }
+    if (!cpf || minicursoId == null) {
+      skipped += 1;
+      continue;
+    }
     const personId = cpfToPersonId.get(cpf);
     const seed = minicursoSeeds.get(minicursoId);
-    if (!personId || !seed) { skipped += 1; continue; }
+    if (!personId || !seed) {
+      skipped += 1;
+      continue;
+    }
     const createdAt = parseMysqlDatetime(row.create_time) ?? seed.startDate ?? fallbackNow;
     rowsByPair.set(`${seed.id}\u0000${personId}`, { eventId: seed.id, personId, createdAt, createdById: null });
   }
   for (const seed of palestraSeeds.values()) {
     if (!seed.speakerCpf) continue;
     const personId = cpfToPersonId.get(seed.speakerCpf);
-    if (!personId) { skipped += 1; continue; }
-    rowsByPair.set(`${seed.id}\u0000${personId}`, { eventId: seed.id, personId, createdAt: seed.createdAt ?? fallbackNow, createdById: null });
+    if (!personId) {
+      skipped += 1;
+      continue;
+    }
+    rowsByPair.set(`${seed.id}\u0000${personId}`, {
+      eventId: seed.id,
+      personId,
+      createdAt: seed.createdAt ?? fallbackNow,
+      createdById: null,
+    });
   }
-  return { eventLecturers: [...rowsByPair.values()].sort((left, right) => `${left.eventId}\u0000${left.personId}`.localeCompare(`${right.eventId}\u0000${right.personId}`)), skippedLecturers: skipped };
+  return {
+    eventLecturers: [...rowsByPair.values()].sort((left, right) =>
+      `${left.eventId}\u0000${left.personId}`.localeCompare(`${right.eventId}\u0000${right.personId}`),
+    ),
+    skippedLecturers: skipped,
+  };
 }
 
 export function buildEventGroups(now: Date): LegacyEventGroup[] {
   return [
-    { id: buildPrefixedId(PREFIX, 'event-group', 'palestras'), name: 'Palestras (SECOMPP legado 2)', type: 'PALESTRA', createdAt: now, updatedAt: now },
-    { id: buildPrefixedId(PREFIX, 'event-group', 'minicursos'), name: 'Minicursos (SECOMPP legado 2)', type: 'MINICURSO', createdAt: now, updatedAt: now },
+    {
+      id: buildPrefixedId(PREFIX, 'event-group', 'palestras'),
+      name: 'Palestras (SECOMPP legado 2)',
+      type: 'PALESTRA',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: buildPrefixedId(PREFIX, 'event-group', 'minicursos'),
+      name: 'Minicursos (SECOMPP legado 2)',
+      type: 'MINICURSO',
+      createdAt: now,
+      updatedAt: now,
+    },
   ];
 }
 
@@ -529,7 +630,11 @@ export function buildMajorEventRows(
     if (!event.majorEventId || !event.startDate || !event.endDate) continue;
     const existing = dateRanges.get(event.majorEventId);
     if (!existing) dateRanges.set(event.majorEventId, [event.startDate, event.endDate]);
-    else dateRanges.set(event.majorEventId, [existing[0] < event.startDate ? existing[0] : event.startDate, existing[1] > event.endDate ? existing[1] : event.endDate]);
+    else
+      dateRanges.set(event.majorEventId, [
+        existing[0] < event.startDate ? existing[0] : event.startDate,
+        existing[1] > event.endDate ? existing[1] : event.endDate,
+      ]);
   }
   const rows: LegacyMajorEvent[] = [];
   for (const row of anoRows) {
@@ -560,7 +665,9 @@ export function buildMajorEventRows(
 }
 
 function printPayloadSummary(payload: LegacyImportPayload): void {
-  console.log(`Prepared rows -> major_events=${payload.majorEvents.length}, event_groups=${payload.eventGroups.length}, events=${payload.events.length}, people=${payload.people.length}, major_event_subscriptions=${payload.majorEventSubscriptions.length}, event_subscriptions=${payload.eventSubscriptions.length}, event_attendances=${payload.eventAttendances.length}, event_lecturers=${payload.eventLecturers.length}, skipped_major_subscriptions=${payload.skippedMajorSubscriptions}, skipped_event_subscriptions=${payload.skippedEventSubscriptions}, skipped_attendances=${payload.skippedAttendances}, skipped_lecturers=${payload.skippedLecturers}`);
+  console.log(
+    `Prepared rows -> major_events=${payload.majorEvents.length}, event_groups=${payload.eventGroups.length}, events=${payload.events.length}, people=${payload.people.length}, major_event_subscriptions=${payload.majorEventSubscriptions.length}, event_subscriptions=${payload.eventSubscriptions.length}, event_attendances=${payload.eventAttendances.length}, event_lecturers=${payload.eventLecturers.length}, skipped_major_subscriptions=${payload.skippedMajorSubscriptions}, skipped_event_subscriptions=${payload.skippedEventSubscriptions}, skipped_attendances=${payload.skippedAttendances}, skipped_lecturers=${payload.skippedLecturers}`,
+  );
 }
 
 function tableRows(parsed: ParsedSqlTables, table: string): ParsedSqlRow[] {

@@ -263,7 +263,9 @@
                           [value]="store.groupAssignmentSearchQuery()"
                           [disabled]="!store.canEditRole()"
                           (input)="store.searchGroups($any($event.target).value)"
-                          (keydown.enter)="store.searchGroups(store.groupAssignmentSearchQuery()); $event.preventDefault()" />
+                          (keydown.enter)="
+                            store.searchGroups(store.groupAssignmentSearchQuery()); $event.preventDefault()
+                          " />
                       </mat-form-field>
                       <button
                         mat-stroked-button
@@ -286,7 +288,10 @@
                             <lib-twemoji [emoji]="group.emoji" />
                             <span>
                               <strong>{{ group.name }}</strong>
-                              <small>{{ group.description || 'Sem descrição' }} · {{ group.members.length }} integrantes</small>
+                              <small
+                                >{{ group.description || 'Sem descrição' }} ·
+                                {{ group.members.length }} integrantes</small
+                              >
                             </span>
                             <mat-icon aria-hidden="true">group_add</mat-icon>
                           </button>

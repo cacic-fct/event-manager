@@ -31,8 +31,8 @@
 
   <section class="score-hero" [class.live]="isLive(match)">
     <span class="score-announcement" aria-live="polite" aria-atomic="true">
-      Placar: {{ teamName(match, 'home') }} {{ match.scoreboard.homeScore }},
-      {{ teamName(match, 'away') }} {{ match.scoreboard.awayScore }}
+      Placar: {{ teamName(match, 'home') }} {{ match.scoreboard.homeScore }}, {{ teamName(match, 'away') }} {{
+      match.scoreboard.awayScore }}
     </span>
     <header>
       <mat-chip [class.live-chip]="isLive(match)">

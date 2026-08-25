@@ -13,13 +13,7 @@ let nextPersonSearchId = 0;
 @Component({
   selector: 'app-person-search',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-  ],
+  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
   templateUrl: './person-search.component.html',
   styleUrl: './person-search.component.scss',
 })
@@ -78,12 +72,19 @@ export class PersonSearchComponent {
   }
 
   protected identitySummary(person: Person): string {
-    return person.identityDocument || (person.academicId ? `Matrícula ${person.academicId}` : 'Sem documento informado');
+    return (
+      person.identityDocument || (person.academicId ? `Matrícula ${person.academicId}` : 'Sem documento informado')
+    );
   }
 
   protected showNoResults(): boolean {
-    return this.hasSearched() && !this.disabled() && !this.loading() && this.results().length === 0
-      && this.queryControl.value.trim().length >= this.minimumQueryLength();
+    return (
+      this.hasSearched() &&
+      !this.disabled() &&
+      !this.loading() &&
+      this.results().length === 0 &&
+      this.queryControl.value.trim().length >= this.minimumQueryLength()
+    );
   }
 
   private emitSearch(query: string): void {

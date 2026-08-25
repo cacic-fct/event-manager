@@ -132,7 +132,9 @@ describe('sports mutation publication boundaries', () => {
     const resolver = new SportsTeamMutationsResolver(
       policy as never,
       {} as never,
-      { sportsTournamentParticipant: { findFirst: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) } } as never,
+      {
+        sportsTournamentParticipant: { findFirst: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) },
+      } as never,
       { getAuthenticatedUser: jest.fn().mockReturnValue(actor) } as never,
       admin as never,
       {} as never,

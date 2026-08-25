@@ -181,8 +181,10 @@ export const LoadError: Story = {
 export const LongContentMobile: Story = {
   args: {
     name: 'Encontro interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
-    shortDescription: 'Uma programação detalhada para validar descrições extensas, múltiplas seções e ações em telas estreitas.',
-    lecturerBiography: 'Pesquisadora e educadora com atuação interdisciplinar em produtos públicos digitais acessíveis.',
+    shortDescription:
+      'Uma programação detalhada para validar descrições extensas, múltiplas seções e ações em telas estreitas.',
+    lecturerBiography:
+      'Pesquisadora e educadora com atuação interdisciplinar em produtos públicos digitais acessíveis.',
     lecturerCount: 8,
   },
   parameters: { viewport: { defaultViewport: 'mobile' } },
@@ -219,19 +221,19 @@ function eventParameters(context: EventStoryContext) {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async ({ request }) => {
-          if (context.args.apiState === 'loading') {
-            await delay('infinite');
-          }
-          if (context.args.latencyMs > 0) {
-            await delay(context.args.latencyMs);
-          }
-          const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-          if (context.args.apiState === 'error') {
-            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
-          }
-          return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', context.args) });
-        }),
+          http.post('/api/graphql', async ({ request }) => {
+            if (context.args.apiState === 'loading') {
+              await delay('infinite');
+            }
+            if (context.args.latencyMs > 0) {
+              await delay(context.args.latencyMs);
+            }
+            const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+            if (context.args.apiState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
+            }
+            return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', context.args) });
+          }),
         ],
       },
     },
@@ -243,13 +245,13 @@ function previewParameters(context: EventStoryContext) {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({
-            data: {
-              publicationPreview: buildPreview(context.args),
-            },
-          }),
-        ),
+          http.post('/api/graphql', () =>
+            HttpResponse.json({
+              data: {
+                publicationPreview: buildPreview(context.args),
+              },
+            }),
+          ),
         ],
       },
     },

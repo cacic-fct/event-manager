@@ -456,9 +456,7 @@ export class SportsReadPublicService {
     }>,
   ): Array<{ id: string; name: string; value: number }> {
     return prices.flatMap((price) =>
-      price.tiers
-        .filter((tier) => tier.includesSportsRegistration)
-        .map(({ id, name, value }) => ({ id, name, value })),
+      price.tiers.filter((tier) => tier.includesSportsRegistration).map(({ id, name, value }) => ({ id, name, value })),
     );
   }
 

@@ -20,10 +20,7 @@ import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
 import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
-import {
-  LGPD_STORAGE_CLEANUP_QUEUE,
-  LgpdStorageCleanupService,
-} from './lgpd/lgpd-storage-cleanup.service';
+import { LGPD_STORAGE_CLEANUP_QUEUE, LgpdStorageCleanupService } from './lgpd/lgpd-storage-cleanup.service';
 import { LgpdStorageCleanupProcessor } from './lgpd/lgpd-storage-cleanup.processor';
 import { FrozenResourceService } from './common/frozen-resource.service';
 import { CalendarController } from './calendar/calendar.controller';

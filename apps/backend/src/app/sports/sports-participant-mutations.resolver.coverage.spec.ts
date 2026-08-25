@@ -26,9 +26,9 @@ describe('SportsParticipantMutationsResolver uncovered participant operations', 
       gameAccountUrl: 'https://game.example/ada',
     };
 
-    await expect(harness.resolver.updateCurrentUserAthleteProfile(input as never, harness.context as never)).resolves.toBe(
-      'profile-1',
-    );
+    await expect(
+      harness.resolver.updateCurrentUserAthleteProfile(input as never, harness.context as never),
+    ).resolves.toBe('profile-1');
 
     expect(harness.currentUser.requireCurrentPerson).toHaveBeenCalledWith(harness.context);
     expect(harness.admin.updateOwnAthleteProfile).toHaveBeenCalledWith(
@@ -255,9 +255,9 @@ describe('SportsParticipantMutationsResolver uncovered participant operations', 
       collectorCredential: 'credential-1',
     };
 
-    await expect(harness.resolver.checkInRosterEntry('match-1', input as never, harness.context as never)).resolves.toBe(
-      true,
-    );
+    await expect(
+      harness.resolver.checkInRosterEntry('match-1', input as never, harness.context as never),
+    ).resolves.toBe(true);
 
     expect(harness.rosters.checkIn).toHaveBeenCalledWith(
       'match-1',

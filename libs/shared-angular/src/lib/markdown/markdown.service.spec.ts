@@ -42,10 +42,7 @@ describe('MarkdownService', () => {
   });
 
   it('highlights explicitly tagged fenced code without loading every language', () => {
-    const html = renderMarkdown(
-      '```typescript\nconst answer: number = 42;\n```',
-      window as unknown as WindowLike,
-    );
+    const html = renderMarkdown('```typescript\nconst answer: number = 42;\n```', window as unknown as WindowLike);
 
     expect(html).toContain('<pre class="markdown-code-block"><code class="hljs language-typescript">');
     expect(html).toContain('<span class="hljs-keyword">const</span>');

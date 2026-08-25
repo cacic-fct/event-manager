@@ -35,19 +35,16 @@ describe('createDocsAuthGate', () => {
     '/api/docs-yaml',
     '/api/docs-yaml/',
     '/api/DOCS-YAML',
-  ])(
-    'gates unauthenticated Swagger requests for %s',
-    async (path) => {
-      await runGate({
-        path,
-        method: 'GET',
-      });
+  ])('gates unauthenticated Swagger requests for %s', async (path) => {
+    await runGate({
+      path,
+      method: 'GET',
+    });
 
-      expect(response.redirect).toHaveBeenCalledWith(`/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`);
-      expect(next).not.toHaveBeenCalled();
-      expect(keycloakAuthService.authenticateSession).not.toHaveBeenCalled();
-    },
-  );
+    expect(response.redirect).toHaveBeenCalledWith(`/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`);
+    expect(next).not.toHaveBeenCalled();
+    expect(keycloakAuthService.authenticateSession).not.toHaveBeenCalled();
+  });
 
   it.each(['/api/graphql', '/api/graphql/', '/api/GraphQL'])(
     'gates unauthenticated GraphQL landing page requests for %s',

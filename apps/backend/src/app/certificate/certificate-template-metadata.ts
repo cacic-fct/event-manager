@@ -16,9 +16,7 @@ export const certificateTemplateMetadataSchema = z.strictObject({
   css: z.string().trim().min(1).optional(),
   font: z.enum(['inter-variable']).optional(),
   isActive: z.boolean().optional(),
-  certificateFields: z
-    .record(z.string().regex(/^[A-Za-z0-9_-]+$/), certificateFieldMetadataSchema)
-    .optional(),
+  certificateFields: z.record(z.string().regex(/^[A-Za-z0-9_-]+$/), certificateFieldMetadataSchema).optional(),
 });
 
 export type CertificateTemplateMetadata = z.infer<typeof certificateTemplateMetadataSchema>;

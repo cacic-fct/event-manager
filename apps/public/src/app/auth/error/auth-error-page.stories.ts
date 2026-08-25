@@ -70,17 +70,17 @@ export const Playground: Story = {
 export const LongTechnicalDetails: Story = {
   args: {
     rawError: JSON.stringify(
-        {
-          message: 'Invalid authorization state.',
-          error: 'Bad Request',
-          statusCode: 400,
-          details:
-            'The authorization state cookie was missing or no longer matched the state returned by the identity provider.',
-          requestId: 'auth-storybook-very-long-request-id-018f47b15c4e7c7b9e6f0c8c2f7281ad',
-        },
-        null,
-        2,
-      ),
+      {
+        message: 'Invalid authorization state.',
+        error: 'Bad Request',
+        statusCode: 400,
+        details:
+          'The authorization state cookie was missing or no longer matched the state returned by the identity provider.',
+        requestId: 'auth-storybook-very-long-request-id-018f47b15c4e7c7b9e6f0c8c2f7281ad',
+      },
+      null,
+      2,
+    ),
   },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -90,7 +90,11 @@ export const ServerError: Story = {
   args: {
     title: 'Ocorreu um erro.',
     description: 'Tente novamente mais tarde.',
-    rawError: JSON.stringify({ message: 'Internal server error', statusCode: 500, requestId: 'auth-storybook-500' }, null, 2),
+    rawError: JSON.stringify(
+      { message: 'Internal server error', statusCode: 500, requestId: 'auth-storybook-500' },
+      null,
+      2,
+    ),
   },
   globals: { theme: 'dark', network: 'online', motion: 'reduced' },
 };

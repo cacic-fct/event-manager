@@ -59,19 +59,13 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
     const request = { user: { sub: 'user-1' } };
 
     await expect(
-      firstValueFrom(
-        controller.streamCurrentUserAutoroute('cursor-previous', request as never).pipe(take(1)),
-      ),
+      firstValueFrom(controller.streamCurrentUserAutoroute('cursor-previous', request as never).pipe(take(1))),
     ).resolves.toEqual({ id: 'cursor-new', data: { revision: 4 } });
 
     expect(currentUser.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
     expect(realtime.scope).toHaveBeenCalledWith('autoroute', 'person-1');
     expect(realtime.watch).toHaveBeenCalledWith('autoroute:person-1');
-    expect(replay.replay).toHaveBeenCalledWith(
-      'autoroute:person-1',
-      'cursor-previous',
-      expect.anything(),
-    );
+    expect(replay.replay).toHaveBeenCalledWith('autoroute:person-1', 'cursor-previous', expect.anything());
   });
 
   it('does not disclose autoroute replay data when current-person resolution fails', async () => {
@@ -100,11 +94,7 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
     expect(policy.accessibleEventTargets).toHaveBeenCalledWith(user, Permission.SportsTournament.Read);
     expect(realtime.scope).toHaveBeenCalledWith('admin-tournament', 'tournament-1');
     expect(realtime.watch).toHaveBeenCalledWith('admin-tournament:tournament-1');
-    expect(replay.replay).toHaveBeenCalledWith(
-      'admin-tournament:tournament-1',
-      'review-cursor',
-      expect.anything(),
-    );
+    expect(replay.replay).toHaveBeenCalledWith('admin-tournament:tournament-1', 'review-cursor', expect.anything());
   });
 
   it('does not replay tournament review events when scoped permission is denied', async () => {
@@ -113,9 +103,9 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
 
     await expect(
       firstValueFrom(
-        controller.streamTournamentReview('tournament-1', undefined, { user: { sub: 'admin-1' } } as never).pipe(
-          take(1),
-        ),
+        controller
+          .streamTournamentReview('tournament-1', undefined, { user: { sub: 'admin-1' } } as never)
+          .pipe(take(1)),
       ),
     ).rejects.toBe(failure);
 
@@ -132,9 +122,9 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
 
     await expect(
       firstValueFrom(
-        controller.streamTournamentReview('tournament-1', undefined, { user: { sub: 'admin-1' } } as never).pipe(
-          take(1),
-        ),
+        controller
+          .streamTournamentReview('tournament-1', undefined, { user: { sub: 'admin-1' } } as never)
+          .pipe(take(1)),
       ),
     ).resolves.toEqual({ id: 'cursor-new', data: { revision: 4 } });
 

@@ -32,7 +32,12 @@ function fixture() {
             name: 'CACiC',
             document: '00.000.000/0001-00',
           },
-          price: { tiers: [{ name: 'Student', price: 10 }, { title: 'Visitor', price: '20' }] },
+          price: {
+            tiers: [
+              { name: 'Student', price: 10 },
+              { title: 'Visitor', price: '20' },
+            ],
+          },
           __collections__: {
             subscriptions: {
               u1: {
@@ -102,7 +107,10 @@ test('builds deterministic rows and preserves Firestore subscription/attendance 
   assert.equal(payload.unknownMajorEventRefs, 1);
   assert.equal(payload.skippedUserMajorEventRefs, 0);
   assert.equal(payload.skippedUserEventRefs, 0);
-  assert.equal(payload.eventAttendances.every((row) => !Object.hasOwn(row, 'category')), true);
+  assert.equal(
+    payload.eventAttendances.every((row) => !Object.hasOwn(row, 'category')),
+    true,
+  );
   const [majorEvent] = payload.majorEvents;
   const [majorEventSubscription] = payload.majorEventSubscriptions;
   assert.ok(majorEvent);
@@ -111,7 +119,11 @@ test('builds deterministic rows and preserves Firestore subscription/attendance 
   assert.equal(majorEventSubscription.subscriptionStatus, 'CONFIRMED');
   assert.equal(payload.eventSubscriptions.filter((row) => row.eventGroupSubscriptionId).length, 2);
   assert.deepEqual(
-    payload.events.map(({ latitude, longitude, locationDescription }) => ({ latitude, longitude, locationDescription })),
+    payload.events.map(({ latitude, longitude, locationDescription }) => ({
+      latitude,
+      longitude,
+      locationDescription,
+    })),
     [
       { latitude: -22.1211, longitude: -51.4086, locationDescription: 'FCT/Unesp' },
       { latitude: null, longitude: null, locationDescription: null },
@@ -147,7 +159,12 @@ test('maps scalar and tiered prices with deterministic IDs', () => {
   const [single, singleTiers] = buildMajorEventPriceRows('m1', 25, generator, new Date(0));
   assert.ok(single);
   assert.equal(single.type, 'SINGLE');
-  assert.deepEqual(singleTiers[0], { id: 'price-tier:m1:0:Valor único:25', priceId: 'major-event-price:m1', name: 'Valor único', value: 25 });
+  assert.deepEqual(singleTiers[0], {
+    id: 'price-tier:m1:0:Valor único:25',
+    priceId: 'major-event-price:m1',
+    name: 'Valor único',
+    value: 25,
+  });
 });
 
 test('commits successful writes and rolls back failed writes with an injected client', async () => {
@@ -169,23 +186,29 @@ test('commits successful writes and rolls back failed writes with an injected cl
     generatedFallbackPeople: 0,
   };
   const successfulQueries: string[] = [];
-  await writePayload({
-    async query(text) {
-      successfulQueries.push(text);
-      return { rows: [] };
+  await writePayload(
+    {
+      async query(text) {
+        successfulQueries.push(text);
+        return { rows: [] };
+      },
     },
-  }, emptyPayload);
+    emptyPayload,
+  );
   assert.deepEqual(successfulQueries, ['BEGIN', 'COMMIT']);
 
   const failedQueries: string[] = [];
   await assert.rejects(
-    writePayload({
-      async query(text) {
-        failedQueries.push(text);
-        if (text === 'COMMIT') throw new Error('commit failed');
-        return { rows: [] };
+    writePayload(
+      {
+        async query(text) {
+          failedQueries.push(text);
+          if (text === 'COMMIT') throw new Error('commit failed');
+          return { rows: [] };
+        },
       },
-    }, emptyPayload),
+      emptyPayload,
+    ),
     /commit failed/,
   );
   assert.deepEqual(failedQueries, ['BEGIN', 'COMMIT', 'ROLLBACK']);

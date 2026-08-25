@@ -43,7 +43,9 @@ export async function runImport({ config, source, snapshot: providedSnapshot, ta
     }
   }
 
-  const eventMappings = new Map(config.eventMappings.map((item) => [String(item.sourceEventId), item.targetMajorEventId]));
+  const eventMappings = new Map(
+    config.eventMappings.map((item) => [String(item.sourceEventId), item.targetMajorEventId]),
+  );
   const activityMappings = new Map(
     config.activityMappings.map((item) => [String(item.sourceActivityId), item.targetEventId]),
   );
@@ -97,7 +99,11 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
     const resolution = resolutions.get(String(registration.sourcePersonId));
     const majorEventId = eventMappings.get(String(registration.sourceEventId));
     if (resolution?.status !== 'matched' || !majorEventId) {
-      skippedSourceRows.push({ kind: 'registration', sourceId: registration.sourceId, reason: reason(resolution, majorEventId) });
+      skippedSourceRows.push({
+        kind: 'registration',
+        sourceId: registration.sourceId,
+        reason: reason(resolution, majorEventId),
+      });
       continue;
     }
     operations.push({
@@ -109,7 +115,12 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
     for (const sourceActivityId of new Set(registration.activityIds)) {
       const eventId = activityMappings.get(sourceActivityId);
       if (!eventId) {
-        skippedSourceRows.push({ kind: 'eventSubscription', sourceId: registration.sourceId, sourceActivityId, reason: 'unmapped_activity' });
+        skippedSourceRows.push({
+          kind: 'eventSubscription',
+          sourceId: registration.sourceId,
+          sourceActivityId,
+          reason: 'unmapped_activity',
+        });
         continue;
       }
       operations.push({
@@ -131,7 +142,11 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
     const resolution = resolutions.get(String(attendance.sourcePersonId));
     const eventId = activityMappings.get(String(attendance.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
-      skippedSourceRows.push({ kind: 'attendance', sourceId: attendance.sourceId, reason: reason(resolution, eventId) });
+      skippedSourceRows.push({
+        kind: 'attendance',
+        sourceId: attendance.sourceId,
+        reason: reason(resolution, eventId),
+      });
       continue;
     }
     operations.push({
@@ -147,7 +162,11 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
     const resolution = resolutions.get(String(lecturer.sourcePersonId));
     const eventId = activityMappings.get(String(lecturer.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
-      skippedSourceRows.push({ kind: 'lecturer', sourceActivityId: lecturer.sourceActivityId, reason: reason(resolution, eventId) });
+      skippedSourceRows.push({
+        kind: 'lecturer',
+        sourceActivityId: lecturer.sourceActivityId,
+        reason: reason(resolution, eventId),
+      });
       continue;
     }
     operations.push({ kind: 'lecturers', personId: resolution.person.id, targetId: eventId });
@@ -160,7 +179,8 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
 export async function applyOperation(target, operation, actorId, counters) {
   const definitions = {
     majorEventSubscriptions: {
-      exists: 'SELECT "subscriptionStatus" FROM major_event_subscriptions WHERE "majorEventId"=$1 AND "personId"=$2 AND "deletedAt" IS NULL',
+      exists:
+        'SELECT "subscriptionStatus" FROM major_event_subscriptions WHERE "majorEventId"=$1 AND "personId"=$2 AND "deletedAt" IS NULL',
       insert: `INSERT INTO major_event_subscriptions
         (id, "majorEventId", "personId", "createdAt", "createdById", "createdByMethod", "subscriptionStatus", "subscriptionFlow", "imageLicenseAgreementAccepted", "updatedAt")
         VALUES ($3,$1,$2,COALESCE($4,NOW()),$5,'UNKNOWN','CONFIRMED','REGULAR',false,NOW())`,
@@ -238,14 +258,26 @@ export async function applyOperation(target, operation, actorId, counters) {
   } else if (operation.kind === 'lecturers') {
     await target.query(definition.insert, [operation.targetId, operation.personId, actorId]);
   } else {
-    await target.query(definition.insert, [operation.targetId, operation.personId, createUuidV7(), operation.occurredAt, actorId]);
+    await target.query(definition.insert, [
+      operation.targetId,
+      operation.personId,
+      createUuidV7(),
+      operation.occurredAt,
+      actorId,
+    ]);
   }
   counters[operation.kind].imported += 1;
 }
 
 async function findTargetPeople(target, sourcePeople, explicitIds) {
   const academicIds = sourcePeople.map((person) => normalizeAcademicId(person.academicId)).filter(Boolean);
-  const emails = sourcePeople.map((person) => String(person.email ?? '').trim().toLowerCase()).filter(Boolean);
+  const emails = sourcePeople
+    .map((person) =>
+      String(person.email ?? '')
+        .trim()
+        .toLowerCase(),
+    )
+    .filter(Boolean);
   const names = sourcePeople.map((person) => String(person.name ?? '').trim()).filter(Boolean);
   const result = await target.query(
     `SELECT id, name, email, "secondaryEmails", "academicId"
@@ -264,10 +296,20 @@ async function validateTargetMappings(target, eventMappings, activityMappings) {
   const eventIds = [...new Set(activityMappings.values())];
   const [majorEvents, events] = await Promise.all([
     target.query('SELECT id FROM major_events WHERE id = ANY($1::text[]) AND "deletedAt" IS NULL', [majorIds]),
-    target.query('SELECT id, "majorEventId" FROM events WHERE id = ANY($1::text[]) AND "deletedAt" IS NULL', [eventIds]),
+    target.query('SELECT id, "majorEventId" FROM events WHERE id = ANY($1::text[]) AND "deletedAt" IS NULL', [
+      eventIds,
+    ]),
   ]);
-  assertAllTargetsExist('major event', majorIds, majorEvents.rows.map((row) => row.id));
-  assertAllTargetsExist('event', eventIds, events.rows.map((row) => row.id));
+  assertAllTargetsExist(
+    'major event',
+    majorIds,
+    majorEvents.rows.map((row) => row.id),
+  );
+  assertAllTargetsExist(
+    'event',
+    eventIds,
+    events.rows.map((row) => row.id),
+  );
   return new Map(events.rows.map((row) => [row.id, row.majorEventId]));
 }
 
@@ -306,7 +348,9 @@ function toUnmatchedPerson(sourcePerson, resolution, snapshot) {
       academicId: person.academicId,
     })),
     relatedRows: {
-      registrations: new Set(snapshot.registrations.filter((row) => String(row.sourcePersonId) === sourceId).map((row) => row.sourceId)).size,
+      registrations: new Set(
+        snapshot.registrations.filter((row) => String(row.sourcePersonId) === sourceId).map((row) => row.sourceId),
+      ).size,
       attendances: snapshot.attendances.filter((row) => String(row.sourcePersonId) === sourceId).length,
       lectures: snapshot.lecturers.filter((row) => String(row.sourcePersonId) === sourceId).length,
     },

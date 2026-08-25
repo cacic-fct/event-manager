@@ -1,6 +1,10 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { SportsAdminReadResolver, SportsCurrentUserReadResolver, SportsPublicReadResolver } from './sports-read.resolver';
+import {
+  SportsAdminReadResolver,
+  SportsCurrentUserReadResolver,
+  SportsPublicReadResolver,
+} from './sports-read.resolver';
 import { IS_PUBLIC_KEY } from '../../auth/auth.constants';
 import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
@@ -111,9 +115,7 @@ describe('sports read resolvers', () => {
     harness.sportsRead.publicTournament.mockResolvedValue(tournament);
     harness.sportsRead.publicMatch.mockResolvedValue(match);
 
-    await expect(
-      harness.public.publicSportsTournamentDetail('tournament-1', 'major-1'),
-    ).resolves.toBe(tournament);
+    await expect(harness.public.publicSportsTournamentDetail('tournament-1', 'major-1')).resolves.toBe(tournament);
     await expect(harness.public.publicSportsMatchDetail('match-1')).resolves.toBe(match);
 
     expect(harness.sportsRead.publicTournament).toHaveBeenCalledWith({
@@ -162,10 +164,7 @@ describe('sports read resolvers', () => {
     harness.currentUser.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     harness.sportsRead.currentUserTournament.mockResolvedValue({ id: 'result' });
 
-    await harness.current.currentUserSportsTournamentDetail(
-      { req: { user: harness.user } } as never,
-      'tournament-1',
-    );
+    await harness.current.currentUserSportsTournamentDetail({ req: { user: harness.user } } as never, 'tournament-1');
     await harness.current.currentUserSportsTournamentDetail(
       { req: { user: harness.user } } as never,
       'tournament-1',
@@ -226,22 +225,11 @@ describe('sports read resolvers', () => {
       harness.current.currentUserSportsMatchOperations({ req: { user: harness.user } } as never, 'match-1'),
     ).resolves.toBe(operations);
     await expect(
-      harness.current.currentUserSportsOperationalMatchDetail(
-        { req: { user: harness.user } } as never,
-        'match-1',
-      ),
+      harness.current.currentUserSportsOperationalMatchDetail({ req: { user: harness.user } } as never, 'match-1'),
     ).resolves.toBe(detail);
 
-    expect(harness.access.requireMatchOperator).toHaveBeenNthCalledWith(
-      1,
-      { req: { user: harness.user } },
-      'match-1',
-    );
-    expect(harness.access.requireMatchOperator).toHaveBeenNthCalledWith(
-      2,
-      { req: { user: harness.user } },
-      'match-1',
-    );
+    expect(harness.access.requireMatchOperator).toHaveBeenNthCalledWith(1, { req: { user: harness.user } }, 'match-1');
+    expect(harness.access.requireMatchOperator).toHaveBeenNthCalledWith(2, { req: { user: harness.user } }, 'match-1');
     expect(harness.sportsRead.currentUserMatchOperations).toHaveBeenCalledWith('match-1');
     expect(harness.sportsRead.operationalMatch).toHaveBeenCalledWith('match-1');
   });
@@ -253,17 +241,10 @@ describe('sports read resolvers', () => {
     harness.sportsRead.currentUserLineup.mockResolvedValue(lineup);
 
     await expect(
-      harness.current.currentUserSportsLineup(
-        { req: { user: harness.user } } as never,
-        'match-1',
-        'registration-1',
-      ),
+      harness.current.currentUserSportsLineup({ req: { user: harness.user } } as never, 'match-1', 'registration-1'),
     ).resolves.toBe(lineup);
 
-    expect(harness.access.requireLineupReader).toHaveBeenCalledWith(
-      { req: { user: harness.user } },
-      'registration-1',
-    );
+    expect(harness.access.requireLineupReader).toHaveBeenCalledWith({ req: { user: harness.user } }, 'registration-1');
     expect(harness.sportsRead.currentUserLineup).toHaveBeenCalledWith('match-1', 'registration-1');
   });
 

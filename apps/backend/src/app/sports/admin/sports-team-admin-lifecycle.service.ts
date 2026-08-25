@@ -101,7 +101,9 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
             })
         : null;
 
-      const affectedTeamIds = [...new Set([...withdrawnMemberships.map((item) => item.teamId), ...(teamId ? [teamId] : [])])];
+      const affectedTeamIds = [
+        ...new Set([...withdrawnMemberships.map((item) => item.teamId), ...(teamId ? [teamId] : [])]),
+      ];
       if (affectedTeamIds.length > 0) {
         await tx.sportsTeam.updateMany({
           where: { id: { in: affectedTeamIds } },

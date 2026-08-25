@@ -26,11 +26,7 @@ describe('PublicMapApiService', () => {
       readOfflineUserEventIds: vi.fn(() => Promise.resolve(null)),
     };
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: PublicMapCacheService, useValue: cache },
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: PublicMapCacheService, useValue: cache }],
     });
     api = TestBed.inject(PublicMapApiService);
     httpTesting = TestBed.inject(HttpTestingController);

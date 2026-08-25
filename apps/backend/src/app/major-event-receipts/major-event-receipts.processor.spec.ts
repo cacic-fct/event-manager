@@ -208,7 +208,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
 
   it('compensates a derivative when its receipt row update fails', async () => {
     const { prisma, processor, s3 } = createProcessor();
-    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } }).png().toBuffer();
+    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } })
+      .png()
+      .toBuffer();
     processor['runReceiptImageOperation'] = jest.fn().mockResolvedValue(Buffer.from('avif'));
     s3.uploadFile.mockResolvedValue({ key: 'receipts/receipt-1.avif', size: 4 });
     prisma.majorEventReceipt.update.mockRejectedValue(new Error('database unavailable'));
@@ -226,7 +228,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
 
   it('keeps a converted receipt successful when old-object cleanup fails', async () => {
     const { prisma, processor, s3 } = createProcessor();
-    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } }).png().toBuffer();
+    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } })
+      .png()
+      .toBuffer();
     processor['runReceiptImageOperation'] = jest.fn().mockResolvedValue(Buffer.from('avif'));
     s3.uploadFile.mockResolvedValue({ key: 'receipts/receipt-1.avif', size: 4 });
     s3.deleteFile.mockRejectedValue(new Error('cleanup unavailable'));
@@ -240,7 +244,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       ),
     ).resolves.toBeUndefined();
     expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ processingStatus: ReceiptProcessingStatus.CONVERTED }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ processingStatus: ReceiptProcessingStatus.CONVERTED }),
+      }),
     );
   });
 
@@ -248,10 +254,14 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     const { prisma, processor, s3 } = createProcessor();
 
     prisma.majorEventReceipt.findUnique.mockResolvedValueOnce(null);
-    await expect(processor.process({ name: 'process', data: { receiptId: 'missing-receipt' } } as never)).resolves.toBeUndefined();
+    await expect(
+      processor.process({ name: 'process', data: { receiptId: 'missing-receipt' } } as never),
+    ).resolves.toBeUndefined();
 
     prisma.majorEventReceipt.findUnique.mockResolvedValueOnce(receiptFixture({ expiresAt: new Date('2026-01-01') }));
-    await expect(processor.process({ name: 'process', data: { receiptId: 'expired-receipt' } } as never)).resolves.toBeUndefined();
+    await expect(
+      processor.process({ name: 'process', data: { receiptId: 'expired-receipt' } } as never),
+    ).resolves.toBeUndefined();
 
     expect(s3.downloadFile).not.toHaveBeenCalled();
     expect(prisma.majorEventReceipt.update).not.toHaveBeenCalled();
@@ -278,7 +288,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       matchedNameText: 'Maria',
     });
 
-    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
+    await expect(
+      processor.process({ name: 'process', data: { receiptId: receipt.id } } as never),
+    ).resolves.toBeUndefined();
 
     expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
     expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith({
@@ -327,7 +339,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       matchedNameText: 'Maria',
     });
 
-    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
+    await expect(
+      processor.process({ name: 'process', data: { receiptId: receipt.id } } as never),
+    ).resolves.toBeUndefined();
 
     expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
     expect(processor['recognizeReceiptText']).not.toHaveBeenCalled();
@@ -396,9 +410,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       stream: Readable.from([Buffer.from('receipt')]),
     });
 
-    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).rejects.toBeInstanceOf(
-      UnrecoverableError,
-    );
+    await expect(
+      processor.process({ name: 'process', data: { receiptId: receipt.id } } as never),
+    ).rejects.toBeInstanceOf(UnrecoverableError);
 
     expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith({
       where: {

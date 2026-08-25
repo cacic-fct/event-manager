@@ -394,7 +394,7 @@ export class PaymentInfo {
       return singlePrice.tiers[0].value;
     }
 
-    return tiers.length === 1 ? tiers[0].value : storedAmount ?? null;
+    return tiers.length === 1 ? tiers[0].value : (storedAmount ?? null);
   }
 
   private normalizeBrCodeText(value: string, maxLength: number): string {

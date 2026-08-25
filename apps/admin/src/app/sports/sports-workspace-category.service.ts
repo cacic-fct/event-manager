@@ -6,17 +6,22 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
   async selectCategory(category: SportsCategorySummary, options: { navigate?: boolean } = {}): Promise<void> {
     this.cancelOfficialEdit();
     const selectionRevision = this.beginSelection();
-    await this.run('Não foi possível carregar a modalidade.', async () => {
-      const read = await firstValueFrom(this.api.category(category.id));
-      if (selectionRevision !== this.selectionRevision) {
-        return;
-      }
-      this.categoryRead.set(read);
-      this.selectedCategoryId.set(category.id);
-      this.categoryForm.patchValue(this.categoryToForm(read.category));
-      this.registrationForm.controls.categoryId.setValue(category.id);
-      this.matchForm.controls.categoryId.setValue(category.id);
-    }, true, true);
+    await this.run(
+      'Não foi possível carregar a modalidade.',
+      async () => {
+        const read = await firstValueFrom(this.api.category(category.id));
+        if (selectionRevision !== this.selectionRevision) {
+          return;
+        }
+        this.categoryRead.set(read);
+        this.selectedCategoryId.set(category.id);
+        this.categoryForm.patchValue(this.categoryToForm(read.category));
+        this.registrationForm.controls.categoryId.setValue(category.id);
+        this.matchForm.controls.categoryId.setValue(category.id);
+      },
+      true,
+      true,
+    );
     if (selectionRevision !== this.selectionRevision) {
       return;
     }

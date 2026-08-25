@@ -197,7 +197,9 @@ function buildQueue(args: ReceiptValidationStoryArgs): ReceiptValidationQueue {
         events: [
           {
             id: `event-angular-${index + 1}`,
-            name: args.longContent ? 'Arquitetura Angular com Signals e acessibilidade em escala' : 'Arquitetura Angular',
+            name: args.longContent
+              ? 'Arquitetura Angular com Signals e acessibilidade em escala'
+              : 'Arquitetura Angular',
             emoji: '💻',
             type: 'MINICURSO',
             startDate: adminFixtureDateFromNow(2),

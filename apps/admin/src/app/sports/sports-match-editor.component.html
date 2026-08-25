@@ -61,11 +61,7 @@
       Corrigir resultado
     </button>
   }
-  <button
-    mat-flat-button
-    type="button"
-    (click)="workspace.saveMatch()"
-    [disabled]="workspace.loading()">
+  <button mat-flat-button type="button" (click)="workspace.saveMatch()" [disabled]="workspace.loading()">
     <mat-icon>save</mat-icon>
     Salvar partida
   </button>
@@ -285,10 +281,7 @@
       <mat-panel-description>Atletas, funções e números desta partida</mat-panel-description>
     </mat-expansion-panel-header>
     <div class="lineup-grid">
-      @for (
-        registrationId of [review.match.homeRegistrationId, review.match.awayRegistrationId];
-        track $index
-      ) {
+      @for (registrationId of [review.match.homeRegistrationId, review.match.awayRegistrationId]; track $index) {
         @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
           <section>
             <h5 class="team-heading">

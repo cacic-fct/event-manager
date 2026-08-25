@@ -125,9 +125,7 @@ export abstract class SportsMatchOperationSupport {
     return {
       readinessOverride: true,
       readinessOverrideReason:
-        typeof record['readinessOverrideReason'] === 'string'
-          ? record['readinessOverrideReason'].trim() || null
-          : null,
+        typeof record['readinessOverrideReason'] === 'string' ? record['readinessOverrideReason'].trim() || null : null,
     };
   }
 

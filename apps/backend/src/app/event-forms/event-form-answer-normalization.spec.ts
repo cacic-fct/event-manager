@@ -327,17 +327,15 @@ describe('event form answer normalization', () => {
 
   it('enforces required grid rows and scheduling invitees', () => {
     expect(() =>
-      normalizeAnswers(
-        JSON.stringify([{ elementId: 'single-grid', value: 'yes' }]),
-        [gridElement('single-grid', 'singleSelectionGrid', true)],
-      ),
+      normalizeAnswers(JSON.stringify([{ elementId: 'single-grid', value: 'yes' }]), [
+        gridElement('single-grid', 'singleSelectionGrid', true),
+      ]),
     ).toThrow('A pergunta "single-grid" é obrigatória.');
 
     expect(() =>
-      normalizeAnswers(
-        JSON.stringify([{ elementId: 'single-grid', value: { row1: 'yes' } }]),
-        [gridElement('single-grid', 'singleSelectionGrid', true)],
-      ),
+      normalizeAnswers(JSON.stringify([{ elementId: 'single-grid', value: { row1: 'yes' } }]), [
+        gridElement('single-grid', 'singleSelectionGrid', true),
+      ]),
     ).toThrow('A pergunta "single-grid" é obrigatória.');
 
     expect(() =>

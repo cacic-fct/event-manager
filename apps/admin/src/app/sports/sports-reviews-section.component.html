@@ -16,9 +16,9 @@
         <div class="application-interests">
           <span>{{ application.createdAt | date: 'short' }}</span>
           @for (category of application.categories; track category.id) {
-          <span>{{ categoryName(category.id) }}{{ category.division ? ' · ' + category.division : '' }}</span>
+            <span>{{ categoryName(category.id) }}{{ category.division ? ' · ' + category.division : '' }}</span>
           } @empty {
-          <span>Sem modalidade</span>
+            <span>Sem modalidade</span>
           }
         </div>
         @if (application.paymentStatus) {
@@ -79,10 +79,7 @@
       <p>Deltas concorrentes permanecem explícitos; conflitos nunca são aprovados silenciosamente.</p>
     </div>
     @if (workspace.teamRead(); as read) {
-      @for (
-        request of pendingTeamChangeRequests(read.changeRequests);
-        track request.id
-      ) {
+      @for (request of pendingTeamChangeRequests(read.changeRequests); track request.id) {
         <article class="review-item">
           <div class="review-heading">
             <strong>{{ changeTypeLabel(request.type) }}</strong

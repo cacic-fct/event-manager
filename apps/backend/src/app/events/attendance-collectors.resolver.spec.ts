@@ -86,10 +86,9 @@ describe('EventAttendanceCollectorsResolver', () => {
     frozenResources.assertEventMutable.mockRejectedValueOnce(new Error('Evento congelado.'));
 
     await expect(
-      resolver().createEventAttendanceCollector(
-        { eventId: 'event-1', personId: 'person-1' },
-        { req: { user: actor } } as never,
-      ),
+      resolver().createEventAttendanceCollector({ eventId: 'event-1', personId: 'person-1' }, {
+        req: { user: actor },
+      } as never),
     ).rejects.toThrow('Evento congelado.');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });

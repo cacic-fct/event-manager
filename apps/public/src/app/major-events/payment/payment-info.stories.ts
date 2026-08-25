@@ -51,9 +51,9 @@ export const ApiError: Story = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', () =>
-          HttpResponse.json({ errors: [{ message: 'Pagamento temporariamente indisponível.' }] }),
-        ),
+          http.post('/api/graphql', () =>
+            HttpResponse.json({ errors: [{ message: 'Pagamento temporariamente indisponível.' }] }),
+          ),
         ],
       },
     },

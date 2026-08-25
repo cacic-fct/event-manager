@@ -36,10 +36,7 @@ import {
   UploadedReceiptFile,
 } from '../receipt.types';
 import { assertValidReceiptUpload, buildReceiptObjectKey, isPdfReceiptMimeType } from '../utils/receipt-file.utils';
-import {
-  assertReceiptPdfPageCountWithinLimit,
-  ReceiptPdfProcessingError,
-} from '../utils/receipt-pdf-processing.utils';
+import { assertReceiptPdfPageCountWithinLimit, ReceiptPdfProcessingError } from '../utils/receipt-pdf-processing.utils';
 import {
   assertReceiptBufferWithinProcessingLimits,
   isReceiptImageProcessingError,
@@ -238,7 +235,9 @@ export class ReceiptUploadService {
     try {
       await effect();
     } catch (error: unknown) {
-      this.logger.warn(`${label} failed after the receipt commit: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `${label} failed after the receipt commit: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

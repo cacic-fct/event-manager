@@ -47,7 +47,8 @@ class AttendancePersonResolutionDialogStoryHostComponent {
             description: this.description(),
             confirmLabel: this.confirmLabel(),
             ambiguousValues: Array.from({ length: this.ambiguousValueCount() }, (_, index) => {
-              const source = attendanceResolutionStoryAmbiguousValues[index % attendanceResolutionStoryAmbiguousValues.length];
+              const source =
+                attendanceResolutionStoryAmbiguousValues[index % attendanceResolutionStoryAmbiguousValues.length];
               return {
                 value: `${source.value}-${index + 1}`,
                 candidates: Array.from({ length: this.candidateCount() }, (_candidate, candidateIndex) => {

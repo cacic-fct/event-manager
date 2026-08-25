@@ -139,9 +139,12 @@ describe('CertificateTemplateRegistryService', () => {
       create: createTemplate,
       update: updateTemplate,
     });
-    const service = new CertificateTemplateRegistryService(prisma as never, {
-      upsertCertificateTemplate: jest.fn(),
-    } as never);
+    const service = new CertificateTemplateRegistryService(
+      prisma as never,
+      {
+        upsertCertificateTemplate: jest.fn(),
+      } as never,
+    );
 
     await service.synchronizeTemplates();
 
@@ -159,7 +162,9 @@ describe('CertificateTemplateRegistryService', () => {
       }),
     );
     expect(createTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ registryKey: 'registered', name: 'Modelo corrigido' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ registryKey: 'registered', name: 'Modelo corrigido' }),
+      }),
     );
     expect(updateConfigs).toHaveBeenCalledWith({
       where: { certificateTemplateId: 'template-1' },
@@ -184,9 +189,12 @@ describe('CertificateTemplateRegistryService', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ id: 'legacy-1', name: 'Certificado sem arquivos' }]),
     });
-    const service = new CertificateTemplateRegistryService(prisma as never, {
-      upsertCertificateTemplate: jest.fn(),
-    } as never);
+    const service = new CertificateTemplateRegistryService(
+      prisma as never,
+      {
+        upsertCertificateTemplate: jest.fn(),
+      } as never,
+    );
 
     await expect(service.synchronizeTemplates()).rejects.toThrow(
       'Referenced certificate templates are missing repository metadata: Certificado sem arquivos (legacy-1).',
@@ -204,9 +212,12 @@ describe('CertificateTemplateRegistryService', () => {
       html: '../outside.html',
     });
     process.env.CERTIFICATE_TEMPLATES_ROOT = root;
-    const service = new CertificateTemplateRegistryService(createPrismaMock() as never, {
-      upsertCertificateTemplate: jest.fn(),
-    } as never);
+    const service = new CertificateTemplateRegistryService(
+      createPrismaMock() as never,
+      {
+        upsertCertificateTemplate: jest.fn(),
+      } as never,
+    );
 
     await expect(service.synchronizeTemplates()).rejects.toThrow('escapes its certificate template directory');
   });
@@ -224,9 +235,12 @@ describe('CertificateTemplateRegistryService', () => {
       });
     }
     process.env.CERTIFICATE_TEMPLATES_ROOT = root;
-    const service = new CertificateTemplateRegistryService(createPrismaMock() as never, {
-      upsertCertificateTemplate: jest.fn(),
-    } as never);
+    const service = new CertificateTemplateRegistryService(
+      createPrismaMock() as never,
+      {
+        upsertCertificateTemplate: jest.fn(),
+      } as never,
+    );
 
     await expect(service.synchronizeTemplates()).rejects.toThrow(
       'Certificate template name "Modelo compartilhado" is declared by first and second.',
@@ -247,9 +261,12 @@ describe('CertificateTemplateRegistryService', () => {
     });
     process.env.CERTIFICATE_TEMPLATES_ROOT = root;
     const prisma = createPrismaMock();
-    const service = new CertificateTemplateRegistryService(prisma as never, {
-      upsertCertificateTemplate: jest.fn(),
-    } as never);
+    const service = new CertificateTemplateRegistryService(
+      prisma as never,
+      {
+        upsertCertificateTemplate: jest.fn(),
+      } as never,
+    );
 
     await expect(service.synchronizeTemplates()).rejects.toThrow('Remote static resources are not allowed');
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -264,15 +281,17 @@ async function writeMetadata(directory: string, metadata: Record<string, unknown
   await writeFile(join(directory, 'certificate-template.json'), JSON.stringify(metadata), 'utf8');
 }
 
-function createPrismaMock(overrides: {
-  create?: jest.Mock;
-  findMany?: jest.Mock;
-  findUnique?: jest.Mock;
-  update?: jest.Mock;
-  configFindMany?: jest.Mock;
-  configUpdate?: jest.Mock;
-  configUpdateMany?: jest.Mock;
-} = {}) {
+function createPrismaMock(
+  overrides: {
+    create?: jest.Mock;
+    findMany?: jest.Mock;
+    findUnique?: jest.Mock;
+    update?: jest.Mock;
+    configFindMany?: jest.Mock;
+    configUpdate?: jest.Mock;
+    configUpdateMany?: jest.Mock;
+  } = {},
+) {
   const certificateTemplate = {
     findUnique: overrides.findUnique ?? jest.fn().mockResolvedValue(null),
     findMany: overrides.findMany ?? jest.fn().mockResolvedValue([]),

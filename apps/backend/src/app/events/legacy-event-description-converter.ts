@@ -16,10 +16,7 @@ function containsHtml(value: string): boolean {
     .replace(MARKDOWN_INLINE_CODE_PATTERN, '')
     .replace(MARKDOWN_INDENTED_CODE_PATTERN, '')
     .replace(MARKDOWN_AUTOLINK_PATTERN, '');
-  return (
-    HTML_MARKUP_PATTERN.test(contentOutsideMarkdownCode) ||
-    HTML_ENTITY_PATTERN.test(contentOutsideMarkdownCode)
-  );
+  return HTML_MARKUP_PATTERN.test(contentOutsideMarkdownCode) || HTML_ENTITY_PATTERN.test(contentOutsideMarkdownCode);
 }
 
 function normalizeMarkdown(value: string): string {
@@ -31,7 +28,10 @@ function normalizeMarkdown(value: string): string {
 }
 
 function normalizePlainText(value: string): string {
-  return value.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function convertLegacyEventDescription(value: string | null): string | null {

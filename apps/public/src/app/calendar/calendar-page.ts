@@ -10,10 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
-import {
-  CalendarPreferencesStorageService,
-  PublicDataAccessService,
-} from '@cacic-fct/public-indexed-db';
+import { CalendarPreferencesStorageService, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';

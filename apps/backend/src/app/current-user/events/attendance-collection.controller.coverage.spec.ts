@@ -17,8 +17,8 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
       assertAttendanceCollectorForEvent: jest.fn().mockResolvedValue(undefined),
     };
     replay = {
-      scope: jest.fn((channel: string, eventId: string, identity: string | undefined) =>
-        `${channel}:${eventId}:${identity ?? ''}`,
+      scope: jest.fn(
+        (channel: string, eventId: string, identity: string | undefined) => `${channel}:${eventId}:${identity ?? ''}`,
       ),
       replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: unknown) => source),
     };
@@ -48,22 +48,15 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
       headers: { cookie: 'session-cookie' },
     };
 
-    const message = await firstValueFrom(
-      controller.streamFeed('event-1', 'cursor-1', request as never).pipe(take(1)),
-    );
+    const message = await firstValueFrom(controller.streamFeed('event-1', 'cursor-1', request as never).pipe(take(1)));
 
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
-    expect(authorizationPolicy.assertAttendanceCollectorForEvent).toHaveBeenCalledWith(
-      'event-1',
-      'collector-person',
-      { enforceCollectionWindow: true, user: request.user },
-    );
+    expect(authorizationPolicy.assertAttendanceCollectorForEvent).toHaveBeenCalledWith('event-1', 'collector-person', {
+      enforceCollectionWindow: true,
+      user: request.user,
+    });
     expect(getScannerFeed).toHaveBeenCalledWith('event-1');
-    expect(replay.scope).toHaveBeenCalledWith(
-      'current-user-attendance-collection-feed',
-      'event-1',
-      'collector-user',
-    );
+    expect(replay.scope).toHaveBeenCalledWith('current-user-attendance-collection-feed', 'event-1', 'collector-user');
     expect(replay.replay).toHaveBeenCalledWith(
       'current-user-attendance-collection-feed:event-1:collector-user',
       'cursor-1',
@@ -82,11 +75,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
       headers: { cookie: 'session-cookie' },
     } as never);
 
-    expect(replay.scope).toHaveBeenCalledWith(
-      'current-user-attendance-collection-feed',
-      'event-1',
-      'session-cookie',
-    );
+    expect(replay.scope).toHaveBeenCalledWith('current-user-attendance-collection-feed', 'event-1', 'session-cookie');
   });
 
   it('does not disclose scanner feed data when collector identity resolution fails', async () => {
@@ -97,10 +86,12 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
 
     await expect(
       firstValueFrom(
-        controller.streamFeed('event-1', undefined, {
-          user: { sub: 'collector-user' },
-          headers: { cookie: 'session-cookie' },
-        } as never).pipe(take(1)),
+        controller
+          .streamFeed('event-1', undefined, {
+            user: { sub: 'collector-user' },
+            headers: { cookie: 'session-cookie' },
+          } as never)
+          .pipe(take(1)),
       ),
     ).rejects.toBe(failure);
 
@@ -116,10 +107,12 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
 
     await expect(
       firstValueFrom(
-        controller.streamFeed('event-1', undefined, {
-          user: { sub: 'collector-user' },
-          headers: { cookie: 'session-cookie' },
-        } as never).pipe(take(1)),
+        controller
+          .streamFeed('event-1', undefined, {
+            user: { sub: 'collector-user' },
+            headers: { cookie: 'session-cookie' },
+          } as never)
+          .pipe(take(1)),
       ),
     ).rejects.toBe(failure);
 

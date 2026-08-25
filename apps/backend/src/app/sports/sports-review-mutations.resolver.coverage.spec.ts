@@ -6,7 +6,10 @@ import { SportsReviewMutationsResolver } from './sports-review-mutations.resolve
 describe('SportsReviewMutationsResolver uncovered review operations', () => {
   it('declares scoped approval permission metadata for review-data updates and occurrence corrections', () => {
     expect(
-      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, SportsReviewMutationsResolver.prototype.updatePlayerApplicationReviewData),
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        SportsReviewMutationsResolver.prototype.updatePlayerApplicationReviewData,
+      ),
     ).toEqual([Permission.SportsRegistration.Approve]);
     expect(
       Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, SportsReviewMutationsResolver.prototype.correctMatchOccurrence),
@@ -86,11 +89,9 @@ describe('SportsReviewMutationsResolver uncovered review operations', () => {
       'correction-1',
     );
 
-    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(
-      harness.actor,
-      [Permission.SportsMatch.Review],
-      { sportsMatchActionId: 'action-1' },
-    );
+    expect(harness.policy.assertPermissions).toHaveBeenCalledWith(harness.actor, [Permission.SportsMatch.Review], {
+      sportsMatchActionId: 'action-1',
+    });
     expect(harness.frozen.assertEventMutable).toHaveBeenCalledWith('event-1', harness.actor, 'edit');
     expect(harness.operations.correctApprovedOccurrence).toHaveBeenCalledWith(
       'action-1',

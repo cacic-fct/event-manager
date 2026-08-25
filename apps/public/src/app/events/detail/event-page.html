@@ -43,11 +43,7 @@
   }
 
   <header class="event-header">
-    <button
-      class="emoji-frame"
-      type="button"
-      aria-label="Copiar identificador do evento"
-      (click)="copyId(event.id)">
+    <button class="emoji-frame" type="button" aria-label="Copiar identificador do evento" (click)="copyId(event.id)">
       <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
     </button>
     <div class="header-copy">

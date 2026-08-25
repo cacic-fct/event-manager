@@ -42,22 +42,12 @@ import { PublicUserLocationLayerService } from '../shared/map/public-user-locati
 import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { PublicMapApiService } from './public-map-api.service';
-import {
-  PublicMapFilterDialog,
-  PublicMapFilterDialogData,
-} from './public-map-filter-dialog';
+import { PublicMapFilterDialog, PublicMapFilterDialogData } from './public-map-filter-dialog';
 import { DEFAULT_PUBLIC_MAP_FILTERS, PublicMapFilters } from './public-map.models';
 import { PublicMapStateService } from './public-map-state.service';
-import {
-  PUBLIC_MAP_EVENT_QUERY_PARAM,
-  averageCoordinates,
-  filterPublicMapEvents,
-} from './public-map.utils';
+import { PUBLIC_MAP_EVENT_QUERY_PARAM, averageCoordinates, filterPublicMapEvents } from './public-map.utils';
 
-type MapState =
-  | { status: 'loading' }
-  | { status: 'ready' }
-  | { status: 'error'; message: string };
+type MapState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
 const CLUSTER_DISTANCE_PX = 44;
 const CLUSTER_MIN_DISTANCE_PX = 28;
@@ -177,10 +167,11 @@ export class PublicMapPage implements AfterViewInit {
         this.state.set({ status: 'ready' });
         this.renderEvents(!this.hasAppliedInitialView);
       },
-      error: () => this.state.set({
-        status: 'error',
-        message: 'Não foi possível carregar o mapa de eventos. Tente novamente em instantes.',
-      }),
+      error: () =>
+        this.state.set({
+          status: 'error',
+          message: 'Não foi possível carregar o mapa de eventos. Tente novamente em instantes.',
+        }),
     });
     onCleanup(() => request.unsubscribe());
   });
@@ -538,7 +529,6 @@ export class PublicMapPage implements AfterViewInit {
         map.render();
       }
     }, 250);
-
   }
 
   private async renderEvents(fit: boolean): Promise<void> {
@@ -655,9 +645,7 @@ export class PublicMapPage implements AfterViewInit {
 
     const projectedCenter = projectCoordinate(average);
     const projected = events.flatMap((event) =>
-      event.longitude == null || event.latitude == null
-        ? []
-        : [projectCoordinate([event.longitude, event.latitude])],
+      event.longitude == null || event.latitude == null ? [] : [projectCoordinate([event.longitude, event.latitude])],
     );
     const maximumDelta = projected.reduce(
       (delta, coordinate) => [
@@ -678,7 +666,11 @@ export class PublicMapPage implements AfterViewInit {
         projectedCenter[0] + maximumDelta[0],
         projectedCenter[1] + maximumDelta[1],
       ],
-      { padding: [FIT_PADDING_PX, FIT_PADDING_PX, FIT_PADDING_PX, FIT_PADDING_PX], maxZoom: DEFAULT_MAP_ZOOM, duration: animate ? 260 : 0 },
+      {
+        padding: [FIT_PADDING_PX, FIT_PADDING_PX, FIT_PADDING_PX, FIT_PADDING_PX],
+        maxZoom: DEFAULT_MAP_ZOOM,
+        duration: animate ? 260 : 0,
+      },
     );
   }
 
@@ -710,7 +702,9 @@ export class PublicMapPage implements AfterViewInit {
     const zoom = map.getView().getZoom() ?? DEFAULT_MAP_ZOOM;
     if (zoom < MAX_MAP_ZOOM) {
       const geometry = feature.getGeometry();
-      map.getView().animate({ center: geometry?.getCoordinates(), zoom: Math.min(MAX_MAP_ZOOM, zoom + 2), duration: 260 });
+      map
+        .getView()
+        .animate({ center: geometry?.getCoordinates(), zoom: Math.min(MAX_MAP_ZOOM, zoom + 2), duration: 260 });
       return;
     }
     this.spreadCluster(members, pixel);

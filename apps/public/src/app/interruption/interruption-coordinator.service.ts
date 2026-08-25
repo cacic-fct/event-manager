@@ -150,10 +150,9 @@ export class InterruptionCoordinatorService implements OnDestroy {
     );
 
     return this.resolveFlows(interruptionFlows, context).pipe(
-      switchMap((interruption): Observable<InterruptionResolution> =>
-        interruption
-          ? of({ interruption, isFallback: false })
-          : fallbackResolution,
+      switchMap(
+        (interruption): Observable<InterruptionResolution> =>
+          interruption ? of({ interruption, isFallback: false }) : fallbackResolution,
       ),
     );
   }
@@ -164,16 +163,8 @@ export class InterruptionCoordinatorService implements OnDestroy {
     }
 
     return defer(() =>
-      forkJoin(
-        flows.map((flow) =>
-          defer(() => flow.resolve(context)).pipe(
-            catchError(() => of(null)),
-          ),
-        ),
-      ),
-    ).pipe(
-      map((interruptions) => this.selectNext(interruptions, context)),
-    );
+      forkJoin(flows.map((flow) => defer(() => flow.resolve(context)).pipe(catchError(() => of(null))))),
+    ).pipe(map((interruptions) => this.selectNext(interruptions, context)));
   }
 
   private selectNext(
@@ -182,9 +173,7 @@ export class InterruptionCoordinatorService implements OnDestroy {
   ): Interruption | null {
     return selectNextInterruption(
       interruptions.map((interruption) =>
-        interruption &&
-        interruption.priority === 'NORMAL' &&
-        this.handledNormalInterruptionIds.has(interruption.id)
+        interruption && interruption.priority === 'NORMAL' && this.handledNormalInterruptionIds.has(interruption.id)
           ? null
           : interruption,
       ),

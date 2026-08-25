@@ -177,7 +177,9 @@ export class OfflineAttendanceSubmissions {
     });
   }
 
-  toResponse(submission: Parameters<OfflineAttendanceSubmissions['toOfflineSubmission']>[0]): OfflineEventAttendanceSubmission {
+  toResponse(
+    submission: Parameters<OfflineAttendanceSubmissions['toOfflineSubmission']>[0],
+  ): OfflineEventAttendanceSubmission {
     return this.toOfflineSubmission(submission);
   }
 

@@ -19,11 +19,11 @@ describe('CertificateValidation', () => {
     const toolbar = fixture.nativeElement.querySelector('mat-toolbar') as HTMLElement | null;
     const logo = toolbar?.querySelector('lib-cacic-logo') as HTMLElement | null;
 
-    expect(Array.from(toolbar?.children ?? []).slice(0, 3).map((element) => element.tagName.toLowerCase())).toEqual([
-      'a',
-      'lib-cacic-logo',
-      'h1',
-    ]);
+    expect(
+      Array.from(toolbar?.children ?? [])
+        .slice(0, 3)
+        .map((element) => element.tagName.toLowerCase()),
+    ).toEqual(['a', 'lib-cacic-logo', 'h1']);
     expect(toolbar?.classList.contains('certificate-validation-toolbar')).toBe(true);
     expect(logo?.classList.contains('certificate-validation-toolbar-logo')).toBe(true);
     expect(toolbar?.querySelector('a[routerlink="/menu"]')).not.toBeNull();

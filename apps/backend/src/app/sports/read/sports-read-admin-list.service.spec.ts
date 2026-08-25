@@ -78,10 +78,7 @@ describe('SportsReadAdminListService', () => {
       majorEventIds: new Set<string>(),
     });
 
-    await new SportsReadAdminListService(prisma as never, authorization as never).adminTournamentList(
-      undefined,
-      {},
-    );
+    await new SportsReadAdminListService(prisma as never, authorization as never).adminTournamentList(undefined, {});
 
     const query = prisma.sportsTournament.findMany.mock.calls[0]?.[0];
     expect(query.select._count.select.playerApplications.where).toEqual({

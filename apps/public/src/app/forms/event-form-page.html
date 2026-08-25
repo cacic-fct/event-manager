@@ -4,9 +4,7 @@
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para participações">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <h1 class="global-toolbar-title">
-    {{ currentState.status === 'ready' ? currentState.form.name : 'Formulário' }}
-  </h1>
+  <h1 class="global-toolbar-title">{{ currentState.status === 'ready' ? currentState.form.name : 'Formulário' }}</h1>
 </mat-toolbar>
 
 <main class="form-page">

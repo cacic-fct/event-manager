@@ -20,8 +20,8 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
   validateDumpSchema(tables, schema);
 
   const registrations = rowsFor(tables, schema.registrations.table).flatMap((registration) => {
-    const activities = rowsFor(tables, schema.registrationActivities.table).filter(
-      (item) => valuesEqual(item[schema.registrationActivities.registrationId], registration[schema.registrations.id]),
+    const activities = rowsFor(tables, schema.registrationActivities.table).filter((item) =>
+      valuesEqual(item[schema.registrationActivities.registrationId], registration[schema.registrations.id]),
     );
     const base = {
       sourceId: registration[schema.registrations.id],
@@ -75,7 +75,9 @@ function parseDumpDate(value, timezoneOffset) {
 export function parseMysqlDump(sql, includedTables = null) {
   const tables = new Map();
   for (const statement of splitSqlStatements(sql)) {
-    const create = statement.match(/^CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(`(?:``|[^`])+`|[\p{L}\p{N}_]+)\s*\(([\s\S]*)\)\s*(?:ENGINE\b[\s\S]*)?$/iu);
+    const create = statement.match(
+      /^CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(`(?:``|[^`])+`|[\p{L}\p{N}_]+)\s*\(([\s\S]*)\)\s*(?:ENGINE\b[\s\S]*)?$/iu,
+    );
     if (create) {
       const name = unquoteIdentifier(create[1]);
       const columns = splitTopLevel(create[2]).flatMap((definition) => {
@@ -87,7 +89,9 @@ export function parseMysqlDump(sql, includedTables = null) {
       continue;
     }
 
-    const insert = statement.match(/^INSERT(?:\s+IGNORE)?\s+INTO\s+(`(?:``|[^`])+`|[\p{L}\p{N}_]+)\s*(?:\(([^)]*)\))?\s+VALUES\s+([\s\S]+)$/iu);
+    const insert = statement.match(
+      /^INSERT(?:\s+IGNORE)?\s+INTO\s+(`(?:``|[^`])+`|[\p{L}\p{N}_]+)\s*(?:\(([^)]*)\))?\s+VALUES\s+([\s\S]+)$/iu,
+    );
     if (!insert) continue;
     const name = unquoteIdentifier(insert[1]);
     if (includedTables && !includedTables.has(name)) continue;
@@ -197,7 +201,8 @@ function parseValueTuples(valueSql) {
   let index = 0;
   while (index < valueSql.length) {
     while (/[\s,]/.test(valueSql[index] ?? '')) index += 1;
-    if (valueSql[index] !== '(') throw new Error(`Unsupported SQL dump VALUES syntax near: ${valueSql.slice(index, index + 30)}`);
+    if (valueSql[index] !== '(')
+      throw new Error(`Unsupported SQL dump VALUES syntax near: ${valueSql.slice(index, index + 30)}`);
     const end = findClosingParenthesis(valueSql, index);
     tuples.push(splitTopLevel(valueSql.slice(index + 1, end)).map(parseMysqlValue));
     index = end + 1;
@@ -269,7 +274,7 @@ function parseMysqlValue(token) {
 }
 
 function decodeMysqlString(value, quote) {
-  const escapes = { '0': '\0', b: '\b', n: '\n', r: '\r', t: '\t', Z: '\x1a' };
+  const escapes = { 0: '\0', b: '\b', n: '\n', r: '\r', t: '\t', Z: '\x1a' };
   let result = '';
   for (let index = 0; index < value.length; index += 1) {
     const char = value[index];
@@ -286,9 +291,7 @@ function decodeMysqlString(value, quote) {
 
 function unquoteIdentifier(value) {
   const trimmed = value.trim();
-  return trimmed.startsWith('`') && trimmed.endsWith('`')
-    ? trimmed.slice(1, -1).replaceAll('``', '`')
-    : trimmed;
+  return trimmed.startsWith('`') && trimmed.endsWith('`') ? trimmed.slice(1, -1).replaceAll('``', '`') : trimmed;
 }
 
 function valuesEqual(left, right) {

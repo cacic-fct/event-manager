@@ -2,12 +2,8 @@ import { VotingIntegrationService, startOfSaoPauloDay } from './service';
 
 describe('VotingIntegrationService', () => {
   it('uses the Sao Paulo calendar day instead of the process timezone', () => {
-    expect(startOfSaoPauloDay(new Date('2026-08-23T02:00:00.000Z'))).toEqual(
-      new Date('2026-08-22T03:00:00.000Z'),
-    );
-    expect(startOfSaoPauloDay(new Date('2026-08-23T04:00:00.000Z'))).toEqual(
-      new Date('2026-08-23T03:00:00.000Z'),
-    );
+    expect(startOfSaoPauloDay(new Date('2026-08-23T02:00:00.000Z'))).toEqual(new Date('2026-08-22T03:00:00.000Z'));
+    expect(startOfSaoPauloDay(new Date('2026-08-23T04:00:00.000Z'))).toEqual(new Date('2026-08-23T03:00:00.000Z'));
   });
 
   it('matches formatted CPF and Brazilian phone values in legacy rows', async () => {

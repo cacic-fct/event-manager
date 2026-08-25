@@ -466,7 +466,12 @@ class InMemorySportsQueueStorage {
     }
   }
 
-  async recordFailure(userScope: string, clientId: string, message: string, options: { permanent?: boolean } = {}): Promise<void> {
+  async recordFailure(
+    userScope: string,
+    clientId: string,
+    message: string,
+    options: { permanent?: boolean } = {},
+  ): Promise<void> {
     const item = this.get(userScope, clientId);
     if (item) {
       this.records.set(this.key(userScope, clientId), {

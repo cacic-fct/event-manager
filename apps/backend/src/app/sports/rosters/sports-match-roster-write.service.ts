@@ -192,7 +192,9 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
           });
         }
         if (!member) {
-          throw new BadRequestException('Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.');
+          throw new BadRequestException(
+            'Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.',
+          );
         }
         resolvedEntries.push({ entry, registrationMemberId: member.id });
       }
@@ -263,9 +265,7 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
         });
       }
 
-      const requestedRosterMemberIds = new Set(
-        resolvedEntries.map((resolved) => resolved.registrationMemberId),
-      );
+      const requestedRosterMemberIds = new Set(resolvedEntries.map((resolved) => resolved.registrationMemberId));
       await tx.sportsMatchRosterEntry.updateMany({
         where: {
           rosterId: roster.id,

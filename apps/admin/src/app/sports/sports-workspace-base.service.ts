@@ -114,9 +114,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     configuration: 'ALL',
   });
   readonly majorEventWorkspaceItems = computed<SportsMajorEventWorkspaceItem[]>(() => {
-    const tournamentsByMajorEventId = new Map(
-      this.tournaments().map((item) => [item.majorEvent.id, item] as const),
-    );
+    const tournamentsByMajorEventId = new Map(this.tournaments().map((item) => [item.majorEvent.id, item] as const));
     const seenMajorEventIds = new Set<string>();
     const items: SportsMajorEventWorkspaceItem[] = this.majorEvents().map((majorEvent) => {
       seenMajorEventIds.add(majorEvent.id);
@@ -184,9 +182,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly canUpdateTeam = computed(() => this.permissions.has(Permission.SportsTeam.Update));
   readonly canDuplicateTeam = computed(() => this.permissions.has(Permission.SportsTeam.Duplicate));
   readonly canDeleteTeam = computed(() => this.permissions.has(Permission.SportsTeam.Delete));
-  readonly canAssignRepresentative = computed(() =>
-    this.permissions.has(Permission.SportsTeam.AssignRepresentative),
-  );
+  readonly canAssignRepresentative = computed(() => this.permissions.has(Permission.SportsTeam.AssignRepresentative));
   readonly canUpdateScore = computed(() => this.permissions.has(Permission.SportsScore.Update));
   readonly canCreateRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Create));
   readonly canUpdateRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Update));
@@ -197,10 +193,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     () => this.canCreateRegistration() && this.canUpdateRegistration(),
   );
   readonly canManageRegistrationSelections = computed(
-    () =>
-      this.canCreateRegistration() &&
-      this.canUpdateRegistration() &&
-      this.canDeleteRegistration(),
+    () => this.canCreateRegistration() && this.canUpdateRegistration() && this.canDeleteRegistration(),
   );
   readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
   readonly canOperateMatch = computed(() => this.permissions.has(Permission.SportsMatch.Operate));
@@ -433,7 +426,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       return;
     }
 
-    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId) ??
+    const majorEvent =
+      this.majorEvents().find((item) => item.id === majorEventId) ??
       this.tournaments().find((item) => item.majorEvent.id === majorEventId)?.majorEvent;
     if (
       !majorEvent ||
@@ -633,12 +627,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       this.tournamentForm.markAllAsTouched();
       return;
     }
-    const {
-      registrationScheduleMode,
-      registrationStartDate,
-      registrationEndDate,
-      ...settings
-    } = this.tournamentForm.getRawValue();
+    const { registrationScheduleMode, registrationStartDate, registrationEndDate, ...settings } =
+      this.tournamentForm.getRawValue();
     const registrationWindow =
       registrationScheduleMode === 'CUSTOM'
         ? {

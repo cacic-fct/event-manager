@@ -33,10 +33,7 @@ const eventThemes = [
 
 export function createPublicMapStoryEvents(controls: PublicMapEventFixtureControls): PublicMapEvent[] {
   faker.seed(
-    20260817 +
-      controls.eventCount * 13 +
-      Math.round(controls.spreadRadiusMeters) +
-      controls.firstEventDayOffset * 17,
+    20260817 + controls.eventCount * 13 + Math.round(controls.spreadRadiusMeters) + controls.firstEventDayOffset * 17,
   );
 
   return Array.from({ length: controls.eventCount }, (_, index) => {
@@ -73,7 +70,10 @@ function storyCoordinates(index: number, controls: PublicMapEventFixtureControls
       ? Math.min(controls.spreadRadiusMeters, 18)
       : Math.max(controls.spreadRadiusMeters, 80);
   const ring = 1 + Math.floor(index / 8);
-  const radiusMeters = Math.min(maximumRadius, maximumRadius * Math.sqrt((index + 1) / Math.max(1, controls.eventCount)));
+  const radiusMeters = Math.min(
+    maximumRadius,
+    maximumRadius * Math.sqrt((index + 1) / Math.max(1, controls.eventCount)),
+  );
   const angle = index * 2.399963229728653 + ring * 0.11;
   const latitudeDelta = (Math.sin(angle) * radiusMeters) / 111_320;
   const longitudeMetersPerDegree = 111_320 * Math.cos((controls.centerLatitude * Math.PI) / 180);

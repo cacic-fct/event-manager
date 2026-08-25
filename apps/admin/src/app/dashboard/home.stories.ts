@@ -161,24 +161,24 @@ const meta: Meta<HomeStoryArgs> = {
     msw: {
       handlers: {
         graphql: [
-        http.post('/api/graphql', async () => {
-          const args = activeArgs ?? defaultArgs;
-          if (args.state === 'loading') {
-            await delay('infinite');
-          }
+          http.post('/api/graphql', async () => {
+            const args = activeArgs ?? defaultArgs;
+            if (args.state === 'loading') {
+              await delay('infinite');
+            }
 
-          if (args.state === 'error') {
+            if (args.state === 'error') {
+              return HttpResponse.json({
+                errors: [{ message: 'Falha simulada ao buscar insights do workspace.' }],
+              });
+            }
+
             return HttpResponse.json({
-              errors: [{ message: 'Falha simulada ao buscar insights do workspace.' }],
+              data: {
+                workspaceDashboardInsights: buildDashboardInsights(args),
+              },
             });
-          }
-
-          return HttpResponse.json({
-            data: {
-              workspaceDashboardInsights: buildDashboardInsights(args),
-            },
-          });
-        }),
+          }),
         ],
       },
     },

@@ -37,9 +37,10 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       frozenResources as never,
     );
 
-    await expect(
-      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
-    ).resolves.toEqual(['event-1', 'event-2']);
+    await expect(resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never)).resolves.toEqual([
+      'event-1',
+      'event-2',
+    ]);
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: currentUserMapEventWhere('person-1', 'user-1', now),
@@ -66,9 +67,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       frozenResources as never,
     );
 
-    await expect(
-      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
-    ).resolves.toEqual([]);
+    await expect(resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never)).resolves.toEqual([]);
 
     expect(prisma.event.findMany).not.toHaveBeenCalled();
   });
@@ -273,9 +272,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     const { currentUserContext, eventSubscriptions, resolver } = createResolver();
     currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: null });
 
-    await expect(
-      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
-    ).resolves.toEqual([]);
+    await expect(resolver.currentUserRequiredImageLicenseAgreementInterruptions(context())).resolves.toEqual([]);
     expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).not.toHaveBeenCalled();
   });
 
@@ -291,9 +288,9 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
     eventSubscriptions.listRequiredImageLicenseAgreementInterruptions.mockResolvedValue(interruptions);
 
-    await expect(
-      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
-    ).resolves.toBe(interruptions);
+    await expect(resolver.currentUserRequiredImageLicenseAgreementInterruptions(context())).resolves.toBe(
+      interruptions,
+    );
     expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).toHaveBeenCalledWith('person-1');
   });
 

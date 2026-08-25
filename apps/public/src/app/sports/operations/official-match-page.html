@@ -37,8 +37,8 @@
 } @else if (match(); as currentMatch) {
 <main class="operation-shell">
   <span class="score-announcement" aria-live="polite" aria-atomic="true">
-    Placar: {{ teamName(displaySide('left')) }} {{ scoreFor(displaySide('left')) }},
-    {{ teamName(displaySide('right')) }} {{ scoreFor(displaySide('right')) }}
+    Placar: {{ teamName(displaySide('left')) }} {{ scoreFor(displaySide('left')) }}, {{ teamName(displaySide('right'))
+    }} {{ scoreFor(displaySide('right')) }}
   </span>
   <section class="scoreboard" aria-label="Placar da partida">
     <div class="team">
@@ -135,16 +135,26 @@
         <span class="hold-content">
           <mat-icon>play_arrow</mat-icon>
           <span class="hold-copy"
-            ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
-            ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
+            ><strong
+              >{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida'
+              }}</strong
+            ><small
+              >{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra
+              completar' }}</small
+            ></span
           >
         </span>
         <span class="hold-progress" aria-hidden="true">
           <span class="hold-content hold-progress-content">
             <mat-icon>play_arrow</mat-icon>
             <span class="hold-copy"
-              ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
-              ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
+              ><strong
+                >{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida'
+                }}</strong
+              ><small
+                >{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra
+                completar' }}</small
+              ></span
             >
           </span>
         </span>
@@ -156,7 +166,8 @@
           <strong id="readiness-title">Verifique antes de iniciar</strong>
         </div>
         <ul>
-          @for (issue of readinessIssues(); track issue.code + ':' + (issue.registrationId ?? '') + ':' + issue.message) {
+          @for (issue of readinessIssues(); track issue.code + ':' + (issue.registrationId ?? '') + ':' + issue.message)
+          {
           <li>{{ issue.message }}</li>
           }
         </ul>
@@ -278,8 +289,7 @@
       <mat-icon>groups</mat-icon>
       <span>A lista de atletas e da arbitragem ainda não está disponível para esta operação.</span>
     </div>
-    } @else {
-    @if (checkInEntries().length > 0) {
+    } @else { @if (checkInEntries().length > 0) {
     <div class="check-in-grid">
       <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('home')">
         <h3>
@@ -322,8 +332,7 @@
         }
       </section>
     </div>
-    }
-    @if (officialCheckInEntries().length > 0) {
+    } @if (officialCheckInEntries().length > 0) {
     <section class="check-in-officials" aria-labelledby="check-in-officials-title">
       <h3 id="check-in-officials-title">
         <mat-icon aria-hidden="true">gavel</mat-icon>
@@ -346,8 +355,7 @@
         }
       </div>
     </section>
-    }
-    }
+    } }
   </section>
 
   @if (finalizeOpen()) {

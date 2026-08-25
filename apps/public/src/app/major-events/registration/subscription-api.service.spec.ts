@@ -2,10 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { createPublicMajorEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import type {
-  PublicMajorEvent,
-  SubmitPublicEventFormResponseInput,
-} from '@cacic-fct/event-manager-public-contracts';
+import type { PublicMajorEvent, SubmitPublicEventFormResponseInput } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
 import { MajorEventSubscriptionApiService } from './subscription-api.service';
 
@@ -159,7 +156,9 @@ describe('MajorEventSubscriptionApiService', () => {
         answersJson: JSON.stringify([{ elementId: 'diet', value: 'vegetarian' }]),
       },
     ];
-    const result = firstValueFrom(service.upsertSubscription('major-1', ['event-1', 'event-2'], 'student', responses, true));
+    const result = firstValueFrom(
+      service.upsertSubscription('major-1', ['event-1', 'event-2'], 'student', responses, true),
+    );
     const request = httpTesting.expectOne('/api/graphql');
 
     expect(request.request.body.query).toContain('mutation UpsertCurrentUserMajorEventSubscription');

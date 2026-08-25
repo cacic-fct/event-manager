@@ -1,7 +1,6 @@
 @if (eventChildActive()) {
 <router-outlet />
-} @else {
-@let state = store.pageState();
+} @else { @let state = store.pageState();
 <mat-toolbar>
   <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>

@@ -135,7 +135,10 @@ export async function replaceEventFormLinks(
     const target = normalizeTarget(link);
     const previous = link.id ? previousLinksById.get(link.id) : undefined;
     const priceTierIds = [...new Set((link.priceTierIds ?? []).map((id) => id.trim()).filter(Boolean))];
-    if (priceTierIds.length > 0 && (target.targetType !== EventFormTargetType.MAJOR_EVENT || !link.insertInSubscriptionFlow)) {
+    if (
+      priceTierIds.length > 0 &&
+      (target.targetType !== EventFormTargetType.MAJOR_EVENT || !link.insertInSubscriptionFlow)
+    ) {
       throw new BadRequestException(
         'Faixas de preço só podem ser vinculadas a formulários inseridos na inscrição de um grande evento.',
       );
@@ -163,10 +166,7 @@ export async function replaceEventFormLinks(
       previous.targetType !== target.targetType ||
       previous.eventId !== target.eventId ||
       previous.majorEventId !== target.majorEventId ||
-      !sameStringSet(
-        previous.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [],
-        priceTierIds,
-      );
+      !sameStringSet(previous.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [], priceTierIds);
     const data = {
       targetType: target.targetType,
       eventId: target.eventId,

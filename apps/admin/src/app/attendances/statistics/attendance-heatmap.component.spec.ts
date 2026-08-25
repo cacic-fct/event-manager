@@ -3,7 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
 
 const openLayers = vi.hoisted(() => {
-  const maps: Array<{ options: Record<string, unknown>; setTarget: ReturnType<typeof vi.fn>; updateSize: ReturnType<typeof vi.fn> }> = [];
+  const maps: Array<{
+    options: Record<string, unknown>;
+    setTarget: ReturnType<typeof vi.fn>;
+    updateSize: ReturnType<typeof vi.fn>;
+  }> = [];
 
   class Feature {
     readonly set = vi.fn();
@@ -56,10 +60,13 @@ describe('AttendanceHeatmapComponent', () => {
   beforeEach(() => {
     openLayers.maps.length = 0;
     animationFrameCallbacks = [];
-    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-      animationFrameCallbacks.push(callback);
-      return animationFrameCallbacks.length;
-    }));
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((callback: FrameRequestCallback) => {
+        animationFrameCallbacks.push(callback);
+        return animationFrameCallbacks.length;
+      }),
+    );
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -137,7 +144,11 @@ describe('AttendanceHeatmapComponent', () => {
     await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
     const view = openLayers.maps[0].options['view'] as InstanceType<typeof openLayers.View>;
     expect(view.fit).toHaveBeenCalledWith(
-      [[-41.53, -20.76], [-41.54, -20.77], [-41.53316, -20.76162]],
+      [
+        [-41.53, -20.76],
+        [-41.54, -20.77],
+        [-41.53316, -20.76162],
+      ],
       { maxZoom: 17, padding: [32, 32, 32, 32] },
     );
   });

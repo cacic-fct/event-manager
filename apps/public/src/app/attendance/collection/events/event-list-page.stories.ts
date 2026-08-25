@@ -54,7 +54,8 @@ function collectionEvents(count = activeArgs.eventCount): AttendanceCollectionEv
               'Arquitetura Angular com Signals',
               'Observabilidade para APIs GraphQL',
               'Introdução à segurança ofensiva',
-            ])}`,
+            ])
+      }`,
       emoji: faker.helpers.arrayElement(['✅', '🧪', '🧠', '📡']),
       locationDescription: missingLocation ? null : `Sala ${index + 1}`,
     });

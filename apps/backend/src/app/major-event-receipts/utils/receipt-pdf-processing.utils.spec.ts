@@ -25,9 +25,9 @@ describe('receipt PDF processing utils', () => {
   it('preserves the processing result when temporary-directory cleanup fails', async () => {
     const cleanup = jest.spyOn(fs, 'rm').mockRejectedValue(new Error('cleanup unavailable'));
     try {
-      await expect(assertReceiptPdfPageCountWithinLimit(Buffer.from('%PDF-1.7\nnot-a-real-pdf'))).rejects.toBeInstanceOf(
-        ReceiptPdfProcessingError,
-      );
+      await expect(
+        assertReceiptPdfPageCountWithinLimit(Buffer.from('%PDF-1.7\nnot-a-real-pdf')),
+      ).rejects.toBeInstanceOf(ReceiptPdfProcessingError);
     } finally {
       cleanup.mockRestore();
     }
