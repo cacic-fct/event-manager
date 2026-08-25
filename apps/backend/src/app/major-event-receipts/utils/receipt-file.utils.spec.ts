@@ -116,6 +116,7 @@ describe('receipt-file utils', () => {
     assertValidReceiptUpload(file);
 
     expect(file.mimetype).toBe('image/heif');
+    expect(extensionForMimeType('image/heif')).toBe('heif');
   });
 
   it('builds receipt object keys preferring known mime extensions', () => {

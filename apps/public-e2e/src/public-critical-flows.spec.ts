@@ -3,8 +3,11 @@ import { expect, test } from './support/e2e-test';
 import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 import {
   createPublicEvent,
+  createPublicEventForm,
+  createPublicEventFormLink,
   createPublicEventGroup,
   createPublicMajorEvent,
+  publicFixtureDateFromNow,
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts/types';
 
@@ -62,15 +65,55 @@ test('opens standard major-event subscription from the public list and subscribe
     .locator('mat-list-item')
     .filter({ has: page.getByText('Oficina de APIs', { exact: true }) })
     .click();
-  await page.getByRole('button', { name: 'Inscrever-se' }).click();
-  await expect(page.getByRole('heading', { name: 'Confirmar inscrição' })).toBeVisible();
-  await page.getByRole('dialog', { name: 'Confirmar inscrição' }).getByRole('button', { name: 'Inscrever-se' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
+  const preferencesStep = page.getByRole('tab', { name: /Preferências da atividade/i });
+  await expect(preferencesStep).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('radio', { name: 'M' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+
+  await page.getByRole('radio', { name: 'Sim' }).click();
+  await page.locator('app-subscription-form-flow').getByRole('button', { name: 'Voltar' }).click();
+  await expect(page.getByRole('radio', { name: 'M' })).toBeChecked();
+  await preferencesStep.click();
+  await expect(page.getByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.getByRole('radio', { name: 'Sim' })).toBeChecked();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Contrato de concessão de licença' })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença/i }).click();
+  await page.getByRole('button', { name: 'Revisar inscrição' }).click();
+
+  const reviewDialog = page.getByRole('dialog', { name: 'Revise sua inscrição' });
+  await expect(reviewDialog.getByText('Tamanho da camiseta')).toBeVisible();
+  await expect(reviewDialog.getByText('Precisa de opção vegetariana?')).toBeVisible();
+  await expect(reviewDialog.getByRole('radio')).toHaveCount(0);
+  await reviewDialog.getByRole('button', { name: 'Confirmar inscrição' }).click();
 
   await expect(page.getByText('Inscrição realizada.')).toBeVisible();
   expect(api.majorEventUpserts()).toEqual([
     {
       majorEventId: 'standard-major',
       selectedEventIds: ['standard-api', 'standard-practice'],
+      formResponses: [
+        {
+          formId: 'standard-shirt-form',
+          linkId: 'standard-shirt-link',
+          targetType: 'MAJOR_EVENT',
+          majorEventId: 'standard-major',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+        {
+          formId: 'standard-meal-form',
+          linkId: 'standard-meal-link',
+          targetType: 'EVENT',
+          eventId: 'standard-api',
+          answersJson: JSON.stringify([{ elementId: 'meal', value: 'yes' }]),
+        },
+      ],
+      imageLicenseAgreementAccepted: true,
     },
   ]);
 });
@@ -130,7 +173,12 @@ async function mockStaticExternalAssets(page: Page): Promise<void> {
 async function mockPublicCriticalFlowApi(page: Page): Promise<{
   standaloneSubscribeCalls: () => number;
   standaloneUnsubscribeCalls: () => number;
-  majorEventUpserts: () => Array<{ majorEventId: string; selectedEventIds: string[] }>;
+  majorEventUpserts: () => Array<{
+    majorEventId: string;
+    selectedEventIds: string[];
+    formResponses: unknown[];
+    imageLicenseAgreementAccepted: boolean;
+  }>;
   rankedMajorEventUpserts: () => Array<{
     majorEventId: string;
     selectedEventIds: string[];
@@ -142,7 +190,12 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
   let standaloneSubscribed = false;
   let standaloneSubscribeCalls = 0;
   let standaloneUnsubscribeCalls = 0;
-  const majorEventUpserts: Array<{ majorEventId: string; selectedEventIds: string[] }> = [];
+  const majorEventUpserts: Array<{
+    majorEventId: string;
+    selectedEventIds: string[];
+    formResponses: unknown[];
+    imageLicenseAgreementAccepted: boolean;
+  }> = [];
   const rankedMajorEventUpserts: Array<{
     majorEventId: string;
     selectedEventIds: string[];
@@ -212,7 +265,12 @@ async function fulfillGraphql(
     setStandaloneSubscribed: (nextValue: boolean) => void;
     incrementStandaloneSubscribeCalls: () => void;
     incrementStandaloneUnsubscribeCalls: () => void;
-    majorEventUpserts: Array<{ majorEventId: string; selectedEventIds: string[] }>;
+    majorEventUpserts: Array<{
+      majorEventId: string;
+      selectedEventIds: string[];
+      formResponses: unknown[];
+      imageLicenseAgreementAccepted: boolean;
+    }>;
     rankedMajorEventUpserts: Array<{
       majorEventId: string;
       selectedEventIds: string[];
@@ -326,9 +384,22 @@ async function fulfillGraphql(
   }
 
   if (query.includes('query CurrentUserEventForms')) {
+    const targetType = stringVariable(variables, 'targetType');
+    const targetId = targetType === 'EVENT' ? stringVariable(variables, 'eventId') : stringVariable(variables, 'majorEventId');
     await fulfillGraphqlData(route, {
-      currentUserEventForms: [],
+      currentUserEventForms: standardSubscriptionFormsFixture().filter((form) =>
+        form.links.some(
+          (link) =>
+            link.targetType === targetType &&
+            (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
+        ),
+      ),
     });
+    return;
+  }
+
+  if (query.includes('query CurrentUserEventFormResponse')) {
+    await fulfillGraphqlData(route, { currentUserEventFormResponse: null });
     return;
   }
 
@@ -358,6 +429,8 @@ async function fulfillGraphql(
     state.majorEventUpserts.push({
       majorEventId: stringVariable(variables, 'majorEventId'),
       selectedEventIds,
+      formResponses: Array.isArray(variables['formResponses']) ? variables['formResponses'] : [],
+      imageLicenseAgreementAccepted: variables['imageLicenseAgreementAccepted'] === true,
     });
     await fulfillGraphqlData(route, {
       upsertCurrentUserMajorEventSubscription: majorEventSubscriptionFixture(
@@ -472,7 +545,57 @@ function standardMajorEventSubscriptionFixture(): PublicMajorEvent {
     maxCoursesPerAttendee: 2,
     maxLecturesPerAttendee: 1,
     maxUncategorizedPerAttendee: 1,
+    requiresImageLicenseAgreement: true,
   });
+}
+
+function standardSubscriptionFormsFixture() {
+  return [
+    createPublicEventForm({
+      id: 'standard-shirt-form',
+      name: 'Camiseta do evento',
+      links: [
+        createPublicEventFormLink({
+          id: 'standard-shirt-link',
+          formId: 'standard-shirt-form',
+          targetType: 'MAJOR_EVENT',
+          eventId: null,
+          majorEventId: 'standard-major',
+          displayOrder: 0,
+        }),
+      ],
+      createdAt: publicFixtureDateFromNow(-10),
+      updatedAt: publicFixtureDateFromNow(-1),
+    }),
+    createPublicEventForm({
+      id: 'standard-meal-form',
+      name: 'Preferências da atividade',
+      elementsJson: JSON.stringify([
+        {
+          id: 'meal',
+          type: 'singleChoice',
+          title: 'Precisa de opção vegetariana?',
+          required: true,
+          options: [
+            { id: 'yes', label: 'Sim' },
+            { id: 'no', label: 'Não' },
+          ],
+        },
+      ]),
+      links: [
+        createPublicEventFormLink({
+          id: 'standard-meal-link',
+          formId: 'standard-meal-form',
+          targetType: 'EVENT',
+          eventId: 'standard-api',
+          majorEventId: null,
+          displayOrder: 1,
+        }),
+      ],
+      createdAt: publicFixtureDateFromNow(-10),
+      updatedAt: publicFixtureDateFromNow(-1),
+    }),
+  ];
 }
 
 function rankedMajorEventSubscriptionFixture(): PublicMajorEvent {

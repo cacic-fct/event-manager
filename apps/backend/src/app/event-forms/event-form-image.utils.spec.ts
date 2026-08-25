@@ -1,6 +1,5 @@
 import sharp from 'sharp';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { ANIMATED_GIF_FIXTURE } from '../../test/fixtures/animated-gif.fixture';
 import {
   EVENT_FORM_IMAGE_FORMAT_ERROR,
   MAX_EVENT_FORM_IMAGE_FILE_SIZE_BYTES,
@@ -59,7 +58,7 @@ describe('event form image conversion', () => {
   });
 
   it('rejects animated images', async () => {
-    const buffer = readFileSync(join(process.cwd(), '../../node_modules/storybook/assets/docs/addon-backgrounds.gif'));
+    const buffer = ANIMATED_GIF_FIXTURE;
     await expect(
       convertEventFormImageToAvif({ buffer, mimetype: 'image/gif', originalname: 'animated.gif', size: buffer.length }),
     ).rejects.toThrow('Imagens animadas ou com múltiplas páginas não são aceitas.');

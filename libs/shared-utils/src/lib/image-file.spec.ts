@@ -31,6 +31,7 @@ describe('image file utilities', () => {
     '<svg><image href="file:///etc/passwd"/></svg>',
     '<svg><style>rect { fill: url(https://example.com/paint.svg) }</style></svg>',
     '<svg><style>@import "https://example.com/style.css";</style></svg>',
+    "<svg><style>@import url('https://example.com/style.css');</style></svg>",
     '<svg><style>@import url(https://example.com/style.css);</style></svg>',
     '<svg><use xlink:href="data:image/svg+xml;base64,PHN2Zy8+"/></svg>',
     '<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><svg>&xxe;</svg>',
@@ -42,7 +43,7 @@ describe('image file utilities', () => {
     expect(() =>
       assertSafeSvg(
         Buffer.from(
-          '<svg><defs><linearGradient id="paint"/></defs><rect fill="url(#paint)"/><use href="#paint"/></svg>',
+          '<svg><style>rect { fill: url(#paint); }</style><defs><linearGradient id="paint"/></defs><rect fill="url(#paint)"/><use href="#paint"/></svg>',
         ),
       ),
     ).not.toThrow();

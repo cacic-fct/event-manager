@@ -304,9 +304,12 @@ export class FormsService {
           duration: 4500,
         });
       } else if (formId) {
-        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
-        this.patchSelectedForm(saved);
-        await this.loadForms();
+        const saveInput = this.toInput();
+        const saved = await firstValueFrom(this.api.saveForm(saveInput));
+        if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
+          this.patchSelectedForm(saved);
+          await this.loadForms();
+        }
         this.snackbar.open('Imagem adicionada ao formulário.', 'Fechar', { duration: 3000 });
       } else {
         this.snackbar.open('Imagem pronta. Salve o formulário para preservá-la.', 'Fechar', { duration: 4000 });
@@ -322,6 +325,7 @@ export class FormsService {
     if (this.uploadingImageTarget() !== null) return;
     const formId = this.selectedForm()?.id;
     const target = elementId ?? 'form';
+    let saveInput: EventFormInput | null = null;
     this.uploadingImageTarget.set(target);
     try {
       if (elementId) {
@@ -339,9 +343,12 @@ export class FormsService {
         this.descriptionImages.update((images) => images.filter((item) => item.id !== image.id));
       }
       if (formId && !this.selectedFormPublished()) {
-        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
-        this.patchSelectedForm(saved);
-        await this.loadForms();
+        saveInput = this.toInput();
+        const saved = await firstValueFrom(this.api.saveForm(saveInput));
+        if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
+          this.patchSelectedForm(saved);
+          await this.loadForms();
+        }
         this.snackbar.open('Imagem removida.', 'Fechar', { duration: 2500 });
       } else {
         this.snackbar.open(
@@ -353,7 +360,7 @@ export class FormsService {
         );
       }
     } catch (error) {
-      if (formId) {
+      if (formId && saveInput && JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
         const restored = await firstValueFrom(this.api.getForm(formId));
         this.patchSelectedForm(restored);
       }

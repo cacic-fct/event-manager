@@ -24,23 +24,40 @@ import { EMPTY, catchError, filter, finalize, forkJoin, map, of, switchMap } fro
 import { EmojiService } from '../../../shared/emoji.service';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
-import {
-  ConfirmSubscriptionDialog,
-  type ConfirmSubscriptionDialogData,
-  type ConfirmSubscriptionDialogResult,
-  type SubscriptionFormAnswer,
-  type SubscriptionFormContext,
-} from './confirm-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { SubscriptionEventList } from './event-list';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
+import { SubscriptionFormFlow } from './subscription-form-flow';
+import {
+  createSubscriptionFlowDraft,
+  orderSubscriptionFlowSources,
+  subscriptionFormKey,
+  subscriptionFlowSourceKey,
+  toSubscriptionFormAnswers,
+  type SubscriptionFlowDraft,
+  type SubscriptionFlowSourceDescriptor,
+  type SubscriptionFormAnswer,
+  type SubscriptionFormContext,
+} from './subscription-flow.models';
+import {
+  SubscriptionReviewDialog,
+  type SubscriptionReviewDialogData,
+  type SubscriptionReviewDialogResult,
+} from './subscription-review-dialog';
 
 type SubscriptionPageState =
   | { status: 'loading' }
   | { status: 'ready'; data: PublicMajorEventSubscriptionPage }
   | { status: 'error'; message: string };
+
+interface SubscriptionFlowSelection {
+  data: PublicMajorEventSubscriptionPage;
+  selectedEventIds: string[];
+  selectedEvents: PublicEvent[];
+  paymentTier: string | null;
+}
 
 @Component({
   selector: 'app-subscription',
@@ -58,6 +75,7 @@ type SubscriptionPageState =
     RouterLink,
     RouterOutlet,
     SubscriptionEventList,
+    SubscriptionFormFlow,
   ],
   templateUrl: './subscription.html',
   styleUrl: './subscription.css',
@@ -88,6 +106,9 @@ export class MajorEventSubscription {
   });
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly selectedPriceTierName = signal<string | null>(null);
+  readonly flowPhase = signal<'selection' | 'loading-forms' | 'forms'>('selection');
+  readonly subscriptionForms = signal<SubscriptionFormContext[]>([]);
+  readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
   readonly needsImageLicenseAgreement = computed(() => {
     const data = this.data();
     const subscription = this.currentUserSubscription();
@@ -99,12 +120,13 @@ export class MajorEventSubscription {
   });
 
   private readonly initializedMajorEventId = signal<string | null>(null);
+  private readonly agreementFlowAutoStartAttempted = signal(false);
+  private readonly subscriptionFlowSelection = signal<SubscriptionFlowSelection | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
   private readonly imageLicenseAgreementQueryRequested = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
     { initialValue: false },
   );
-  private readonly imageLicenseAgreementDialogOpened = signal(false);
   private readonly navigationTick = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -204,8 +226,12 @@ export class MajorEventSubscription {
       this.pageState.set({ status: 'loading' });
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
-      this.imageLicenseAgreementDialogOpened.set(false);
       this.selectedPriceTierName.set(null);
+      this.flowPhase.set('selection');
+      this.subscriptionForms.set([]);
+      this.subscriptionFlowDraft.set(null);
+      this.subscriptionFlowSelection.set(null);
+      this.agreementFlowAutoStartAttempted.set(false);
       this.subscriptionCooldown.clear();
 
       const initialSubscription = this.api
@@ -312,20 +338,19 @@ export class MajorEventSubscription {
     effect(() => {
       if (
         !this.imageLicenseAgreementQueryRequested() ||
-        this.imageLicenseAgreementDialogOpened() ||
-        this.childRouteActive() ||
-        !this.data() ||
-        !this.isAuthenticated() ||
-        this.currentUserSubscription() === undefined ||
         !this.needsImageLicenseAgreement() ||
-        this.selectedEvents().length === 0
+        !this.data() ||
+        this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
+        this.flowPhase() !== 'selection' ||
+        this.agreementFlowAutoStartAttempted()
       ) {
         return;
       }
 
-      this.imageLicenseAgreementDialogOpened.set(true);
-      this.submit();
+      this.agreementFlowAutoStartAttempted.set(true);
+      this.startSubscriptionFlow();
     });
+
   }
 
   dateLine(): string {
@@ -342,19 +367,19 @@ export class MajorEventSubscription {
     if (subscription?.subscriptionStatus === 'CONFIRMED') {
       return 'check';
     }
-    return subscription ? 'edit' : 'event_available';
+    return subscription ? 'edit' : 'arrow_forward';
   }
 
   submitButtonLabel(): string {
     if (this.needsImageLicenseAgreement()) {
-      return 'Aceitar contrato';
+      return 'Continuar para o contrato';
     }
 
     const subscription = this.currentUserSubscription();
     if (subscription?.subscriptionStatus === 'CONFIRMED') {
       return 'Inscrito';
     }
-    return subscription ? 'Atualizar inscrição' : 'Inscrever-se';
+    return 'Continuar';
   }
 
   toggleEvent(event: PublicEvent): void {
@@ -388,9 +413,18 @@ export class MajorEventSubscription {
     });
   }
 
-  submit(): void {
+  startSubscriptionFlow(): void {
     const data = this.data();
-    if (!data || this.selectedEvents().length === 0 || this.isSubmitting()) {
+    if (
+      !data ||
+      this.currentUserSubscription() === undefined ||
+      this.isSubmitting() ||
+      this.flowPhase() === 'loading-forms'
+    ) {
+      return;
+    }
+
+    if (this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
         duration: 3000,
       });
@@ -411,52 +445,55 @@ export class MajorEventSubscription {
     }
 
     const selectedEvents = this.selectedEvents();
-    const selectedEventIds = [...this.effectiveSelectedEventIds()];
+    this.subscriptionFlowSelection.set({
+      data,
+      selectedEventIds: [...this.effectiveSelectedEventIds()],
+      selectedEvents,
+      paymentTier: selectedPaymentTier ?? null,
+    });
+    this.flowPhase.set('loading-forms');
 
-    this.loadSubscriptionForms(data, selectedEvents)
+    this.loadSubscriptionForms(this.subscriptionFlowSources(data, selectedEvents))
       .pipe(
         catchError(() => {
           this.snackBar.open('Não foi possível carregar os formulários da inscrição.', 'OK', {
             duration: 5000,
           });
+          this.flowPhase.set('selection');
           return EMPTY;
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((forms) => {
-        const dialogRef = this.dialog.open<
-          ConfirmSubscriptionDialog,
-          ConfirmSubscriptionDialogData,
-          ConfirmSubscriptionDialogResult
-        >(ConfirmSubscriptionDialog, {
-          data: {
-            majorEvent: data.majorEvent,
-            events: selectedEvents,
-            forms,
-            imageLicenseAgreement: {
-              required: Boolean(data.majorEvent.requiresImageLicenseAgreement),
-              accepted: this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
-            },
-          },
-          width: 'min(760px, 96vw)',
-        });
+        const draft = createSubscriptionFlowDraft(
+          forms,
+          this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
+          this.subscriptionFlowDraft(),
+        );
+        this.subscriptionForms.set(forms);
+        this.subscriptionFlowDraft.set(draft);
 
-        dialogRef
-          .afterClosed()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((result) => {
-            if (result?.confirmed) {
-              this.confirmSubscription(
-                data,
-                selectedEventIds,
-                selectedEvents,
-                selectedPaymentTier ?? null,
-                result.answers,
-                result.imageLicenseAgreementAccepted,
-              );
-            }
-          });
+        if (forms.length === 0 && !data.majorEvent.requiresImageLicenseAgreement) {
+          this.flowPhase.set('selection');
+          this.openReviewDialog(draft);
+          return;
+        }
+
+        this.flowPhase.set('forms');
       });
+  }
+
+  returnToSelection(draft: SubscriptionFlowDraft): void {
+    this.subscriptionFlowDraft.set(draft);
+    this.flowPhase.set('selection');
+  }
+
+  reviewSubscription(draft: SubscriptionFlowDraft): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+    this.subscriptionFlowDraft.set(draft);
+    this.openReviewDialog(draft);
   }
 
   selectPriceTier(tierName: string): void {
@@ -471,6 +508,10 @@ export class MajorEventSubscription {
     formAnswers: SubscriptionFormAnswer[],
     imageLicenseAgreementAccepted: boolean,
   ): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+
     if (this.subscriptionCooldownSeconds() > 0) {
       this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
         duration: 3000,
@@ -495,6 +536,9 @@ export class MajorEventSubscription {
         next: (subscription) => {
           const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
+          this.flowPhase.set('selection');
+          this.subscriptionForms.set([]);
+          this.subscriptionFlowDraft.set(null);
           this.analytics.trackMajorEventSubscription({
             action,
             majorEvent: data.majorEvent,
@@ -528,46 +572,63 @@ export class MajorEventSubscription {
       });
   }
 
-  private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage, selectedEvents: PublicEvent[]) {
-    const targets = [
+  private subscriptionFlowSources(
+    data: PublicMajorEventSubscriptionPage,
+    selectedEvents: readonly PublicEvent[],
+  ): SubscriptionFlowSourceDescriptor[] {
+    return orderSubscriptionFlowSources([
       {
+        key: `major-event:${data.majorEvent.id}`,
+        kind: 'major-event-forms',
+        order: 0,
         targetType: 'MAJOR_EVENT' as const,
         targetId: data.majorEvent.id,
         targetName: data.majorEvent.name,
       },
-      ...selectedEvents.map((event) => ({
+      ...selectedEvents.map((event, index) => ({
+        key: `event:${event.id}`,
+        kind: 'event-forms',
+        order: index + 1,
         targetType: 'EVENT' as const,
         targetId: event.id,
         targetName: event.name,
       })),
-    ];
+    ]);
+  }
 
+  private loadSubscriptionForms(sources: readonly SubscriptionFlowSourceDescriptor[]) {
     return forkJoin(
-      targets.map((target) =>
+      sources.map((source) =>
         this.formsApi
           .listCurrentUserForms({
-            targetType: target.targetType,
-            eventId: target.targetType === 'EVENT' ? target.targetId : null,
-            majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
+            targetType: source.targetType,
+            eventId: source.targetType === 'EVENT' ? source.targetId : null,
+            majorEventId: source.targetType === 'MAJOR_EVENT' ? source.targetId : null,
             subscriptionFlowOnly: true,
-            selectedPriceTierId: target.targetType === 'MAJOR_EVENT' ? (this.selectedPriceTier()?.id ?? null) : null,
+            selectedPriceTierId: source.targetType === 'MAJOR_EVENT' ? (this.selectedPriceTier()?.id ?? null) : null,
           })
-          .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
+          .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, source)))),
       ),
     ).pipe(
       map((groups) => {
         const seen = new Set<string>();
+        const sourceOrder = new Map(sources.map((source) => [subscriptionFlowSourceKey(source), source.order]));
         return groups
           .flat()
           .filter((form) => {
-            const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
+            const key = subscriptionFormKey(form);
             if (seen.has(key)) {
               return false;
             }
             seen.add(key);
             return true;
           })
-          .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
+          .sort(
+            (left, right) =>
+              (sourceOrder.get(subscriptionFlowSourceKey(left)) ?? Number.MAX_SAFE_INTEGER) -
+                (sourceOrder.get(subscriptionFlowSourceKey(right)) ?? Number.MAX_SAFE_INTEGER) ||
+              this.formDisplayOrder(left) - this.formDisplayOrder(right),
+          );
       }),
       switchMap((forms) =>
         forms.length > 0
@@ -579,7 +640,7 @@ export class MajorEventSubscription {
 
   private toSubscriptionFormContexts(
     form: PublicEventForm,
-    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
+    target: SubscriptionFlowSourceDescriptor<EventFormTargetType>,
   ): SubscriptionFormContext[] {
     const links = form.links.filter((item) => this.isEligibleSubscriptionFlowLink(item, target));
     const matchingLinks = links.length > 0 ? links : [null];
@@ -618,6 +679,51 @@ export class MajorEventSubscription {
 
   private formDisplayOrder(form: SubscriptionFormContext): number {
     return form.form.links.find((link) => link.id === form.linkId)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  private openReviewDialog(draft: SubscriptionFlowDraft): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+
+    const selection = this.subscriptionFlowSelection();
+    if (!selection) {
+      return;
+    }
+
+    const { data, selectedEvents, selectedEventIds, paymentTier } = selection;
+    const dialogRef = this.dialog.open<
+      SubscriptionReviewDialog,
+      SubscriptionReviewDialogData,
+      SubscriptionReviewDialogResult
+    >(SubscriptionReviewDialog, {
+      data: {
+        majorEvent: data.majorEvent,
+        events: selectedEvents,
+        forms: this.subscriptionForms(),
+        draft,
+        paymentTier,
+        requireImageLicenseAgreement: Boolean(data.majorEvent.requiresImageLicenseAgreement),
+      },
+      width: 'min(680px, 96vw)',
+      maxHeight: '90vh',
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result?.confirmed) {
+          this.confirmSubscription(
+            data,
+            selectedEventIds,
+            selectedEvents,
+            paymentTier,
+            toSubscriptionFormAnswers(this.subscriptionForms(), draft),
+            draft.imageLicenseAgreementAccepted,
+          );
+        }
+      });
   }
 
   private isEligibleSubscriptionFlowLink(

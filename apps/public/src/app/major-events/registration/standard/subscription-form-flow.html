@@ -1,0 +1,93 @@
+<section class="form-flow" aria-labelledby="subscription-form-flow-title">
+  <header class="flow-header">
+    <h2 id="subscription-form-flow-title">Complete os dados da inscrição</h2>
+    <p>Responda uma etapa por vez. Você pode voltar sem perder as respostas preenchidas.</p>
+  </header>
+
+  <mat-stepper
+    [linear]="true"
+    [orientation]="orientation()"
+    [selectedIndex]="activeStepIndex()"
+    (selectionChange)="onStepperSelectionChange($event)">
+    @for (formContext of forms(); track formKey(formContext)) {
+    <mat-step [label]="formContext.form.name" [completed]="isFormComplete(formContext)">
+      <article class="form-step">
+        <header>
+          <p class="target-name">{{ formContext.targetName }}</p>
+          <h3>{{ formContext.form.name }}</h3>
+        </header>
+
+        @if (formContext.form.description || formContext.form.descriptionImages.length) {
+        <lib-event-form-description-content
+          class="form-description"
+          [text]="formContext.form.description ?? undefined"
+          [images]="formContext.form.descriptionImages" />
+        }
+
+        <lib-event-form-renderer
+          [elements]="formElements(formContext.form)"
+          [initialAnswers]="answersFor(formContext)"
+          [readOnly]="formContext.submitted && !formContext.editable"
+          [showSubmit]="false"
+          (answersChange)="updateFormAnswers(formContext, $event)" />
+
+        @if (formContext.submitted && !formContext.editable) {
+        <p class="support-message">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          Resposta já enviada. Este formulário não permite edição após o envio.
+        </p>
+        } @if (validationAttemptedStepIndex() === $index && hasMissingRequired(formContext)) {
+        <p class="validation" role="alert">Responda as perguntas obrigatórias para continuar.</p>
+        }
+      </article>
+    </mat-step>
+    }
+
+    @if (requireImageLicenseAgreement()) {
+    <mat-step label="Contrato de concessão de licença" [completed]="agreementAccepted()">
+      <article class="agreement-step" aria-labelledby="license-agreement-title">
+        <header>
+          <mat-icon aria-hidden="true">verified_user</mat-icon>
+          <div>
+            <h3 id="license-agreement-title">Contrato de concessão de licença</h3>
+            <p>Leia o contrato antes de confirmar a sua concordância.</p>
+          </div>
+        </header>
+
+        <p>
+          O contrato define as condições de uso de imagem pelo CACiC durante as atividades do grande evento.
+        </p>
+        <a
+          mat-stroked-button
+          href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+          target="_blank"
+          rel="noopener noreferrer">
+          <mat-icon>open_in_new</mat-icon>
+          Ler contrato completo
+        </a>
+        <mat-checkbox
+          [checked]="agreementAccepted()"
+          (change)="acceptAgreement($event.checked)">
+          Li e concordo com o contrato de concessão de licença de uso de imagem do CACiC.
+        </mat-checkbox>
+        @if (validationAttemptedStepIndex() === activeStepIndex() && !agreementAccepted()) {
+        <p class="validation" role="alert">É necessário concordar com o contrato para revisar a inscrição.</p>
+        }
+      </article>
+    </mat-step>
+    }
+  </mat-stepper>
+
+  <mat-toolbar class="flow-actions" aria-label="Ações da etapa">
+    <button mat-button type="button" (click)="previous()">
+      <mat-icon>arrow_back</mat-icon>
+      {{ activeStepIndex() === 0 ? 'Alterar eventos' : 'Voltar' }}
+    </button>
+    <span class="action-spacer"></span>
+    <span class="step-counter" aria-live="polite">Etapa {{ activeStepIndex() + 1 }} de {{ totalSteps() }}</span>
+    <button mat-flat-button type="button" (click)="next()">
+      {{ isLastStep() ? 'Revisar inscrição' : 'Continuar' }}
+      <mat-icon>{{ isLastStep() ? 'fact_check' : 'arrow_forward' }}</mat-icon>
+    </button>
+  </mat-toolbar>
+</section>

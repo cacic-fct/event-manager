@@ -33,11 +33,11 @@ describe('EventsResolver', () => {
     const frozenResources = {
       assertEventCreateTargetsMutable: jest.fn(),
     };
-    const authorizationPolicy = {
-      assertPermissions: jest.fn(),
-    };
     const auditLog = {
       record: jest.fn().mockRejectedValue(new Error('audit unavailable')),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn().mockResolvedValue(undefined),
     };
     const resolver = new EventsResolver(
       prisma as never,

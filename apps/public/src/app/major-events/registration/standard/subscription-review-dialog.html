@@ -1,0 +1,74 @@
+<h2 mat-dialog-title>Revise sua inscrição</h2>
+
+<mat-dialog-content>
+  <header class="review-header">
+    <div class="emoji-frame">
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)" [alt]="data.majorEvent.emoji" />
+    </div>
+    <div>
+      <p>Grande evento</p>
+      <h3>{{ data.majorEvent.name }}</h3>
+    </div>
+  </header>
+
+  @if (data.paymentTier) {
+  <section class="review-line" aria-label="Preço selecionado">
+    <mat-icon aria-hidden="true">payments</mat-icon>
+    <span>
+      <small>Preço selecionado</small>
+      <strong>{{ data.paymentTier }}</strong>
+    </span>
+  </section>
+  }
+
+  <section class="review-section" aria-labelledby="selected-events-title">
+    <h3 id="selected-events-title">Eventos selecionados</h3>
+    <ul class="event-list">
+      @for (event of data.events; track event.id) {
+      <li>
+        <img class="event-emoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
+        <span>
+          <strong>{{ event.name }}</strong>
+          <small>{{ event.startDate | date: "EEE, dd/MM '·' HH:mm" }}–{{ event.endDate | date: 'HH:mm' }}</small>
+        </span>
+      </li>
+      }
+    </ul>
+  </section>
+
+  @if (data.forms.length > 0) {
+  <section class="review-section" aria-labelledby="answers-title">
+    <h3 id="answers-title">Respostas</h3>
+    @for (formContext of data.forms; track formContext.form.id + ':' + formContext.linkId + ':' + formContext.targetId)
+    {
+    <article class="answer-group">
+      <header>
+        <small>{{ formContext.targetName }}</small>
+        <h4>{{ formContext.form.name }}</h4>
+      </header>
+      <dl>
+        @for (row of answerRows(formContext); track row.elementId) {
+        <div>
+          <dt>{{ row.question }}</dt>
+          <dd>{{ row.answer }}</dd>
+        </div>
+        }
+      </dl>
+    </article>
+    }
+  </section>
+  } @if (data.requireImageLicenseAgreement) {
+  <section class="review-line agreement-confirmed" aria-label="Contrato aceito">
+    <mat-icon aria-hidden="true">verified</mat-icon>
+    <span>
+      <small>Contrato de concessão de licença</small>
+      <strong>Aceito</strong>
+    </span>
+  </section>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Voltar e editar</button>
+  <button mat-flat-button type="button" (click)="confirm()">Confirmar inscrição</button>
+</mat-dialog-actions>

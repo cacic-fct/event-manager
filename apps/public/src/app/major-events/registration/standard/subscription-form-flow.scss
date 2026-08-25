@@ -1,0 +1,143 @@
+app-subscription-form-flow {
+  display: block;
+
+  .form-flow {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .flow-header {
+    max-width: 72ch;
+  }
+
+  .flow-header h2,
+  .flow-header p,
+  .form-step h3,
+  .form-step p,
+  .agreement-step h3,
+  .agreement-step p {
+    margin: 0;
+  }
+
+  .flow-header h2 {
+    font: var(--mat-sys-headline-small);
+  }
+
+  .flow-header p,
+  .form-description,
+  .agreement-step header p,
+  .agreement-step > p {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .flow-header p {
+    margin-top: 6px;
+  }
+
+  .form-step,
+  .agreement-step {
+    display: grid;
+    gap: 20px;
+    margin: 8px auto 0;
+    max-width: 760px;
+    padding: 24px 8px 8px;
+  }
+
+  .form-step h3,
+  .agreement-step h3 {
+    font: var(--mat-sys-title-large);
+  }
+
+  .target-name {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-large);
+    margin-bottom: 4px;
+  }
+
+  .support-message {
+    align-items: center;
+    color: var(--mat-sys-on-surface-variant);
+    display: flex;
+    font: var(--mat-sys-body-small);
+    gap: 8px;
+  }
+
+  .support-message mat-icon {
+    flex: 0 0 auto;
+  }
+
+  .agreement-step header {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+  }
+
+  .agreement-step header > mat-icon {
+    color: var(--mat-sys-primary);
+    margin-top: 2px;
+  }
+
+  .agreement-step a {
+    justify-self: start;
+  }
+
+  .validation {
+    color: var(--mat-sys-error);
+    font: var(--mat-sys-body-small);
+  }
+
+  .flow-actions {
+    border-top: 1px solid var(--mat-sys-outline-variant);
+    gap: 12px;
+    margin: 12px calc(50% - 50vw) -24px;
+    padding-inline: max(16px, calc((100vw - 980px) / 2 + 16px));
+  }
+
+  .action-spacer {
+    flex: 1 1 auto;
+  }
+
+  .step-counter {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-large);
+  }
+
+  @media (max-width: 720px) {
+    .form-flow {
+      gap: 12px;
+    }
+
+    .flow-header h2 {
+      font: var(--mat-sys-title-large);
+    }
+
+    .form-step,
+    .agreement-step {
+      margin: 0;
+      padding: 16px 0 4px;
+    }
+
+    .mat-vertical-content-container {
+      margin-left: 20px;
+    }
+
+    .mat-vertical-content {
+      padding: 0 8px 16px 16px;
+    }
+
+    .mat-vertical-stepper-header {
+      padding-inline: 8px;
+    }
+
+    .flow-actions {
+      margin-bottom: -16px;
+      min-height: 72px;
+      padding-inline: 8px;
+    }
+
+    .step-counter {
+      display: none;
+    }
+  }
+}
