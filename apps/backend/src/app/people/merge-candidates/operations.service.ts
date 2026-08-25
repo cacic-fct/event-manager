@@ -50,7 +50,7 @@ export class MergeCandidateOperationsService {
     collectNameMatches(people, matches);
 
     if (matches.size === 0) {
-      return 0;
+      return staleResult.count;
     }
 
     const pairKeys = [...matches.keys()];

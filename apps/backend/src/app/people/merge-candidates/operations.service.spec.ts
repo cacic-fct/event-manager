@@ -61,11 +61,11 @@ describe('MergeCandidateOperationsService', () => {
     });
   });
 
-  it('returns zero when a scan finds no matches even if stale candidates were marked', async () => {
+  it('returns stale candidate count when a scan finds no active matches', async () => {
     prisma.mergeCandidate.updateMany.mockResolvedValue({ count: 2 });
     prisma.people.findMany.mockResolvedValue([person({ id: 'person-a', name: 'Ada', email: 'ada@example.com' })]);
 
-    await expect(service.scanMergeCandidates(null)).resolves.toBe(0);
+    await expect(service.scanMergeCandidates(null)).resolves.toBe(2);
     expect(prisma.mergeCandidate.findMany).not.toHaveBeenCalled();
   });
 
