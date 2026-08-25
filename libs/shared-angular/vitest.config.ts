@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@cacic-fct/shared-data-types/sports-metadata': `${workspaceRoot}/libs/shared-data-types/src/lib/sports-metadata.ts`,
+      '@cacic-fct/shared-utils': `${workspaceRoot}/libs/shared-utils/src/index.ts`,
     },
   },
   test: {

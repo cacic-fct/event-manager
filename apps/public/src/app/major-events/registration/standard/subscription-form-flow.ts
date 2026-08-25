@@ -1,6 +1,18 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import type { StepperOrientation, StepperSelectionEvent } from '@angular/cdk/stepper';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal, viewChild, viewChildren } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ViewEncapsulation,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -36,7 +48,8 @@ import {
     MatToolbarModule,
   ],
   templateUrl: './subscription-form-flow.html',
-  styleUrl: './subscription-form-flow.css',
+  styleUrl: './subscription-form-flow.scss',
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SubscriptionFormFlow {

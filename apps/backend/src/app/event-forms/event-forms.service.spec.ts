@@ -70,6 +70,10 @@ describe('EventFormsService', () => {
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as never,
+      {
+        reconcile: jest.fn().mockResolvedValue([]),
+        deleteObjectsBestEffort: jest.fn().mockResolvedValue(undefined),
+      } as never,
     );
     const publication = new EventFormPublicationWorkflowService(
       prisma as unknown as jest.Mocked<PrismaService>,

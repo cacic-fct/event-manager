@@ -74,7 +74,7 @@ test('opens standard major-event subscription from the public list and subscribe
   await page.getByRole('button', { name: 'Continuar' }).click();
 
   await page.getByRole('radio', { name: 'Sim' }).click();
-  await page.getByRole('button', { name: 'Voltar' }).click();
+  await page.locator('app-subscription-form-flow').getByRole('button', { name: 'Voltar' }).click();
   await expect(page.getByRole('radio', { name: 'M' })).toBeChecked();
   await preferencesStep.click();
   await expect(page.getByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();

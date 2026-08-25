@@ -325,6 +325,7 @@ export class FormsService {
     if (this.uploadingImageTarget() !== null) return;
     const formId = this.selectedForm()?.id;
     const target = elementId ?? 'form';
+    let saveInput: EventFormInput | null = null;
     this.uploadingImageTarget.set(target);
     try {
       if (elementId) {
@@ -342,7 +343,7 @@ export class FormsService {
         this.descriptionImages.update((images) => images.filter((item) => item.id !== image.id));
       }
       if (formId && !this.selectedFormPublished()) {
-        const saveInput = this.toInput();
+        saveInput = this.toInput();
         const saved = await firstValueFrom(this.api.saveForm(saveInput));
         if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
           this.patchSelectedForm(saved);
@@ -359,7 +360,7 @@ export class FormsService {
         );
       }
     } catch (error) {
-      if (formId) {
+      if (formId && saveInput && JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
         const restored = await firstValueFrom(this.api.getForm(formId));
         this.patchSelectedForm(restored);
       }

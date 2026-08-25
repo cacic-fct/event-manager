@@ -36,12 +36,15 @@ describe('EventsResolver', () => {
     const auditLog = {
       record: jest.fn().mockRejectedValue(new Error('audit unavailable')),
     };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn().mockResolvedValue(undefined),
+    };
     const resolver = new EventsResolver(
       prisma as never,
       typesenseSearch as never,
       {} as never,
       frozenResources as never,
-      {} as never,
+      authorizationPolicy as never,
       auditLog as never,
     );
 

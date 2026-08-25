@@ -6,7 +6,7 @@ describe('EventFormImagesService references and cleanup', () => {
     prisma.eventFormImage.findMany.mockResolvedValue([
       { id: 'image-1', formId: 'form-1', createdById: 'user-1', objectKey: 'image-1.avif' },
     ]);
-    const tx = { eventFormImage: prisma.eventFormImage };
+    const tx = { eventFormImage: prisma.eventFormImage, eventFormDraft: prisma.eventFormDraft };
 
     await expect(
       service.reconcile(
@@ -37,9 +37,9 @@ describe('EventFormImagesService references and cleanup', () => {
       { id: 'pending', formId: null, createdById: 'user-2', objectKey: 'pending.avif' },
     ]);
 
-    await expect(service.reconcile({ eventFormImage: prisma.eventFormImage } as never, 'form-1', [{ id: 'foreign' }], [], 'user-1'))
+    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'foreign' }], [], 'user-1'))
       .rejects.toThrow('A referência de imagem do formulário é inválida.');
-    await expect(service.reconcile({ eventFormImage: prisma.eventFormImage } as never, 'form-1', [{ id: 'pending' }], [], 'user-1'))
+    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'pending' }], [], 'user-1'))
       .rejects.toThrow('A referência de imagem do formulário é inválida.');
   });
 
@@ -47,13 +47,13 @@ describe('EventFormImagesService references and cleanup', () => {
     const { service, prisma } = createHarness();
     prisma.eventFormImage.findMany.mockResolvedValue([]);
 
-    await expect(service.reconcile({ eventFormImage: prisma.eventFormImage } as never, 'form-1', [{ id: 'expired' }], [], 'user-1'))
+    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'expired' }], [], 'user-1'))
       .rejects.toThrow('Uma imagem expirou e precisa ser enviada novamente.');
   });
 
   it('rejects duplicate and excessive description references', async () => {
     const { service, prisma } = createHarness();
-    const tx = { eventFormImage: prisma.eventFormImage } as never;
+    const tx = transaction(prisma) as never;
 
     await expect(service.reconcile(tx, 'form-1', [{ id: 'same' }, { id: 'same' }], [], 'user-1'))
       .rejects.toThrow('A mesma imagem não pode ser repetida');
@@ -76,6 +76,25 @@ describe('EventFormImagesService references and cleanup', () => {
         'user-1',
       ),
     ).rejects.toThrow('Um formulário pode incluir no máximo 80 imagens.');
+  });
+
+  it('preserves images referenced by an active draft during reconciliation', async () => {
+    const { service, prisma } = createHarness();
+    prisma.eventFormImage.findMany.mockResolvedValue([
+      { id: 'draft-image', formId: 'form-1', createdById: 'user-1', objectKey: 'draft-image.avif' },
+      { id: 'removed-image', formId: 'form-1', createdById: 'user-1', objectKey: 'removed-image.avif' },
+    ]);
+    prisma.eventFormDraft.findMany.mockResolvedValue([
+      { payload: { descriptionImagesJson: JSON.stringify([{ id: 'draft-image' }]), elementsJson: '[]' } },
+    ]);
+
+    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [], [], 'user-1')).resolves.toEqual([
+      'removed-image.avif',
+    ]);
+
+    expect(prisma.eventFormImage.deleteMany).toHaveBeenCalledWith({
+      where: { formId: 'form-1', id: { in: ['removed-image'] } },
+    });
   });
 
   it('preserves assets used by the live form or an active draft and removes abandoned assets', async () => {
@@ -133,7 +152,7 @@ function createHarness() {
       deleteMany: jest.fn(),
     },
     eventForm: { findMany: jest.fn() },
-    eventFormDraft: { findMany: jest.fn() },
+    eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const s3 = { deleteFile: jest.fn().mockResolvedValue(undefined) };
   const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
@@ -142,6 +161,10 @@ function createHarness() {
     s3,
     service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, {} as never),
   };
+}
+
+function transaction(prisma: ReturnType<typeof createHarness>['prisma']) {
+  return { eventFormImage: prisma.eventFormImage, eventFormDraft: prisma.eventFormDraft };
 }
 
 function question(id: string, imageId: string) {

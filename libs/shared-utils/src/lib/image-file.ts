@@ -55,6 +55,11 @@ function hasExternalSvgReference(source: string): boolean {
     const reference = match[1].trim().replace(/^(?:"(.*)"|'(.*)')$/u, '$1$2').trimStart();
     if (!reference.startsWith('#')) return true;
   }
+
+  const cssImports = source.matchAll(/@import\s+(?:url\(\s*)?(["'])(.*?)\1\s*\)?/giu);
+  for (const match of cssImports) {
+    if (!match[2].trimStart().startsWith('#')) return true;
+  }
   return false;
 }
 

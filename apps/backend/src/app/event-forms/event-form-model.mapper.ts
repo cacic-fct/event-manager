@@ -19,7 +19,8 @@ import { isSameTarget } from './event-form-targets';
 import { toEventFormImageModel } from './event-form-image.utils';
 
 export function toEventFormModel(form: EventFormRecord): EventFormModel {
-  const assetsById = new Map(form.images.map((image) => [image.id, image]));
+  const images = form.images ?? [];
+  const assetsById = new Map(images.map((image) => [image.id, image]));
   const elements = Array.isArray(form.elements)
     ? (form.elements as unknown as FormElement[]).map((element) => ({
         ...element,

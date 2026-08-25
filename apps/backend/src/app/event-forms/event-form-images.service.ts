@@ -261,8 +261,14 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
         data: { formId, updatedAt: new Date() },
       });
     }
-    const removed = existing
-      .filter((image) => image.formId === formId && !referencedIds.has(image.id))
+    const activeDrafts = await tx.eventFormDraft.findMany({
+      where: { sourceFormId: formId, expiresAt: { gt: new Date() } },
+      select: { payload: true },
+    });
+    const draftReferencedIds = new Set(activeDrafts.flatMap((draft) => [...collectDraftImageIds(draft.payload)]));
+    const removed = existing.filter(
+      (image) => image.formId === formId && !referencedIds.has(image.id) && !draftReferencedIds.has(image.id),
+    );
     if (removed.length) {
       await tx.eventFormImage.deleteMany({
         where: { formId, id: { in: removed.map((image) => image.id) } },
@@ -390,11 +396,13 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     const model = toEventFormModel(form);
     for (const link of model.links) {
       if (!isLinkAvailable(link as never)) continue;
+      if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber: true })) {
+        return;
+      }
       if (!(await canPersonAccessLinkPriceTier(this.prisma, person.id, link))) continue;
       if (
-        (await canPersonAnswerLink(this.prisma, person.id, link)) ||
-        (arePublicResultsReleasedForLink(model, link) &&
-          (await canPersonViewPublicResults(this.prisma, person.id, link)))
+        arePublicResultsReleasedForLink(model, link) &&
+        (await canPersonViewPublicResults(this.prisma, person.id, link))
       ) {
         return;
       }
