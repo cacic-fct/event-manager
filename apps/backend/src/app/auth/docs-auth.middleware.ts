@@ -35,7 +35,7 @@ export function createDocsAuthGate({ keycloakAuthService, production }: DocsAuth
 }
 
 function shouldGateRequest(request: Request): boolean {
-  const path = stripTrailingSlashes(request.path);
+  const path = stripTrailingSlashes(request.path).toLowerCase();
 
   if (path === '/api/graphql') {
     return request.method === 'GET' && request.accepts('html') === 'html';

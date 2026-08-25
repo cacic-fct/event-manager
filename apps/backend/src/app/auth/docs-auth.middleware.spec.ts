@@ -26,8 +26,17 @@ describe('createDocsAuthGate', () => {
     next = jest.fn();
   });
 
-  it.each(['/api/docs-json', '/api/docs-json/', '/api/docs-yaml', '/api/docs-yaml/'])(
-    'gates unauthenticated Swagger spec requests for %s',
+  it.each([
+    '/api/DOCS',
+    '/api/DoCs/swagger-ui.css',
+    '/api/docs-json',
+    '/api/docs-json/',
+    '/api/DOCS-json',
+    '/api/docs-yaml',
+    '/api/docs-yaml/',
+    '/api/DOCS-YAML',
+  ])(
+    'gates unauthenticated Swagger requests for %s',
     async (path) => {
       await runGate({
         path,
@@ -40,7 +49,7 @@ describe('createDocsAuthGate', () => {
     },
   );
 
-  it.each(['/api/graphql', '/api/graphql/'])(
+  it.each(['/api/graphql', '/api/graphql/', '/api/GraphQL'])(
     'gates unauthenticated GraphQL landing page requests for %s',
     async (path) => {
       await runGate({
