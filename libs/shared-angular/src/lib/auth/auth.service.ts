@@ -345,6 +345,7 @@ export class AuthService {
     }
 
     this.setSessionStorageItem(this.onboardingReturnStorageKey, currentUrl);
+    this.removeSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
     window.location.assign(this.buildAccountOnboardingRedirectUrl(currentUrl));
   }
 
