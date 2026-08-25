@@ -14,6 +14,7 @@ import {
   createAdminMajorEvent,
 } from '../testing/admin-entity-fixtures';
 import { type EventFormInput } from '@cacic-fct/event-manager-admin-contracts';
+import type { FormImage } from '@cacic-fct/form-contracts';
 import { FormsService } from './forms.service';
 import { ShellUiService } from '../app-shell/ui.service';
 
@@ -147,6 +148,35 @@ describe('FormsService integration', () => {
     await staleLoad;
 
     expect(service.forms().map((form) => form.id)).toEqual(['current-form']);
+  });
+
+  it('preserves edits made while an image removal is being saved', async () => {
+    const image = {
+      id: 'image-1',
+      url: '/api/event-form-images/image-1',
+      width: 1200,
+      height: 675,
+      altText: 'Mapa do evento',
+    } satisfies FormImage;
+    const draftForm = createAdminEventForm({ publicationState: 'DRAFT', descriptionImages: [image] });
+    formApi.listForms.mockReturnValue(of([draftForm]));
+    formApi.getForm.mockReturnValue(of(draftForm));
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+    const saveResponse = new Subject<ReturnType<typeof createAdminEventForm>>();
+    formApi.saveForm.mockImplementationOnce((input: EventFormInput) => {
+      savedInput = input;
+      return saveResponse;
+    });
+
+    const removal = service.removeImage(image);
+    service.form.controls.name.setValue('Nome editado durante o salvamento');
+    if (!savedInput) throw new Error('Expected the image removal to start saving the form.');
+    saveResponse.next(createAdminEventFormFromInput(savedInput));
+    saveResponse.complete();
+    await removal;
+
+    expect(service.form.controls.name.value).toBe('Nome editado durante o salvamento');
   });
 
   it('reloads selected results when the selected form is refreshed from the list', async () => {

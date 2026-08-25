@@ -1,3 +1,5 @@
+import { registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -6,7 +8,8 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import type { EventFormTargetType, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { createPublicEvent, createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { NEVER, of } from 'rxjs';
+import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import { NEVER, Subject, of } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { MajorEventSubscriptionApiService } from '../subscription-api.service';
@@ -40,19 +43,8 @@ describe('MajorEventSubscription form flow integration', () => {
       ['MAJOR_EVENT:major-1', forms[0].form],
       ['EVENT:event-1', forms[1].form],
     ]);
-    const upsertSubscription = vi.fn(() =>
-      of({
-        id: 'subscription-1',
-        majorEventId: majorEvent.id,
-        subscriptionStatus: 'CONFIRMED',
-        amountPaid: null,
-        paymentDate: null,
-        paymentTier: null,
-        imageLicenseAgreementAccepted: true,
-        majorEvent,
-        selectedEvents: [event],
-      }),
-    );
+    const upsertResult = new Subject<CurrentUserMajorEventSubscription>();
+    const upsertSubscription = vi.fn(() => upsertResult);
     const open = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));
 
     await TestBed.configureTestingModule({
@@ -140,10 +132,8 @@ describe('MajorEventSubscription form flow integration', () => {
     await fixture.whenStable();
     const component = fixture.componentInstance;
 
-    expect(component.flowPhase()).toBe('selection');
-    expect(component.selectedEvents().map((item) => item.id)).toEqual([event.id]);
-    component.startSubscriptionFlow();
     expect(component.flowPhase()).toBe('forms');
+    expect(component.selectedEvents().map((item) => item.id)).toEqual([event.id]);
     expect(component.subscriptionForms().map((form) => form.form.name)).toEqual([
       'Camiseta do evento',
       'Preferências da atividade',
@@ -158,6 +148,7 @@ describe('MajorEventSubscription form flow integration', () => {
       { elementId: 'meal', value: 'no' },
     ];
     component.reviewSubscription(draft);
+    component.reviewSubscription(draft);
 
     expect(open).toHaveBeenCalledWith(
       SubscriptionReviewDialog,
@@ -169,6 +160,7 @@ describe('MajorEventSubscription form flow integration', () => {
         }) as Partial<SubscriptionReviewDialogData>,
       }),
     );
+    expect(open).toHaveBeenCalledTimes(1);
     expect(upsertSubscription).toHaveBeenCalledWith(
       majorEvent.id,
       [event.id],
@@ -191,7 +183,6 @@ describe('MajorEventSubscription form flow integration', () => {
       ],
       true,
     );
+    expect(upsertSubscription).toHaveBeenCalledTimes(1);
   });
 });
-import { registerLocaleData } from '@angular/common';
-import localePt from '@angular/common/locales/pt';

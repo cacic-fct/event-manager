@@ -42,6 +42,13 @@ describe('SubscriptionFormFlow', () => {
     expect(component.answersFor(forms[0])).toEqual([{ elementId: 'shirt-size', value: 'm' }]);
     expect(component.answersFor(forms[1])).toEqual([{ elementId: 'meal', value: 'yes' }]);
 
+    fixture.componentRef.setInput('initialDraft', {
+      answersByKey: component.answersByKey(),
+      imageLicenseAgreementAccepted: false,
+    });
+    fixture.detectChanges();
+    expect(component.activeStepIndex()).toBe(1);
+
     component.onStepperSelectionChange({ selectedIndex: 2 } as StepperSelectionEvent);
     expect(component.activeStepIndex()).toBe(1);
 
@@ -50,7 +57,7 @@ describe('SubscriptionFormFlow', () => {
     expect(reviewDrafts).toHaveLength(0);
     expect(component.validationAttemptedStepIndex()).toBe(2);
 
-    component.agreementAccepted.set(true);
+    component.acceptAgreement(true);
     component.next();
     expect(reviewDrafts).toEqual([
       {

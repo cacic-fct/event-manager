@@ -52,6 +52,13 @@ type SubscriptionPageState =
   | { status: 'ready'; data: PublicMajorEventSubscriptionPage }
   | { status: 'error'; message: string };
 
+interface SubscriptionFlowSelection {
+  data: PublicMajorEventSubscriptionPage;
+  selectedEventIds: string[];
+  selectedEvents: PublicEvent[];
+  paymentTier: string | null;
+}
+
 @Component({
   selector: 'app-subscription',
   imports: [
@@ -113,6 +120,8 @@ export class MajorEventSubscription {
   });
 
   private readonly initializedMajorEventId = signal<string | null>(null);
+  private readonly agreementFlowAutoStartAttempted = signal(false);
+  private readonly subscriptionFlowSelection = signal<SubscriptionFlowSelection | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
   private readonly imageLicenseAgreementQueryRequested = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
@@ -221,6 +230,8 @@ export class MajorEventSubscription {
       this.flowPhase.set('selection');
       this.subscriptionForms.set([]);
       this.subscriptionFlowDraft.set(null);
+      this.subscriptionFlowSelection.set(null);
+      this.agreementFlowAutoStartAttempted.set(false);
       this.subscriptionCooldown.clear();
 
       const initialSubscription = this.api
@@ -324,6 +335,22 @@ export class MajorEventSubscription {
       }
     });
 
+    effect(() => {
+      if (
+        !this.imageLicenseAgreementQueryRequested() ||
+        !this.needsImageLicenseAgreement() ||
+        !this.data() ||
+        this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
+        this.flowPhase() !== 'selection' ||
+        this.agreementFlowAutoStartAttempted()
+      ) {
+        return;
+      }
+
+      this.agreementFlowAutoStartAttempted.set(true);
+      this.startSubscriptionFlow();
+    });
+
   }
 
   dateLine(): string {
@@ -390,10 +417,14 @@ export class MajorEventSubscription {
     const data = this.data();
     if (
       !data ||
-      this.selectedEvents().length === 0 ||
+      this.currentUserSubscription() === undefined ||
       this.isSubmitting() ||
       this.flowPhase() === 'loading-forms'
     ) {
+      return;
+    }
+
+    if (this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
         duration: 3000,
       });
@@ -414,6 +445,12 @@ export class MajorEventSubscription {
     }
 
     const selectedEvents = this.selectedEvents();
+    this.subscriptionFlowSelection.set({
+      data,
+      selectedEventIds: [...this.effectiveSelectedEventIds()],
+      selectedEvents,
+      paymentTier: selectedPaymentTier ?? null,
+    });
     this.flowPhase.set('loading-forms');
 
     this.loadSubscriptionForms(this.subscriptionFlowSources(data, selectedEvents))
@@ -452,6 +489,9 @@ export class MajorEventSubscription {
   }
 
   reviewSubscription(draft: SubscriptionFlowDraft): void {
+    if (this.isSubmitting()) {
+      return;
+    }
     this.subscriptionFlowDraft.set(draft);
     this.openReviewDialog(draft);
   }
@@ -468,6 +508,10 @@ export class MajorEventSubscription {
     formAnswers: SubscriptionFormAnswer[],
     imageLicenseAgreementAccepted: boolean,
   ): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+
     if (this.subscriptionCooldownSeconds() > 0) {
       this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
         duration: 3000,
@@ -638,14 +682,16 @@ export class MajorEventSubscription {
   }
 
   private openReviewDialog(draft: SubscriptionFlowDraft): void {
-    const data = this.data();
-    if (!data) {
+    if (this.isSubmitting()) {
       return;
     }
 
-    const selectedEvents = this.selectedEvents();
-    const selectedEventIds = [...this.effectiveSelectedEventIds()];
-    const paymentTier = this.resolveSelectedPaymentTier(data) ?? null;
+    const selection = this.subscriptionFlowSelection();
+    if (!selection) {
+      return;
+    }
+
+    const { data, selectedEvents, selectedEventIds, paymentTier } = selection;
     const dialogRef = this.dialog.open<
       SubscriptionReviewDialog,
       SubscriptionReviewDialogData,

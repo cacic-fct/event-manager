@@ -304,9 +304,12 @@ export class FormsService {
           duration: 4500,
         });
       } else if (formId) {
-        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
-        this.patchSelectedForm(saved);
-        await this.loadForms();
+        const saveInput = this.toInput();
+        const saved = await firstValueFrom(this.api.saveForm(saveInput));
+        if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
+          this.patchSelectedForm(saved);
+          await this.loadForms();
+        }
         this.snackbar.open('Imagem adicionada ao formulário.', 'Fechar', { duration: 3000 });
       } else {
         this.snackbar.open('Imagem pronta. Salve o formulário para preservá-la.', 'Fechar', { duration: 4000 });
@@ -339,9 +342,12 @@ export class FormsService {
         this.descriptionImages.update((images) => images.filter((item) => item.id !== image.id));
       }
       if (formId && !this.selectedFormPublished()) {
-        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
-        this.patchSelectedForm(saved);
-        await this.loadForms();
+        const saveInput = this.toInput();
+        const saved = await firstValueFrom(this.api.saveForm(saveInput));
+        if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
+          this.patchSelectedForm(saved);
+          await this.loadForms();
+        }
         this.snackbar.open('Imagem removida.', 'Fechar', { duration: 2500 });
       } else {
         this.snackbar.open(

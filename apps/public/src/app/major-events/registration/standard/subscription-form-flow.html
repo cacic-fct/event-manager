@@ -9,7 +9,7 @@
     [orientation]="orientation()"
     [selectedIndex]="activeStepIndex()"
     (selectionChange)="onStepperSelectionChange($event)">
-    @for (formContext of forms(); track formContext.form.id + ':' + formContext.linkId + ':' + formContext.targetId) {
+    @for (formContext of forms(); track formKey(formContext)) {
     <mat-step [label]="formContext.form.name" [completed]="isFormComplete(formContext)">
       <article class="form-step">
         <header>
@@ -67,7 +67,7 @@
         </a>
         <mat-checkbox
           [checked]="agreementAccepted()"
-          (change)="agreementAccepted.set($event.checked); validationAttemptedStepIndex.set(null)">
+          (change)="acceptAgreement($event.checked)">
           Li e concordo com o contrato de concessão de licença de uso de imagem do CACiC.
         </mat-checkbox>
         @if (validationAttemptedStepIndex() === activeStepIndex() && !agreementAccepted()) {

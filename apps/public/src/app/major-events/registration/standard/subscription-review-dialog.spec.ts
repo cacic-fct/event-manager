@@ -52,4 +52,44 @@ describe('SubscriptionReviewDialog', () => {
     fixture.componentInstance.confirm();
     expect(close).toHaveBeenCalledWith({ confirmed: true });
   });
+
+  it('renders missing and empty option answers without crashing', async () => {
+    const [fixtureForm] = createSubscriptionFlowFormFixtures();
+    const form = {
+      ...fixtureForm,
+      form: {
+        ...fixtureForm.form,
+        elementsJson: JSON.stringify([
+          { id: 'missing-options', type: 'singleChoice', title: 'Opção antiga' },
+          { id: 'empty-answer', type: 'multipleChoice', title: 'Seleção vazia' },
+        ]),
+      },
+    };
+    const draft = createSubscriptionFlowDraft([form], false);
+    draft.answersByKey[subscriptionFormKey(form)] = [
+      { elementId: 'missing-options', value: 'legacy-option' },
+      { elementId: 'empty-answer', value: [] },
+    ];
+    const data: SubscriptionReviewDialogData = {
+      majorEvent: createPublicMajorEvent({ id: 'major-1', name: 'SECOMPP' }),
+      events: [],
+      forms: [form],
+      draft,
+      paymentTier: null,
+      requireImageLicenseAgreement: false,
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionReviewDialog],
+      providers: [
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: EmojiService, useValue: { getTwemojiUrl: () => '/emoji.svg' } },
+      ],
+    }).compileComponents();
+
+    const component = TestBed.createComponent(SubscriptionReviewDialog).componentInstance;
+    expect(component.answerRows(form).map((row) => row.answer)).toEqual(['legacy-option', 'Sem resposta']);
+  });
 });

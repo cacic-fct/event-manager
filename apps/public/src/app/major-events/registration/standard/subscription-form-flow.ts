@@ -64,8 +64,15 @@ export class SubscriptionFormFlow {
 
   readonly totalSteps = computed(() => this.forms().length + (this.requireImageLicenseAgreement() ? 1 : 0));
   readonly isLastStep = computed(() => this.activeStepIndex() === this.totalSteps() - 1);
+  readonly formKey = subscriptionFormKey;
 
   constructor() {
+    effect(() => {
+      this.forms();
+      this.activeStepIndex.set(0);
+      this.validationAttemptedStepIndex.set(null);
+    });
+
     effect(() => {
       const draft = createSubscriptionFlowDraft(
         this.forms(),
@@ -74,7 +81,6 @@ export class SubscriptionFormFlow {
       );
       this.answersByKey.set(draft.answersByKey);
       this.agreementAccepted.set(draft.imageLicenseAgreementAccepted);
-      this.activeStepIndex.set(0);
       this.validationAttemptedStepIndex.set(null);
     });
   }
@@ -92,6 +98,11 @@ export class SubscriptionFormFlow {
       ...current,
       [subscriptionFormKey(form)]: answers,
     }));
+  }
+
+  acceptAgreement(accepted: boolean): void {
+    this.agreementAccepted.set(accepted);
+    this.validationAttemptedStepIndex.set(null);
   }
 
   hasMissingRequired(form: SubscriptionFormContext): boolean {

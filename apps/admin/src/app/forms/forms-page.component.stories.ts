@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import {
   EventForm,
@@ -272,6 +272,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
   const links = signal<EventFormLinkDraft[]>(selectedForm ? linkDrafts(selectedForm.links) : []);
   const selectedFormSignal = signal<EventForm | null>(selectedForm);
   const selectedResultsSignal = signal<EventFormResults | null>(selectedResults);
+  const imageTextControls = new Map<string, FormControl<string>>();
 
   patchForm(form, selectedForm);
 
@@ -347,11 +348,18 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
         descriptionImages.update((current) => current.filter((item) => item.id !== image.id));
       }
     },
-    updateDescriptionImageText: (imageId: string, key: 'altText' | 'caption', event: InputEvent) => {
-      const value = event.target instanceof HTMLInputElement ? event.target.value : '';
-      descriptionImages.update((current) =>
-        current.map((image) => (image.id === imageId ? { ...image, [key]: value || undefined } : image)),
-      );
+    imageTextControl: (image: FormImage, key: 'altText' | 'caption') => {
+      const cacheKey = `${image.id}:${key}`;
+      const cached = imageTextControls.get(cacheKey);
+      if (cached) return cached;
+      const control = new FormControl(image[key] ?? '', { nonNullable: true });
+      control.valueChanges.subscribe((value) => {
+        descriptionImages.update((current) =>
+          current.map((item) => (item.id === image.id ? { ...item, [key]: value || undefined } : item)),
+        );
+      });
+      imageTextControls.set(cacheKey, control);
+      return control;
     },
     addLink: (targetType: EventFormTargetType) => {
       links.update((current) => [

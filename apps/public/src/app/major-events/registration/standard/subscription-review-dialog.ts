@@ -62,6 +62,7 @@ export class SubscriptionReviewDialog {
   answerRows(form: SubscriptionFormContext): SubscriptionReviewAnswerRow[] {
     const answers = this.data.draft.answersByKey[subscriptionFormKey(form)] ?? [];
     return parseFormElementsJson(form.form.elementsJson)
+      .map((element) => ({ ...element, options: element.options ?? [] }))
       .filter((element) => isFormAnswerElementType(element.type))
       .map((element) => ({
         elementId: element.id,
@@ -72,7 +73,7 @@ export class SubscriptionReviewDialog {
 
   private answerDisplay(element: FormElement, answers: readonly FormResponseAnswer[]): string {
     const value = answerValue(answers, element.id);
-    if (value === null || value === undefined || value === '') {
+    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
       return 'Sem resposta';
     }
 
