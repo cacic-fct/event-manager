@@ -10,7 +10,7 @@ import { FormImage } from '@cacic-fct/form-contracts';
     @if (text(); as descriptionText) {
       <p class="description-text">{{ descriptionText }}</p>
     }
-    @for (image of images(); track $index) {
+    @for (image of images(); track image.id) {
       <figure>
         <img
           [ngSrc]="image.url"

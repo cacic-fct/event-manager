@@ -291,8 +291,18 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     targetFilter: signal<{ eventId?: string; majorEventId?: string } | null>(null),
     selectedFormPublished: computed(() => selectedFormSignal()?.publicationState === 'PUBLISHED'),
     selectedFormScheduled: computed(() => selectedFormSignal()?.publicationState === 'SCHEDULED'),
-    hasUntitledQuestions: computed(() => elements().some((element) => !element.title.trim())),
-    canSave: computed(() => form.valid && elements().every((element) => element.title.trim().length > 0)),
+    hasUntitledQuestions: computed(() =>
+      elements().some(
+        (element) => element.type !== 'section' && element.type !== 'statement' && !element.title.trim(),
+      ),
+    ),
+    canSave: computed(
+      () =>
+        form.valid &&
+        elements().every(
+          (element) => element.type === 'section' || element.type === 'statement' || element.title.trim().length > 0,
+        ),
+    ),
     filtersForm: formBuilder.nonNullable.group({ query: [''] }),
     form,
     initialize: async () => undefined,

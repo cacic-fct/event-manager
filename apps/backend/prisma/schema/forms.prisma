@@ -95,6 +95,7 @@ model EventFormImage {
   @@index([formId, sha256])
   @@index([createdById, sha256])
   @@index([createdAt])
+  @@index([updatedAt])
   @@map("event_form_images")
 }
 

@@ -85,6 +85,11 @@ export class FormsPageComponent implements OnDestroy {
     this.workspace.closeResultsStream();
   }
 
+  handleFormImageUpload(input: HTMLInputElement): void {
+    void this.workspace.uploadImage(input.files?.[0] ?? null);
+    input.value = '';
+  }
+
   sigiloLabel(sigilo: EventFormSigilo): string {
     switch (sigilo) {
       case 'PUBLIC':

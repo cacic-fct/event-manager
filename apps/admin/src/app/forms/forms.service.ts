@@ -1,5 +1,6 @@
-import { Service, computed, inject, signal } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
@@ -49,7 +50,10 @@ export interface EventFormLinkDraft {
 
 @Service()
 export class FormsService {
+  private readonly singleImageCache = new WeakMap<FormImage, readonly FormImage[]>();
+  private readonly imageTextControls = new Map<string, FormControl<string>>();
   private readonly api = inject(EventFormApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly eventApi = inject(EventApiService);
   private readonly majorEventApi = inject(MajorEventApiService);
   private readonly formBuilder = inject(FormBuilder);
@@ -75,7 +79,6 @@ export class FormsService {
   readonly hasUntitledQuestions = computed(() =>
     this.elements().some((element) => this.isQuestion(element) && !element.title.trim()),
   );
-  readonly canSave = computed(() => !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasUntitledQuestions());
   readonly selectableEvents = computed(() => {
     const selectedIds = this.selectedEventIds();
     return this.events().filter((event) => selectedIds.has(event.id) || this.isOngoingOrFuture(event.endDate));
@@ -140,6 +143,11 @@ export class FormsService {
     resultsLive: [false],
     allowResponseEdits: [false],
     scheduledPublishAt: [''],
+  });
+  private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  readonly canSave = computed(() => {
+    this.formStatus();
+    return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasUntitledQuestions();
   });
 
   async initialize(): Promise<void> {
@@ -258,6 +266,7 @@ export class FormsService {
 
   async uploadImage(file: File | null, elementId?: string): Promise<void> {
     if (!file) return;
+    if (this.uploadingImageTarget() !== null) return;
     if (!this.validateForSave()) return;
     const formId = this.selectedForm()?.id ?? null;
     const formValue = this.form.getRawValue();
@@ -310,6 +319,7 @@ export class FormsService {
   }
 
   async removeImage(image: FormImage, elementId?: string): Promise<void> {
+    if (this.uploadingImageTarget() !== null) return;
     const formId = this.selectedForm()?.id;
     const target = elementId ?? 'form';
     this.uploadingImageTarget.set(target);
@@ -353,11 +363,30 @@ export class FormsService {
     }
   }
 
-  updateDescriptionImageText(imageId: string, key: 'altText' | 'caption', event: InputEvent): void {
-    const value = event.target instanceof HTMLInputElement ? event.target.value : '';
-    this.descriptionImages.update((images) =>
-      images.map((image) => (image.id === imageId ? { ...image, [key]: value || undefined } : image)),
-    );
+  imageTextControl(image: FormImage, key: 'altText' | 'caption'): FormControl<string> {
+    const cacheKey = `${image.id}:${key}`;
+    const expectedValue = image[key] ?? '';
+    const cached = this.imageTextControls.get(cacheKey);
+    if (cached) {
+      if (cached.value !== expectedValue) cached.setValue(expectedValue, { emitEvent: false });
+      return cached;
+    }
+    const control = new FormControl(expectedValue, { nonNullable: true });
+    control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+      this.descriptionImages.update((images) =>
+        images.map((item) => (item.id === image.id ? { ...item, [key]: value || undefined } : item)),
+      );
+    });
+    this.imageTextControls.set(cacheKey, control);
+    return control;
+  }
+
+  singleImage(image: FormImage): readonly FormImage[] {
+    const cached = this.singleImageCache.get(image);
+    if (cached) return cached;
+    const value = [image] as const;
+    this.singleImageCache.set(image, value);
+    return value;
   }
 
   addLink(targetType: EventFormTargetType): void {
