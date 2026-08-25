@@ -195,6 +195,38 @@ describe('typesense writer helpers', () => {
       expect.any(Error),
     );
   });
+
+  it('propagates write failures when requested', async () => {
+    const client = createClientMock();
+    const logger = { error: jest.fn() };
+    client.documents.upsert.mockRejectedValueOnce(new Error('boom'));
+
+    await expect(
+      upsertTypesenseDocument({
+        client: client.instance as never,
+        logger: logger as never,
+        collectionName: 'audit_logs',
+        document: { id: 'audit-1' },
+        throwOnError: true,
+      }),
+    ).rejects.toThrow('boom');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to upsert Typesense document audit-1 in audit_logs.',
+      expect.any(Error),
+    );
+  });
+
+  it('reports an unavailable client when propagation is requested', async () => {
+    await expect(
+      upsertTypesenseDocument({
+        client: null,
+        logger: { error: jest.fn() } as never,
+        collectionName: 'audit_logs',
+        document: { id: 'audit-1' },
+        throwOnError: true,
+      }),
+    ).rejects.toThrow('Typesense is unavailable; could not upsert document audit-1.');
+  });
 });
 
 function createClientMock() {

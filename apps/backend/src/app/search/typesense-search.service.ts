@@ -145,8 +145,12 @@ export class TypesenseSearchService implements OnModuleInit {
     );
   }
 
-  async upsertAuditLogEntry(input: AuditLogSearchDocumentInput): Promise<void> {
-    await this.upsertDocument<AuditLogSearchDocument>(TYPESENSE_COLLECTIONS.auditLogs, toAuditLogSearchDocument(input));
+  async upsertAuditLogEntry(input: AuditLogSearchDocumentInput, throwOnError = false): Promise<void> {
+    await this.upsertDocument<AuditLogSearchDocument>(
+      TYPESENSE_COLLECTIONS.auditLogs,
+      toAuditLogSearchDocument(input),
+      throwOnError,
+    );
   }
 
   async upsertEvent(input: {
@@ -347,12 +351,17 @@ export class TypesenseSearchService implements OnModuleInit {
     });
   }
 
-  private async upsertDocument<T extends { id: string }>(collectionName: string, document: T): Promise<void> {
+  private async upsertDocument<T extends { id: string }>(
+    collectionName: string,
+    document: T,
+    throwOnError = false,
+  ): Promise<void> {
     await upsertTypesenseDocument({
       client: this.client,
       logger: this.logger,
       collectionName,
       document,
+      throwOnError,
     });
   }
 

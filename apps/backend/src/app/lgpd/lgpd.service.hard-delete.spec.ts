@@ -269,12 +269,14 @@ describe('LgpdService hard delete', () => {
         id: 'audit-1',
         entityLabel: 'Dados anonimizados',
       }),
+      true,
     );
     expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'audit-attendance',
         entityId: 'anonymized%3Aerase-1:event-1',
       }),
+      true,
     );
     expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
       where: { id: 'audit-actor-only' },

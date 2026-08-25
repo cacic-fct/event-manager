@@ -191,7 +191,7 @@ export async function anonymizeAuditEntries(
 export async function synchronizeAnonymizedAuditEntries(
   prisma: PrismaService,
   typesenseSearch: TypesenseSearchService,
-  logger: { warn(message: string): void },
+  _logger: { warn(message: string): void },
   ids: readonly string[],
 ): Promise<void> {
   if (ids.length === 0) {
@@ -205,15 +205,7 @@ export async function synchronizeAnonymizedAuditEntries(
       },
     },
   });
-  await Promise.all(
-    entries.map((entry) =>
-      typesenseSearch.upsertAuditLogEntry(entry).catch((error: unknown) => {
-        logger.warn(
-          `Falha ao reindexar audit log anonimizado ${entry.id}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }),
-    ),
-  );
+  await Promise.all(entries.map((entry) => typesenseSearch.upsertAuditLogEntry(entry, true)));
 }
 
 export function isEventAttendanceAuditEntityForPerson(

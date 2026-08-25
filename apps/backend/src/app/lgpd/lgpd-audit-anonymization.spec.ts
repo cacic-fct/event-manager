@@ -20,10 +20,8 @@ describe('synchronizeAnonymizedAuditEntries', () => {
     restoreLgpdServiceTestContext();
   });
 
-  it('does not fail anonymization when Typesense rejects an audit-log reindex', async () => {
+  it('fails anonymization synchronization when Typesense rejects an audit-log reindex', async () => {
     const { prisma, typesenseSearch } = context;
-    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-
     prisma.auditLogEntry.findMany.mockResolvedValue([{ id: 'audit-1', entityLabel: 'Dados anonimizados' }]);
     typesenseSearch.upsertAuditLogEntry.mockRejectedValueOnce(new Error('typesense down'));
 
@@ -34,8 +32,10 @@ describe('synchronizeAnonymizedAuditEntries', () => {
         new Logger(LgpdService.name),
         ['audit-1'],
       ),
-    ).resolves.toBeUndefined();
-
-    expect(warn).toHaveBeenCalledWith('Falha ao reindexar audit log anonimizado audit-1: typesense down');
+    ).rejects.toThrow('typesense down');
+    expect(typesenseSearch.upsertAuditLogEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'audit-1' }),
+      true,
+    );
   });
 });

@@ -112,8 +112,12 @@ export async function upsertTypesenseDocument<T extends { id: string }>(input: {
   logger: Logger;
   collectionName: string;
   document: T;
+  throwOnError?: boolean;
 }): Promise<void> {
   if (!input.client) {
+    if (input.throwOnError) {
+      throw new Error(`Typesense is unavailable; could not upsert document ${input.document.id}.`);
+    }
     return;
   }
 
@@ -124,6 +128,9 @@ export async function upsertTypesenseDocument<T extends { id: string }>(input: {
       .upsert(input.document);
   } catch (error) {
     input.logger.error(`Failed to upsert Typesense document ${input.document.id} in ${input.collectionName}.`, error);
+    if (input.throwOnError) {
+      throw error;
+    }
   }
 }
 
