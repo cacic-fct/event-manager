@@ -63,6 +63,9 @@ export const eventFormInclude = {
     },
     orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
   },
+  images: {
+    orderBy: [{ createdAt: 'asc' }],
+  },
   _count: {
     select: {
       responses: {

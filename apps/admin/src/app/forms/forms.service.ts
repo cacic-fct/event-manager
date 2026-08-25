@@ -1,5 +1,6 @@
-import { Service, computed, inject, signal } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
@@ -16,9 +17,10 @@ import {
   EventFormTargetType,
   MajorEvent,
   parseFormElementsJson,
+  serializeFormImageReferences,
   serializeFormElements,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { type FormElement } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage } from '@cacic-fct/form-contracts';
 import { format, isBefore, isValid, parseISO } from 'date-fns';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
@@ -48,7 +50,10 @@ export interface EventFormLinkDraft {
 
 @Service()
 export class FormsService {
+  private readonly singleImageCache = new WeakMap<FormImage, readonly FormImage[]>();
+  private readonly imageTextControls = new Map<string, FormControl<string>>();
   private readonly api = inject(EventFormApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly eventApi = inject(EventApiService);
   private readonly majorEventApi = inject(MajorEventApiService);
   private readonly formBuilder = inject(FormBuilder);
@@ -62,6 +67,8 @@ export class FormsService {
   readonly selectedForm = signal<EventForm | null>(null);
   readonly selectedResults = signal<EventFormResults | null>(null);
   readonly elements = signal<FormElement[]>([]);
+  readonly descriptionImages = signal<FormImage[]>([]);
+  readonly uploadingImageTarget = signal<string | null>(null);
   readonly links = signal<EventFormLinkDraft[]>([]);
   readonly previousSubscriberCounts = signal<Record<string, number | null>>({});
   readonly events = signal<Event[]>([]);
@@ -69,6 +76,9 @@ export class FormsService {
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
   readonly selectedFormPublished = computed(() => this.selectedForm()?.publicationState === 'PUBLISHED');
   readonly selectedFormScheduled = computed(() => this.selectedForm()?.publicationState === 'SCHEDULED');
+  readonly hasUntitledQuestions = computed(() =>
+    this.elements().some((element) => this.isQuestion(element) && !element.title.trim()),
+  );
   readonly selectableEvents = computed(() => {
     const selectedIds = this.selectedEventIds();
     return this.events().filter((event) => selectedIds.has(event.id) || this.isOngoingOrFuture(event.endDate));
@@ -134,6 +144,11 @@ export class FormsService {
     allowResponseEdits: [false],
     scheduledPublishAt: [''],
   });
+  private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  readonly canSave = computed(() => {
+    this.formStatus();
+    return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasUntitledQuestions();
+  });
 
   async initialize(): Promise<void> {
     if (this.events().length === 0 || this.majorEvents().length === 0) {
@@ -196,6 +211,7 @@ export class FormsService {
     this.selectedResults.set(null);
     this.closeResultsStream();
     this.elements.set([]);
+    this.descriptionImages.set([]);
     this.links.set([]);
     this.previousSubscriberCounts.set({});
     const owner = this.defaultOwner();
@@ -246,6 +262,131 @@ export class FormsService {
 
   updateElements(elements: FormElement[]): void {
     this.elements.set(elements);
+  }
+
+  async uploadImage(file: File | null, elementId?: string): Promise<void> {
+    if (!file) return;
+    if (this.uploadingImageTarget() !== null) return;
+    if (!this.validateForSave()) return;
+    const formId = this.selectedForm()?.id ?? null;
+    const formValue = this.form.getRawValue();
+    const target = elementId ?? 'form';
+    this.uploadingImageTarget.set(target);
+    try {
+      const image = await firstValueFrom(
+        this.api.uploadImage(formId, file, {
+          ownerEventId: formValue.ownerType === 'EVENT' ? formValue.ownerEventId : null,
+          ownerMajorEventId: formValue.ownerType === 'MAJOR_EVENT' ? formValue.ownerMajorEventId : null,
+        }),
+      );
+      const alreadyUsedHere = elementId
+        ? this.elements()
+            .find((element) => element.id === elementId)
+            ?.descriptionImages?.some((item) => item.id === image.id)
+        : this.descriptionImages().some((item) => item.id === image.id);
+      if (alreadyUsedHere) {
+        this.snackbar.open('Esta imagem já está adicionada neste local.', 'Fechar', { duration: 3000 });
+        return;
+      }
+      if (elementId) {
+        this.elements.update((elements) =>
+          elements.map((element) =>
+            element.id === elementId
+              ? { ...element, descriptionImages: [...(element.descriptionImages ?? []), image] }
+              : element,
+          ),
+        );
+      } else {
+        this.descriptionImages.update((images) => [...images, image]);
+      }
+      if (this.selectedFormPublished()) {
+        this.snackbar.open('Imagem adicionada à edição. Salve o rascunho para preservá-la.', 'Fechar', {
+          duration: 4500,
+        });
+      } else if (formId) {
+        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
+        this.patchSelectedForm(saved);
+        await this.loadForms();
+        this.snackbar.open('Imagem adicionada ao formulário.', 'Fechar', { duration: 3000 });
+      } else {
+        this.snackbar.open('Imagem pronta. Salve o formulário para preservá-la.', 'Fechar', { duration: 4000 });
+      }
+    } catch (error) {
+      this.showError(error, 'Não foi possível enviar a imagem.');
+    } finally {
+      this.uploadingImageTarget.set(null);
+    }
+  }
+
+  async removeImage(image: FormImage, elementId?: string): Promise<void> {
+    if (this.uploadingImageTarget() !== null) return;
+    const formId = this.selectedForm()?.id;
+    const target = elementId ?? 'form';
+    this.uploadingImageTarget.set(target);
+    try {
+      if (elementId) {
+        this.elements.update((elements) =>
+          elements.map((element) =>
+            element.id === elementId
+              ? {
+                  ...element,
+                  descriptionImages: (element.descriptionImages ?? []).filter((item) => item.id !== image.id),
+                }
+              : element,
+          ),
+        );
+      } else {
+        this.descriptionImages.update((images) => images.filter((item) => item.id !== image.id));
+      }
+      if (formId && !this.selectedFormPublished()) {
+        const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
+        this.patchSelectedForm(saved);
+        await this.loadForms();
+        this.snackbar.open('Imagem removida.', 'Fechar', { duration: 2500 });
+      } else {
+        this.snackbar.open(
+          this.selectedFormPublished()
+            ? 'Imagem removida da edição. Salve o rascunho para preservar a alteração.'
+            : 'Imagem removida.',
+          'Fechar',
+          { duration: 4000 },
+        );
+      }
+    } catch (error) {
+      if (formId) {
+        const restored = await firstValueFrom(this.api.getForm(formId));
+        this.patchSelectedForm(restored);
+      }
+      this.showError(error, 'Não foi possível remover a imagem.');
+    } finally {
+      this.uploadingImageTarget.set(null);
+    }
+  }
+
+  imageTextControl(image: FormImage, key: 'altText' | 'caption'): FormControl<string> {
+    const cacheKey = `${image.id}:${key}`;
+    const expectedValue = image[key] ?? '';
+    const cached = this.imageTextControls.get(cacheKey);
+    if (cached) {
+      if (cached.value !== expectedValue) cached.setValue(expectedValue, { emitEvent: false });
+      return cached;
+    }
+    const control = new FormControl(expectedValue, { nonNullable: true });
+    control.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+      this.descriptionImages.update((images) =>
+        images.map((item) => (item.id === image.id ? { ...item, [key]: value || undefined } : item)),
+      );
+    });
+    this.imageTextControls.set(cacheKey, control);
+    return control;
+  }
+
+  singleImage(image: FormImage): readonly FormImage[] {
+    const cached = this.singleImageCache.get(image);
+    if (cached) return cached;
+    const value = [image] as const;
+    this.singleImageCache.set(image, value);
+    return value;
   }
 
   addLink(targetType: EventFormTargetType): void {
@@ -305,7 +446,7 @@ export class FormsService {
   }
 
   async save(): Promise<void> {
-    if (this.form.invalid || this.hasInvalidLinkDateRange()) {
+    if (!this.validateForSave()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -324,7 +465,7 @@ export class FormsService {
   }
 
   async saveDraft(): Promise<void> {
-    if (this.form.invalid || this.hasInvalidLinkDateRange()) {
+    if (!this.validateForSave()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -474,6 +615,7 @@ export class FormsService {
     this.selectedForm.set(form);
     this.selectedResults.set(null);
     this.elements.set(parseFormElementsJson(form.elementsJson));
+    this.descriptionImages.set(form.descriptionImages ?? []);
     this.links.set(form.links.map((link) => this.toLinkDraft(link)));
     for (const link of this.links()) {
       void this.refreshPreviousSubscriberCount(link);
@@ -500,6 +642,7 @@ export class FormsService {
     this.selectedResults.set(null);
     this.closeResultsStream();
     this.elements.set([]);
+    this.descriptionImages.set([]);
     this.links.set([]);
     this.previousSubscriberCounts.set({});
     const owner = this.defaultOwner();
@@ -562,6 +705,7 @@ export class FormsService {
       id: value.id || null,
       name: value.name,
       description: value.description || null,
+      descriptionImagesJson: serializeFormImageReferences(this.descriptionImages()),
       elementsJson: serializeFormElements(this.elements()),
       sigilo: value.sigilo,
       responseMode: value.responseMode,
@@ -584,6 +728,22 @@ export class FormsService {
       ownerEventId: null,
       ownerMajorEventId: value.ownerMajorEventId || '',
     };
+  }
+
+  private validateForSave(): boolean {
+    if (this.form.invalid || this.hasInvalidLinkDateRange()) {
+      this.form.markAllAsTouched();
+      return false;
+    }
+    if (this.hasUntitledQuestions()) {
+      this.snackbar.open('Informe o título de todas as perguntas antes de salvar.', 'Fechar', { duration: 4000 });
+      return false;
+    }
+    return true;
+  }
+
+  private isQuestion(element: FormElement): boolean {
+    return element.type !== 'section' && element.type !== 'statement';
   }
 
   private normalizeLinkDraft(link: EventFormLinkDraft, previous?: EventFormLinkDraft): EventFormLinkDraft {

@@ -7,6 +7,7 @@ import {
   type FormAnswerValue,
   type FormChoiceOption,
   type FormElement,
+  type FormImage,
   type FormResponseAnswer,
   type FormSchedulingAnswer,
 } from '@cacic-fct/form-contracts';
@@ -34,14 +35,20 @@ export function parseElementsJson(value: string): FormElement[] {
   }
 
   const elements = parsed.map((item, index) => normalizeElement(item, index));
-  assertUniqueIds(
-    elements.map((element) => element.id),
-    'itens',
-  );
+  assertUniqueIds(elements.map((element) => element.id), 'itens');
   return elements;
 }
 
-export function normalizeAnswers(answersJson: string, elements: readonly FormElement[]): FormResponseAnswer[] {
+export function assertQuestionsHaveTitles(elements: readonly FormElement[]): void {
+  if (elements.some((element) => isFormAnswerElementType(element.type) && !element.title.trim())) {
+    throw new BadRequestException('Todas as perguntas do formulário precisam ter um título.');
+  }
+}
+
+export function normalizeAnswers(
+  answersJson: string,
+  elements: readonly FormElement[],
+): FormResponseAnswer[] {
   const answers = parseAnswersJson(answersJson);
   const normalized = normalizeFormResponseAnswers(answers);
   const answerElements = elements.filter((element) => isFormAnswerElementType(element.type));
@@ -142,17 +149,17 @@ function normalizeElement(value: unknown, index: number): FormElement {
   }
 
   const id = stringValue(value['id']) || `element-${index + 1}`;
-  const title = stringValue(value['title']) || defaultTitle(type);
+  const elementType = type as FormElement['type'];
+  const title = stringValue(value['title']) || (isFormAnswerElementType(elementType) ? '' : defaultTitle(elementType));
   const options = Array.isArray(value['options'])
     ? value['options'].map((option, optionIndex) => normalizeOption(option, optionIndex))
     : [];
   if (options.length > MAX_FORM_OPTIONS_PER_ELEMENT) {
-    throw new BadRequestException(`O item ${index + 1} pode ter no máximo ${MAX_FORM_OPTIONS_PER_ELEMENT} opções.`);
+    throw new BadRequestException(
+      `O item ${index + 1} pode ter no máximo ${MAX_FORM_OPTIONS_PER_ELEMENT} opções.`,
+    );
   }
-  assertUniqueIds(
-    options.map((option) => option.id),
-    `opções do item ${index + 1}`,
-  );
+  assertUniqueIds(options.map((option) => option.id), `opções do item ${index + 1}`);
 
   if (id.length > MAX_FORM_ID_LENGTH) {
     throw new BadRequestException(`O identificador do item ${index + 1} é muito longo.`);
@@ -170,11 +177,30 @@ function normalizeElement(value: unknown, index: number): FormElement {
     type,
     title,
     description: description || undefined,
-    descriptionImages: [],
+    descriptionImages: normalizeImageReferences(value['descriptionImages']),
     required: Boolean(value['required']),
     options,
     settings: isRecord(value['settings']) ? value['settings'] : undefined,
   } as FormElement;
+}
+
+function normalizeImageReferences(value: unknown): FormImage[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => isRecord(item))
+    .map((item) => ({
+      id: stringValue(item['id']),
+      url: stringValue(item['url']),
+      width: numberValue(item['width']),
+      height: numberValue(item['height']),
+      altText: stringValue(item['altText']) || undefined,
+      caption: stringValue(item['caption']) || undefined,
+    }))
+    .filter((image) => image.id);
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
 }
 
 function normalizeOption(value: unknown, index: number): FormChoiceOption {

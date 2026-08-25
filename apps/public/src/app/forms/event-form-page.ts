@@ -8,6 +8,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import {
   EventFormRendererComponent,
+  EventFormDescriptionContentComponent,
   parseFormAnswersJson,
   parseFormElementsJson,
   serializeFormAnswers,
@@ -62,6 +63,7 @@ type FormPageState =
     MatSnackBarModule,
     MatToolbarModule,
     EventFormRendererComponent,
+    EventFormDescriptionContentComponent,
   ],
   templateUrl: './event-form-page.html',
   styleUrl: './event-form-page.css',

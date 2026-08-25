@@ -8,12 +8,17 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, ParamMap } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventFormBuilderComponent, EventFormRendererComponent } from '@cacic-fct/shared-angular/event-forms';
+import {
+  EventFormBuilderComponent,
+  EventFormDescriptionContentComponent,
+  EventFormRendererComponent,
+} from '@cacic-fct/shared-angular/event-forms';
 import {
   EventForm,
   EventFormAudience,
@@ -37,10 +42,12 @@ import { FormResultsComponent } from './form-results.component';
     MatIconModule,
     MatInputModule,
     MatListModule,
+    MatProgressBarModule,
     MatSelectModule,
     MatTabsModule,
     MatTooltipModule,
     EventFormBuilderComponent,
+    EventFormDescriptionContentComponent,
     EventFormRendererComponent,
     FormResultsComponent,
   ],
@@ -76,6 +83,11 @@ export class FormsPageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.workspace.closeResultsStream();
+  }
+
+  handleFormImageUpload(input: HTMLInputElement): void {
+    void this.workspace.uploadImage(input.files?.[0] ?? null);
+    input.value = '';
   }
 
   sigiloLabel(sigilo: EventFormSigilo): string {

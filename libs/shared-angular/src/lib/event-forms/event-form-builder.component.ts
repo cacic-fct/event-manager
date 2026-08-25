@@ -6,12 +6,14 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   isFormAnswerElementType,
   type FormChoiceOption,
   type FormElement,
+  type FormImage,
   type FormElementType,
   type FormSchedulingInviteeMode,
 } from '@cacic-fct/form-contracts';
@@ -36,6 +38,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatProgressBarModule,
     MatSelectModule,
     MatTooltipModule,
     DragDropModule,
@@ -112,7 +115,15 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
             <div class="item-grid">
               <mat-form-field appearance="outline">
                 <mat-label>Título</mat-label>
-                <input matInput [value]="element.title" (input)="updateText(element.id, 'title', $event)" />
+                <input
+                  matInput
+                  [required]="isAnswerElement(element.type)"
+                  [attr.aria-invalid]="isAnswerElement(element.type) && !element.title.trim()"
+                  [value]="element.title"
+                  (input)="updateText(element.id, 'title', $event)" />
+                @if (isAnswerElement(element.type) && !element.title.trim()) {
+                  <mat-hint class="validation">Informe o título da pergunta.</mat-hint>
+                }
               </mat-form-field>
 
               <mat-form-field appearance="outline">
@@ -130,6 +141,65 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                 </mat-checkbox>
               }
             </div>
+
+            <section class="image-editor" [attr.aria-label]="'Imagens de ' + (element.title || labels[element.type])">
+              <div class="image-editor-heading">
+                <div>
+                  <h4>Imagens do item</h4>
+                  <p>As imagens aparecem em tamanho amplo junto à descrição.</p>
+                </div>
+                <input
+                  #imageInput
+                  hidden
+                  type="file"
+                  accept="image/avif,image/bmp,image/gif,image/heic,image/heif,image/jpeg,image/png,image/svg+xml,image/tiff,image/webp"
+                  (change)="uploadImage(element.id, $event); imageInput.value = ''" />
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="uploadingImageTarget() !== null"
+                  (click)="imageInput.click()">
+                  <mat-icon>add_photo_alternate</mat-icon>
+                  Imagem
+                </button>
+              </div>
+
+              @if (uploadingImageTarget() === element.id) {
+                <mat-progress-bar mode="indeterminate" aria-label="Enviando imagem" />
+              }
+
+              @for (image of element.descriptionImages ?? []; track $index) {
+                <div class="image-row">
+                  <img [src]="image.url" [alt]="image.altText || ''" />
+                  <div class="image-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Texto alternativo</mat-label>
+                      <input
+                        matInput
+                        [value]="image.altText ?? ''"
+                        (input)="updateImageText(element.id, image.id, 'altText', $event)" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Legenda</mat-label>
+                      <input
+                        matInput
+                        [value]="image.caption ?? ''"
+                        (input)="updateImageText(element.id, image.id, 'caption', $event)" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Remover imagem deste item"
+                      aria-label="Remover imagem deste item"
+                      (click)="imageRemove.emit({ elementId: element.id, image })">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="empty-state">Nenhuma imagem neste item.</p>
+              }
+            </section>
 
             @if (usesOptions(element.type)) {
               <div class="option-editor">
@@ -409,6 +479,10 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
       margin: 0;
     }
 
+    .validation {
+      color: var(--mat-sys-error);
+    }
+
     .builder-item {
       display: grid;
       gap: 16px;
@@ -476,6 +550,44 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
       gap: 8px;
     }
 
+    .image-editor {
+      display: grid;
+      gap: 12px;
+    }
+
+    .image-editor-heading,
+    .image-fields {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .image-editor-heading p {
+      color: var(--mat-sys-on-surface-variant);
+      margin: 4px 0 0;
+    }
+
+    .image-row {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(140px, 220px) 1fr;
+    }
+
+    .image-row img {
+      background: var(--mat-sys-surface-container-highest);
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 8px;
+      display: block;
+      height: 140px;
+      object-fit: contain;
+      width: 100%;
+    }
+
+    .image-fields mat-form-field {
+      flex: 1 1 180px;
+    }
+
     .option-row mat-form-field,
     .availability-row mat-form-field {
       flex: 1 1 160px;
@@ -490,6 +602,16 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
         flex-direction: column;
       }
 
+      .image-editor-heading,
+      .image-fields {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .image-row {
+        grid-template-columns: 1fr;
+      }
+
       .item-actions {
         flex-wrap: wrap;
       }
@@ -499,6 +621,9 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
 export class EventFormBuilderComponent {
   readonly elements = input<readonly FormElement[]>([]);
   readonly elementsChange = output<FormElement[]>();
+  readonly imageUpload = output<{ elementId: string; file: File | null }>();
+  readonly imageRemove = output<{ elementId: string; image: FormImage }>();
+  readonly uploadingImageTarget = input<string | null>(null);
   readonly addType = signal<FormElementType>('shortText');
 
   protected readonly elementTypes = EVENT_FORM_ELEMENT_TYPES;
@@ -561,6 +686,21 @@ export class EventFormBuilderComponent {
 
   updateRequired(elementId: string, required: boolean): void {
     this.updateElement(elementId, (element) => ({ ...element, required }));
+  }
+
+  uploadImage(elementId: string, event: Event): void {
+    const input = event.target;
+    this.imageUpload.emit({ elementId, file: input instanceof HTMLInputElement ? (input.files?.[0] ?? null) : null });
+  }
+
+  updateImageText(elementId: string, imageId: string, key: 'altText' | 'caption', event: Event): void {
+    const value = this.eventValue(event) || undefined;
+    this.updateElement(elementId, (element) => ({
+      ...element,
+      descriptionImages: (element.descriptionImages ?? []).map((image) =>
+        image.id === imageId ? { ...image, [key]: value } : image,
+      ),
+    }));
   }
 
   addOption(elementId: string, collection: OptionCollection): void {

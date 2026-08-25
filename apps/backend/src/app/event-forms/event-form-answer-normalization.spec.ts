@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { FormElement } from '@cacic-fct/form-contracts';
 import {
   assertStoredResponseHasCurrentRequiredAnswers,
+  assertQuestionsHaveTitles,
   isEmptyAnswer,
   normalizeAnswers,
   parseAnswersJson,
@@ -112,7 +113,7 @@ describe('event form answer normalization', () => {
       },
       {
         id: 'element-3',
-        title: 'Pergunta sem título',
+        title: '',
         type: 'singleChoice',
         required: true,
         options: [
@@ -121,6 +122,15 @@ describe('event form answer normalization', () => {
         ],
       },
     ]);
+  });
+
+  it('rejects saves with untitled questions while allowing untitled structural items', () => {
+    expect(() =>
+      assertQuestionsHaveTitles(parseElementsJson('[{"type":"shortText","title":"   "}]')),
+    ).toThrow('Todas as perguntas do formulário precisam ter um título.');
+    expect(() =>
+      assertQuestionsHaveTitles(parseElementsJson('[{"type":"section","title":""},{"type":"statement","title":""}]')),
+    ).not.toThrow();
   });
 
   it('rejects malformed element JSON and invalid element entries', () => {

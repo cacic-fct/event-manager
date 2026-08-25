@@ -38,8 +38,11 @@
         <p>{{ formContext.targetName }}</p>
         <h4>{{ formContext.form.name }}</h4>
       </header>
-      @if (formContext.form.description) {
-      <p class="form-description">{{ formContext.form.description }}</p>
+      @if (formContext.form.description || formContext.form.descriptionImages.length) {
+      <lib-event-form-description-content
+        class="form-description"
+        [text]="formContext.form.description ?? undefined"
+        [images]="formContext.form.descriptionImages" />
       }
       <lib-event-form-renderer
         [elements]="formElements(formContext.form)"

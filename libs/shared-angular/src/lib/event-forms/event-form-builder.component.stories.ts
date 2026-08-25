@@ -1,12 +1,24 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { type FormElement } from '@cacic-fct/form-contracts';
+import { type FormElement, type FormImage } from '@cacic-fct/form-contracts';
 import { EventFormBuilderComponent } from './event-form-builder.component';
 
 type EventFormBuilderStoryArgs = {
   elements: readonly FormElement[];
   elementsChange: ReturnType<typeof fn>;
+  imageUpload: ReturnType<typeof fn>;
+  imageRemove: ReturnType<typeof fn>;
+  uploadingImageTarget: string | null;
 };
+
+const landscapeImage = {
+  id: 'form-image-landscape',
+  url: 'https://placehold.co/1200x675',
+  width: 1200,
+  height: 675,
+  altText: 'Mapa ilustrativo do local de retirada das camisetas',
+  caption: 'Ponto de retirada no saguão principal.',
+} satisfies FormImage;
 
 const elements: FormElement[] = [
   { id: 'section', type: 'section', title: 'Inscrição', required: false, options: [] },
@@ -14,6 +26,7 @@ const elements: FormElement[] = [
     id: 'shirt',
     type: 'singleChoice',
     title: 'Tamanho da camiseta',
+    descriptionImages: [landscapeImage],
     required: true,
     options: [
       { id: 'p', label: 'P' },
@@ -68,6 +81,9 @@ const meta: Meta<EventFormBuilderStoryArgs> = {
   args: {
     elements,
     elementsChange: fn(),
+    imageUpload: fn(),
+    imageRemove: fn(),
+    uploadingImageTarget: null,
   },
   argTypes: {
     elements: {
@@ -75,13 +91,19 @@ const meta: Meta<EventFormBuilderStoryArgs> = {
       description: 'Estrutura editável do formulário, incluindo seções, perguntas e configurações avançadas.',
     },
     elementsChange: { table: { disable: true } },
+    imageUpload: { table: { disable: true } },
+    imageRemove: { table: { disable: true } },
+    uploadingImageTarget: { control: 'text' },
   },
   render: (args) => ({
     props: args,
     template: `
       <lib-event-form-builder
         [elements]="elements"
-        (elementsChange)="elementsChange($event)" />
+        [uploadingImageTarget]="uploadingImageTarget"
+        (elementsChange)="elementsChange($event)"
+        (imageUpload)="imageUpload($event)"
+        (imageRemove)="imageRemove($event)" />
     `,
   }),
 };
@@ -112,6 +134,48 @@ export const MinimalRegistrationForm: Story = {
   args: {
     elements: elements.slice(0, 2),
     elementsChange: fn(),
+  },
+};
+
+export const WithQuestionImage: Story = {
+  args: {
+    elements: elements.slice(0, 2),
+    elementsChange: fn(),
+    imageUpload: fn(),
+    imageRemove: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('img', { name: landscapeImage.altText })).toBeVisible();
+    await expect(canvas.getByDisplayValue(landscapeImage.caption)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Remover imagem deste item' })).toBeVisible();
+  },
+};
+
+export const UploadingQuestionImage: Story = {
+  args: {
+    elements: elements.slice(0, 2),
+    uploadingImageTarget: 'shirt',
+    elementsChange: fn(),
+    imageUpload: fn(),
+    imageRemove: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByLabelText('Enviando imagem')).toBeVisible();
+  },
+};
+
+export const UntitledQuestion: Story = {
+  args: {
+    elements: [{ id: 'untitled', type: 'shortText', title: '', required: false, options: [] }],
+    elementsChange: fn(),
+    imageUpload: fn(),
+    imageRemove: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Informe o título da pergunta.')).toBeVisible();
+    await expect(canvas.getByLabelText('Título')).toHaveAttribute('aria-invalid', 'true');
   },
 };
 

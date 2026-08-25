@@ -109,6 +109,15 @@ describe('receipt-file utils', () => {
     ).toThrow(BadRequestException);
   });
 
+  it('detects generic HEIF uploads without mislabeling them as HEIC', () => {
+    const heif = Buffer.from('0000ftypmif10000');
+    const file = { buffer: heif, mimetype: 'application/octet-stream', originalname: 'receipt.heif', size: heif.length };
+
+    assertValidReceiptUpload(file);
+
+    expect(file.mimetype).toBe('image/heif');
+  });
+
   it('builds receipt object keys preferring known mime extensions', () => {
     expect(buildReceiptObjectKey('major', 'subscription', 'receipt', 'ignored.jpeg', 'image/png')).toBe(
       'major-events/major/subscriptions/subscription/receipts/receipt.png',

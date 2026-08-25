@@ -18,6 +18,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
+import { EventFormImagesService } from './event-form-images.service';
 
 type EventFormLinkInput = NonNullable<EventFormInput['links']>[number];
 
@@ -26,6 +27,7 @@ describe('EventFormEditorService', () => {
   let prisma: ReturnType<typeof createPrisma>;
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let auditLog: ReturnType<typeof createAuditLog>;
+  let images: ReturnType<typeof createImages>;
 
   const authenticatedUser: AuthenticatedUser = {
     realm_access: { roles: [] },
@@ -49,10 +51,12 @@ describe('EventFormEditorService', () => {
     prisma = createPrisma();
     authorizationPolicy = createAuthorizationPolicy();
     auditLog = createAuditLog();
+    images = createImages();
     service = new EventFormEditorService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as unknown as jest.Mocked<AuditLogService>,
+      images as unknown as jest.Mocked<EventFormImagesService>,
     );
   });
 
@@ -177,6 +181,7 @@ describe('EventFormEditorService', () => {
     });
     prisma.eventForm.findFirst.mockResolvedValue(existing);
     prisma.eventForm.findUniqueOrThrow.mockResolvedValue(updated);
+    images.reconcile.mockResolvedValue(['event-forms/removed.avif']);
 
     const result = await service.saveForm(
       formInput({
@@ -204,6 +209,8 @@ describe('EventFormEditorService', () => {
 
     expect(result.resultsPublic).toBe(false);
     expect(result.resultsLive).toBe(false);
+    expect(images.reconcile).toHaveBeenCalledWith(prisma, 'form-1', [], expect.any(Array), 'user-1');
+    expect(images.deleteObjectsBestEffort).toHaveBeenCalledWith(['event-forms/removed.avif']);
     expect(prisma.eventForm.update).toHaveBeenCalledWith({
       where: { id: 'form-1' },
       data: expect.objectContaining({
@@ -482,6 +489,13 @@ function createAuditLog() {
   };
 }
 
+function createImages(removedImageKeys: string[] = []) {
+  return {
+    reconcile: jest.fn().mockResolvedValue(removedImageKeys),
+    deleteObjectsBestEffort: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function formInput(overrides: Partial<EventFormInput> = {}): EventFormInput {
   return {
     name: 'Pesquisa de camiseta',
@@ -524,6 +538,8 @@ function formRecord(
     ownerEventId?: string | null;
     ownerMajorEventId?: string | null;
     elements?: unknown[];
+    descriptionImages?: unknown[];
+    images?: unknown[];
     sigilo?: EventFormSigilo;
     responseMode?: EventFormResponseMode;
     resultsPublic?: boolean;
@@ -542,6 +558,7 @@ function formRecord(
     id: options.id ?? 'form-1',
     name: options.name ?? 'Pesquisa de camiseta',
     description: options.description ?? null,
+    descriptionImages: options.descriptionImages ?? [],
     ownerEventId,
     ownerMajorEventId,
     ownerEvent: ownerEventId
@@ -561,6 +578,7 @@ function formRecord(
         }
       : null,
     elements: options.elements ?? [],
+    images: options.images ?? [],
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
     responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,

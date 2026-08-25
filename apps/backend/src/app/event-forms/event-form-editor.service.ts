@@ -7,6 +7,7 @@ import {
   EventFormSigilo as ContractSigilo,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { FormElement } from '@cacic-fct/form-contracts';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { addDays } from 'date-fns';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -14,7 +15,8 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { eventFormAuditRecord } from './event-form-audit';
-import { parseElementsJson } from './event-form-answer-normalization';
+import { assertQuestionsHaveTitles, parseElementsJson } from './event-form-answer-normalization';
+import { EventFormImagesService, parseEventFormImageReferences } from './event-form-images.service';
 import { toDraftModel, toEventFormModel } from './event-form-model.mapper';
 import { eventFormInclude } from './event-form-records';
 import {
@@ -42,15 +44,22 @@ export class EventFormEditorService {
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly auditLog: AuditLogService,
+    private readonly images: EventFormImagesService,
   ) {}
 
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
     const elements = parseElementsJson(input.elementsJson ?? '[]');
+    assertQuestionsHaveTitles(elements);
+    const submittedDescriptionImages =
+      input.descriptionImagesJson === undefined || input.descriptionImagesJson === null
+        ? null
+        : parseEventFormImageReferences(input.descriptionImagesJson);
     const target = normalizeOwner(input);
     const actorId = user?.sub;
 
     if (input.id) {
       const existing = await requireEventForm(this.prisma, input.id);
+      const descriptionImages = submittedDescriptionImages ?? storedImageReferences(existing.descriptionImages);
       const nextLinks = input.links ?? [];
       const shouldReplaceLinks = input.links !== undefined && input.links !== null;
       const resultsPublic = input.resultsPublic ?? existing.resultsPublic;
@@ -78,15 +87,16 @@ export class EventFormEditorService {
         );
       }
 
-      const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         await tx.eventForm.update({
           where: { id: existing.id },
           data: {
             name: normalizeFormName(input.name, existing.name),
             description: normalizeOptionalFormText(input.description),
+            descriptionImages: descriptionImages as unknown as Prisma.InputJsonValue,
             ownerEventId: target.ownerEventId,
             ownerMajorEventId: target.ownerMajorEventId,
-            elements: elements as unknown as Prisma.InputJsonValue,
+            elements: storedElements(elements),
             sigilo: toDbSigilo(input.sigilo ?? existing.sigilo),
             responseMode: toDbResponseMode(input.responseMode ?? existing.responseMode),
             resultsPublic,
@@ -98,6 +108,7 @@ export class EventFormEditorService {
         if (shouldReplaceLinks) {
           await replaceEventFormLinks(tx, existing.id, nextLinks, actorId, existing.links);
         }
+        const removedImageKeys = await this.images.reconcile(tx, existing.id, descriptionImages, elements, actorId);
 
         const updated = await tx.eventForm.findUniqueOrThrow({
           where: { id: existing.id },
@@ -114,10 +125,11 @@ export class EventFormEditorService {
           ),
           tx,
         );
-        return updated;
+        return { updated, removedImageKeys };
       });
 
-      return toEventFormModel(updated);
+      await this.images.deleteObjectsBestEffort(result.removedImageKeys);
+      return toEventFormModel(result.updated);
     }
 
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Create], {
@@ -125,6 +137,7 @@ export class EventFormEditorService {
       majorEventId: target.ownerMajorEventId ?? undefined,
       allowScopedCollection: true,
     });
+    const descriptionImages = submittedDescriptionImages ?? [];
     await assertCanManageLinkedTargets(this.authorizationPolicy, user, input.links ?? [], Permission.EventForm.Create);
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -132,9 +145,10 @@ export class EventFormEditorService {
         data: {
           name: normalizeFormName(input.name, 'Formulário sem título'),
           description: normalizeOptionalFormText(input.description),
+          descriptionImages: descriptionImages as unknown as Prisma.InputJsonValue,
           ownerEventId: target.ownerEventId,
           ownerMajorEventId: target.ownerMajorEventId,
-          elements: elements as unknown as Prisma.InputJsonValue,
+          elements: storedElements(elements),
           sigilo: toDbSigilo(input.sigilo ?? ContractSigilo.SECRET),
           responseMode: toDbResponseMode(input.responseMode ?? ContractResponseMode.ONE_PER_TARGET),
           resultsPublic: input.resultsPublic ?? false,
@@ -146,6 +160,7 @@ export class EventFormEditorService {
       });
 
       await replaceEventFormLinks(tx, form.id, input.links ?? [], actorId);
+      await this.images.reconcile(tx, form.id, descriptionImages, elements, actorId);
 
       const created = await tx.eventForm.findUniqueOrThrow({
         where: { id: form.id },
@@ -177,10 +192,12 @@ export class EventFormEditorService {
       eventFormId: form.id,
     });
 
+    const draftElements = parseElementsJson(input.input.elementsJson ?? JSON.stringify(form.elements));
+    assertQuestionsHaveTitles(draftElements);
     const payload = JSON.parse(
       JSON.stringify({
         ...input.input,
-        elementsJson: JSON.stringify(parseElementsJson(input.input.elementsJson ?? JSON.stringify(form.elements))),
+        elementsJson: JSON.stringify(draftElements),
       }),
     ) as Prisma.InputJsonObject;
     const actor = eventFormActorInfo(user);
@@ -276,4 +293,19 @@ export class EventFormEditorService {
 
     return toEventFormModel(updated);
   }
+}
+
+function storedElements(elements: readonly FormElement[]): Prisma.InputJsonValue {
+  return elements.map((element) => ({
+    ...element,
+    descriptionImages: (element.descriptionImages ?? []).map(({ id, altText, caption }) => ({
+      id,
+      ...(altText ? { altText } : {}),
+      ...(caption ? { caption } : {}),
+    })),
+  })) as unknown as Prisma.InputJsonValue;
+}
+
+function storedImageReferences(value: Prisma.JsonValue): ReturnType<typeof parseEventFormImageReferences> {
+  return parseEventFormImageReferences(JSON.stringify(Array.isArray(value) ? value : []));
 }

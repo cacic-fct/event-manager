@@ -1,4 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
+import { FormImage } from '@cacic-fct/form-contracts';
 import { map } from 'rxjs';
 import { EventForm, EventFormDraft, EventFormInput, EventFormResults } from '@cacic-fct/event-manager-admin-contracts';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -34,6 +36,14 @@ const EVENT_FORM_FIELDS = `
   id
   name
   description
+  descriptionImages {
+    id
+    url
+    width
+    height
+    altText
+    caption
+  }
   ownerEventId
   ownerMajorEventId
   owner {
@@ -82,6 +92,28 @@ const EVENT_FORM_DRAFT_FIELDS = `
 @Service()
 export class EventFormApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
+  private readonly http = inject(HttpClient);
+
+  uploadImage(
+    formId: string | null,
+    file: File,
+    owner: { ownerEventId?: string | null; ownerMajorEventId?: string | null } = {},
+  ) {
+    const body = new FormData();
+    body.append('file', file);
+    if (owner.ownerEventId) body.append('ownerEventId', owner.ownerEventId);
+    if (owner.ownerMajorEventId) body.append('ownerMajorEventId', owner.ownerMajorEventId);
+    const url = formId
+      ? `/api/event-forms/${encodeURIComponent(formId)}/images`
+      : '/api/event-forms/images';
+    return this.http.post<FormImage>(url, body);
+  }
+
+  deleteImage(formId: string, imageId: string) {
+    return this.http.delete<void>(
+      `/api/event-forms/${encodeURIComponent(formId)}/images/${encodeURIComponent(imageId)}`,
+    );
+  }
 
   listForms(filters?: { query?: string; eventId?: string; majorEventId?: string }) {
     return this.graphqlHttp

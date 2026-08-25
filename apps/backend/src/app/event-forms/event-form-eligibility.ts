@@ -49,7 +49,7 @@ export async function canPersonAccessLinkPriceTier(
 
   const [priceTiers, subscription] = await Promise.all([
     prisma.priceTier.findMany({
-      where: { id: { in: link.priceTierIds } },
+      where: { id: { in: [...link.priceTierIds] } },
       select: { name: true },
     }),
     prisma.majorEventSubscription.findFirst({

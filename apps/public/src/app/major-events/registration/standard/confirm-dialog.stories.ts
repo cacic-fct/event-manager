@@ -39,11 +39,31 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                   id: 'form-1',
                   name: 'Camiseta',
                   description: 'Dados para retirada de camiseta.',
+                  descriptionImages: [
+                    {
+                      id: 'shirt-pickup-map',
+                      url: 'https://placehold.co/1200x675',
+                      width: 1200,
+                      height: 675,
+                      altText: 'Mapa do ponto de retirada da camiseta',
+                      caption: 'Retirada no saguão principal.',
+                    },
+                  ],
                   elementsJson: JSON.stringify([
                     {
                       id: 'shirt',
                       type: 'singleChoice',
                       title: 'Tamanho da camiseta',
+                      descriptionImages: [
+                        {
+                          id: 'shirt-size-guide',
+                          url: 'https://placehold.co/900x1200',
+                          width: 900,
+                          height: 1200,
+                          altText: 'Guia vertical de tamanhos de camiseta',
+                          caption: 'Compare as medidas antes de escolher.',
+                        },
+                      ],
                       required: true,
                       options: [
                         { id: 'p', label: 'P' },
@@ -131,6 +151,15 @@ export const RequiredAnswersCompleted: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'M' }));
     await userEvent.click(canvas.getByRole('checkbox', { name: /contrato de licença de uso de imagem/i }));
     await expect(canvas.getByRole('button', { name: 'Inscrever-se' })).toBeEnabled();
+  },
+};
+
+export const FormImages: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('img', { name: 'Mapa do ponto de retirada da camiseta' })).toBeVisible();
+    await expect(canvas.getByRole('img', { name: 'Guia vertical de tamanhos de camiseta' })).toBeVisible();
+    await expect(canvas.getByText('Compare as medidas antes de escolher.')).toBeVisible();
   },
 };
 

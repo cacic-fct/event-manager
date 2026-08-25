@@ -222,6 +222,7 @@ export function createPublicEventForm(overrides: Partial<PublicEventForm> = {}):
     createdAt: publicFixtureDate,
     updatedAt: publicFixtureDate,
     ...overrides,
+    descriptionImages: overrides.descriptionImages ?? [],
   };
 }
 

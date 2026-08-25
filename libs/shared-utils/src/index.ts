@@ -7,6 +7,7 @@ export * from './lib/map-defaults';
 export * from './lib/openstreetmap';
 export * from './lib/cpf';
 export * from './lib/csp-nonce';
+export * from './lib/image-file';
 export * from './lib/date-only';
 export * from './lib/subscriber-csv';
 export * from './lib/unesp-role-formatters';

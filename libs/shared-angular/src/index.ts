@@ -12,6 +12,7 @@ export * from './lib/calendar-feed-reenable-dialog.component';
 export * from './lib/confirmation-dialog.component';
 export * from './lib/duplicate-person-warning-dialog.component';
 export * from './lib/event-forms/event-form-builder.component';
+export * from './lib/event-forms/event-form-description-content.component';
 export * from './lib/event-forms/event-form-renderer.component';
 export * from './lib/event-forms/event-form-utils';
 export * from './lib/emoji/emoji.service';
