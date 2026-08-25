@@ -32,6 +32,7 @@ describe('image file utilities', () => {
     '<svg><style>rect { fill: url(https://example.com/paint.svg) }</style></svg>',
     '<svg><style>@import "https://example.com/style.css";</style></svg>',
     "<svg><style>@import url('https://example.com/style.css');</style></svg>",
+    '<svg><style>@import url(https://example.com/style.css);</style></svg>',
     '<svg><use xlink:href="data:image/svg+xml;base64,PHN2Zy8+"/></svg>',
     '<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><svg>&xxe;</svg>',
   ])('rejects active, external, or entity-based SVG content', (source) => {

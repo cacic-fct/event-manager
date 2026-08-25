@@ -66,14 +66,15 @@ describe('EventFormsService', () => {
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
     );
+    const images = {
+      reconcile: jest.fn().mockResolvedValue([]),
+      deleteObjectsBestEffort: jest.fn().mockResolvedValue(undefined),
+    };
     const editor = new EventFormEditorService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as never,
-      {
-        reconcile: jest.fn().mockResolvedValue([]),
-        deleteObjectsBestEffort: jest.fn().mockResolvedValue(undefined),
-      } as never,
+      images as never,
     );
     const publication = new EventFormPublicationWorkflowService(
       prisma as unknown as jest.Mocked<PrismaService>,
@@ -1925,6 +1926,8 @@ function formRecord(
         }
       : null,
     elements: options.elements ?? [],
+    descriptionImages: [],
+    images: [],
     sigilo: options.sigilo ?? EventFormSigilo.SECRET,
     responseMode: options.responseMode ?? EventFormResponseMode.ONE_PER_TARGET,
     resultsPublic: options.resultsPublic ?? false,

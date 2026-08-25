@@ -350,9 +350,13 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     },
     imageTextControl: (image: FormImage, key: 'altText' | 'caption') => {
       const cacheKey = `${image.id}:${key}`;
+      const expectedValue = image[key] ?? '';
       const cached = imageTextControls.get(cacheKey);
-      if (cached) return cached;
-      const control = new FormControl(image[key] ?? '', { nonNullable: true });
+      if (cached) {
+        if (cached.value !== expectedValue) cached.setValue(expectedValue, { emitEvent: false });
+        return cached;
+      }
+      const control = new FormControl(expectedValue, { nonNullable: true });
       control.valueChanges.subscribe((value) => {
         descriptionImages.update((current) =>
           current.map((item) => (item.id === image.id ? { ...item, [key]: value || undefined } : item)),

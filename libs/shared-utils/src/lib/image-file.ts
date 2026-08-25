@@ -37,7 +37,7 @@ export function detectImageMimeType(buffer: Uint8Array): DetectedImageMimeType |
 export function assertSafeSvg(buffer: Uint8Array): void {
   const source = new TextDecoder().decode(buffer);
   if (
-    /<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b|\son\w+\s*=/iu.test(source) ||
+    /<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b|\son\w+\s*=|@import\b/iu.test(source) ||
     hasExternalSvgReference(source)
   ) {
     throw new UnsafeSvgError();
