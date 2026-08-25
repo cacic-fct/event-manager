@@ -8,21 +8,15 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build and deploy Storybook
-    if: github.ref == 'refs/heads/main'
+  build:
+    name: Build Storybook
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -67,16 +61,24 @@ jobs:
       - name: Add composed Storybook to Pages root
         run: cp -R dist/storybook/admin/. dist/storybook-pages/
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist/storybook-pages
 
+  deploy:
+    name: Deploy Storybook
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
       - id: deploy
         name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v5
-        with:
-          token: ${{ github.token }}
