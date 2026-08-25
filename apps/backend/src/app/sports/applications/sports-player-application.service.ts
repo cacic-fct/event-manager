@@ -63,7 +63,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
     const pendingKey = this.applicationPendingKey(input.tournamentId, applicantPersonId, requestedTeamId);
 
     const application = await runSerializableSportsTransaction(this.prisma, async (tx) => {
-      const target = await this.loadApplicationTarget(tx, input.tournamentId, requestedTeamId, categoryIds);
+      const target = await this.loadApplicationTarget(tx, input.tournamentId, requestedTeamId, categoryIds, true);
       this.assertSelfApplicationOpen(target);
       this.ensureImageLicenseAgreementAccepted(
         target.majorEvent.requiresImageLicenseAgreement,

@@ -4,6 +4,7 @@ import {
   SportsEligibilityStatus,
   SportsParticipantSource,
   SportsParticipantStatus,
+  PublicationState,
   SportsTeamMemberStatus,
   SportsTeamStatus,
   SportsTournamentStatus,
@@ -110,6 +111,37 @@ describe('SportsPlayerApplicationService', () => {
       tx,
     );
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
+  });
+
+  it('rejects a self-application when no published backing major event is found', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce(null);
+
+    await expect(
+      service.submitSelfApplication(
+        {
+          tournamentId: 'tournament-1',
+          requestedTeamId: 'team-1',
+          categoryIds: ['category-1'],
+          noticeAccepted: true,
+        },
+        'person-1',
+        applicantActor,
+      ),
+    ).rejects.toThrow('O torneio selecionado não está disponível.');
+
+    expect(tx.sportsTournament.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'tournament-1',
+          deletedAt: null,
+          majorEvent: {
+            deletedAt: null,
+            publicationState: PublicationState.PUBLISHED,
+          },
+        },
+      }),
+    );
+    expect(tx.sportsPlayerApplication.upsert).not.toHaveBeenCalled();
   });
 
   it('allows joining an active team when the tournament has no available categories', async () => {

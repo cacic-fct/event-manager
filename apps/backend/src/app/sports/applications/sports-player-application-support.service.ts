@@ -3,6 +3,7 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
+  PublicationState,
   SportsApplicationStatus,
   SportsCategoryStatus,
   SportsRegistrationStatus,
@@ -54,9 +55,16 @@ export abstract class SportsPlayerApplicationSupportService {
     tournamentId: string,
     requestedTeamId: string | null,
     categoryIds: string[],
+    requirePublishedMajorEvent = false,
   ) {
     const tournament = await tx.sportsTournament.findFirst({
-      where: { id: tournamentId, deletedAt: null },
+      where: {
+        id: tournamentId,
+        deletedAt: null,
+        ...(requirePublishedMajorEvent
+          ? { majorEvent: { deletedAt: null, publicationState: PublicationState.PUBLISHED } }
+          : {}),
+      },
       select: {
         id: true,
         majorEventId: true,
