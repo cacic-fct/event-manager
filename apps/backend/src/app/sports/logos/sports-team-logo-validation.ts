@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
 import sharp from 'sharp';
 import type { SportsTeamLogoUploadFile } from './sports-team-logo.service';
 import { SPORTS_TEAM_LOGO_FORMATS, SPORTS_TEAM_LOGO_POLICY, SportsTeamLogoFormat } from './sports-team-logo.policy';
@@ -33,8 +34,10 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
     throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.');
   }
 
-  const detectedFormat =
-    metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif' ? 'avif' : metadata.format;
+  const detectedMimeType = detectImageMimeType(file.buffer);
+  const detectedFormat = detectedMimeType
+    ? Object.entries(SPORTS_TEAM_LOGO_FORMATS).find(([, details]) => details.mimeType === detectedMimeType)?.[0]
+    : undefined;
   if (!detectedFormat || !(detectedFormat in SPORTS_TEAM_LOGO_FORMATS)) {
     throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.');
   }
@@ -60,13 +63,13 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
   }
 
   if (format === 'svg') {
-    const source = file.buffer.toString('utf8');
-    if (
-      /<!DOCTYPE|<!ENTITY|<script|<foreignObject|\son\w+\s*=|(?:href|src)\s*=\s*["'](?:https?:|data:|\/\/)/iu.test(
-        source,
-      )
-    ) {
-      throw new BadRequestException('O SVG contém recursos externos ou conteúdo executável.');
+    try {
+      assertSafeSvg(file.buffer);
+    } catch (error: unknown) {
+      if (error instanceof UnsafeSvgError) {
+        throw new BadRequestException('O SVG contém recursos externos ou conteúdo executável.');
+      }
+      throw error;
     }
   }
   const normalizedBuffer = await sharp(file.buffer, {

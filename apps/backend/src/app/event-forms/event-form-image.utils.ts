@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
 import sharp from 'sharp';
 
 export type UploadedEventFormImageFile = {
@@ -54,7 +55,16 @@ export async function convertEventFormImageToAvif(file: UploadedEventFormImageFi
     throw new BadRequestException('A imagem precisa estar em um formato raster suportado.');
   }
 
-  if (originalMimeType === 'image/svg+xml') assertSafeSvg(file.buffer);
+  if (originalMimeType === 'image/svg+xml') {
+    try {
+      assertSafeSvg(file.buffer);
+    } catch (error: unknown) {
+      if (error instanceof UnsafeSvgError) {
+        throw new BadRequestException('O SVG não pode conter scripts, entidades, conteúdo HTML ou recursos externos.');
+      }
+      throw error;
+    }
+  }
   const metadata = await readProcessableImageMetadata(file.buffer, originalMimeType);
   const operation = createSharp(file.buffer, originalMimeType).rotate();
   if (originalMimeType === 'image/svg+xml') {
@@ -154,38 +164,5 @@ async function runImageOperation<T>(operation: Promise<T>, operationName: string
       throw new BadRequestException('A imagem excede os limites de processamento.');
     }
     throw new BadRequestException(`${operationName} falhou. Envie uma imagem válida.`);
-  }
-}
-
-function detectImageMimeType(buffer: Buffer): string | undefined {
-  if (buffer.length < 12) return undefined;
-  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
-  if (['GIF87a', 'GIF89a'].includes(buffer.subarray(0, 6).toString('ascii'))) return 'image/gif';
-  if (buffer.subarray(0, 2).toString('ascii') === 'BM') return 'image/bmp';
-  if (
-    buffer.subarray(0, 4).equals(Buffer.from([0x49, 0x49, 0x2a, 0x00])) ||
-    buffer.subarray(0, 4).equals(Buffer.from([0x4d, 0x4d, 0x00, 0x2a]))
-  ) return 'image/tiff';
-  if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
-  if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
-    const brands = buffer.subarray(8, Math.min(buffer.length, 32)).toString('ascii');
-    if (/\b(?:avif|avis)\b/.test(brands)) return 'image/avif';
-    if (/\b(?:heic|heix|hevc|hevx|mif1|msf1)\b/.test(brands)) {
-      return brands.includes('mif1') || brands.includes('msf1') ? 'image/heif' : 'image/heic';
-    }
-  }
-  const prefix = buffer.subarray(0, Math.min(buffer.length, 4_096)).toString('utf8').replace(/^\uFEFF/, '').trimStart();
-  if (/^(?:<\?xml[^>]*>\s*)?<svg\b/i.test(prefix)) return 'image/svg+xml';
-  return undefined;
-}
-
-function assertSafeSvg(buffer: Buffer): void {
-  const source = buffer.toString('utf8');
-  if (
-    /<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b/i.test(source) ||
-    /\b(?:href|xlink:href)\s*=\s*["']\s*(?:https?:|\/\/|data:)/i.test(source)
-  ) {
-    throw new BadRequestException('O SVG não pode conter scripts, entidades, conteúdo HTML ou recursos externos.');
   }
 }
