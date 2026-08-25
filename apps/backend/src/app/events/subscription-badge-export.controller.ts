@@ -36,7 +36,11 @@ import {
   type SubscriberCsvField,
 } from '@cacic-fct/shared-utils';
 
-const EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [Permission.Subscription.Read, Permission.Event.Read] as const;
+const EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [
+  Permission.Subscription.Read,
+  Permission.Event.Read,
+  Permission.MajorEvent.Read,
+] as const;
 const MAJOR_EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [Permission.Subscription.Read, Permission.MajorEvent.Read] as const;
 
 @ValidatorConstraint({ name: 'isValidErrorCorrectionLevel' })

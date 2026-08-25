@@ -1,5 +1,7 @@
 import { Readable } from 'node:stream';
 import { StreamableFile } from '@nestjs/common';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { SubscriptionBadgeExportController } from './subscription-badge-export.controller';
 import { SubscriptionBadgeExportService } from './subscription-badge-export.service';
 
@@ -11,6 +13,12 @@ describe('SubscriptionBadgeExportController', () => {
     format: 'svg' as const,
     fileName: 'id' as const,
   };
+
+  it('requires all workspace subscription read permissions for event exports', () => {
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, SubscriptionBadgeExportController.prototype.exportEvent),
+    ).toEqual([Permission.Subscription.Read, Permission.Event.Read, Permission.MajorEvent.Read]);
+  });
 
   it('streams an event ZIP with attachment headers', async () => {
     const file = new StreamableFile(Readable.from([]));
