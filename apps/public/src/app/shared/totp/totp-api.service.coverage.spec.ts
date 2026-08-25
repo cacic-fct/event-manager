@@ -23,6 +23,7 @@ describe('TotpApiService', () => {
     const result = firstValueFrom(service.getSeed());
     const request = http.expectOne('/api/totp/seed');
     const seed = {
+      userId: 'user-1',
       seed: 'BASE32SEED',
       algorithm: 'SHA512' as const,
       digits: 6,

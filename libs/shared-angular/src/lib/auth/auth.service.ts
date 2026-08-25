@@ -41,6 +41,7 @@ export class AuthService {
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+  private readonly beforeLogoutCleanups = new Set<() => void | Promise<void>>();
 
   readonly user = signal<AuthenticatedUser | null>(null);
   readonly initialized = signal(false);
@@ -145,6 +146,9 @@ export class AuthService {
 
   async logout(): Promise<void> {
     this.clearRefreshTimer();
+    if (this.beforeLogoutCleanups.size > 0) {
+      await this.runBeforeLogoutCleanups();
+    }
 
     if (isPlatformBrowser(this.platformId)) {
       const postLogoutRedirectUri = this.getPostLogoutRedirectUri();
@@ -179,6 +183,12 @@ export class AuthService {
     }
 
     this.clearSession();
+  }
+
+  registerBeforeLogoutCleanup(cleanup: () => void | Promise<void>): () => void {
+    this.beforeLogoutCleanups.add(cleanup);
+
+    return () => this.beforeLogoutCleanups.delete(cleanup);
   }
 
   async refreshMe(): Promise<void> {
@@ -242,6 +252,14 @@ export class AuthService {
   clearSession(): void {
     this.clearRefreshTimer();
     this.user.set(null);
+  }
+
+  private async runBeforeLogoutCleanups(): Promise<void> {
+    await Promise.allSettled(
+      [...this.beforeLogoutCleanups].map(async (cleanup) => {
+        await cleanup();
+      }),
+    );
   }
 
   consumePostLogoutRedirect(): boolean {

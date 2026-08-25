@@ -744,11 +744,11 @@ describe('offline public data access integration', () => {
       await expect(userData.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
       await expect(userData.purgeUserData()).resolves.toBeUndefined();
       await expect(totpSeeds.getSeed('user-1')).resolves.toBeNull();
-      await expect(totpSeeds.getLatestValidSeed()).resolves.toBeNull();
       await expect(totpSeeds.replaceSeed(totpSeed('user-1'))).resolves.toBeUndefined();
       await expect(totpSeeds.clearExpiredSeeds()).resolves.toBeUndefined();
       await expect(totpSeeds.clearSeedsExcept('user-1')).resolves.toBeUndefined();
       await expect(totpSeeds.clearSeeds()).resolves.toBeUndefined();
+      await expect(totpSeeds.clearSeed('user-1')).resolves.toBeUndefined();
       await expect(oralAttendance.cacheRoster('user-1', 'event-1', [])).resolves.toBeUndefined();
       await expect(oralAttendance.getRoster('user-1', 'event-1')).resolves.toEqual([]);
       await expect(oralAttendance.listPending('user-1', 'event-1')).resolves.toEqual([]);
@@ -763,7 +763,7 @@ describe('offline public data access integration', () => {
     }
   });
 
-  it('stores TOTP seeds, removes expired sessions, and keeps the latest valid seed', async () => {
+  it('stores TOTP seeds and removes expired sessions by user', async () => {
     const service = injectService(TotpSeedCacheService);
 
     await service.replaceSeed(totpSeed('expired-user', { sessionExpiresAt: 999, updatedAt: 20 }));
@@ -778,13 +778,6 @@ describe('offline public data access integration', () => {
         updatedAt: 10,
       }),
     );
-    await expect(service.getLatestValidSeed(1_000)).resolves.toEqual(
-      totpSeed('latest-user', {
-        sessionExpiresAt: 2_000,
-        updatedAt: 30,
-      }),
-    );
-
     await service.replaceSeed(totpSeed('default-updated-at', { sessionExpiresAt: 2_000, updatedAt: 0 }));
     await expect(database.totpSeeds.get('default-updated-at')).resolves.toEqual(
       expect.objectContaining({
@@ -792,6 +785,9 @@ describe('offline public data access integration', () => {
         updatedAt: expect.any(Number),
       }),
     );
+
+    await service.clearSeed('older-user');
+    await expect(database.totpSeeds.get('older-user')).resolves.toBeUndefined();
 
     await service.clearSeedsExcept('latest-user');
     await expect(database.totpSeeds.toArray()).resolves.toEqual([

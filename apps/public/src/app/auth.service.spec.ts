@@ -58,6 +58,31 @@ describe('AuthService', () => {
     expect(clearTrackingCookies).toHaveBeenCalledOnce();
   });
 
+  it('waits for registered local cleanup before making the logout request', async () => {
+    let finishCleanup!: () => void;
+    const cleanup = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCleanup = resolve;
+        }),
+    );
+    auth.registerBeforeLogoutCleanup(cleanup);
+
+    const logout = auth.logout();
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(httpTesting.match('/api/auth/logout')).toHaveLength(0);
+
+    finishCleanup();
+    let logoutRequest: TestRequest | undefined;
+    await vi.waitFor(() => {
+      logoutRequest = httpTesting.match('/api/auth/logout')[0];
+      expect(logoutRequest).toBeDefined();
+    });
+    logoutRequest?.flush({});
+
+    await expect(logout).resolves.toBeUndefined();
+  });
+
   it('keeps tracking refresh failures best-effort', async () => {
     refreshTrackingCookies.mockReturnValue(throwError(() => new Error('tracking unavailable')));
 

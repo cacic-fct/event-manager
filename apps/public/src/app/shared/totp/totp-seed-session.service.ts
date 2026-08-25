@@ -20,6 +20,7 @@ export class TotpSeedSessionService {
   private preparedUserId: string | null = null;
   private authGeneration = 0;
   private transition: Promise<void> = Promise.resolve();
+  private removeBeforeLogoutCleanup: (() => void) | null = null;
 
   start(): void {
     if (this.started) {
@@ -27,6 +28,8 @@ export class TotpSeedSessionService {
     }
 
     this.started = true;
+    this.removeBeforeLogoutCleanup = this.auth.registerBeforeLogoutCleanup(() => this.clearSeeds());
+    this.destroyRef.onDestroy(() => this.removeBeforeLogoutCleanup?.());
 
     effect(
       () => {
@@ -68,6 +71,10 @@ export class TotpSeedSessionService {
     }
     const cachedSeed = userId ? await this.cache.getSeed(userId) : null;
 
+    if (userId && !this.isCurrentGeneration(userId, generation)) {
+      return null;
+    }
+
     if (!this.networkStatus.isOnline() || !userId) {
       return cachedSeed;
     }
@@ -79,19 +86,28 @@ export class TotpSeedSessionService {
         updatedAt: Date.now(),
       };
 
+      if (record.userId !== userId) {
+        throw new Error('Received a TOTP seed for a different user.');
+      }
+
       if (userId && !this.isCurrentGeneration(userId, generation)) {
         return null;
       }
 
       await this.cache.replaceSeed(record);
       if (userId && !this.isCurrentGeneration(userId, generation)) {
+        await this.cache.clearSeed(record.userId);
         return null;
       }
       await this.cache.clearSeedsExcept(record.userId);
       return record;
     } catch (error) {
-      if (cachedSeed) {
+      if (cachedSeed && this.isCurrentGeneration(userId, generation)) {
         return cachedSeed;
+      }
+
+      if (userId && !this.isCurrentGeneration(userId, generation)) {
+        return null;
       }
 
       throw error;
@@ -99,6 +115,8 @@ export class TotpSeedSessionService {
   }
 
   async clearSeeds(): Promise<void> {
+    this.authGeneration += 1;
+    this.preparedUserId = null;
     await this.cache.clearSeeds();
   }
 

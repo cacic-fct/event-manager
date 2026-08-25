@@ -37,16 +37,6 @@ export class TotpSeedCacheService {
     return seed;
   }
 
-  async getLatestValidSeed(now = Date.now()): Promise<OfflineTotpSeedRecord | null> {
-    const database = this.databaseProvider.getDatabase();
-    if (!database) {
-      return null;
-    }
-
-    await this.clearExpiredSeeds(now);
-    return (await database.totpSeeds.orderBy('updatedAt').last()) ?? null;
-  }
-
   async clearExpiredSeeds(now = Date.now()): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
@@ -63,6 +53,15 @@ export class TotpSeedCacheService {
     }
 
     await database.totpSeeds.clear();
+  }
+
+  async clearSeed(userId: string): Promise<void> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return;
+    }
+
+    await database.totpSeeds.delete(userId);
   }
 
   async clearSeedsExcept(userId: string): Promise<void> {
