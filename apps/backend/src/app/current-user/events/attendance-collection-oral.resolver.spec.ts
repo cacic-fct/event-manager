@@ -62,7 +62,7 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
     jest.mocked(notifySportsMatchAttendanceMutation).mockResolvedValue(undefined);
   });
 
-  it('authorizes the collector before loading the complete oral roster', async () => {
+  it('authorizes the collector and verifies oral attendance is enabled before loading the complete roster', async () => {
     const roster = [{ personId: 'person-1', status: null }];
     jest.mocked(getAttendanceOralRoster).mockResolvedValueOnce(roster as never);
 
@@ -73,7 +73,20 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
       'collector-person',
       { enforceCollectionWindow: true, user: actor },
     );
+    expect(prisma.event.findUnique).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      select: { shouldAllowOralAttendance: true },
+    });
     expect(getAttendanceOralRoster).toHaveBeenCalledWith(prisma, 'event-1');
+  });
+
+  it('does not expose the oral roster when oral attendance is disabled', async () => {
+    prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: false });
+
+    await expect(
+      resolver().currentUserAttendanceOralRoster('event-1', context as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(getAttendanceOralRoster).not.toHaveBeenCalled();
   });
 
   it('records one oral decision with immutable collector attribution and invalidates insights', async () => {

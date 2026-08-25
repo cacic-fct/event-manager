@@ -248,7 +248,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       throw new BadRequestException('Envie até 1000 decisões de um único evento por sincronização.');
     }
     const eventId = inputs[0].eventId;
-    await this.assertOralAttendanceAllowed(eventId);
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
     const idempotentClientIds = new Set<string>();
@@ -1137,16 +1136,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventAttendance.Update], {
       eventId,
     });
-  }
-
-  private async assertOralAttendanceAllowed(eventId: string): Promise<void> {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { shouldAllowOralAttendance: true },
-    });
-    if (!event?.shouldAllowOralAttendance) {
-      throw new BadRequestException('A chamada oral não está habilitada para este evento.');
-    }
   }
 
   private assertAdminOralCollectorProvenance(

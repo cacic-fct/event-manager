@@ -106,11 +106,19 @@ describe('EventAttendancesMutationsResolver', () => {
     );
   });
 
-  it('rejects admin oral-call batches when oral attendance is disabled', async () => {
+  it('allows authorized admin oral-call batches when the event option is disabled', async () => {
     prisma.event.findUnique.mockResolvedValue({ shouldAllowOralAttendance: false });
+    const tx = createTxMock();
+    tx.eventAttendance.findMany.mockResolvedValue([]);
+    tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const { resolver: resolverWithDependencies, frozenResources } = createResolverWithDependencies(
+      prisma,
+      attendanceCategories,
+    );
 
     await expect(
-      resolver.setEventOralAttendances(
+      resolverWithDependencies.setEventOralAttendances(
         [
           {
             eventId: 'event-1',
@@ -122,8 +130,9 @@ describe('EventAttendancesMutationsResolver', () => {
         ],
         { req: { user: { sub: 'collector-1' } } } as never,
       ),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    ).resolves.toEqual([expect.objectContaining({ personId: 'person-1', status: 'PRESENT' })]);
+    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'collector-1' }, 'edit');
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(1);
   });
 
   it('processes large admin oral-call batches in independent transactions', async () => {

@@ -128,6 +128,13 @@ export class CurrentUserAttendanceCollectionResolver {
     @Context() context: GraphqlContext,
   ): Promise<EventAttendanceScannerFeedItem[]> {
     await this.requireCollector(eventId, context, true);
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { shouldAllowOralAttendance: true },
+    });
+    if (!event?.shouldAllowOralAttendance) {
+      throw new BadRequestException('A chamada oral não está habilitada para este evento.');
+    }
     return getAttendanceOralRoster(this.prisma, eventId);
   }
 
