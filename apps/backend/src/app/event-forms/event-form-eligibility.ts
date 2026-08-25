@@ -11,9 +11,13 @@ import { EventFormLinkRecord } from './event-form-records';
 export async function canPersonAnswerLink(
   prisma: PrismaService,
   personId: string,
-  link: Pick<EventFormLinkModel, 'audience' | 'eventId' | 'majorEventId'>,
+  link: Pick<EventFormLinkModel, 'audience' | 'eventId' | 'majorEventId'> & { priceTierIds?: readonly string[] },
   options: { allowFutureSubscriber?: boolean } = {},
 ): Promise<boolean> {
+  if (!options.allowFutureSubscriber && !(await canPersonAccessLinkPriceTier(prisma, personId, link))) {
+    return false;
+  }
+
   const [isSubscriber, isAttendee] = await Promise.all([
     isPersonSubscriber(prisma, personId, link, options),
     isPersonAttendee(prisma, personId, link),
@@ -29,6 +33,40 @@ export async function canPersonAnswerLink(
     default:
       return isSubscriber || isAttendee;
   }
+}
+
+export async function canPersonAccessLinkPriceTier(
+  prisma: PrismaService,
+  personId: string,
+  link: Pick<EventFormLinkModel, 'majorEventId'> & { priceTierIds?: readonly string[] },
+): Promise<boolean> {
+  if (!link.priceTierIds?.length) {
+    return true;
+  }
+  if (!link.majorEventId) {
+    return false;
+  }
+
+  const [priceTiers, subscription] = await Promise.all([
+    prisma.priceTier.findMany({
+      where: { id: { in: link.priceTierIds } },
+      select: { name: true },
+    }),
+    prisma.majorEventSubscription.findFirst({
+      where: {
+        majorEventId: link.majorEventId,
+        personId,
+        deletedAt: null,
+      },
+      select: { paymentTier: true },
+    }),
+  ]);
+  const paymentTier = normalizePriceTierName(subscription?.paymentTier);
+  return Boolean(paymentTier && priceTiers.some(({ name }) => normalizePriceTierName(name) === paymentTier));
+}
+
+function normalizePriceTierName(name: string | null | undefined): string | null {
+  return name?.trim().toLocaleLowerCase('pt-BR') || null;
 }
 
 export async function assertPersonCanAnswerLink(

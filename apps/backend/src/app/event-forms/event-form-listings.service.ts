@@ -17,7 +17,12 @@ import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildAccessibleFormWhere, isEmptyAccessibleTargets } from './event-form-access';
-import { assertPersonIsEventLecturer, canPersonAnswerLink, canPersonViewPublicResults } from './event-form-eligibility';
+import {
+  assertPersonIsEventLecturer,
+  canPersonAccessLinkPriceTier,
+  canPersonAnswerLink,
+  canPersonViewPublicResults,
+} from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { eventFormInclude, TargetInput } from './event-form-records';
@@ -458,6 +463,13 @@ export class EventFormListingsService {
     link: EventFormModel['links'][number],
     options: { subscriptionFlowOnly?: boolean },
   ): Promise<boolean> {
+    if (
+      options.subscriptionFlowOnly !== true &&
+      !(await canPersonAccessLinkPriceTier(this.prisma, personId, link))
+    ) {
+      return false;
+    }
+
     if (
       await canPersonAnswerLink(this.prisma, personId, link, {
         allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),

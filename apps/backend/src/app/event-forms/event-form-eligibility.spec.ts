@@ -20,6 +20,7 @@ describe('event form eligibility helpers', () => {
         audience: ContractAudience.SUBSCRIBERS,
         eventId: 'event-1',
         majorEventId: null,
+        priceTierIds: [],
       }),
     ).resolves.toBe(true);
 
@@ -68,6 +69,7 @@ describe('event form eligibility helpers', () => {
           audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
           eventId: null,
           majorEventId: null,
+          priceTierIds: [],
         },
         { allowFutureSubscriber: true },
       ),
@@ -85,8 +87,41 @@ describe('event form eligibility helpers', () => {
         audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
         eventId: null,
         majorEventId: null,
+        priceTierIds: [],
       }),
     ).resolves.toBe(false);
+  });
+
+  it('allows a tier-scoped link only for a subscription in the matching price tier', async () => {
+    const prisma = createPrismaMock();
+    prisma.priceTier.findMany.mockResolvedValue([{ name: 'Estudante' }]);
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: ' estudante ' });
+
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audience: EventFormAudience.SUBSCRIBERS,
+        eventId: null,
+        majorEventId: 'major-1',
+        priceTierIds: ['tier-student'],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it('rejects a tier-scoped link for a subscription in a different price tier', async () => {
+    const prisma = createPrismaMock();
+    prisma.priceTier.findMany.mockResolvedValue([{ name: 'Estudante' }]);
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: 'Professor' });
+
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+        eventId: null,
+        majorEventId: 'major-1',
+        priceTierIds: ['tier-student'],
+      }),
+    ).resolves.toBe(false);
+
+    expect(prisma.eventAttendance.findFirst).not.toHaveBeenCalled();
   });
 
   it('asserts answer eligibility from link records', async () => {
@@ -195,6 +230,9 @@ function createPrismaMock() {
     },
     majorEventSubscription: {
       findFirst: jest.fn().mockResolvedValue(null),
+    },
+    priceTier: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 }
