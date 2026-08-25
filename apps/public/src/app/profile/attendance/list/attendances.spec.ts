@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -331,7 +331,7 @@ describe('Attendances', () => {
 
   it('shows indeterminate progress while the streamed certificate archive is being prepared', async () => {
     const { api, component, fixture } = await createFixture();
-    const download = new Subject<{ blob: Blob; fileName: string }>();
+    const download = new Subject<{ blob: Blob; fileName: string; cooldownSeconds: number }>();
     api.downloadCurrentUserCertificatesArchive.mockReturnValue(download);
 
     component.downloadCertificatesArchive();
@@ -341,7 +341,7 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.querySelector('.download-button mat-progress-spinner')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Preparando certificados');
 
-    download.next({ blob: new Blob(['PK']), fileName: 'certificados.zip' });
+    download.next({ blob: new Blob(['PK']), fileName: 'certificados.zip', cooldownSeconds: 0 });
     download.complete();
     fixture.detectChanges();
     expect(component.isDownloadingCertificates()).toBe(false);
@@ -356,6 +356,41 @@ describe('Attendances', () => {
     component.downloadCertificatesArchive();
 
     expect(snackBar.open).toHaveBeenCalledWith('Nenhum certificado disponível para download.', 'Fechar', {
+      duration: 5000,
+    });
+  });
+
+  it('shows the archive cooldown inside the disabled download button after the final permitted download', async () => {
+    const { api, component, fixture } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      of({ blob: new Blob(['PK']), fileName: 'certificados.zip', cooldownSeconds: 900 }),
+    );
+
+    component.downloadCertificatesArchive();
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('.download-button') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toContain('Disponível em 15:00');
+  });
+
+  it('recovers into the cooldown state when another tab receives a rate-limit response', async () => {
+    const { api, component, fixture, snackBar } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 429,
+            headers: new HttpHeaders({ 'retry-after': '900' }),
+          }),
+      ),
+    );
+
+    component.downloadCertificatesArchive();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Disponível em 15:00');
+    expect(snackBar.open).toHaveBeenCalledWith('Aguarde antes de solicitar outro arquivo de certificados.', 'Fechar', {
       duration: 5000,
     });
   });
@@ -431,6 +466,7 @@ async function createFixture({
       of({
         blob: new Blob(['PK']),
         fileName: 'certificados.zip',
+        cooldownSeconds: 0,
       }),
     ),
   };

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import {
   PUBLIC_ATTENDANCE_EVENT_FIELDS,
@@ -46,6 +46,7 @@ export type { CertificateDownload, PublicEvent, PublicEventGroup } from '@cacic-
 export type CertificateArchiveDownload = {
   blob: Blob;
   fileName: string;
+  cooldownSeconds: number;
 };
 
 type GraphqlVariable = string | number | boolean | null | undefined | readonly string[] | object;
@@ -574,6 +575,7 @@ export class AttendancesApiService {
         map((response) => ({
           blob: this.requireDownloadBody(response.body),
           fileName: this.readDownloadFileName(response.headers.get('content-disposition')),
+          cooldownSeconds: this.readArchiveCooldownSeconds(response.headers),
         })),
       );
   }
@@ -605,6 +607,26 @@ export class AttendancesApiService {
     }
 
     return body;
+  }
+
+  private readArchiveCooldownSeconds(headers: HttpHeaders): number {
+    const cooldownSeconds = this.readNonNegativeIntegerHeader(headers, 'x-ratelimit-cooldown-seconds');
+    if (cooldownSeconds > 0) {
+      return cooldownSeconds;
+    }
+
+    return this.readNonNegativeIntegerHeader(headers, 'ratelimit-remaining') === 0
+      ? this.readNonNegativeIntegerHeader(headers, 'ratelimit-reset')
+      : 0;
+  }
+
+  private readNonNegativeIntegerHeader(headers: HttpHeaders, name: string): number {
+    const value = headers.get(name)?.trim();
+    if (!value || !/^\d+$/.test(value)) {
+      return 0;
+    }
+
+    return Number(value);
   }
 
   private getPublicEvent(eventId: string): Observable<PublicEvent | null> {

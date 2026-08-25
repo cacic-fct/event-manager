@@ -255,6 +255,7 @@ describe('AttendancesApiService', () => {
     await expect(responsePromise).resolves.toEqual({
       blob: expect.any(Blob),
       fileName: 'certificados.zip',
+      cooldownSeconds: 0,
     });
   });
 
@@ -264,17 +265,43 @@ describe('AttendancesApiService', () => {
     encodedRequest.flush(new Blob(['PK']), {
       headers: { 'content-disposition': "attachment; filename*=UTF-8''certificados%20da%20ana.zip" },
     });
-    await expect(encodedResponse).resolves.toEqual({ blob: expect.any(Blob), fileName: 'certificados da ana.zip' });
+    await expect(encodedResponse).resolves.toEqual({
+      blob: expect.any(Blob),
+      fileName: 'certificados da ana.zip',
+      cooldownSeconds: 0,
+    });
 
     const fallbackNameResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
     const fallbackNameRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     fallbackNameRequest.flush(new Blob(['PK']));
-    await expect(fallbackNameResponse).resolves.toEqual({ blob: expect.any(Blob), fileName: 'certificados.zip' });
+    await expect(fallbackNameResponse).resolves.toEqual({
+      blob: expect.any(Blob),
+      fileName: 'certificados.zip',
+      cooldownSeconds: 0,
+    });
 
     const fallbackResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
     const fallbackRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     fallbackRequest.event(new HttpResponse<Blob>({ body: null, status: 200 }));
     await expect(fallbackResponse).rejects.toThrow('O arquivo de certificados não foi retornado pelo servidor.');
+  });
+
+  it('maps rate-limit headers into an archive cooldown after the final permitted download', async () => {
+    const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const request = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
+    request.flush(new Blob(['PK']), {
+      headers: {
+        'content-disposition': 'attachment; filename="certificados.zip"',
+        'ratelimit-remaining': '0',
+        'ratelimit-reset': '900',
+      },
+    });
+
+    await expect(responsePromise).resolves.toEqual({
+      blob: expect.any(Blob),
+      fileName: 'certificados.zip',
+      cooldownSeconds: 900,
+    });
   });
 });
 

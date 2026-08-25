@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -20,7 +21,7 @@ import {
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { catchError, finalize, from, map, of, startWith, switchMap } from 'rxjs';
+import { catchError, finalize, from, interval, map, of, startWith, switchMap } from 'rxjs';
 import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -103,6 +104,7 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
 export class Attendances {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(PublicDataAccessService);
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
@@ -110,6 +112,28 @@ export class Attendances {
   private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
+  private readonly certificateArchiveCooldownEndsAt = signal(0);
+  private readonly cooldownClock = toSignal(
+    isPlatformBrowser(this.platformId) ? interval(1_000).pipe(startWith(0)) : of(0),
+    { initialValue: 0 },
+  );
+  readonly certificateArchiveCooldownSeconds = computed(() => {
+    this.cooldownClock();
+    return Math.max(0, Math.ceil((this.certificateArchiveCooldownEndsAt() - Date.now()) / 1_000));
+  });
+  readonly isCertificateArchiveDownloadDisabled = computed(
+    () => this.isDownloadingCertificates() || this.certificateArchiveCooldownSeconds() > 0,
+  );
+  readonly certificateArchiveCooldownTime = computed(() => this.formatCooldown(this.certificateArchiveCooldownSeconds()));
+  readonly certificateArchiveDownloadButtonLabel = computed(() => {
+    if (this.isDownloadingCertificates()) {
+      return 'Preparando certificados';
+    }
+
+    return this.certificateArchiveCooldownSeconds() > 0
+      ? `Disponível em ${this.certificateArchiveCooldownTime()}`
+      : 'Baixar todos os certificados';
+  });
   readonly filtersOpen = signal(false);
   readonly selectedTypeFilters = signal<ParticipationTypeFilter[]>([]);
   readonly selectedStatusFilters = signal<AttendanceStatusFilter[]>([]);
@@ -253,7 +277,7 @@ export class Attendances {
   }
 
   downloadCertificatesArchive(): void {
-    if (this.isDownloadingCertificates()) {
+    if (this.isCertificateArchiveDownloadDisabled()) {
       return;
     }
 
@@ -264,16 +288,44 @@ export class Attendances {
       .subscribe({
         next: (download) => {
           this.certificateFileDownload.saveBlob(download.blob, download.fileName);
+          this.startCertificateArchiveCooldown(download.cooldownSeconds);
           this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
         },
         error: (error: unknown) => {
+          const retryAfterSeconds = this.retryAfterSeconds(error);
+          if (retryAfterSeconds > 0) {
+            this.startCertificateArchiveCooldown(retryAfterSeconds);
+          }
           const message =
             error instanceof HttpErrorResponse && error.status === 404
               ? 'Nenhum certificado disponível para download.'
+              : retryAfterSeconds > 0
+                ? 'Aguarde antes de solicitar outro arquivo de certificados.'
               : 'Não foi possível baixar seus certificados.';
           this.snackBar.open(message, 'Fechar', { duration: 5000 });
         },
       });
+  }
+
+  private startCertificateArchiveCooldown(seconds: number): void {
+    if (seconds > 0) {
+      this.certificateArchiveCooldownEndsAt.set(Date.now() + seconds * 1_000);
+    }
+  }
+
+  private retryAfterSeconds(error: unknown): number {
+    if (!(error instanceof HttpErrorResponse)) {
+      return 0;
+    }
+
+    const retryAfter = error.headers.get('retry-after')?.trim();
+    return retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) : 0;
+  }
+
+  private formatCooldown(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
   private loadFeed() {

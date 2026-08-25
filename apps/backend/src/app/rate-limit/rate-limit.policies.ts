@@ -87,6 +87,14 @@ export const RATE_LIMIT_POLICIES = {
     maxCooldownMs: minute,
     maxAttempts: 10,
   },
+  currentUserCertificateArchive: {
+    name: 'current-user-certificate-archive',
+    windowMs: 15 * minute,
+    freeAttempts: 2,
+    baseCooldownMs: 15 * minute,
+    maxCooldownMs: 15 * minute,
+    maxAttempts: 2,
+  },
   publicEvents: {
     name: 'public-events',
     windowMs: minute,

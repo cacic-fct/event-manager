@@ -34,7 +34,11 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
                 ? throwError(() => new Error('Não foi possível carregar suas inscrições.'))
                 : of(feed),
           downloadCurrentUserCertificatesArchive: () =>
-            of({ blob: new Blob(['storybook']), fileName: 'certificados-storybook.zip' }),
+            of({
+              blob: new Blob(['storybook']),
+              fileName: 'certificados-storybook.zip',
+              cooldownSeconds: args.certificateArchiveCooldownSeconds,
+            }),
         },
       },
       {
@@ -134,6 +138,15 @@ export const FilteredPresent: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Filtros' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Presença registrada' }));
     await expect(canvas.getAllByRole('link').length).toBeGreaterThan(5);
+  },
+};
+
+export const CertificateDownloadCooldown: Story = {
+  args: { certificateArchiveCooldownSeconds: 15 * 60 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Baixar todos os certificados' }));
+    await expect(await canvas.findByRole('button', { name: /Disponível em 15:00/ })).toBeDisabled();
   },
 };
 

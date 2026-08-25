@@ -14,6 +14,7 @@ export interface AttendancesStoryControls {
   sportsManagerEvery: number;
   issuedCertificateEvery: number;
   longNames: boolean;
+  certificateArchiveCooldownSeconds: number;
 }
 
 export const attendancesStoryDefaultControls: AttendancesStoryControls = {
@@ -26,6 +27,7 @@ export const attendancesStoryDefaultControls: AttendancesStoryControls = {
   sportsManagerEvery: 7,
   issuedCertificateEvery: 3,
   longNames: false,
+  certificateArchiveCooldownSeconds: 0,
 };
 
 export const attendancesStoryControlArgTypes = {
@@ -38,6 +40,7 @@ export const attendancesStoryControlArgTypes = {
   sportsManagerEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   issuedCertificateEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   longNames: { control: 'boolean' },
+  certificateArchiveCooldownSeconds: { control: { type: 'range', min: 0, max: 900, step: 60 } },
 } as const;
 
 export function createAttendancesStoryFeed(controls: AttendancesStoryControls): SubscriptionsFeed {

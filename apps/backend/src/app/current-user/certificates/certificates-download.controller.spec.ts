@@ -1,8 +1,22 @@
 import { Readable } from 'node:stream';
 import { CertificateScope } from '@cacic-fct/shared-data-types';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { RATE_LIMIT_METADATA_KEY } from '../../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { CurrentUserCertificatesDownloadController } from './certificates-download.controller';
 
 describe('CurrentUserCertificatesDownloadController', () => {
+  it('rate limits expensive archive generation for each authenticated user', () => {
+    const handler = CurrentUserCertificatesDownloadController.prototype.downloadArchive;
+
+    expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([RateLimitGuard]);
+    expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, handler)).toEqual({
+      policy: RATE_LIMIT_POLICIES.currentUserCertificateArchive,
+      resources: [],
+    });
+  });
+
   it('returns a StreamableFile backed by the certificate archive stream', async () => {
     const archiveStream = Readable.from(['zip-content']);
     const prisma = {

@@ -1,10 +1,13 @@
-import { Controller, Get, Header, NotFoundException, Req, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Header, NotFoundException, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CertificateDownloadService } from '../../certificate/certificate-download.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RateLimit } from '../../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { CurrentUserContextService } from '../context.service';
 
 type RequestWithUser = Request & { user?: AuthenticatedUser };
@@ -20,6 +23,8 @@ export class CurrentUserCertificatesDownloadController {
   ) {}
 
   @Get('archive.zip')
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.currentUserCertificateArchive)
   @Header('Cache-Control', 'private, no-store')
   @Header('X-Content-Type-Options', 'nosniff')
   @ApiOperation({

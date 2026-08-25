@@ -35,7 +35,7 @@
       matButton="filled"
       type="button"
       class="download-button"
-      [disabled]="isDownloadingCertificates()"
+      [disabled]="isCertificateArchiveDownloadDisabled()"
       [attr.aria-busy]="isDownloadingCertificates()"
       (click)="downloadCertificatesArchive()">
       <span class="download-button-content">
@@ -44,7 +44,7 @@
         } @else {
         <mat-icon aria-hidden="true">download</mat-icon>
         }
-        <span>{{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}</span>
+        <span>{{ certificateArchiveDownloadButtonLabel() }}</span>
       </span>
     </button>
   </div>
