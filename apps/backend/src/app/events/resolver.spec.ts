@@ -33,9 +33,6 @@ describe('EventsResolver', () => {
     const frozenResources = {
       assertEventCreateTargetsMutable: jest.fn(),
     };
-    const authorizationPolicy = {
-      assertPermissions: jest.fn(),
-    };
     const auditLog = {
       record: jest.fn().mockRejectedValue(new Error('audit unavailable')),
     };

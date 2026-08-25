@@ -43,7 +43,7 @@ describe('image file utilities', () => {
     expect(() =>
       assertSafeSvg(
         Buffer.from(
-          '<svg><style>@import url(\'#paint\');</style><defs><linearGradient id="paint"/></defs><rect fill="url(#paint)"/><use href="#paint"/></svg>',
+          '<svg><style>rect { fill: url(#paint); }</style><defs><linearGradient id="paint"/></defs><rect fill="url(#paint)"/><use href="#paint"/></svg>',
         ),
       ),
     ).not.toThrow();

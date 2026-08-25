@@ -499,7 +499,7 @@ function createUpsertTransaction(
     majorEventSubscription: {
       findFirst: jest
         .fn()
-        .mockResolvedValueOnce(null),
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 'subscription-1', subscriptionStatus: SubscriptionStatus.CONFIRMED })
         .mockResolvedValueOnce(updatedSubscription),
       create: jest.fn().mockResolvedValue({}),
