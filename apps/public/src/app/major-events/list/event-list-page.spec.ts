@@ -6,6 +6,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEvent } from './event-list-page';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
+import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 
 describe('MajorEvent', () => {
   let component: MajorEvent;
@@ -44,6 +45,10 @@ describe('MajorEvent', () => {
             listCurrentUserSubscriptions: vi.fn(() => of([])),
             getPreviewMajorEvents: vi.fn(() => of({ events: [], expiresAt: new Date().toISOString() })),
           },
+        },
+        {
+          provide: PublicPrizeDrawApiService,
+          useValue: { availability: vi.fn(() => of([])) },
         },
       ],
     }).compileComponents();

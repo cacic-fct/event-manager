@@ -169,17 +169,6 @@ export class PrizeDrawApiService {
       .pipe(map((data) => data.spinPrizeDraw));
   }
 
-  acknowledgePresentation(spinId: string) {
-    return this.graphql
-      .request<{ acknowledgePrizeDrawPresentation: boolean }>(
-        `mutation AcknowledgePrizeDrawPresentation($spinId: String!) {
-          acknowledgePrizeDrawPresentation(spinId: $spinId)
-        }`,
-        { spinId },
-      )
-      .pipe(map((data) => data.acknowledgePrizeDrawPresentation));
-  }
-
   winnerContact(spinId: string) {
     return this.graphql
       .request<{ prizeDrawWinnerContact: PrizeDrawWinnerContact }>(

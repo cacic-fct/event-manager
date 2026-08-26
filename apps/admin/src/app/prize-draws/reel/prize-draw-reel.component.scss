@@ -40,14 +40,21 @@
   display: grid;
   place-items: center;
   min-width: 0;
+  overflow: hidden;
   padding: 0 1rem;
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-title-large);
   text-align: center;
+}
+
+.reel-name > span {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   animation: reel-pass 160ms cubic-bezier(0.18, 0.8, 0.24, 1);
 }
 
-.reel-name--alternate {
+.reel-name--alternate > span {
   animation-name: reel-pass-alternate;
 }
 
@@ -59,34 +66,34 @@
   font-weight: 650;
 }
 
-.reel--spinning .reel-name {
+.reel--spinning .reel-name > span {
   filter: blur(1.25px);
   will-change: transform, filter;
 }
 
-.reel[data-motion-stage='warmup'] .reel-name,
-.reel[data-motion-stage='accelerating-one'] .reel-name {
+.reel[data-motion-stage='warmup'] .reel-name > span,
+.reel[data-motion-stage='accelerating-one'] .reel-name > span {
   animation-duration: 130ms;
   filter: blur(0.35px);
 }
 
-.reel[data-motion-stage='accelerating-two'] .reel-name,
-.reel[data-motion-stage='fast'] .reel-name {
+.reel[data-motion-stage='accelerating-two'] .reel-name > span,
+.reel[data-motion-stage='fast'] .reel-name > span {
   animation-duration: 70ms;
   filter: blur(1.35px);
 }
 
-.reel[data-motion-stage='readable'] .reel-name {
+.reel[data-motion-stage='readable'] .reel-name > span {
   animation-duration: 150ms;
   filter: blur(0.55px);
 }
 
-.reel[data-motion-stage='slow'] .reel-name {
+.reel[data-motion-stage='slow'] .reel-name > span {
   animation-duration: 220ms;
   filter: none;
 }
 
-.reel[data-motion-stage='settling'] .reel-name {
+.reel[data-motion-stage='settling'] .reel-name > span {
   animation-duration: 400ms;
   filter: none;
 }
@@ -95,6 +102,10 @@
   background: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
   animation: winner-settle 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reel--complete .reel-name--center > span {
+  animation: none;
 }
 
 .countdown,
@@ -179,8 +190,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reel-name,
-  .reel-name--center,
+  .reel-name > span,
+  .reel-name--center > span,
   .countdown strong {
     animation: none;
   }

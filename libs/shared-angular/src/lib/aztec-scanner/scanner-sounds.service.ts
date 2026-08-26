@@ -67,7 +67,9 @@ export class ScannerSoundsService {
       oscillator.frequency.value = frequency;
       gain.gain.setValueAtTime(volume, audioContext.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + durationSeconds);
-      oscillator.connect(gain).connect(audioContext.destination);
+      const master = this.master;
+      if (!master) return;
+      oscillator.connect(gain).connect(master);
       oscillator.start();
       oscillator.stop(audioContext.currentTime + durationSeconds);
     } catch {

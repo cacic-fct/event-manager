@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, OnDestroy, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Component, OnDestroy, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
 import { ScannerSoundsService } from '@cacic-fct/shared-angular/aztec-scanner';
@@ -29,9 +29,14 @@ type VisibleName = {
 export class PrizeDrawReelComponent implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly sounds = inject(ScannerSoundsService);
+  readonly names = input<string[]>([]);
   readonly phase = signal<ReelPhase>('idle');
   readonly countdown = signal<number | null>(null);
-  readonly visibleNames = signal<VisibleName[]>([]);
+  private readonly displayedNames = signal<VisibleName[]>([]);
+  private readonly hasExplicitDisplay = signal(false);
+  readonly visibleNames = computed(() =>
+    this.hasExplicitDisplay() ? this.displayedNames() : this.createVisibleNames(this.names(), 0, 'default'),
+  );
   readonly motionStage = signal<PrizeDrawReelMotionStage>('idle');
   private generation = 0;
   private frameId: number | null = null;
@@ -49,10 +54,6 @@ export class PrizeDrawReelComponent implements OnDestroy {
     const names = result.reelNames.length ? result.reelNames : [result.winnerReelName];
     const winnerIndex = this.normalizeIndex(names.length, result.winnerReelIndex);
     const concealedIndex = concealedPrizeDrawWinnerIndex(names.length, winnerIndex);
-    const countdownNames = names.filter((_, index) => index !== winnerIndex);
-    if (result.countdownMs > 0) {
-      this.setCenter(countdownNames.length ? countdownNames : ['Participante elegível'], concealedIndex);
-    }
 
     if (result.countdownMs > 0) {
       this.phase.set('countdown');
@@ -136,7 +137,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
       const plannedTicks = preservesCurrentWindow
         ? this.tickCountToWinner(names.length, startIndex, winnerIndex, minimumTicks)
         : minimumTicks;
-      const tickSchedule = preservesCurrentWindow ? this.createTickSchedule(speed, durationMs, plannedTicks) : null;
+      const tickSchedule = preservesCurrentWindow
+        ? this.createTickSchedule(speed, durationMs, plannedTicks, Math.min(220, durationMs * 0.15))
+        : null;
       let appliedTicks = 0;
       let currentIndex = preservesCurrentWindow
         ? startIndex
@@ -198,8 +201,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private setCenter(names: string[], rawCenter: number): void {
+    this.hasExplicitDisplay.set(true);
     if (names.length === 0) {
-      this.visibleNames.set([]);
+      this.displayedNames.set([]);
       this.currentNames = [];
       this.currentCenterIndex = null;
       return;
@@ -209,12 +213,20 @@ export class PrizeDrawReelComponent implements OnDestroy {
     this.currentNames = [...names];
     this.tick += 1;
     const animationVariant = this.tick % 2 === 0 ? 'alternate' : 'default';
-    this.visibleNames.set(
-      [-2, -1, 0, 1, 2].map((offset) => {
-        const index = (center + offset + names.length) % names.length;
-        return { key: offset, name: names[index], center: offset === 0, animationVariant };
-      }),
-    );
+    this.displayedNames.set(this.createVisibleNames(names, center, animationVariant));
+  }
+
+  private createVisibleNames(
+    names: string[],
+    rawCenter: number,
+    animationVariant: VisibleName['animationVariant'],
+  ): VisibleName[] {
+    if (names.length === 0) return [];
+    const center = ((rawCenter % names.length) + names.length) % names.length;
+    return [-2, -1, 0, 1, 2].map((offset) => {
+      const index = (center + offset + names.length) % names.length;
+      return { key: offset, name: names[index], center: offset === 0, animationVariant };
+    });
   }
 
   private hasCurrentRoster(names: string[]): boolean {
@@ -233,8 +245,14 @@ export class PrizeDrawReelComponent implements OnDestroy {
     return minimumTicks + this.normalizeIndex(namesLength, requiredRemainder - minimumRemainder);
   }
 
-  private createTickSchedule(speed: PrizeDrawSpinResult['speed'], durationMs: number, tickCount: number): number[] {
-    if (tickCount <= 1) return [0];
+  private createTickSchedule(
+    speed: PrizeDrawSpinResult['speed'],
+    durationMs: number,
+    tickCount: number,
+    firstTickDelayMs = 0,
+  ): number[] {
+    const firstTickDelay = Math.min(firstTickDelayMs, durationMs * 0.985);
+    if (tickCount <= 1) return [firstTickDelay];
     const rawOffsets = [0];
     let rawElapsed = 0;
     for (let tick = 1; tick < tickCount; tick += 1) {
@@ -242,8 +260,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
       rawElapsed += prizeDrawReelTickIntervalMs(speed, progress);
       rawOffsets.push(rawElapsed);
     }
-    const scale = (durationMs * 0.985) / Math.max(rawElapsed, 1);
-    return rawOffsets.map((offset) => offset * scale);
+    const remainingDuration = Math.max(durationMs - firstTickDelay, 1);
+    const scale = (remainingDuration * 0.985) / Math.max(rawElapsed, 1);
+    return rawOffsets.map((offset) => firstTickDelay + offset * scale);
   }
 
   private wait(durationMs: number, generation: number): Promise<void> {

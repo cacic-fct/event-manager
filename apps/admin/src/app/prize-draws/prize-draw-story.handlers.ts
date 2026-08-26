@@ -92,8 +92,5 @@ export function createAdminPrizeDrawStoryHandlers(readState: () => AdminPrizeDra
         }),
       });
     }),
-    graphql.mutation('AcknowledgePrizeDrawPresentation', () =>
-      respond({ acknowledgePrizeDrawPresentation: true }),
-    ),
   ];
 }

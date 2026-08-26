@@ -55,6 +55,13 @@ describe('PrizeDrawService public audience', () => {
     const [draw] = await context.service.listPublic({ eventId: 'event-1' }, undefined);
 
     expect(draw.spins.map((spin) => spin.id)).toEqual(['spin-presented']);
+    expect(draw.spins[0]?.weightBreakdown).toEqual([{ weight: 1, peopleCount: 1 }]);
+    expect(context.prisma.prizeDrawSpinEntry.groupBy).toHaveBeenCalledWith({
+      by: ['spinId', 'weight'],
+      where: { spin: { drawId: { in: ['draw-1'] } } },
+      _count: { _all: true },
+      orderBy: [{ spinId: 'asc' }, { weight: 'asc' }],
+    });
     expect(context.prisma.prizeDraw.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -64,26 +71,6 @@ describe('PrizeDrawService public audience', () => {
     );
   });
 
-  it('releases the public SSE update only when presentation is acknowledged', async () => {
-    const context = createContext({
-      spin: {
-        drawId: 'draw-1',
-        presentationAcknowledgedAt: new Date(),
-        notificationStatus: 'NOT_REQUESTED',
-        notificationTransactionId: null,
-        draw: { revision: 3 },
-      },
-    });
-
-    await expect(context.service.acknowledgePresentation('spin-1')).resolves.toBe(true);
-
-    expect(context.prisma.prizeDrawSpin.updateMany).toHaveBeenCalledWith({
-      where: { id: 'spin-1', undoneAt: null, presentationAcknowledgedAt: null },
-      data: { presentationAcknowledgedAt: expect.any(Date) },
-    });
-    expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'SPIN_PRESENTED', 3, 'spin-1');
-    expect(context.notifications.enqueueWinner).not.toHaveBeenCalled();
-  });
 });
 
 function createContext(input: {
@@ -94,21 +81,16 @@ function createContext(input: {
     majorEventIds: Set<string>;
   } | null;
   records?: unknown[];
-  spin?: {
-    drawId: string;
-    presentationAcknowledgedAt: Date | null;
-    notificationStatus: 'NOT_REQUESTED' | 'PENDING';
-    notificationTransactionId: string | null;
-    draw: { revision: number };
-  } | null;
 }) {
   const prisma = {
     event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }) },
     people: { findMany: jest.fn().mockResolvedValue(input.people ?? []) },
     prizeDraw: { findMany: jest.fn().mockResolvedValue(input.records ?? []) },
-    prizeDrawSpin: {
-      updateMany: jest.fn().mockResolvedValue({ count: input.spin ? 1 : 0 }),
-      findUnique: jest.fn().mockResolvedValue(input.spin ?? null),
+    prizeDrawSpinEntry: {
+      groupBy: jest.fn().mockResolvedValue([
+        { spinId: 'spin-presented', weight: 1, _count: { _all: 1 } },
+        { spinId: 'spin-not-yet-presented', weight: 1, _count: { _all: 1 } },
+      ]),
     },
   };
   const policy = {
@@ -129,11 +111,11 @@ function createContext(input: {
     realtime as never,
     notifications as never,
   );
-  return { notifications, policy, prisma, realtime, service };
+  return { policy, prisma, realtime, service };
 }
 
 function drawRecord() {
-  const now = new Date('2026-08-26T12:00:00.000Z');
+  const now = new Date();
   return {
     id: 'draw-1',
     title: 'Sorteio',
@@ -158,7 +140,7 @@ function drawRecord() {
     excludedPeople: [],
     spins: [
       spinRecord('spin-presented', now, now),
-      spinRecord('spin-not-yet-presented', new Date('2026-08-26T12:01:00.000Z'), null),
+      spinRecord('spin-not-yet-presented', new Date(now.getTime() + 60_000), null),
     ],
     createdAt: now,
     updatedAt: now,
@@ -186,7 +168,6 @@ function spinRecord(id: string, drawnAt: Date, presentationAcknowledgedAt: Date 
     undoneAt: null,
     notificationStatus: 'NOT_REQUESTED',
     presentationAcknowledgedAt,
-    entries: [{ weight: 1 }],
     winnerPerson: null,
   };
 }

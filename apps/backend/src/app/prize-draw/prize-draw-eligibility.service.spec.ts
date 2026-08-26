@@ -60,6 +60,7 @@ describe('PrizeDrawEligibilityService', () => {
           displayName: 'Ana Alves',
           weight: 1,
           sources: ['ATTENDANCE'],
+          person: { id: 'person-1', name: 'Ana Alves', deletedAt: null, mergedIntoId: null, mergedInto: null },
           createdAt: new Date(),
         },
         {
@@ -70,6 +71,7 @@ describe('PrizeDrawEligibilityService', () => {
           displayName: 'Bruno Barros',
           weight: 1,
           sources: ['SUBSCRIPTION'],
+          person: { id: 'person-2', name: 'Bruno Barros', deletedAt: null, mergedIntoId: null, mergedInto: null },
           createdAt: new Date(),
         },
       ],
@@ -82,6 +84,46 @@ describe('PrizeDrawEligibilityService', () => {
 
     expect(entries.map((entry) => entry.identityKey)).toEqual(['person:person-2']);
     expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+  });
+
+  it('canonicalizes merged people and excludes LGPD-anonymized rows from a frozen roster', async () => {
+    const prisma = mockPrisma({
+      frozenEntries: [
+        {
+          identityKey: 'person:source-person',
+          personId: 'source-person',
+          displayName: 'Nome antigo',
+          weight: 2,
+          sources: ['ATTENDANCE'],
+          person: {
+            id: 'source-person',
+            name: 'Nome antigo',
+            deletedAt: null,
+            mergedIntoId: 'target-person',
+            mergedInto: {
+              id: 'target-person',
+              name: 'Nome atual',
+              deletedAt: null,
+              mergedIntoId: null,
+            },
+          },
+        },
+      ],
+    });
+    const service = new PrizeDrawEligibilityService(prisma);
+
+    await expect(service.resolve({ ...config(), frozenAt: new Date() })).resolves.toEqual([
+      {
+        identityKey: 'person:target-person',
+        personId: 'target-person',
+        displayName: 'Nome atual',
+        weight: 2,
+        sources: ['ATTENDANCE'],
+      },
+    ]);
+    expect(prisma.prizeDrawFrozenEntry.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { drawId: 'draw-1', NOT: { identityKey: { startsWith: 'lgpd:' } } } }),
+    );
   });
 
   it('does not silently convert a deleted person-tied manual entry into a free entry', async () => {

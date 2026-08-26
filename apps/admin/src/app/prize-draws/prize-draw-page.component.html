@@ -18,14 +18,18 @@
     <section class="reel-context" aria-live="polite">
       <span>Próximo</span>
       <strong>{{ canDraw() ? nextSpinLabel() : 'Sorteio concluído' }}</strong>
-      <small>{{ selected.eligibleEntrantCount }} {{ selected.eligibleEntrantCount === 1 ? 'pessoa elegível' : 'pessoas elegíveis' }}</small>
+      <small>
+        {{ selected.eligibleEntrantCount === 0
+          ? 'Nenhuma pessoa elegível'
+          : selected.eligibleEntrantCount + (selected.eligibleEntrantCount === 1 ? ' pessoa elegível' : ' pessoas elegíveis') }}
+      </small>
     </section>
 
     @if (demoMode) {
       <p class="demo-mode"><mat-icon aria-hidden="true">science</mat-icon>Demonstração · nenhum resultado será registrado.</p>
     }
 
-    <app-prize-draw-reel />
+    <app-prize-draw-reel [names]="reelNames()" />
 
     <section class="draw-actions" aria-label="Ações do sorteio">
       <button mat-flat-button type="button" [disabled]="!canDraw() || requesting() || !permissions.has(Permission.PrizeDraw.Operate)" [attr.aria-busy]="requesting()" (click)="run(demoMode)">

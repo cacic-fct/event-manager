@@ -20,7 +20,10 @@ describe('PrizeDrawReelComponent', () => {
     fixture.detectChanges();
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
   it('keeps instant mode immediate and lands on the backend-selected index', async () => {
     await component.play(result({ speed: 'INSTANT', reelDurationMs: 0, preRevealPauseMs: 0 }), false);
@@ -29,6 +32,21 @@ describe('PrizeDrawReelComponent', () => {
     expect(component.visibleNames().find((name) => name.center)?.name).toBe('Carla C.');
     expect(tone).toHaveBeenNthCalledWith(1, 620, 0.09, 0.9);
     await vi.waitFor(() => expect(tone).toHaveBeenNthCalledWith(2, 840, 0.13, 0.9));
+  });
+
+  it('renders the supplied roster on its first change-detection pass', () => {
+    fixture.componentRef.setInput('names', result().reelNames);
+    fixture.detectChanges();
+
+    const hostElement = fixture.nativeElement as HTMLElement;
+    expect(hostElement.querySelector('.reel-empty')).toBeNull();
+    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual([
+      'Carla C.',
+      'Diego D.',
+      'Ana A.',
+      'Bruno B.',
+      'Carla C.',
+    ]);
   });
 
   it('preserves the existing reel window when a spin starts', async () => {
@@ -47,6 +65,36 @@ describe('PrizeDrawReelComponent', () => {
     expect(
       Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim()),
     ).toEqual(initialTexts);
+
+    component.reset(initialNames);
+    await play;
+  });
+
+  it('keeps the current list in the first spinning animation frame', async () => {
+    let nextFrame: FrameRequestCallback | undefined;
+    vi.stubGlobal('performance', { now: () => 0 });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      nextFrame = callback;
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+
+    const initialNames = result().reelNames;
+    component.reset(initialNames);
+    fixture.detectChanges();
+    const hostElement = fixture.nativeElement as HTMLElement;
+    const initialElements = Array.from(hostElement.querySelectorAll('.reel-name'));
+    const initialTexts = initialElements.map((element) => element.textContent?.trim());
+
+    const play = component.play(result({ speed: 'DRAMATIC', reelDurationMs: 3000 }), false);
+    expect(component.phase()).toBe('spinning');
+    nextFrame?.(0);
+    fixture.detectChanges();
+
+    expect(Array.from(hostElement.querySelectorAll('.reel-name'))).toEqual(initialElements);
+    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual(
+      initialTexts,
+    );
 
     component.reset(initialNames);
     await play;
@@ -79,15 +127,25 @@ describe('PrizeDrawReelComponent', () => {
     expect(component.countdown()).toBeNull();
   });
 
-  it('conceals the winner during countdown, lands on it, then delays result styling', async () => {
+  it('preserves the rendered roster behind a dramatic countdown before spinning to the winner', async () => {
     vi.useFakeTimers();
+    const initialNames = result().reelNames;
+    component.reset(initialNames);
+    fixture.detectChanges();
+    const hostElement = fixture.nativeElement as HTMLElement;
+    const initialElements = Array.from(hostElement.querySelectorAll('.reel-name'));
+    const initialTexts = initialElements.map((element) => element.textContent?.trim());
+
     const play = component.play(
       result({ speed: 'DRAMATIC', countdownMs: 3000, reelDurationMs: 0, preRevealPauseMs: 500 }),
       false,
     );
 
     expect(component.phase()).toBe('countdown');
-    expect(component.visibleNames().some((name) => name.name === 'Carla C.')).toBe(false);
+    expect(Array.from(hostElement.querySelectorAll('.reel-name'))).toEqual(initialElements);
+    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual(
+      initialTexts,
+    );
 
     await vi.advanceTimersByTimeAsync(3000);
     expect(component.phase()).toBe('idle');
@@ -96,7 +154,6 @@ describe('PrizeDrawReelComponent', () => {
     await vi.advanceTimersByTimeAsync(80);
     expect(component.phase()).toBe('stopped');
     expect(component.visibleNames().find((name) => name.center)?.name).toBe('Carla C.');
-    expect(component.statusText()).toBe('');
 
     await vi.advanceTimersByTimeAsync(500);
     await play;
@@ -107,7 +164,6 @@ describe('PrizeDrawReelComponent', () => {
   it('resets to a disabled empty state without stale names', () => {
     component.reset([]);
     expect(component.visibleNames()).toEqual([]);
-    expect(component.statusText()).toBe('Nenhuma pessoa elegível');
   });
 });
 

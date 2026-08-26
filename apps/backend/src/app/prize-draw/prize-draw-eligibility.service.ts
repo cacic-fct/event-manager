@@ -233,16 +233,48 @@ export class PrizeDrawEligibilityService {
 
   private async readFrozen(drawId: string, client: EligibilityClient): Promise<PrizeDrawEligibleRecord[]> {
     const entries = await client.prizeDrawFrozenEntry.findMany({
-      where: { drawId },
+      where: { drawId, NOT: { identityKey: { startsWith: 'lgpd:' } } },
+      select: {
+        identityKey: true,
+        personId: true,
+        displayName: true,
+        weight: true,
+        sources: true,
+        person: {
+          select: {
+            id: true,
+            name: true,
+            deletedAt: true,
+            mergedIntoId: true,
+            mergedInto: { select: { id: true, name: true, deletedAt: true, mergedIntoId: true } },
+          },
+        },
+      },
       orderBy: [{ displayName: 'asc' }, { identityKey: 'asc' }],
     });
-    return entries.map((entry) => ({
-      identityKey: entry.identityKey,
-      personId: entry.personId,
-      displayName: entry.displayName,
-      weight: entry.weight,
-      sources: entry.sources.filter(isPrizeDrawEntrySource),
-    }));
+    const canonicalEntries = new Map<string, PrizeDrawEligibleRecord>();
+    for (const entry of entries) {
+      const canonicalPerson = entry.person?.mergedInto ?? entry.person;
+      if (entry.personId && (!canonicalPerson || canonicalPerson.deletedAt || canonicalPerson.mergedIntoId)) continue;
+      const identityKey = canonicalPerson ? `person:${canonicalPerson.id}` : entry.identityKey;
+      const sources = entry.sources.filter(isPrizeDrawEntrySource);
+      const existing = canonicalEntries.get(identityKey);
+      if (existing) {
+        existing.sources = [...new Set([...existing.sources, ...sources])];
+        existing.weight = Math.max(existing.weight, entry.weight);
+        continue;
+      }
+      canonicalEntries.set(identityKey, {
+        identityKey,
+        personId: canonicalPerson?.id ?? null,
+        displayName: canonicalPerson?.name ?? entry.displayName,
+        weight: entry.weight,
+        sources,
+      });
+    }
+    return [...canonicalEntries.values()].sort(
+      (left, right) => left.displayName.localeCompare(right.displayName, 'pt-BR') || left.identityKey.localeCompare(right.identityKey),
+    );
   }
 
   private eventTargetWhere(draw: PrizeDrawEligibilityConfig): Prisma.EventWhereInput {

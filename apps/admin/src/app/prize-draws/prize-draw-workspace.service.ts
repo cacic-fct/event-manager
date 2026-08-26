@@ -37,6 +37,7 @@ export class PrizeDrawWorkspaceService {
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
   private selectionRequestGeneration = 0;
+  private personSearchRequestGeneration = 0;
 
   readonly loading = signal(false);
   readonly draws = signal<PrizeDraw[]>([]);
@@ -122,6 +123,7 @@ export class PrizeDrawWorkspaceService {
   }
 
   createNew(navigate = true): void {
+    this.selectionRequestGeneration += 1;
     this.selected.set(null);
     this.plannedSpins.set([]);
     this.manualEntries.set([]);
@@ -163,9 +165,11 @@ export class PrizeDrawWorkspaceService {
       if (requestGeneration !== this.selectionRequestGeneration) return;
       this.patch(draw);
       if (navigate) void this.router.navigate(['/draws', draw.id]);
-      await this.loadEligibleEntries();
+      await this.loadEligibleEntries(requestGeneration);
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível abrir o sorteio.');
+      if (requestGeneration === this.selectionRequestGeneration) {
+        this.feedback.error(error, 'Não foi possível abrir o sorteio.');
+      }
     } finally {
       if (requestGeneration === this.selectionRequestGeneration) this.loading.set(false);
     }
@@ -230,24 +234,29 @@ export class PrizeDrawWorkspaceService {
   }
 
   async searchPeople(query: string): Promise<void> {
+    const requestGeneration = ++this.personSearchRequestGeneration;
     this.personQuery.set(query);
     if (!query) {
       this.personResults.set([]);
+      this.personSearchLoading.set(false);
       return;
     }
     this.personSearchLoading.set(true);
     try {
       const target = this.form.getRawValue();
-      this.personResults.set(await firstValueFrom(this.peopleApi.listRelatedPeople({
+      const people = await firstValueFrom(this.peopleApi.listRelatedPeople({
         query,
         take: 12,
         eventId: target.targetType === 'EVENT' ? target.eventId : undefined,
         majorEventId: target.targetType === 'MAJOR_EVENT' ? target.majorEventId : undefined,
-      })));
+      }));
+      if (requestGeneration === this.personSearchRequestGeneration) this.personResults.set(people);
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível buscar pessoas.');
+      if (requestGeneration === this.personSearchRequestGeneration) {
+        this.feedback.error(error, 'Não foi possível buscar pessoas.');
+      }
     } finally {
-      this.personSearchLoading.set(false);
+      if (requestGeneration === this.personSearchRequestGeneration) this.personSearchLoading.set(false);
     }
   }
 
@@ -414,13 +423,17 @@ export class PrizeDrawWorkspaceService {
     };
   }
 
-  private async loadEligibleEntries(): Promise<void> {
+  private async loadEligibleEntries(selectionGeneration = this.selectionRequestGeneration): Promise<void> {
     const draw = this.selected();
     if (!draw) return;
     try {
-      this.eligibleEntries.set(await firstValueFrom(this.api.eligibleEntries(draw.id)));
+      const entries = await firstValueFrom(this.api.eligibleEntries(draw.id));
+      if (selectionGeneration !== this.selectionRequestGeneration || this.selected()?.id !== draw.id) return;
+      this.eligibleEntries.set(entries);
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível atualizar a prévia de participantes.');
+      if (selectionGeneration === this.selectionRequestGeneration && this.selected()?.id === draw.id) {
+        this.feedback.error(error, 'Não foi possível atualizar a prévia de participantes.');
+      }
     }
   }
 

@@ -13,7 +13,7 @@ import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
@@ -222,21 +222,11 @@ export class MajorEvent {
       events: this.api.listMajorEvents(threeMonthsAgo.toISOString()),
       subscriptions: this.isAuthenticated() ? this.api.listCurrentUserSubscriptions() : of([]),
     })
-      .pipe(
-        switchMap((result) =>
-          this.prizeDrawsApi.availability({ majorEventIds: result.events.map((event) => event.id) }).pipe(
-            catchError(() => of([])),
-            map((availability) => ({
-              ...result,
-              prizeDrawTargetIds: availability.filter((item) => item.drawCount > 0).map((item) => item.targetId),
-            })),
-          ),
-        ),
-      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ events, subscriptions, prizeDrawTargetIds }) => {
-          this.pageState.set({ status: 'ready', events, subscriptions, prizeDrawTargetIds });
+        next: ({ events, subscriptions }) => {
+          this.pageState.set({ status: 'ready', events, subscriptions, prizeDrawTargetIds: [] });
+          this.loadPrizeDrawAvailability(events);
           this.analytics.trackEvent('major_event_list_viewed', {
             major_event_count: events.length,
             authenticated: this.isAuthenticated(),
@@ -248,5 +238,16 @@ export class MajorEvent {
             message: error instanceof Error ? error.message : 'Não foi possível carregar os eventos.',
           }),
       });
+  }
+
+  private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {
+    this.prizeDrawsApi.availability({ majorEventIds: events.map((event) => event.id) }).pipe(
+      catchError(() => of([])),
+      map((availability) => availability.filter((item) => item.drawCount > 0).map((item) => item.targetId)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((prizeDrawTargetIds) => {
+      const state = this.pageState();
+      if (state.status === 'ready' && !state.preview) this.pageState.set({ ...state, prizeDrawTargetIds });
+    });
   }
 }

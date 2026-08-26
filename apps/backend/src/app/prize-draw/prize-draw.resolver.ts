@@ -113,12 +113,6 @@ export class PrizeDrawResolver {
     return this.draws.undoLast(drawId, this.user(context));
   }
 
-  @Mutation(() => Boolean, { name: 'acknowledgePrizeDrawPresentation' })
-  @RequirePermissions(Permission.PrizeDraw.Operate)
-  acknowledgePrizeDrawPresentation(@Args('spinId', { type: () => String }) spinId: string): Promise<boolean> {
-    return this.draws.acknowledgePresentation(spinId);
-  }
-
   @Query(() => PrizeDrawWinnerContact, { name: 'prizeDrawWinnerContact' })
   @RequirePermissions(Permission.PrizeDraw.ContactRead)
   prizeDrawWinnerContact(@Args('spinId', { type: () => String }) spinId: string): Promise<PrizeDrawWinnerContact> {

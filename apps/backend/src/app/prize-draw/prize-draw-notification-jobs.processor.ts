@@ -5,6 +5,7 @@ import {
   PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB,
   PRIZE_DRAW_NOTIFICATION_QUEUE,
   PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB,
+  PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
   PrizeDrawNotificationJob,
   PrizeDrawNotificationJobsService,
@@ -26,6 +27,10 @@ export class PrizeDrawNotificationJobsProcessor extends WorkerHost {
     }
     if (job.name === PRIZE_DRAW_WINNER_JOB) {
       await this.jobs.deliverWinner(job.data.spinId);
+      return;
+    }
+    if (job.name === PRIZE_DRAW_PRESENTATION_JOB) {
+      await this.jobs.releasePresentation(job.data.spinId);
       return;
     }
     if (job.name === PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB) {

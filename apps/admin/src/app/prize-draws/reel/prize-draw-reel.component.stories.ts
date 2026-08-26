@@ -45,6 +45,7 @@ type Story = StoryObj<StoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByText('Ana A.')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: 'Sortear agora' }));
     await waitFor(() => expect(canvas.getByText('Resultado pronto')).toBeVisible(), { timeout: 4_000 });
   },

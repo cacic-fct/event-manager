@@ -250,10 +250,14 @@ export class PeopleResolver {
       this.addPeopleWhereCondition(where, {
         OR: [
           { name: { contains: normalizedQuery, mode: 'insensitive' } },
-          { email: { contains: normalizedQuery, mode: 'insensitive' } },
-          { phone: { contains: normalizedQuery, mode: 'insensitive' } },
           { identityDocument: { contains: normalizedQuery } },
           { academicId: { contains: normalizedQuery } },
+          ...(canReadPrizeDrawContacts
+            ? [
+                { email: { contains: normalizedQuery, mode: 'insensitive' } },
+                { phone: { contains: normalizedQuery, mode: 'insensitive' } },
+              ] satisfies Prisma.PeopleWhereInput[]
+            : []),
         ],
       });
     }

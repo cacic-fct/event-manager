@@ -2,6 +2,7 @@ import { Job } from 'bullmq';
 import {
   PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB,
   PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB,
+  PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
   PrizeDrawNotificationJob,
   PrizeDrawNotificationJobsService,
@@ -11,6 +12,7 @@ import { PrizeDrawNotificationJobsProcessor } from './prize-draw-notification-jo
 describe('PrizeDrawNotificationJobsProcessor', () => {
   const jobs = {
     deliverWinner: jest.fn().mockResolvedValue(undefined),
+    releasePresentation: jest.fn().mockResolvedValue(true),
     cleanup: jest.fn().mockResolvedValue(undefined),
     reconcilePending: jest.fn().mockResolvedValue(undefined),
   } as unknown as PrizeDrawNotificationJobsService;
@@ -20,9 +22,11 @@ describe('PrizeDrawNotificationJobsProcessor', () => {
 
   it('routes winner and cleanup jobs by name', async () => {
     await processor.process(job(PRIZE_DRAW_WINNER_JOB, { spinId: 'spin-1' }));
+    await processor.process(job(PRIZE_DRAW_PRESENTATION_JOB, { spinId: 'spin-presentation' }));
     await processor.process(job(PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB, { spinId: 'spin-2' }));
 
     expect(jobs.deliverWinner).toHaveBeenCalledWith('spin-1');
+    expect(jobs.releasePresentation).toHaveBeenCalledWith('spin-presentation');
     expect(jobs.cleanup).toHaveBeenCalledWith('spin-2');
   });
 

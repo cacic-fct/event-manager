@@ -1,7 +1,7 @@
 import { Controller, Headers, MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { defer, filter, Observable, switchMap } from 'rxjs';
+import { defer, map, Observable, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
@@ -17,11 +17,7 @@ const PRIZE_DRAW_SSE_RESPONSE = {
       {
         type: 'object',
         properties: {
-              type: { type: 'string', example: 'SPIN_PRESENTED' },
-          drawId: { type: 'string', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' },
-          spinId: { type: 'string', nullable: true, example: '019d2a25-5694-7f19-b954-8a98f7bb9a45' },
-          revision: { type: 'integer', example: 3 },
-          occurredAt: { type: 'string', format: 'date-time' },
+          type: { type: 'string', example: 'PRIZE_DRAWS_UPDATED' },
         },
       },
       {
@@ -99,14 +95,10 @@ export class PrizeDrawRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope(type, id);
     return defer(() => this.draws.listPublic(target, user)).pipe(
-      switchMap((draws) => {
-        const allowedDrawIds = new Set(draws.map((draw) => draw.id));
-        return this.replay.replay(scope, lastEventId, this.realtime.watch(scope)).pipe(
-          filter((event) => {
-            const data = event.data as { type?: string; drawId?: string };
-            return data?.type === 'heartbeat' || Boolean(data?.drawId && allowedDrawIds.has(data.drawId));
-          }),
-        );
+      switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
+      map((event) => {
+        const data = event.data as { type?: string };
+        return data?.type === 'heartbeat' ? event : { ...event, data: { type: 'PRIZE_DRAWS_UPDATED' } };
       }),
     );
   }

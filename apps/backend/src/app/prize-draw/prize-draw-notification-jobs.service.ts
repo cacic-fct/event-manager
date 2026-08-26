@@ -5,12 +5,15 @@ import { Queue } from 'bullmq';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PrizeDrawRealtimeService } from './prize-draw-realtime.service';
 
 export const PRIZE_DRAW_NOTIFICATION_QUEUE = 'prize-draw-notifications';
 export const PRIZE_DRAW_WINNER_JOB = 'notify-prize-draw-winner';
+export const PRIZE_DRAW_PRESENTATION_JOB = 'publish-prize-draw-result';
 export const PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB = 'cleanup-prize-draw-notifications';
 export const PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB = 'reconcile-prize-draw-notifications';
 const UNDO_NOTIFICATION_RETENTION_MS = 60_000;
+export const PRIZE_DRAW_PRESENTATION_GRACE_MS = 750;
 
 export type PrizeDrawNotificationJob = {
   spinId: string;
@@ -25,6 +28,7 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     private readonly queue: Queue<PrizeDrawNotificationJob>,
     private readonly notifications: NovuNotificationsService,
     private readonly prisma: PrismaService,
+    private readonly realtime: PrizeDrawRealtimeService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -60,6 +64,50 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
       });
       this.logger.warn(`Could not enqueue prize draw notification for spin ${spinId}: ${String(error)}`);
     }
+  }
+
+  async enqueuePresentation(spinId: string, options: { delayMs: number }): Promise<void> {
+    try {
+      await this.queue.add(
+        PRIZE_DRAW_PRESENTATION_JOB,
+        { spinId },
+        {
+          jobId: buildBullMqJobId('prize-draw-presentation', spinId),
+          delay: Math.max(0, options.delayMs),
+          attempts: 8,
+          backoff: { type: 'exponential', delay: 5_000 },
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+    } catch (error) {
+      this.logger.warn(`Could not enqueue prize draw publication for spin ${spinId}: ${String(error)}`);
+    }
+  }
+
+  async releasePresentation(spinId: string): Promise<boolean> {
+    const acknowledged = await this.prisma.prizeDrawSpin.updateMany({
+      where: { id: spinId, undoneAt: null, presentationAcknowledgedAt: null },
+      data: { presentationAcknowledgedAt: new Date() },
+    });
+    const spin = await this.prisma.prizeDrawSpin.findUnique({
+      where: { id: spinId },
+      select: {
+        drawId: true,
+        presentationAcknowledgedAt: true,
+        notificationStatus: true,
+        notificationTransactionId: true,
+        draw: { select: { revision: true } },
+      },
+    });
+    if (!spin) return false;
+    if (acknowledged.count === 1) {
+      if (spin.notificationStatus === 'PENDING' && spin.notificationTransactionId) {
+        await this.enqueueWinner(spinId, { delayMs: 0 });
+      }
+      await this.realtime.publishDraw(spin.drawId, 'SPIN_PRESENTED', spin.draw.revision, spinId);
+    }
+    return Boolean(spin.presentationAcknowledgedAt);
   }
 
   async deliverWinner(spinId: string): Promise<void> {
@@ -112,12 +160,16 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
         undoNotificationStatus: undoTransactionId ? (delivered ? 'SENT' : 'FAILED') : 'NOT_REQUESTED',
       },
     });
+    await this.enqueueCleanup(spinId, delivered || !undoTransactionId ? UNDO_NOTIFICATION_RETENTION_MS : 5_000);
+  }
+
+  private async enqueueCleanup(spinId: string, delayMs: number): Promise<void> {
     await this.queue.add(
       PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB,
       { spinId },
       {
         jobId: buildBullMqJobId('prize-draw-cleanup', spinId),
-        delay: delivered || !undoTransactionId ? UNDO_NOTIFICATION_RETENTION_MS : 5_000,
+        delay: Math.max(0, delayMs),
         attempts: 8,
         backoff: { type: 'exponential', delay: 5_000 },
         removeOnComplete: true,
@@ -147,18 +199,46 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   }
 
   async reconcilePending(): Promise<void> {
-    const pending = await this.prisma.prizeDrawSpin.findMany({
-      where: {
-        notificationStatus: 'PENDING',
-        notificationTransactionId: { not: null },
-        presentationAcknowledgedAt: { not: null },
-        undoneAt: null,
-      },
-      select: { id: true },
-      orderBy: { presentationAcknowledgedAt: 'asc' },
-      take: 100,
-    });
-    await Promise.all(pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })));
+    const [unpublished, pending, undone] = await Promise.all([
+      this.prisma.prizeDrawSpin.findMany({
+        where: { presentationAcknowledgedAt: null, undoneAt: null },
+        select: { id: true, drawnAt: true, countdownSeconds: true, reelDurationMs: true, preRevealPauseMs: true },
+        orderBy: { drawnAt: 'asc' },
+        take: 100,
+      }),
+      this.prisma.prizeDrawSpin.findMany({
+        where: {
+          notificationStatus: 'PENDING',
+          notificationTransactionId: { not: null },
+          presentationAcknowledgedAt: { not: null },
+          undoneAt: null,
+        },
+        select: { id: true },
+        orderBy: { presentationAcknowledgedAt: 'asc' },
+        take: 100,
+      }),
+      this.prisma.prizeDrawSpin.findMany({
+        where: {
+          undoneAt: { not: null },
+          OR: [
+            { notificationTransactionId: { not: null }, notificationStatus: { not: 'DELETED' } },
+            { undoNotificationTransactionId: { not: null }, undoNotificationStatus: { not: 'DELETED' } },
+          ],
+        },
+        select: { id: true },
+        orderBy: { undoneAt: 'asc' },
+        take: 100,
+      }),
+    ]);
+    await Promise.all([
+      ...unpublished.map((spin) => {
+        const releaseAt = spin.drawnAt.getTime() + (spin.countdownSeconds ?? 0) * 1000 +
+          spin.reelDurationMs + spin.preRevealPauseMs + PRIZE_DRAW_PRESENTATION_GRACE_MS;
+        return this.enqueuePresentation(spin.id, { delayMs: Math.max(0, releaseAt - Date.now()) });
+      }),
+      ...pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })),
+      ...undone.map((spin) => this.enqueueCleanup(spin.id, 0)),
+    ]);
   }
 
   private async removePendingWinnerJob(spinId: string): Promise<void> {

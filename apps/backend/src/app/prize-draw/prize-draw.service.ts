@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import {
   Prisma,
@@ -29,7 +28,10 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { PrismaService } from '../prisma/prisma.service';
 import { PrizeDrawEligibleRecord, PrizeDrawEligibilityService } from './prize-draw-eligibility.service';
 import { formatPrizeDrawReelName, normalizePrizeDrawText } from './prize-draw-name';
-import { PrizeDrawNotificationJobsService } from './prize-draw-notification-jobs.service';
+import {
+  PRIZE_DRAW_PRESENTATION_GRACE_MS,
+  PrizeDrawNotificationJobsService,
+} from './prize-draw-notification-jobs.service';
 import { PrizeDrawRealtimeService } from './prize-draw-realtime.service';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../public-events/models';
 import { computePrizeDrawAnimationTiming } from './prize-draw-motion';
@@ -58,7 +60,6 @@ const DRAW_INCLUDE = Prisma.validator<Prisma.PrizeDrawInclude>()({
   },
   spins: {
     include: {
-      entries: { select: { weight: true } },
       winnerPerson: { select: { id: true, mergedIntoId: true } },
     },
     orderBy: [{ drawnAt: 'asc' }, { sequence: 'asc' }],
@@ -66,6 +67,7 @@ const DRAW_INCLUDE = Prisma.validator<Prisma.PrizeDrawInclude>()({
 });
 
 type PrizeDrawRecord = Prisma.PrizeDrawGetPayload<{ include: typeof DRAW_INCLUDE }>;
+type PrizeDrawWeightBreakdown = { weight: number; peopleCount: number };
 
 @Injectable()
 export class PrizeDrawService {
@@ -74,7 +76,7 @@ export class PrizeDrawService {
     private readonly eligibility: PrizeDrawEligibilityService,
     private readonly policy: AuthorizationPolicyService,
     private readonly realtime: PrizeDrawRealtimeService,
-    @Optional() private readonly notificationJobs?: PrizeDrawNotificationJobsService,
+    private readonly notificationJobs: PrizeDrawNotificationJobsService,
   ) {}
 
   async listAdmin(user: AuthenticatedUser | undefined): Promise<PrizeDraw[]> {
@@ -90,11 +92,14 @@ export class PrizeDrawService {
       include: DRAW_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
     });
-    return Promise.all(records.map((record) => this.mapDraw(record, false, false)));
+    const weightBreakdowns = await this.loadWeightBreakdowns(records);
+    return Promise.all(records.map((record) => this.mapDraw(record, false, false, weightBreakdowns)));
   }
 
   async getAdmin(drawId: string): Promise<PrizeDraw> {
-    return this.mapDraw(await this.requireDraw(drawId), false);
+    const record = await this.requireDraw(drawId);
+    const weightBreakdowns = await this.loadWeightBreakdowns([record]);
+    return this.mapDraw(record, false, true, weightBreakdowns);
   }
 
   async eligibleEntries(drawId: string): Promise<PrizeDrawEligibleEntry[]> {
@@ -293,6 +298,10 @@ export class PrizeDrawService {
       return { draw, spin, winner, entries, animation, activeCount: activeSpins.length, revision: updated.revision };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
+    await this.notificationJobs.enqueuePresentation(created.spin.id, {
+      delayMs: created.animation.countdownMs + created.animation.reelDurationMs +
+        created.animation.preRevealPauseMs + PRIZE_DRAW_PRESENTATION_GRACE_MS,
+    });
     return this.spinResult(created.draw, created.spin, created.winner, created.entries, created.animation, false, created.activeCount + 1);
   }
 
@@ -319,41 +328,12 @@ export class PrizeDrawService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     try {
-      await this.notificationJobs?.undoSpin(undone.spin.id);
+      await this.notificationJobs.undoSpin(undone.spin.id);
     } catch {
       // Notification cleanup is retried independently and must not mask the committed undo.
     }
     await this.realtime.publishDraw(drawId, 'SPIN_UNDONE', undone.revision, undone.spin.id);
     return this.getAdmin(drawId);
-  }
-
-  async acknowledgePresentation(spinId: string): Promise<boolean> {
-    const acknowledged = await this.prisma.prizeDrawSpin.updateMany({
-      where: {
-        id: spinId,
-        undoneAt: null,
-        presentationAcknowledgedAt: null,
-      },
-      data: { presentationAcknowledgedAt: new Date() },
-    });
-    const spin = await this.prisma.prizeDrawSpin.findUnique({
-      where: { id: spinId },
-      select: {
-        drawId: true,
-        presentationAcknowledgedAt: true,
-        notificationStatus: true,
-        notificationTransactionId: true,
-        draw: { select: { revision: true } },
-      },
-    });
-    if (!spin) throw new NotFoundException('Giro não encontrado.');
-    if (acknowledged.count === 1) {
-      if (spin.notificationStatus === 'PENDING' && spin.notificationTransactionId) {
-        await this.notificationJobs?.enqueueWinner(spinId, { delayMs: 0 });
-      }
-      await this.realtime.publishDraw(spin.drawId, 'SPIN_PRESENTED', spin.draw.revision, spinId);
-    }
-    return Boolean(spin.presentationAcknowledgedAt);
   }
 
   async winnerContact(spinId: string): Promise<PrizeDrawWinnerContact> {
@@ -411,7 +391,8 @@ export class PrizeDrawService {
     if (records.length === 0) {
       throw new ForbiddenException('Você não participou deste sorteio ou não possui permissão para consultá-lo.');
     }
-    return Promise.all(records.map((record) => this.mapDraw(record, true)));
+    const weightBreakdowns = await this.loadWeightBreakdowns(records);
+    return Promise.all(records.map((record) => this.mapDraw(record, true, true, weightBreakdowns)));
   }
 
   async publicAvailability(input: {
@@ -530,7 +511,12 @@ export class PrizeDrawService {
     return entries.reduce((sum, entry) => sum + entry.weight, 0);
   }
 
-  private async mapDraw(record: PrizeDrawRecord, publicView: boolean, computeEligibility = true): Promise<PrizeDraw> {
+  private async mapDraw(
+    record: PrizeDrawRecord,
+    publicView: boolean,
+    computeEligibility = true,
+    weightBreakdowns: ReadonlyMap<string, PrizeDrawWeightBreakdown[]> = new Map(),
+  ): Promise<PrizeDraw> {
     const excluded = record.removeWinnerAfterDraw ? this.activeWinnerKeys(record) : new Set<string>();
     const eligible = publicView || !computeEligibility ? [] : await this.eligibility.resolve(record, { excludeIdentityKeys: excluded });
     const target = record.event
@@ -577,7 +563,7 @@ export class PrizeDrawService {
           entrantCount: spin.entrantCount,
           totalWeight: spin.totalWeight,
           duplicateEntryCount: spin.duplicateEntryCount,
-          weightBreakdown: this.weightBreakdown(spin.entries),
+          weightBreakdown: weightBreakdowns.get(spin.id) ?? [],
           eligibilityFrozenAt: spin.eligibilityFrozenAt,
           drawnAt: spin.drawnAt,
           undoneAt: spin.undoneAt,
@@ -591,12 +577,24 @@ export class PrizeDrawService {
     };
   }
 
-  private weightBreakdown(entries: readonly { weight: number }[]) {
-    const counts = new Map<number, number>();
-    for (const entry of entries) counts.set(entry.weight, (counts.get(entry.weight) ?? 0) + 1);
-    return [...counts.entries()]
-      .sort(([left], [right]) => left - right)
-      .map(([weight, peopleCount]) => ({ weight, peopleCount }));
+  private async loadWeightBreakdowns(
+    records: readonly PrizeDrawRecord[],
+  ): Promise<Map<string, PrizeDrawWeightBreakdown[]>> {
+    const drawIds = records.filter((record) => record.spins.length > 0).map((record) => record.id);
+    const result = new Map<string, PrizeDrawWeightBreakdown[]>();
+    if (drawIds.length === 0) return result;
+    const groups = await this.prisma.prizeDrawSpinEntry.groupBy({
+      by: ['spinId', 'weight'],
+      where: { spin: { drawId: { in: drawIds } } },
+      _count: { _all: true },
+      orderBy: [{ spinId: 'asc' }, { weight: 'asc' }],
+    });
+    for (const group of groups) {
+      const breakdown = result.get(group.spinId) ?? [];
+      breakdown.push({ weight: group.weight, peopleCount: group._count._all });
+      result.set(group.spinId, breakdown);
+    }
+    return result;
   }
 
   private excludedPeopleSummary(exclusions: PrizeDrawRecord['excludedPeople']) {

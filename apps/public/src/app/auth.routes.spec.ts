@@ -1,4 +1,6 @@
+import { RenderMode } from '@angular/ssr';
 import { appRoutes } from './app.routes';
+import { serverRoutes } from './app.routes.server';
 
 describe('public auth route wiring', () => {
   it('does not declare an admin-style local login route', () => {
@@ -23,6 +25,13 @@ describe('public auth route wiring', () => {
 
     expect(drawRoutes).toHaveLength(3);
     expect(drawRoutes.every((route) => (route.canActivate?.length ?? 0) > 0)).toBe(true);
+  });
+
+  it('renders authenticated prize draw routes only in the browser', () => {
+    const drawRoutes = serverRoutes.filter((route) => route.path.startsWith('draws/'));
+
+    expect(drawRoutes).toHaveLength(3);
+    expect(drawRoutes.every((route) => route.renderMode === RenderMode.Client)).toBe(true);
   });
 });
 

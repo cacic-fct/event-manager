@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -40,6 +40,7 @@ export class PrizeDrawPageComponent {
   readonly requesting = signal(false);
   readonly draw = signal<PrizeDraw | null>(null);
   readonly entries = signal<PrizeDrawEligibleEntry[]>([]);
+  readonly reelNames = computed(() => this.shortNames(this.entries()));
   readonly lastResult = signal<PrizeDrawSpinResult | null>(null);
   readonly reducedMotion = signal(false);
   readonly demoMode = this.route.snapshot.queryParamMap.get('demo') === 'true';
@@ -73,17 +74,6 @@ export class PrizeDrawPageComponent {
       this.lastResult.set(result);
       await this.reel()?.play(result, this.reducedMotion());
       if (generation !== this.requestGeneration) return;
-      if (!result.demo && result.spinId) {
-        try {
-          await firstValueFrom(this.api.acknowledgePresentation(result.spinId));
-        } catch (error) {
-          this.feedback.error(
-            error,
-            'O resultado foi salvo, mas a notificação da pessoa vencedora ainda não pôde ser liberada.',
-            'Resultado salvo; notificação pendente',
-          );
-        }
-      }
       await firstValueFrom(
         this.dialog
           .open<PrizeDrawResultDialogComponent, PrizeDrawResultDialogData, boolean>(PrizeDrawResultDialogComponent, {

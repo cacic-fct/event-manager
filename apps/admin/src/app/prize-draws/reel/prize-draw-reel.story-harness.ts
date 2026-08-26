@@ -12,7 +12,7 @@ import { PrizeDrawReelComponent } from './prize-draw-reel.component';
       <section class="story-context" aria-label="Configuração desta demonstração">
         <strong>Lista simulada com {{ rosterSize() }} nomes</strong>
       </section>
-      <app-prize-draw-reel />
+      <app-prize-draw-reel [names]="rosterNames()" />
       <div class="story-actions">
         <button mat-flat-button type="button" [disabled]="rosterSize() < 1" (click)="play()">Sortear agora</button>
         <button mat-stroked-button type="button" (click)="reset()">Reiniciar</button>
@@ -45,12 +45,12 @@ export class PrizeDrawReelStoryHarness {
       demo: this.demo(),
     }),
   );
+  readonly rosterNames = computed(() => this.rosterSize() < 1 ? [] : this.result().reelNames);
 
   constructor() {
     effect(() => {
       const reel = this.reel();
-      const names = this.rosterSize() < 1 ? [] : this.result().reelNames;
-      if (reel) queueMicrotask(() => reel.reset(names));
+      if (reel) reel.reset(this.rosterNames());
     });
   }
 
@@ -60,6 +60,6 @@ export class PrizeDrawReelStoryHarness {
   }
 
   reset(): void {
-    this.reel()?.reset(this.rosterSize() < 1 ? [] : this.result().reelNames);
+    this.reel()?.reset(this.rosterNames());
   }
 }

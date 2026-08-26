@@ -339,6 +339,11 @@ async function fulfillGraphql(
     return;
   }
 
+  if (query.includes('query PublicPrizeDrawAvailability')) {
+    await fulfillGraphqlData(route, { publicPrizeDrawAvailability: [] });
+    return;
+  }
+
   if (query.includes('query CurrentUserMajorEventSubscriptions')) {
     await fulfillGraphqlData(route, {
       currentUserMajorEventSubscriptions: [],

@@ -12,7 +12,7 @@
         class="reel-name"
         [class.reel-name--center]="item.center"
         [class.reel-name--alternate]="item.animationVariant === 'alternate'">
-        {{ item.name }}
+        <span>{{ item.name }}</span>
       </div>
     } @empty {
       <div class="reel-empty"><mat-icon>group_off</mat-icon><span>Nenhuma pessoa elegível</span></div>
