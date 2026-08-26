@@ -134,13 +134,6 @@
   color: var(--mat-sys-primary);
 }
 
-.reel-status {
-  min-height: 1.25rem;
-  margin: 0.75rem 0 0;
-  color: var(--mat-sys-on-surface-variant);
-  text-align: center;
-}
-
 @keyframes reel-pass {
   from {
     transform: translate3d(0, 35%, 0);

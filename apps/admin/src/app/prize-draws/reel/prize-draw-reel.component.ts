@@ -32,7 +32,6 @@ export class PrizeDrawReelComponent implements OnDestroy {
   readonly phase = signal<ReelPhase>('idle');
   readonly countdown = signal<number | null>(null);
   readonly visibleNames = signal<VisibleName[]>([]);
-  readonly statusText = signal('Pronto para sortear');
   readonly motionStage = signal<PrizeDrawReelMotionStage>('idle');
   private generation = 0;
   private frameId: number | null = null;
@@ -61,13 +60,11 @@ export class PrizeDrawReelComponent implements OnDestroy {
       for (let remaining = seconds; remaining > 0; remaining -= 1) {
         if (generation !== this.generation) return;
         this.countdown.set(remaining);
-        this.statusText.set(`Sorteio em ${remaining}`);
         this.countdownStepTone();
         await this.wait(1000, generation);
       }
       this.countdown.set(null);
       this.phase.set('idle');
-      this.statusText.set('');
       await this.wait(80, generation);
       if (generation !== this.generation) return;
       this.countdownCompleteTone();
@@ -80,7 +77,6 @@ export class PrizeDrawReelComponent implements OnDestroy {
 
     if (result.reelDurationMs > 0) {
       this.phase.set('spinning');
-      this.statusText.set('Sorteando');
       await this.animate(names, winnerIndex, result.speed, result.reelDurationMs, generation);
     } else {
       this.setCenter(names, winnerIndex);
@@ -93,11 +89,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
 
     this.motionStage.set('settling');
     this.phase.set('stopped');
-    this.statusText.set('');
     await this.wait(result.preRevealPauseMs, generation);
     if (generation !== this.generation) return;
     this.phase.set('complete');
-    this.statusText.set('Resultado pronto');
     this.resultTone();
   }
 
@@ -108,7 +102,6 @@ export class PrizeDrawReelComponent implements OnDestroy {
     this.countdown.set(null);
     this.phase.set('idle');
     this.motionStage.set('idle');
-    this.statusText.set(names.length ? 'Pronto para sortear' : 'Nenhuma pessoa elegível');
     this.setCenter(names, 0);
   }
 
@@ -143,11 +136,11 @@ export class PrizeDrawReelComponent implements OnDestroy {
       const plannedTicks = preservesCurrentWindow
         ? this.tickCountToWinner(names.length, startIndex, winnerIndex, minimumTicks)
         : minimumTicks;
-      const tickSchedule = preservesCurrentWindow
-        ? this.createTickSchedule(speed, durationMs, plannedTicks)
-        : null;
+      const tickSchedule = preservesCurrentWindow ? this.createTickSchedule(speed, durationMs, plannedTicks) : null;
       let appliedTicks = 0;
-      let currentIndex = preservesCurrentWindow ? startIndex : this.normalizeIndex(names.length, winnerIndex - plannedTicks);
+      let currentIndex = preservesCurrentWindow
+        ? startIndex
+        : this.normalizeIndex(names.length, winnerIndex - plannedTicks);
       if (!preservesCurrentWindow) this.setCenter(names, currentIndex);
       let nextTickAt = startedAt + (tickSchedule?.[0] ?? 0);
       const step = (now: number) => {
@@ -197,12 +190,10 @@ export class PrizeDrawReelComponent implements OnDestroy {
     this.setCenter(names, concealedIndex);
     this.motionStage.set('settling');
     this.phase.set('reduced');
-    this.statusText.set('Movimento reduzido');
     await this.wait(850, generation);
     if (generation !== this.generation) return;
     this.setCenter(names, winnerIndex);
     this.phase.set('complete');
-    this.statusText.set('Resultado pronto');
     this.resultTone();
   }
 
@@ -242,11 +233,7 @@ export class PrizeDrawReelComponent implements OnDestroy {
     return minimumTicks + this.normalizeIndex(namesLength, requiredRemainder - minimumRemainder);
   }
 
-  private createTickSchedule(
-    speed: PrizeDrawSpinResult['speed'],
-    durationMs: number,
-    tickCount: number,
-  ): number[] {
+  private createTickSchedule(speed: PrizeDrawSpinResult['speed'], durationMs: number, tickCount: number): number[] {
     if (tickCount <= 1) return [0];
     const rawOffsets = [0];
     let rawElapsed = 0;
