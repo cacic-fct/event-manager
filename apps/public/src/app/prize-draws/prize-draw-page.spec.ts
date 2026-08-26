@@ -33,6 +33,9 @@ describe('PublicPrizeDrawPage', () => {
     expect(component.percentage(spinFixture())).toBe('25%');
     expect(component.chance(spinFixture())).toBe('1 em 4');
     expect(component.sourceTargetLabel(drawFixture())).toBe('Evento: Evento');
+    expect(component.sourceTargetLabel(drawFixture({ target: { type: 'EVENT_GROUP', id: 'group-1', name: 'Grupo' } }))).toBe(
+      'Grupo de eventos: Grupo',
+    );
     expect(component.drawAnchorId('draw-1')).toBe('draw-draw-1');
 
     updates.next();

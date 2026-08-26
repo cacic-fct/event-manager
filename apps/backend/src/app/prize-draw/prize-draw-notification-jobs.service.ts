@@ -14,6 +14,7 @@ export const PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB = 'cleanup-prize-draw-notificat
 export const PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB = 'reconcile-prize-draw-notifications';
 const UNDO_NOTIFICATION_RETENTION_MS = 60_000;
 export const PRIZE_DRAW_PRESENTATION_GRACE_MS = 750;
+export const PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS = 60 * 60 * 1000;
 
 export type PrizeDrawNotificationJob = {
   spinId: string;
@@ -94,20 +95,21 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
       where: { id: spinId },
       select: {
         drawId: true,
+        undoneAt: true,
         presentationAcknowledgedAt: true,
         notificationStatus: true,
         notificationTransactionId: true,
         draw: { select: { revision: true } },
       },
     });
-    if (!spin) return false;
+    if (!spin || spin.undoneAt || !spin.presentationAcknowledgedAt) return false;
     if (acknowledged.count === 1) {
       if (spin.notificationStatus === 'PENDING' && spin.notificationTransactionId) {
         await this.enqueueWinner(spinId, { delayMs: 0 });
       }
-      await this.realtime.publishDraw(spin.drawId, 'SPIN_PRESENTED', spin.draw.revision, spinId);
     }
-    return Boolean(spin.presentationAcknowledgedAt);
+    await this.realtime.publishDraw(spin.drawId, 'SPIN_PRESENTED', spin.draw.revision, spinId);
+    return true;
   }
 
   async deliverWinner(spinId: string): Promise<void> {
@@ -201,7 +203,11 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   async reconcilePending(): Promise<void> {
     const [unpublished, pending, undone] = await Promise.all([
       this.prisma.prizeDrawSpin.findMany({
-        where: { presentationAcknowledgedAt: null, undoneAt: null },
+        where: {
+          presentationAcknowledgedAt: null,
+          undoneAt: null,
+          drawnAt: { gte: new Date(Date.now() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
+        },
         select: { id: true, drawnAt: true, countdownSeconds: true, reelDurationMs: true, preRevealPauseMs: true },
         orderBy: { drawnAt: 'asc' },
         take: 100,

@@ -1,6 +1,7 @@
 import {
   PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB,
   PRIZE_DRAW_PRESENTATION_GRACE_MS,
+  PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS,
   PrizeDrawNotificationJobsService,
   PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
@@ -28,12 +29,13 @@ describe('PrizeDrawNotificationJobsService', () => {
     expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'SPIN_PRESENTED', 4, 'spin-1');
   });
 
-  it('is idempotent when presentation was already released or the spin disappeared', async () => {
+  it('re-publishes an already acknowledged presentation without re-enqueueing its winner notification', async () => {
     const context = createContext();
     context.prisma.prizeDrawSpin.updateMany.mockResolvedValue({ count: 0 });
     context.prisma.prizeDrawSpin.findUnique
       .mockResolvedValueOnce({
         drawId: 'draw-1',
+        undoneAt: null,
         presentationAcknowledgedAt: new Date(),
         notificationStatus: 'PENDING',
         notificationTransactionId: 'winner-transaction',
@@ -43,6 +45,24 @@ describe('PrizeDrawNotificationJobsService', () => {
 
     await expect(context.service.releasePresentation('spin-1')).resolves.toBe(true);
     await expect(context.service.releasePresentation('missing')).resolves.toBe(false);
+
+    expect(context.queue.add).not.toHaveBeenCalled();
+    expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'SPIN_PRESENTED', 4, 'spin-1');
+  });
+
+  it('does not publish an undone spin even when it had already been acknowledged', async () => {
+    const context = createContext();
+    context.prisma.prizeDrawSpin.updateMany.mockResolvedValue({ count: 0 });
+    context.prisma.prizeDrawSpin.findUnique.mockResolvedValue({
+      drawId: 'draw-1',
+      undoneAt: new Date(),
+      presentationAcknowledgedAt: new Date(),
+      notificationStatus: 'PENDING',
+      notificationTransactionId: 'winner-transaction',
+      draw: { revision: 4 },
+    });
+
+    await expect(context.service.releasePresentation('spin-1')).resolves.toBe(false);
 
     expect(context.queue.add).not.toHaveBeenCalled();
     expect(context.realtime.publishDraw).not.toHaveBeenCalled();
@@ -144,31 +164,38 @@ describe('PrizeDrawNotificationJobsService', () => {
   });
 
   it('reconciles an unpublished spin using its remaining animation time', async () => {
-    const context = createContext();
-    const now = new Date();
-    context.prisma.prizeDrawSpin.findMany
-      .mockResolvedValueOnce([
-        {
-          id: 'spin-1',
-          drawnAt: new Date(now.getTime() - 1_000),
-          countdownSeconds: 3,
-          reelDurationMs: 2_000,
-          preRevealPauseMs: 500,
-        },
-      ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-26T18:00:00.000Z'));
+    try {
+      const context = createContext();
+      const now = new Date();
+      context.prisma.prizeDrawSpin.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'spin-1',
+            drawnAt: new Date(now.getTime() - 1_000),
+            countdownSeconds: 3,
+            reelDurationMs: 2_000,
+            preRevealPauseMs: 500,
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
-    await context.service.reconcilePending();
+      await context.service.reconcilePending();
 
-    expect(context.queue.add).toHaveBeenCalledWith(
-      PRIZE_DRAW_PRESENTATION_JOB,
-      { spinId: 'spin-1' },
-      expect.objectContaining({ delay: expect.any(Number) }),
-    );
-    const options = context.queue.add.mock.calls[0][2];
-    expect(options.delay).toBeGreaterThan(4_000 + PRIZE_DRAW_PRESENTATION_GRACE_MS);
-    expect(options.delay).toBeLessThanOrEqual(4_500 + PRIZE_DRAW_PRESENTATION_GRACE_MS);
+      expect(context.prisma.prizeDrawSpin.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        where: expect.objectContaining({
+          drawnAt: { gte: new Date(now.getTime() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
+        }),
+      }));
+      expect(context.queue.add).toHaveBeenCalledWith(
+        PRIZE_DRAW_PRESENTATION_JOB,
+        { spinId: 'spin-1' },
+        expect.objectContaining({ delay: 4_500 + PRIZE_DRAW_PRESENTATION_GRACE_MS }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('reconciles pending winner and undone cleanup jobs alongside presentation jobs', async () => {

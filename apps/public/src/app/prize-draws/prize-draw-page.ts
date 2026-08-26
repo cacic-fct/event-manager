@@ -86,7 +86,12 @@ export class PublicPrizeDrawPage {
   }
 
   sourceTargetLabel(draw: PublicPrizeDraw): string {
-    return draw.target.type === 'EVENT' ? `Evento: ${draw.target.name}` : `Grande evento: ${draw.target.name}`;
+    const typeLabel = {
+      EVENT: 'Evento',
+      EVENT_GROUP: 'Grupo de eventos',
+      MAJOR_EVENT: 'Grande evento',
+    }[draw.target.type];
+    return `${typeLabel}: ${draw.target.name}`;
   }
 
   drawAnchorId(drawId: string): string {
