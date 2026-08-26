@@ -27,3 +27,9 @@ export const DarkReducedMotion: Story = {
   globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
   parameters: { viewport: { defaultViewport: 'mobile' } },
 };
+
+export const MobileLight: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'light', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+};
