@@ -76,7 +76,7 @@ describe('PrizeDrawEligibilityService', () => {
     });
     const service = new PrizeDrawEligibilityService(prisma);
     const entries = await service.resolve(
-      { ...config(), frozenAt: new Date('2026-08-26T12:00:00Z') },
+      { ...config(), frozenAt: new Date(Date.now() - 60_000) },
       { excludeIdentityKeys: new Set(['person:person-1']) },
     );
 

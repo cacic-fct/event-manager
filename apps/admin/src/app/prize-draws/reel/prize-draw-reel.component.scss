@@ -47,6 +47,10 @@
   animation: reel-pass 160ms cubic-bezier(0.18, 0.8, 0.24, 1);
 }
 
+.reel-name--alternate {
+  animation-name: reel-pass-alternate;
+}
+
 .reel-name--center {
   border-top: 1px solid var(--mat-sys-outline-variant);
   border-bottom: 1px solid var(--mat-sys-outline-variant);
@@ -138,18 +142,47 @@
 }
 
 @keyframes reel-pass {
-  from { transform: translate3d(0, 35%, 0); opacity: 0.5; }
-  to { transform: translate3d(0, 0, 0); opacity: 1; }
+  from {
+    transform: translate3d(0, 35%, 0);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes reel-pass-alternate {
+  from {
+    transform: translate3d(0, 35%, 0);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
 }
 
 @keyframes winner-settle {
-  from { transform: scale(0.96); filter: blur(2px); }
-  to { transform: scale(1); filter: blur(0); }
+  from {
+    transform: scale(0.96);
+    filter: blur(2px);
+  }
+  to {
+    transform: scale(1);
+    filter: blur(0);
+  }
 }
 
 @keyframes countdown-settle {
-  from { transform: scale(1.15); opacity: 0.45; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(1.15);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

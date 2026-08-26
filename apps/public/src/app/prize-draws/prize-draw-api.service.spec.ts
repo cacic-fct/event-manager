@@ -9,6 +9,10 @@ describe('PublicPrizeDrawApiService', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('loads a sanitized snapshot and keeps spins oldest first', async () => {
+    const now = Date.now();
+    const createdAt = new Date(now - 120_000).toISOString();
+    const firstDrawnAt = new Date(now - 60_000).toISOString();
+    const secondDrawnAt = new Date(now - 30_000).toISOString();
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(PublicPrizeDrawApiService);
     const http = TestBed.inject(HttpTestingController);
@@ -31,11 +35,11 @@ describe('PublicPrizeDrawApiService', () => {
             removeWinnerAfterDraw: true,
             revision: 2,
             spins: [
-              { id: 'spin-2', sequence: 2, drawnAt: '2026-08-26T12:02:00Z' },
-              { id: 'spin-1', sequence: 1, drawnAt: '2026-08-26T12:01:00Z' },
+              { id: 'spin-2', sequence: 2, drawnAt: secondDrawnAt },
+              { id: 'spin-1', sequence: 1, drawnAt: firstDrawnAt },
             ],
-            createdAt: '2026-08-26T12:00:00Z',
-            updatedAt: '2026-08-26T12:02:00Z',
+            createdAt,
+            updatedAt: secondDrawnAt,
           },
         ],
       },

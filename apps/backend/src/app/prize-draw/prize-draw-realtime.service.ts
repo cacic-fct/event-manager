@@ -26,11 +26,11 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
     const connection = this.redis as Redis & { duplicate?: () => Redis };
     if (typeof connection.duplicate !== 'function') return;
     this.subscriber = connection.duplicate();
-    await this.subscriber.subscribe(PRIZE_DRAW_REDIS_CHANNEL);
     this.subscriber.on('message', (_channel, payload) => {
       const envelope = this.parseEnvelope(payload);
       if (envelope) this.channels.get(envelope.scope)?.subject.next(envelope.event);
     });
+    await this.subscriber.subscribe(PRIZE_DRAW_REDIS_CHANNEL);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -103,8 +103,7 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     try {
-      const delivered = await publisher.publish(PRIZE_DRAW_REDIS_CHANNEL, JSON.stringify(envelope));
-      if (delivered === 0) this.channels.get(scope)?.subject.next(event);
+      await publisher.publish(PRIZE_DRAW_REDIS_CHANNEL, JSON.stringify(envelope));
     } catch (error) {
       this.logger.warn(`Prize draw SSE pub/sub failed for ${scope}.`, error);
       this.channels.get(scope)?.subject.next(event);

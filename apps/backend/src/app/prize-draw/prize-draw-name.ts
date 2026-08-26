@@ -1,5 +1,7 @@
+export const REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL = 'Participante removido';
+
 export function formatPrizeDrawReelName(fullName: string): string {
-  if (fullName.trim() === 'Participante removido') return 'Participante removido';
+  if (fullName.trim() === REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL) return REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL;
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'Participante';
   if (parts.length === 1) return parts[0];

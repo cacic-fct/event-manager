@@ -2,10 +2,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { PublicPrizeDrawChanceMode } from '@cacic-fct/event-manager-public-contracts';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import {
-  createPublicPrizeDrawStoryHandlers,
-  PublicPrizeDrawStoryState,
-} from './prize-draw-story.handlers';
+import { createPublicPrizeDrawStoryHandlers, PublicPrizeDrawStoryState } from './prize-draw-story.handlers';
 import { PublicPrizeDrawPage } from './prize-draw-page';
 import { publicPrizeDrawStoryId } from './prize-draw-story.fixtures';
 
@@ -66,7 +63,7 @@ export const Playground: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Resultados dos sorteios' })).toBeVisible();
     await userEvent.click(canvas.getByText('Como este sorteio funciona'));
-    await expect(await canvas.findByText('Chance da entrada vencedora')).toBeVisible();
+    await expect(await canvas.findByText('Chance de vencer')).toBeVisible();
     await expect(canvas.getByText('Entradas duplicadas')).toBeVisible();
   },
 };
@@ -89,12 +86,13 @@ export const DeepLinkedDraw: Story = {
   args: { drawCount: 3, spinCount: 2 },
   beforeEach: () => {
     const previousHash = window.location.hash;
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#draw-${publicPrizeDrawStoryId(1)}`);
-    return () => window.history.replaceState(
+    window.history.replaceState(
       null,
       '',
-      `${window.location.pathname}${window.location.search}${previousHash}`,
+      `${window.location.pathname}${window.location.search}#draw-${publicPrizeDrawStoryId(1)}`,
     );
+    return () =>
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${previousHash}`);
   },
   play: async ({ canvasElement }) => {
     const target = await within(canvasElement).findByRole('heading', { name: 'Sorteio 2' });
@@ -143,10 +141,18 @@ function installSilentStoryEventSource(): void {
       this.url = String(url);
     }
 
-    close(): void { return; }
-    addEventListener(): void { return; }
-    removeEventListener(): void { return; }
-    dispatchEvent(): boolean { return true; }
+    close(): void {
+      return;
+    }
+    addEventListener(): void {
+      return;
+    }
+    removeEventListener(): void {
+      return;
+    }
+    dispatchEvent(): boolean {
+      return true;
+    }
   }
 
   Object.defineProperty(window, 'EventSource', {

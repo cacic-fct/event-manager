@@ -24,6 +24,11 @@ export type PeopleFilters = {
   hasLecturerProfile?: boolean;
 };
 
+type RelatedPeopleFilters = Pick<PeopleFilters, 'query' | 'take'> & {
+  eventId?: string;
+  majorEventId?: string;
+};
+
 @Service()
 export class PeopleApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
@@ -92,6 +97,20 @@ export class PeopleApiService {
         filters,
       )
       .pipe(map((data) => data.people));
+  }
+
+  listRelatedPeople(filters: RelatedPeopleFilters) {
+    return this.graphqlHttp
+      .request<{ relatedPeople: Person[] }>(
+        `query RelatedPeople($query: String, $eventId: String, $majorEventId: String, $take: Int) {
+          relatedPeople(query: $query, eventId: $eventId, majorEventId: $majorEventId, take: $take) {
+            id
+            name
+          }
+        }`,
+        filters,
+      )
+      .pipe(map((data) => data.relatedPeople));
   }
 
   getPerson(id: string) {

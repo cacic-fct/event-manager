@@ -85,7 +85,7 @@ export const ShortLandscape: Story = {
     viewport: {
       defaultViewport: 'shortLandscape',
       viewports: {
-        shortLandscape: { name: 'Short landscape', styles: { width: '844px', height: '390px' } },
+        shortLandscape: { name: 'Paisagem baixa', styles: { width: '844px', height: '390px' } },
       },
     },
   },

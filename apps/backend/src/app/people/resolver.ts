@@ -236,8 +236,14 @@ export class PeopleResolver {
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
     @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId?: string,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Context() context?: GraphqlContext,
   ): Promise<RelatedPerson[]> {
     const target = this.normalizeRelatedPersonTarget(eventId, majorEventId, eventGroupId);
+    const canReadPrizeDrawContacts = await this.authorizationPolicy.canOverrideFrozenResource(
+      this.getUser(context),
+      Permission.PrizeDraw.ContactRead,
+      target,
+    );
     const where = this.buildRelatedPersonWhere(target);
     const normalizedQuery = query?.trim();
     if (normalizedQuery) {
@@ -260,8 +266,8 @@ export class PeopleResolver {
     return people.map((person) => ({
       id: person.id,
       name: person.name,
-      email: person.email,
-      phone: person.phone,
+      email: canReadPrizeDrawContacts ? person.email : null,
+      phone: canReadPrizeDrawContacts ? person.phone : null,
       maskedIdentityDocument: this.maskIdentityDocument(person.identityDocument),
       hasLinkedUser: Boolean(person.userId),
     }));

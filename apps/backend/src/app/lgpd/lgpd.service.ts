@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
+import { REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL } from '../prize-draw/prize-draw-name';
 import {
   anonymizeAuditEntries,
   buildAnonymizedAuditSubjectId,
@@ -426,25 +427,28 @@ export class LgpdService {
       const prizeDrawWeightOverrides = await tx.prizeDrawWeightOverride.deleteMany({
         where: { personId: { in: personIds } },
       });
+      const prizeDrawExcludedPeople = await tx.prizeDrawExcludedPerson.deleteMany({
+        where: { personId: { in: personIds } },
+      });
       if (personIds.length > 0) {
         await tx.$executeRaw(Prisma.sql`
           UPDATE "prize_draw_frozen_entries"
           SET "personId" = NULL,
-              "displayName" = 'Participante removido',
+              "displayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
               "identityKey" = 'lgpd:' || "id"
           WHERE "personId" IN (${Prisma.join(personIds)})
         `);
         await tx.$executeRaw(Prisma.sql`
           UPDATE "prize_draw_spin_entries"
           SET "personId" = NULL,
-              "displayName" = 'Participante removido',
+              "displayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
               "identityKey" = 'lgpd:' || "id"
           WHERE "personId" IN (${Prisma.join(personIds)})
         `);
         await tx.$executeRaw(Prisma.sql`
           UPDATE "prize_draw_spins"
           SET "winnerPersonId" = NULL,
-              "winnerDisplayName" = 'Participante removido',
+              "winnerDisplayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
               "winnerEntryKey" = 'lgpd-winner:' || "id"
           WHERE "winnerPersonId" IN (${Prisma.join(personIds)})
         `);
@@ -532,6 +536,7 @@ export class LgpdService {
           lecturers.count +
           prizeDrawManualEntries.count +
           prizeDrawWeightOverrides.count +
+          prizeDrawExcludedPeople.count +
           roleAssignmentScopes.count +
           roleAssignments.count +
           permissionGroupMemberships.count +

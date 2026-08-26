@@ -21,6 +21,16 @@ describe('selectWeightedEntry', () => {
     expect(() => selectWeightedEntry(entries, 6)).toThrow(RangeError);
   });
 
+  it.each([
+    [[{ id: 'a', weight: 0 }], 0],
+    [[{ id: 'a', weight: -1 }], 0],
+    [entries, -1],
+  ])('rejects invalid weights or tickets', (invalidEntries, ticket) => {
+    expect(() => selectWeightedEntry(invalidEntries, ticket)).toThrow(RangeError);
+  });
+});
+
+describe('countPrizeDrawDuplicateEntries', () => {
   it('counts additional weighted tickets and repeated free-text names separately', () => {
     expect(
       countPrizeDrawDuplicateEntries([

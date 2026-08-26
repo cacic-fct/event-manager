@@ -36,6 +36,7 @@ export class PrizeDrawWorkspaceService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private selectionRequestGeneration = 0;
 
   readonly loading = signal(false);
   readonly draws = signal<PrizeDraw[]>([]);
@@ -73,8 +74,10 @@ export class PrizeDrawWorkspaceService {
     notifyWinner: [false],
   });
   private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   readonly canSave = computed(() => {
     this.formStatus();
+    this.formValue();
     const value = this.form.getRawValue();
     const targetSelected = value.targetType === 'EVENT' ? Boolean(value.eventId) : Boolean(value.majorEventId);
     const hasEligibility = value.includePresent || value.includeSubscribers || value.includeManualEntries;
@@ -153,16 +156,18 @@ export class PrizeDrawWorkspaceService {
   }
 
   async selectById(drawId: string, navigate: boolean): Promise<void> {
+    const requestGeneration = ++this.selectionRequestGeneration;
     this.loading.set(true);
     try {
       const draw = await firstValueFrom(this.api.get(drawId));
+      if (requestGeneration !== this.selectionRequestGeneration) return;
       this.patch(draw);
       if (navigate) void this.router.navigate(['/draws', draw.id]);
       await this.loadEligibleEntries();
     } catch (error) {
       this.feedback.error(error, 'Não foi possível abrir o sorteio.');
     } finally {
-      this.loading.set(false);
+      if (requestGeneration === this.selectionRequestGeneration) this.loading.set(false);
     }
   }
 
@@ -232,7 +237,13 @@ export class PrizeDrawWorkspaceService {
     }
     this.personSearchLoading.set(true);
     try {
-      this.personResults.set(await firstValueFrom(this.peopleApi.listPeopleSummaries({ query, take: 12 })));
+      const target = this.form.getRawValue();
+      this.personResults.set(await firstValueFrom(this.peopleApi.listRelatedPeople({
+        query,
+        take: 12,
+        eventId: target.targetType === 'EVENT' ? target.eventId : undefined,
+        majorEventId: target.targetType === 'MAJOR_EVENT' ? target.majorEventId : undefined,
+      })));
     } catch (error) {
       this.feedback.error(error, 'Não foi possível buscar pessoas.');
     } finally {

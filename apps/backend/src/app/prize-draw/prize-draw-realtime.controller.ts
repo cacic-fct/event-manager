@@ -1,7 +1,7 @@
 import { Controller, Headers, MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { defer, Observable, switchMap } from 'rxjs';
+import { defer, filter, Observable, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
@@ -9,6 +9,31 @@ import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { SseReplayService } from '../realtime/sse-replay.service';
 import { PrizeDrawService } from './prize-draw.service';
 import { PrizeDrawRealtimeService } from './prize-draw-realtime.service';
+
+const PRIZE_DRAW_SSE_RESPONSE = {
+  description: 'Eventos de invalidação de sorteios publicamente disponíveis e heartbeats de manutenção da conexão.',
+  schema: {
+    oneOf: [
+      {
+        type: 'object',
+        properties: {
+              type: { type: 'string', example: 'SPIN_PRESENTED' },
+          drawId: { type: 'string', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' },
+          spinId: { type: 'string', nullable: true, example: '019d2a25-5694-7f19-b954-8a98f7bb9a45' },
+          revision: { type: 'integer', example: 3 },
+          occurredAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      {
+        type: 'object',
+        properties: {
+          type: { type: 'string', example: 'heartbeat' },
+          timestamp: { type: 'integer', example: 1787756400000 },
+        },
+      },
+    ],
+  },
+};
 
 @ApiTags('prize-draws', 'SSE')
 @ApiBearerAuth()
@@ -24,8 +49,9 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'eventId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for an event' })
-  @ApiParam({ name: 'eventId' })
+  @ApiParam({ name: 'eventId', description: 'Identificador do evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   eventStream(
     @Param('eventId') eventId: string,
     @Req() request: Request & { user?: AuthenticatedUser },
@@ -38,8 +64,9 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'majorEventId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for a major event' })
-  @ApiParam({ name: 'majorEventId' })
+  @ApiParam({ name: 'majorEventId', description: 'Identificador do grande evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   majorEventStream(
     @Param('majorEventId') majorEventId: string,
     @Req() request: Request & { user?: AuthenticatedUser },
@@ -52,8 +79,9 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'eventGroupId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for an event group' })
-  @ApiParam({ name: 'eventGroupId' })
+  @ApiParam({ name: 'eventGroupId', description: 'Identificador do grupo de eventos', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   eventGroupStream(
     @Param('eventGroupId') eventGroupId: string,
     @Req() request: Request & { user?: AuthenticatedUser },
@@ -71,7 +99,15 @@ export class PrizeDrawRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope(type, id);
     return defer(() => this.draws.listPublic(target, user)).pipe(
-      switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
+      switchMap((draws) => {
+        const allowedDrawIds = new Set(draws.map((draw) => draw.id));
+        return this.replay.replay(scope, lastEventId, this.realtime.watch(scope)).pipe(
+          filter((event) => {
+            const data = event.data as { type?: string; drawId?: string };
+            return data?.type === 'heartbeat' || Boolean(data?.drawId && allowedDrawIds.has(data.drawId));
+          }),
+        );
+      }),
     );
   }
 }

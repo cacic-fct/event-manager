@@ -80,8 +80,8 @@
         </dl>
 
         <p>
-          A roleta é apenas um recurso visual. O resultado é determinado de forma aleatória antes da animação do giro,
-          com base nas regras do sorteio.
+          A roleta é apenas um recurso visual – o resultado é determinado de forma aleatória (CSPRNG) antes da animação
+          do giro, com base nas regras do sorteio.
         </p>
 
         <section class="odds-section" [attr.aria-labelledby]="'odds-title-' + draw.id">
@@ -91,7 +91,7 @@
             <h4>Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} }</h4>
             <dl class="odds-grid">
               <div>
-                <dt>Chance da entrada vencedora</dt>
+                <dt>Chance de vencer</dt>
                 <dd><strong>{{ percentage(spin) }} · {{ chance(spin) }}</strong></dd>
               </div>
               <div>

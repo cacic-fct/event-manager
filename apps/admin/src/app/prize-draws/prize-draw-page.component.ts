@@ -45,6 +45,7 @@ export class PrizeDrawPageComponent {
   readonly demoMode = this.route.snapshot.queryParamMap.get('demo') === 'true';
 
   constructor() {
+    if (!isPlatformBrowser(this.platformId)) return;
     if (typeof matchMedia === 'function') {
       const query = matchMedia('(prefers-reduced-motion: reduce)');
       this.reducedMotion.set(query.matches);

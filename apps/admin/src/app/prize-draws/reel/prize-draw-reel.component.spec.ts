@@ -1,14 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
+import { ScannerSoundsService } from '@cacic-fct/shared-angular/aztec-scanner';
 import { vi } from 'vitest';
 import { PrizeDrawReelComponent } from './prize-draw-reel.component';
 
 describe('PrizeDrawReelComponent', () => {
   let fixture: ComponentFixture<PrizeDrawReelComponent>;
   let component: PrizeDrawReelComponent;
+  const tone = vi.fn();
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [PrizeDrawReelComponent] }).compileComponents();
+    tone.mockReset();
+    await TestBed.configureTestingModule({
+      imports: [PrizeDrawReelComponent],
+      providers: [{ provide: ScannerSoundsService, useValue: { tone } }],
+    }).compileComponents();
     fixture = TestBed.createComponent(PrizeDrawReelComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -21,6 +27,29 @@ describe('PrizeDrawReelComponent', () => {
     fixture.detectChanges();
     expect(component.phase()).toBe('complete');
     expect(component.visibleNames().find((name) => name.center)?.name).toBe('Carla C.');
+    expect(tone).toHaveBeenNthCalledWith(1, 620, 0.09, 0.9);
+    await vi.waitFor(() => expect(tone).toHaveBeenNthCalledWith(2, 840, 0.13, 0.9));
+  });
+
+  it('preserves the existing reel window when a spin starts', async () => {
+    const initialNames = result().reelNames;
+    component.reset(initialNames);
+    fixture.detectChanges();
+    const hostElement = fixture.nativeElement as HTMLElement;
+    const initialElements = Array.from(hostElement.querySelectorAll('.reel-name'));
+    const initialTexts = initialElements.map((element) => element.textContent?.trim());
+
+    const play = component.play(result(), false);
+    fixture.detectChanges();
+
+    expect(component.phase()).toBe('spinning');
+    expect(Array.from(hostElement.querySelectorAll('.reel-name'))).toEqual(initialElements);
+    expect(
+      Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim()),
+    ).toEqual(initialTexts);
+
+    component.reset(initialNames);
+    await play;
   });
 
   it('uses a short non-animated presentation when reduced motion is active', async () => {

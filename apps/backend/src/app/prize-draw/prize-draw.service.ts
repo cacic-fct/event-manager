@@ -57,7 +57,10 @@ const DRAW_INCLUDE = Prisma.validator<Prisma.PrizeDrawInclude>()({
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   },
   spins: {
-    include: { entries: { select: { weight: true } } },
+    include: {
+      entries: { select: { weight: true } },
+      winnerPerson: { select: { id: true, mergedIntoId: true } },
+    },
     orderBy: [{ drawnAt: 'asc' }, { sequence: 'asc' }],
   },
 });
@@ -87,7 +90,7 @@ export class PrizeDrawService {
       include: DRAW_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
     });
-    return Promise.all(records.map((record) => this.mapDraw(record, false)));
+    return Promise.all(records.map((record) => this.mapDraw(record, false, false)));
   }
 
   async getAdmin(drawId: string): Promise<PrizeDraw> {
@@ -128,6 +131,7 @@ export class PrizeDrawService {
       );
     }
     await this.assertTargetExists(input);
+    await this.assertPersonInputsScoped(input);
     if (existing) this.assertMutableConfiguration(existing, input);
 
     const drawId = await this.prisma.$transaction(async (tx) => {
@@ -219,7 +223,10 @@ export class PrizeDrawService {
         where: { id: input.drawId, deletedAt: null },
         include: {
           plannedSpins: { orderBy: { position: 'asc' } },
-          spins: { orderBy: { sequence: 'asc' } },
+          spins: {
+            include: { winnerPerson: { select: { id: true, mergedIntoId: true } } },
+            orderBy: { sequence: 'asc' },
+          },
         },
       });
       if (!draw) throw new NotFoundException('Sorteio não encontrado.');
@@ -232,9 +239,7 @@ export class PrizeDrawService {
       if (draw.spinLimit !== null && !planned) {
         throw new ConflictException('A configuração do próximo giro está incompleta.');
       }
-      const excluded = draw.removeWinnerAfterDraw
-        ? new Set(activeSpins.map((spin) => spin.winnerEntryKey))
-        : new Set<string>();
+      const excluded = draw.removeWinnerAfterDraw ? this.activeWinnerKeys({ spins: activeSpins }) : new Set<string>();
       const entries = await this.eligibility.resolve(draw, { excludeIdentityKeys: excluded, client: tx });
       const winner = this.chooseWinner(entries);
       const speed = planned?.speed ?? draw.defaultSpeed;
@@ -288,7 +293,6 @@ export class PrizeDrawService {
       return { draw, spin, winner, entries, animation, activeCount: activeSpins.length, revision: updated.revision };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    await this.realtime.publishDraw(input.drawId, 'SPIN_RECORDED', created.revision, created.spin.id);
     return this.spinResult(created.draw, created.spin, created.winner, created.entries, created.animation, false, created.activeCount + 1);
   }
 
@@ -314,7 +318,11 @@ export class PrizeDrawService {
       return { spin: updatedSpin, revision: draw.revision };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    await this.notificationJobs?.undoSpin(undone.spin.id);
+    try {
+      await this.notificationJobs?.undoSpin(undone.spin.id);
+    } catch {
+      // Notification cleanup is retried independently and must not mask the committed undo.
+    }
     await this.realtime.publishDraw(drawId, 'SPIN_UNDONE', undone.revision, undone.spin.id);
     return this.getAdmin(drawId);
   }
@@ -324,18 +332,27 @@ export class PrizeDrawService {
       where: {
         id: spinId,
         undoneAt: null,
-        notificationStatus: 'PENDING',
-        notificationTransactionId: { not: null },
         presentationAcknowledgedAt: null,
       },
       data: { presentationAcknowledgedAt: new Date() },
     });
-    if (acknowledged.count === 1) await this.notificationJobs?.enqueueWinner(spinId, { delayMs: 0 });
     const spin = await this.prisma.prizeDrawSpin.findUnique({
       where: { id: spinId },
-      select: { presentationAcknowledgedAt: true },
+      select: {
+        drawId: true,
+        presentationAcknowledgedAt: true,
+        notificationStatus: true,
+        notificationTransactionId: true,
+        draw: { select: { revision: true } },
+      },
     });
     if (!spin) throw new NotFoundException('Giro não encontrado.');
+    if (acknowledged.count === 1) {
+      if (spin.notificationStatus === 'PENDING' && spin.notificationTransactionId) {
+        await this.notificationJobs?.enqueueWinner(spinId, { delayMs: 0 });
+      }
+      await this.realtime.publishDraw(spin.drawId, 'SPIN_PRESENTED', spin.draw.revision, spinId);
+    }
     return Boolean(spin.presentationAcknowledgedAt);
   }
 
@@ -380,7 +397,7 @@ export class PrizeDrawService {
     const records = await this.prisma.prizeDraw.findMany({
       where: {
         deletedAt: null,
-        spins: { some: { undoneAt: null } },
+        spins: { some: { undoneAt: null, presentationAcknowledgedAt: { not: null } } },
         ...(audienceWhere ?? {}),
         ...(input.eventId
           ? { eventId: input.eventId }
@@ -409,9 +426,10 @@ export class PrizeDrawService {
     const draws = await this.prisma.prizeDraw.findMany({
       where: {
         deletedAt: null,
-        spins: { some: { undoneAt: null } },
-        ...(audienceWhere ?? {}),
-        OR: [
+        spins: { some: { undoneAt: null, presentationAcknowledgedAt: { not: null } } },
+        AND: [
+          ...(audienceWhere ? [audienceWhere] : []),
+          { OR: [
           ...(eventIds.length ? [{
             eventId: { in: eventIds },
             event: PUBLIC_EVENT_WHERE,
@@ -423,6 +441,7 @@ export class PrizeDrawService {
           ...(eventGroupIds.length ? [{
             event: { AND: [PUBLIC_EVENT_WHERE, { eventGroupId: { in: eventGroupIds } }] },
           }] : []),
+          ] },
         ],
       },
       select: { eventId: true, majorEventId: true, event: { select: { eventGroupId: true } } },
@@ -511,9 +530,9 @@ export class PrizeDrawService {
     return entries.reduce((sum, entry) => sum + entry.weight, 0);
   }
 
-  private async mapDraw(record: PrizeDrawRecord, publicView: boolean): Promise<PrizeDraw> {
+  private async mapDraw(record: PrizeDrawRecord, publicView: boolean, computeEligibility = true): Promise<PrizeDraw> {
     const excluded = record.removeWinnerAfterDraw ? this.activeWinnerKeys(record) : new Set<string>();
-    const eligible = publicView ? [] : await this.eligibility.resolve(record, { excludeIdentityKeys: excluded });
+    const eligible = publicView || !computeEligibility ? [] : await this.eligibility.resolve(record, { excludeIdentityKeys: excluded });
     const target = record.event
       ? { type: PrizeDrawTargetType.EVENT, id: record.event.id, name: record.event.name }
       : record.majorEvent
@@ -542,7 +561,7 @@ export class PrizeDrawService {
       weightOverrides: publicView ? [] : record.weightOverrides,
       excludedPeople: publicView ? [] : this.excludedPeopleSummary(record.excludedPeople),
       spins: record.spins
-        .filter((spin) => !publicView || !spin.undoneAt)
+        .filter((spin) => !publicView || (!spin.undoneAt && spin.presentationAcknowledgedAt))
         .map((spin) => ({
           id: spin.id,
           sequence: spin.sequence,
@@ -589,8 +608,16 @@ export class PrizeDrawService {
     return [...people.entries()].map(([personId, displayName]) => ({ personId, displayName }));
   }
 
-  private activeWinnerKeys(draw: { spins: readonly { undoneAt: Date | null; winnerEntryKey: string }[] }): Set<string> {
-    return new Set(draw.spins.filter((spin) => !spin.undoneAt).map((spin) => spin.winnerEntryKey));
+  private activeWinnerKeys(draw: {
+    spins: readonly {
+      undoneAt: Date | null;
+      winnerEntryKey: string;
+      winnerPerson?: { id: string; mergedIntoId: string | null } | null;
+    }[];
+  }): Set<string> {
+    return new Set(draw.spins.filter((spin) => !spin.undoneAt).map((spin) =>
+      spin.winnerPerson ? `person:${spin.winnerPerson.mergedIntoId ?? spin.winnerPerson.id}` : spin.winnerEntryKey,
+    ));
   }
 
   private validateInput(input: SavePrizeDrawInput): void {
@@ -619,6 +646,10 @@ export class PrizeDrawService {
       if (positions.some((position, index) => position !== index + 1)) {
         throw new BadRequestException('As posições dos giros devem ser contínuas e começar em 1.');
       }
+      const plannedIds = input.plannedSpins.map((spin) => spin.id).filter((id): id is string => Boolean(id));
+      if (new Set(plannedIds).size !== plannedIds.length) {
+        throw new BadRequestException('Cada giro planejado existente deve aparecer apenas uma vez.');
+      }
     }
     if (!input.includeManualEntries && input.manualEntries.length > 0) {
       throw new BadRequestException('Ative as entradas manuais antes de adicioná-las.');
@@ -632,6 +663,13 @@ export class PrizeDrawService {
     if (new Set(weightedIds).size !== weightedIds.length) throw new BadRequestException('Cada pessoa deve ter apenas um peso.');
     if (new Set(input.excludedPersonIds).size !== input.excludedPersonIds.length) {
       throw new BadRequestException('Cada pessoa deve ser excluída apenas uma vez.');
+    }
+    const weights = [
+      ...input.manualEntries.map((entry) => entry.weight),
+      ...input.weightOverrides.map((entry) => entry.weight),
+    ];
+    if (weights.some((weight) => !Number.isInteger(weight) || weight < 1)) {
+      throw new BadRequestException('Os pesos devem ser números inteiros positivos.');
     }
   }
 
@@ -650,10 +688,10 @@ export class PrizeDrawService {
       existing.includeSubscribers !== input.includeSubscribers ||
       existing.includeManualEntries !== input.includeManualEntries ||
       existing.chanceMode !== input.chanceMode ||
-      JSON.stringify(existing.manualEntries.map((entry) => [entry.id, entry.personId, entry.name, entry.weight])) !==
-        JSON.stringify(input.manualEntries.map((entry) => [entry.id ?? null, entry.personId ?? null, entry.name.trim(), entry.weight])) ||
-      JSON.stringify(existing.weightOverrides.map((entry) => [entry.personId, entry.weight])) !==
-        JSON.stringify(input.weightOverrides.map((entry) => [entry.personId, entry.weight])) ||
+      JSON.stringify(existing.manualEntries.map((entry) => [entry.id, entry.personId, entry.name, entry.weight]).sort()) !==
+        JSON.stringify(input.manualEntries.map((entry) => [entry.id ?? null, entry.personId ?? null, entry.name.trim(), entry.weight]).sort()) ||
+      JSON.stringify(existing.weightOverrides.map((entry) => [entry.personId, entry.weight]).sort()) !==
+        JSON.stringify(input.weightOverrides.map((entry) => [entry.personId, entry.weight]).sort()) ||
       JSON.stringify(
         existing.excludedPeople.map((entry) => entry.person.mergedInto?.id ?? entry.personId).sort(),
       ) !==
@@ -714,6 +752,7 @@ export class PrizeDrawService {
         ? []
         : await tx.people.findMany({
             where: {
+              AND: [this.relatedPersonWhere(input)],
               name: { equals: manual.name.trim(), mode: 'insensitive' },
               deletedAt: null,
               mergedIntoId: null,
@@ -745,7 +784,7 @@ export class PrizeDrawService {
   private async syncWeightOverrides(tx: Prisma.TransactionClient, drawId: string, input: SavePrizeDrawInput): Promise<void> {
     const personIds = input.weightOverrides.map((entry) => entry.personId);
     if (personIds.length) {
-      const people = await tx.people.count({ where: { id: { in: personIds }, deletedAt: null, mergedIntoId: null } });
+      const people = await tx.people.count({ where: { AND: [this.relatedPersonWhere(input)], id: { in: personIds }, mergedIntoId: null } });
       if (people !== personIds.length) throw new BadRequestException('Um ou mais pesos pertencem a pessoas indisponíveis.');
     }
     await tx.prizeDrawWeightOverride.deleteMany({ where: { drawId, ...(personIds.length ? { personId: { notIn: personIds } } : {}) } });
@@ -766,7 +805,7 @@ export class PrizeDrawService {
     const personIds = input.excludedPersonIds;
     if (personIds.length) {
       const people = await tx.people.count({
-        where: { id: { in: personIds }, deletedAt: null, mergedIntoId: null },
+        where: { AND: [this.relatedPersonWhere(input)], id: { in: personIds }, mergedIntoId: null },
       });
       if (people !== personIds.length) {
         throw new BadRequestException('Uma ou mais exclusões pertencem a pessoas indisponíveis.');
@@ -791,6 +830,44 @@ export class PrizeDrawService {
       ? eventId ? await this.prisma.event.findFirst({ where: { id: eventId, deletedAt: null }, select: { id: true } }) : null
       : majorEventId ? await this.prisma.majorEvent.findFirst({ where: { id: majorEventId, deletedAt: null }, select: { id: true } }) : null;
     if (!target) throw new NotFoundException('Evento vinculado ao sorteio não encontrado.');
+  }
+
+  private async assertPersonInputsScoped(input: SavePrizeDrawInput): Promise<void> {
+    const personIds = [...new Set([
+      ...input.manualEntries.map((entry) => entry.personId),
+      ...input.weightOverrides.map((entry) => entry.personId),
+      ...input.excludedPersonIds,
+    ].filter((id): id is string => Boolean(id)))];
+    if (personIds.length === 0) return;
+    const count = await this.prisma.people.count({
+      where: { AND: [this.relatedPersonWhere(input)], id: { in: personIds }, mergedIntoId: null },
+    });
+    if (count !== personIds.length) {
+      throw new BadRequestException('Uma ou mais pessoas não pertencem ao escopo do sorteio.');
+    }
+  }
+
+  private relatedPersonWhere(input: Pick<SavePrizeDrawInput, 'targetType' | 'eventId' | 'majorEventId'>): Prisma.PeopleWhereInput {
+    const eventWhere: Prisma.EventWhereInput = input.targetType === PrizeDrawTargetType.EVENT
+      ? { id: input.eventId?.trim() || undefined, deletedAt: null }
+      : { majorEventId: input.majorEventId?.trim() || undefined, deletedAt: null };
+    return {
+      deletedAt: null,
+      OR: [
+        { eventSubscriptions: { some: { deletedAt: null, event: eventWhere } } },
+        { attendances: { some: { event: eventWhere } } },
+        { lectures: { some: { event: eventWhere } } },
+        { attendanceCollectorFor: { some: { event: eventWhere } } },
+        ...(input.targetType === PrizeDrawTargetType.MAJOR_EVENT && input.majorEventId
+          ? [
+              { majorEventSubscriptions: { some: { deletedAt: null, majorEventId: input.majorEventId } } },
+              { eventGroupSubscriptions: { some: { deletedAt: null, eventGroup: { majorEventId: input.majorEventId, deletedAt: null } } } },
+              { sportsTournamentParticipants: { some: { deletedAt: null, tournament: { majorEventId: input.majorEventId } } } },
+              { sportsOfficialAssignments: { some: { active: true, revokedAt: null, tournament: { majorEventId: input.majorEventId } } } },
+            ] satisfies Prisma.PeopleWhereInput[]
+          : []),
+      ],
+    };
   }
 
   private async assertPublicTarget(input: { eventId?: string; majorEventId?: string; eventGroupId?: string }): Promise<void> {
@@ -833,6 +910,7 @@ export class PrizeDrawService {
         spins: {
           some: {
             undoneAt: null,
+            presentationAcknowledgedAt: { not: null },
             entries: { some: { personId: { in: personIds } } },
           },
         },

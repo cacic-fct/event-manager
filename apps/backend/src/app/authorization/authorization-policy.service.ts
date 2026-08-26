@@ -946,8 +946,8 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
   }
 
   private async addPrizeDrawTarget(target: ResolvedGrantTarget, drawId: string): Promise<void> {
-    const draw = await this.prisma.prizeDraw.findUnique({
-      where: { id: drawId },
+    const draw = await this.prisma.prizeDraw.findFirst({
+      where: { id: drawId, deletedAt: null },
       select: { eventId: true, majorEventId: true },
     });
     if (draw?.eventId) {

@@ -73,9 +73,10 @@ export function createPrizeDrawStory(
     eligibleCount?: number;
   } = {},
 ): PrizeDraw {
-  const resultsCount = overrides.resultsCount ?? 2;
-  const eligibleCount = overrides.eligibleCount ?? 18;
-  const chanceMode = overrides.chanceMode ?? 'EQUAL';
+  const { resultsCount: resultsOverride, eligibleCount: eligibleOverride, ...drawOverrides } = overrides;
+  const resultsCount = resultsOverride ?? 2;
+  const eligibleCount = eligibleOverride ?? 18;
+  const chanceMode = drawOverrides.chanceMode ?? 'EQUAL';
   const spins = Array.from({ length: resultsCount }, (_, index) => ({
     id: index === 0 ? PRIZE_DRAW_STORY_SPIN_ID : `019d2a25-5694-7f19-b954-8a98f7bb9a${44 + index}`,
     sequence: index + 1,
@@ -94,7 +95,7 @@ export function createPrizeDrawStory(
     weightBreakdown: chanceMode === 'WEIGHTED'
       ? [{ weight: 1, peopleCount: Math.max(0, eligibleCount - 3 - index) }, { weight: 2, peopleCount: 3 }]
       : [{ weight: 1, peopleCount: eligibleCount - index }],
-    eligibilityFrozenAt: overrides.frozenAt ?? null,
+    eligibilityFrozenAt: drawOverrides.frozenAt ?? null,
     drawnAt: isoMinutesFromNow(-30 + index * 12),
     undoneAt: null,
     notificationStatus: 'SENT' as const,
@@ -133,7 +134,7 @@ export function createPrizeDrawStory(
     eligibleDuplicateEntryCount: chanceMode === 'WEIGHTED' ? 3 : 0,
     createdAt: isoMinutesFromNow(-180),
     updatedAt: isoMinutesFromNow(-2),
-    ...overrides,
+    ...drawOverrides,
   };
 }
 
