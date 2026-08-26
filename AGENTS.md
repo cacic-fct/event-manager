@@ -20,6 +20,7 @@ Frontend is always running on background, don't attempt to start it.
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices
+
 - Use strict type checking
 - Prefer type inference when the type is obvious
 - Avoid the `any` type; use `unknown` when type is uncertain
@@ -148,5 +149,4 @@ Use shared fixtures and test utilities to reduce duplication and improve maintai
 We don't hardcode dates in tests, instead we use relative dates or mock the current date to ensure tests are not dependent on the actual date and time.
 
 When creating or editing code, ensure that tests are updated accordingly to reflect the changes made. This includes updating existing tests, adding new tests for new functionality, and removing tests for deprecated or removed features.
-
 
