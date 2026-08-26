@@ -871,6 +871,52 @@ describe('AuthorizationPolicyService', () => {
       ),
     ).toThrow(ForbiddenException);
   });
+
+  it('resolves event-scoped prize draw and spin permissions through their persisted parent target', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.PrizeDraw.Operate,
+        scope: EventManagerPermissionScope.EVENT,
+        eventId: 'event-1',
+      }),
+    ]);
+    prisma.prizeDraw.findFirst.mockResolvedValue({ eventId: 'event-1', majorEventId: null });
+    prisma.prizeDrawSpin.findUnique.mockResolvedValue({ drawId: 'draw-1' });
+    prisma.event.findUnique.mockResolvedValue({ majorEventId: null, eventGroupId: null });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.PrizeDraw.Operate], {
+        prizeDrawSpinId: 'spin-1',
+      }),
+    ).resolves.toBeUndefined();
+    expect(prisma.prizeDrawSpin.findUnique).toHaveBeenCalledWith({
+      where: { id: 'spin-1' },
+      select: { drawId: true },
+    });
+    expect(prisma.prizeDraw.findFirst).toHaveBeenCalledWith({
+      where: { id: 'draw-1', deletedAt: null },
+      select: { eventId: true, majorEventId: true },
+    });
+  });
+
+  it('resolves major-event prize draws and recognizes GraphQL draw/spin argument aliases', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.PrizeDraw.ContactRead,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ]);
+    prisma.prizeDraw.findFirst.mockResolvedValue({ eventId: null, majorEventId: 'major-1' });
+
+    const drawContext = service.buildResourceContext({ drawId: 'draw-1' }, [Permission.PrizeDraw.ContactRead]);
+    const spinContext = service.buildResourceContext({ spinId: 'spin-1' }, [Permission.PrizeDraw.ContactRead]);
+    expect(drawContext).toEqual(expect.objectContaining({ prizeDrawId: 'draw-1' }));
+    expect(spinContext).toEqual(expect.objectContaining({ prizeDrawSpinId: 'spin-1' }));
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.PrizeDraw.ContactRead], drawContext),
+    ).resolves.toBeUndefined();
+  });
 });
 
 function createPrisma() {
@@ -915,6 +961,12 @@ function createPrisma() {
       findFirst: jest.fn().mockResolvedValue(null),
     },
     eventFormResponse: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    prizeDraw: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    prizeDrawSpin: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
     sportsTournament: {

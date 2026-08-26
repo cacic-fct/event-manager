@@ -53,6 +53,12 @@ describe('LgpdService data export', () => {
         nextRejectionReason: null,
       },
     ]);
+    prisma.prizeDrawManualEntry.findMany.mockResolvedValue([{ id: 'manual-1', drawId: 'draw-1', personId: 'source-person' }]);
+    prisma.prizeDrawWeightOverride.findMany.mockResolvedValue([{ drawId: 'draw-1', personId: 'source-person', weight: 3 }]);
+    prisma.prizeDrawExcludedPerson.findMany.mockResolvedValue([{ drawId: 'draw-1', personId: 'target-person' }]);
+    prisma.prizeDrawFrozenEntry.findMany.mockResolvedValue([{ id: 'frozen-1', drawId: 'draw-1', personId: 'source-person' }]);
+    prisma.prizeDrawSpinEntry.findMany.mockResolvedValue([{ id: 'entry-1', spinId: 'spin-1', personId: 'source-person' }]);
+    prisma.prizeDrawSpin.findMany.mockResolvedValue([{ id: 'spin-1', winnerPersonId: 'target-person' }]);
 
     const result = await service.collectUserData({
       userId: 'new-user',
@@ -124,6 +130,28 @@ describe('LgpdService data export', () => {
         }),
       ],
     });
+    expect(result.prizeDraws).toEqual({
+      manualEntries: [expect.objectContaining({ id: 'manual-1', personId: 'source-person' })],
+      weightOverrides: [expect.objectContaining({ drawId: 'draw-1', weight: 3 })],
+      exclusions: [expect.objectContaining({ personId: 'target-person' })],
+      frozenEntries: [expect.objectContaining({ id: 'frozen-1' })],
+      spinEntries: [expect.objectContaining({ id: 'entry-1' })],
+      wins: [expect.objectContaining({ id: 'spin-1', winnerPersonId: 'target-person' })],
+    });
+    for (const delegate of [
+      prisma.prizeDrawManualEntry,
+      prisma.prizeDrawWeightOverride,
+      prisma.prizeDrawExcludedPerson,
+      prisma.prizeDrawFrozenEntry,
+      prisma.prizeDrawSpinEntry,
+    ]) {
+      expect(delegate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { personId: { in: ['source-person', 'target-person'] } } }),
+      );
+    }
+    expect(prisma.prizeDrawSpin.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { winnerPersonId: { in: ['source-person', 'target-person'] } } }),
+    );
     expect(result.attendances).toEqual(
       expect.objectContaining({
         records: expect.any(Array),

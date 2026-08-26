@@ -159,6 +159,21 @@ describe('LgpdService hard delete', () => {
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });
+    expect(tx.prizeDrawManualEntry.deleteMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] } },
+    });
+    expect(tx.prizeDrawWeightOverride.deleteMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] } },
+    });
+    expect(tx.prizeDrawExcludedPerson.deleteMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] } },
+    });
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(3);
+    for (const call of tx.$executeRaw.mock.calls) {
+      expect(JSON.stringify(call[0])).toContain('Participante removido');
+      expect(JSON.stringify(call[0])).toContain('source-person');
+      expect(JSON.stringify(call[0])).toContain('target-person');
+    }
     expect(tx.accountUserMerge.deleteMany).toHaveBeenCalledWith({
       where: {
         OR: [{ oldUserId: { in: ['old-user', 'new-user'] } }, { newUserId: { in: ['old-user', 'new-user'] } }],
