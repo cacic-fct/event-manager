@@ -61,6 +61,7 @@ export class SubscriptionFormFlow {
   readonly requireImageLicenseAgreement = input(false);
   readonly imageLicenseAgreementAccepted = input(false);
   readonly initialDraft = input<SubscriptionFlowDraft | null>(null);
+  readonly firstBackLabel = input('Voltar');
   readonly backToSelection = output<SubscriptionFlowDraft>();
   readonly reviewRequested = output<SubscriptionFlowDraft>();
 

@@ -49,9 +49,24 @@
     }
   </mat-chip-set>
 
-  @if (majorEvent.description) {
+  @if (majorEvent.description && !store.subscriptionFormFlow()) {
   <lib-markdown class="description" [content]="majorEvent.description" />
-  } @if (currentStep() === 'select') {
+  } @if (store.isPreparingSubscriptionFlow()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando formulários"></mat-progress-bar>
+  <section class="empty-section compact" aria-live="polite">
+    <mat-icon aria-hidden="true">description</mat-icon>
+    <p>Preparando as próximas etapas...</p>
+  </section>
+  } @else if (store.subscriptionFormFlow(); as formFlow) {
+  <app-subscription-form-flow
+    [forms]="formFlow.forms"
+    firstBackLabel="Voltar à classificação"
+    [requireImageLicenseAgreement]="majorEvent.requiresImageLicenseAgreement === true"
+    [imageLicenseAgreementAccepted]="store.currentUserSubscription()?.imageLicenseAgreementAccepted === true"
+    [initialDraft]="formFlow.draft"
+    (backToSelection)="store.returnToRanking($event)"
+    (reviewRequested)="store.reviewSubscription($event)" />
+  } @else if (currentStep() === 'select') {
   <app-ranked-subscription-select-step (continue)="showRankingStep()" />
   } @else {
   <app-ranked-subscription-rank-step (back)="showSelectionStep()" />

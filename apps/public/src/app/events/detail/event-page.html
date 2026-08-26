@@ -35,7 +35,16 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else { @let data = currentState.data; @let event = data.event; @if (data.preview) {
+  } @else { @let data = currentState.data; @let event = data.event; @if (subscriptionFormFlow(); as formFlow) {
+  <app-subscription-form-flow
+    [forms]="formFlow.forms"
+    firstBackLabel="Voltar ao evento"
+    [requireImageLicenseAgreement]="requiresImageLicenseAgreement(data)"
+    [imageLicenseAgreementAccepted]="data.currentUserSubscription?.imageLicenseAgreementAccepted === true"
+    [initialDraft]="formFlow.draft"
+    (backToSelection)="returnToEvent($event)"
+    (reviewRequested)="reviewSubscription($event)" />
+  } @else { @if (data.preview) {
   <section class="preview-notice" aria-live="polite">
     <mat-icon aria-hidden="true">visibility</mat-icon>
     <p>Pré-visualização temporária. Este link expira em {{ data.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.</p>
@@ -260,5 +269,5 @@
     </div>
     } }
   </section>
-  } }
+  } } }
 </main>

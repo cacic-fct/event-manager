@@ -1,7 +1,6 @@
 <section class="form-flow" aria-labelledby="subscription-form-flow-title">
   <header class="flow-header">
     <h2 id="subscription-form-flow-title">Complete os dados da inscrição</h2>
-    <p>Responda uma etapa por vez. Você pode voltar sem perder as respostas preenchidas.</p>
   </header>
 
   <mat-stepper
@@ -41,34 +40,30 @@
         }
       </article>
     </mat-step>
-    }
-
-    @if (requireImageLicenseAgreement()) {
-    <mat-step label="Contrato de concessão de licença" [completed]="agreementAccepted()">
+    } @if (requireImageLicenseAgreement()) {
+    <mat-step label="Contrato de concessão de licença de imagem" [completed]="agreementAccepted()">
       <article class="agreement-step" aria-labelledby="license-agreement-title">
         <header>
           <mat-icon aria-hidden="true">verified_user</mat-icon>
           <div>
-            <h3 id="license-agreement-title">Contrato de concessão de licença</h3>
-            <p>Leia o contrato antes de confirmar a sua concordância.</p>
+            <h3 id="license-agreement-title">Documentos legais</h3>
           </div>
         </header>
 
         <p>
-          O contrato define as condições de uso de imagem pelo CACiC durante as atividades do grande evento.
+          Pode ser que, durante o evento, sejam capturadas fotos em que apareçam participantes.
+          <br />
+          Esta autorização serve para que possamos compartilhar os momentos e preservar a memória do evento.
         </p>
-        <a
-          mat-stroked-button
-          href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
-          target="_blank"
-          rel="noopener noreferrer">
-          <mat-icon>open_in_new</mat-icon>
-          Ler contrato completo
-        </a>
-        <mat-checkbox
-          [checked]="agreementAccepted()"
-          (change)="acceptAgreement($event.checked)">
-          Li e concordo com o contrato de concessão de licença de uso de imagem do CACiC.
+
+        <mat-checkbox [checked]="agreementAccepted()" (change)="acceptAgreement($event.checked)">
+          Li e concordo com o
+          <a
+            href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+            target="_blank"
+            rel="noopener noreferrer">
+            contrato de concessão de licença de uso de imagem do CACiC </a
+          >.
         </mat-checkbox>
         @if (validationAttemptedStepIndex() === activeStepIndex() && !agreementAccepted()) {
         <p class="validation" role="alert">É necessário concordar com o contrato para revisar a inscrição.</p>
@@ -81,7 +76,7 @@
   <mat-toolbar class="flow-actions" aria-label="Ações da etapa">
     <button mat-button type="button" (click)="previous()">
       <mat-icon>arrow_back</mat-icon>
-      {{ activeStepIndex() === 0 ? 'Alterar eventos' : 'Voltar' }}
+      {{ activeStepIndex() === 0 ? firstBackLabel() : 'Voltar' }}
     </button>
     <span class="action-spacer"></span>
     <span class="step-counter" aria-live="polite">Etapa {{ activeStepIndex() + 1 }} de {{ totalSteps() }}</span>

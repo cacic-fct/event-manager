@@ -95,7 +95,7 @@ const meta: Meta<RankedStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: [rankedHandler()] } },
   },
 };
@@ -375,7 +375,7 @@ function rankedHandler() {
       });
     }
 
-    if (query.includes('CurrentUserMajorEventSubscription')) {
+    if (query.includes('query CurrentUserMajorEventSubscription(')) {
       return HttpResponse.json({
         data: {
           currentUserMajorEventSubscription: storyData.subscription,
@@ -480,14 +480,17 @@ export const RankingWithFormsFlow: Story = {
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: /Inscrever-se/i }));
-    const dialog = within(await screen.findByRole('dialog', { name: /Confirmar inscrição/i }));
-    await expect(await dialog.findByText('Formulários')).toBeVisible();
-    await expect(await dialog.findByText('Camiseta do evento')).toBeVisible();
-    await expect(await dialog.findByText('Preferência da atividade')).toBeVisible();
-    await userEvent.click(await dialog.findByRole('radio', { name: 'M' }));
-    await userEvent.click(await dialog.findByRole('radio', { name: 'Sim' }));
-    await userEvent.click(await dialog.findByRole('button', { name: /Inscrever-se/i }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+    await expect(await canvas.findByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('radio', { name: 'M' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+    await expect(await canvas.findByRole('heading', { name: 'Preferência da atividade' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('radio', { name: 'Sim' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Revisar inscrição/i }));
+    const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));
+    await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
+    await expect(await dialog.findByText('Precisa de recurso de acessibilidade?')).toBeVisible();
+    await userEvent.click(await dialog.findByRole('button', { name: /Confirmar inscrição/i }));
   },
 };
 

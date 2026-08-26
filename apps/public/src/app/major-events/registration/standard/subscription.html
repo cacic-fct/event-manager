@@ -118,6 +118,7 @@
   } @else {
   <app-subscription-form-flow
     [forms]="subscriptionForms()"
+    firstBackLabel="Alterar eventos"
     [requireImageLicenseAgreement]="majorEvent.requiresImageLicenseAgreement === true"
     [imageLicenseAgreementAccepted]="currentUserSubscription()?.imageLicenseAgreementAccepted === true"
     [initialDraft]="subscriptionFlowDraft()"

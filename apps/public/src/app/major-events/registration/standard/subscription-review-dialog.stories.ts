@@ -2,6 +2,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   createPublicEvent,
   createPublicMajorEvent,
+  createPublicMajorEventPrice,
   publicFixtureDateFromNow,
 } from '@cacic-fct/event-manager-public-testing';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -17,6 +18,7 @@ interface SubscriptionReviewDialogStoryArgs {
   paymentTier: string;
   requireLicenseAgreement: boolean;
   longNames: boolean;
+  targetType: 'major-event' | 'event';
 }
 
 const defaultArgs: SubscriptionReviewDialogStoryArgs = {
@@ -25,6 +27,7 @@ const defaultArgs: SubscriptionReviewDialogStoryArgs = {
   paymentTier: 'Estudante',
   requireLicenseAgreement: true,
   longNames: false,
+  targetType: 'major-event',
 };
 
 let activeArgs = defaultArgs;
@@ -40,6 +43,7 @@ const meta: Meta<SubscriptionReviewDialogStoryArgs> = {
     paymentTier: { control: 'text' },
     requireLicenseAgreement: { control: 'boolean' },
     longNames: { control: 'boolean' },
+    targetType: { control: 'inline-radio', options: ['major-event', 'event'] },
   },
   render: (args) => {
     activeArgs = { ...defaultArgs, ...args };
@@ -82,6 +86,16 @@ export const EventsOnly: Story = {
   },
 };
 
+export const StandaloneEvent: Story = {
+  args: { targetType: 'event', eventCount: 1, paymentTier: '', requireLicenseAgreement: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Evento', { exact: true })).toBeVisible();
+    await expect(canvas.getByText('Atividade 1', { exact: true })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Confirmar inscrição' })).toBeVisible();
+  },
+};
+
 export const DenseMobileDark: Story = {
   args: { eventCount: 8, longNames: true },
   parameters: { viewport: { defaultViewport: 'mobile' } },
@@ -94,7 +108,29 @@ export const DenseMobileDark: Story = {
 };
 
 function createReviewData(args: SubscriptionReviewDialogStoryArgs): SubscriptionReviewDialogData {
-  const forms = createSubscriptionFlowFormFixtures().slice(0, args.formCount);
+  const events = Array.from({ length: args.eventCount }, (_, index) =>
+    createPublicEvent({
+      id: `event-${index + 1}`,
+      name: args.longNames
+        ? `Atividade interdisciplinar de tecnologia, ciência e acessibilidade ${index + 1}`
+        : `Atividade ${index + 1}`,
+      emoji: ['🧩', '🧠', '♿', '📡'][index % 4],
+      startDate: publicFixtureDateFromNow(index + 1, 9 + (index % 4) * 2),
+      endDate: publicFixtureDateFromNow(index + 1, 11 + (index % 4) * 2),
+    }),
+  );
+  const forms = createSubscriptionFlowFormFixtures()
+    .slice(0, args.formCount)
+    .map((form) =>
+      args.targetType === 'event' && events[0]
+        ? {
+            ...form,
+            targetType: 'EVENT' as const,
+            targetId: events[0].id,
+            targetName: events[0].name,
+          }
+        : form,
+    );
   const draft = createSubscriptionFlowDraft(forms, args.requireLicenseAgreement);
   if (forms[0]) {
     draft.answersByKey[subscriptionFormKey(forms[0])] = [{ elementId: 'shirt-size', value: 'm' }];
@@ -104,18 +140,17 @@ function createReviewData(args: SubscriptionReviewDialogStoryArgs): Subscription
   }
 
   return {
-    majorEvent: createPublicMajorEvent({ id: 'major-1', name: 'SECOMPP', emoji: '🎓' }),
-    events: Array.from({ length: args.eventCount }, (_, index) =>
-      createPublicEvent({
-        id: `event-${index + 1}`,
-        name: args.longNames
-          ? `Atividade interdisciplinar de tecnologia, ciência e acessibilidade ${index + 1}`
-          : `Atividade ${index + 1}`,
-        emoji: ['🧩', '🧠', '♿', '📡'][index % 4],
-        startDate: publicFixtureDateFromNow(index + 1, 9 + (index % 4) * 2),
-        endDate: publicFixtureDateFromNow(index + 1, 11 + (index % 4) * 2),
-      }),
-    ),
+    ...(args.targetType === 'major-event'
+      ? {
+          majorEvent: createPublicMajorEvent({
+            id: 'major-1',
+            name: 'SECOMPP',
+            emoji: '🎓',
+            majorEventPrices: [createPublicMajorEventPrice()],
+          }),
+        }
+      : { event: events[0] }),
+    events,
     forms,
     draft,
     paymentTier: args.paymentTier || null,

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -21,7 +21,8 @@ import {
 } from './subscription-flow.models';
 
 export interface SubscriptionReviewDialogData {
-  majorEvent: PublicMajorEvent;
+  majorEvent?: PublicMajorEvent;
+  event?: PublicEvent;
   events: PublicEvent[];
   forms: readonly SubscriptionFormContext[];
   draft: SubscriptionFlowDraft;
@@ -41,7 +42,7 @@ interface SubscriptionReviewAnswerRow {
 
 @Component({
   selector: 'app-subscription-review-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule],
+  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatDialogModule, MatIconModule],
   templateUrl: './subscription-review-dialog.html',
   styleUrl: './subscription-review-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,6 +51,11 @@ export class SubscriptionReviewDialog {
   private readonly dialogRef = inject(MatDialogRef<SubscriptionReviewDialog>);
   readonly data = inject<SubscriptionReviewDialogData>(MAT_DIALOG_DATA);
   readonly emoji = inject(EmojiService);
+  readonly subscriptionTarget = this.data.majorEvent ?? this.data.event ?? this.data.events[0];
+  readonly subscriptionTargetType = this.data.majorEvent ? 'Grande evento' : 'Evento';
+  readonly selectedPaymentTier = this.data.majorEvent?.majorEventPrices
+    ?.flatMap((price) => price.tiers)
+    .find((tier) => tier.name === this.data.paymentTier);
 
   close(): void {
     this.dialogRef.close({ confirmed: false } satisfies SubscriptionReviewDialogResult);

@@ -12,6 +12,7 @@ interface SubscriptionFormFlowStoryArgs {
   requireLicenseAgreement: boolean;
   licenseAccepted: boolean;
   longContent: boolean;
+  firstBackLabel: string;
 }
 
 const defaultArgs: SubscriptionFormFlowStoryArgs = {
@@ -20,6 +21,7 @@ const defaultArgs: SubscriptionFormFlowStoryArgs = {
   requireLicenseAgreement: true,
   licenseAccepted: false,
   longContent: false,
+  firstBackLabel: 'Alterar eventos',
 };
 
 const meta: Meta<SubscriptionFormFlowStoryArgs> = {
@@ -33,6 +35,7 @@ const meta: Meta<SubscriptionFormFlowStoryArgs> = {
     requireLicenseAgreement: { control: 'boolean' },
     licenseAccepted: { control: 'boolean' },
     longContent: { control: 'boolean' },
+    firstBackLabel: { control: 'text' },
   },
   render: (args) => {
     const forms = createSubscriptionFlowFormFixtures().slice(0, args.formCount);
@@ -68,6 +71,7 @@ const meta: Meta<SubscriptionFormFlowStoryArgs> = {
         requireImageLicenseAgreement: args.requireLicenseAgreement,
         imageLicenseAgreementAccepted: args.licenseAccepted,
         initialDraft: draft,
+        firstBackLabel: args.firstBackLabel,
         backToSelection: fn(),
         reviewRequested: fn(),
       },
@@ -118,7 +122,7 @@ export const ContractOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Continuar/i }));
-    await expect(canvas.getByRole('heading', { name: 'Contrato de concessão de licença' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Contrato de concessão de licença de imagem' })).toBeVisible();
   },
 };
 

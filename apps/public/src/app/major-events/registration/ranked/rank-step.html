@@ -149,6 +149,7 @@
     class="subscribe-fab"
     [disabled]="
       store.isSubmitting() ||
+      store.isPreparingSubscriptionFlow() ||
       store.effectiveSelectedEventIds().size === 0 ||
       (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
         !store.confirmedSportsOnlySubscription() &&
@@ -157,11 +158,9 @@
     "
     (click)="submit()">
     <mat-icon>
-      {{ store.needsImageLicenseAgreement() ? 'verified_user' : store.currentUserSubscription() ? 'edit' :
-      'event_available' }}
+      {{ store.needsImageLicenseAgreement() ? 'verified_user' : 'arrow_forward' }}
     </mat-icon>
-    {{ store.needsImageLicenseAgreement() ? 'Aceitar contrato' : store.currentUserSubscription() ? 'Atualizar inscrição'
-    : 'Inscrever-se' }}
+    {{ store.needsImageLicenseAgreement() ? 'Continuar para os documentos legais' : 'Continuar' }}
   </button>
 </section>
 }

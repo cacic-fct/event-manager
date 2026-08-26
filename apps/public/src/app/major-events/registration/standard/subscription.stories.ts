@@ -181,7 +181,9 @@ export const LicenseAgreementOnly: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i }));
     await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
-    await expect(await canvas.findByRole('heading', { name: 'Contrato de concessão de licença' })).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Contrato de concessão de licença de imagem' }),
+    ).toBeVisible();
   },
 };
 
@@ -434,7 +436,7 @@ async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<voi
   await userEvent.click(await canvas.findByRole('radio', { name: 'Sim' }));
   await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
   await userEvent.click(
-    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença/i }),
+    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de imagem/i }),
   );
   await userEvent.click(await canvas.findByRole('button', { name: /Revisar inscrição/i }));
   const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));

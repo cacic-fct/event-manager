@@ -33,7 +33,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { isAfter, isBefore, parseISO } from 'date-fns';
-import { EMPTY, Observable, catchError, combineLatest, finalize, forkJoin, map, of, startWith, switchMap } from 'rxjs';
+import { Observable, catchError, combineLatest, finalize, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './location-map';
 import { EventSubscriptionRealtimeService } from './subscription-realtime.service';
@@ -42,13 +42,19 @@ import { NetworkStatusService } from '../../shared/network-status.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../forms/event-form-availability';
+import { SubscriptionFormFlow } from '../../major-events/registration/standard/subscription-form-flow';
 import {
-  ConfirmSubscriptionDialog,
-  type ConfirmSubscriptionDialogData,
-  type ConfirmSubscriptionDialogResult,
+  createSubscriptionFlowDraft,
+  toSubscriptionFormAnswers,
+  type SubscriptionFlowDraft,
   type SubscriptionFormAnswer,
   type SubscriptionFormContext,
-} from '../../major-events/registration/standard/confirm-dialog';
+} from '../../major-events/registration/standard/subscription-flow.models';
+import {
+  SubscriptionReviewDialog,
+  type SubscriptionReviewDialogData,
+  type SubscriptionReviewDialogResult,
+} from '../../major-events/registration/standard/subscription-review-dialog';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 type EventPageState =
@@ -66,6 +72,12 @@ type EventFormPageLink = {
   mode: 'answer' | 'results';
   displayOrder: number;
 };
+
+interface StandaloneSubscriptionFormFlow {
+  events: PublicEvent[];
+  forms: SubscriptionFormContext[];
+  draft: SubscriptionFlowDraft;
+}
 
 const PUBLIC_APP_ORIGIN = 'https://eventos.cacic.com.br';
 const PAGE_TITLE_SUFFIX = 'CACiC Eventos';
@@ -115,6 +127,7 @@ type EventStructuredData = {
     MatToolbarModule,
     MatTooltipModule,
     RouterLink,
+    SubscriptionFormFlow,
   ],
   templateUrl: './event-page.html',
   styleUrl: './event-page.css',
@@ -149,6 +162,7 @@ export class Event {
   readonly isSubscribing = signal(false);
   readonly isUnsubscribing = signal(false);
   readonly isConfirmingAttendance = signal(false);
+  readonly subscriptionFormFlow = signal<StandaloneSubscriptionFormFlow | null>(null);
   readonly standaloneSubscriptionCooldownSeconds = this.standaloneSubscriptionCooldown.seconds;
 
   private readonly reloadCounter = signal(0);
@@ -158,7 +172,8 @@ export class Event {
     this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
     { initialValue: false },
   );
-  private readonly imageLicenseAgreementDialogOpened = signal(false);
+  private readonly imageLicenseAgreementFlowOpened = signal(false);
+  private readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
 
   private readonly returnUrl = toSignal(
     this.route.queryParamMap.pipe(
@@ -255,7 +270,9 @@ export class Event {
     if (this.cooldownEventId() !== eventId) {
       this.cooldownEventId.set(eventId);
       this.standaloneSubscriptionCooldown.clear();
-      this.imageLicenseAgreementDialogOpened.set(false);
+      this.imageLicenseAgreementFlowOpened.set(false);
+      this.subscriptionFormFlow.set(null);
+      this.subscriptionFlowDraft.set(null);
     }
   });
 
@@ -263,7 +280,7 @@ export class Event {
     const currentState = this.eventState();
     if (
       !this.imageLicenseAgreementQueryRequested() ||
-      this.imageLicenseAgreementDialogOpened() ||
+      this.imageLicenseAgreementFlowOpened() ||
       !this.isBrowser ||
       !this.isAuthenticated() ||
       currentState.status !== 'ready' ||
@@ -272,7 +289,7 @@ export class Event {
       return;
     }
 
-    this.imageLicenseAgreementDialogOpened.set(true);
+    this.imageLicenseAgreementFlowOpened.set(true);
     this.subscribe(currentState.data);
   });
 
@@ -314,47 +331,107 @@ export class Event {
     this.isSubscribing.set(true);
 
     this.loadSubscriptionForms(data)
-      .pipe(
-        switchMap((forms) => {
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (forms) => {
+          this.isSubscribing.set(false);
           if (forms.contexts.length === 0 && !this.requiresImageLicenseAgreement(data)) {
-            return this.api.subscribeToEvent(data.event.id);
+            this.completeStandaloneSubscription(data, [], false);
+            return;
           }
 
-          return this.dialog
-            .open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, ConfirmSubscriptionDialogResult>(
-              ConfirmSubscriptionDialog,
-              {
-                data: {
-                  event: data.event,
-                  events: forms.events,
-                  forms: forms.contexts,
-                  imageLicenseAgreement: {
-                    required: this.requiresImageLicenseAgreement(data),
-                    accepted: data.currentUserSubscription?.imageLicenseAgreementAccepted === true,
-                  },
-                },
-                width: 'min(720px, 96vw)',
-                maxHeight: '90vh',
-              },
-            )
-            .afterClosed()
-            .pipe(
-              switchMap((result) =>
-                result?.confirmed
-                  ? this.api.subscribeToEvent(
-                      data.event.id,
-                      this.toSubmitFormResponses(result.answers),
-                      result.imageLicenseAgreementAccepted,
-                    )
-                  : EMPTY,
-              ),
-            );
-        }),
+          const draft = createSubscriptionFlowDraft(
+            forms.contexts,
+            data.currentUserSubscription?.imageLicenseAgreementAccepted === true,
+            this.subscriptionFlowDraft(),
+          );
+          this.subscriptionFlowDraft.set(draft);
+          this.subscriptionFormFlow.set({
+            events: forms.events,
+            forms: forms.contexts,
+            draft,
+          });
+        },
+        error: (error: unknown) => {
+          this.isSubscribing.set(false);
+          this.showError(error);
+        },
+      });
+  }
+
+  returnToEvent(draft: SubscriptionFlowDraft): void {
+    this.subscriptionFlowDraft.set(draft);
+    this.subscriptionFormFlow.set(null);
+  }
+
+  reviewSubscription(draft: SubscriptionFlowDraft): void {
+    const currentState = this.eventState();
+    const flow = this.subscriptionFormFlow();
+    if (currentState.status !== 'ready' || !flow) {
+      return;
+    }
+
+    const nextFlow = { ...flow, draft };
+    this.subscriptionFlowDraft.set(draft);
+    this.subscriptionFormFlow.set(nextFlow);
+    const dialogRef = this.dialog.open<
+      SubscriptionReviewDialog,
+      SubscriptionReviewDialogData,
+      SubscriptionReviewDialogResult
+    >(SubscriptionReviewDialog, {
+      data: {
+        event: currentState.data.event,
+        events: nextFlow.events,
+        forms: nextFlow.forms,
+        draft,
+        paymentTier: null,
+        requireImageLicenseAgreement: this.requiresImageLicenseAgreement(currentState.data),
+      },
+      width: 'min(680px, 96vw)',
+      maxHeight: '90vh',
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result?.confirmed) {
+          this.completeStandaloneSubscription(
+            currentState.data,
+            toSubscriptionFormAnswers(nextFlow.forms, draft),
+            draft.imageLicenseAgreementAccepted,
+          );
+        }
+      });
+  }
+
+  private completeStandaloneSubscription(
+    data: EventPageData,
+    formAnswers: SubscriptionFormAnswer[],
+    imageLicenseAgreementAccepted: boolean,
+  ): void {
+    if (this.isSubscribing() || this.standaloneSubscriptionCooldownSeconds() > 0) {
+      return;
+    }
+
+    this.isSubscribing.set(true);
+    const request =
+      formAnswers.length === 0 && !this.requiresImageLicenseAgreement(data)
+        ? this.api.subscribeToEvent(data.event.id)
+        : this.api.subscribeToEvent(
+            data.event.id,
+            this.toSubmitFormResponses(formAnswers),
+            imageLicenseAgreementAccepted,
+          );
+    request
+      .pipe(
         finalize(() => this.isSubscribing.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: () => {
+          this.subscriptionFormFlow.set(null);
+          this.subscriptionFlowDraft.set(null);
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
           if (this.imageLicenseAgreementQueryRequested()) {
             void this.router.navigate([], {

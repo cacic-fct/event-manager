@@ -12,6 +12,8 @@ import { of } from 'rxjs';
 import { EventApiService, type EventPageData } from './event-api.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { subscriptionFormKey } from '../../major-events/registration/standard/subscription-flow.models';
+import { SubscriptionReviewDialog } from '../../major-events/registration/standard/subscription-review-dialog';
 
 interface EventComponentFixtureOptions {
   authenticated?: boolean;
@@ -30,7 +32,7 @@ async function createEventComponentFixture(
   const eventPageData = options.eventPageData ?? defaultEventPageData();
   const dialog = {
     open: vi.fn(() => ({
-      afterClosed: () => of({ confirmed: false, answers: [], imageLicenseAgreementAccepted: false }),
+      afterClosed: () => of({ confirmed: false }),
     })),
     ...options.dialog,
   };
@@ -416,22 +418,7 @@ describe('Event', () => {
     TestBed.resetTestingModule();
     const listCurrentUserForms = vi.fn(() => of([subscriptionFormFixture()]));
     const getCurrentUserResponse = vi.fn(() => of(null));
-    const open = vi.fn(() => ({
-      afterClosed: () =>
-        of({
-          confirmed: true,
-          imageLicenseAgreementAccepted: false,
-          answers: [
-            {
-              formId: 'form-1',
-              linkId: 'link-1',
-              targetType: 'EVENT' as const,
-              targetId: 'event-1',
-              answers: [{ elementId: 'shirt-size', value: 'm' }],
-            },
-          ],
-        }),
-    }));
+    const open = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));
     const eventPageData = defaultEventPageData({
       event: {
         ...defaultEventPageData().event,
@@ -456,6 +443,19 @@ describe('Event', () => {
 
     newComponent.subscribe(eventPageData);
     await new Promise((resolve) => setTimeout(resolve, 0));
+    const flow = newComponent.subscriptionFormFlow();
+    expect(flow).not.toBeNull();
+    if (!flow) {
+      throw new Error('Expected the standalone subscription form flow to be prepared.');
+    }
+    const draft = {
+      ...flow.draft,
+      answersByKey: {
+        ...flow.draft.answersByKey,
+        [subscriptionFormKey(flow.forms[0])]: [{ elementId: 'shirt-size', value: 'm' }],
+      },
+    };
+    newComponent.reviewSubscription(draft);
 
     expect(listCurrentUserForms).toHaveBeenCalledWith({
       targetType: 'EVENT',
@@ -463,7 +463,12 @@ describe('Event', () => {
       majorEventId: null,
       subscriptionFlowOnly: true,
     });
-    expect(open).toHaveBeenCalled();
+    expect(open).toHaveBeenCalledWith(
+      SubscriptionReviewDialog,
+      expect.objectContaining({
+        data: expect.objectContaining({ event: eventPageData.event, forms: flow.forms, draft }),
+      }),
+    );
     expect(subscribeToEvent).toHaveBeenCalledWith(
       'event-1',
       [
@@ -501,9 +506,6 @@ describe('Event', () => {
       submittedAt: '2026-07-06T12:00:00.000Z',
       updatedAt: '2026-07-06T12:00:00.000Z',
     };
-    const open = vi.fn(() => ({
-      afterClosed: () => of({ confirmed: false, answers: [], imageLicenseAgreementAccepted: false }),
-    }));
     const eventPageData = defaultEventPageData({
       event: {
         ...defaultEventPageData().event,
@@ -521,7 +523,6 @@ describe('Event', () => {
           listCurrentUserForms: vi.fn(() => of([form])),
           getCurrentUserResponse: vi.fn(() => of(existingResponse)),
         },
-        dialog: { open: open as never },
       },
     );
     await newFixture.whenStable();
@@ -529,19 +530,12 @@ describe('Event', () => {
     newFixture.componentInstance.subscribe(eventPageData);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(open).toHaveBeenCalledWith(
-      expect.any(Function),
+    expect(newFixture.componentInstance.subscriptionFormFlow()?.forms).toEqual([
       expect.objectContaining({
-        data: expect.objectContaining({
-          forms: [
-            expect.objectContaining({
-              submitted: true,
-              editable: true,
-            }),
-          ],
-        }),
+        submitted: true,
+        editable: true,
       }),
-    );
+    ]);
   });
 
   it('displays available forms for authenticated attendees without requiring a subscription', async () => {
@@ -721,22 +715,7 @@ describe('Event', () => {
       .mockReturnValueOnce(of([siblingForm]));
     const getCurrentUserResponse = vi.fn(() => of(null));
     const subscribeToEvent = vi.fn(() => of(eventPageData.event));
-    const open = vi.fn(() => ({
-      afterClosed: () =>
-        of({
-          confirmed: true,
-          imageLicenseAgreementAccepted: false,
-          answers: [
-            {
-              formId: 'form-2',
-              linkId: 'link-2',
-              targetType: 'EVENT' as const,
-              targetId: 'event-2',
-              answers: [{ elementId: 'shirt-size', value: 'm' }],
-            },
-          ],
-        }),
-    }));
+    const open = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));
     const newFixture = await createEventComponentFixture(
       {},
       {
@@ -751,6 +730,19 @@ describe('Event', () => {
 
     newFixture.componentInstance.subscribe(eventPageData);
     await new Promise((resolve) => setTimeout(resolve, 0));
+    const flow = newFixture.componentInstance.subscriptionFormFlow();
+    expect(flow).not.toBeNull();
+    if (!flow) {
+      throw new Error('Expected the grouped standalone subscription form flow to be prepared.');
+    }
+    const draft = {
+      ...flow.draft,
+      answersByKey: {
+        ...flow.draft.answersByKey,
+        [subscriptionFormKey(flow.forms[0])]: [{ elementId: 'shirt-size', value: 'm' }],
+      },
+    };
+    newFixture.componentInstance.reviewSubscription(draft);
 
     expect(listPublicEventGroupEvents).toHaveBeenCalledWith('group-1');
     expect(listCurrentUserForms).toHaveBeenCalledWith({
@@ -769,8 +761,10 @@ describe('Event', () => {
       expect.anything(),
       expect.objectContaining({
         data: expect.objectContaining({
+          event: eventPageData.event,
           events: [eventPageData.event, groupEvent],
           forms: [expect.objectContaining({ form: siblingForm, targetId: 'event-2' })],
+          draft,
         }),
       }),
     );

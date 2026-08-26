@@ -2,21 +2,27 @@
 
 <mat-dialog-content>
   <header class="review-header">
+    @if (subscriptionTarget; as target) {
     <div class="emoji-frame">
-      <img class="twemoji" [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)" [alt]="data.majorEvent.emoji" />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(target.emoji)" [alt]="target.emoji" />
     </div>
     <div>
-      <p>Grande evento</p>
-      <h3>{{ data.majorEvent.name }}</h3>
+      <p>{{ subscriptionTargetType }}</p>
+      <h3>{{ target.name }}</h3>
     </div>
+    }
   </header>
 
   @if (data.paymentTier) {
   <section class="review-line" aria-label="Preço selecionado">
     <mat-icon aria-hidden="true">payments</mat-icon>
     <span>
-      <small>Preço selecionado</small>
-      <strong>{{ data.paymentTier }}</strong>
+      <small>Tipo selecionado</small>
+      <strong>
+        {{ data.paymentTier }}@if (selectedPaymentTier; as tier) {
+        - {{ tier.value / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+        }
+      </strong>
     </span>
   </section>
   }
@@ -61,7 +67,7 @@
   <section class="review-line agreement-confirmed" aria-label="Contrato aceito">
     <mat-icon aria-hidden="true">verified</mat-icon>
     <span>
-      <small>Contrato de concessão de licença</small>
+      <small>Contrato de concessão de licença de imagem</small>
       <strong>Aceito</strong>
     </span>
   </section>

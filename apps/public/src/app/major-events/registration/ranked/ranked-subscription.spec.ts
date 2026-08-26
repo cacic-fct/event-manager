@@ -82,9 +82,36 @@ describe('RankedMajorEventSubscription', () => {
     expect(store.rankingItems().some((item) => item.label === 'Angular')).toBe(false);
     expect(store.autoSelectedEvents().map((event) => event.id)).toEqual(['event-1']);
   });
+
+  it('prepares the shared page-level form flow before review', async () => {
+    flushInitialRequests(http, { ...majorEventFixture, requiresImageLicenseAgreement: true });
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    store.submit();
+    const formRequests = http.match(
+      (request) =>
+        request.url === '/api/graphql' &&
+        typeof request.body === 'object' &&
+        String(request.body?.query).includes('CurrentUserEventForms'),
+    );
+    expect(formRequests).toHaveLength(2);
+    formRequests.forEach((request) => request.flush({ data: { currentUserEventForms: [] } }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(store.subscriptionFormFlow()).toEqual(
+      expect.objectContaining({
+        eventIds: ['event-1'],
+        forms: [],
+        draft: expect.objectContaining({ imageLicenseAgreementAccepted: false }),
+      }),
+    );
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-subscription-form-flow')).not.toBeNull();
+  });
 });
 
-function flushInitialRequests(http: HttpTestingController): void {
+function flushInitialRequests(http: HttpTestingController, majorEvent = majorEventFixture): void {
   const pageRequest = http.expectOne(
     (request) =>
       request.url === '/api/graphql' &&
@@ -94,7 +121,7 @@ function flushInitialRequests(http: HttpTestingController): void {
   pageRequest.flush({
     data: {
       publicMajorEventSubscriptionPage: {
-        majorEvent: majorEventFixture,
+        majorEvent,
         events: eventFixtures,
         subscriptionSummaries: eventFixtures.map((event) => ({ eventId: event.id, hasAvailableSlots: true })),
       },
@@ -127,6 +154,7 @@ const majorEventFixture = {
   maxLecturesPerAttendee: 1,
   maxUncategorizedPerAttendee: 1,
   rankedSubscriptionEnabled: true,
+  requiresImageLicenseAgreement: false,
   isPaymentRequired: false,
   majorEventPrices: [],
 };

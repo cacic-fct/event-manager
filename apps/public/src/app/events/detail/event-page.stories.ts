@@ -5,7 +5,7 @@ import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, within } from 'storybook/test';
 import {
   createPublicStoryEventFromControls,
   createPublicStoryLecturerProfilesFromControls,
@@ -29,6 +29,8 @@ interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryCo
   hasAvailableSlots: boolean;
   isSubscribed: boolean;
   hasAttendance: boolean;
+  hasSubscriptionForm: boolean;
+  requiresLicenseAgreement: boolean;
 }
 
 const defaultArgs: EventStoryArgs = {
@@ -41,6 +43,8 @@ const defaultArgs: EventStoryArgs = {
   hasAvailableSlots: true,
   isSubscribed: false,
   hasAttendance: false,
+  hasSubscriptionForm: false,
+  requiresLicenseAgreement: false,
 };
 
 type EventStoryContext = MutableStoryContext<EventStoryArgs>;
@@ -71,10 +75,12 @@ const meta: Meta<EventStoryArgs> = {
     hasAvailableSlots: { control: 'boolean' },
     isSubscribed: { control: 'boolean' },
     hasAttendance: { control: 'boolean' },
+    hasSubscriptionForm: { control: 'boolean' },
+    requiresLicenseAgreement: { control: 'boolean' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     ...eventParameters(onlineContext),
   },
   render: (args) => renderStory(args, onlineContext),
@@ -144,6 +150,30 @@ export const WithAttendanceForms: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Formulários')).toBeVisible();
     await expect(await canvas.findByRole('link', { name: /avaliação do evento/i })).toBeVisible();
+  },
+};
+
+export const SubscriptionFormReviewFlow: Story = {
+  args: {
+    hasSubscriptionForm: true,
+    requiresLicenseAgreement: true,
+    allowSubscription: true,
+    context: 'short-description',
+  },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Inscrever-se' }));
+    await expect(await canvas.findByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('radio', { name: 'M' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Continuar' }));
+    await userEvent.click(
+      await canvas.findByRole('checkbox', { name: /contrato de concessão de licença de uso de imagem/i }),
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Revisar inscrição' }));
+    const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));
+    await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
+    await userEvent.click(await dialog.findByRole('button', { name: 'Confirmar inscrição' }));
   },
 };
 
@@ -232,7 +262,7 @@ function eventParameters(context: EventStoryContext) {
             if (context.args.apiState === 'error') {
               return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
             }
-            return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', context.args) });
+            return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', body.variables ?? {}, context.args) });
           }),
         ],
       },
@@ -268,14 +298,17 @@ function buildPreview(args: EventStoryArgs) {
 }
 
 function buildEvent(args: EventStoryArgs) {
-  return createPublicStoryEventFromControls(args, {
-    id: 'event-1',
-    allowSubscription: args.allowSubscription,
-    lecturers: createPublicStoryLecturerProfilesFromControls(args),
-  });
+  return {
+    ...createPublicStoryEventFromControls(args, {
+      id: 'event-1',
+      allowSubscription: args.allowSubscription,
+      lecturers: createPublicStoryLecturerProfilesFromControls(args),
+    }),
+    requiresImageLicenseAgreement: args.requiresLicenseAgreement,
+  };
 }
 
-function eventGraphqlData(query: string, args: EventStoryArgs) {
+function eventGraphqlData(query: string, variables: Record<string, unknown>, args: EventStoryArgs) {
   const event = buildEvent(args);
   if (query.includes('publicEvent(')) {
     return {
@@ -289,7 +322,14 @@ function eventGraphqlData(query: string, args: EventStoryArgs) {
 
   if (query.includes('CurrentUserEventForms')) {
     return {
-      currentUserEventForms: args.hasAttendance ? [publicEventForm(event)] : [],
+      currentUserEventForms:
+        variables['subscriptionFlowOnly'] === true
+          ? args.hasSubscriptionForm
+            ? [publicSubscriptionEventForm(event)]
+            : []
+          : args.hasAttendance
+            ? [publicEventForm(event)]
+            : [],
     };
   }
 
@@ -376,6 +416,34 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
     responseCount: 0,
     createdAt: publicFixtureDateFromNow(-1, 10),
     updatedAt: publicFixtureDateFromNow(-1, 10),
+  };
+}
+
+function publicSubscriptionEventForm(event: PublicEvent): PublicEventForm {
+  const form = publicEventForm(event);
+  return {
+    ...form,
+    name: 'Camiseta do evento',
+    description: 'Escolha o tamanho para retirada durante o evento.',
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'singleChoice',
+        title: 'Tamanho da camiseta',
+        required: true,
+        options: [
+          { id: 'p', label: 'P' },
+          { id: 'm', label: 'M' },
+          { id: 'g', label: 'G' },
+        ],
+      },
+    ]),
+    links: form.links.map((link) => ({
+      ...link,
+      audience: 'SUBSCRIBERS_OR_ATTENDEES',
+      insertInSubscriptionFlow: true,
+      requiredInSubscriptionFlow: true,
+    })),
   };
 }
 

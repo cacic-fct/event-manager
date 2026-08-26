@@ -3,7 +3,7 @@ import { DestroyRef, Service, computed, effect, inject, signal, untracked } from
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import type {
   EventFormTargetType,
   EventType,
@@ -20,17 +20,22 @@ import {
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
 import { isBefore, parseISO } from 'date-fns';
-import { EMPTY, catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import {
-  ConfirmSubscriptionDialog,
-  type ConfirmSubscriptionDialogData,
-  type ConfirmSubscriptionDialogResult,
+  createSubscriptionFlowDraft,
+  toSubscriptionFormAnswers,
+  type SubscriptionFlowDraft,
   type SubscriptionFormAnswer,
   type SubscriptionFormContext,
-} from '../standard/confirm-dialog';
+} from '../standard/subscription-flow.models';
+import {
+  SubscriptionReviewDialog,
+  type SubscriptionReviewDialogData,
+  type SubscriptionReviewDialogResult,
+} from '../standard/subscription-review-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
@@ -51,6 +56,14 @@ export interface RankedItem {
   events: PublicEvent[];
 }
 
+export interface RankedSubscriptionFormFlow {
+  eventIds: string[];
+  events: PublicEvent[];
+  forms: SubscriptionFormContext[];
+  draft: SubscriptionFlowDraft;
+  paymentTier: string | null;
+}
+
 @Service({ autoProvided: false })
 export class RankedSubscriptionStore {
   private readonly api = inject(MajorEventSubscriptionApiService);
@@ -67,6 +80,7 @@ export class RankedSubscriptionStore {
 
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly isSubmitting = signal(false);
+  readonly isPreparingSubscriptionFlow = signal(false);
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
   readonly pageState = signal<RankedSubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
@@ -81,6 +95,7 @@ export class RankedSubscriptionStore {
   readonly desiredCourses = signal(0);
   readonly desiredLectures = signal(0);
   readonly desiredUncategorized = signal(0);
+  readonly subscriptionFormFlow = signal<RankedSubscriptionFormFlow | null>(null);
   readonly needsImageLicenseAgreement = computed(() => {
     const data = this.data();
     const subscription = this.currentUserSubscription();
@@ -93,18 +108,11 @@ export class RankedSubscriptionStore {
 
   private readonly initializedMajorEventId = signal<string | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
-  private readonly navigationTick = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
+  private readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
   private readonly imageLicenseAgreementQueryRequested = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
     { initialValue: false },
   );
-  private readonly imageLicenseAgreementDialogOpened = signal(false);
 
   readonly majorEventId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('majorEventId') ?? params.get('eventID') ?? '')),
@@ -162,8 +170,9 @@ export class RankedSubscriptionStore {
         this.pageState.set({ status: 'loading' });
         this.initializedMajorEventId.set(null);
         this.pendingRealtimeDelta.set(null);
-        this.imageLicenseAgreementDialogOpened.set(false);
         this.selectedPriceTierName.set(null);
+        this.subscriptionFormFlow.set(null);
+        this.subscriptionFlowDraft.set(null);
         this.subscriptionCooldown.clear();
       });
 
@@ -214,25 +223,6 @@ export class RankedSubscriptionStore {
       untracked(() => this.initializeFromPageData(data, currentUserSubscription));
     });
 
-    effect(() => {
-      this.navigationTick();
-      if (
-        !this.imageLicenseAgreementQueryRequested() ||
-        this.imageLicenseAgreementDialogOpened() ||
-        Boolean(this.route.firstChild) ||
-        !this.data() ||
-        !this.isAuthenticated() ||
-        this.currentUserSubscription() === undefined ||
-        !this.needsImageLicenseAgreement() ||
-        this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
-        this.selectedEvents().length === 0
-      ) {
-        return;
-      }
-
-      this.imageLicenseAgreementDialogOpened.set(true);
-      this.submit();
-    });
   }
 
   dateLine(): string {
@@ -297,7 +287,7 @@ export class RankedSubscriptionStore {
 
   submit(): void {
     const data = this.data();
-    if (!data || this.isSubmitting()) {
+    if (!data || this.isSubmitting() || this.isPreparingSubscriptionFlow()) {
       return;
     }
 
@@ -325,6 +315,7 @@ export class RankedSubscriptionStore {
       return;
     }
 
+    this.isPreparingSubscriptionFlow.set(true);
     this.loadSubscriptionForms(data, rankedEventIds)
       .pipe(
         catchError(() => {
@@ -333,43 +324,50 @@ export class RankedSubscriptionStore {
           });
           return EMPTY;
         }),
+        finalize(() => this.isPreparingSubscriptionFlow.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((forms) => {
-        const dialogRef = this.dialog.open<
-          ConfirmSubscriptionDialog,
-          ConfirmSubscriptionDialogData,
-          ConfirmSubscriptionDialogResult
-        >(ConfirmSubscriptionDialog, {
-          data: {
-            majorEvent: data.majorEvent,
-            events: rankedEventIds
-              .map((eventId) => this.eventsById().get(eventId))
-              .filter((event): event is PublicEvent => Boolean(event)),
-            forms,
-            imageLicenseAgreement: {
-              required: Boolean(data.majorEvent.requiresImageLicenseAgreement),
-              accepted: this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
-            },
-          },
-          width: 'min(760px, 96vw)',
-        });
+        const draft = createSubscriptionFlowDraft(
+          forms,
+          this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
+          this.subscriptionFlowDraft(),
+        );
+        const flow: RankedSubscriptionFormFlow = {
+          eventIds: rankedEventIds,
+          events: rankedEventIds
+            .map((eventId) => this.eventsById().get(eventId))
+            .filter((event): event is PublicEvent => Boolean(event)),
+          forms,
+          draft,
+          paymentTier: selectedPaymentTier ?? null,
+        };
+        this.subscriptionFlowDraft.set(draft);
 
-        dialogRef
-          .afterClosed()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((result) => {
-            if (result?.confirmed) {
-              this.confirmSubscription(
-                data,
-                rankedEventIds,
-                selectedPaymentTier ?? null,
-                result.answers,
-                result.imageLicenseAgreementAccepted,
-              );
-            }
-          });
+        if (forms.length === 0 && !data.majorEvent.requiresImageLicenseAgreement) {
+          this.openReviewDialog(flow);
+          return;
+        }
+
+        this.subscriptionFormFlow.set(flow);
       });
+  }
+
+  returnToRanking(draft: SubscriptionFlowDraft): void {
+    this.subscriptionFlowDraft.set(draft);
+    this.subscriptionFormFlow.set(null);
+  }
+
+  reviewSubscription(draft: SubscriptionFlowDraft): void {
+    const flow = this.subscriptionFormFlow();
+    if (!flow) {
+      return;
+    }
+
+    const nextFlow = { ...flow, draft };
+    this.subscriptionFlowDraft.set(draft);
+    this.subscriptionFormFlow.set(nextFlow);
+    this.openReviewDialog(nextFlow);
   }
 
   private initializeFromPageData(
@@ -438,6 +436,8 @@ export class RankedSubscriptionStore {
         next: (subscription) => {
           const action = this.currentUserSubscription() ? 'updated' : 'created';
           this.currentUserSubscription.set(subscription);
+          this.subscriptionFormFlow.set(null);
+          this.subscriptionFlowDraft.set(null);
           this.analytics.trackMajorEventSubscription({
             action,
             majorEvent: data.majorEvent,
@@ -469,6 +469,45 @@ export class RankedSubscriptionStore {
             duration: 5000,
           });
         },
+      });
+  }
+
+  private openReviewDialog(flow: RankedSubscriptionFormFlow): void {
+    const data = this.data();
+    if (!data) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open<
+      SubscriptionReviewDialog,
+      SubscriptionReviewDialogData,
+      SubscriptionReviewDialogResult
+    >(SubscriptionReviewDialog, {
+      data: {
+        majorEvent: data.majorEvent,
+        events: flow.events,
+        forms: flow.forms,
+        draft: flow.draft,
+        paymentTier: flow.paymentTier,
+        requireImageLicenseAgreement: Boolean(data.majorEvent.requiresImageLicenseAgreement),
+      },
+      width: 'min(680px, 96vw)',
+      maxHeight: '90vh',
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result?.confirmed) {
+          this.confirmSubscription(
+            data,
+            flow.eventIds,
+            flow.paymentTier,
+            toSubscriptionFormAnswers(flow.forms, flow.draft),
+            flow.draft.imageLicenseAgreementAccepted,
+          );
+        }
       });
   }
 

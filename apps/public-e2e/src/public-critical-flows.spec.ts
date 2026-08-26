@@ -82,8 +82,8 @@ test('opens standard major-event subscription from the public list and subscribe
   await expect(page.getByRole('radio', { name: 'Sim' })).toBeChecked();
   await page.getByRole('button', { name: 'Continuar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Contrato de concessão de licença' })).toBeVisible();
-  await page.getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença/i }).click();
+  await expect(page.getByRole('heading', { name: 'Contrato de concessão de licença de imagem' })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de imagem/i }).click();
   await page.getByRole('button', { name: 'Revisar inscrição' }).click();
 
   const reviewDialog = page.getByRole('dialog', { name: 'Revise sua inscrição' });
@@ -131,9 +131,12 @@ test('completes ranked major-event subscription with automatic and grouped prefe
 
   await expect(page.getByText('Trilha Backend')).toBeVisible();
   await expect(page.getByText('Credenciamento')).toBeVisible();
-  await page.getByRole('button', { name: 'Inscrever-se' }).click();
-  await expect(page.getByRole('heading', { name: 'Confirmar inscrição' })).toBeVisible();
-  await page.getByRole('dialog', { name: 'Confirmar inscrição' }).getByRole('button', { name: 'Inscrever-se' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.getByRole('heading', { name: 'Revise sua inscrição' })).toBeVisible();
+  await page
+    .getByRole('dialog', { name: 'Revise sua inscrição' })
+    .getByRole('button', { name: 'Confirmar inscrição' })
+    .click();
 
   await expect(page.getByText('Inscrição realizada.')).toBeVisible();
   expect(api.rankedMajorEventUpserts()).toEqual([
@@ -385,7 +388,8 @@ async function fulfillGraphql(
 
   if (query.includes('query CurrentUserEventForms')) {
     const targetType = stringVariable(variables, 'targetType');
-    const targetId = targetType === 'EVENT' ? stringVariable(variables, 'eventId') : stringVariable(variables, 'majorEventId');
+    const targetId =
+      targetType === 'EVENT' ? stringVariable(variables, 'eventId') : stringVariable(variables, 'majorEventId');
     await fulfillGraphqlData(route, {
       currentUserEventForms: standardSubscriptionFormsFixture().filter((form) =>
         form.links.some(

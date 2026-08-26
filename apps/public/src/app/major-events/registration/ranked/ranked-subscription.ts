@@ -14,6 +14,7 @@ import { EmojiService } from '../../../shared/emoji.service';
 import { RankedSubscriptionRankStep } from './rank-step';
 import { RankedSubscriptionSelectStep } from './select-step';
 import { RankedSubscriptionStore } from './registration.store';
+import { SubscriptionFormFlow } from '../standard/subscription-form-flow';
 
 @Component({
   selector: 'app-ranked-subscription',
@@ -28,6 +29,7 @@ import { RankedSubscriptionStore } from './registration.store';
     MarkdownComponent,
     RankedSubscriptionRankStep,
     RankedSubscriptionSelectStep,
+    SubscriptionFormFlow,
     RouterLink,
     RouterOutlet,
   ],

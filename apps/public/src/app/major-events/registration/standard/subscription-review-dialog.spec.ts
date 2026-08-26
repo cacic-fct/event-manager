@@ -3,7 +3,11 @@ import localePt from '@angular/common/locales/pt';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { createPublicEvent, createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
+import {
+  createPublicEvent,
+  createPublicMajorEvent,
+  createPublicMajorEventPrice,
+} from '@cacic-fct/event-manager-public-testing';
 import { EmojiService } from '../../../shared/emoji.service';
 import { createSubscriptionFlowFormFixtures } from './subscription-flow.fixtures';
 import { createSubscriptionFlowDraft, subscriptionFormKey } from './subscription-flow.models';
@@ -19,7 +23,12 @@ describe('SubscriptionReviewDialog', () => {
     draft.answersByKey[subscriptionFormKey(forms[1])] = [{ elementId: 'meal', value: 'yes' }];
     const close = vi.fn();
     const data: SubscriptionReviewDialogData = {
-      majorEvent: createPublicMajorEvent({ id: 'major-1', name: 'SECOMPP', emoji: '🎓' }),
+      majorEvent: createPublicMajorEvent({
+        id: 'major-1',
+        name: 'SECOMPP',
+        emoji: '🎓',
+        majorEventPrices: [createPublicMajorEventPrice()],
+      }),
       events: [createPublicEvent({ id: 'event-1', name: 'Oficina de Angular', emoji: '🧩' })],
       forms,
       draft,
@@ -42,11 +51,12 @@ describe('SubscriptionReviewDialog', () => {
     const content = fixture.nativeElement.textContent as string;
 
     expect(content).toContain('Oficina de Angular');
+    expect(content.replace(/\s+/g, ' ')).toContain('Estudante - R$ 25,00');
     expect(content).toContain('Tamanho da camiseta');
     expect(content).toContain('M');
     expect(content).toContain('Precisa de opção vegetariana?');
     expect(content).toContain('Sim');
-    expect(content).toContain('Contrato de concessão de licença');
+    expect(content).toContain('Contrato de concessão de licença de imagem');
     expect(fixture.nativeElement.querySelector('lib-event-form-renderer')).toBeNull();
 
     fixture.componentInstance.confirm();
@@ -91,5 +101,33 @@ describe('SubscriptionReviewDialog', () => {
 
     const component = TestBed.createComponent(SubscriptionReviewDialog).componentInstance;
     expect(component.answerRows(form).map((row) => row.answer)).toEqual(['legacy-option', 'Sem resposta']);
+  });
+
+  it('uses the same review surface for standalone events', async () => {
+    const event = createPublicEvent({ id: 'event-1', name: 'Oficina independente', emoji: '🧩' });
+    const data: SubscriptionReviewDialogData = {
+      event,
+      events: [event],
+      forms: [],
+      draft: { answersByKey: {}, imageLicenseAgreementAccepted: false },
+      paymentTier: null,
+      requireImageLicenseAgreement: false,
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionReviewDialog],
+      providers: [
+        provideNoopAnimations(),
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: EmojiService, useValue: { getTwemojiUrl: () => '/emoji.svg' } },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(SubscriptionReviewDialog);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Evento');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Oficina independente');
   });
 });
