@@ -62,14 +62,6 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
-    path: 'profile/wallet/add-card',
-    renderMode: RenderMode.Client,
-  },
-  {
-    path: 'profile/wallet/add-card/restaurant',
-    renderMode: RenderMode.Client,
-  },
-  {
     path: 'profile/forms/:formId',
     renderMode: RenderMode.Client,
   },

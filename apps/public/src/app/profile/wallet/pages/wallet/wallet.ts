@@ -29,7 +29,6 @@ import { WalletCard } from '../../components/card/wallet-card';
 import { WalletCardKind, WalletCardUser } from '../../components/card/wallet-card.types';
 import { OfflineCodeStateService } from '../../components/offline-code-card/offline-code-state.service';
 import { PrintDialog } from '../../dialogs/print/print-dialog';
-import { RestaurantCardService } from '../../services/restaurant-card.service';
 import { NetworkStatusService } from '../../../../shared/network-status.service';
 import { OfflineUserDataService } from '../../../../shared/offline-user-data.service';
 
@@ -60,7 +59,6 @@ export class Wallet {
   private readonly offlineUserData = inject(OfflineUserDataService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly restaurantCard = inject(RestaurantCardService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
@@ -114,15 +112,9 @@ export class Wallet {
     return isUndergraduate && Boolean(user?.enrollmentNumber);
   });
 
-  public readonly restaurantNumber = computed(() => {
-    const userId = this.cardUser()?.userId;
-    return userId ? this.restaurantCard.get(userId) : null;
-  });
-
   public readonly stackedCards = computed<readonly WalletCardKind[]>(() => {
     const cards: WalletCardKind[] = ['offline-code'];
     if (this.hasAcademicRecord()) cards.push('academic-record');
-    if (this.restaurantNumber()) cards.push('restaurant');
     return cards;
   });
 
@@ -137,11 +129,6 @@ export class Wallet {
       void this.offlineUserData.getOfflineSnapshot().then((snapshot) => {
         if (request === this.offlineSnapshotRequest) this.offlineSnapshot.set(snapshot);
       });
-    });
-
-    effect(() => {
-      const userId = this.cardUser()?.userId;
-      if (userId) void this.restaurantCard.load(userId);
     });
 
     this.destroyRef.onDestroy(() => {

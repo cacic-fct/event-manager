@@ -2,7 +2,6 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { expect, userEvent, within } from 'storybook/test';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
-import { RestaurantCardService } from '../../services/restaurant-card.service';
 import { createWalletStoryTotpSession, createWalletStoryUser } from '../../testing/wallet-story-fixtures';
 import { Wallet } from './wallet';
 import { NetworkStatusService } from '../../../../shared/network-status.service';
@@ -12,26 +11,22 @@ type WalletStoryArgs = {
   fullName: string;
   role: 'aluno-graduacao' | 'participant';
   enrollmentNumber: string;
-  restaurantClientNumber: string;
   identityDocument: string;
   picture: string;
   authenticated: boolean;
   networkOnline: boolean;
   offlineSnapshotAvailable: boolean;
-  restaurantCardAvailable: boolean;
 };
 
 const defaultArgs: WalletStoryArgs = {
   fullName: 'Marina da Silva',
   role: 'aluno-graduacao',
   enrollmentNumber: '00123456',
-  restaurantClientNumber: '000123456',
   identityDocument: '52998224725',
   picture: '',
   authenticated: true,
   networkOnline: true,
   offlineSnapshotAvailable: true,
-  restaurantCardAvailable: true,
 };
 
 const meta: Meta<WalletStoryArgs> = {
@@ -47,13 +42,11 @@ const meta: Meta<WalletStoryArgs> = {
     fullName: { control: 'text' },
     role: { control: 'select', options: ['aluno-graduacao', 'participant'] },
     enrollmentNumber: { control: 'text' },
-    restaurantClientNumber: { control: 'text' },
     identityDocument: { control: 'text' },
     picture: { control: 'text' },
     authenticated: { control: 'boolean' },
     networkOnline: { control: 'boolean' },
     offlineSnapshotAvailable: { control: 'boolean' },
-    restaurantCardAvailable: { control: 'boolean' },
   },
   decorators: [
     (story, context) =>
@@ -98,16 +91,6 @@ const meta: Meta<WalletStoryArgs> = {
                       }
                     : null,
                 ),
-            },
-          },
-          {
-            provide: RestaurantCardService,
-            useValue: {
-              load: () => undefined,
-              get: () =>
-                context.args.restaurantCardAvailable
-                  ? context.args.restaurantClientNumber.replace(/\D/g, '') || null
-                  : null,
             },
           },
           {
@@ -169,7 +152,7 @@ export const CardSelection: Story = {
 };
 
 export const ParticipantOnly: Story = {
-  args: { role: 'participant', enrollmentNumber: '', restaurantCardAvailable: false },
+  args: { role: 'participant', enrollmentNumber: '' },
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
 };
 
@@ -185,7 +168,6 @@ export const NoIdentityAvailable: Story = {
     offlineSnapshotAvailable: false,
     enrollmentNumber: '',
     identityDocument: '',
-    restaurantCardAvailable: false,
   },
   globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
 };
@@ -194,7 +176,6 @@ export const LongIdentityData: Story = {
   args: {
     fullName: 'Marina Aparecida de Souza e Silva Albuquerque dos Santos',
     enrollmentNumber: '202612345678901234',
-    restaurantClientNumber: '000123456789012345',
   },
   parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled', motion: 'reduced' },

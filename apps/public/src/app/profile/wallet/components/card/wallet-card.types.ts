@@ -7,7 +7,7 @@ export interface WalletCardUser {
   enrollmentNumber?: string | number | null;
 }
 
-export type WalletCardKind = 'eventos' | 'offline-code' | 'academic-record' | 'restaurant';
+export type WalletCardKind = 'eventos' | 'offline-code' | 'academic-record';
 
 export interface WalletCardBrand {
   readonly name: string;
@@ -28,11 +28,6 @@ export const WALLET_CARD_BRANDS: Readonly<Record<WalletCardKind, WalletCardBrand
   },
   'academic-record': {
     name: 'Registro Acadêmico',
-    imageSource: '/app/assets/unesp/unesp-symbol-white.svg',
-    imageClass: 'unesp-symbol',
-  },
-  restaurant: {
-    name: 'Cartão do R.U.',
     imageSource: '/app/assets/unesp/unesp-symbol-white.svg',
     imageClass: 'unesp-symbol',
   },

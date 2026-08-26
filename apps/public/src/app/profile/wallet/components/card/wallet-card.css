@@ -18,8 +18,7 @@
 }
 
 .wallet-ticket-offline-code,
-.wallet-ticket-academic-record,
-.wallet-ticket-restaurant {
+.wallet-ticket-academic-record {
   min-height: 17rem;
 }
 
@@ -43,13 +42,7 @@
   background: #006ba6;
 }
 
-.wallet-ticket-restaurant {
-  color: #edf8ff;
-  background: #005b91;
-}
-
-.wallet-ticket-academic-record app-wallet-card-header,
-.wallet-ticket-restaurant app-wallet-card-header {
+.wallet-ticket-academic-record app-wallet-card-header {
   color: #fff;
   background: #0093dd;
 }

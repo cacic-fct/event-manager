@@ -5,7 +5,6 @@ import { WalletAcademicRecordCard } from './wallet-academic-record-card';
 import { WalletCardHeader } from './wallet-card-header';
 import { WalletCardKind, WalletCardUser } from './wallet-card.types';
 import { WalletEventCard } from './wallet-event-card';
-import { WalletRestaurantCard } from './wallet-restaurant-card';
 
 @Component({
   selector: 'app-wallet-card',
@@ -15,7 +14,6 @@ import { WalletRestaurantCard } from './wallet-restaurant-card';
     WalletCardHeader,
     WalletEventCard,
     WalletOfflineCodeCard,
-    WalletRestaurantCard,
   ],
   host: {
     '[class]': "'wallet-ticket-' + kind()",
@@ -27,7 +25,6 @@ import { WalletRestaurantCard } from './wallet-restaurant-card';
 export class WalletCard {
   readonly user = input<WalletCardUser | null>(null);
   readonly kind = input<WalletCardKind>('eventos');
-  readonly restaurantNumber = input<string | null>(null);
   readonly stacked = input(false);
   readonly cardSelected = output<WalletCardKind>();
 

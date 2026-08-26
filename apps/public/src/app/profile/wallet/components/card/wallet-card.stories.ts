@@ -7,7 +7,6 @@ import { createWalletStoryTotpSession, createWalletStoryUser } from '../../testi
 
 type WalletCardStoryArgs = {
   kind: WalletCardKind;
-  restaurantNumber: string;
   user: WalletCardUser;
 };
 
@@ -32,12 +31,10 @@ const meta: Meta<WalletCardStoryArgs> = {
   ],
   args: {
     kind: 'eventos',
-    restaurantNumber: '000123456',
     user: createWalletStoryUser(),
   },
   argTypes: {
-    kind: { control: 'select', options: ['eventos', 'offline-code', 'academic-record', 'restaurant'] },
-    restaurantNumber: { control: 'text' },
+    kind: { control: 'select', options: ['eventos', 'offline-code', 'academic-record'] },
     user: { control: 'object' },
   },
 };
@@ -81,12 +78,5 @@ export const AcademicRecord: Story = {
   args: { kind: 'academic-record' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText(/registro acadêmico/i)).toBeVisible();
-  },
-};
-
-export const Restaurant: Story = {
-  args: { kind: 'restaurant' },
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('000123456')).toBeVisible();
   },
 };

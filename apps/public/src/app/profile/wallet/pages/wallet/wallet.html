@@ -22,9 +22,6 @@
     <mat-icon>print</mat-icon>
   </button>
   }
-  <a matIconButton routerLink="/profile/wallet/add-card" aria-label="Adicionar cartão" matTooltip="Adicionar cartão">
-    <mat-icon>add</mat-icon>
-  </a>
   @if (serviceWorkerService.hasServiceWorker()) {
   <button matIconButton aria-label="Disponível off-line" matTooltip="Disponível off-line" (click)="availableOffline()">
     <mat-icon>cloud_done</mat-icon>
@@ -64,7 +61,6 @@
       [style.--wallet-stack-index]="cardIndex"
       [user]="cardUser()"
       [kind]="card"
-      [restaurantNumber]="restaurantNumber()"
       [stacked]="true"
       (cardSelected)="selectCard($event)" />
     }
@@ -74,7 +70,6 @@
     <app-wallet-card
       [user]="cardUser()"
       [kind]="selectedCard()!"
-      [restaurantNumber]="restaurantNumber()"
       (cardSelected)="selectCard($event)" />
   </section>
   }

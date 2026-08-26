@@ -2,7 +2,7 @@ import { Service, inject } from '@angular/core';
 import type { EventTargetType, PublicEvent, PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { CalendarDataCacheService } from './calendar-data-cache.service';
-import { OfflineAttendanceDetail, OfflineRestaurantCard, OfflineUserSnapshot } from './public-data-schema';
+import { OfflineAttendanceDetail, OfflineUserSnapshot } from './public-data-schema';
 import { UserOfflineDataService } from './user-offline-data.service';
 import { PublicMapDataCacheService } from './public-map-data-cache.service';
 
@@ -72,14 +72,6 @@ export class PublicDataAccessService {
 
   async getLatestUserSnapshot(userId?: string): Promise<OfflineUserSnapshot | null> {
     return this.userData.getLatestUserSnapshot(userId);
-  }
-
-  async replaceRestaurantCard(card: OfflineRestaurantCard): Promise<void> {
-    await this.userData.replaceRestaurantCard(card);
-  }
-
-  async getRestaurantCard(userId: string): Promise<OfflineRestaurantCard | null> {
-    return this.userData.getRestaurantCard(userId);
   }
 
   async replaceAttendanceFeed(userId: string, feed: SubscriptionsFeed): Promise<void> {

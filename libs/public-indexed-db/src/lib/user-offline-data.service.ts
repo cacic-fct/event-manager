@@ -1,7 +1,7 @@
 import { Service, inject } from '@angular/core';
 import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { OfflineAttendanceDetail, OfflineRestaurantCard, OfflineUserSnapshot } from './public-data-schema';
+import { OfflineAttendanceDetail, OfflineUserSnapshot } from './public-data-schema';
 import { PublicDatabaseProvider } from './public-database-provider';
 
 @Service()
@@ -28,24 +28,6 @@ export class UserOfflineDataService {
     }
 
     return (await database.userSnapshots.orderBy('updatedAt').last()) ?? null;
-  }
-
-  async replaceRestaurantCard(card: OfflineRestaurantCard): Promise<void> {
-    const database = this.databaseProvider.getDatabase();
-    if (!database) {
-      return;
-    }
-
-    await database.restaurantCards.put(card);
-  }
-
-  async getRestaurantCard(userId: string): Promise<OfflineRestaurantCard | null> {
-    const database = this.databaseProvider.getDatabase();
-    if (!database) {
-      return null;
-    }
-
-    return (await database.restaurantCards.get(userId)) ?? null;
   }
 
   async replaceAttendanceFeed(userId: string, feed: SubscriptionsFeed): Promise<void> {
@@ -116,7 +98,6 @@ export class UserOfflineDataService {
         database.userSnapshots,
         database.attendanceFeeds,
         database.attendanceDetails,
-        database.restaurantCards,
         database.totpSeeds,
         database.publicMapUserEventIds,
         database.myDaySnapshots,
@@ -125,7 +106,6 @@ export class UserOfflineDataService {
         await database.userSnapshots.clear();
         await database.attendanceFeeds.clear();
         await database.attendanceDetails.clear();
-        await database.restaurantCards.clear();
         await database.totpSeeds.clear();
         await database.publicMapUserEventIds.clear();
         await database.myDaySnapshots.clear();

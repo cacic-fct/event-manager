@@ -47,12 +47,6 @@ export interface OfflineUserSnapshot {
   updatedAt: number;
 }
 
-export interface OfflineRestaurantCard {
-  userId: string;
-  cardNumber: string;
-  updatedAt: number;
-}
-
 export type OfflineAttendanceDetail =
   | { eventType: 'event'; details: EventDetails }
   | { eventType: 'event-group'; details: EventGroupDetails }
@@ -318,7 +312,6 @@ export class PublicDataDatabase extends Dexie {
   calendarEvents!: Table<CachedCalendarEvent, string>;
   syncMetadata!: Table<PublicDataSyncMetadata, string>;
   userSnapshots!: Table<OfflineUserSnapshot, string>;
-  restaurantCards!: Table<OfflineRestaurantCard, string>;
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
   featureFlagCache!: Table<FeatureFlagCacheRecord, string>;
@@ -440,7 +433,6 @@ export class PublicDataDatabase extends Dexie {
       calendarEvents: 'id, startDate, cachedAt',
       syncMetadata: 'key',
       userSnapshots: 'userId, updatedAt',
-      restaurantCards: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
@@ -465,7 +457,6 @@ export class PublicDataDatabase extends Dexie {
         calendarEvents: 'id, startDate, cachedAt',
         syncMetadata: 'key',
         userSnapshots: 'userId, updatedAt',
-        restaurantCards: 'userId, updatedAt',
         attendanceFeeds: 'key, userId, updatedAt',
         attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
         featureFlagCache: 'key, updatedAt',
@@ -498,7 +489,6 @@ export class PublicDataDatabase extends Dexie {
       calendarEvents: 'id, startDate, cachedAt',
       syncMetadata: 'key',
       userSnapshots: 'userId, updatedAt',
-      restaurantCards: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
@@ -527,7 +517,6 @@ export class PublicDataDatabase extends Dexie {
         calendarEvents: 'id, startDate, cachedAt',
         syncMetadata: 'key',
         userSnapshots: 'userId, updatedAt',
-        restaurantCards: 'userId, updatedAt',
         attendanceFeeds: 'key, userId, updatedAt',
         attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
         featureFlagCache: 'key, updatedAt',
@@ -562,7 +551,6 @@ export class PublicDataDatabase extends Dexie {
       calendarEvents: 'id, startDate, cachedAt',
       syncMetadata: 'key',
       userSnapshots: 'userId, updatedAt',
-      restaurantCards: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',
@@ -593,7 +581,6 @@ export class PublicDataDatabase extends Dexie {
       calendarEvents: 'id, startDate, cachedAt',
       syncMetadata: 'key',
       userSnapshots: 'userId, updatedAt',
-      restaurantCards: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',

@@ -72,14 +72,6 @@ export const Decorative: Story = {
   },
 };
 
-export const Restaurantcode128: Story = {
-  args: {
-    userId: '000123456',
-    barcodeType: 'code128',
-    label: 'Código de barras do Cartão do R.U.',
-  },
-};
-
 export const EmptyUser: Story = {
   args: {
     userId: '',

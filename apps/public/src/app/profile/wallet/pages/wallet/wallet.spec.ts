@@ -70,6 +70,12 @@ describe('Wallet', () => {
     expect(component).toBeTruthy();
   });
 
+  it('does not expose the retired restaurant card or add-card navigation', () => {
+    expect(fixture.nativeElement.querySelector('a[aria-label="Adicionar cartão"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Restaurante Universitário');
+    expect(component.stackedCards()).toEqual(['offline-code']);
+  });
+
   it('prints immediately when the page is not controlled by a service worker', () => {
     component.print();
 
