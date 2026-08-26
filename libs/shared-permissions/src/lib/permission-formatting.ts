@@ -86,6 +86,8 @@ export function getPermissionScopeLabel(scope: string): string {
       return 'Revisar';
     case 'operate':
       return 'Operar';
+    case 'contact-read':
+      return 'Ver contato';
     case 'assign-representative':
       return 'Atribuir representante';
     default:
@@ -125,6 +127,8 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Permissão do Event Manager';
     case 'place-preset':
       return 'Local';
+    case 'prize-draw':
+      return 'Sorteio';
     case 'receipt':
       return 'Comprovante';
     case 'subscription':
@@ -180,6 +184,8 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'admin_panel_settings';
     case 'place-preset':
       return 'place';
+    case 'prize-draw':
+      return 'rewarded_ads';
     case 'receipt':
       return 'receipt_long';
     case 'subscription':
@@ -245,6 +251,8 @@ export function getPermissionScopeIcon(scope: string): string {
       return 'rate_review';
     case 'operate':
       return 'sports_score';
+    case 'contact-read':
+      return 'contact_phone';
     case 'assign-representative':
       return 'manage_accounts';
     default:

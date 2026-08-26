@@ -1,0 +1,228 @@
+enum PrizeDrawTargetType {
+  EVENT
+  MAJOR_EVENT
+}
+
+enum PrizeDrawChanceMode {
+  EQUAL
+  WEIGHTED
+}
+
+enum PrizeDrawSpeed {
+  INSTANT
+  QUICK
+  DRAMATIC
+}
+
+enum PrizeDrawNotificationStatus {
+  NOT_REQUESTED
+  PENDING
+  SENT
+  CANCELLED
+  FAILED
+  DELETED
+}
+
+model PrizeDraw {
+  id          String  @id @default(uuid(7))
+  title       String
+  description String?
+
+  targetType   PrizeDrawTargetType
+  eventId      String?
+  event        Event?               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+  majorEvent   MajorEvent?          @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+
+  includePresent       Boolean @default(true)
+  includeSubscribers   Boolean @default(false)
+  includeManualEntries Boolean @default(false)
+
+  chanceMode              PrizeDrawChanceMode @default(EQUAL)
+  spinLimit               Int?
+  removeWinnerAfterDraw   Boolean             @default(false)
+  defaultSpeed            PrizeDrawSpeed       @default(QUICK)
+  dramaticCountdownSeconds Int                 @default(3)
+  notifyWinner            Boolean              @default(false)
+
+  frozenAt    DateTime?
+  frozenById  String?
+  unfrozenAt  DateTime?
+  revision    Int       @default(0)
+
+  plannedSpins    PrizeDrawPlannedSpin[]
+  manualEntries   PrizeDrawManualEntry[]
+  weightOverrides PrizeDrawWeightOverride[]
+  excludedPeople  PrizeDrawExcludedPerson[]
+  frozenEntries   PrizeDrawFrozenEntry[]
+  spins           PrizeDrawSpin[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([eventId, deletedAt])
+  @@index([majorEventId, deletedAt])
+  @@index([deletedAt, updatedAt])
+  @@map("prize_draws")
+}
+
+model PrizeDrawPlannedSpin {
+  id          String @id @default(uuid(7))
+  drawId      String
+  draw        PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  position    Int
+  description String?
+  speed       PrizeDrawSpeed
+  countdownSeconds Int?
+  spins       PrizeDrawSpin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([drawId, position])
+  @@index([drawId])
+  @@map("prize_draw_planned_spins")
+}
+
+model PrizeDrawManualEntry {
+  id      String @id @default(uuid(7))
+  drawId  String
+  draw    PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  personId String?
+  person   People? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  name     String
+  weight   Int     @default(1)
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([drawId, personId])
+  @@index([drawId])
+  @@index([personId])
+  @@map("prize_draw_manual_entries")
+}
+
+model PrizeDrawWeightOverride {
+  id       String @id @default(uuid(7))
+  drawId   String
+  draw     PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  personId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Cascade)
+  weight   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([drawId, personId])
+  @@index([personId])
+  @@map("prize_draw_weight_overrides")
+}
+
+model PrizeDrawExcludedPerson {
+  id       String @id @default(uuid(7))
+  drawId   String
+  draw     PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  personId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([drawId, personId])
+  @@index([personId])
+  @@map("prize_draw_excluded_people")
+}
+
+model PrizeDrawFrozenEntry {
+  id          String @id @default(uuid(7))
+  drawId      String
+  draw        PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  identityKey String
+  personId    String?
+  person      People? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  displayName String
+  weight      Int
+  sources     String[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([drawId, identityKey])
+  @@index([drawId])
+  @@index([personId])
+  @@map("prize_draw_frozen_entries")
+}
+
+model PrizeDrawSpin {
+  id            String @id @default(uuid(7))
+  drawId        String
+  draw          PrizeDraw @relation(fields: [drawId], references: [id], onDelete: Restrict)
+  plannedSpinId String?
+  plannedSpin   PrizeDrawPlannedSpin? @relation(fields: [plannedSpinId], references: [id], onDelete: SetNull)
+  sequence      Int
+
+  description          String?
+  speed                PrizeDrawSpeed
+  countdownSeconds     Int?
+  repeatedSpinIndex    Int
+  reelDurationMs       Int
+  preRevealPauseMs     Int
+  chanceMode           PrizeDrawChanceMode
+  removeWinnerAfterDraw Boolean
+
+  winnerEntryKey   String
+  winnerPersonId   String?
+  winnerPerson     People? @relation("PrizeDrawWinner", fields: [winnerPersonId], references: [id], onDelete: SetNull)
+  winnerDisplayName String
+  winnerWeight      Int
+
+  entrantCount        Int
+  totalWeight         Int
+  duplicateEntryCount Int
+  eligibilityFrozenAt DateTime?
+
+  drawnAt   DateTime @default(now())
+  drawnById String
+  undoneAt  DateTime?
+  undoneById String?
+
+  notificationTransactionId String?
+  notificationStatus        PrizeDrawNotificationStatus @default(NOT_REQUESTED)
+  presentationAcknowledgedAt DateTime?
+  undoNotificationTransactionId String?
+  undoNotificationStatus        PrizeDrawNotificationStatus @default(NOT_REQUESTED)
+
+  entries PrizeDrawSpinEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([drawId, sequence])
+  @@index([drawId, undoneAt, sequence])
+  @@index([winnerPersonId])
+  @@index([notificationStatus, presentationAcknowledgedAt])
+  @@index([plannedSpinId])
+  @@map("prize_draw_spins")
+}
+
+model PrizeDrawSpinEntry {
+  id          String @id @default(uuid(7))
+  spinId      String
+  spin        PrizeDrawSpin @relation(fields: [spinId], references: [id], onDelete: Cascade)
+  identityKey String
+  personId    String?
+  person      People? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  displayName String
+  weight      Int
+  sources     String[]
+  winner      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([spinId, identityKey])
+  @@index([spinId])
+  @@index([personId])
+  @@map("prize_draw_spin_entries")
+}

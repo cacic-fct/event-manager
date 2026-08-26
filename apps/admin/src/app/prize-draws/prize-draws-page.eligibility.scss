@@ -1,0 +1,26 @@
+.excluded-people {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+}
+
+.excluded-people p {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.excluded-people mat-list {
+  max-height: 18rem;
+}
+
+.planned-speed-setting {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.planned-speed-setting small {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.3;
+}

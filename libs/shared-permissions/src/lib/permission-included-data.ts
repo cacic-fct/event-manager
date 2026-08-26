@@ -27,6 +27,42 @@ const RECEIPT_CONTEXT_FIELDS = [
 export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
   Partial<Record<Permission, readonly PermissionIncludedData[]>>
 > = {
+  [Permission.PrizeDraw.Read]: [
+    {
+      label: 'Configuração e resultados do sorteio',
+      fields: ['título', 'vínculo', 'critérios', 'lista elegível', 'pesos', 'resultados e IDs de auditoria'],
+    },
+  ],
+  [Permission.PrizeDraw.Create]: [
+    {
+      label: 'Nova configuração de sorteio',
+      fields: ['vínculo', 'critérios', 'entradas manuais', 'pesos e experiência de apresentação'],
+    },
+  ],
+  [Permission.PrizeDraw.Update]: [
+    {
+      label: 'Configuração do sorteio',
+      fields: ['critérios', 'congelamento da lista', 'entradas manuais', 'pesos e giros planejados'],
+    },
+  ],
+  [Permission.PrizeDraw.Operate]: [
+    {
+      label: 'Operação do sorteio',
+      fields: ['lista elegível', 'resultado seguro', 'modo demonstração e liberação da notificação'],
+    },
+  ],
+  [Permission.PrizeDraw.Undo]: [
+    {
+      label: 'Correção de resultado',
+      fields: ['último giro', 'vencedor e transações de notificação relacionadas'],
+    },
+  ],
+  [Permission.PrizeDraw.ContactRead]: [
+    {
+      label: 'Contato da pessoa vencedora',
+      fields: ['nome completo', 'e-mail principal', 'telefone e ID acadêmico'],
+    },
+  ],
   [Permission.RelatedPerson.Read]: [
     {
       label: 'Pessoas relacionadas ao escopo',

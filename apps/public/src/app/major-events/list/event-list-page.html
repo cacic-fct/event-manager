@@ -76,6 +76,11 @@
           <mat-icon>sports</mat-icon>
           Ver torneio
         </a>
+        } @if (hasPrizeDraws(majorEvent.id)) {
+        <a mat-stroked-button [routerLink]="['/draws', 'major-event', majorEvent.id]">
+          <mat-icon>rewarded_ads</mat-icon>
+          Sorteios
+        </a>
         } @if (subscription && canEditSubscription(majorEvent, subscription)) {
         <a mat-stroked-button [routerLink]="subscriptionRoute">
           <mat-icon>edit</mat-icon>

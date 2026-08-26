@@ -26,6 +26,8 @@ export type AuthorizationResourceContext = {
   eventFormId?: string;
   eventFormLinkId?: string;
   eventFormResponseId?: string;
+  prizeDrawId?: string;
+  prizeDrawSpinId?: string;
   sportsTournamentId?: string;
   sportsCategoryId?: string;
   sportsTeamId?: string;
@@ -545,6 +547,14 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       await this.addEventFormResponseTarget(target, context.eventFormResponseId);
     }
 
+    if (context.prizeDrawId) {
+      await this.addPrizeDrawTarget(target, context.prizeDrawId);
+    }
+
+    if (context.prizeDrawSpinId) {
+      await this.addPrizeDrawSpinTarget(target, context.prizeDrawSpinId);
+    }
+
     if (context.sportsTournamentId) {
       await this.addSportsTournamentTarget(target, context.sportsTournamentId);
     }
@@ -638,6 +648,9 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
         return true;
       case 'event-form':
         await this.addEventFormTarget(target, id);
+        return true;
+      case 'prize-draw':
+        await this.addPrizeDrawTarget(target, id);
         return true;
       case 'sports-tournament':
         await this.addSportsTournamentTarget(target, id);
@@ -932,6 +945,29 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     await this.addEventFormTarget(target, response.formId);
   }
 
+  private async addPrizeDrawTarget(target: ResolvedGrantTarget, drawId: string): Promise<void> {
+    const draw = await this.prisma.prizeDraw.findUnique({
+      where: { id: drawId },
+      select: { eventId: true, majorEventId: true },
+    });
+    if (draw?.eventId) {
+      await this.addEventTarget(target, draw.eventId);
+    }
+    if (draw?.majorEventId) {
+      target.majorEventIds.add(draw.majorEventId);
+    }
+  }
+
+  private async addPrizeDrawSpinTarget(target: ResolvedGrantTarget, spinId: string): Promise<void> {
+    const spin = await this.prisma.prizeDrawSpin.findUnique({
+      where: { id: spinId },
+      select: { drawId: true },
+    });
+    if (spin) {
+      await this.addPrizeDrawTarget(target, spin.drawId);
+    }
+  }
+
   private matchesScopedGrant(grant: ActiveGrant, target: ResolvedGrantTarget): boolean {
     switch (grant.scope) {
       case EventManagerPermissionScope.EVENT:
@@ -1011,6 +1047,14 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
           case 'responseId':
           case 'eventFormResponseId':
             context.eventFormResponseId ??= id;
+            break;
+          case 'drawId':
+          case 'prizeDrawId':
+            context.prizeDrawId ??= id;
+            break;
+          case 'spinId':
+          case 'prizeDrawSpinId':
+            context.prizeDrawSpinId ??= id;
             break;
           case 'targetId':
             context.targetId ??= id;

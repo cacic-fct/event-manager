@@ -16,6 +16,7 @@ model MajorEvent {
 
   subscriptions                 MajorEventSubscription[]
   sportsTournament              SportsTournament?
+  prizeDraws                    PrizeDraw[]
   requiresImageLicenseAgreement Boolean                  @default(true)
   subscriptionStartDate         DateTime?
   subscriptionEndDate           DateTime?

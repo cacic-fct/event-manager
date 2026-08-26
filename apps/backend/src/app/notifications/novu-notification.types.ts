@@ -57,6 +57,17 @@ export type OnlineAttendanceAvailableNotification = {
   recipients: NotificationRecipient[];
 };
 
+export type PrizeDrawNotification = {
+  transactionId: string;
+  drawId: string;
+  spinId: string;
+  drawTitle: string;
+  spinDescription?: string | null;
+  targetType: 'EVENT' | 'MAJOR_EVENT';
+  targetId: string;
+  recipient: NotificationRecipient;
+};
+
 export type NovuTriggerResponse = {
   acknowledged: boolean;
   status: string;

@@ -231,6 +231,16 @@ import {
 } from './sports/sports-mutations.resolver';
 import { SportsPaymentService } from './sports/sports-payment.service';
 import { SportsTeamChangeService } from './sports/teams/sports-team-change.service';
+import { PrizeDrawResolver } from './prize-draw/prize-draw.resolver';
+import { PrizeDrawService } from './prize-draw/prize-draw.service';
+import { PrizeDrawEligibilityService } from './prize-draw/prize-draw-eligibility.service';
+import { PrizeDrawRealtimeService } from './prize-draw/prize-draw-realtime.service';
+import { PrizeDrawRealtimeController } from './prize-draw/prize-draw-realtime.controller';
+import {
+  PRIZE_DRAW_NOTIFICATION_QUEUE,
+  PrizeDrawNotificationJobsService,
+} from './prize-draw/prize-draw-notification-jobs.service';
+import { PrizeDrawNotificationJobsProcessor } from './prize-draw/prize-draw-notification-jobs.processor';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -243,6 +253,7 @@ const backendQueueNames = [
   CERTIFICATE_NOTIFICATION_QUEUE,
   ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
   LGPD_STORAGE_CLEANUP_QUEUE,
+  PRIZE_DRAW_NOTIFICATION_QUEUE,
 ];
 const queueImports = useInMemoryTestInfra
   ? []
@@ -277,6 +288,9 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: LGPD_STORAGE_CLEANUP_QUEUE,
       }),
+      BullModule.registerQueue({
+        name: PRIZE_DRAW_NOTIFICATION_QUEUE,
+      }),
     ];
 const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
 const queueProcessorProviders = useInMemoryTestInfra
@@ -289,6 +303,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       CertificateNotificationJobsProcessor,
       OnlineAttendanceNotificationJobsProcessor,
       LgpdStorageCleanupProcessor,
+      PrizeDrawNotificationJobsProcessor,
     ];
 const schedulerProviders = useInMemoryTestInfra
   ? []
@@ -369,6 +384,7 @@ const schedulerProviders = useInMemoryTestInfra
     PublicSportsTeamLogoController,
     SportsTeamRepresentativeLogoController,
     SportsMatchOverlayController,
+    PrizeDrawRealtimeController,
   ],
   providers: [
     HealthService,
@@ -462,6 +478,11 @@ const schedulerProviders = useInMemoryTestInfra
     SportsReadService,
     SportsTeamLogoService,
     SportsMatchOverlayService,
+    PrizeDrawResolver,
+    PrizeDrawService,
+    PrizeDrawEligibilityService,
+    PrizeDrawRealtimeService,
+    PrizeDrawNotificationJobsService,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,

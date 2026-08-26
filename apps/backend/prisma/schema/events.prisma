@@ -64,6 +64,7 @@ model Event {
   autoSubscribe                 Boolean                                @default(false)
   majorEventSelections          MajorEventSubscriptionEventSelection[]
   sportsMatch                   SportsMatch?
+  prizeDraws                    PrizeDraw[]
 
   shouldIssueCertificate                          Boolean             @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)

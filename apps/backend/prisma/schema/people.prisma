@@ -29,6 +29,12 @@ model People {
   sportsOfficialAssignments    SportsOfficialAssignment[]
   sportsMatchActions           SportsMatchAction[]
   sportsPlayerApplications     SportsPlayerApplication[]
+  prizeDrawManualEntries       PrizeDrawManualEntry[]
+  prizeDrawWeightOverrides     PrizeDrawWeightOverride[]
+  prizeDrawExclusions          PrizeDrawExcludedPerson[]
+  prizeDrawFrozenEntries       PrizeDrawFrozenEntry[]
+  prizeDrawSpinEntries         PrizeDrawSpinEntry[]
+  prizeDrawWins                PrizeDrawSpin[]           @relation("PrizeDrawWinner")
 
   // Merge tracking
   mergedIntoId String?

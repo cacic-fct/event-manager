@@ -66,6 +66,11 @@
       <mat-icon>workspace_premium</mat-icon>
       Certificados
     </button>
+    } @if (currentState.hasPrizeDraws) {
+    <a mat-stroked-button [routerLink]="prizeDrawRoute(detail)">
+      <mat-icon>rewarded_ads</mat-icon>
+      Sorteios
+    </a>
     } @if (detail.isSubscribed && detail.events.length === 1 && detail.events[0].canRegisterAttendance) {
     <button mat-stroked-button type="button" (click)="registerAttendanceLater()">
       <mat-icon>how_to_reg</mat-icon>

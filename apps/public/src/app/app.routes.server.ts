@@ -10,6 +10,18 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
   {
+    path: 'draws/event/:eventId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'draws/event-group/:eventGroupId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'draws/major-event/:majorEventId',
+    renderMode: RenderMode.Server,
+  },
+  {
     path: 'tournament/:tournamentId',
     renderMode: RenderMode.Server,
   },

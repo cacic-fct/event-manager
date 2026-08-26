@@ -64,6 +64,12 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.PlacePreset.Update,
   Permission.PlacePreset.Merge,
   Permission.PlacePreset.Delete,
+  Permission.PrizeDraw.Read,
+  Permission.PrizeDraw.Create,
+  Permission.PrizeDraw.Update,
+  Permission.PrizeDraw.Operate,
+  Permission.PrizeDraw.Undo,
+  Permission.PrizeDraw.ContactRead,
   Permission.Receipt.Read,
   Permission.Receipt.Approve,
   Permission.Receipt.Reject,
@@ -169,6 +175,12 @@ const ALL_GRANT_SCOPES = Object.values(EventManagerPermissionGrantScope);
 export const EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY: Readonly<
   Partial<Record<Permission, readonly EventManagerPermissionGrantScope[]>>
 > = {
+  [Permission.PrizeDraw.Read]: ALL_GRANT_SCOPES,
+  [Permission.PrizeDraw.Create]: ALL_GRANT_SCOPES,
+  [Permission.PrizeDraw.Update]: ALL_GRANT_SCOPES,
+  [Permission.PrizeDraw.Operate]: ALL_GRANT_SCOPES,
+  [Permission.PrizeDraw.Undo]: ALL_GRANT_SCOPES,
+  [Permission.PrizeDraw.ContactRead]: ALL_GRANT_SCOPES,
   [Permission.SportsTournament.Read]: SPORTS_MATCH_SCOPES,
   [Permission.SportsTournament.Create]: GLOBAL_AND_MAJOR_EVENT_SCOPES,
   [Permission.SportsTournament.Update]: GLOBAL_AND_MAJOR_EVENT_SCOPES,

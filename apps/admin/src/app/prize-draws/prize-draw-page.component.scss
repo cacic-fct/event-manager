@@ -1,0 +1,138 @@
+:host {
+  display: block;
+  min-height: 100%;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.draw-stage {
+  display: grid;
+  gap: 1.5rem;
+  width: min(72rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 4rem;
+}
+
+.draw-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.draw-header h1,
+.draw-header p {
+  margin-top: 0;
+}
+
+.draw-header h1 {
+  margin-bottom: 0.35rem;
+  font: var(--mat-sys-headline-medium);
+  text-wrap: balance;
+}
+
+.draw-header p {
+  max-width: 68ch;
+  margin-bottom: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.draw-header .target-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  font: var(--mat-sys-label-large);
+}
+
+.draw-header .target-name mat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+}
+
+.reel-context {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  text-align: center;
+}
+
+.reel-context > span,
+.reel-context > small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.reel-context > strong {
+  font: var(--mat-sys-title-large);
+}
+
+.reel-context > small {
+  font-family: 'Source Code Pro Variable', monospace;
+  overflow-wrap: anywhere;
+}
+
+.draw-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.draw-actions button {
+  min-width: 12rem;
+}
+
+.demo-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: -0.5rem 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.demo-mode mat-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  font-size: 1.2rem;
+}
+
+.completed-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: min(42rem, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+  background: var(--mat-sys-surface);
+}
+
+.completed-state div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.completed-state span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 600px) {
+  .draw-stage {
+    width: min(100% - 1rem, 72rem);
+    padding-top: 0.75rem;
+  }
+
+  .draw-header {
+    display: grid;
+  }
+
+  .draw-actions,
+  .draw-actions button {
+    width: 100%;
+  }
+}

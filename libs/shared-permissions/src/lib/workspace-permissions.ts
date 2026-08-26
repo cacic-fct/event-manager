@@ -20,6 +20,7 @@ export const WorkspacePermissionTab = {
   AuditLogs: 'audit-logs',
   Notifications: 'notifications',
   Preferences: 'preferences',
+  PrizeDraws: 'prize-draws',
 } as const;
 
 export type WorkspacePermissionTab = (typeof WorkspacePermissionTab)[keyof typeof WorkspacePermissionTab];
@@ -45,6 +46,7 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
   Permission.MergeCandidate.Read,
   Permission.Person.Read,
   Permission.PlacePreset.Read,
+  Permission.PrizeDraw.Read,
   Permission.Receipt.Read,
   Permission.Subscription.Read,
   Permission.SportsTournament.Read,
@@ -224,6 +226,19 @@ export const WORKSPACE_TAB_PERMISSIONS = [
       Permission.SportsMatch.Delete,
       Permission.SportsOfficial.Delete,
     ],
+  },
+  {
+    id: WorkspacePermissionTab.PrizeDraws,
+    label: 'Sorteios',
+    read: [Permission.PrizeDraw.Read, Permission.Event.Read, Permission.MajorEvent.Read],
+    edit: [
+      Permission.PrizeDraw.Create,
+      Permission.PrizeDraw.Update,
+      Permission.PrizeDraw.Operate,
+      Permission.PrizeDraw.Undo,
+      Permission.PrizeDraw.ContactRead,
+    ],
+    delete: [],
   },
   {
     id: WorkspacePermissionTab.Places,

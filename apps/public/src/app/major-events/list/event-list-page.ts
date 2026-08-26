@@ -13,10 +13,11 @@ import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { forkJoin, map, of } from 'rxjs';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
+import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 
 type MajorEventPageState =
   | { status: 'loading' }
@@ -24,6 +25,7 @@ type MajorEventPageState =
       status: 'ready';
       events: PublicMajorEvent[];
       subscriptions: CurrentUserMajorEventSubscription[];
+      prizeDrawTargetIds: string[];
       preview?: { expiresAt: string } | null;
     }
   | { status: 'error'; message: string };
@@ -59,6 +61,7 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly route = inject(ActivatedRoute);
 
   readonly emoji = inject(EmojiService);
@@ -102,6 +105,11 @@ export class MajorEvent {
 
   subscriptionFor(majorEventId: string): CurrentUserMajorEventSubscription | null {
     return this.subscriptionsByMajorEventId().get(majorEventId) ?? null;
+  }
+
+  hasPrizeDraws(majorEventId: string): boolean {
+    const state = this.pageState();
+    return state.status === 'ready' && state.prizeDrawTargetIds.includes(majorEventId);
   }
 
   isSubscriptionOpen(majorEvent: PublicMajorEvent): boolean {
@@ -197,7 +205,7 @@ export class MajorEvent {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: ({ events, expiresAt }) =>
-            this.pageState.set({ status: 'ready', events, subscriptions: [], preview: { expiresAt } }),
+            this.pageState.set({ status: 'ready', events, subscriptions: [], prizeDrawTargetIds: [], preview: { expiresAt } }),
           error: (error: unknown) =>
             this.pageState.set({
               status: 'error',
@@ -214,10 +222,21 @@ export class MajorEvent {
       events: this.api.listMajorEvents(threeMonthsAgo.toISOString()),
       subscriptions: this.isAuthenticated() ? this.api.listCurrentUserSubscriptions() : of([]),
     })
+      .pipe(
+        switchMap((result) =>
+          this.prizeDrawsApi.availability({ majorEventIds: result.events.map((event) => event.id) }).pipe(
+            catchError(() => of([])),
+            map((availability) => ({
+              ...result,
+              prizeDrawTargetIds: availability.filter((item) => item.drawCount > 0).map((item) => item.targetId),
+            })),
+          ),
+        ),
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ events, subscriptions }) => {
-          this.pageState.set({ status: 'ready', events, subscriptions });
+        next: ({ events, subscriptions, prizeDrawTargetIds }) => {
+          this.pageState.set({ status: 'ready', events, subscriptions, prizeDrawTargetIds });
           this.analytics.trackEvent('major_event_list_viewed', {
             major_event_count: events.length,
             authenticated: this.isAuthenticated(),

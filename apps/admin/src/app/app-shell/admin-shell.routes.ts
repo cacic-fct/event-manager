@@ -20,6 +20,7 @@ const globalOperationsData = getFeatureRouteData('global-operations');
 const permissionsData = getFeatureRouteData('permissions');
 const auditLogsData = getFeatureRouteData('audit-logs');
 const preferencesData = getFeatureRouteData('preferences');
+const prizeDrawsData = getFeatureRouteData('prize-draws');
 
 function getFeatureRouteData(id: NavigationLinkId) {
   const item = navigationLinkItems.find((navItem) => navItem.id === id);
@@ -136,6 +137,15 @@ export const routes: Route[] = [
       ),
       ...guardedFeatureRoute(formsData.path, formsData, () =>
         import('../forms/forms-page.component').then((m) => m.FormsPageComponent),
+      ),
+      ...guardedFeatureRoute(prizeDrawsData.path, prizeDrawsData, () =>
+        import('../prize-draws/prize-draws-page.component').then((m) => m.PrizeDrawsPageComponent),
+      ),
+      ...guardedFeatureRoute(`${prizeDrawsData.path}/:drawId/draw`, prizeDrawsData, () =>
+        import('../prize-draws/prize-draw-page.component').then((m) => m.PrizeDrawPageComponent),
+      ),
+      ...guardedFeatureRoute(`${prizeDrawsData.path}/:drawId`, prizeDrawsData, () =>
+        import('../prize-draws/prize-draws-page.component').then((m) => m.PrizeDrawsPageComponent),
       ),
       ...guardedFeatureRoute(`${formsData.path}/:formId`, formsData, () =>
         import('../forms/forms-page.component').then((m) => m.FormsPageComponent),

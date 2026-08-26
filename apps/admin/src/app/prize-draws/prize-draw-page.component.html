@@ -1,0 +1,49 @@
+<main class="draw-stage">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Preparando sorteio" />
+  }
+
+  @if (draw(); as selected) {
+    <header class="draw-header">
+      <div>
+        <h1>{{ selected.title }}</h1>
+        @if (selected.description) { <p>{{ selected.description }}</p> }
+        <p class="target-name"><mat-icon aria-hidden="true">{{ selected.target.type === 'EVENT' ? 'event' : 'festival' }}</mat-icon>{{ selected.target.name }}</p>
+      </div>
+      <div class="header-actions">
+        <a mat-stroked-button [routerLink]="['/draws', selected.id]"><mat-icon>tune</mat-icon>Configuração</a>
+      </div>
+    </header>
+
+    <section class="reel-context" aria-live="polite">
+      <span>Próximo</span>
+      <strong>{{ canDraw() ? nextSpinLabel() : 'Sorteio concluído' }}</strong>
+      <small>{{ selected.eligibleEntrantCount }} {{ selected.eligibleEntrantCount === 1 ? 'pessoa elegível' : 'pessoas elegíveis' }}</small>
+    </section>
+
+    @if (demoMode) {
+      <p class="demo-mode"><mat-icon aria-hidden="true">science</mat-icon>Demonstração · nenhum resultado será registrado.</p>
+    }
+
+    <app-prize-draw-reel />
+
+    <section class="draw-actions" aria-label="Ações do sorteio">
+      <button mat-flat-button type="button" [disabled]="!canDraw() || requesting() || !permissions.has(Permission.PrizeDraw.Operate)" [attr.aria-busy]="requesting()" (click)="run(demoMode)">
+        <mat-icon>play_arrow</mat-icon>
+        {{ demoMode ? 'Iniciar demonstração' : 'Sortear agora' }}
+      </button>
+    </section>
+
+    @if (!canDraw()) {
+      <section class="completed-state" role="status">
+        <mat-icon aria-hidden="true">task_alt</mat-icon>
+        <div><strong>Não há outro giro disponível</strong><span>Volte à configuração para consultar o histórico ou ajustar um sorteio sem limite.</span></div>
+      </section>
+    }
+  } @else if (!loading()) {
+    <section class="completed-state" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <div><strong>Sorteio não encontrado</strong><span>Volte à lista de configurações e selecione outro sorteio.</span></div>
+    </section>
+  }
+</main>
