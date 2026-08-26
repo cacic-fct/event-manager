@@ -8,13 +8,7 @@ import { WalletEventCard } from './wallet-event-card';
 
 @Component({
   selector: 'app-wallet-card',
-  imports: [
-    MatCardModule,
-    WalletAcademicRecordCard,
-    WalletCardHeader,
-    WalletEventCard,
-    WalletOfflineCodeCard,
-  ],
+  imports: [MatCardModule, WalletAcademicRecordCard, WalletCardHeader, WalletEventCard, WalletOfflineCodeCard],
   host: {
     '[class]': "'wallet-ticket-' + kind()",
   },

@@ -115,28 +115,37 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   async deliverWinner(spinId: string): Promise<void> {
     const reference = await this.prisma.prizeDrawSpin.findUnique({ where: { id: spinId }, select: { drawId: true } });
     if (!reference) return;
-    await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${reference.drawId}))`;
-      const spin = await this.notificationRecord(spinId, tx);
-      if (!spin || spin.undoneAt || !spin.presentationAcknowledgedAt || !spin.notificationTransactionId || !spin.winnerPerson) {
-        if (spin?.undoneAt) {
-          await tx.prizeDrawSpin.updateMany({
-            where: { id: spinId, notificationStatus: 'PENDING' },
-            data: { notificationStatus: 'CANCELLED' },
-          });
+    await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${reference.drawId}))`;
+        const spin = await this.notificationRecord(spinId, tx);
+        if (
+          !spin ||
+          spin.undoneAt ||
+          !spin.presentationAcknowledgedAt ||
+          !spin.notificationTransactionId ||
+          !spin.winnerPerson
+        ) {
+          if (spin?.undoneAt) {
+            await tx.prizeDrawSpin.updateMany({
+              where: { id: spinId, notificationStatus: 'PENDING' },
+              data: { notificationStatus: 'CANCELLED' },
+            });
+          }
+          return;
         }
-        return;
-      }
-      const delivered = await this.notifications.notifyPrizeDrawWinner({
-        ...this.notificationInput(spin),
-        transactionId: spin.notificationTransactionId,
-      });
-      if (!delivered) throw new Error(`Novu did not acknowledge prize draw winner notification for spin ${spinId}.`);
-      await tx.prizeDrawSpin.update({
-        where: { id: spinId },
-        data: { notificationStatus: 'SENT' },
-      });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        const delivered = await this.notifications.notifyPrizeDrawWinner({
+          ...this.notificationInput(spin),
+          transactionId: spin.notificationTransactionId,
+        });
+        if (!delivered) throw new Error(`Novu did not acknowledge prize draw winner notification for spin ${spinId}.`);
+        await tx.prizeDrawSpin.update({
+          where: { id: spinId },
+          data: { notificationStatus: 'SENT' },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async undoSpin(spinId: string): Promise<void> {
@@ -238,8 +247,12 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     ]);
     await Promise.all([
       ...unpublished.map((spin) => {
-        const releaseAt = spin.drawnAt.getTime() + (spin.countdownSeconds ?? 0) * 1000 +
-          spin.reelDurationMs + spin.preRevealPauseMs + PRIZE_DRAW_PRESENTATION_GRACE_MS;
+        const releaseAt =
+          spin.drawnAt.getTime() +
+          (spin.countdownSeconds ?? 0) * 1000 +
+          spin.reelDurationMs +
+          spin.preRevealPauseMs +
+          PRIZE_DRAW_PRESENTATION_GRACE_MS;
         return this.enqueuePresentation(spin.id, { delayMs: Math.max(0, releaseAt - Date.now()) });
       }),
       ...pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })),
@@ -307,7 +320,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     });
   }
 
-  private notificationInput(spin: NonNullable<Awaited<ReturnType<PrizeDrawNotificationJobsService['notificationRecord']>>>) {
+  private notificationInput(
+    spin: NonNullable<Awaited<ReturnType<PrizeDrawNotificationJobsService['notificationRecord']>>>,
+  ) {
     const targetId = spin.draw.eventId ?? spin.draw.majorEventId;
     const winnerPerson = spin.winnerPerson;
     if (!targetId || !winnerPerson) throw new Error(`Incomplete notification target for prize draw spin ${spin.id}.`);

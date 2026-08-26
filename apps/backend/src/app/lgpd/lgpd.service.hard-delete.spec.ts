@@ -168,7 +168,9 @@ describe('LgpdService hard delete', () => {
     expect(tx.prizeDrawExcludedPerson.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });
-    const prizeDrawUpdates = tx.$executeRaw.mock.calls.filter(([query]) => JSON.stringify(query).includes('prize_draw_'));
+    const prizeDrawUpdates = tx.$executeRaw.mock.calls.filter(([query]) =>
+      JSON.stringify(query).includes('prize_draw_'),
+    );
     expect(prizeDrawUpdates).toHaveLength(3);
     for (const call of prizeDrawUpdates) {
       expect(JSON.stringify(call[0])).toContain('Participante removido');

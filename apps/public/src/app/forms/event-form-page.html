@@ -15,16 +15,13 @@
     <mat-icon>error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else {
-  @if (currentState.form.description || currentState.form.descriptionImages.length) {
+  } @else { @if (currentState.form.description || currentState.form.descriptionImages.length) {
   <header class="form-introduction">
     <lib-event-form-description-content
       [text]="currentState.form.description ?? undefined"
       [images]="currentState.form.descriptionImages" />
   </header>
-  }
-
-  @if (currentState.canAnswer && currentState.canEditResponse) {
+  } @if (currentState.canAnswer && currentState.canEditResponse) {
   <lib-event-form-renderer
     [elements]="currentState.elements"
     [initialAnswers]="currentState.answers"

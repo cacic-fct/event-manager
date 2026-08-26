@@ -146,7 +146,9 @@ describe('PrizeDrawEligibilityService', () => {
     });
     const service = new PrizeDrawEligibilityService(prisma);
 
-    await expect(service.resolve({ ...config(), includePresent: false, includeSubscribers: false })).resolves.toEqual([]);
+    await expect(service.resolve({ ...config(), includePresent: false, includeSubscribers: false })).resolves.toEqual(
+      [],
+    );
   });
 
   it('excludes a registered person after combining attendance and subscription sources', async () => {
@@ -184,15 +186,17 @@ function config(): PrizeDrawEligibilityConfig {
   };
 }
 
-function mockPrisma(input: {
-  attendances?: unknown[];
-  eventSubscriptions?: unknown[];
-  majorSubscriptions?: unknown[];
-  manualEntries?: unknown[];
-  overrides?: unknown[];
-  frozenEntries?: unknown[];
-  excludedPeople?: unknown[];
-} = {}) {
+function mockPrisma(
+  input: {
+    attendances?: unknown[];
+    eventSubscriptions?: unknown[];
+    majorSubscriptions?: unknown[];
+    manualEntries?: unknown[];
+    overrides?: unknown[];
+    frozenEntries?: unknown[];
+    excludedPeople?: unknown[];
+  } = {},
+) {
   return {
     eventAttendance: { findMany: jest.fn().mockResolvedValue(input.attendances ?? []) },
     eventSubscription: { findMany: jest.fn().mockResolvedValue(input.eventSubscriptions ?? []) },

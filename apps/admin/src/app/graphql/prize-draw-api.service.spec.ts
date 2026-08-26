@@ -72,10 +72,9 @@ describe('PrizeDrawApiService', () => {
     graphql.request.mockReturnValue(of({ [mutation]: { id: 'draw-1' } }));
 
     await expect(firstValueFrom(service[method]('draw-1'))).resolves.toEqual({ id: 'draw-1' });
-    expect(graphql.request).toHaveBeenCalledWith(
-      expect.stringContaining(`${mutation}(drawId: $drawId)`),
-      { drawId: 'draw-1' },
-    );
+    expect(graphql.request).toHaveBeenCalledWith(expect.stringContaining(`${mutation}(drawId: $drawId)`), {
+      drawId: 'draw-1',
+    });
   });
 
   it('requests every animation field needed to present a committed spin', async () => {
@@ -84,23 +83,31 @@ describe('PrizeDrawApiService', () => {
 
     await expect(firstValueFrom(service.spin(input))).resolves.toEqual({ spinId: 'spin-1', winnerFullName: 'Ada' });
     const query = graphql.request.mock.calls[0][0] as string;
-    for (const field of ['winnerReelIndex', 'reelNames', 'countdownMs', 'reelDurationMs', 'preRevealPauseMs', 'hasMoreSpins']) {
+    for (const field of [
+      'winnerReelIndex',
+      'reelNames',
+      'countdownMs',
+      'reelDurationMs',
+      'preRevealPauseMs',
+      'hasMoreSpins',
+    ]) {
       expect(query).toContain(field);
     }
     expect(graphql.request.mock.calls[0][1]).toEqual({ input });
   });
 
   it('keeps winner contact retrieval in a separate permission-protected query', async () => {
-    graphql.request.mockReturnValue(of({
-      prizeDrawWinnerContact: { spinId: 'spin-1', fullName: 'Ada Lovelace', email: 'ada@example.com' },
-    }));
+    graphql.request.mockReturnValue(
+      of({
+        prizeDrawWinnerContact: { spinId: 'spin-1', fullName: 'Ada Lovelace', email: 'ada@example.com' },
+      }),
+    );
 
     await expect(firstValueFrom(service.winnerContact('spin-1'))).resolves.toEqual(
       expect.objectContaining({ email: 'ada@example.com' }),
     );
-    expect(graphql.request).toHaveBeenCalledWith(
-      expect.stringContaining('query PrizeDrawWinnerContact'),
-      { spinId: 'spin-1' },
-    );
+    expect(graphql.request).toHaveBeenCalledWith(expect.stringContaining('query PrizeDrawWinnerContact'), {
+      spinId: 'spin-1',
+    });
   });
 });

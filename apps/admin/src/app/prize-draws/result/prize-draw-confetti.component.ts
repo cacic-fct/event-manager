@@ -1,17 +1,5 @@
-import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  OnDestroy,
-  effect,
-  input,
-  viewChild,
-  viewChildren,
-} from '@angular/core';
-import {
-  PrizeDrawConfettiDensity,
-  resolvePrizeDrawConfettiDensity,
-} from './prize-draw-confetti-density';
+import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, viewChild, viewChildren } from '@angular/core';
+import { PrizeDrawConfettiDensity, resolvePrizeDrawConfettiDensity } from './prize-draw-confetti-density';
 
 type ConfettiParticle = {
   x: number;
@@ -44,13 +32,35 @@ type PreparedCanvas = {
     <canvas #canvas aria-hidden="true"></canvas>
   `,
   styles: `
-    :host, canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .color-probes { position: absolute; width: 0; height: 0; overflow: hidden; }
-    .primary { color: var(--mat-sys-primary); }
-    .secondary { color: var(--mat-sys-secondary); }
-    .tertiary { color: var(--mat-sys-tertiary); }
-    .primary-container { color: var(--mat-sys-primary-container); }
-    .tertiary-container { color: var(--mat-sys-tertiary-container); }
+    :host,
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .color-probes {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+    .primary {
+      color: var(--mat-sys-primary);
+    }
+    .secondary {
+      color: var(--mat-sys-secondary);
+    }
+    .tertiary {
+      color: var(--mat-sys-tertiary);
+    }
+    .primary-container {
+      color: var(--mat-sys-primary-container);
+    }
+    .tertiary-container {
+      color: var(--mat-sys-tertiary-container);
+    }
   `,
 })
 export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
@@ -114,12 +124,8 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
       const angle = -Math.PI * (0.18 + Math.random() * 0.64);
       const speed = density.easterEgg ? 7 + Math.random() * 11 : 5 + Math.random() * 8;
       return {
-        x: density.easterEgg
-          ? Math.random() * bounds.width
-          : bounds.width / 2 + (Math.random() - 0.5) * 24,
-        y: density.easterEgg
-          ? bounds.height * (0.16 + Math.random() * 0.46)
-          : bounds.height * 0.54,
+        x: density.easterEgg ? Math.random() * bounds.width : bounds.width / 2 + (Math.random() - 0.5) * 24,
+        y: density.easterEgg ? bounds.height * (0.16 + Math.random() * 0.46) : bounds.height * 0.54,
         velocityX: Math.cos(angle) * speed,
         velocityY: Math.sin(angle) * speed - 3,
         rotation: Math.random() * Math.PI,
@@ -162,12 +168,14 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
       const edge = index % 4;
       const horizontal = Math.random() * bounds.width;
       const vertical = Math.random() * bounds.height;
-      const x = edge === 0 || edge === 2
-        ? horizontal
-        : bounds.width * (edge === 1 ? 0.06 + Math.random() * 0.12 : 0.82 + Math.random() * 0.12);
-      const y = edge === 1 || edge === 3
-        ? vertical
-        : bounds.height * (edge === 0 ? 0.05 + Math.random() * 0.14 : 0.81 + Math.random() * 0.14);
+      const x =
+        edge === 0 || edge === 2
+          ? horizontal
+          : bounds.width * (edge === 1 ? 0.06 + Math.random() * 0.12 : 0.82 + Math.random() * 0.12);
+      const y =
+        edge === 1 || edge === 3
+          ? vertical
+          : bounds.height * (edge === 0 ? 0.05 + Math.random() * 0.14 : 0.81 + Math.random() * 0.14);
       context.save();
       context.translate(x, y);
       context.rotate(Math.random() * Math.PI);

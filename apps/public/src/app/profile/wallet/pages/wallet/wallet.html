@@ -21,8 +21,7 @@
   <button matIconButton type="button" aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
     <mat-icon>print</mat-icon>
   </button>
-  }
-  @if (serviceWorkerService.hasServiceWorker()) {
+  } @if (serviceWorkerService.hasServiceWorker()) {
   <button matIconButton aria-label="Disponível off-line" matTooltip="Disponível off-line" (click)="availableOffline()">
     <mat-icon>cloud_done</mat-icon>
   </button>
@@ -67,10 +66,7 @@
   </section>
   } @else {
   <section #detailCardSlot class="wallet-card-detail" aria-label="Cartão selecionado">
-    <app-wallet-card
-      [user]="cardUser()"
-      [kind]="selectedCard()!"
-      (cardSelected)="selectCard($event)" />
+    <app-wallet-card [user]="cardUser()" [kind]="selectedCard()!" (cardSelected)="selectCard($event)" />
   </section>
   }
 </main>

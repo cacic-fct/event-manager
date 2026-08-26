@@ -51,9 +51,7 @@
 
   @if (majorEvent.description && flowPhase() === 'selection') {
   <lib-markdown class="description" [content]="majorEvent.description" />
-  }
-
-  @if (flowPhase() === 'selection') {
+  } @if (flowPhase() === 'selection') {
   <app-subscription-event-list
     [events]="sortedEvents()"
     [summariesByEventId]="summariesByEventId()"
@@ -124,7 +122,6 @@
     [initialDraft]="subscriptionFlowDraft()"
     (backToSelection)="returnToSelection($event)"
     (reviewRequested)="reviewSubscription($event)" />
-  }
-  }
+  } }
 </main>
 }

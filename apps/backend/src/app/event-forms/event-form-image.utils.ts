@@ -68,10 +68,7 @@ export async function convertEventFormImageToAvif(file: UploadedEventFormImageFi
   const operation = createSharp(validFile.buffer, originalMimeType).rotate();
   if (originalMimeType === 'image/svg+xml') {
     const longEdge = Math.max(metadata.width, metadata.height);
-    const targetLongEdge = Math.min(
-      SVG_OUTPUT_MAXIMUM_LONG_EDGE,
-      Math.max(SVG_OUTPUT_MINIMUM_LONG_EDGE, longEdge),
-    );
+    const targetLongEdge = Math.min(SVG_OUTPUT_MAXIMUM_LONG_EDGE, Math.max(SVG_OUTPUT_MINIMUM_LONG_EDGE, longEdge));
     const scale = targetLongEdge / longEdge;
     operation.resize({
       width: Math.max(1, Math.round(metadata.width * scale)),
@@ -99,9 +96,10 @@ export function buildEventFormImageObjectKey(formId: string, imageId: string): s
   return `event-forms/${formId}/images/${imageId}.avif`;
 }
 
-function assertValidImageUpload(
-  file: UploadedEventFormImageFile | undefined,
-): { file: UploadedEventFormImageFile; mimeType: string } {
+function assertValidImageUpload(file: UploadedEventFormImageFile | undefined): {
+  file: UploadedEventFormImageFile;
+  mimeType: string;
+} {
   if (!file) {
     throw new BadRequestException('Selecione uma imagem para enviar.');
   }

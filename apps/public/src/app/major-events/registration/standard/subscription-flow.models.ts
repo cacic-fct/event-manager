@@ -61,8 +61,7 @@ export function createSubscriptionFlowDraft(
         return [key, previous?.answersByKey[key] ?? form.initialAnswers];
       }),
     ),
-    imageLicenseAgreementAccepted:
-      previous?.imageLicenseAgreementAccepted ?? imageLicenseAgreementAccepted,
+    imageLicenseAgreementAccepted: previous?.imageLicenseAgreementAccepted ?? imageLicenseAgreementAccepted,
   };
 }
 

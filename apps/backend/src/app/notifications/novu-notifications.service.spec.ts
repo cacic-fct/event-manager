@@ -599,29 +599,34 @@ describe('NovuNotificationsService', () => {
   it.each([
     ['EVENT', 'event-1', '/app/draws/event/event-1#draw-draw-1'],
     ['MAJOR_EVENT', 'major-1', '/app/draws/major-event/major-1#draw-draw-1'],
-  ])('sends prize-draw winner notifications with a scoped public deep link for %s', async (targetType, targetId, actionUrl) => {
-    await expect(
-      service.notifyPrizeDrawWinner({
-        ...prizeDrawNotification({ spinDescription: 'Primeiro prêmio' }),
-        targetType: targetType as 'EVENT' | 'MAJOR_EVENT',
-        targetId,
-        recipient: { subscriberId: 'user-1', email: 'ada@example.com' },
-      }),
-    ).resolves.toBe(true);
+  ])(
+    'sends prize-draw winner notifications with a scoped public deep link for %s',
+    async (targetType, targetId, actionUrl) => {
+      await expect(
+        service.notifyPrizeDrawWinner({
+          ...prizeDrawNotification({ spinDescription: 'Primeiro prêmio' }),
+          targetType: targetType as 'EVENT' | 'MAJOR_EVENT',
+          targetId,
+          recipient: { subscriberId: 'user-1', email: 'ada@example.com' },
+        }),
+      ).resolves.toBe(true);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toEqual(expect.objectContaining({
-      name: 'prize-draw-winner',
-      transactionId: 'winner-transaction',
-      payload: expect.objectContaining({
-        title: 'Você ganhou: Kit CACiC',
-        body: 'Seu nome foi sorteado em “Primeiro prêmio”.',
-        actionUrl,
-        redirectUrl: actionUrl,
-      }),
-    }));
-    expect(body.overrides.webPush.data).toEqual({ url: actionUrl, drawId: 'draw-1', spinId: 'spin-1' });
-  });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body).toEqual(
+        expect.objectContaining({
+          name: 'prize-draw-winner',
+          transactionId: 'winner-transaction',
+          payload: expect.objectContaining({
+            title: 'Você ganhou: Kit CACiC',
+            body: 'Seu nome foi sorteado em “Primeiro prêmio”.',
+            actionUrl,
+            redirectUrl: actionUrl,
+          }),
+        }),
+      );
+      expect(body.overrides.webPush.data).toEqual({ url: actionUrl, drawId: 'draw-1', spinId: 'spin-1' });
+    },
+  );
 
   it('sends undo notices and uses DELETE endpoints to revoke and remove a prior transaction', async () => {
     await expect(
@@ -636,11 +641,13 @@ describe('NovuNotificationsService', () => {
         transactionId: 'undo-transaction',
       }),
     ).resolves.toBe(true);
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(expect.objectContaining({
-      name: 'prize-draw-undone',
-      transactionId: 'undo-transaction',
-      payload: expect.objectContaining({ title: 'Sorteio desfeito: Kit CACiC' }),
-    }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
+      expect.objectContaining({
+        name: 'prize-draw-undone',
+        transactionId: 'undo-transaction',
+        payload: expect.objectContaining({ title: 'Sorteio desfeito: Kit CACiC' }),
+      }),
+    );
 
     fetchMock.mockResolvedValue({ ok: true, status: 204 });
     await expect(service.cancelTriggeredNotification('winner / transaction')).resolves.toBe(true);

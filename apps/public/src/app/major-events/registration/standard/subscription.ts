@@ -350,7 +350,6 @@ export class MajorEventSubscription {
       this.agreementFlowAutoStartAttempted.set(true);
       this.startSubscriptionFlow();
     });
-
   }
 
   dateLine(): string {

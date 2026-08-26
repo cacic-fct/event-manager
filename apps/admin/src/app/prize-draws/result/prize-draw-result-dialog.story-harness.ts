@@ -6,10 +6,7 @@ import {
   PRIZE_DRAW_STORY_PUBLIC_URL,
   prizeDrawStoryFullNames,
 } from '../prize-draw-story.fixtures';
-import {
-  PrizeDrawResultDialogComponent,
-  PrizeDrawResultDialogData,
-} from './prize-draw-result-dialog.component';
+import { PrizeDrawResultDialogComponent, PrizeDrawResultDialogData } from './prize-draw-result-dialog.component';
 
 @Component({
   selector: 'app-prize-draw-result-dialog-story-harness',
@@ -22,9 +19,24 @@ import {
     </main>
   `,
   styles: `
-    .story-launcher { display: grid; place-content: center; justify-items: center; gap: .75rem; min-height: 100vh; padding: 2rem; text-align: center; background: var(--mat-sys-surface-container-low); }
-    h1, p { margin: 0; }
-    p { max-width: 58ch; color: var(--mat-sys-on-surface-variant); }
+    .story-launcher {
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 0.75rem;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+      background: var(--mat-sys-surface-container-low);
+    }
+    h1,
+    p {
+      margin: 0;
+    }
+    p {
+      max-width: 58ch;
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class PrizeDrawResultDialogStoryHarness {

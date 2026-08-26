@@ -78,9 +78,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
             </div>
 
             @if (element.descriptionImages?.length) {
-              <lib-event-form-description-content
-                class="question-images"
-                [images]="element.descriptionImages" />
+              <lib-event-form-description-content class="question-images" [images]="element.descriptionImages" />
             }
 
             @if (readOnly()) {

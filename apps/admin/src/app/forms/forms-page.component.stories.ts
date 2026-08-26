@@ -293,9 +293,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     selectedFormPublished: computed(() => selectedFormSignal()?.publicationState === 'PUBLISHED'),
     selectedFormScheduled: computed(() => selectedFormSignal()?.publicationState === 'SCHEDULED'),
     hasUntitledQuestions: computed(() =>
-      elements().some(
-        (element) => element.type !== 'section' && element.type !== 'statement' && !element.title.trim(),
-      ),
+      elements().some((element) => element.type !== 'section' && element.type !== 'statement' && !element.title.trim()),
     ),
     canSave: computed(
       () =>

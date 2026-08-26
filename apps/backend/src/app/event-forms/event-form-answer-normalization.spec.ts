@@ -125,9 +125,9 @@ describe('event form answer normalization', () => {
   });
 
   it('rejects saves with untitled questions while allowing untitled structural items', () => {
-    expect(() =>
-      assertQuestionsHaveTitles(parseElementsJson('[{"type":"shortText","title":"   "}]')),
-    ).toThrow('Todas as perguntas do formulário precisam ter um título.');
+    expect(() => assertQuestionsHaveTitles(parseElementsJson('[{"type":"shortText","title":"   "}]'))).toThrow(
+      'Todas as perguntas do formulário precisam ter um título.',
+    );
     expect(() =>
       assertQuestionsHaveTitles(parseElementsJson('[{"type":"section","title":""},{"type":"statement","title":""}]')),
     ).not.toThrow();

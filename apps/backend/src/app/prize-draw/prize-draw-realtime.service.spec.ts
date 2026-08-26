@@ -42,18 +42,22 @@ describe('PrizeDrawRealtimeService', () => {
 
     await context.service.publishDraw('draw-1', 'DRAW_UPDATED', 2);
 
-    await expect(eventPromise).resolves.toEqual(expect.objectContaining({
-      data: expect.objectContaining({ type: 'DRAW_UPDATED', drawId: 'draw-1', spinId: null, revision: 2 }),
-      retry: 3000,
-    }));
+    await expect(eventPromise).resolves.toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: 'DRAW_UPDATED', drawId: 'draw-1', spinId: null, revision: 2 }),
+        retry: 3000,
+      }),
+    );
     expect(context.redis.publish).not.toHaveBeenCalled();
 
     context.replay.record.mockRejectedValue(new Error('replay unavailable'));
     const fallbackPromise = firstValueFrom(context.service.watch(scope));
     await context.service.publishDraw('draw-1', 'ELIGIBILITY_FROZEN', 3);
-    await expect(fallbackPromise).resolves.toEqual(expect.objectContaining({
-      data: expect.objectContaining({ type: 'ELIGIBILITY_FROZEN' }),
-    }));
+    await expect(fallbackPromise).resolves.toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: 'ELIGIBILITY_FROZEN' }),
+      }),
+    );
   });
 
   it('accepts valid subscriber messages, ignores malformed payloads, and closes the duplicate on destroy', async () => {

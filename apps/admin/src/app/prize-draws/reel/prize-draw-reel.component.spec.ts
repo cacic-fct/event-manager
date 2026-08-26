@@ -40,13 +40,9 @@ describe('PrizeDrawReelComponent', () => {
 
     const hostElement = fixture.nativeElement as HTMLElement;
     expect(hostElement.querySelector('.reel-empty')).toBeNull();
-    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual([
-      'Carla C.',
-      'Diego D.',
-      'Ana A.',
-      'Bruno B.',
-      'Carla C.',
-    ]);
+    expect(
+      Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim()),
+    ).toEqual(['Carla C.', 'Diego D.', 'Ana A.', 'Bruno B.', 'Carla C.']);
   });
 
   it('preserves the existing reel window when a spin starts', async () => {
@@ -92,9 +88,9 @@ describe('PrizeDrawReelComponent', () => {
     fixture.detectChanges();
 
     expect(Array.from(hostElement.querySelectorAll('.reel-name'))).toEqual(initialElements);
-    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual(
-      initialTexts,
-    );
+    expect(
+      Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim()),
+    ).toEqual(initialTexts);
 
     component.reset(initialNames);
     await play;
@@ -102,7 +98,10 @@ describe('PrizeDrawReelComponent', () => {
 
   it('uses a short non-animated presentation when reduced motion is active', async () => {
     vi.useFakeTimers();
-    const play = component.play(result({ speed: 'DRAMATIC', countdownMs: 5000, reelDurationMs: 700, preRevealPauseMs: 150 }), true);
+    const play = component.play(
+      result({ speed: 'DRAMATIC', countdownMs: 5000, reelDurationMs: 700, preRevealPauseMs: 150 }),
+      true,
+    );
     expect(component.phase()).toBe('countdown');
     expect(component.countdown()).toBe(5);
     await vi.advanceTimersByTimeAsync(5080);
@@ -143,9 +142,9 @@ describe('PrizeDrawReelComponent', () => {
 
     expect(component.phase()).toBe('countdown');
     expect(Array.from(hostElement.querySelectorAll('.reel-name'))).toEqual(initialElements);
-    expect(Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim())).toEqual(
-      initialTexts,
-    );
+    expect(
+      Array.from(hostElement.querySelectorAll('.reel-name')).map((element) => element.textContent?.trim()),
+    ).toEqual(initialTexts);
 
     await vi.advanceTimersByTimeAsync(3000);
     expect(component.phase()).toBe('idle');

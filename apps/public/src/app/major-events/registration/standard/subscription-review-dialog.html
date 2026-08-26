@@ -19,9 +19,8 @@
     <span>
       <small>Tipo selecionado</small>
       <strong>
-        {{ data.paymentTier }}@if (selectedPaymentTier; as tier) {
-        - {{ tier.value / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
-        }
+        {{ data.paymentTier }}@if (selectedPaymentTier; as tier) { - {{ tier.value / 100 | currency: 'BRL' : 'symbol' :
+        '1.2-2' : 'pt-BR' }} }
       </strong>
     </span>
   </section>

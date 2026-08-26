@@ -13,10 +13,7 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PrizeDrawReelComponent } from './reel/prize-draw-reel.component';
-import {
-  PrizeDrawResultDialogComponent,
-  PrizeDrawResultDialogData,
-} from './result/prize-draw-result-dialog.component';
+import { PrizeDrawResultDialogComponent, PrizeDrawResultDialogData } from './result/prize-draw-result-dialog.component';
 
 @Component({
   selector: 'app-prize-draw-page',
@@ -98,7 +95,9 @@ export class PrizeDrawPageComponent {
         this.reel()?.reset(this.shortNames(this.entries()));
         this.feedback.error(
           error,
-          demo ? 'Não foi possível executar a demonstração.' : 'O backend não confirmou o resultado. Nenhuma animação foi iniciada.',
+          demo
+            ? 'Não foi possível executar a demonstração.'
+            : 'O backend não confirmou o resultado. Nenhuma animação foi iniciada.',
         );
       }
     } finally {
@@ -147,7 +146,9 @@ export class PrizeDrawPageComponent {
   private shortNames(entries: PrizeDrawEligibleEntry[]): string[] {
     return entries.map((entry) => {
       const parts = entry.displayName.trim().split(/\s+/).filter(Boolean);
-      return parts.length > 1 ? `${parts[0]} ${parts.at(-1)?.charAt(0).toLocaleUpperCase('pt-BR')}.` : (parts[0] ?? 'Participante');
+      return parts.length > 1
+        ? `${parts[0]} ${parts.at(-1)?.charAt(0).toLocaleUpperCase('pt-BR')}.`
+        : (parts[0] ?? 'Participante');
     });
   }
 

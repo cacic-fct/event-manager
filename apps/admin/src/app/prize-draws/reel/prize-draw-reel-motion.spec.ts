@@ -8,9 +8,7 @@ import {
 
 describe('prize draw reel motion', () => {
   it('accelerates through explicit steps before reaching full speed', () => {
-    const quickIntervals = [0.02, 0.14, 0.3, 0.5].map((progress) =>
-      prizeDrawReelTickIntervalMs('QUICK', progress),
-    );
+    const quickIntervals = [0.02, 0.14, 0.3, 0.5].map((progress) => prizeDrawReelTickIntervalMs('QUICK', progress));
     const dramaticIntervals = [0.02, 0.14, 0.3, 0.5].map((progress) =>
       prizeDrawReelTickIntervalMs('DRAMATIC', progress),
     );
@@ -41,7 +39,7 @@ describe('prize draw reel motion', () => {
     const namesLength = 37;
     const winnerIndex = 19;
     const ticks = prizeDrawReelPlannedTickCount('DRAMATIC', 6000);
-    const startingIndex = ((winnerIndex - ticks) % namesLength + namesLength) % namesLength;
+    const startingIndex = (((winnerIndex - ticks) % namesLength) + namesLength) % namesLength;
     expect((startingIndex + ticks) % namesLength).toBe(winnerIndex);
     expect(ticks).toBeGreaterThan(20);
   });

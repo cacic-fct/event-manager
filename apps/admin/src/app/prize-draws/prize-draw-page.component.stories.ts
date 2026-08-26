@@ -4,10 +4,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { expect, userEvent, within } from 'storybook/test';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PermissionsService } from '../permissions/permissions.service';
-import {
-  AdminPrizeDrawStoryState,
-  createAdminPrizeDrawStoryHandlers,
-} from './prize-draw-story.handlers';
+import { AdminPrizeDrawStoryState, createAdminPrizeDrawStoryHandlers } from './prize-draw-story.handlers';
 import { PRIZE_DRAW_STORY_ID, prizeDrawStoryFullNames } from './prize-draw-story.fixtures';
 import { PrizeDrawPageComponent } from './prize-draw-page.component';
 
@@ -139,15 +136,16 @@ export const ReducedMotionMobile: Story = {
 function installStoryMotionPreference(reducedMotion: boolean): void {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
-    value: (query: string) => ({
-      matches: reducedMotion && query === '(prefers-reduced-motion: reduce)',
-      media: query,
-      onchange: null,
-      addEventListener: () => undefined,
-      removeEventListener: () => undefined,
-      addListener: () => undefined,
-      removeListener: () => undefined,
-      dispatchEvent: () => true,
-    } satisfies MediaQueryList),
+    value: (query: string) =>
+      ({
+        matches: reducedMotion && query === '(prefers-reduced-motion: reduce)',
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList,
   });
 }

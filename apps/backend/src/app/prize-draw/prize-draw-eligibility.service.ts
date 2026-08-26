@@ -41,9 +41,7 @@ export class PrizeDrawEligibilityService {
     options: { excludeIdentityKeys?: ReadonlySet<string>; client?: EligibilityClient } = {},
   ): Promise<PrizeDrawEligibleRecord[]> {
     const client = options.client ?? this.prisma;
-    const entries = draw.frozenAt
-      ? await this.readFrozen(draw.id, client)
-      : await this.buildCurrent(draw, client);
+    const entries = draw.frozenAt ? await this.readFrozen(draw.id, client) : await this.buildCurrent(draw, client);
     const excluded = options.excludeIdentityKeys;
     return excluded?.size ? entries.filter((entry) => !excluded.has(entry.identityKey)) : entries;
   }
@@ -119,17 +117,20 @@ export class PrizeDrawEligibilityService {
 
     if (draw.includeSubscribers) {
       if (draw.targetType === PrizeDrawTargetType.EVENT && draw.eventId) {
-        const [subscriptions, event] = await Promise.all([client.eventSubscription.findMany({
-          where: {
-            eventId: draw.eventId,
-            deletedAt: null,
-            person: { deletedAt: null, mergedIntoId: null },
-          },
-          select: { person: { select: { id: true, name: true } } },
-        }), client.event.findUnique({
-          where: { id: draw.eventId },
-          select: { majorEventId: true, autoSubscribe: true, eventGroup: { select: { majorEventId: true } } },
-        })]);
+        const [subscriptions, event] = await Promise.all([
+          client.eventSubscription.findMany({
+            where: {
+              eventId: draw.eventId,
+              deletedAt: null,
+              person: { deletedAt: null, mergedIntoId: null },
+            },
+            select: { person: { select: { id: true, name: true } } },
+          }),
+          client.event.findUnique({
+            where: { id: draw.eventId },
+            select: { majorEventId: true, autoSubscribe: true, eventGroup: { select: { majorEventId: true } } },
+          }),
+        ]);
         for (const subscription of subscriptions) addPerson(subscription.person, 'SUBSCRIPTION');
         const majorEventId = event?.majorEventId ?? event?.eventGroup?.majorEventId;
         if (majorEventId) {
@@ -139,9 +140,7 @@ export class PrizeDrawEligibilityService {
               deletedAt: null,
               subscriptionStatus: SubscriptionStatus.CONFIRMED,
               person: { deletedAt: null, mergedIntoId: null },
-              ...(event?.autoSubscribe
-                ? {}
-                : { selectedEvents: { some: { eventId: draw.eventId, deletedAt: null } } }),
+              ...(event?.autoSubscribe ? {} : { selectedEvents: { some: { eventId: draw.eventId, deletedAt: null } } }),
             },
             select: { person: { select: { id: true, name: true } } },
           });
@@ -227,7 +226,8 @@ export class PrizeDrawEligibilityService {
     }
 
     return [...byIdentity.values()].sort(
-      (left, right) => left.displayName.localeCompare(right.displayName, 'pt-BR') || left.identityKey.localeCompare(right.identityKey),
+      (left, right) =>
+        left.displayName.localeCompare(right.displayName, 'pt-BR') || left.identityKey.localeCompare(right.identityKey),
     );
   }
 
@@ -273,7 +273,8 @@ export class PrizeDrawEligibilityService {
       });
     }
     return [...canonicalEntries.values()].sort(
-      (left, right) => left.displayName.localeCompare(right.displayName, 'pt-BR') || left.identityKey.localeCompare(right.identityKey),
+      (left, right) =>
+        left.displayName.localeCompare(right.displayName, 'pt-BR') || left.identityKey.localeCompare(right.identityKey),
     );
   }
 
@@ -284,10 +285,7 @@ export class PrizeDrawEligibilityService {
     if (draw.targetType === PrizeDrawTargetType.MAJOR_EVENT && draw.majorEventId) {
       return {
         deletedAt: null,
-        OR: [
-          { majorEventId: draw.majorEventId },
-          { eventGroup: { majorEventId: draw.majorEventId, deletedAt: null } },
-        ],
+        OR: [{ majorEventId: draw.majorEventId }, { eventGroup: { majorEventId: draw.majorEventId, deletedAt: null } }],
       };
     }
     return { id: '__invalid_prize_draw_target__' };

@@ -253,10 +253,10 @@ export class PeopleResolver {
           { identityDocument: { contains: normalizedQuery } },
           { academicId: { contains: normalizedQuery } },
           ...(canReadPrizeDrawContacts
-            ? [
+            ? ([
                 { email: { contains: normalizedQuery, mode: 'insensitive' } },
                 { phone: { contains: normalizedQuery, mode: 'insensitive' } },
-              ] satisfies Prisma.PeopleWhereInput[]
+              ] satisfies Prisma.PeopleWhereInput[])
             : []),
         ],
       });

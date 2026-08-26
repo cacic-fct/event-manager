@@ -93,7 +93,6 @@ describe('PrizeDrawService public audience', () => {
       }),
     );
   });
-
 });
 
 function createContext(input: {
@@ -118,11 +117,13 @@ function createContext(input: {
   };
   const policy = {
     accessibleEventTargets: jest.fn().mockResolvedValue(
-      input.adminTargets === undefined ? {
-        eventIds: new Set<string>(),
-        eventGroupIds: new Set<string>(),
-        majorEventIds: new Set<string>(),
-      } : input.adminTargets,
+      input.adminTargets === undefined
+        ? {
+            eventIds: new Set<string>(),
+            eventGroupIds: new Set<string>(),
+            majorEventIds: new Set<string>(),
+          }
+        : input.adminTargets,
     ),
   };
   const realtime = { publishDraw: jest.fn() };

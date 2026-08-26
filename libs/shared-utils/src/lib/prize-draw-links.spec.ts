@@ -9,9 +9,7 @@ describe('prize draw public links', () => {
 
   it('builds a stable draw anchor and encoded public path', () => {
     expect(publicPrizeDrawAnchorId(input.drawId)).toBe(`draw-${input.drawId}`);
-    expect(publicPrizeDrawPath(input)).toBe(
-      `/app/draws/event/event%2Fwith%20spaces#draw-${input.drawId}`,
-    );
+    expect(publicPrizeDrawPath(input)).toBe(`/app/draws/event/event%2Fwith%20spaces#draw-${input.drawId}`);
   });
 
   it('builds an absolute URL for QR codes', () => {

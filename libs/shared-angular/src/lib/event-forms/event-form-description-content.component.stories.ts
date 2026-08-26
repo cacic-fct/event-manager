@@ -49,14 +49,8 @@ export const Playground: Story = {};
 export const LandscapeAndPortrait: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('img', { name: 'Imagem horizontal de referência' })).toHaveAttribute(
-      'width',
-      '1200',
-    );
-    await expect(canvas.getByRole('img', { name: 'Imagem vertical de referência' })).toHaveAttribute(
-      'height',
-      '1200',
-    );
+    await expect(canvas.getByRole('img', { name: 'Imagem horizontal de referência' })).toHaveAttribute('width', '1200');
+    await expect(canvas.getByRole('img', { name: 'Imagem vertical de referência' })).toHaveAttribute('height', '1200');
   },
 };
 

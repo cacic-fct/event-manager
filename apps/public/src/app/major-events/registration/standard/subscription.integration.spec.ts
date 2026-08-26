@@ -141,12 +141,8 @@ describe('MajorEventSubscription form flow integration', () => {
 
     const loadedForms = component.subscriptionForms();
     const draft = createSubscriptionFlowDraft(loadedForms, true);
-    draft.answersByKey[subscriptionFormKey(loadedForms[0])] = [
-      { elementId: 'shirt-size', value: 'g' },
-    ];
-    draft.answersByKey[subscriptionFormKey(loadedForms[1])] = [
-      { elementId: 'meal', value: 'no' },
-    ];
+    draft.answersByKey[subscriptionFormKey(loadedForms[0])] = [{ elementId: 'shirt-size', value: 'g' }];
+    draft.answersByKey[subscriptionFormKey(loadedForms[1])] = [{ elementId: 'meal', value: 'no' }];
     component.reviewSubscription(draft);
     component.reviewSubscription(draft);
 

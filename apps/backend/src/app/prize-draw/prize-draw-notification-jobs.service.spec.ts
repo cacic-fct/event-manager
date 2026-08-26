@@ -183,11 +183,14 @@ describe('PrizeDrawNotificationJobsService', () => {
 
       await context.service.reconcilePending();
 
-      expect(context.prisma.prizeDrawSpin.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-        where: expect.objectContaining({
-          drawnAt: { gte: new Date(now.getTime() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
+      expect(context.prisma.prizeDrawSpin.findMany).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            drawnAt: { gte: new Date(now.getTime() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
+          }),
         }),
-      }));
+      );
       expect(context.queue.add).toHaveBeenCalledWith(
         PRIZE_DRAW_PRESENTATION_JOB,
         { spinId: 'spin-1' },

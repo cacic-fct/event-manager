@@ -68,9 +68,11 @@ export class PrizeDrawsPageComponent {
   private readonly dialog = inject(MatDialog);
 
   constructor() {
-    inject(ActivatedRoute).paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      void this.workspace.initialize(params.get('drawId'));
-    });
+    inject(ActivatedRoute)
+      .paramMap.pipe(takeUntilDestroyed())
+      .subscribe((params) => {
+        void this.workspace.initialize(params.get('drawId'));
+      });
   }
 
   speedLabel(speed: PrizeDrawSpeed): string {

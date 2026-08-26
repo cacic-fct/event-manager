@@ -1,8 +1,4 @@
-import {
-  PrizeDraw,
-  PrizeDrawEligibleEntry,
-  PrizeDrawSpinResult,
-} from '@cacic-fct/event-manager-admin-contracts';
+import { PrizeDraw, PrizeDrawEligibleEntry, PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { publicPrizeDrawUrl } from '@cacic-fct/shared-utils';
 
@@ -82,7 +78,7 @@ export function createPrizeDrawStory(
     sequence: index + 1,
     plannedSpinId: `planned-${index + 1}`,
     description: index === 0 ? 'Kit institucional' : 'Vale-livros',
-    speed: index === 0 ? 'DRAMATIC' as const : 'QUICK' as const,
+    speed: index === 0 ? ('DRAMATIC' as const) : ('QUICK' as const),
     countdownSeconds: index === 0 ? 3 : null,
     chanceMode,
     removeWinnerAfterDraw: true,
@@ -92,9 +88,13 @@ export function createPrizeDrawStory(
     entrantCount: eligibleCount - index,
     totalWeight: eligibleCount + (chanceMode === 'WEIGHTED' ? 3 : 0) - index,
     duplicateEntryCount: chanceMode === 'WEIGHTED' ? 3 : 0,
-    weightBreakdown: chanceMode === 'WEIGHTED'
-      ? [{ weight: 1, peopleCount: Math.max(0, eligibleCount - 3 - index) }, { weight: 2, peopleCount: 3 }]
-      : [{ weight: 1, peopleCount: eligibleCount - index }],
+    weightBreakdown:
+      chanceMode === 'WEIGHTED'
+        ? [
+            { weight: 1, peopleCount: Math.max(0, eligibleCount - 3 - index) },
+            { weight: 2, peopleCount: 3 },
+          ]
+        : [{ weight: 1, peopleCount: eligibleCount - index }],
     eligibilityFrozenAt: drawOverrides.frozenAt ?? null,
     drawnAt: isoMinutesFromNow(-30 + index * 12),
     undoneAt: null,
@@ -124,9 +124,13 @@ export function createPrizeDrawStory(
       { id: 'planned-3', position: 3, description: 'Camiseta do evento', speed: 'DRAMATIC', countdownSeconds: 5 },
     ],
     manualEntries: [],
-    weightOverrides: chanceMode === 'WEIGHTED'
-      ? [{ personId: 'story-1', weight: 2 }, { personId: 'story-8', weight: 2 }]
-      : [],
+    weightOverrides:
+      chanceMode === 'WEIGHTED'
+        ? [
+            { personId: 'story-1', weight: 2 },
+            { personId: 'story-8', weight: 2 },
+          ]
+        : [],
     excludedPeople: [],
     spins,
     eligibleEntrantCount: eligibleCount,

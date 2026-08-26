@@ -21,10 +21,30 @@ import { PrizeDrawConfettiComponent } from './prize-draw-confetti.component';
     </main>
   `,
   styles: `
-    .confetti-stage { position: relative; display: grid; min-height: 100vh; place-content: center; overflow: hidden; background: var(--mat-sys-surface); }
-    .confetti-copy { position: relative; z-index: 1; display: grid; justify-items: center; gap: .65rem; padding: 2rem; text-align: center; }
-    h1, p { margin: 0; }
-    p { color: var(--mat-sys-on-surface-variant); }
+    .confetti-stage {
+      position: relative;
+      display: grid;
+      min-height: 100vh;
+      place-content: center;
+      overflow: hidden;
+      background: var(--mat-sys-surface);
+    }
+    .confetti-copy {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 0.65rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    h1,
+    p {
+      margin: 0;
+    }
+    p {
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class PrizeDrawConfettiStoryHarness {

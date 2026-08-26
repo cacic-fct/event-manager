@@ -117,7 +117,8 @@ function audioContextFixture(options: { state?: AudioContextState } = {}) {
     destination: {},
     resume: vi.fn().mockResolvedValue(undefined),
     createOscillator: vi.fn(() => oscillator),
-    createGain: vi.fn()
+    createGain: vi
+      .fn()
       .mockReturnValueOnce(master)
       .mockImplementation(() => gain),
     createDynamicsCompressor: vi.fn(() => compressor),

@@ -1,9 +1,19 @@
 <section class="section workspace-tab-shell">
   <nav mat-tab-nav-bar [tabPanel]="tabPanel" aria-label="Etapas do sorteio">
-    <a mat-tab-link [routerLink]="workspace.selected() ? ['/draws', workspace.selected()!.id] : ['/draws']" routerLinkActive #setupActive="routerLinkActive" [active]="setupActive.isActive">
+    <a
+      mat-tab-link
+      [routerLink]="workspace.selected() ? ['/draws', workspace.selected()!.id] : ['/draws']"
+      routerLinkActive
+      #setupActive="routerLinkActive"
+      [active]="setupActive.isActive">
       <span class="workspace-tab-label"><mat-icon>tune</mat-icon>1. Configuração</span>
     </a>
-    <a mat-tab-link [routerLink]="workspace.selected() && !workspace.unsavedChanges() ? ['/draws', workspace.selected()!.id, 'draw'] : null" [disabled]="!workspace.selected() || workspace.unsavedChanges()">
+    <a
+      mat-tab-link
+      [routerLink]="
+        workspace.selected() && !workspace.unsavedChanges() ? ['/draws', workspace.selected()!.id, 'draw'] : null
+      "
+      [disabled]="!workspace.selected() || workspace.unsavedChanges()">
       <span class="workspace-tab-label"><mat-icon>rewarded_ads</mat-icon>2. Sorteio</span>
     </a>
   </nav>
@@ -20,17 +30,31 @@
             <h3>Configurações salvas</h3>
             <p>Retome um sorteio ou prepare um novo.</p>
           </div>
-          <button mat-stroked-button type="button" [disabled]="!permissions.has(Permission.PrizeDraw.Create) || workspace.unsavedChanges()" (click)="workspace.createNew()">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!permissions.has(Permission.PrizeDraw.Create) || workspace.unsavedChanges()"
+            (click)="workspace.createNew()">
             <mat-icon>add</mat-icon>Novo
           </button>
         </div>
 
         <mat-action-list class="result-list">
           @for (draw of workspace.draws(); track draw.id) {
-            <button mat-list-item type="button" [disabled]="workspace.unsavedChanges()" (click)="workspace.select(draw)" [class.selected-list-item]="workspace.selected()?.id === draw.id">
-              <span matListItemTitle class="list-title"><mat-icon>rewarded_ads</mat-icon><span>{{ draw.title }}</span></span>
+            <button
+              mat-list-item
+              type="button"
+              [disabled]="workspace.unsavedChanges()"
+              (click)="workspace.select(draw)"
+              [class.selected-list-item]="workspace.selected()?.id === draw.id">
+              <span matListItemTitle class="list-title"
+                ><mat-icon>rewarded_ads</mat-icon><span>{{ draw.title }}</span></span
+              >
               <span matListItemLine>{{ draw.target.name }}</span>
-              <span matListItemLine>{{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }} · {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span>
+              <span matListItemLine
+                >{{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }} ·
+                {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span
+              >
             </button>
           } @empty {
             <mat-list-item>
@@ -49,22 +73,49 @@
           </div>
           <div class="panel-actions">
             @if (workspace.selected(); as selected) {
-              <button mat-stroked-button type="button" [disabled]="!permissions.has(Permission.PrizeDraw.Update) || workspace.loading()" (click)="workspace.toggleFreeze()">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!permissions.has(Permission.PrizeDraw.Update) || workspace.loading()"
+                (click)="workspace.toggleFreeze()">
                 <mat-icon>{{ selected.frozenAt ? 'lock_open' : 'lock' }}</mat-icon>
                 {{ selected.frozenAt ? 'Descongelar lista' : 'Congelar lista' }}
               </button>
             }
-            <button mat-flat-button type="button" [disabled]="!workspace.canSave() || workspace.loading() || !(permissions.has(workspace.selected() ? Permission.PrizeDraw.Update : Permission.PrizeDraw.Create))" (click)="workspace.save()">
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="
+                !workspace.canSave() ||
+                workspace.loading() ||
+                !permissions.has(workspace.selected() ? Permission.PrizeDraw.Update : Permission.PrizeDraw.Create)
+              "
+              (click)="workspace.save()">
               <mat-icon>save</mat-icon>Salvar
             </button>
             @if (workspace.selected(); as selected) {
               <a mat-stroked-button [href]="publicDrawPath(selected)" target="_blank" rel="noopener">
                 <mat-icon>open_in_new</mat-icon>Página pública
               </a>
-              <a mat-stroked-button [routerLink]="['/draws', selected.id, 'draw']" [queryParams]="{ demo: 'true' }" [disabled]="workspace.unsavedChanges() || selected.eligibleEntrantCount === 0 || !permissions.has(Permission.PrizeDraw.Operate)">
+              <a
+                mat-stroked-button
+                [routerLink]="['/draws', selected.id, 'draw']"
+                [queryParams]="{ demo: 'true' }"
+                [disabled]="
+                  workspace.unsavedChanges() ||
+                  selected.eligibleEntrantCount === 0 ||
+                  !permissions.has(Permission.PrizeDraw.Operate)
+                ">
                 <mat-icon>science</mat-icon>Modo demonstração
               </a>
-              <a mat-flat-button [routerLink]="['/draws', selected.id, 'draw']" [disabled]="workspace.unsavedChanges() || selected.eligibleEntrantCount === 0 || !permissions.has(Permission.PrizeDraw.Operate)">
+              <a
+                mat-flat-button
+                [routerLink]="['/draws', selected.id, 'draw']"
+                [disabled]="
+                  workspace.unsavedChanges() ||
+                  selected.eligibleEntrantCount === 0 ||
+                  !permissions.has(Permission.PrizeDraw.Operate)
+                ">
                 <mat-icon>play_arrow</mat-icon>Ir para o sorteio
               </a>
             }
@@ -74,23 +125,45 @@
         @if (workspace.reducedMotion()) {
           <section class="notice motion-notice" role="status">
             <mat-icon aria-hidden="true">motion_photos_off</mat-icon>
-            <div><strong>Movimento reduzido está ativo</strong><span>Os modos rápido e dramático usarão uma apresentação curta, sem a animação do carretel. No modo dramático, a contagem regressiva continua.</span></div>
+            <div>
+              <strong>Movimento reduzido está ativo</strong
+              ><span
+                >Os modos rápido e dramático usarão uma apresentação curta, sem a animação do carretel. No modo
+                dramático, a contagem regressiva continua.</span
+              >
+            </div>
           </section>
         }
 
         @if (workspace.selected()?.frozenAt; as frozenAt) {
           <section class="notice frozen-notice" role="status">
             <mat-icon aria-hidden="true">lock</mat-icon>
-            <div><strong>Lista congelada</strong><span>Elegibilidade, entradas e pesos estão preservados desde {{ frozenAt | date: 'dd/MM/yyyy HH:mm' }}. Descongele para alterá-los.</span></div>
+            <div>
+              <strong>Lista congelada</strong
+              ><span
+                >Elegibilidade, entradas e pesos estão preservados desde {{ frozenAt | date: 'dd/MM/yyyy HH:mm' }}.
+                Descongele para alterá-los.</span
+              >
+            </div>
           </section>
         }
 
         <form [formGroup]="workspace.form" class="panel-stack" (submit)="$event.preventDefault(); workspace.save()">
           <section class="surface surface-stack">
-            <div class="surface-heading"><div><h4>Identidade e vínculo</h4><span>O vínculo define onde a transparência pública será exibida.</span></div></div>
+            <div class="surface-heading">
+              <div>
+                <h4>Identidade e vínculo</h4>
+                <span>O vínculo define onde a transparência pública será exibida.</span>
+              </div>
+            </div>
             <div class="field-grid">
-              <mat-form-field class="span-2"><mat-label>Título</mat-label><input matInput formControlName="title" required /></mat-form-field>
-              <mat-form-field class="span-2"><mat-label>Descrição (opcional)</mat-label><textarea matInput rows="3" formControlName="description"></textarea></mat-form-field>
+              <mat-form-field class="span-2"
+                ><mat-label>Título</mat-label><input matInput formControlName="title" required
+              /></mat-form-field>
+              <mat-form-field class="span-2"
+                ><mat-label>Descrição (opcional)</mat-label
+                ><textarea matInput rows="3" formControlName="description"></textarea>
+              </mat-form-field>
               <mat-form-field>
                 <mat-label>Tipo de vínculo</mat-label>
                 <mat-select formControlName="targetType" (selectionChange)="workspace.updateTargetType()">
@@ -99,23 +172,49 @@
                 </mat-select>
               </mat-form-field>
               @if (workspace.form.controls.targetType.value === 'EVENT') {
-                <mat-form-field><mat-label>Evento</mat-label><mat-select formControlName="eventId" required>@for (event of workspace.events(); track event.id) { <mat-option [value]="event.id">{{ event.name }}</mat-option> }</mat-select></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Evento</mat-label
+                  ><mat-select formControlName="eventId" required>
+                    @for (event of workspace.events(); track event.id) {
+                      <mat-option [value]="event.id">{{ event.name }}</mat-option>
+                    }
+                  </mat-select></mat-form-field
+                >
               } @else {
-                <mat-form-field><mat-label>Grande evento</mat-label><mat-select formControlName="majorEventId" required>@for (event of workspace.majorEvents(); track event.id) { <mat-option [value]="event.id">{{ event.name }}</mat-option> }</mat-select></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Grande evento</mat-label
+                  ><mat-select formControlName="majorEventId" required>
+                    @for (event of workspace.majorEvents(); track event.id) {
+                      <mat-option [value]="event.id">{{ event.name }}</mat-option>
+                    }
+                  </mat-select></mat-form-field
+                >
               }
             </div>
-            @if (workspace.selected(); as selected) { <small class="audit-id">ID do sorteio: {{ selected.id }}</small> }
+            @if (workspace.selected(); as selected) {
+              <small class="audit-id">ID do sorteio: {{ selected.id }}</small>
+            }
           </section>
 
-          <section class="surface surface-stack eligibility-surface" [class.surface-locked]="!!workspace.selected()?.frozenAt">
-            <div class="surface-heading"><div><h4>Quem participa</h4><span>As pessoas são unificadas por cadastro quando a identidade é conhecida.</span></div></div>
+          <section
+            class="surface surface-stack eligibility-surface"
+            [class.surface-locked]="!!workspace.selected()?.frozenAt">
+            <div class="surface-heading">
+              <div>
+                <h4>Quem participa</h4>
+                <span>As pessoas são unificadas por cadastro quando a identidade é conhecida.</span>
+              </div>
+            </div>
             <div class="checkbox-grid">
               <mat-checkbox formControlName="includePresent">Com presença registrada</mat-checkbox>
               <mat-checkbox formControlName="includeSubscribers">Com inscrição confirmada</mat-checkbox>
               <mat-checkbox formControlName="includeManualEntries">Entradas manuais</mat-checkbox>
             </div>
 
-            <mat-button-toggle-group class="chance-mode-selector" formControlName="chanceMode" aria-label="Distribuição de chances">
+            <mat-button-toggle-group
+              class="chance-mode-selector"
+              formControlName="chanceMode"
+              aria-label="Distribuição de chances">
               <mat-button-toggle value="EQUAL"><mat-icon>balance</mat-icon>Chances iguais</mat-button-toggle>
               <mat-button-toggle value="WEIGHTED"><mat-icon>scale</mat-icon>Pesos individuais</mat-button-toggle>
             </mat-button-toggle-group>
@@ -123,7 +222,10 @@
             @if (workspace.form.controls.includeManualEntries.value) {
               <section class="manual-entry-area" aria-labelledby="manual-entry-title">
                 <h5 id="manual-entry-title">Entradas manuais</h5>
-                <p>Selecione um cadastro existente ou informe apenas um nome. Ao salvar, uma correspondência única será vinculada automaticamente; nenhum cadastro novo será criado.</p>
+                <p>
+                  Selecione um cadastro existente ou informe apenas um nome. Ao salvar, uma correspondência única será
+                  vinculada automaticamente; nenhum cadastro novo será criado.
+                </p>
                 <app-person-search
                   label="Buscar cadastro existente"
                   [query]="workspace.personQuery()"
@@ -135,54 +237,144 @@
                   (personSelected)="workspace.addPersonEntry($event)" />
 
                 <div class="free-entry-row">
-                  <mat-form-field subscriptSizing="dynamic"><mat-label>Nome sem cadastro</mat-label><input #freeEntryName matInput maxlength="160" /></mat-form-field>
-                  <button mat-stroked-button type="button" [disabled]="!!workspace.selected()?.frozenAt" (click)="workspace.addFreeEntry(freeEntryName.value); freeEntryName.value = ''"><mat-icon>person_add</mat-icon>Adicionar nome</button>
+                  <mat-form-field subscriptSizing="dynamic"
+                    ><mat-label>Nome sem cadastro</mat-label><input #freeEntryName matInput maxlength="160"
+                  /></mat-form-field>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="!!workspace.selected()?.frozenAt"
+                    (click)="workspace.addFreeEntry(freeEntryName.value); freeEntryName.value = ''">
+                    <mat-icon>person_add</mat-icon>Adicionar nome
+                  </button>
                 </div>
 
                 <div class="manual-entry-list">
-                  @for (entry of workspace.manualEntries(); track entry.id ?? entry.personId ?? $index; let index = $index) {
+                  @for (
+                    entry of workspace.manualEntries();
+                    track entry.id ?? entry.personId ?? $index;
+                    let index = $index
+                  ) {
                     <div class="manual-entry-row">
                       <mat-icon aria-hidden="true">{{ entry.personId ? 'badge' : 'person' }}</mat-icon>
-                      <mat-form-field subscriptSizing="dynamic"><mat-label>Nome</mat-label><input matInput [value]="entry.name" [readonly]="!!entry.personId" [disabled]="!!workspace.selected()?.frozenAt" (input)="manualNameChanged(index, $event)" /></mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic"
+                        ><mat-label>Nome</mat-label
+                        ><input
+                          matInput
+                          [value]="entry.name"
+                          [readonly]="!!entry.personId"
+                          [disabled]="!!workspace.selected()?.frozenAt"
+                          (input)="manualNameChanged(index, $event)"
+                      /></mat-form-field>
                       @if (workspace.form.controls.chanceMode.value === 'WEIGHTED') {
-                        <mat-form-field class="weight-field" subscriptSizing="dynamic"><mat-label>Peso</mat-label><input matInput type="number" min="1" max="10000" [disabled]="!!workspace.selected()?.frozenAt" [value]="entry.weight" (change)="manualWeightChanged(index, $event)" /></mat-form-field>
+                        <mat-form-field class="weight-field" subscriptSizing="dynamic"
+                          ><mat-label>Peso</mat-label
+                          ><input
+                            matInput
+                            type="number"
+                            min="1"
+                            max="10000"
+                            [disabled]="!!workspace.selected()?.frozenAt"
+                            [value]="entry.weight"
+                            (change)="manualWeightChanged(index, $event)"
+                        /></mat-form-field>
                       }
-                      <button matIconButton type="button" [disabled]="!!workspace.selected()?.frozenAt" aria-label="Remover entrada manual" matTooltip="Remover" (click)="workspace.removeManualEntry(index)"><mat-icon>delete</mat-icon></button>
+                      <button
+                        matIconButton
+                        type="button"
+                        [disabled]="!!workspace.selected()?.frozenAt"
+                        aria-label="Remover entrada manual"
+                        matTooltip="Remover"
+                        (click)="workspace.removeManualEntry(index)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
                     </div>
-                  } @empty { <p class="empty-note">Nenhuma entrada manual adicionada.</p> }
+                  } @empty {
+                    <p class="empty-note">Nenhuma entrada manual adicionada.</p>
+                  }
                 </div>
               </section>
             }
 
             @if (workspace.selected()) {
               <section class="roster-preview" aria-labelledby="roster-title">
-                <div class="surface-heading"><div><h5 id="roster-title">Lista da configuração salva</h5><span>{{ workspace.includedEligibleEntries().length }} pessoa{{ workspace.includedEligibleEntries().length === 1 ? '' : 's' }} incluída{{ workspace.includedEligibleEntries().length === 1 ? '' : 's' }}.</span></div></div>
+                <div class="surface-heading">
+                  <div>
+                    <h5 id="roster-title">Lista da configuração salva</h5>
+                    <span
+                      >{{ workspace.includedEligibleEntries().length }} pessoa{{
+                        workspace.includedEligibleEntries().length === 1 ? '' : 's'
+                      }}
+                      incluída{{ workspace.includedEligibleEntries().length === 1 ? '' : 's' }}.</span
+                    >
+                  </div>
+                </div>
                 @if (workspace.unsavedChanges()) {
-                  <p class="unsaved-roster-note" role="status"><mat-icon aria-hidden="true">info</mat-icon>Salve as alterações para recalcular a lista antes de abrir o carretel.</p>
+                  <p class="unsaved-roster-note" role="status">
+                    <mat-icon aria-hidden="true">info</mat-icon>Salve as alterações para recalcular a lista antes de
+                    abrir o carretel.
+                  </p>
                 }
                 <mat-list>
                   @for (entry of workspace.includedEligibleEntries(); track entry.identityKey) {
                     <mat-list-item>
                       <span matListItemTitle>{{ entry.displayName }}</span>
-                      <span matListItemLine>@for (source of entry.sources; track source; let last = $last) { {{ workspace.sourceLabel(source) }}{{ last ? '' : ' · ' }} }</span>
+                      <span matListItemLine>
+                        @for (source of entry.sources; track source; let last = $last) {
+                          {{ workspace.sourceLabel(source) }}{{ last ? '' : ' · ' }}
+                        }
+                      </span>
                       @if (workspace.form.controls.chanceMode.value === 'WEIGHTED') {
-                        <mat-form-field class="list-weight" subscriptSizing="dynamic"><mat-label>Peso</mat-label><input matInput type="number" min="1" max="10000" [disabled]="!!workspace.selected()?.frozenAt" [value]="entry.weight" (change)="weightChanged(entry, $event)" /></mat-form-field>
+                        <mat-form-field class="list-weight" subscriptSizing="dynamic"
+                          ><mat-label>Peso</mat-label
+                          ><input
+                            matInput
+                            type="number"
+                            min="1"
+                            max="10000"
+                            [disabled]="!!workspace.selected()?.frozenAt"
+                            [value]="entry.weight"
+                            (change)="weightChanged(entry, $event)"
+                        /></mat-form-field>
                       }
                       @if (entry.personId) {
-                        <button matIconButton type="button" [disabled]="!!workspace.selected()?.frozenAt" [attr.aria-label]="'Excluir ' + entry.displayName + ' do sorteio'" matTooltip="Excluir do sorteio" (click)="workspace.excludePerson(entry)"><mat-icon>person_remove</mat-icon></button>
+                        <button
+                          matIconButton
+                          type="button"
+                          [disabled]="!!workspace.selected()?.frozenAt"
+                          [attr.aria-label]="'Excluir ' + entry.displayName + ' do sorteio'"
+                          matTooltip="Excluir do sorteio"
+                          (click)="workspace.excludePerson(entry)">
+                          <mat-icon>person_remove</mat-icon>
+                        </button>
                       }
                     </mat-list-item>
-                  } @empty { <mat-list-item><span matListItemTitle>Nenhuma pessoa elegível</span><span matListItemLine>Revise os critérios ou adicione entradas manuais.</span></mat-list-item> }
+                  } @empty {
+                    <mat-list-item
+                      ><span matListItemTitle>Nenhuma pessoa elegível</span
+                      ><span matListItemLine>Revise os critérios ou adicione entradas manuais.</span></mat-list-item
+                    >
+                  }
                 </mat-list>
                 @if (workspace.excludedPeople().length > 0) {
                   <section class="excluded-people" aria-labelledby="excluded-people-title">
-                    <div><h5 id="excluded-people-title">Pessoas excluídas</h5><p>Mesmo com presença ou inscrição, estas pessoas não entram no sorteio.</p></div>
+                    <div>
+                      <h5 id="excluded-people-title">Pessoas excluídas</h5>
+                      <p>Mesmo com presença ou inscrição, estas pessoas não entram no sorteio.</p>
+                    </div>
                     <mat-list>
                       @for (person of workspace.excludedPeople(); track person.personId) {
                         <mat-list-item>
                           <mat-icon matListItemIcon aria-hidden="true">person_off</mat-icon>
                           <span matListItemTitle>{{ person.displayName }}</span>
-                          <button mat-stroked-button type="button" [disabled]="!!workspace.selected()?.frozenAt" [attr.aria-label]="'Reincluir ' + person.displayName + ' no sorteio'" (click)="workspace.restorePerson(person.personId)">Reincluir</button>
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            [disabled]="!!workspace.selected()?.frozenAt"
+                            [attr.aria-label]="'Reincluir ' + person.displayName + ' no sorteio'"
+                            (click)="workspace.restorePerson(person.personId)">
+                            Reincluir
+                          </button>
                         </mat-list-item>
                       }
                     </mat-list>
@@ -193,15 +385,33 @@
           </section>
 
           <section class="surface surface-stack">
-            <div class="surface-heading"><div><h4>Giros e continuidade</h4><span>Deixe sem limite para continuar enquanto houver pessoas elegíveis.</span></div></div>
+            <div class="surface-heading">
+              <div>
+                <h4>Giros e continuidade</h4>
+                <span>Deixe sem limite para continuar enquanto houver pessoas elegíveis.</span>
+              </div>
+            </div>
             <div class="spin-limit-row">
-              <mat-checkbox formControlName="spinLimitEnabled" (change)="workspace.updateSpinLimit()">Definir quantidade de giros</mat-checkbox>
+              <mat-checkbox formControlName="spinLimitEnabled" (change)="workspace.updateSpinLimit()"
+                >Definir quantidade de giros</mat-checkbox
+              >
               @if (workspace.form.controls.spinLimitEnabled.value) {
-                <mat-form-field subscriptSizing="dynamic"><mat-label>Quantidade</mat-label><input matInput type="number" min="1" max="1000" formControlName="spinLimit" (change)="workspace.updateSpinLimit()" /></mat-form-field>
+                <mat-form-field subscriptSizing="dynamic"
+                  ><mat-label>Quantidade</mat-label
+                  ><input
+                    matInput
+                    type="number"
+                    min="1"
+                    max="1000"
+                    formControlName="spinLimit"
+                    (change)="workspace.updateSpinLimit()"
+                /></mat-form-field>
               }
             </div>
             @if (!workspace.form.controls.spinLimitEnabled.value || workspace.form.controls.spinLimit.value > 1) {
-              <mat-checkbox formControlName="removeWinnerAfterDraw">Remover quem venceu dos próximos giros</mat-checkbox>
+              <mat-checkbox formControlName="removeWinnerAfterDraw"
+                >Remover quem venceu dos próximos giros</mat-checkbox
+              >
             }
 
             @if (workspace.form.controls.spinLimitEnabled.value) {
@@ -209,13 +419,35 @@
                 @for (spin of workspace.plannedSpins(); track spin.id ?? spin.position; let index = $index) {
                   <article class="planned-spin-row">
                     <strong>Giro {{ spin.position }}</strong>
-                    <mat-form-field subscriptSizing="dynamic"><mat-label>Descrição ou prêmio (opcional)</mat-label><input matInput maxlength="240" [value]="spin.description ?? ''" (input)="plannedDescriptionChanged(index, $event)" /></mat-form-field>
+                    <mat-form-field subscriptSizing="dynamic"
+                      ><mat-label>Descrição ou prêmio (opcional)</mat-label
+                      ><input
+                        matInput
+                        maxlength="240"
+                        [value]="spin.description ?? ''"
+                        (input)="plannedDescriptionChanged(index, $event)"
+                    /></mat-form-field>
                     <div class="planned-speed-setting">
-                      <mat-form-field subscriptSizing="dynamic"><mat-label>Ritmo</mat-label><mat-select [value]="spin.speed" (selectionChange)="plannedSpeedChanged(index, $event.value)">@for (speed of speeds; track speed) { <mat-option [value]="speed">{{ speedLabel(speed) }}</mat-option> }</mat-select></mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic"
+                        ><mat-label>Ritmo</mat-label
+                        ><mat-select [value]="spin.speed" (selectionChange)="plannedSpeedChanged(index, $event.value)">
+                          @for (speed of speeds; track speed) {
+                            <mat-option [value]="speed">{{ speedLabel(speed) }}</mat-option>
+                          }
+                        </mat-select></mat-form-field
+                      >
                       <small>{{ speedDescription(spin.speed) }}</small>
                     </div>
                     @if (spin.speed === 'DRAMATIC') {
-                      <mat-form-field subscriptSizing="dynamic"><mat-label>Contagem</mat-label><mat-select [value]="spin.countdownSeconds ?? workspace.form.controls.dramaticCountdownSeconds.value" (selectionChange)="plannedCountdownChanged(index, $event.value)"><mat-option [value]="3">3 segundos</mat-option><mat-option [value]="5">5 segundos</mat-option></mat-select></mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic"
+                        ><mat-label>Contagem</mat-label
+                        ><mat-select
+                          [value]="spin.countdownSeconds ?? workspace.form.controls.dramaticCountdownSeconds.value"
+                          (selectionChange)="plannedCountdownChanged(index, $event.value)"
+                          ><mat-option [value]="3">3 segundos</mat-option
+                          ><mat-option [value]="5">5 segundos</mat-option></mat-select
+                        ></mat-form-field
+                      >
                     }
                   </article>
                 }
@@ -225,19 +457,40 @@
 
           @if (!workspace.form.controls.spinLimitEnabled.value) {
             <section class="surface surface-stack">
-              <div class="surface-heading"><div><h4>Apresentação</h4><span>O ritmo encurta gradualmente nos giros repetidos, sem eliminar a pausa de revelação.</span></div></div>
-              <mat-button-toggle-group class="speed-selector" formControlName="defaultSpeed" aria-label="Ritmo padrão do sorteio">
-                @for (speed of speeds; track speed) { <mat-button-toggle [value]="speed">{{ speedLabel(speed) }}</mat-button-toggle> }
+              <div class="surface-heading">
+                <div>
+                  <h4>Apresentação</h4>
+                  <span>O ritmo encurta gradualmente nos giros repetidos, sem eliminar a pausa de revelação.</span>
+                </div>
+              </div>
+              <mat-button-toggle-group
+                class="speed-selector"
+                formControlName="defaultSpeed"
+                aria-label="Ritmo padrão do sorteio">
+                @for (speed of speeds; track speed) {
+                  <mat-button-toggle [value]="speed">{{ speedLabel(speed) }}</mat-button-toggle>
+                }
               </mat-button-toggle-group>
               <p class="speed-description">{{ speedDescription(workspace.form.controls.defaultSpeed.value) }}</p>
               @if (workspace.form.controls.defaultSpeed.value === 'DRAMATIC') {
-                <mat-form-field class="countdown-field"><mat-label>Contagem regressiva</mat-label><mat-select formControlName="dramaticCountdownSeconds"><mat-option [value]="3">3 segundos</mat-option><mat-option [value]="5">5 segundos</mat-option></mat-select></mat-form-field>
+                <mat-form-field class="countdown-field"
+                  ><mat-label>Contagem regressiva</mat-label
+                  ><mat-select formControlName="dramaticCountdownSeconds"
+                    ><mat-option [value]="3">3 segundos</mat-option
+                    ><mat-option [value]="5">5 segundos</mat-option></mat-select
+                  ></mat-form-field
+                >
               }
             </section>
           }
 
           <section class="surface surface-stack">
-            <div class="surface-heading"><div><h4>Notificação</h4><span>Se ativada, será enviada somente depois que a revelação terminar.</span></div></div>
+            <div class="surface-heading">
+              <div>
+                <h4>Notificação</h4>
+                <span>Se ativada, será enviada somente depois que a revelação terminar.</span>
+              </div>
+            </div>
             <mat-checkbox formControlName="notifyWinner">Enviar notificação para a pessoa vencedora</mat-checkbox>
           </section>
         </form>
@@ -245,23 +498,65 @@
         @if (workspace.selected(); as selected) {
           <section class="surface surface-stack results-history">
             <div class="surface-heading">
-              <div><h4>Histórico de giros</h4><span>Resultados válidos e correções permanecem rastreáveis.</span></div>
-              <button mat-stroked-button type="button" [disabled]="workspace.activeSpins().length === 0 || !permissions.has(Permission.PrizeDraw.Undo) || workspace.loading()" (click)="confirmUndo()"><mat-icon>undo</mat-icon>Desfazer último giro</button>
+              <div>
+                <h4>Histórico de giros</h4>
+                <span>Resultados válidos e correções permanecem rastreáveis.</span>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="
+                  workspace.activeSpins().length === 0 ||
+                  !permissions.has(Permission.PrizeDraw.Undo) ||
+                  workspace.loading()
+                "
+                (click)="confirmUndo()">
+                <mat-icon>undo</mat-icon>Desfazer último giro
+              </button>
             </div>
             <mat-list>
               @for (spin of selected.spins; track spin.id) {
                 <mat-list-item [class.undone-result]="!!spin.undoneAt">
-                  <span matListItemTitle>{{ spin.winnerDisplayName }} @if (spin.undoneAt) { · desfeito }</span>
-                  <span matListItemLine>Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} } · {{ spin.drawnAt | date: 'dd/MM/yyyy HH:mm:ss' }}</span>
+                  <span matListItemTitle
+                    >{{ spin.winnerDisplayName }}
+                    @if (spin.undoneAt) {
+                      · desfeito
+                    }
+                  </span>
+                  <span matListItemLine
+                    >Giro {{ spin.sequence }}
+                    @if (spin.description) {
+                      · {{ spin.description }}
+                    }
+                    · {{ spin.drawnAt | date: 'dd/MM/yyyy HH:mm:ss' }}</span
+                  >
                   <span matListItemLine class="audit-id">ID do giro: {{ spin.id }}</span>
                   @if (!spin.undoneAt && permissions.has(Permission.PrizeDraw.ContactRead)) {
-                    <button mat-stroked-button type="button" [disabled]="workspace.contactLoadingSpinId() === spin.id" (click)="workspace.revealContact(spin.id)"><mat-icon>contact_phone</mat-icon>Contato</button>
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      [disabled]="workspace.contactLoadingSpinId() === spin.id"
+                      (click)="workspace.revealContact(spin.id)">
+                      <mat-icon>contact_phone</mat-icon>Contato
+                    </button>
                   }
                 </mat-list-item>
                 @if (workspace.contacts()[spin.id]; as contact) {
-                  <div class="contact-details" role="status"><strong>{{ contact.fullName }}</strong><span>{{ contact.email || 'Sem e-mail' }}</span><span>{{ contact.phone || 'Sem telefone' }}</span>@if (contact.academicId) { <span>Matrícula {{ contact.academicId }}</span> }</div>
+                  <div class="contact-details" role="status">
+                    <strong>{{ contact.fullName }}</strong
+                    ><span>{{ contact.email || 'Sem e-mail' }}</span
+                    ><span>{{ contact.phone || 'Sem telefone' }}</span>
+                    @if (contact.academicId) {
+                      <span>Matrícula {{ contact.academicId }}</span>
+                    }
+                  </div>
                 }
-              } @empty { <mat-list-item><span matListItemTitle>Nenhum giro realizado</span><span matListItemLine>Os resultados reais aparecerão aqui.</span></mat-list-item> }
+              } @empty {
+                <mat-list-item
+                  ><span matListItemTitle>Nenhum giro realizado</span
+                  ><span matListItemLine>Os resultados reais aparecerão aqui.</span></mat-list-item
+                >
+              }
             </mat-list>
           </section>
         }

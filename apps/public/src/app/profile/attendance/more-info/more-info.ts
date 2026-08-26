@@ -183,18 +183,23 @@ export class MoreInfo {
         }[detail.targetType] as 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
         return forkJoin({
           formLinks: this.loadFormLinks(detail),
-          availability: this.prizeDrawsApi.availability({
-            eventIds: targetType === 'EVENT' ? [detail.targetId] : undefined,
-            eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
-            majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
-          }).pipe(catchError(() => of([]))),
+          availability: this.prizeDrawsApi
+            .availability({
+              eventIds: targetType === 'EVENT' ? [detail.targetId] : undefined,
+              eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
+              majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
+            })
+            .pipe(catchError(() => of([]))),
         }).pipe(
-          map(({ formLinks, availability }) => ({
-            status: 'ready',
-            detail,
-            formLinks,
-            hasPrizeDraws: availability.some((item) => item.drawCount > 0),
-          }) satisfies DetailState),
+          map(
+            ({ formLinks, availability }) =>
+              ({
+                status: 'ready',
+                detail,
+                formLinks,
+                hasPrizeDraws: availability.some((item) => item.drawCount > 0),
+              }) satisfies DetailState,
+          ),
         );
       }),
       startWith({ status: 'loading' } satisfies DetailState),

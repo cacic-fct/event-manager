@@ -189,20 +189,24 @@ export class PrizeDrawWorkspaceService {
     const count = Math.min(Math.max(Math.trunc(value.spinLimit || 1), 1), 1000);
     const existing = this.plannedSpins();
     this.plannedSpins.set(
-      Array.from({ length: count }, (_, index) =>
-        existing[index] ?? {
-          position: index + 1,
-          description: '',
-          speed: value.defaultSpeed,
-          countdownSeconds: value.dramaticCountdownSeconds,
-        },
+      Array.from(
+        { length: count },
+        (_, index) =>
+          existing[index] ?? {
+            position: index + 1,
+            description: '',
+            speed: value.defaultSpeed,
+            countdownSeconds: value.dramaticCountdownSeconds,
+          },
       ).map((spin, index) => ({ ...spin, position: index + 1 })),
     );
   }
 
   updatePlannedSpin(index: number, patch: Partial<PrizeDrawPlannedSpinInput>): void {
     this.unsavedChanges.set(true);
-    this.plannedSpins.update((spins) => spins.map((spin, itemIndex) => itemIndex === index ? { ...spin, ...patch } : spin));
+    this.plannedSpins.update((spins) =>
+      spins.map((spin, itemIndex) => (itemIndex === index ? { ...spin, ...patch } : spin)),
+    );
   }
 
   addFreeEntry(name: string): void {
@@ -230,7 +234,9 @@ export class PrizeDrawWorkspaceService {
 
   updateManualEntry(index: number, patch: Partial<PrizeDrawManualEntryInput>): void {
     this.unsavedChanges.set(true);
-    this.manualEntries.update((entries) => entries.map((entry, itemIndex) => itemIndex === index ? { ...entry, ...patch } : entry));
+    this.manualEntries.update((entries) =>
+      entries.map((entry, itemIndex) => (itemIndex === index ? { ...entry, ...patch } : entry)),
+    );
   }
 
   async searchPeople(query: string): Promise<void> {
@@ -244,12 +250,14 @@ export class PrizeDrawWorkspaceService {
     this.personSearchLoading.set(true);
     try {
       const target = this.form.getRawValue();
-      const people = await firstValueFrom(this.peopleApi.listRelatedPeople({
-        query,
-        take: 12,
-        eventId: target.targetType === 'EVENT' ? target.eventId : undefined,
-        majorEventId: target.targetType === 'MAJOR_EVENT' ? target.majorEventId : undefined,
-      }));
+      const people = await firstValueFrom(
+        this.peopleApi.listRelatedPeople({
+          query,
+          take: 12,
+          eventId: target.targetType === 'EVENT' ? target.eventId : undefined,
+          majorEventId: target.targetType === 'MAJOR_EVENT' ? target.majorEventId : undefined,
+        }),
+      );
       if (requestGeneration === this.personSearchRequestGeneration) this.personResults.set(people);
     } catch (error) {
       if (requestGeneration === this.personSearchRequestGeneration) {
@@ -271,7 +279,9 @@ export class PrizeDrawWorkspaceService {
     if (!personId) return;
     this.weightOverrides.update((overrides) => ({ ...overrides, [personId]: this.normalizeWeight(rawWeight) }));
     this.eligibleEntries.update((entries) =>
-      entries.map((item) => item.identityKey === entry.identityKey ? { ...item, weight: this.normalizeWeight(rawWeight) } : item),
+      entries.map((item) =>
+        item.identityKey === entry.identityKey ? { ...item, weight: this.normalizeWeight(rawWeight) } : item,
+      ),
     );
   }
 
@@ -281,8 +291,8 @@ export class PrizeDrawWorkspaceService {
     if (this.excludedPeople().some((person) => person.personId === personId)) return;
     this.unsavedChanges.set(true);
     this.excludedPeople.update((people) =>
-      [...people, { personId, displayName: entry.displayName }].sort(
-        (left, right) => left.displayName.localeCompare(right.displayName, 'pt-BR'),
+      [...people, { personId, displayName: entry.displayName }].sort((left, right) =>
+        left.displayName.localeCompare(right.displayName, 'pt-BR'),
       ),
     );
     this.weightOverrides.update((overrides) =>
@@ -326,7 +336,9 @@ export class PrizeDrawWorkspaceService {
       this.patch(updated);
       await this.refreshList();
       await this.loadEligibleEntries();
-      this.snackbar.open(draw.frozenAt ? 'Lista descongelada.' : 'Lista de participantes congelada.', 'Fechar', { duration: 3000 });
+      this.snackbar.open(draw.frozenAt ? 'Lista descongelada.' : 'Lista de participantes congelada.', 'Fechar', {
+        duration: 3000,
+      });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível alterar o congelamento da lista.');
     } finally {
@@ -343,7 +355,9 @@ export class PrizeDrawWorkspaceService {
       this.patch(updated);
       await this.refreshList();
       await this.loadEligibleEntries();
-      this.snackbar.open('Último giro desfeito. O histórico de auditoria foi preservado.', 'Fechar', { duration: 4500 });
+      this.snackbar.open('Último giro desfeito. O histórico de auditoria foi preservado.', 'Fechar', {
+        duration: 4500,
+      });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível desfazer o último giro.');
     } finally {
@@ -416,9 +430,10 @@ export class PrizeDrawWorkspaceService {
       notifyWinner: value.notifyWinner,
       plannedSpins: value.spinLimitEnabled ? this.plannedSpins() : [],
       manualEntries: value.includeManualEntries ? this.manualEntries() : [],
-      weightOverrides: value.chanceMode === 'WEIGHTED'
-        ? Object.entries(this.weightOverrides()).map(([personId, weight]) => ({ personId, weight }))
-        : [],
+      weightOverrides:
+        value.chanceMode === 'WEIGHTED'
+          ? Object.entries(this.weightOverrides()).map(([personId, weight]) => ({ personId, weight }))
+          : [],
       excludedPersonIds: this.excludedPeople().map((person) => person.personId),
     };
   }

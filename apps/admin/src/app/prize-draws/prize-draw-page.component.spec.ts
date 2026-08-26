@@ -39,7 +39,7 @@ describe('PrizeDrawPageComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: {
-              paramMap: { get: (name: string) => name === 'drawId' ? 'draw-1' : null },
+              paramMap: { get: (name: string) => (name === 'drawId' ? 'draw-1' : null) },
               queryParamMap: { get: () => null },
             },
           },
@@ -136,7 +136,9 @@ function drawFixture(patch: Record<string, unknown> = {}) {
     frozenAt: null,
     unfrozenAt: null,
     revision: 1,
-    plannedSpins: [{ id: 'planned-1', position: 1, description: 'Primeiro prêmio', speed: 'INSTANT', countdownSeconds: null }],
+    plannedSpins: [
+      { id: 'planned-1', position: 1, description: 'Primeiro prêmio', speed: 'INSTANT', countdownSeconds: null },
+    ],
     manualEntries: [],
     weightOverrides: [],
     excludedPeople: [],

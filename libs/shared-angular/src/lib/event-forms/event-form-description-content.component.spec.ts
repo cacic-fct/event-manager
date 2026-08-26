@@ -17,7 +17,14 @@ describe('EventFormDescriptionContentComponent', () => {
     Object.assign(fixture.componentInstance, {
       text: () => 'Descrição do formulário',
       images: () => [
-        { id: 'image-1', url: '/image.avif', width: 800, height: 450, altText: 'Pessoas reunidas', caption: 'Encontro anual' },
+        {
+          id: 'image-1',
+          url: '/image.avif',
+          width: 800,
+          height: 450,
+          altText: 'Pessoas reunidas',
+          caption: 'Encontro anual',
+        },
       ],
     });
 

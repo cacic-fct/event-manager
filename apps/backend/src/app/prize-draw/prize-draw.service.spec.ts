@@ -24,33 +24,34 @@ describe('PrizeDrawService', () => {
       await expect(context.service.listAdmin(actor())).resolves.toEqual([
         expect.objectContaining({ id: 'draw-1', eligibleEntrantCount: 0 }),
       ]);
-      expect(context.prisma.prizeDraw.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          deletedAt: null,
-          OR: expect.arrayContaining([
-            { eventId: { in: ['event-1'] } },
-            { event: { eventGroupId: { in: ['group-1'] } } },
-          ]),
+      expect(context.prisma.prizeDraw.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            deletedAt: null,
+            OR: expect.arrayContaining([
+              { eventId: { in: ['event-1'] } },
+              { event: { eventGroupId: { in: ['group-1'] } } },
+            ]),
+          }),
         }),
-      }));
+      );
       expect(context.eligibility.resolve).not.toHaveBeenCalled();
     });
 
     it('loads eligible entries after excluding canonical active winners when configured', async () => {
       const context = createContext();
-      context.prisma.prizeDraw.findFirst.mockResolvedValue(drawRecord({
-        removeWinnerAfterDraw: true,
-        spins: [spinRecord({ winnerPerson: { id: 'old-id', mergedIntoId: 'canonical-id' } })],
-      }));
+      context.prisma.prizeDraw.findFirst.mockResolvedValue(
+        drawRecord({
+          removeWinnerAfterDraw: true,
+          spins: [spinRecord({ winnerPerson: { id: 'old-id', mergedIntoId: 'canonical-id' } })],
+        }),
+      );
       context.eligibility.resolve.mockResolvedValue([eligible('person-2', 'Grace Hopper')]);
 
-      await expect(context.service.eligibleEntries('draw-1')).resolves.toEqual([
-        eligible('person-2', 'Grace Hopper'),
-      ]);
-      expect(context.eligibility.resolve).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'draw-1' }),
-        { excludeIdentityKeys: new Set(['person:canonical-id']) },
-      );
+      await expect(context.service.eligibleEntries('draw-1')).resolves.toEqual([eligible('person-2', 'Grace Hopper')]);
+      expect(context.eligibility.resolve).toHaveBeenCalledWith(expect.objectContaining({ id: 'draw-1' }), {
+        excludeIdentityKeys: new Set(['person:canonical-id']),
+      });
     });
 
     it.each([
@@ -60,9 +61,17 @@ describe('PrizeDrawService', () => {
       ['unsupported countdown', { dramaticCountdownSeconds: 4 }, '3 ou 5 segundos'],
       ['planned spins without a limit', { plannedSpins: [plannedSpin()] }, 'exigem uma quantidade'],
       ['missing planned spin', { spinLimit: 2, plannedSpins: [plannedSpin()] }, 'Configure cada giro'],
-      ['non-contiguous positions', { spinLimit: 2, plannedSpins: [plannedSpin(1), plannedSpin(3)] }, 'posições dos giros'],
+      [
+        'non-contiguous positions',
+        { spinLimit: 2, plannedSpins: [plannedSpin(1), plannedSpin(3)] },
+        'posições dos giros',
+      ],
       ['manual entry while disabled', { manualEntries: [manualEntry()] }, 'Ative as entradas manuais'],
-      ['blank free-text manual entry', { includeManualEntries: true, manualEntries: [{ personId: null, name: ' ', weight: 1 }] }, 'Informe o nome'],
+      [
+        'blank free-text manual entry',
+        { includeManualEntries: true, manualEntries: [{ personId: null, name: ' ', weight: 1 }] },
+        'Informe o nome',
+      ],
       ['weight in equal mode', { weightOverrides: [{ personId: 'person-1', weight: 2 }] }, 'modo ponderado'],
       [
         'duplicate manual person',
@@ -73,11 +82,18 @@ describe('PrizeDrawService', () => {
         'duplicate weight override',
         {
           chanceMode: PrizeDrawChanceMode.WEIGHTED,
-          weightOverrides: [{ personId: 'person-1', weight: 2 }, { personId: 'person-1', weight: 3 }],
+          weightOverrides: [
+            { personId: 'person-1', weight: 2 },
+            { personId: 'person-1', weight: 3 },
+          ],
         },
         'apenas um peso',
       ],
-      ['non-positive weight', { includeManualEntries: true, manualEntries: [{ ...manualEntry(), weight: 0 }] }, 'inteiros positivos'],
+      [
+        'non-positive weight',
+        { includeManualEntries: true, manualEntries: [{ ...manualEntry(), weight: 0 }] },
+        'inteiros positivos',
+      ],
     ])('rejects %s before touching persistence', async (_name, patch, message) => {
       const context = createContext();
 
@@ -168,9 +184,9 @@ describe('PrizeDrawService', () => {
         context.service.save(input({ id: 'draw-1', includePresent: false, includeSubscribers: true }), actor()),
       ).rejects.toThrow('Descongele a lista');
 
-      context.prisma.prizeDraw.findFirst.mockReset().mockResolvedValueOnce(
-        drawRecord({ spins: [spinRecord()], eventId: 'event-1' }),
-      );
+      context.prisma.prizeDraw.findFirst
+        .mockReset()
+        .mockResolvedValueOnce(drawRecord({ spins: [spinRecord()], eventId: 'event-1' }));
       await expect(
         context.service.save(
           input({ id: 'draw-1', targetType: PrizeDrawTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
@@ -178,9 +194,9 @@ describe('PrizeDrawService', () => {
         ),
       ).rejects.toThrow('não pode mudar depois do primeiro giro');
 
-      context.prisma.prizeDraw.findFirst.mockReset().mockResolvedValueOnce(
-        drawRecord({ frozenAt: new Date(), eventId: 'event-1' }),
-      );
+      context.prisma.prizeDraw.findFirst
+        .mockReset()
+        .mockResolvedValueOnce(drawRecord({ frozenAt: new Date(), eventId: 'event-1' }));
       await expect(
         context.service.save(
           input({ id: 'draw-1', targetType: PrizeDrawTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
@@ -264,10 +280,7 @@ describe('PrizeDrawService', () => {
       context.tx.prizeDrawSpin.create.mockResolvedValue(spinRecord({ id: 'spin-2', sequence: 2 }));
       context.tx.prizeDraw.update.mockResolvedValue({ revision: 7 });
 
-      const result = await context.service.spin(
-        { drawId: 'draw-1', demo: false, reducedMotion: true },
-        actor(),
-      );
+      const result = await context.service.spin({ drawId: 'draw-1', demo: false, reducedMotion: true }, actor());
 
       expect(context.eligibility.resolve).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'draw-1' }),
@@ -291,13 +304,15 @@ describe('PrizeDrawService', () => {
         delayMs: expect.any(Number),
       });
       expect(context.realtime.publishDraw).not.toHaveBeenCalled();
-      expect(result).toEqual(expect.objectContaining({
-        demo: false,
-        spinId: 'spin-2',
-        sequence: 2,
-        winnerFullName: 'Grace Hopper',
-        hasMoreSpins: false,
-      }));
+      expect(result).toEqual(
+        expect.objectContaining({
+          demo: false,
+          spinId: 'spin-2',
+          sequence: 2,
+          winnerFullName: 'Grace Hopper',
+          hasMoreSpins: false,
+        }),
+      );
     });
 
     it('keeps demo spins side-effect free and enforces roster and configured limits', async () => {

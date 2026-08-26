@@ -1,8 +1,5 @@
 import type { PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import {
-  createPublicEventForm,
-  createPublicEventFormLink,
-} from '@cacic-fct/event-manager-public-testing';
+import { createPublicEventForm, createPublicEventFormLink } from '@cacic-fct/event-manager-public-testing';
 import type { SubscriptionFormContext } from './subscription-flow.models';
 
 type SubscriptionFormContextFixtureOverrides = Partial<Omit<SubscriptionFormContext, 'form'>> & {

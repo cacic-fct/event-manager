@@ -157,9 +157,7 @@
       store.subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">
-    <mat-icon>
-      {{ store.needsImageLicenseAgreement() ? 'verified_user' : 'arrow_forward' }}
-    </mat-icon>
+    <mat-icon> {{ store.needsImageLicenseAgreement() ? 'verified_user' : 'arrow_forward' }} </mat-icon>
     {{ store.needsImageLicenseAgreement() ? 'Continuar para os documentos legais' : 'Continuar' }}
   </button>
 </section>

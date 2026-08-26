@@ -26,17 +26,22 @@ export function createPublicPrizeDrawStory(
       id: `019d2a25-5694-7f19-b954-8a98f7bb9a${43 + index}`,
       sequence: index + 1,
       description: ['Kit institucional', 'Vale-livros', 'Camiseta do evento'][index] ?? `Prêmio ${index + 1}`,
-      speed: index === 0 ? 'DRAMATIC' as const : 'QUICK' as const,
+      speed: index === 0 ? ('DRAMATIC' as const) : ('QUICK' as const),
       countdownSeconds: index === 0 ? 3 : null,
       chanceMode,
       removeWinnerAfterDraw: true,
-      winnerDisplayName: ['Ana S.', 'Bruno A.', 'Carla C.'][index] ?? `${faker.person.firstName()} ${faker.person.lastName().charAt(0)}.`,
+      winnerDisplayName:
+        ['Ana S.', 'Bruno A.', 'Carla C.'][index] ??
+        `${faker.person.firstName()} ${faker.person.lastName().charAt(0)}.`,
       winnerWeight: weighted && index === 0 ? 2 : 1,
       entrantCount,
       totalWeight: entrantCount + (weighted ? 5 : 0),
       duplicateEntryCount: weighted ? 5 : 0,
       weightBreakdown: weighted
-        ? [{ weight: 1, peopleCount: entrantCount - 5 }, { weight: 2, peopleCount: 5 }]
+        ? [
+            { weight: 1, peopleCount: entrantCount - 5 },
+            { weight: 2, peopleCount: 5 },
+          ]
         : [{ weight: 1, peopleCount: entrantCount }],
       eligibilityFrozenAt: frozenAt,
       drawnAt: isoMinutesFromNow(-45 + index * 14),

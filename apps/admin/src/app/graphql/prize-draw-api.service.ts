@@ -95,10 +95,9 @@ export class PrizeDrawApiService {
 
   get(drawId: string) {
     return this.graphql
-      .request<{ prizeDraw: PrizeDraw }>(
-        `query PrizeDraw($drawId: String!) { prizeDraw(drawId: $drawId) { ${PRIZE_DRAW_FIELDS} } }`,
-        { drawId },
-      )
+      .request<{
+        prizeDraw: PrizeDraw;
+      }>(`query PrizeDraw($drawId: String!) { prizeDraw(drawId: $drawId) { ${PRIZE_DRAW_FIELDS} } }`, { drawId })
       .pipe(map((data) => data.prizeDraw));
   }
 
@@ -188,10 +187,9 @@ export class PrizeDrawApiService {
 
   private drawMutation(name: string, drawId: string) {
     return this.graphql
-      .request<Record<string, PrizeDraw>>(
-        `mutation PrizeDrawAction($drawId: String!) { ${name}(drawId: $drawId) { ${PRIZE_DRAW_FIELDS} } }`,
-        { drawId },
-      )
+      .request<
+        Record<string, PrizeDraw>
+      >(`mutation PrizeDrawAction($drawId: String!) { ${name}(drawId: $drawId) { ${PRIZE_DRAW_FIELDS} } }`, { drawId })
       .pipe(map((data) => data[name]));
   }
 }

@@ -78,7 +78,9 @@ async function mockPrizeDrawGraphql(page: Page): Promise<void> {
       return;
     }
     if (query.includes('SpinPrizeDraw')) {
-      await fulfill(route, { spinPrizeDraw: spinResult(Boolean((body.variables?.['input'] as { demo?: boolean })?.demo)) });
+      await fulfill(route, {
+        spinPrizeDraw: spinResult(Boolean((body.variables?.['input'] as { demo?: boolean })?.demo)),
+      });
       return;
     }
     if (query.includes('freezePrizeDrawEligibility')) {
@@ -113,8 +115,20 @@ async function fulfill(route: Route, data: Record<string, unknown>): Promise<voi
 
 function eligibleEntries() {
   return [
-    { identityKey: 'person:person-1', personId: 'person-1', displayName: 'Ada Lovelace', weight: 1, sources: ['ATTENDANCE'] },
-    { identityKey: 'person:person-2', personId: 'person-2', displayName: 'Grace Hopper', weight: 1, sources: ['SUBSCRIPTION'] },
+    {
+      identityKey: 'person:person-1',
+      personId: 'person-1',
+      displayName: 'Ada Lovelace',
+      weight: 1,
+      sources: ['ATTENDANCE'],
+    },
+    {
+      identityKey: 'person:person-2',
+      personId: 'person-2',
+      displayName: 'Grace Hopper',
+      weight: 1,
+      sources: ['SUBSCRIPTION'],
+    },
   ];
 }
 
@@ -137,7 +151,9 @@ function drawFixture(patch: Record<string, unknown> = {}) {
     frozenAt: null,
     unfrozenAt: null,
     revision: 1,
-    plannedSpins: [{ id: 'planned-1', position: 1, description: 'Primeiro prêmio', speed: 'INSTANT', countdownSeconds: null }],
+    plannedSpins: [
+      { id: 'planned-1', position: 1, description: 'Primeiro prêmio', speed: 'INSTANT', countdownSeconds: null },
+    ],
     manualEntries: [],
     weightOverrides: [],
     excludedPeople: [],

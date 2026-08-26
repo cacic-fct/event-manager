@@ -43,9 +43,7 @@ export function createAdminPrizeDrawStoryHandlers(readState: () => AdminPrizeDra
     graphql.query('PrizeDrawEligibleEntries', () =>
       respond({
         prizeDrawEligibleEntries:
-          readState().eligibleCount > 0
-            ? createPrizeDrawStoryEntries(readState().eligibleCount)
-            : [],
+          readState().eligibleCount > 0 ? createPrizeDrawStoryEntries(readState().eligibleCount) : [],
       }),
     ),
     graphql.query('ListEvents', () => respond({ events: prizeDrawStoryEvents })),

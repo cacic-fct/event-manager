@@ -4,7 +4,12 @@ import { TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import type { Person, PrizeDraw, PrizeDrawEligibleEntry, PrizeDrawSpin } from '@cacic-fct/event-manager-admin-contracts';
+import type {
+  Person,
+  PrizeDraw,
+  PrizeDrawEligibleEntry,
+  PrizeDrawSpin,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { Subject, of, throwError } from 'rxjs';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -132,7 +137,9 @@ describe('PrizeDrawWorkspaceService', () => {
       { name: 'Convidada', weight: 1 },
       { personId: 'person-1', name: 'Ada Lovelace', weight: 1 },
     ]);
-    expect(snackbar.open).toHaveBeenCalledWith('Esta pessoa já está nas entradas manuais.', 'Fechar', { duration: 3000 });
+    expect(snackbar.open).toHaveBeenCalledWith('Esta pessoa já está nas entradas manuais.', 'Fechar', {
+      duration: 3000,
+    });
 
     service.eligibleEntries.set([eligibleFixture()]);
     service.updateWeight(eligibleFixture(), 20_000.9);
@@ -175,17 +182,19 @@ describe('PrizeDrawWorkspaceService', () => {
 
     await service.save();
 
-    expect(api.save).toHaveBeenCalledWith(expect.objectContaining({
-      id: null,
-      title: 'Novo sorteio',
-      eventId: 'event-1',
-      majorEventId: null,
-      spinLimit: 1,
-      plannedSpins: [expect.objectContaining({ position: 1 })],
-      manualEntries: [{ name: 'Convidada', weight: 1 }],
-      weightOverrides: [{ personId: 'person-1', weight: 4 }],
-      excludedPersonIds: ['person-2'],
-    }));
+    expect(api.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: null,
+        title: 'Novo sorteio',
+        eventId: 'event-1',
+        majorEventId: null,
+        spinLimit: 1,
+        plannedSpins: [expect.objectContaining({ position: 1 })],
+        manualEntries: [{ name: 'Convidada', weight: 1 }],
+        weightOverrides: [{ personId: 'person-1', weight: 4 }],
+        excludedPersonIds: ['person-2'],
+      }),
+    );
     expect(api.list).toHaveBeenCalledTimes(1);
     expect(api.eligibleEntries).toHaveBeenCalledWith('draw-1');
     expect(router.navigate).toHaveBeenCalledWith(['/draws', 'draw-1']);
@@ -195,11 +204,9 @@ describe('PrizeDrawWorkspaceService', () => {
   it('does not call the API for invalid forms and reports async failures with actionable context', async () => {
     await service.save();
     expect(api.save).not.toHaveBeenCalled();
-    expect(snackbar.open).toHaveBeenCalledWith(
-      'Revise os campos obrigatórios antes de salvar.',
-      'Fechar',
-      { duration: 3500 },
-    );
+    expect(snackbar.open).toHaveBeenCalledWith('Revise os campos obrigatórios antes de salvar.', 'Fechar', {
+      duration: 3500,
+    });
 
     api.list.mockReturnValue(throwError(() => new Error('offline')));
     await service.initialize();
@@ -215,9 +222,13 @@ describe('PrizeDrawWorkspaceService', () => {
     expect(api.freeze).toHaveBeenCalledWith('draw-1');
     expect(service.form.controls.includePresent.disabled).toBe(true);
 
-    api.undoLast.mockReturnValue(of(drawFixture({
-      spins: [spinFixture({ undoneAt: new Date(Date.now() + 60_000).toISOString() })],
-    })));
+    api.undoLast.mockReturnValue(
+      of(
+        drawFixture({
+          spins: [spinFixture({ undoneAt: new Date(Date.now() + 60_000).toISOString() })],
+        }),
+      ),
+    );
     await service.undoLast();
     expect(api.undoLast).toHaveBeenCalledWith('draw-1');
     expect(service.activeSpins()).toEqual([]);
@@ -299,21 +310,24 @@ function drawFixture(patch: Partial<PrizeDraw> = {}): PrizeDraw {
 
 function spinFixture(patch: Partial<PrizeDrawSpin> = {}): PrizeDrawSpin {
   return {
-      id: 'spin-1',
-      sequence: 1,
-      speed: 'QUICK',
-      chanceMode: 'WEIGHTED',
-      removeWinnerAfterDraw: true,
-      winnerDisplayName: 'Ada Lovelace',
-      winnerPersonId: 'person-1',
-      winnerWeight: 3,
-      entrantCount: 2,
-      totalWeight: 4,
-      duplicateEntryCount: 2,
-      weightBreakdown: [{ weight: 1, peopleCount: 1 }, { weight: 3, peopleCount: 1 }],
-      drawnAt: FIXTURE_TIMESTAMP,
-      undoneAt: null,
-      notificationStatus: 'SENT',
+    id: 'spin-1',
+    sequence: 1,
+    speed: 'QUICK',
+    chanceMode: 'WEIGHTED',
+    removeWinnerAfterDraw: true,
+    winnerDisplayName: 'Ada Lovelace',
+    winnerPersonId: 'person-1',
+    winnerWeight: 3,
+    entrantCount: 2,
+    totalWeight: 4,
+    duplicateEntryCount: 2,
+    weightBreakdown: [
+      { weight: 1, peopleCount: 1 },
+      { weight: 3, peopleCount: 1 },
+    ],
+    drawnAt: FIXTURE_TIMESTAMP,
+    undoneAt: null,
+    notificationStatus: 'SENT',
     ...patch,
   };
 }

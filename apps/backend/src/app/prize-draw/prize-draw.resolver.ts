@@ -63,10 +63,7 @@ export class PrizeDrawResolver {
     @Args('majorEventIds', { type: () => [String], nullable: true }) majorEventIds?: string[],
     @Args('eventGroupIds', { type: () => [String], nullable: true }) eventGroupIds?: string[],
   ): Promise<PrizeDrawAvailability[]> {
-    return this.draws.publicAvailability(
-      { eventIds, majorEventIds, eventGroupIds },
-      this.user(context),
-    );
+    return this.draws.publicAvailability({ eventIds, majorEventIds, eventGroupIds }, this.user(context));
   }
 
   @Mutation(() => PrizeDraw, { name: 'savePrizeDraw' })

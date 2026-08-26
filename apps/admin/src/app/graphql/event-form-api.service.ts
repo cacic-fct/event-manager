@@ -103,9 +103,7 @@ export class EventFormApiService {
     body.append('file', file);
     if (owner.ownerEventId) body.append('ownerEventId', owner.ownerEventId);
     if (owner.ownerMajorEventId) body.append('ownerMajorEventId', owner.ownerMajorEventId);
-    const url = formId
-      ? `/api/event-forms/${encodeURIComponent(formId)}/images`
-      : '/api/event-forms/images';
+    const url = formId ? `/api/event-forms/${encodeURIComponent(formId)}/images` : '/api/event-forms/images';
     return this.http.post<FormImage>(url, body);
   }
 

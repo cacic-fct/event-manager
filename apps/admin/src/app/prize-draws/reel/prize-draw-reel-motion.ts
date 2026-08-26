@@ -10,10 +10,7 @@ export type PrizeDrawReelMotionStage =
   | 'slow'
   | 'settling';
 
-export function prizeDrawReelMotionStage(
-  speed: PrizeDrawSpeed,
-  progress: number,
-): PrizeDrawReelMotionStage {
+export function prizeDrawReelMotionStage(speed: PrizeDrawSpeed, progress: number): PrizeDrawReelMotionStage {
   const normalized = Math.min(Math.max(progress, 0), 1);
   if (normalized < 0.1) return 'warmup';
   if (normalized < 0.22) return 'accelerating-one';

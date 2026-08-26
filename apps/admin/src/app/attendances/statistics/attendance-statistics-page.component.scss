@@ -178,10 +178,9 @@
 }
 .collector-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.35fr) repeat(2, minmax(90px, 0.55fr)) minmax(220px, 1.2fr) minmax(
-      170px,
-      1fr
-    ) 64px;
+  grid-template-columns:
+    minmax(180px, 1.35fr) repeat(2, minmax(90px, 0.55fr)) minmax(220px, 1.2fr) minmax(170px, 1fr)
+    64px;
   gap: 12px;
   padding: 10px 18px;
   border-top: 1px solid var(--mat-sys-outline-variant);

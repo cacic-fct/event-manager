@@ -205,7 +205,13 @@ export class MajorEvent {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: ({ events, expiresAt }) =>
-            this.pageState.set({ status: 'ready', events, subscriptions: [], prizeDrawTargetIds: [], preview: { expiresAt } }),
+            this.pageState.set({
+              status: 'ready',
+              events,
+              subscriptions: [],
+              prizeDrawTargetIds: [],
+              preview: { expiresAt },
+            }),
           error: (error: unknown) =>
             this.pageState.set({
               status: 'error',
@@ -241,13 +247,16 @@ export class MajorEvent {
   }
 
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {
-    this.prizeDrawsApi.availability({ majorEventIds: events.map((event) => event.id) }).pipe(
-      catchError(() => of([])),
-      map((availability) => availability.filter((item) => item.drawCount > 0).map((item) => item.targetId)),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe((prizeDrawTargetIds) => {
-      const state = this.pageState();
-      if (state.status === 'ready' && !state.preview) this.pageState.set({ ...state, prizeDrawTargetIds });
-    });
+    this.prizeDrawsApi
+      .availability({ majorEventIds: events.map((event) => event.id) })
+      .pipe(
+        catchError(() => of([])),
+        map((availability) => availability.filter((item) => item.drawCount > 0).map((item) => item.targetId)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((prizeDrawTargetIds) => {
+        const state = this.pageState();
+        if (state.status === 'ready' && !state.preview) this.pageState.set({ ...state, prizeDrawTargetIds });
+      });
   }
 }

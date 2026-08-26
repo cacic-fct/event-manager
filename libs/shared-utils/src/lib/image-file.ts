@@ -52,7 +52,10 @@ function hasExternalSvgReference(source: string): boolean {
 
   const cssReferences = source.matchAll(/\burl\((.*?)\)/giu);
   for (const match of cssReferences) {
-    const reference = match[1].trim().replace(/^(?:"(.*)"|'(.*)')$/u, '$1$2').trimStart();
+    const reference = match[1]
+      .trim()
+      .replace(/^(?:"(.*)"|'(.*)')$/u, '$1$2')
+      .trimStart();
     if (!reference.startsWith('#')) return true;
   }
 

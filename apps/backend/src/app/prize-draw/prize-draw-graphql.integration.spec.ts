@@ -14,8 +14,12 @@ describe('prize draw GraphQL integration', () => {
     expect(printed).toContain('prizeDraws: [PrizeDraw!]!');
     expect(printed).toContain('prizeDraw(drawId: String!): PrizeDraw!');
     expect(printed).toContain('prizeDrawEligibleEntries(drawId: String!): [PrizeDrawEligibleEntry!]!');
-    expect(printed).toContain('publicPrizeDraws(eventId: String, majorEventId: String, eventGroupId: String): [PrizeDraw!]!');
-    expect(printed).toContain('publicPrizeDrawAvailability(eventIds: [String!], majorEventIds: [String!], eventGroupIds: [String!]): [PrizeDrawAvailability!]!');
+    expect(printed).toContain(
+      'publicPrizeDraws(eventId: String, majorEventId: String, eventGroupId: String): [PrizeDraw!]!',
+    );
+    expect(printed).toContain(
+      'publicPrizeDrawAvailability(eventIds: [String!], majorEventIds: [String!], eventGroupIds: [String!]): [PrizeDrawAvailability!]!',
+    );
     expect(printed).toContain('savePrizeDraw(input: SavePrizeDrawInput!): PrizeDraw!');
     expect(printed).toContain('freezePrizeDrawEligibility(drawId: String!): PrizeDraw!');
     expect(printed).toContain('unfreezePrizeDrawEligibility(drawId: String!): PrizeDraw!');

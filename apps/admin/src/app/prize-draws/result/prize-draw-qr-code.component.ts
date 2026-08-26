@@ -1,22 +1,23 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  PLATFORM_ID,
-  effect,
-  inject,
-  input,
-  viewChild,
-} from '@angular/core';
+import { AfterViewInit, Component, ElementRef, PLATFORM_ID, effect, inject, input, viewChild } from '@angular/core';
 import { toCanvas } from '@bwip-js/browser';
 
 @Component({
   selector: 'app-prize-draw-qr-code',
   template: '<canvas #canvas aria-hidden="true" [style.width.px]="size()" [style.height.px]="size()"></canvas>',
   styles: `
-    :host { display: block; width: fit-content; padding: .75rem; border-radius: 12px; background: #fff; }
-    canvas { display: block; max-width: min(42vw, 11rem); max-height: min(42vw, 11rem); }
+    :host {
+      display: block;
+      width: fit-content;
+      padding: 0.75rem;
+      border-radius: 12px;
+      background: #fff;
+    }
+    canvas {
+      display: block;
+      max-width: min(42vw, 11rem);
+      max-height: min(42vw, 11rem);
+    }
   `,
 })
 export class PrizeDrawQrCodeComponent implements AfterViewInit {

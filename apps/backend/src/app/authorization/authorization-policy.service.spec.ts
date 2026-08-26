@@ -914,7 +914,11 @@ describe('AuthorizationPolicyService', () => {
     expect(drawContext).toEqual(expect.objectContaining({ prizeDrawId: 'draw-1' }));
     expect(spinContext).toEqual(expect.objectContaining({ prizeDrawSpinId: 'spin-1' }));
     await expect(
-      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.PrizeDraw.ContactRead], drawContext),
+      service.assertPermissions(
+        user([EventManagerKeycloakRole.Access]),
+        [Permission.PrizeDraw.ContactRead],
+        drawContext,
+      ),
     ).resolves.toBeUndefined();
   });
 });

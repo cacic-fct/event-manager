@@ -200,15 +200,11 @@
                   <div class="form-image-fields">
                     <mat-form-field>
                       <mat-label>Texto alternativo</mat-label>
-                      <input
-                        matInput
-                        [formControl]="workspace.imageTextControl(image, 'altText')" />
+                      <input matInput [formControl]="workspace.imageTextControl(image, 'altText')" />
                     </mat-form-field>
                     <mat-form-field>
                       <mat-label>Legenda</mat-label>
-                      <input
-                        matInput
-                        [formControl]="workspace.imageTextControl(image, 'caption')" />
+                      <input matInput [formControl]="workspace.imageTextControl(image, 'caption')" />
                     </mat-form-field>
                     <button
                       mat-icon-button

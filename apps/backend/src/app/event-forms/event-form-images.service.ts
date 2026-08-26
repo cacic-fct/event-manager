@@ -23,7 +23,11 @@ import {
   convertEventFormImageToAvif,
   toEventFormImageModel,
 } from './event-form-image.utils';
-import { canPersonAccessLinkPriceTier, canPersonAnswerLink, canPersonViewPublicResults } from './event-form-eligibility';
+import {
+  canPersonAccessLinkPriceTier,
+  canPersonAnswerLink,
+  canPersonViewPublicResults,
+} from './event-form-eligibility';
 import { toEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { eventFormInclude, EventFormRecord } from './event-form-records';
@@ -216,13 +220,16 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     });
     if (!image) throw new NotFoundException('Imagem do formulário não encontrada.');
     if (!image.formId) {
-      if (!user?.sub || image.createdById !== user.sub) throw new ForbiddenException('Você não pode acessar esta imagem.');
+      if (!user?.sub || image.createdById !== user.sub)
+        throw new ForbiddenException('Você não pode acessar esta imagem.');
     } else if (image.form?.deletedAt) {
       throw new NotFoundException('Imagem do formulário não encontrada.');
     } else if (image.form?.publicationState === PublicationState.PUBLISHED) {
       await this.assertPublishedFormAccess(image.form, user);
     } else {
-      await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Read], { eventFormId: image.formId });
+      await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Read], {
+        eventFormId: image.formId,
+      });
     }
     const file = await this.s3.downloadFile(image.objectKey);
     return { stream: file.stream, contentType: file.contentType ?? image.mimeType, contentLength: file.contentLength };
@@ -367,7 +374,11 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     return images.map((image) => {
       const id = image.id.trim();
       if (!id) throw new BadRequestException('O identificador da imagem do formulário é obrigatório.');
-      return { id, altText: cleanOptionalText(image.altText) ?? undefined, caption: cleanOptionalText(image.caption) ?? undefined };
+      return {
+        id,
+        altText: cleanOptionalText(image.altText) ?? undefined,
+        caption: cleanOptionalText(image.caption) ?? undefined,
+      };
     });
   }
 
@@ -414,7 +425,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.s3.deleteFile(objectKey);
     } catch (error: unknown) {
-      this.logger.warn(`Não foi possível excluir o objeto ${objectKey}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Não foi possível excluir o objeto ${objectKey}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }
@@ -438,7 +451,11 @@ function collectDraftImageIds(payload: Prisma.JsonValue): Set<string> {
   const descriptionImagesJson = payload['descriptionImagesJson'];
   const elementsJson = payload['elementsJson'];
   if (typeof descriptionImagesJson === 'string') {
-    try { collectReferenceIds(JSON.parse(descriptionImagesJson) as Prisma.JsonValue, ids); } catch { /* Invalid drafts are ignored. */ }
+    try {
+      collectReferenceIds(JSON.parse(descriptionImagesJson) as Prisma.JsonValue, ids);
+    } catch {
+      /* Invalid drafts are ignored. */
+    }
   }
   if (typeof elementsJson === 'string') {
     try {
@@ -450,7 +467,9 @@ function collectDraftImageIds(payload: Prisma.JsonValue): Set<string> {
           }
         }
       }
-    } catch { /* Invalid drafts are ignored. */ }
+    } catch {
+      /* Invalid drafts are ignored. */
+    }
   }
   return ids;
 }

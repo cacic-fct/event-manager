@@ -17,13 +17,7 @@ export const PrizeDrawSpeed = {
 } as const;
 export type PrizeDrawSpeed = (typeof PrizeDrawSpeed)[keyof typeof PrizeDrawSpeed];
 
-export type PrizeDrawNotificationStatus =
-  | 'NOT_REQUESTED'
-  | 'PENDING'
-  | 'SENT'
-  | 'CANCELLED'
-  | 'FAILED'
-  | 'DELETED';
+export type PrizeDrawNotificationStatus = 'NOT_REQUESTED' | 'PENDING' | 'SENT' | 'CANCELLED' | 'FAILED' | 'DELETED';
 
 export interface PrizeDrawTargetSummary {
   type: PrizeDrawTargetType;

@@ -27,7 +27,8 @@ describe('PublicPrizeDrawPage', () => {
   it('loads event results, exposes transparent chance labels, and refreshes after live invalidation', async () => {
     updates = new Subject<void>();
     api = {
-      list: vi.fn()
+      list: vi
+        .fn()
         .mockReturnValueOnce(of([drawFixture()]))
         .mockReturnValueOnce(of([drawFixture({ revision: 2, title: 'Sorteio atualizado' })])),
       watch: vi.fn(() => updates),
@@ -43,9 +44,9 @@ describe('PublicPrizeDrawPage', () => {
     expect(component.percentage(spinFixture())).toBe('25%');
     expect(component.chance(spinFixture())).toBe('1 em 4');
     expect(component.sourceTargetLabel(drawFixture())).toBe('Evento: Evento');
-    expect(component.sourceTargetLabel(drawFixture({ target: { type: 'MAJOR_EVENT', id: 'major-1', name: 'Semana' } }))).toBe(
-      'Grande evento: Semana',
-    );
+    expect(
+      component.sourceTargetLabel(drawFixture({ target: { type: 'MAJOR_EVENT', id: 'major-1', name: 'Semana' } })),
+    ).toBe('Grande evento: Semana');
     expect(component.drawAnchorId('draw-1')).toBe('draw-draw-1');
 
     updates.next();
@@ -60,7 +61,8 @@ describe('PublicPrizeDrawPage', () => {
   it('keeps the last successful snapshot when a background refresh fails and flags live degradation', async () => {
     updates = new Subject<void>();
     api = {
-      list: vi.fn()
+      list: vi
+        .fn()
         .mockReturnValueOnce(of([drawFixture()]))
         .mockReturnValueOnce(throwError(() => new Error('offline'))),
       watch: vi.fn(() => updates),
@@ -77,7 +79,8 @@ describe('PublicPrizeDrawPage', () => {
   it('clears an invalidated snapshot when a live refresh loses public access', async () => {
     updates = new Subject<void>();
     api = {
-      list: vi.fn()
+      list: vi
+        .fn()
         .mockReturnValueOnce(of([drawFixture()]))
         .mockReturnValueOnce(throwError(() => new ForbiddenGraphqlError('Você não participou deste sorteio.'))),
       watch: vi.fn(() => updates),
@@ -157,7 +160,7 @@ describe('PublicPrizeDrawPage', () => {
           useValue: {
             snapshot: {
               data: { targetType: input.targetType },
-              paramMap: { get: (name: string) => name === input.param ? input.id : null },
+              paramMap: { get: (name: string) => (name === input.param ? input.id : null) },
             },
           },
         },
@@ -202,7 +205,10 @@ function spinFixture(patch: Partial<PublicPrizeDrawSpin> = {}): PublicPrizeDrawS
     entrantCount: 2,
     totalWeight: 4,
     duplicateEntryCount: 2,
-    weightBreakdown: [{ weight: 1, peopleCount: 1 }, { weight: 3, peopleCount: 1 }],
+    weightBreakdown: [
+      { weight: 1, peopleCount: 1 },
+      { weight: 3, peopleCount: 1 },
+    ],
     drawnAt: FIXTURE_TIMESTAMP,
     ...patch,
   };

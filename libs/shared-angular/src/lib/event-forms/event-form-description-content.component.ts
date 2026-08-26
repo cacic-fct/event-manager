@@ -12,11 +12,7 @@ import { FormImage } from '@cacic-fct/form-contracts';
     }
     @for (image of images(); track image.id) {
       <figure>
-        <img
-          [ngSrc]="image.url"
-          [width]="image.width"
-          [height]="image.height"
-          [alt]="image.altText || ''" />
+        <img [ngSrc]="image.url" [width]="image.width" [height]="image.height" [alt]="image.altText || ''" />
         @if (image.caption) {
           <figcaption>{{ image.caption }}</figcaption>
         }

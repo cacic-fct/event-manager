@@ -93,8 +93,6 @@ export const ShortLandscape: Story = {
 };
 
 async function openOverlay(canvasElement: HTMLElement): Promise<void> {
-  await userEvent.click(
-    await within(canvasElement).findByRole('button', { name: 'Abrir resultado em tela cheia' }),
-  );
+  await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Abrir resultado em tela cheia' }));
   await expect(await within(canvasElement.ownerDocument.body).findByText('Nome sorteado')).toBeVisible();
 }

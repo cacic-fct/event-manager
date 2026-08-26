@@ -9,9 +9,23 @@ import {
 describe('subscription flow models', () => {
   it('orders heterogeneous sources through reusable descriptors', () => {
     const sources = orderSubscriptionFlowSources([
-      { key: 'sports', kind: 'sports-form', order: 2, targetType: 'SPORTS', targetId: 'sports-1', targetName: 'Esportes' },
+      {
+        key: 'sports',
+        kind: 'sports-form',
+        order: 2,
+        targetType: 'SPORTS',
+        targetId: 'sports-1',
+        targetName: 'Esportes',
+      },
       { key: 'events', kind: 'event-forms', order: 1, targetType: 'EVENT', targetId: 'event-1', targetName: 'Eventos' },
-      { key: 'major', kind: 'major-event-forms', order: 0, targetType: 'MAJOR_EVENT', targetId: 'major-1', targetName: 'SECOMPP' },
+      {
+        key: 'major',
+        kind: 'major-event-forms',
+        order: 0,
+        targetType: 'MAJOR_EVENT',
+        targetId: 'major-1',
+        targetName: 'SECOMPP',
+      },
     ]);
 
     expect(sources.map((source) => source.key)).toEqual(['major', 'events', 'sports']);
@@ -29,9 +43,7 @@ describe('subscription flow models', () => {
 
     const draft = createSubscriptionFlowDraft([shirtForm, mealForm], false, previous);
 
-    expect(draft.answersByKey[subscriptionFormKey(shirtForm)]).toEqual([
-      { elementId: 'shirt-size', value: 'gg' },
-    ]);
+    expect(draft.answersByKey[subscriptionFormKey(shirtForm)]).toEqual([{ elementId: 'shirt-size', value: 'gg' }]);
     expect(draft.answersByKey[subscriptionFormKey(mealForm)]).toEqual([]);
     expect(draft.answersByKey['removed-form:removed-link:EVENT:removed-event']).toBeUndefined();
     expect(draft.imageLicenseAgreementAccepted).toBe(true);

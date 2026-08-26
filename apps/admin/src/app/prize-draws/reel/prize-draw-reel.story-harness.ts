@@ -20,10 +20,27 @@ import { PrizeDrawReelComponent } from './prize-draw-reel.component';
     </main>
   `,
   styles: `
-    .story-stage { display: grid; gap: 1.5rem; min-height: 38rem; place-content: center; padding: 2rem; background: var(--mat-sys-surface-container-low); }
-    .story-context { display: flex; justify-content: center; color: var(--mat-sys-on-surface-variant); }
-    .story-context strong { color: var(--mat-sys-on-surface); }
-    .story-actions { display: flex; justify-content: center; gap: .75rem; }
+    .story-stage {
+      display: grid;
+      gap: 1.5rem;
+      min-height: 38rem;
+      place-content: center;
+      padding: 2rem;
+      background: var(--mat-sys-surface-container-low);
+    }
+    .story-context {
+      display: flex;
+      justify-content: center;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .story-context strong {
+      color: var(--mat-sys-on-surface);
+    }
+    .story-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+    }
   `,
 })
 export class PrizeDrawReelStoryHarness {
@@ -45,7 +62,7 @@ export class PrizeDrawReelStoryHarness {
       demo: this.demo(),
     }),
   );
-  readonly rosterNames = computed(() => this.rosterSize() < 1 ? [] : this.result().reelNames);
+  readonly rosterNames = computed(() => (this.rosterSize() < 1 ? [] : this.result().reelNames));
 
   constructor() {
     effect(() => {

@@ -13,10 +13,7 @@ describe('EventFormImagesService references and cleanup', () => {
         tx as never,
         'form-1',
         [{ id: 'image-1', caption: 'Capa' }],
-        [
-          question('question-1', 'image-1'),
-          question('question-2', 'image-1'),
-        ],
+        [question('question-1', 'image-1'), question('question-2', 'image-1')],
         'user-1',
       ),
     ).resolves.toEqual([]);
@@ -37,28 +34,38 @@ describe('EventFormImagesService references and cleanup', () => {
       { id: 'pending', formId: null, createdById: 'user-2', objectKey: 'pending.avif' },
     ]);
 
-    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'foreign' }], [], 'user-1'))
-      .rejects.toThrow('A referência de imagem do formulário é inválida.');
-    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'pending' }], [], 'user-1'))
-      .rejects.toThrow('A referência de imagem do formulário é inválida.');
+    await expect(
+      service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'foreign' }], [], 'user-1'),
+    ).rejects.toThrow('A referência de imagem do formulário é inválida.');
+    await expect(
+      service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'pending' }], [], 'user-1'),
+    ).rejects.toThrow('A referência de imagem do formulário é inválida.');
   });
 
   it('reports a missing image reference as expired', async () => {
     const { service, prisma } = createHarness();
     prisma.eventFormImage.findMany.mockResolvedValue([]);
 
-    await expect(service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'expired' }], [], 'user-1'))
-      .rejects.toThrow('Uma imagem expirou e precisa ser enviada novamente.');
+    await expect(
+      service.reconcile(transaction(prisma) as never, 'form-1', [{ id: 'expired' }], [], 'user-1'),
+    ).rejects.toThrow('Uma imagem expirou e precisa ser enviada novamente.');
   });
 
   it('rejects duplicate and excessive description references', async () => {
     const { service, prisma } = createHarness();
     const tx = transaction(prisma) as never;
 
-    await expect(service.reconcile(tx, 'form-1', [{ id: 'same' }, { id: 'same' }], [], 'user-1'))
-      .rejects.toThrow('A mesma imagem não pode ser repetida');
+    await expect(service.reconcile(tx, 'form-1', [{ id: 'same' }, { id: 'same' }], [], 'user-1')).rejects.toThrow(
+      'A mesma imagem não pode ser repetida',
+    );
     await expect(
-      service.reconcile(tx, 'form-1', Array.from({ length: 9 }, (_, index) => ({ id: `image-${index}` })), [], 'user-1'),
+      service.reconcile(
+        tx,
+        'form-1',
+        Array.from({ length: 9 }, (_, index) => ({ id: `image-${index}` })),
+        [],
+        'user-1',
+      ),
     ).rejects.toThrow('Cada descrição pode incluir no máximo 8 imagens.');
     await expect(
       service.reconcile(
@@ -71,7 +78,9 @@ describe('EventFormImagesService references and cleanup', () => {
           title: `Pergunta ${elementIndex}`,
           required: false,
           options: [],
-          descriptionImages: Array.from({ length: 8 }, (_, imageIndex) => ({ id: `image-${elementIndex}-${imageIndex}` })),
+          descriptionImages: Array.from({ length: 8 }, (_, imageIndex) => ({
+            id: `image-${elementIndex}-${imageIndex}`,
+          })),
         })),
         'user-1',
       ),
@@ -123,9 +132,7 @@ describe('EventFormImagesService references and cleanup', () => {
         sourceFormId: 'form-1',
         payload: {
           descriptionImagesJson: '[]',
-          elementsJson: JSON.stringify([
-            { id: 'question-1', descriptionImages: [{ id: 'draft' }] },
-          ]),
+          elementsJson: JSON.stringify([{ id: 'question-1', descriptionImages: [{ id: 'draft' }] }]),
         },
       },
     ]);

@@ -8,7 +8,11 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute } from '@angular/router';
-import { PublicPrizeDraw, PublicPrizeDrawScopeType, PublicPrizeDrawSpin } from '@cacic-fct/event-manager-public-contracts';
+import {
+  PublicPrizeDraw,
+  PublicPrizeDrawScopeType,
+  PublicPrizeDrawSpin,
+} from '@cacic-fct/event-manager-public-contracts';
 import { publicPrizeDrawAnchorId } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { ForbiddenGraphqlError } from '../shared/rate-limit-error';

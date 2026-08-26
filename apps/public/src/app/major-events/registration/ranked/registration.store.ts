@@ -222,7 +222,6 @@ export class RankedSubscriptionStore {
 
       untracked(() => this.initializeFromPageData(data, currentUserSubscription));
     });
-
   }
 
   dateLine(): string {

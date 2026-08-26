@@ -45,7 +45,11 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'eventId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for an event' })
-  @ApiParam({ name: 'eventId', description: 'Identificador do evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'eventId',
+    description: 'Identificador do evento',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiProduces('text/event-stream')
   @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   eventStream(
@@ -60,7 +64,11 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'majorEventId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for a major event' })
-  @ApiParam({ name: 'majorEventId', description: 'Identificador do grande evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'majorEventId',
+    description: 'Identificador do grande evento',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiProduces('text/event-stream')
   @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   majorEventStream(
@@ -75,7 +83,11 @@ export class PrizeDrawRealtimeController {
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'eventGroupId' }])
   @ApiOperation({ summary: 'Stream replayable public prize-draw invalidations for an event group' })
-  @ApiParam({ name: 'eventGroupId', description: 'Identificador do grupo de eventos', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'eventGroupId',
+    description: 'Identificador do grupo de eventos',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiProduces('text/event-stream')
   @ApiOkResponse(PRIZE_DRAW_SSE_RESPONSE)
   eventGroupStream(

@@ -35,7 +35,10 @@ export function parseElementsJson(value: string): FormElement[] {
   }
 
   const elements = parsed.map((item, index) => normalizeElement(item, index));
-  assertUniqueIds(elements.map((element) => element.id), 'itens');
+  assertUniqueIds(
+    elements.map((element) => element.id),
+    'itens',
+  );
   return elements;
 }
 
@@ -45,10 +48,7 @@ export function assertQuestionsHaveTitles(elements: readonly FormElement[]): voi
   }
 }
 
-export function normalizeAnswers(
-  answersJson: string,
-  elements: readonly FormElement[],
-): FormResponseAnswer[] {
+export function normalizeAnswers(answersJson: string, elements: readonly FormElement[]): FormResponseAnswer[] {
   const answers = parseAnswersJson(answersJson);
   const normalized = normalizeFormResponseAnswers(answers);
   const answerElements = elements.filter((element) => isFormAnswerElementType(element.type));
@@ -155,11 +155,12 @@ function normalizeElement(value: unknown, index: number): FormElement {
     ? value['options'].map((option, optionIndex) => normalizeOption(option, optionIndex))
     : [];
   if (options.length > MAX_FORM_OPTIONS_PER_ELEMENT) {
-    throw new BadRequestException(
-      `O item ${index + 1} pode ter no máximo ${MAX_FORM_OPTIONS_PER_ELEMENT} opções.`,
-    );
+    throw new BadRequestException(`O item ${index + 1} pode ter no máximo ${MAX_FORM_OPTIONS_PER_ELEMENT} opções.`);
   }
-  assertUniqueIds(options.map((option) => option.id), `opções do item ${index + 1}`);
+  assertUniqueIds(
+    options.map((option) => option.id),
+    `opções do item ${index + 1}`,
+  );
 
   if (id.length > MAX_FORM_ID_LENGTH) {
     throw new BadRequestException(`O identificador do item ${index + 1} é muito longo.`);

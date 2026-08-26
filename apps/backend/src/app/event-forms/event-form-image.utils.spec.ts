@@ -21,7 +21,11 @@ describe('event form image conversion', () => {
     expect(converted.originalMimeType).toBe('image/svg+xml');
     expect(converted.width).toBe(1200);
     expect(converted.height).toBe(600);
-    await expect(sharp(converted.buffer).metadata()).resolves.toMatchObject({ format: 'heif', width: 1200, height: 600 });
+    await expect(sharp(converted.buffer).metadata()).resolves.toMatchObject({
+      format: 'heif',
+      width: 1200,
+      height: 600,
+    });
   });
 
   it('rejects SVG active content and external resources', async () => {

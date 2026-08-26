@@ -101,7 +101,10 @@ export class EventFormsController {
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: EventFormImageUploadBodyDto })
-  @ApiCreatedResponse({ description: 'Metadados da imagem AVIF temporária armazenada no S3.', schema: { example: EVENT_FORM_IMAGE_EXAMPLE } })
+  @ApiCreatedResponse({
+    description: 'Metadados da imagem AVIF temporária armazenada no S3.',
+    schema: { example: EVENT_FORM_IMAGE_EXAMPLE },
+  })
   uploadPendingImage(
     @UploadedFile() file: UploadedEventFormImageFile | undefined,
     @Body() body: EventFormImageUploadBodyDto,
@@ -113,7 +116,10 @@ export class EventFormsController {
   @Get('images/:imageId')
   @Header('Cache-Control', 'private, max-age=86400')
   @Header('X-Content-Type-Options', 'nosniff')
-  @ApiOperation({ summary: 'Ler uma imagem de formulário pelo identificador permanente', description: 'Retorna o conteúdo AVIF de uma imagem acessível ao usuário atual.' })
+  @ApiOperation({
+    summary: 'Ler uma imagem de formulário pelo identificador permanente',
+    description: 'Retorna o conteúdo AVIF de uma imagem acessível ao usuário atual.',
+  })
   @ApiParam({ name: 'imageId', description: 'Identificador da imagem.', example: EVENT_FORM_IMAGE_EXAMPLE.id })
   @ApiProduces('image/avif')
   async getImageById(
@@ -130,13 +136,25 @@ export class EventFormsController {
   @Post(':formId/images')
   @RequirePermissions(Permission.EventForm.Update)
   @UseInterceptors(FileInterceptor('file', EVENT_FORM_IMAGE_UPLOAD_OPTIONS))
-  @ApiOperation({ summary: 'Enviar uma imagem permanente para um formulário', description: 'Valida, converte para AVIF e associa uma imagem ao formulário informado.' })
-  @ApiParam({ name: 'formId', description: 'Identificador do formulário.', example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5' })
+  @ApiOperation({
+    summary: 'Enviar uma imagem permanente para um formulário',
+    description: 'Valida, converte para AVIF e associa uma imagem ao formulário informado.',
+  })
+  @ApiParam({
+    name: 'formId',
+    description: 'Identificador do formulário.',
+    example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5',
+  })
   @ApiBearerAuth()
-  @ApiForbiddenResponse({ description: `Returned when the authenticated user does not have the required scope: ${Permission.EventForm.Update}.` })
+  @ApiForbiddenResponse({
+    description: `Returned when the authenticated user does not have the required scope: ${Permission.EventForm.Update}.`,
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: EventFormImageUploadBodyDto })
-  @ApiCreatedResponse({ description: 'Metadados da imagem AVIF armazenada no S3.', schema: { example: EVENT_FORM_IMAGE_EXAMPLE } })
+  @ApiCreatedResponse({
+    description: 'Metadados da imagem AVIF armazenada no S3.',
+    schema: { example: EVENT_FORM_IMAGE_EXAMPLE },
+  })
   uploadImage(
     @Param('formId') formId: string,
     @UploadedFile() file: UploadedEventFormImageFile | undefined,
@@ -147,11 +165,20 @@ export class EventFormsController {
 
   @Delete(':formId/images/:imageId')
   @RequirePermissions(Permission.EventForm.Update)
-  @ApiOperation({ summary: 'Excluir uma imagem de formulário', description: 'Exclui uma imagem sem referências ativas no formulário ou em rascunhos.' })
-  @ApiParam({ name: 'formId', description: 'Identificador do formulário.', example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5' })
+  @ApiOperation({
+    summary: 'Excluir uma imagem de formulário',
+    description: 'Exclui uma imagem sem referências ativas no formulário ou em rascunhos.',
+  })
+  @ApiParam({
+    name: 'formId',
+    description: 'Identificador do formulário.',
+    example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5',
+  })
   @ApiParam({ name: 'imageId', description: 'Identificador da imagem.', example: EVENT_FORM_IMAGE_EXAMPLE.id })
   @ApiBearerAuth()
-  @ApiForbiddenResponse({ description: `Returned when the authenticated user does not have the required scope: ${Permission.EventForm.Update}.` })
+  @ApiForbiddenResponse({
+    description: `Returned when the authenticated user does not have the required scope: ${Permission.EventForm.Update}.`,
+  })
   deleteImage(
     @Param('formId') formId: string,
     @Param('imageId') imageId: string,
@@ -163,8 +190,15 @@ export class EventFormsController {
   @Get(':formId/images/:imageId')
   @Header('Cache-Control', 'private, max-age=86400')
   @Header('X-Content-Type-Options', 'nosniff')
-  @ApiOperation({ summary: 'Ler uma imagem permanente de formulário', description: 'Retorna o conteúdo AVIF de uma imagem vinculada ao formulário, respeitando seu acesso.' })
-  @ApiParam({ name: 'formId', description: 'Identificador do formulário.', example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5' })
+  @ApiOperation({
+    summary: 'Ler uma imagem permanente de formulário',
+    description: 'Retorna o conteúdo AVIF de uma imagem vinculada ao formulário, respeitando seu acesso.',
+  })
+  @ApiParam({
+    name: 'formId',
+    description: 'Identificador do formulário.',
+    example: '01991f8d-0d4f-7b57-a1ba-bba7505a61d5',
+  })
   @ApiParam({ name: 'imageId', description: 'Identificador da imagem.', example: EVENT_FORM_IMAGE_EXAMPLE.id })
   @ApiProduces('image/avif')
   async getImage(

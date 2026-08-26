@@ -111,7 +111,12 @@ describe('receipt-file utils', () => {
 
   it('detects generic HEIF uploads without mislabeling them as HEIC', () => {
     const heif = Buffer.from('0000ftypmif10000');
-    const file = { buffer: heif, mimetype: 'application/octet-stream', originalname: 'receipt.heif', size: heif.length };
+    const file = {
+      buffer: heif,
+      mimetype: 'application/octet-stream',
+      originalname: 'receipt.heif',
+      size: heif.length,
+    };
 
     assertValidReceiptUpload(file);
 
