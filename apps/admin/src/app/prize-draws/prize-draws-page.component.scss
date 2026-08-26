@@ -1,0 +1,278 @@
+.draw-setup-grid {
+  align-items: start;
+  margin-top: 1rem;
+}
+
+.workspace-tab-shell {
+  container: draw-workspace / inline-size;
+}
+
+.saved-draws {
+  position: sticky;
+  top: 1rem;
+}
+
+.setup-editor {
+  container: setup-editor / inline-size;
+  overflow: hidden;
+}
+
+.setup-editor mat-form-field,
+.setup-editor app-person-search,
+.panel-heading > div,
+.surface-heading > div {
+  min-width: 0;
+}
+
+.setup-editor mat-form-field {
+  width: 100%;
+}
+
+.panel-heading,
+.surface-heading,
+.free-entry-row,
+.manual-entry-row,
+.spin-limit-row {
+  flex-wrap: wrap;
+}
+
+.panel-actions > button,
+.panel-actions > a,
+.surface-heading > button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.motion-notice,
+.frozen-notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.frozen-notice {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.motion-notice div,
+.frozen-notice div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.field-grid,
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.checkbox-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.surface-locked .manual-entry-area,
+.surface-locked .roster-preview {
+  opacity: 0.82;
+}
+
+mat-button-toggle-group {
+  max-width: 100%;
+}
+
+.chance-mode-selector,
+.speed-selector {
+  width: fit-content;
+}
+
+mat-button-toggle {
+  min-width: 0;
+}
+
+.speed-description {
+  margin: -0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.manual-entry-area,
+.roster-preview {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.manual-entry-area h5,
+.roster-preview h5 {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.manual-entry-area > p {
+  margin: -0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.unsaved-roster-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.unsaved-roster-note mat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+}
+
+.free-entry-row,
+.manual-entry-row,
+.spin-limit-row,
+.planned-spin-row,
+.contact-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.free-entry-row mat-form-field,
+.manual-entry-row mat-form-field:nth-of-type(1) {
+  flex: 1 1 min(20rem, 100%);
+}
+
+.manual-entry-list,
+.planned-spin-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manual-entry-row,
+.planned-spin-row {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.weight-field,
+.list-weight,
+.countdown-field {
+  width: 8rem;
+}
+
+.roster-preview mat-list {
+  max-height: 25rem;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.planned-spin-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) minmax(7rem, 0.45fr) minmax(7rem, 0.35fr);
+}
+
+.planned-spin-row strong {
+  align-self: center;
+}
+
+.audit-id {
+  color: var(--mat-sys-on-surface-variant);
+  font-family: 'Source Code Pro Variable', monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.undone-result {
+  opacity: 0.62;
+  text-decoration: line-through;
+}
+
+.contact-details {
+  flex-wrap: wrap;
+  margin: 0 1rem 0.75rem 4.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 960px) {
+  .saved-draws {
+    position: static;
+  }
+
+  .field-grid,
+  .checkbox-grid,
+  .planned-spin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
+}
+
+@container draw-workspace (max-width: 64rem) {
+  .draw-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .saved-draws {
+    position: static;
+  }
+}
+
+@container setup-editor (max-width: 55rem) {
+  .field-grid,
+  .checkbox-grid,
+  .planned-spin-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
+
+}
+
+@container setup-editor (max-width: 28rem) {
+  .chance-mode-selector,
+  .speed-selector {
+    display: flex;
+    width: 100%;
+  }
+
+  .chance-mode-selector mat-button-toggle,
+  .speed-selector mat-button-toggle {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .free-entry-row,
+  .manual-entry-row,
+  .spin-limit-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .weight-field,
+  .list-weight,
+  .countdown-field {
+    width: 100%;
+  }
+}

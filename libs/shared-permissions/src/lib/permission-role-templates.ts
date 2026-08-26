@@ -77,6 +77,14 @@ export const EVENT_MANAGER_ROLE_TEMPLATES = [
     suggestedScopes: [EventManagerPermissionGrantScope.MajorEvent, EventManagerPermissionGrantScope.Event],
   },
   {
+    id: 'prize-draws',
+    name: 'Sorteios',
+    description: 'Configura, conduz, corrige e consulta resultados de sorteios dentro dos escopos atribuídos.',
+    emoji: '🎁',
+    permissions: withRelatedPeople(presetPermissions('prize-draw-operator')),
+    suggestedScopes: [EventManagerPermissionGrantScope.MajorEvent, EventManagerPermissionGrantScope.Event],
+  },
+  {
     id: 'payments',
     name: 'Validação financeira',
     description: 'Consulta, aprova e recusa comprovantes sem administrar outras áreas do evento.',

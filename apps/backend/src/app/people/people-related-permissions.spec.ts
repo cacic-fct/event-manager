@@ -14,4 +14,23 @@ describe('scoped related-person operations', () => {
       Permission.RelatedPerson.Update,
     ]);
   });
+
+  it('does not search contact fields without prize-draw contact permission', async () => {
+    const prisma = { people: { findMany: jest.fn().mockResolvedValue([]) } };
+    const authorizationPolicy = { canOverrideFrozenResource: jest.fn().mockResolvedValue(false) };
+    const resolver = new PeopleResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      authorizationPolicy as never,
+    );
+
+    await resolver.relatedPeople('contato@example.com', 'event-1');
+
+    const queryWhere = prisma.people.findMany.mock.calls[0][0].where;
+    expect(JSON.stringify(queryWhere)).not.toContain('email');
+    expect(JSON.stringify(queryWhere)).not.toContain('phone');
+    expect(JSON.stringify(queryWhere)).toContain('identityDocument');
+  });
 });

@@ -448,4 +448,10 @@ describe('shared permissions contract', () => {
       expect.objectContaining({ key: 'super-admin', assignable: false, external: true }),
     );
   });
+
+  it('does not grant prize-draw contact access through the prize-draw role template', () => {
+    const template = EVENT_MANAGER_ROLE_TEMPLATES.find((item) => item.id === 'prize-draws');
+    expect(template?.permissions).toContain(Permission.RelatedPerson.Read);
+    expect(template?.permissions).not.toContain(Permission.PrizeDraw.ContactRead);
+  });
 });

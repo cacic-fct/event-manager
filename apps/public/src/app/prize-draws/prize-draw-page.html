@@ -1,0 +1,145 @@
+<mat-toolbar>
+  <button matIconButton type="button" aria-label="Voltar" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Sorteios</span>
+</mat-toolbar>
+
+<main class="draw-page">
+  <header class="page-heading">
+    <h1>Resultados dos sorteios</h1>
+    <p>Consulte os critérios, as chances registradas e o histórico de cada giro.</p>
+  </header>
+
+  @if (liveUpdatesUnavailable()) {
+  <section class="sync-notice" role="status">
+    <mat-icon aria-hidden="true">sync_problem</mat-icon>
+    <p>Os resultados podem estar desatualizados. Reabra esta página para tentar novamente.</p>
+  </section>
+  } @let current = state(); @if (current.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando sorteios" />
+  <section class="draw-skeleton" aria-hidden="true">
+    <div class="skeleton-line skeleton-title"></div>
+    <div class="skeleton-line"></div>
+    <div class="skeleton-line skeleton-short"></div>
+  </section>
+  } @else if (current.status === 'error') {
+  <section class="empty-section" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <div>
+      <h2>Não foi possível abrir os sorteios</h2>
+      <p>{{ current.message }}</p>
+    </div>
+  </section>
+  } @else if (current.draws.length === 0) {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+    <div>
+      <h2>Nenhum resultado publicado</h2>
+      <p>Os sorteios aparecerão aqui depois do primeiro giro válido.</p>
+    </div>
+  </section>
+  } @else {
+  <section class="draw-list" aria-label="Sorteios publicados">
+    @for (draw of current.draws; track draw.id) {
+    <article class="draw-section" [id]="drawAnchorId(draw.id)">
+      <header class="draw-heading">
+        <h2>{{ draw.title }}</h2>
+        @if (draw.description) {
+        <p>{{ draw.description }}</p>
+        }
+        <p class="target-line">
+          <mat-icon aria-hidden="true">{{ draw.target.type === 'EVENT' ? 'event' : 'festival' }}</mat-icon>{{
+          sourceTargetLabel(draw) }}
+        </p>
+        <small class="audit-id">ID do sorteio: {{ draw.id }}</small>
+      </header>
+
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Como este sorteio funciona</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <dl class="fact-grid">
+          <div>
+            <dt>Elegibilidade</dt>
+            <dd>{{ eligibilityLabel(draw) }}</dd>
+          </div>
+          <div>
+            <dt>Distribuição</dt>
+            <dd>{{ modeLabel(draw) }}</dd>
+          </div>
+          <div>
+            <dt>Após vencer</dt>
+            <dd>{{ draw.removeWinnerAfterDraw ? 'Nome removido dos próximos giros' : 'Nome mantido na lista' }}</dd>
+          </div>
+          <div>
+            <dt>Lista congelada</dt>
+            <dd>{{ draw.frozenAt ? (draw.frozenAt | date: 'dd/MM/yyyy HH:mm') : 'Não' }}</dd>
+          </div>
+        </dl>
+
+        <p>
+          A roleta é apenas um recurso visual – o resultado é determinado de forma aleatória (CSPRNG) antes da animação
+          do giro, com base nas regras do sorteio.
+        </p>
+
+        <section class="odds-section" [attr.aria-labelledby]="'odds-title-' + draw.id">
+          <h3 [id]="'odds-title-' + draw.id">Chances por giro</h3>
+          @for (spin of draw.spins; track spin.id) {
+          <article class="odds-entry">
+            <h4>Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} }</h4>
+            <dl class="odds-grid">
+              <div>
+                <dt>Chance de vencer</dt>
+                <dd><strong>{{ percentage(spin) }} · {{ chance(spin) }}</strong></dd>
+              </div>
+              <div>
+                <dt>Pessoas na lista</dt>
+                <dd>{{ spin.entrantCount }}</dd>
+              </div>
+              <div>
+                <dt>Entradas duplicadas</dt>
+                <dd>{{ spin.duplicateEntryCount }}</dd>
+              </div>
+              <div>
+                <dt>Estado da lista</dt>
+                <dd>
+                  {{ spin.eligibilityFrozenAt ? 'Congelada em ' + (spin.eligibilityFrozenAt | date: 'dd/MM/yyyy HH:mm')
+                  : 'Dinâmica neste giro' }}
+                </dd>
+              </div>
+            </dl>
+            @if (spin.chanceMode === 'WEIGHTED') {
+            <p class="weight-line">
+              Pesos: @for (bucket of spin.weightBreakdown; track bucket.weight; let last = $last) { {{
+              bucket.peopleCount }} pessoa{{ bucket.peopleCount === 1 ? '' : 's' }} com peso {{ bucket.weight }}{{ last
+              ? '' : ' · ' }} }
+            </p>
+            }
+          </article>
+          }
+        </section>
+      </mat-expansion-panel>
+
+      <section class="results" [attr.aria-labelledby]="'results-title-' + draw.id">
+        <h3 [id]="'results-title-' + draw.id">Resultados</h3>
+        <mat-list aria-label="Resultados em ordem cronológica">
+          @for (spin of draw.spins; track spin.id) {
+          <mat-list-item>
+            <mat-icon matListItemIcon>emoji_events</mat-icon>
+            <div matListItemTitle>{{ spin.winnerDisplayName }}</div>
+            <div matListItemLine>
+              Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} } · {{ spin.drawnAt | date:
+              'dd/MM/yyyy HH:mm:ss' }}
+            </div>
+            <div matListItemLine class="audit-id">ID do giro: {{ spin.id }}</div>
+          </mat-list-item>
+          }
+        </mat-list>
+      </section>
+    </article>
+    }
+  </section>
+  }
+</main>

@@ -133,6 +133,16 @@ export const navigationItems = [
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Formul%C3%A1rios',
   },
   {
+    kind: 'link',
+    id: 'prize-draws',
+    path: 'draws',
+    label: 'Sorteios',
+    description: 'Configure, execute e audite sorteios vinculados a eventos.',
+    icon: 'rewarded_ads',
+    group: 'Participação',
+    helpLink: undefined,
+  },
+  {
     kind: 'divider',
     id: 'divider-participation-people',
     label: 'Pessoas',

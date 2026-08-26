@@ -18,6 +18,7 @@ import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/
 import { EmojiService } from '../../../shared/emoji.service';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../../forms/event-form-availability';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
+import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 
 type DetailFormLink = {
   formId: string;
@@ -30,7 +31,7 @@ type DetailFormLink = {
 
 type DetailState =
   | { status: 'loading' }
-  | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[] }
+  | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean }
   | { status: 'error'; message: string };
 
 @Component({
@@ -58,6 +59,7 @@ export class MoreInfo {
   private readonly offlineData = inject(PublicDataAccessService);
   private readonly dialog = inject(MatDialog);
   private readonly formsApi = inject(PublicEventFormApiService);
+  private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   readonly emoji = inject(EmojiService);
 
   readonly detailState = toSignal(
@@ -104,6 +106,10 @@ export class MoreInfo {
 
   organizerInfoRoute(detail: DetailViewModel): string[] {
     return ['/profile', 'attendances', detail.targetType, detail.targetId, 'organizer'];
+  }
+
+  prizeDrawRoute(detail: DetailViewModel): string[] {
+    return ['/draws', detail.targetType, detail.targetId];
   }
 
   statusIcon(detail: DetailViewModel): string {
@@ -170,8 +176,25 @@ export class MoreInfo {
           } satisfies DetailState);
         }
 
-        return this.loadFormLinks(detail).pipe(
-          map((formLinks) => ({ status: 'ready', detail, formLinks }) satisfies DetailState),
+        const targetType = {
+          event: 'EVENT',
+          'event-group': 'EVENT_GROUP',
+          'major-event': 'MAJOR_EVENT',
+        }[detail.targetType] as 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
+        return forkJoin({
+          formLinks: this.loadFormLinks(detail),
+          availability: this.prizeDrawsApi.availability({
+            eventIds: targetType === 'EVENT' ? [detail.targetId] : undefined,
+            eventGroupIds: targetType === 'EVENT_GROUP' ? [detail.targetId] : undefined,
+            majorEventIds: targetType === 'MAJOR_EVENT' ? [detail.targetId] : undefined,
+          }).pipe(catchError(() => of([]))),
+        }).pipe(
+          map(({ formLinks, availability }) => ({
+            status: 'ready',
+            detail,
+            formLinks,
+            hasPrizeDraws: availability.some((item) => item.drawCount > 0),
+          }) satisfies DetailState),
         );
       }),
       startWith({ status: 'loading' } satisfies DetailState),

@@ -19,6 +19,7 @@ export type GraphqlVariables = Record<string, GraphqlVariable>;
 
 export interface GraphqlError {
   message: string;
+  extensions?: unknown;
 }
 
 export interface GraphqlResponse<TData> {

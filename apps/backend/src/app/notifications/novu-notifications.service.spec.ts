@@ -595,7 +595,115 @@ describe('NovuNotificationsService', () => {
       eventId: 'event-1',
     });
   });
+
+  it.each([
+    ['EVENT', 'event-1', '/app/draws/event/event-1#draw-draw-1'],
+    ['MAJOR_EVENT', 'major-1', '/app/draws/major-event/major-1#draw-draw-1'],
+  ])('sends prize-draw winner notifications with a scoped public deep link for %s', async (targetType, targetId, actionUrl) => {
+    await expect(
+      service.notifyPrizeDrawWinner({
+        ...prizeDrawNotification({ spinDescription: 'Primeiro prêmio' }),
+        targetType: targetType as 'EVENT' | 'MAJOR_EVENT',
+        targetId,
+        recipient: { subscriberId: 'user-1', email: 'ada@example.com' },
+      }),
+    ).resolves.toBe(true);
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual(expect.objectContaining({
+      name: 'prize-draw-winner',
+      transactionId: 'winner-transaction',
+      payload: expect.objectContaining({
+        title: 'Você ganhou: Kit CACiC',
+        body: 'Seu nome foi sorteado em “Primeiro prêmio”.',
+        actionUrl,
+        redirectUrl: actionUrl,
+      }),
+    }));
+    expect(body.overrides.webPush.data).toEqual({ url: actionUrl, drawId: 'draw-1', spinId: 'spin-1' });
+  });
+
+  it('sends undo notices and uses DELETE endpoints to revoke and remove a prior transaction', async () => {
+    await expect(
+      service.notifyPrizeDrawUndone({
+        drawId: 'draw-1',
+        spinId: 'spin-1',
+        drawTitle: 'Kit CACiC',
+        spinDescription: null,
+        targetType: 'EVENT',
+        targetId: 'event-1',
+        recipient: { subscriberId: 'user-1' },
+        transactionId: 'undo-transaction',
+      }),
+    ).resolves.toBe(true);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(expect.objectContaining({
+      name: 'prize-draw-undone',
+      transactionId: 'undo-transaction',
+      payload: expect.objectContaining({ title: 'Sorteio desfeito: Kit CACiC' }),
+    }));
+
+    fetchMock.mockResolvedValue({ ok: true, status: 204 });
+    await expect(service.cancelTriggeredNotification('winner / transaction')).resolves.toBe(true);
+    await expect(service.deleteNotificationMessages('winner / transaction')).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://novu.example.com/v1/events/trigger/winner%20%2F%20transaction',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://novu.example.com/v1/messages/transaction/winner%20%2F%20transaction',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('contains Novu rejection, HTTP, and network failures instead of breaking the prize-draw transaction', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ acknowledged: false, status: 'rejected', error: ['invalid recipient'] }),
+    });
+    await expect(service.notifyPrizeDrawWinner(prizeDrawNotification())).resolves.toBe(false);
+
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+    await expect(service.notifyPrizeDrawWinner(prizeDrawNotification())).resolves.toBe(false);
+
+    fetchMock.mockRejectedValueOnce(new Error('network unavailable'));
+    await expect(service.notifyPrizeDrawWinner(prizeDrawNotification())).resolves.toBe(false);
+
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500 });
+    await expect(service.cancelTriggeredNotification('winner-transaction')).resolves.toBe(false);
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 404 });
+    await expect(service.deleteNotificationMessages('winner-transaction')).resolves.toBe(true);
+  });
+
+  it('treats prize-draw notifications as disabled when secure Novu configuration is absent', async () => {
+    config.get.mockImplementation((key: string, fallback?: string) =>
+      key === 'NOVU_SECURE_MODE_ENABLED' ? 'false' : fallback,
+    );
+
+    await expect(service.notifyPrizeDrawWinner(prizeDrawNotification())).resolves.toBe(false);
+    await expect(service.notifyPrizeDrawUndone(prizeDrawNotification())).resolves.toBe(false);
+    await expect(service.cancelTriggeredNotification('winner-transaction')).resolves.toBe(true);
+    await expect(service.deleteNotificationMessages('winner-transaction')).resolves.toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
+
+function prizeDrawNotification(
+  overrides: Partial<Parameters<NovuNotificationsService['notifyPrizeDrawWinner']>[0]> = {},
+) {
+  return {
+    drawId: 'draw-1',
+    spinId: 'spin-1',
+    drawTitle: 'Kit CACiC',
+    spinDescription: null,
+    targetType: 'EVENT' as const,
+    targetId: 'event-1',
+    recipient: { subscriberId: 'user-1' },
+    transactionId: 'winner-transaction',
+    ...overrides,
+  };
+}
 
 function notificationFixture(
   overrides: Partial<Parameters<NovuNotificationsService['notifyMajorEventSubscriptionStatusChanged']>[0]> = {},

@@ -1,0 +1,30 @@
+<section
+  class="reel"
+  [class.reel--spinning]="phase() === 'spinning'"
+  [class.reel--stopped]="phase() === 'stopped'"
+  [class.reel--complete]="phase() === 'complete'"
+  [class.reel--reduced]="phase() === 'reduced'"
+  [attr.data-motion-stage]="motionStage()"
+  aria-label="Carretel vertical do sorteio">
+  <div class="reel-window" aria-hidden="true">
+    @for (item of visibleNames(); track item.key) {
+      <div
+        class="reel-name"
+        [class.reel-name--center]="item.center"
+        [class.reel-name--alternate]="item.animationVariant === 'alternate'">
+        <span>{{ item.name }}</span>
+      </div>
+    } @empty {
+      <div class="reel-empty"><mat-icon>group_off</mat-icon><span>Nenhuma pessoa elegível</span></div>
+    }
+    @if (phase() === 'countdown') {
+      <div class="countdown">
+        <strong>{{ countdown() }}</strong
+        ><span>Prepare-se</span>
+      </div>
+    }
+    @if (phase() === 'reduced') {
+      <div class="reduced-state"><mat-icon>motion_photos_off</mat-icon><span>Movimento reduzido</span></div>
+    }
+  </div>
+</section>

@@ -76,6 +76,34 @@ export class NovuNotificationTransport {
     }
   }
 
+  async cancelTriggeredEvent(secretKey: string, transactionId: string): Promise<boolean> {
+    return this.deleteRequest(secretKey, `/v1/events/trigger/${encodeURIComponent(transactionId)}`);
+  }
+
+  async deleteMessagesByTransactionId(secretKey: string, transactionId: string): Promise<boolean> {
+    return this.deleteRequest(secretKey, `/v1/messages/transaction/${encodeURIComponent(transactionId)}`);
+  }
+
+  private async deleteRequest(secretKey: string, path: string): Promise<boolean> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.triggerTimeoutMs());
+    try {
+      const response = await fetch(`${this.apiUrl()}${path}`, {
+        method: 'DELETE',
+        headers: { Authorization: `ApiKey ${secretKey}` },
+        signal: controller.signal,
+      });
+      if (response.ok || response.status === 404) return true;
+      this.logger.warn(`Novu delete request failed with HTTP ${response.status}.`);
+      return false;
+    } catch (error) {
+      this.logger.warn(`Novu delete request failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   private assignOptionalSessionConfiguration(session: NovuSubscriberSession): void {
     const apiUrl = this.optionalConfig('NOVU_CLIENT_API_URL') ?? this.optionalConfig('NOVU_API_URL');
     if (apiUrl) session.apiUrl = apiUrl.replace(/\/$/, '');

@@ -92,6 +92,14 @@ export const Permission = {
     Merge: 'place-preset#merge',
     Delete: 'place-preset#delete',
   },
+  PrizeDraw: {
+    Read: 'prize-draw#read',
+    Create: 'prize-draw#create',
+    Update: 'prize-draw#update',
+    Operate: 'prize-draw#operate',
+    Undo: 'prize-draw#undo',
+    ContactRead: 'prize-draw#contact-read',
+  },
   Receipt: {
     Read: 'receipt#read',
     Approve: 'receipt#approve',

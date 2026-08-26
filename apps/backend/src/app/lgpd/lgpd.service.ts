@@ -1,7 +1,9 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
+import { REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL } from '../prize-draw/prize-draw-name';
 import {
   anonymizeAuditEntries,
   buildAnonymizedAuditSubjectId,
@@ -28,6 +30,12 @@ import {
   LGPD_MERGE_CANDIDATE_SELECT,
   LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT,
   LGPD_PEOPLE_MERGE_OPERATION_SELECT,
+  LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT,
+  LGPD_PRIZE_DRAW_EXCLUSION_SELECT,
+  LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT,
+  LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT,
+  LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT,
+  LGPD_PRIZE_DRAW_WIN_SELECT,
   LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
   LgpdCategoryData,
 } from './lgpd-records';
@@ -66,6 +74,12 @@ export class LgpdService {
       mergeOperations,
       mergeCandidates,
       eventDrafts,
+      prizeDrawManualEntriesForExport,
+      prizeDrawWeightOverridesForExport,
+      prizeDrawExclusionsForExport,
+      prizeDrawFrozenEntriesForExport,
+      prizeDrawSpinEntriesForExport,
+      prizeDrawWinsForExport,
     ] = await Promise.all([
       this.prisma.user.findMany({
         where: { id: { in: userIds } },
@@ -172,6 +186,48 @@ export class LgpdService {
             orderBy: { updatedAt: 'desc' },
           })
         : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawManualEntry.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawWeightOverride.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawExcludedPerson.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_EXCLUSION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawFrozenEntry.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawSpinEntry.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.prizeDrawSpin.findMany({
+            where: { winnerPersonId: { in: personIds } },
+            select: LGPD_PRIZE_DRAW_WIN_SELECT,
+            orderBy: { drawnAt: 'desc' },
+          })
+        : Promise.resolve([]),
     ]);
 
     return {
@@ -190,6 +246,14 @@ export class LgpdService {
         ),
       },
       eventDrafts: { records: selectManyForExport(eventDrafts, LGPD_EVENT_DRAFT_SELECT) },
+      prizeDraws: {
+        manualEntries: selectManyForExport(prizeDrawManualEntriesForExport, LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT),
+        weightOverrides: selectManyForExport(prizeDrawWeightOverridesForExport, LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT),
+        exclusions: selectManyForExport(prizeDrawExclusionsForExport, LGPD_PRIZE_DRAW_EXCLUSION_SELECT),
+        frozenEntries: selectManyForExport(prizeDrawFrozenEntriesForExport, LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT),
+        spinEntries: selectManyForExport(prizeDrawSpinEntriesForExport, LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT),
+        wins: selectManyForExport(prizeDrawWinsForExport, LGPD_PRIZE_DRAW_WIN_SELECT),
+      },
       lecturerActivities: { records: selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
       certificates: { records: selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
@@ -357,6 +421,38 @@ export class LgpdService {
       });
       const attendances = await tx.eventAttendance.deleteMany({ where: { personId: { in: personIds } } });
       const lecturers = await tx.eventLecturer.deleteMany({ where: { personId: { in: personIds } } });
+      const prizeDrawManualEntries = await tx.prizeDrawManualEntry.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const prizeDrawWeightOverrides = await tx.prizeDrawWeightOverride.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const prizeDrawExcludedPeople = await tx.prizeDrawExcludedPerson.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      if (personIds.length > 0) {
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "prize_draw_frozen_entries"
+          SET "personId" = NULL,
+              "displayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
+              "identityKey" = 'lgpd:' || "id"
+          WHERE "personId" IN (${Prisma.join(personIds)})
+        `);
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "prize_draw_spin_entries"
+          SET "personId" = NULL,
+              "displayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
+              "identityKey" = 'lgpd:' || "id"
+          WHERE "personId" IN (${Prisma.join(personIds)})
+        `);
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "prize_draw_spins"
+          SET "winnerPersonId" = NULL,
+              "winnerDisplayName" = ${REMOVED_PRIZE_DRAW_PARTICIPANT_LABEL},
+              "winnerEntryKey" = 'lgpd-winner:' || "id"
+          WHERE "winnerPersonId" IN (${Prisma.join(personIds)})
+        `);
+      }
       await tx.externalAccountMergeOperation.deleteMany({
         where: { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] },
       });
@@ -438,6 +534,9 @@ export class LgpdService {
           majorEventSubscriptions.count +
           attendances.count +
           lecturers.count +
+          prizeDrawManualEntries.count +
+          prizeDrawWeightOverrides.count +
+          prizeDrawExcludedPeople.count +
           roleAssignmentScopes.count +
           roleAssignments.count +
           permissionGroupMemberships.count +

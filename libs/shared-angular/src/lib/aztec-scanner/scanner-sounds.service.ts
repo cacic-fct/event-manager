@@ -52,6 +52,31 @@ export class ScannerSoundsService {
     }
   }
 
+  tone(frequency: number, durationSeconds: number, volume: number, type: OscillatorType = 'sine'): void {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    try {
+      const audioContext = this.getOrCreateAudioContext();
+      void this.resumeAudioContext(audioContext).catch(() => undefined);
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(volume, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + durationSeconds);
+      const master = this.master;
+      if (!master) return;
+      oscillator.connect(gain).connect(master);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + durationSeconds);
+    } catch {
+      // Audio is a progressive enhancement and may be unavailable in the browser.
+    }
+  }
+
   async valid(): Promise<void> {
     if (!(await this.ensureAudio())) {
       return;
@@ -168,11 +193,25 @@ export class ScannerSoundsService {
       return false;
     }
 
+    let audioContext: AudioContext;
+
+    try {
+      audioContext = this.getOrCreateAudioContext();
+    } catch {
+      return false;
+    }
+
+    await this.resumeAudioContext(audioContext);
+
+    return true;
+  }
+
+  private getOrCreateAudioContext(): AudioContext {
     if (!this.audioContext) {
       const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
 
       if (!AudioContextClass) {
-        return false;
+        throw new Error('Web Audio API is unavailable');
       }
 
       const audioContext = new AudioContextClass();
@@ -196,11 +235,13 @@ export class ScannerSoundsService {
       this.compressor = compressor;
     }
 
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-    }
+    return this.audioContext;
+  }
 
-    return true;
+  private async resumeAudioContext(audioContext: AudioContext): Promise<void> {
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
   }
 
   private makeTone({

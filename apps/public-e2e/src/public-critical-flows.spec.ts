@@ -76,14 +76,14 @@ test('opens standard major-event subscription from the public list and subscribe
   await page.getByRole('radio', { name: 'Sim' }).click();
   await page.locator('app-subscription-form-flow').getByRole('button', { name: 'Voltar' }).click();
   await expect(page.getByRole('radio', { name: 'M' })).toBeChecked();
-  await preferencesStep.click();
-  await expect(page.getByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
   await page.getByRole('button', { name: 'Continuar' }).click();
   await expect(page.getByRole('radio', { name: 'Sim' })).toBeChecked();
   await page.getByRole('button', { name: 'Continuar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Contrato de concessão de licença de imagem' })).toBeVisible();
-  await page.getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de imagem/i }).click();
+  await expect(page.getByRole('heading', { name: 'Documentos legais' })).toBeVisible();
+  await page
+    .getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de uso de imagem/i })
+    .click();
   await page.getByRole('button', { name: 'Revisar inscrição' }).click();
 
   const reviewDialog = page.getByRole('dialog', { name: 'Revise sua inscrição' });
@@ -336,6 +336,11 @@ async function fulfillGraphql(
     await fulfillGraphqlData(route, {
       publicMajorEvents: [standardMajorEventFixture(), rankedMajorEventFixture()],
     });
+    return;
+  }
+
+  if (query.includes('query PublicPrizeDrawAvailability')) {
+    await fulfillGraphqlData(route, { publicPrizeDrawAvailability: [] });
     return;
   }
 

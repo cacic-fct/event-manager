@@ -19,13 +19,19 @@ export class RateLimitError extends Error {
   }
 }
 
+export class ForbiddenGraphqlError extends Error {}
+
 export function graphqlError(errors: readonly GraphqlErrorLike[]): Error {
   const rateLimit = errors.map(rateLimitFromGraphqlError).find((error): error is RateLimitError => Boolean(error));
   if (rateLimit) {
     return rateLimit;
   }
 
-  return new Error(errors.map((error) => error.message).join('\n'));
+  const message = errors.map((error) => error.message).join('\n');
+  if (errors.some((error) => graphqlErrorCode(error) === 'FORBIDDEN')) {
+    return new ForbiddenGraphqlError(message);
+  }
+  return new Error(message);
 }
 
 export function rateLimitFromHttpError(error: unknown): RateLimitError | null {
@@ -95,12 +101,17 @@ function rateLimitFromGraphqlError(error: GraphqlErrorLike): RateLimitError | nu
     return null;
   }
 
-  const code = typeof extensions['code'] === 'string' ? extensions['code'] : '';
+  const code = graphqlErrorCode(error);
   if (code !== 'RATE_LIMITED') {
     return null;
   }
 
   return new RateLimitError(retryAfterFromBody(extensions) ?? 60);
+}
+
+function graphqlErrorCode(error: GraphqlErrorLike): string | null {
+  const extensions = recordFromUnknown(error.extensions);
+  return typeof extensions?.['code'] === 'string' ? extensions['code'] : null;
 }
 
 function retryAfterFromBody(value: unknown): number | null {

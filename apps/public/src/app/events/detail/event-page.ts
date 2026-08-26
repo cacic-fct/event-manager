@@ -56,6 +56,7 @@ import {
   type SubscriptionReviewDialogResult,
 } from '../../major-events/registration/standard/subscription-review-dialog';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
+import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 
 type EventPageState =
   | { status: 'loading' }
@@ -139,6 +140,7 @@ export class Event {
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formsApi = inject(PublicEventFormApiService);
+  private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
@@ -195,6 +197,19 @@ export class Event {
     initialValue: [] satisfies EventFormPageLink[],
   });
   readonly isPreview = computed(() => Boolean(this.previewToken()));
+  readonly hasPrizeDraws = toSignal(
+    this.route.paramMap.pipe(
+      switchMap((params) => {
+        const eventId = params.get('eventId');
+        return eventId && !params.get('previewToken')
+          ? this.prizeDrawsApi.availability({ eventIds: [eventId] })
+          : of([]);
+      }),
+      map((availability) => availability.some((item) => item.targetType === 'EVENT' && item.drawCount > 0)),
+      catchError(() => of(false)),
+    ),
+    { initialValue: false },
+  );
   readonly calendarDownloadUrl = computed(() => {
     const currentState = this.eventState();
     if (currentState.status !== 'ready' || currentState.data.preview) {

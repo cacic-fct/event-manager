@@ -128,6 +128,64 @@ export const LGPD_EVENT_LECTURER_SELECT = {
   createdAt: true,
 } satisfies Prisma.EventLecturerSelect;
 
+export const LGPD_PRIZE_DRAW_MANUAL_ENTRY_SELECT = {
+  id: true,
+  drawId: true,
+  personId: true,
+  name: true,
+  weight: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.PrizeDrawManualEntrySelect;
+
+export const LGPD_PRIZE_DRAW_WEIGHT_OVERRIDE_SELECT = {
+  id: true,
+  drawId: true,
+  personId: true,
+  weight: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.PrizeDrawWeightOverrideSelect;
+
+export const LGPD_PRIZE_DRAW_EXCLUSION_SELECT = {
+  id: true,
+  drawId: true,
+  personId: true,
+  createdAt: true,
+} satisfies Prisma.PrizeDrawExcludedPersonSelect;
+
+export const LGPD_PRIZE_DRAW_FROZEN_ENTRY_SELECT = {
+  id: true,
+  drawId: true,
+  personId: true,
+  displayName: true,
+  weight: true,
+  sources: true,
+  createdAt: true,
+} satisfies Prisma.PrizeDrawFrozenEntrySelect;
+
+export const LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT = {
+  id: true,
+  spinId: true,
+  personId: true,
+  displayName: true,
+  weight: true,
+  sources: true,
+  winner: true,
+  createdAt: true,
+} satisfies Prisma.PrizeDrawSpinEntrySelect;
+
+export const LGPD_PRIZE_DRAW_WIN_SELECT = {
+  id: true,
+  drawId: true,
+  sequence: true,
+  winnerPersonId: true,
+  winnerDisplayName: true,
+  winnerWeight: true,
+  drawnAt: true,
+  undoneAt: true,
+} satisfies Prisma.PrizeDrawSpinSelect;
+
 export const LGPD_CERTIFICATE_SELECT = {
   id: true,
   personId: true,

@@ -136,6 +136,11 @@
       <mat-icon>how_to_reg</mat-icon>
       {{ data.currentUserAttendance ? 'Presença confirmada' : 'Confirmar presença' }}
     </button>
+    } @if (hasPrizeDraws()) {
+    <a mat-stroked-button [routerLink]="['/draws', 'event', event.id]">
+      <mat-icon>rewarded_ads</mat-icon>
+      Sorteios
+    </a>
     }
   </section>
 

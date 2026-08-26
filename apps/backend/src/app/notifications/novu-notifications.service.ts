@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
+import { publicPrizeDrawPath } from '@cacic-fct/shared-utils';
 import { SubscriptionStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import {
@@ -16,6 +17,7 @@ import type {
   NotificationRecipient,
   OfflineAttendanceReviewQueuedNotification,
   OnlineAttendanceAvailableNotification,
+  PrizeDrawNotification,
   SubscriptionStatusNotification,
 } from './novu-notification.types';
 
@@ -329,6 +331,83 @@ export class NovuNotificationsService {
         fcm: { data: { url: actionUrl, eventId: input.eventId } },
         webPush: { data: { url: actionUrl, eventId: input.eventId } },
       },
+    });
+  }
+
+  async notifyPrizeDrawWinner(input: PrizeDrawNotification): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) return false;
+    const actionUrl = this.prizeDrawActionUrl(input);
+    const title = `Você ganhou: ${input.drawTitle}`;
+    const body = input.spinDescription
+      ? `Seu nome foi sorteado em “${input.spinDescription}”.`
+      : 'Seu nome foi sorteado.';
+    return this.transport.trigger(secretKey, {
+      name: this.config.get<string>('NOVU_PRIZE_DRAW_WINNER_WORKFLOW_IDENTIFIER', 'prize-draw-winner'),
+      to: input.recipient,
+      transactionId: input.transactionId,
+      payload: {
+        title,
+        subject: title,
+        body,
+        drawId: input.drawId,
+        spinId: input.spinId,
+        drawTitle: input.drawTitle,
+        spinDescription: input.spinDescription ?? null,
+        actionLabel: 'Ver sorteio',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
+        webPush: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
+      },
+    });
+  }
+
+  async notifyPrizeDrawUndone(input: PrizeDrawNotification): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) return false;
+    const actionUrl = this.prizeDrawActionUrl(input);
+    const title = `Sorteio desfeito: ${input.drawTitle}`;
+    const body = 'O último resultado foi invalidado pela organização e não vale mais.';
+    return this.transport.trigger(secretKey, {
+      name: this.config.get<string>('NOVU_PRIZE_DRAW_UNDONE_WORKFLOW_IDENTIFIER', 'prize-draw-undone'),
+      to: input.recipient,
+      transactionId: input.transactionId,
+      payload: {
+        title,
+        subject: title,
+        body,
+        drawId: input.drawId,
+        spinId: input.spinId,
+        drawTitle: input.drawTitle,
+        actionLabel: 'Ver sorteio',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
+        webPush: { data: { url: actionUrl, drawId: input.drawId, spinId: input.spinId } },
+      },
+    });
+  }
+
+  async cancelTriggeredNotification(transactionId: string): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    return secretKey ? this.transport.cancelTriggeredEvent(secretKey, transactionId) : true;
+  }
+
+  async deleteNotificationMessages(transactionId: string): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    return secretKey ? this.transport.deleteMessagesByTransactionId(secretKey, transactionId) : true;
+  }
+
+  private prizeDrawActionUrl(input: PrizeDrawNotification): string {
+    return publicPrizeDrawPath({
+      drawId: input.drawId,
+      targetId: input.targetId,
+      targetType: input.targetType,
     });
   }
 

@@ -176,6 +176,14 @@ describe('MoreInfo', () => {
         currentUserEventForms: [],
       },
     });
+    const prizeDrawAvailabilityRequest = httpTesting.match((request) =>
+      String(request.body.query).includes('PublicPrizeDrawAvailability'),
+    )[0];
+    prizeDrawAvailabilityRequest?.flush({
+      data: {
+        publicPrizeDrawAvailability: [],
+      },
+    });
     await fixture.whenStable();
     fixture.detectChanges();
 

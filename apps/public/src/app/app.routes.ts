@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { developmentOnlyGuard } from '@cacic-fct/shared-angular';
+import { authGuard, developmentOnlyGuard } from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
@@ -80,6 +80,27 @@ export const appRoutes: Route[] = [
     path: 'event/:eventId',
     loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Evento',
+  },
+  {
+    path: 'draws/event/:eventId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./prize-draws/prize-draw-page').then((m) => m.PublicPrizeDrawPage),
+    title: 'Sorteios',
+    data: { targetType: 'EVENT' },
+  },
+  {
+    path: 'draws/event-group/:eventGroupId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./prize-draws/prize-draw-page').then((m) => m.PublicPrizeDrawPage),
+    title: 'Sorteios',
+    data: { targetType: 'EVENT_GROUP' },
+  },
+  {
+    path: 'draws/major-event/:majorEventId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./prize-draws/prize-draw-page').then((m) => m.PublicPrizeDrawPage),
+    title: 'Sorteios',
+    data: { targetType: 'MAJOR_EVENT' },
   },
   {
     path: 'map',
