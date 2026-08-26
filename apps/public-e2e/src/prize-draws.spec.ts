@@ -52,7 +52,11 @@ async function mockPublicPrizeDrawApi(page: Page): Promise<void> {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/auth/me') {
-      await route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ message: 'Unauthenticated' }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(authenticatedUserFixture()),
+      });
       return;
     }
     if (url.pathname.startsWith('/api/prize-draws/public/')) {
@@ -107,5 +111,25 @@ function publicDrawFixture() {
     }],
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function authenticatedUserFixture(): Record<string, unknown> {
+  return {
+    realm_access: {
+      roles: [],
+    },
+    sub: 'user-1',
+    preferredUsername: 'usuario.teste',
+    email: 'usuario.teste@example.edu',
+    roles: [],
+    permissions: [],
+    scopes: ['openid'],
+    claims: {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      is_onboarded: true,
+      name: 'Usuário Teste',
+      picture: null,
+    },
   };
 }

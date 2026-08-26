@@ -82,7 +82,7 @@ test('opens standard major-event subscription from the public list and subscribe
   await expect(page.getByRole('radio', { name: 'Sim' })).toBeChecked();
   await page.getByRole('button', { name: 'Continuar' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Contrato de concessão de licença de imagem' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Documentos legais' })).toBeVisible();
   await page.getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de imagem/i }).click();
   await page.getByRole('button', { name: 'Revisar inscrição' }).click();
 
