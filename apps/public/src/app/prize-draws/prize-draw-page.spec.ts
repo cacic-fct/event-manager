@@ -2,17 +2,27 @@ import { DOCUMENT, Location } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
+import type { PublicPrizeDraw, PublicPrizeDrawSpin } from '@cacic-fct/event-manager-public-contracts';
 import { Subject, of, throwError } from 'rxjs';
 import { PublicPrizeDrawApiService } from './prize-draw-api.service';
 import { PublicPrizeDrawPage } from './prize-draw-page';
+import { ForbiddenGraphqlError } from '../shared/rate-limit-error';
+
+const FIXTURE_TIMESTAMP = new Date().toISOString();
 
 describe('PublicPrizeDrawPage', () => {
   let api: { list: ReturnType<typeof vi.fn>; watch: ReturnType<typeof vi.fn> };
   let fixture: ComponentFixture<PublicPrizeDrawPage>;
   let location: { back: ReturnType<typeof vi.fn> };
   let updates: Subject<void>;
+  let deepLinkTarget: HTMLElement | null = null;
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    deepLinkTarget?.remove();
+    deepLinkTarget = null;
+    history.replaceState({}, '', locationPath());
+    vi.restoreAllMocks();
+  });
 
   it('loads event results, exposes transparent chance labels, and refreshes after live invalidation', async () => {
     updates = new Subject<void>();
@@ -33,8 +43,8 @@ describe('PublicPrizeDrawPage', () => {
     expect(component.percentage(spinFixture())).toBe('25%');
     expect(component.chance(spinFixture())).toBe('1 em 4');
     expect(component.sourceTargetLabel(drawFixture())).toBe('Evento: Evento');
-    expect(component.sourceTargetLabel(drawFixture({ target: { type: 'EVENT_GROUP', id: 'group-1', name: 'Grupo' } }))).toBe(
-      'Grupo de eventos: Grupo',
+    expect(component.sourceTargetLabel(drawFixture({ target: { type: 'MAJOR_EVENT', id: 'major-1', name: 'Semana' } }))).toBe(
+      'Grande evento: Semana',
     );
     expect(component.drawAnchorId('draw-1')).toBe('draw-draw-1');
 
@@ -62,6 +72,23 @@ describe('PublicPrizeDrawPage', () => {
 
     expect(fixture.componentInstance.state()).toEqual({ status: 'ready', draws: [drawFixture()] });
     expect(fixture.componentInstance.liveUpdatesUnavailable()).toBe(true);
+  });
+
+  it('clears an invalidated snapshot when a live refresh loses public access', async () => {
+    updates = new Subject<void>();
+    api = {
+      list: vi.fn()
+        .mockReturnValueOnce(of([drawFixture()]))
+        .mockReturnValueOnce(throwError(() => new ForbiddenGraphqlError('Você não participou deste sorteio.'))),
+      watch: vi.fn(() => updates),
+    };
+    await configure({ targetType: 'EVENT', param: 'eventId', id: 'event-1' });
+
+    updates.next();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.state()).toEqual({ status: 'ready', draws: [] });
+    expect(fixture.componentInstance.liveUpdatesUnavailable()).toBe(false);
   });
 
   it('reports initial API and live-stream failures without leaking an unusable loading state', async () => {
@@ -97,6 +124,7 @@ describe('PublicPrizeDrawPage', () => {
     api = { list: vi.fn(() => of([drawFixture()])), watch: vi.fn(() => updates) };
     history.replaceState({}, '', '#draw-draw-1');
     const target = document.createElement('section');
+    deepLinkTarget = target;
     target.id = 'draw-draw-1';
     target.scrollIntoView = vi.fn();
     document.body.append(target);
@@ -110,8 +138,6 @@ describe('PublicPrizeDrawPage', () => {
     await fixture.whenStable();
 
     expect(target.scrollIntoView).toHaveBeenCalledOnce();
-    history.replaceState({}, '', locationPath());
-    target.remove();
   });
 
   async function configure(input: {
@@ -144,7 +170,7 @@ describe('PublicPrizeDrawPage', () => {
   }
 });
 
-function drawFixture(patch: Record<string, unknown> = {}) {
+function drawFixture(patch: Partial<PublicPrizeDraw> = {}): PublicPrizeDraw {
   return {
     id: 'draw-1',
     title: 'Sorteio',
@@ -157,13 +183,13 @@ function drawFixture(patch: Record<string, unknown> = {}) {
     removeWinnerAfterDraw: true,
     revision: 1,
     spins: [spinFixture()],
-    createdAt: '2026-08-26T11:00:00.000Z',
-    updatedAt: '2026-08-26T12:00:00.000Z',
+    createdAt: FIXTURE_TIMESTAMP,
+    updatedAt: FIXTURE_TIMESTAMP,
     ...patch,
-  } as never;
+  };
 }
 
-function spinFixture() {
+function spinFixture(patch: Partial<PublicPrizeDrawSpin> = {}): PublicPrizeDrawSpin {
   return {
     id: 'spin-1',
     sequence: 1,
@@ -177,8 +203,9 @@ function spinFixture() {
     totalWeight: 4,
     duplicateEntryCount: 2,
     weightBreakdown: [{ weight: 1, peopleCount: 1 }, { weight: 3, peopleCount: 1 }],
-    drawnAt: '2026-08-26T12:00:00.000Z',
-  } as never;
+    drawnAt: FIXTURE_TIMESTAMP,
+    ...patch,
+  };
 }
 
 function locationPath(): string {

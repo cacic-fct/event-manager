@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import type { Person, PrizeDraw, PrizeDrawEligibleEntry, PrizeDrawSpin } from '@cacic-fct/event-manager-admin-contracts';
 import { Subject, of, throwError } from 'rxjs';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -11,6 +12,8 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
+
+const FIXTURE_TIMESTAMP = new Date().toISOString();
 
 describe('PrizeDrawWorkspaceService', () => {
   let api: ReturnType<typeof apiMock>;
@@ -60,7 +63,7 @@ describe('PrizeDrawWorkspaceService', () => {
   });
 
   it('selects a draw, patches every editable collection, loads eligibility, and locks frozen controls', async () => {
-    api.get.mockReturnValue(of(drawFixture({ frozenAt: '2026-08-26T12:00:00.000Z' })));
+    api.get.mockReturnValue(of(drawFixture({ frozenAt: FIXTURE_TIMESTAMP })));
     api.eligibleEntries.mockReturnValue(of([eligibleFixture()]));
 
     await service.selectById('draw-1', true);
@@ -77,8 +80,8 @@ describe('PrizeDrawWorkspaceService', () => {
   });
 
   it('keeps the newest draw and people-search result when requests resolve out of order', async () => {
-    const firstDraw = new Subject<ReturnType<typeof drawFixture>>();
-    const secondDraw = new Subject<ReturnType<typeof drawFixture>>();
+    const firstDraw = new Subject<PrizeDraw>();
+    const secondDraw = new Subject<PrizeDraw>();
     api.get.mockReturnValueOnce(firstDraw).mockReturnValueOnce(secondDraw);
     const firstSelection = service.selectById('draw-old', false);
     const secondSelection = service.selectById('draw-new', false);
@@ -89,18 +92,18 @@ describe('PrizeDrawWorkspaceService', () => {
     await Promise.all([firstSelection, secondSelection]);
     expect(service.selected()?.id).toBe('draw-new');
 
-    const firstPeople = new Subject<never[]>();
-    const secondPeople = new Subject<never[]>();
+    const firstPeople = new Subject<Person[]>();
+    const secondPeople = new Subject<Person[]>();
     peopleApi.listRelatedPeople.mockReturnValueOnce(firstPeople).mockReturnValueOnce(secondPeople);
     const firstSearch = service.searchPeople('Ada');
     const secondSearch = service.searchPeople('Grace');
-    secondPeople.next([{ id: 'person-2', name: 'Grace' }] as never);
+    secondPeople.next([personFixture({ id: 'person-2', name: 'Grace' })]);
     secondPeople.complete();
-    firstPeople.next([{ id: 'person-1', name: 'Ada' }] as never);
+    firstPeople.next([personFixture()]);
     firstPeople.complete();
     await Promise.all([firstSearch, secondSearch]);
     expect(service.personQuery()).toBe('Grace');
-    expect(service.personResults()).toEqual([{ id: 'person-2', name: 'Grace' }]);
+    expect(service.personResults()).toEqual([expect.objectContaining({ id: 'person-2', name: 'Grace' })]);
   });
 
   it('maintains contiguous planned spins and normalizes manual and weighted entries', () => {
@@ -123,8 +126,8 @@ describe('PrizeDrawWorkspaceService', () => {
     expect(service.plannedSpins().map((spin) => spin.position)).toEqual([1]);
 
     service.addFreeEntry('  Convidada  ');
-    service.addPersonEntry({ id: 'person-1', name: 'Ada Lovelace' } as never);
-    service.addPersonEntry({ id: 'person-1', name: 'Ada duplicada' } as never);
+    service.addPersonEntry(personFixture());
+    service.addPersonEntry(personFixture({ name: 'Ada duplicada' }));
     expect(service.manualEntries()).toEqual([
       { name: 'Convidada', weight: 1 },
       { personId: 'person-1', name: 'Ada Lovelace', weight: 1 },
@@ -150,7 +153,7 @@ describe('PrizeDrawWorkspaceService', () => {
     expect(service.weightOverrides()).toEqual({});
     expect(service.includedEligibleEntries()).toEqual([]);
 
-    service.selected.set(drawFixture({ frozenAt: '2026-08-26T12:00:00.000Z' }));
+    service.selected.set(drawFixture({ frozenAt: FIXTURE_TIMESTAMP }));
     service.restorePerson('person-1');
     expect(service.excludedPeople()).toHaveLength(2);
   });
@@ -207,13 +210,13 @@ describe('PrizeDrawWorkspaceService', () => {
   it('toggles freeze, undoes the last spin, and deduplicates protected contact requests', async () => {
     api.get.mockReturnValue(of(drawFixture()));
     await service.selectById('draw-1', false);
-    api.freeze.mockReturnValue(of(drawFixture({ frozenAt: '2026-08-26T12:00:00.000Z' })));
+    api.freeze.mockReturnValue(of(drawFixture({ frozenAt: FIXTURE_TIMESTAMP })));
     await service.toggleFreeze();
     expect(api.freeze).toHaveBeenCalledWith('draw-1');
     expect(service.form.controls.includePresent.disabled).toBe(true);
 
     api.undoLast.mockReturnValue(of(drawFixture({
-      spins: [spinFixture({ undoneAt: '2026-08-26T13:00:00.000Z' })],
+      spins: [spinFixture({ undoneAt: new Date(Date.now() + 60_000).toISOString() })],
     })));
     await service.undoLast();
     expect(api.undoLast).toHaveBeenCalledWith('draw-1');
@@ -233,7 +236,7 @@ function apiMock() {
     list: vi.fn(() => of([drawFixture()])),
     get: vi.fn(() => of(drawFixture())),
     save: vi.fn(() => of(drawFixture())),
-    eligibleEntries: vi.fn(() => of([])),
+    eligibleEntries: vi.fn(() => of<PrizeDrawEligibleEntry[]>([])),
     freeze: vi.fn(() => of(drawFixture())),
     unfreeze: vi.fn(() => of(drawFixture())),
     undoLast: vi.fn(() => of(drawFixture())),
@@ -241,7 +244,17 @@ function apiMock() {
   };
 }
 
-function eligibleFixture(patch: Record<string, unknown> = {}) {
+function personFixture(patch: Partial<Person> = {}): Person {
+  return {
+    id: 'person-1',
+    name: 'Ada Lovelace',
+    createdAt: FIXTURE_TIMESTAMP,
+    updatedAt: FIXTURE_TIMESTAMP,
+    ...patch,
+  };
+}
+
+function eligibleFixture(patch: Partial<PrizeDrawEligibleEntry> = {}): PrizeDrawEligibleEntry {
   return {
     identityKey: 'person:person-1',
     personId: 'person-1',
@@ -249,10 +262,10 @@ function eligibleFixture(patch: Record<string, unknown> = {}) {
     weight: 3,
     sources: ['ATTENDANCE'],
     ...patch,
-  } as never;
+  };
 }
 
-function drawFixture(patch: Record<string, unknown> = {}) {
+function drawFixture(patch: Partial<PrizeDraw> = {}): PrizeDraw {
   return {
     id: 'draw-1',
     title: 'Sorteio',
@@ -278,13 +291,13 @@ function drawFixture(patch: Record<string, unknown> = {}) {
     eligibleEntrantCount: 2,
     eligibleTotalWeight: 4,
     eligibleDuplicateEntryCount: 2,
-    createdAt: '2026-08-26T11:00:00.000Z',
-    updatedAt: '2026-08-26T12:00:00.000Z',
+    createdAt: FIXTURE_TIMESTAMP,
+    updatedAt: FIXTURE_TIMESTAMP,
     ...patch,
-  } as never;
+  };
 }
 
-function spinFixture(patch: Record<string, unknown> = {}) {
+function spinFixture(patch: Partial<PrizeDrawSpin> = {}): PrizeDrawSpin {
   return {
       id: 'spin-1',
       sequence: 1,
@@ -298,7 +311,7 @@ function spinFixture(patch: Record<string, unknown> = {}) {
       totalWeight: 4,
       duplicateEntryCount: 2,
       weightBreakdown: [{ weight: 1, peopleCount: 1 }, { weight: 3, peopleCount: 1 }],
-      drawnAt: '2026-08-26T12:00:00.000Z',
+      drawnAt: FIXTURE_TIMESTAMP,
       undoneAt: null,
       notificationStatus: 'SENT',
     ...patch,

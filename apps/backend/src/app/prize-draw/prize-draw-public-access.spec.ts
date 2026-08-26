@@ -46,6 +46,29 @@ describe('PrizeDrawService public audience', () => {
     expect(where.OR).toContainEqual({ eventId: { in: ['event-1'] } });
   });
 
+  it('retains recorded source IDs when a participant has been merged into their current person', async () => {
+    const context = createContext({ people: [{ id: 'source-person', mergedIntoId: 'target-person' }] });
+
+    await expect(context.service.listPublic({ eventId: 'event-1' }, user())).rejects.toThrow(
+      'Você não participou deste sorteio',
+    );
+
+    expect(context.prisma.people.findMany).toHaveBeenCalledWith({
+      where: { OR: [{ userId: 'user-1' }, { mergedInto: { userId: 'user-1' } }] },
+      select: { id: true, mergedIntoId: true },
+    });
+    const where = context.prisma.prizeDraw.findMany.mock.calls[0][0].where;
+    expect(where.OR).toContainEqual({
+      spins: {
+        some: {
+          undoneAt: null,
+          presentationAcknowledgedAt: { not: null },
+          entries: { some: { personId: { in: ['source-person', 'target-person'] } } },
+        },
+      },
+    });
+  });
+
   it('hides an unpresented result from the public query while keeping earlier released results', async () => {
     const context = createContext({
       adminTargets: null,

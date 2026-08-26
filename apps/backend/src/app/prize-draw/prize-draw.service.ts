@@ -652,6 +652,9 @@ export class PrizeDrawService {
     if (!input.includeManualEntries && input.manualEntries.length > 0) {
       throw new BadRequestException('Ative as entradas manuais antes de adicioná-las.');
     }
+    if (input.manualEntries.some((entry) => !entry.personId && !entry.name.trim())) {
+      throw new BadRequestException('Informe o nome de cada entrada manual.');
+    }
     if (input.chanceMode !== 'WEIGHTED' && input.weightOverrides.length > 0) {
       throw new BadRequestException('Pesos individuais só podem ser usados no modo ponderado.');
     }
@@ -682,6 +685,7 @@ export class PrizeDrawService {
     }
     if (!existing.frozenAt) return;
     const eligibilityChanged =
+      targetChanged ||
       existing.includePresent !== input.includePresent ||
       existing.includeSubscribers !== input.includeSubscribers ||
       existing.includeManualEntries !== input.includeManualEntries ||
@@ -921,7 +925,6 @@ export class PrizeDrawService {
     if (!user?.sub) return [];
     const people = await this.prisma.people.findMany({
       where: {
-        deletedAt: null,
         OR: [{ userId: user.sub }, { mergedInto: { userId: user.sub } }],
       },
       select: { id: true, mergedIntoId: true },

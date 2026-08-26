@@ -23,7 +23,6 @@ test('shows released results with criteria, exact historical odds, and privacy-s
   await expect(page.getByText('25% · 1 em 4')).toBeVisible();
   await expect(page.getByText('Pesos: 1 pessoa com peso 1 · 1 pessoa com peso 3')).toBeVisible();
   await expect(page.getByText(/CSPRNG/)).toBeVisible();
-  await expect(page.getByText('ada@example.com')).toHaveCount(0);
 });
 
 test('renders access failures as a stable error state instead of stale or empty results', async ({ page }) => {

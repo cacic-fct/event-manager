@@ -62,6 +62,7 @@ describe('PrizeDrawService', () => {
       ['missing planned spin', { spinLimit: 2, plannedSpins: [plannedSpin()] }, 'Configure cada giro'],
       ['non-contiguous positions', { spinLimit: 2, plannedSpins: [plannedSpin(1), plannedSpin(3)] }, 'posições dos giros'],
       ['manual entry while disabled', { manualEntries: [manualEntry()] }, 'Ative as entradas manuais'],
+      ['blank free-text manual entry', { includeManualEntries: true, manualEntries: [{ personId: null, name: ' ', weight: 1 }] }, 'Informe o nome'],
       ['weight in equal mode', { weightOverrides: [{ personId: 'person-1', weight: 2 }] }, 'modo ponderado'],
       [
         'duplicate manual person',
@@ -176,6 +177,16 @@ describe('PrizeDrawService', () => {
           actor(),
         ),
       ).rejects.toThrow('não pode mudar depois do primeiro giro');
+
+      context.prisma.prizeDraw.findFirst.mockReset().mockResolvedValueOnce(
+        drawRecord({ frozenAt: new Date(), eventId: 'event-1' }),
+      );
+      await expect(
+        context.service.save(
+          input({ id: 'draw-1', targetType: PrizeDrawTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
+          actor(),
+        ),
+      ).rejects.toThrow('Descongele a lista');
     });
   });
 

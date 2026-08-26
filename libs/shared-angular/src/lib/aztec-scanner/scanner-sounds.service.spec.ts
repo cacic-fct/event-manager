@@ -1,13 +1,23 @@
 import '@angular/compiler';
 import { EnvironmentInjector, PLATFORM_ID, createEnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
 import { ScannerSoundsService } from './scanner-sounds.service';
 
 describe('ScannerSoundsService', () => {
-  const rootEnvironmentInjector = null as unknown as EnvironmentInjector;
   const originalAudioContext = window.AudioContext;
   const originalWebkitAudioContext = window.webkitAudioContext;
 
+  beforeAll(() => {
+    TestBed.initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
+  });
+
+  afterAll(() => {
+    TestBed.resetTestEnvironment();
+  });
+
   afterEach(() => {
+    TestBed.resetTestingModule();
     Object.defineProperty(window, 'AudioContext', { configurable: true, value: originalAudioContext });
     Object.defineProperty(window, 'webkitAudioContext', { configurable: true, value: originalWebkitAudioContext });
   });
@@ -69,7 +79,7 @@ describe('ScannerSoundsService', () => {
   function createService(platformId: 'browser' | 'server') {
     const injector = createEnvironmentInjector(
       [{ provide: PLATFORM_ID, useValue: platformId }],
-      rootEnvironmentInjector,
+      TestBed.inject(EnvironmentInjector),
     );
     const service = runInInjectionContext(injector, () => new ScannerSoundsService());
     return { injector, service };

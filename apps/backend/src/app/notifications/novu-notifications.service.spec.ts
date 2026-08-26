@@ -602,14 +602,10 @@ describe('NovuNotificationsService', () => {
   ])('sends prize-draw winner notifications with a scoped public deep link for %s', async (targetType, targetId, actionUrl) => {
     await expect(
       service.notifyPrizeDrawWinner({
-        drawId: 'draw-1',
-        spinId: 'spin-1',
-        drawTitle: 'Kit CACiC',
-        spinDescription: 'Primeiro prêmio',
+        ...prizeDrawNotification({ spinDescription: 'Primeiro prêmio' }),
         targetType: targetType as 'EVENT' | 'MAJOR_EVENT',
         targetId,
         recipient: { subscriberId: 'user-1', email: 'ada@example.com' },
-        transactionId: 'winner-transaction',
       }),
     ).resolves.toBe(true);
 
@@ -693,7 +689,9 @@ describe('NovuNotificationsService', () => {
   });
 });
 
-function prizeDrawNotification() {
+function prizeDrawNotification(
+  overrides: Partial<Parameters<NovuNotificationsService['notifyPrizeDrawWinner']>[0]> = {},
+) {
   return {
     drawId: 'draw-1',
     spinId: 'spin-1',
@@ -703,6 +701,7 @@ function prizeDrawNotification() {
     targetId: 'event-1',
     recipient: { subscriberId: 'user-1' },
     transactionId: 'winner-transaction',
+    ...overrides,
   };
 }
 

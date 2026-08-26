@@ -1,6 +1,7 @@
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import type { DestroyRef } from '@angular/core';
 import {
+  ForbiddenGraphqlError,
   RateLimitError,
   createRateLimitCooldown,
   formatCooldownDuration,
@@ -41,6 +42,12 @@ describe('rate limit errors', () => {
   it('keeps non-rate-limited GraphQL errors readable', () => {
     expect(graphqlError([{ message: 'Primeiro erro' }, { message: 'Segundo erro' }]).message).toBe(
       'Primeiro erro\nSegundo erro',
+    );
+  });
+
+  it('preserves forbidden GraphQL errors so callers can replace invalidated snapshots', () => {
+    expect(graphqlError([{ message: 'Acesso revogado', extensions: { code: 'FORBIDDEN' } }])).toBeInstanceOf(
+      ForbiddenGraphqlError,
     );
   });
 

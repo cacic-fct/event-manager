@@ -11,6 +11,7 @@ import { ActivatedRoute } from '@angular/router';
 import { PublicPrizeDraw, PublicPrizeDrawScopeType, PublicPrizeDrawSpin } from '@cacic-fct/event-manager-public-contracts';
 import { publicPrizeDrawAnchorId } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
+import { ForbiddenGraphqlError } from '../shared/rate-limit-error';
 import { PublicPrizeDrawApiService } from './prize-draw-api.service';
 
 type PrizeDrawPageState =
@@ -111,6 +112,11 @@ export class PublicPrizeDrawPage {
       this.scrollToDeepLinkedDraw();
     } catch (error) {
       if (background && this.state().status === 'ready') {
+        if (error instanceof ForbiddenGraphqlError) {
+          this.state.set({ status: 'ready', draws: [] });
+          this.liveUpdatesUnavailable.set(false);
+          return;
+        }
         this.liveUpdatesUnavailable.set(true);
         return;
       }
