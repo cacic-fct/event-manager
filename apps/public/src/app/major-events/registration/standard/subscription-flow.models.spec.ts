@@ -1,8 +1,10 @@
 import { createSubscriptionFlowFormFixtures } from './subscription-flow.fixtures';
 import {
+  createMajorEventSubscriptionFlowSources,
   createSubscriptionFlowDraft,
   orderSubscriptionFlowSources,
   subscriptionFormKey,
+  toSubmitSubscriptionFormResponses,
   toSubscriptionFormAnswers,
 } from './subscription-flow.models';
 
@@ -29,6 +31,18 @@ describe('subscription flow models', () => {
     ]);
 
     expect(sources.map((source) => source.key)).toEqual(['major', 'events', 'sports']);
+  });
+
+  it('builds major-event sources before selected events', () => {
+    const sources = createMajorEventSubscriptionFlowSources(
+      { id: 'major-1', name: 'SECOMPP' },
+      [
+        { id: 'event-2', name: 'GraphQL' },
+        { id: 'event-1', name: 'Angular' },
+      ],
+    );
+
+    expect(sources.map((source) => source.key)).toEqual(['major-event:major-1', 'event:event-2', 'event:event-1']);
   });
 
   it('retains matching draft answers while discarding forms no longer in the flow', () => {
@@ -64,6 +78,42 @@ describe('subscription flow models', () => {
         targetType: 'MAJOR_EVENT',
         targetId: 'major-1',
         answers: [{ elementId: 'shirt-size', value: 'p' }],
+      },
+    ]);
+  });
+
+  it('serializes event and major-event answers through one shared mutation contract', () => {
+    expect(
+      toSubmitSubscriptionFormResponses([
+        {
+          formId: 'form-shirt',
+          linkId: 'link-shirt',
+          targetType: 'MAJOR_EVENT',
+          targetId: 'major-1',
+          answers: [{ elementId: 'shirt-size', value: 'p' }],
+        },
+        {
+          formId: 'form-meal',
+          linkId: 'link-meal',
+          targetType: 'EVENT',
+          targetId: 'event-1',
+          answers: [{ elementId: 'meal', value: 'yes' }],
+        },
+      ]),
+    ).toEqual([
+      {
+        formId: 'form-shirt',
+        linkId: 'link-shirt',
+        targetType: 'MAJOR_EVENT',
+        majorEventId: 'major-1',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'p' }]),
+      },
+      {
+        formId: 'form-meal',
+        linkId: 'link-meal',
+        targetType: 'EVENT',
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'meal', value: 'yes' }]),
       },
     ]);
   });

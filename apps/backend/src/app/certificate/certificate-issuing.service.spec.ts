@@ -1024,7 +1024,7 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('reissues certificates for every certificate config', async () => {
+  it('reissues certificates for every active config and counts only certificates that changed', async () => {
     const prisma = {
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
@@ -1052,16 +1052,18 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService(prisma as never, {} as never, eligibilityService as never);
     const upsertSpy = jest
       .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValueOnce({ certificate: mappedCertificateRecord, shouldNotify: true } as never)
       .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.reissueAllCertificates('admin-user')).resolves.toEqual({
       configCount: 2,
-      certificateCount: 3,
+      certificateCount: 1,
     });
 
     expect(prisma.certificateConfig.findMany).toHaveBeenCalledWith({
       where: {
         deletedAt: null,
+        isActive: true,
       },
       select: expect.any(Object),
       orderBy: {
@@ -1092,7 +1094,7 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
       .spyOn(service as never, 'upsertCertificateForRecipientResult')
-      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: true } as never);
 
     await expect(service.reissueCertificatesForFolder(' folder-1 ', 'admin-user')).resolves.toEqual({
       configCount: 1,

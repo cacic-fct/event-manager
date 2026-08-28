@@ -196,7 +196,7 @@ describe('PublicationService', () => {
     });
   });
 
-  it('nests searched child events under contextual parents', async () => {
+  it('paginates a searched child with its top-level parent and complete sibling set', async () => {
     const { prisma, service } = createService();
     const event = {
       id: 'event-1',
@@ -218,21 +218,28 @@ describe('PublicationService', () => {
         deletedAt: null,
       },
     };
-    prisma.majorEvent.count.mockResolvedValue(0);
+    const siblingEvent = {
+      ...event,
+      id: 'event-2',
+      name: 'Docker para iniciantes',
+    };
+    prisma.majorEvent.count.mockResolvedValue(1);
     prisma.eventGroup.count.mockResolvedValue(0);
-    prisma.event.count.mockResolvedValue(1);
-    prisma.event.findMany.mockResolvedValueOnce([event]).mockResolvedValueOnce([]).mockResolvedValueOnce([event]);
-    prisma.majorEvent.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
-      {
-        id: 'major-1',
-        name: 'SECOMPP',
-        publicationState: PublicationState.PUBLISHED,
-        scheduledPublishAt: null,
-        publishedAt: new Date('2026-06-24T10:00:00.000Z'),
-        unpublishedAt: null,
-        _count: { events: 1 },
-      },
-    ]);
+    prisma.event.count.mockResolvedValue(0);
+    prisma.event.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([event, siblingEvent]);
+    prisma.majorEvent.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'major-1',
+          name: 'SECOMPP',
+          publicationState: PublicationState.PUBLISHED,
+          scheduledPublishAt: null,
+          publishedAt: new Date('2026-06-24T10:00:00.000Z'),
+          unpublishedAt: null,
+          _count: { events: 2 },
+        },
+      ])
+      .mockResolvedValueOnce([]);
 
     await expect(
       service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, { query: 'Angular' }),
@@ -244,16 +251,33 @@ describe('PublicationService', () => {
           children: [
             {
               id: 'group-1',
-              children: [{ id: 'event-1' }],
+              children: [{ id: 'event-1' }, { id: 'event-2' }],
             },
           ],
         },
       ],
-      items: [{ id: 'event-1' }],
+      items: [
+        {
+          id: 'major-1',
+          children: [
+            {
+              id: 'group-1',
+              children: [{ id: 'event-1' }, { id: 'event-2' }],
+            },
+          ],
+        },
+      ],
     });
+
+    expect(JSON.stringify(prisma.majorEvent.count.mock.calls[0][0].where)).toContain('Angular');
+    expect(prisma.event.count.mock.calls[0][0].where).toEqual(
+      expect.objectContaining({
+        AND: expect.arrayContaining([{ majorEventId: null, eventGroupId: null }]),
+      }),
+    );
   });
 
-  it('paginates publication workspace sections without loading every target', async () => {
+  it('paginates top-level publication items without loading every parent', async () => {
     const { prisma, service } = createService();
     prisma.majorEvent.count.mockResolvedValue(60);
     prisma.eventGroup.count.mockResolvedValue(20);

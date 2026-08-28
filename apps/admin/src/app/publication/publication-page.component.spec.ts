@@ -69,14 +69,13 @@ describe('PublicationPageComponent', () => {
     expect(api.getWorkspace).toHaveBeenCalledWith({
       query: null,
       skip: 0,
-      take: 50,
+      take: 10,
       focusTargetType: null,
       focusTargetId: null,
     });
     expect(component.selectedNode()?.id).toBe('major-1');
     expect(component.workspaceItems().map((node) => node.id)).toEqual(['major-1', 'group-1', 'event-1']);
-    expect(component.workspaceListItems().map((item) => item.level)).toEqual([0, 1, 2]);
-    expect(component.paginationLabel()).toBe('1-3 de 3');
+    expect(component.paginationLabel()).toBe('1-1 de 1 item principal');
     expect(component.selectedWarnings()).toEqual([expect.objectContaining({ targetId: 'major-1' })]);
     expect(component.targetIcon('MAJOR_EVENT')).toBe('festival');
     expect(component.targetLabel('EVENT_GROUP')).toBe('Grupo de eventos');
@@ -92,7 +91,7 @@ describe('PublicationPageComponent', () => {
     expect(api.getWorkspace).toHaveBeenCalledWith({
       query: null,
       skip: 0,
-      take: 50,
+      take: 10,
       focusTargetType: 'EVENT_GROUP',
       focusTargetId: 'group-1',
     });
@@ -108,10 +107,11 @@ describe('PublicationPageComponent', () => {
 
     expect(component.query()).toBe('evento');
     expect(component.pageIndex()).toBe(0);
+    expect(component.expandedNodeKeys()).toEqual(new Set(['MAJOR_EVENT:major-1', 'EVENT_GROUP:group-1']));
     expect(api.getWorkspace).toHaveBeenLastCalledWith({
       query: 'evento',
       skip: 0,
-      take: 50,
+      take: 10,
       focusTargetType: null,
       focusTargetId: null,
     });
@@ -120,8 +120,8 @@ describe('PublicationPageComponent', () => {
     expect(component.pageIndex()).toBe(1);
     expect(api.getWorkspace).toHaveBeenLastCalledWith({
       query: 'evento',
-      skip: 50,
-      take: 50,
+      skip: 10,
+      take: 10,
       focusTargetType: null,
       focusTargetId: null,
     });
@@ -138,10 +138,27 @@ describe('PublicationPageComponent', () => {
     expect(api.getWorkspace).toHaveBeenLastCalledWith({
       query: null,
       skip: 0,
-      take: 50,
+      take: 10,
       focusTargetType: null,
       focusTargetId: null,
     });
+  });
+
+  it('keeps descendants on their parent page and expands the hierarchy progressively', async () => {
+    const { component, fixture } = await createComponent();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.publication-tree-node')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('.publication-tree-node').getAttribute('aria-expanded')).toBe('false');
+
+    component.activateNode(majorNode());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.publication-tree-node')).toHaveLength(2);
+
+    component.activateNode(groupNode());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.publication-tree-node')).toHaveLength(3);
+    expect(component.workspaceItems().map((node) => node.id)).toEqual(['major-1', 'group-1', 'event-1']);
   });
 
   it('maps publish, draft, unpublish, and schedule actions and refetches after success', async () => {
@@ -317,9 +334,9 @@ function workspaceFixture(overrides: Partial<PublicationWorkspace> = {}): Public
     generatedAt: adminFixtureDate,
     tree: [majorNode()],
     items: [],
-    totalCount: 3,
+    totalCount: 1,
     skip: 0,
-    take: 50,
+    take: 10,
     hasMore: false,
     query: null,
     warnings: [

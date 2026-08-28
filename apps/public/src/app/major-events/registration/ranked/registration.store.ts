@@ -4,14 +4,8 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import type {
-  EventFormTargetType,
-  EventType,
-  PublicEvent,
-  PublicEventForm,
-  PublicEventFormLink,
-} from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
   compareIsoDateAsc,
@@ -20,12 +14,14 @@ import {
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
 import { isBefore, parseISO } from 'date-fns';
-import { EMPTY, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, finalize, map } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
-import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
+import { SubscriptionFormFlowService } from '../standard/subscription-form-flow.service';
 import {
+  createMajorEventSubscriptionFlowSources,
   createSubscriptionFlowDraft,
+  toSubmitSubscriptionFormResponses,
   toSubscriptionFormAnswers,
   type SubscriptionFlowDraft,
   type SubscriptionFormAnswer,
@@ -71,7 +67,7 @@ export class RankedSubscriptionStore {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
-  private readonly formsApi = inject(PublicEventFormApiService);
+  private readonly formFlow = inject(SubscriptionFormFlowService);
   private readonly realtime = inject(MajorEventSubscriptionRealtimeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -286,7 +282,12 @@ export class RankedSubscriptionStore {
 
   submit(): void {
     const data = this.data();
-    if (!data || this.isSubmitting() || this.isPreparingSubscriptionFlow()) {
+    if (
+      !data ||
+      this.currentUserSubscription() === undefined ||
+      this.isSubmitting() ||
+      this.isPreparingSubscriptionFlow()
+    ) {
       return;
     }
 
@@ -359,7 +360,7 @@ export class RankedSubscriptionStore {
 
   reviewSubscription(draft: SubscriptionFlowDraft): void {
     const flow = this.subscriptionFormFlow();
-    if (!flow) {
+    if (!flow || this.isSubmitting()) {
       return;
     }
 
@@ -413,6 +414,17 @@ export class RankedSubscriptionStore {
     formAnswers: SubscriptionFormAnswer[],
     imageLicenseAgreementAccepted: boolean,
   ): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+
+    if (this.subscriptionCooldownSeconds() > 0) {
+      this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
+        duration: 3000,
+      });
+      return;
+    }
+
     this.isSubmitting.set(true);
     this.api
       .upsertRankedSubscription(
@@ -424,7 +436,7 @@ export class RankedSubscriptionStore {
           desiredUncategorized: this.desiredUncategorized(),
         },
         paymentTier,
-        this.toSubmitFormResponses(formAnswers),
+        toSubmitSubscriptionFormResponses(formAnswers),
         imageLicenseAgreementAccepted,
       )
       .pipe(
@@ -473,7 +485,7 @@ export class RankedSubscriptionStore {
 
   private openReviewDialog(flow: RankedSubscriptionFormFlow): void {
     const data = this.data();
-    if (!data) {
+    if (!data || this.isSubmitting()) {
       return;
     }
 
@@ -511,145 +523,12 @@ export class RankedSubscriptionStore {
   }
 
   private loadSubscriptionForms(data: PublicMajorEventSubscriptionPage, eventIds: readonly string[]) {
-    const targets = [
-      {
-        targetType: 'MAJOR_EVENT' as const,
-        targetId: data.majorEvent.id,
-        targetName: data.majorEvent.name,
-      },
-      ...eventIds
-        .map((eventId) => this.eventsById().get(eventId))
-        .filter((event): event is PublicEvent => Boolean(event))
-        .map((event) => ({
-          targetType: 'EVENT' as const,
-          targetId: event.id,
-          targetName: event.name,
-        })),
-    ];
-
-    return forkJoin(
-      targets.map((target) =>
-        this.formsApi
-          .listCurrentUserForms({
-            targetType: target.targetType,
-            eventId: target.targetType === 'EVENT' ? target.targetId : null,
-            majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
-            subscriptionFlowOnly: true,
-            selectedPriceTierId: target.targetType === 'MAJOR_EVENT' ? (this.selectedPriceTier()?.id ?? null) : null,
-          })
-          .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
-      ),
-    ).pipe(
-      map((groups) => {
-        const seen = new Set<string>();
-        return groups
-          .flat()
-          .filter((form) => {
-            const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
-            if (seen.has(key)) {
-              return false;
-            }
-            seen.add(key);
-            return true;
-          })
-          .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
-      }),
-      switchMap((forms) =>
-        forms.length > 0
-          ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
-          : of([] satisfies SubscriptionFormContext[]),
-      ),
-    );
-  }
-
-  private toSubscriptionFormContexts(
-    form: PublicEventForm,
-    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
-  ): SubscriptionFormContext[] {
-    const links = form.links.filter((item) => this.isEligibleSubscriptionFlowLink(item, target));
-    const matchingLinks = links.length > 0 ? links : [null];
-
-    return matchingLinks.map((link) => ({
-      form,
-      targetType: target.targetType,
-      targetId: target.targetId,
-      targetName: target.targetName,
-      linkId: link?.id ?? null,
-      requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
-      initialAnswers: [],
-      submitted: false,
-      editable: true,
-    }));
-  }
-
-  private loadExistingFormAnswer(form: SubscriptionFormContext) {
-    return this.formsApi
-      .getCurrentUserResponse({
-        formId: form.form.id,
-        linkId: form.linkId,
-        targetType: form.targetType,
-        eventId: form.targetType === 'EVENT' ? form.targetId : null,
-        majorEventId: form.targetType === 'MAJOR_EVENT' ? form.targetId : null,
-      })
-      .pipe(
-        map((response) => ({
-          ...form,
-          initialAnswers: parseFormAnswersJson(response?.answersJson),
-          submitted: Boolean(response),
-          editable: !response || form.form.responseMode === 'MULTIPLE_PER_TARGET' || form.form.allowResponseEdits,
-        })),
-      );
-  }
-
-  private formDisplayOrder(form: SubscriptionFormContext): number {
-    return form.form.links.find((link) => link.id === form.linkId)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
-  }
-
-  private isEligibleSubscriptionFlowLink(
-    link: PublicEventFormLink,
-    target: { targetType: EventFormTargetType; targetId: string },
-  ): boolean {
-    if (
-      !link.insertInSubscriptionFlow ||
-      link.targetType !== target.targetType ||
-      (link.eventId ?? null) !== (target.targetType === 'EVENT' ? target.targetId : null) ||
-      (link.majorEventId ?? null) !== (target.targetType === 'MAJOR_EVENT' ? target.targetId : null)
-    ) {
-      return false;
-    }
-    if (
-      target.targetType === 'MAJOR_EVENT' &&
-      link.priceTierIds.length > 0 &&
-      !link.priceTierIds.includes(this.selectedPriceTier()?.id ?? '')
-    ) {
-      return false;
-    }
-    const now = Date.now();
-    const availableFrom = link.availableFrom ? Date.parse(link.availableFrom) : null;
-    const availableUntil = link.availableUntil ? Date.parse(link.availableUntil) : null;
-    return (
-      (availableFrom === null || Number.isNaN(availableFrom) || availableFrom <= now) &&
-      (availableUntil === null || Number.isNaN(availableUntil) || availableUntil > now)
-    );
-  }
-
-  private toSubmitFormResponses(formAnswers: SubscriptionFormAnswer[]) {
-    return formAnswers.map((answer) =>
-      answer.targetType === 'EVENT'
-        ? {
-            formId: answer.formId,
-            linkId: answer.linkId,
-            targetType: answer.targetType,
-            eventId: answer.targetId,
-            answersJson: JSON.stringify(answer.answers),
-          }
-        : {
-            formId: answer.formId,
-            linkId: answer.linkId,
-            targetType: answer.targetType,
-            majorEventId: answer.targetId,
-            answersJson: JSON.stringify(answer.answers),
-          },
+    const events = eventIds
+      .map((eventId) => this.eventsById().get(eventId))
+      .filter((event): event is PublicEvent => Boolean(event));
+    return this.formFlow.loadForms(
+      createMajorEventSubscriptionFlowSources(data.majorEvent, events),
+      this.selectedPriceTier()?.id ?? null,
     );
   }
 

@@ -37,7 +37,7 @@ export class CertificateIssuanceRefresh {
 
   async reissueAll(issuedById?: string): Promise<CertificateReissueResult> {
     const configs = await this.prisma.certificateConfig.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, isActive: true },
       select: CERTIFICATE_CONFIG_SELECT,
       orderBy: { createdAt: 'asc' },
     });
@@ -163,7 +163,7 @@ export class CertificateIssuanceRefresh {
     let certificateCount = 0;
     for (const config of configs) {
       const certificates = await this.issueForConfigResults(config, issuedById, options);
-      certificateCount += certificates.length;
+      certificateCount += certificates.filter(({ shouldNotify }) => shouldNotify).length;
     }
 
     return { configCount: configs.length, certificateCount };

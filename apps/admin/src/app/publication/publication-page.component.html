@@ -14,7 +14,7 @@
     <aside class="tree-panel panel" aria-label="Itens publicáveis">
       <div class="tree-heading">
         <h2>Itens publicáveis</h2>
-        <p>Escolha o item que terá a publicação controlada.</p>
+        <p>Até {{ pageSize }} itens principais por página; expanda um item para ver todos os vínculos.</p>
         <form class="publication-filter" [formGroup]="filterForm" (ngSubmit)="applySearch()">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Buscar</mat-label>
@@ -33,46 +33,73 @@
           </button>
         </form>
       </div>
-      <mat-list class="publication-list">
-        @for (item of workspaceListItems(); track item.key) {
-          <mat-list-item
-            role="button"
-            tabindex="0"
-            [attr.aria-selected]="isSelected(item.node)"
-            [class.selected-list-item]="isSelected(item.node)"
-            [class.level-1]="item.level === 1"
-            [class.level-2]="item.level >= 2"
-            [class.hidden]="item.node.isPubliclyListed === false"
-            [class.warning]="isWarning(item.node)"
-            (click)="selectNode(item.node)"
-            (keydown.enter)="selectNode(item.node)"
-            (keydown.space)="$event.preventDefault(); selectNode(item.node)">
-            <mat-icon matListItemIcon>{{ targetIcon(item.node.targetType) }}</mat-icon>
-            <span matListItemTitle class="publication-list-title">{{ item.node.label }}</span>
-            <span matListItemLine class="publication-list-line">{{ targetDescription(item.node, item.level) }}</span>
-          </mat-list-item>
+      <ul class="publication-list" aria-label="Hierarquia de itens publicáveis">
+        @for (node of workspaceTree(); track nodeKey(node)) {
+          <ng-container
+            [ngTemplateOutlet]="publicationTreeNode"
+            [ngTemplateOutletContext]="{ $implicit: node, level: 0 }" />
         } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum item publicável</span>
-            <span matListItemLine>Crie eventos, grupos ou grandes eventos nos editores ou ajuste a busca.</span>
-          </mat-list-item>
+          <li class="publication-list-empty">
+            <strong>Nenhum item publicável</strong>
+            <span>Crie eventos, grupos ou grandes eventos nos editores ou ajuste a busca.</span>
+          </li>
         }
-      </mat-list>
+      </ul>
+
+      <ng-template #publicationTreeNode let-node let-level="level">
+        <li class="publication-tree-entry">
+          <button
+            class="publication-tree-node"
+            type="button"
+            [style.--publication-level]="level"
+            [class.selected-list-item]="isSelected(node)"
+            [class.hidden]="node.isPubliclyListed === false"
+            [class.warning]="isWarning(node)"
+            [attr.aria-current]="isSelected(node) ? 'true' : null"
+            [attr.aria-expanded]="(node.children?.length ?? 0) > 0 ? isExpanded(node) : null"
+            (click)="activateNode(node)">
+            @if ((node.children?.length ?? 0) > 0) {
+              <mat-icon class="publication-disclosure" aria-hidden="true">
+                {{ isExpanded(node) ? 'expand_more' : 'chevron_right' }}
+              </mat-icon>
+            } @else {
+              <span class="publication-disclosure-spacer" aria-hidden="true"></span>
+            }
+            <mat-icon class="publication-target-icon" aria-hidden="true">{{ targetIcon(node.targetType) }}</mat-icon>
+            <span class="publication-node-content">
+              <span class="publication-list-title">{{ node.label }}</span>
+              <span class="publication-list-line">{{ targetDescription(node, level) }}</span>
+            </span>
+          </button>
+          @if ((node.children?.length ?? 0) > 0 && isExpanded(node)) {
+            <ul class="publication-tree-children">
+              @for (child of node.children ?? []; track nodeKey(child)) {
+                <ng-container
+                  [ngTemplateOutlet]="publicationTreeNode"
+                  [ngTemplateOutletContext]="{ $implicit: child, level: level + 1 }" />
+              }
+            </ul>
+          }
+        </li>
+      </ng-template>
+
       <div class="publication-pager" aria-label="Paginação dos itens publicáveis">
         <button
           mat-icon-button
           type="button"
           (click)="previousPage()"
           [disabled]="loading() || !hasPreviousPage()"
+          aria-label="Página anterior de itens principais"
           matTooltip="Página anterior">
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <span>{{ paginationLabel() }}</span>
+        <span aria-live="polite">{{ paginationLabel() }}</span>
         <button
           mat-icon-button
           type="button"
           (click)="nextPage()"
           [disabled]="loading() || !hasNextPage()"
+          aria-label="Próxima página de itens principais"
           matTooltip="Próxima página">
           <mat-icon>chevron_right</mat-icon>
         </button>

@@ -27,7 +27,7 @@ export class CertificateIssuanceAudit {
         actor: resolvedActor,
         before,
         after,
-        force: true,
+        force: operation !== AuditLogOperation.REISSUE,
         summary:
           operation === AuditLogOperation.ISSUE
             ? 'Certificado emitido.'

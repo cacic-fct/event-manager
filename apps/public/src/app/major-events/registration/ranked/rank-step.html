@@ -150,6 +150,7 @@
     [disabled]="
       store.isSubmitting() ||
       store.isPreparingSubscriptionFlow() ||
+      store.currentUserSubscription() === undefined ||
       store.effectiveSelectedEventIds().size === 0 ||
       (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
         !store.confirmedSportsOnlySubscription() &&

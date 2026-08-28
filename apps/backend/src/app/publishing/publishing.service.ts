@@ -211,16 +211,17 @@ export class PublicationService {
       activeEventWhere,
       this.buildAccessibleEventParentWhere(majorEventIds, eventGroupIds),
     );
-    const eventWhere = this.andWhere<Prisma.EventWhereInput>(
-      accessibleTreeEventWhere,
-      this.buildEventSearchWhere(normalizedQuery),
+    const standaloneEventWhere = this.andWhere<Prisma.EventWhereInput>(
+      activeEventWhere,
+      { majorEventId: null, eventGroupId: null },
+      this.buildNameSearchWhere<Prisma.EventWhereInput>(normalizedQuery),
     );
     const majorEventBaseWhere = this.andWhere<Prisma.MajorEventWhereInput>({ deletedAt: null }, majorEventAccessWhere);
     const majorEventWhere = this.andWhere<Prisma.MajorEventWhereInput>(
       majorEventBaseWhere,
-      this.buildNameSearchWhere<Prisma.MajorEventWhereInput>(normalizedQuery),
+      this.buildMajorEventRootSearchWhere(normalizedQuery, accessibleTreeEventWhere),
     );
-    const eventGroupWhere = this.andWhere<Prisma.EventGroupWhereInput>(
+    const eventGroupBaseWhere = this.andWhere<Prisma.EventGroupWhereInput>(
       {
         deletedAt: null,
         events: {
@@ -229,21 +230,16 @@ export class PublicationService {
       },
       eventGroupAccessWhere,
     );
-    const searchableEventGroupWhere = this.andWhere<Prisma.EventGroupWhereInput>(
-      {
-        deletedAt: null,
-        events: {
-          some: accessibleTreeEventWhere,
-        },
-      },
-      eventGroupAccessWhere,
-      this.buildNameSearchWhere<Prisma.EventGroupWhereInput>(normalizedQuery),
+    const standaloneEventGroupWhere = this.andWhere<Prisma.EventGroupWhereInput>(
+      eventGroupBaseWhere,
+      { majorEventId: null },
+      this.buildEventGroupRootSearchWhere(normalizedQuery, accessibleTreeEventWhere),
     );
 
     const [majorEventCount, eventGroupCount, eventCount] = await Promise.all([
       this.prisma.majorEvent.count({ where: majorEventWhere }),
-      this.prisma.eventGroup.count({ where: searchableEventGroupWhere }),
-      this.prisma.event.count({ where: eventWhere }),
+      this.prisma.eventGroup.count({ where: standaloneEventGroupWhere }),
+      this.prisma.event.count({ where: standaloneEventWhere }),
     ]);
     const totalCount = majorEventCount + eventGroupCount + eventCount;
     const windows = this.buildSectionWindows(pagination.skip, pagination.take, [
@@ -254,20 +250,19 @@ export class PublicationService {
 
     const [majorEvents, eventGroups, events, allEvents, publicationMajorEvents] = await Promise.all([
       this.listMajorEvents(majorEventWhere, windows[0]),
-      this.listEventGroups(searchableEventGroupWhere, windows[1]),
-      this.listEvents(eventWhere, windows[2]),
+      this.listEventGroups(standaloneEventGroupWhere, windows[1]),
+      this.listEvents(standaloneEventWhere, windows[2]),
       this.listWarningEvents(accessibleTreeEventWhere, now),
       this.listWarningMajorEvents(majorEventBaseWhere, activeEventWhere, now),
     ]);
     const treeEvents = await this.listTreeEvents(accessibleTreeEventWhere, majorEvents, eventGroups, events);
-    const [treeMajorEvents, treeEventGroups] = await Promise.all([
-      this.listContextMajorEvents(majorEventBaseWhere, majorEvents, treeEvents),
-      this.listContextEventGroups(eventGroupWhere, eventGroups, treeEvents),
-    ]);
     const treeChildren = this.groupTreeEvents(treeEvents);
 
+    const tree = this.buildTree(majorEvents, eventGroups, events, treeChildren);
     const pageItems = [
-      ...majorEvents.map((majorEvent) => this.mapMajorEventNode(majorEvent)),
+      ...majorEvents.map((majorEvent) =>
+        this.mapMajorEventNode(majorEvent, treeChildren.majorEventChildren.get(majorEvent.id) ?? []),
+      ),
       ...eventGroups.map((eventGroup) =>
         this.mapEventGroupNode(eventGroup, treeChildren.standaloneGroupChildren.get(eventGroup.id) ?? []),
       ),
@@ -275,7 +270,7 @@ export class PublicationService {
     ];
     const focusedNode = await this.findFocusedNode(input, {
       eventWhere: accessibleTreeEventWhere,
-      eventGroupWhere,
+      eventGroupWhere: eventGroupBaseWhere,
       majorEventWhere: majorEventBaseWhere,
     });
     const items =
@@ -285,12 +280,7 @@ export class PublicationService {
 
     return {
       generatedAt: now,
-      tree: this.buildTree(
-        this.mergeRecords(majorEvents, treeMajorEvents),
-        this.mergeRecords(eventGroups, treeEventGroups),
-        events.filter((event) => !event.majorEventId && !event.eventGroupId),
-        treeChildren,
-      ),
+      tree,
       items,
       totalCount,
       skip: pagination.skip,
@@ -461,70 +451,6 @@ export class PublicationService {
     });
   }
 
-  private listContextMajorEvents(
-    majorEventWhere: Prisma.MajorEventWhereInput,
-    majorEvents: PublicationWorkspaceMajorEventRecord[],
-    treeEvents: PublicationWorkspaceEventRecord[],
-  ): Promise<PublicationWorkspaceMajorEventRecord[]> {
-    const listedMajorEventIds = new Set(majorEvents.map((majorEvent) => majorEvent.id));
-    const contextMajorEventIds = [
-      ...new Set(
-        treeEvents
-          .map((event) => event.majorEventId)
-          .filter((majorEventId): majorEventId is string => majorEventId != null),
-      ),
-    ].filter((majorEventId) => !listedMajorEventIds.has(majorEventId));
-    if (contextMajorEventIds.length === 0) {
-      return Promise.resolve([]);
-    }
-
-    return this.prisma.majorEvent.findMany({
-      where: this.andWhere<Prisma.MajorEventWhereInput>(majorEventWhere, {
-        id: { in: contextMajorEventIds },
-      }),
-      select: PUBLICATION_WORKSPACE_MAJOR_EVENT_SELECT,
-      orderBy: { startDate: 'desc' },
-    });
-  }
-
-  private listContextEventGroups(
-    eventGroupWhere: Prisma.EventGroupWhereInput,
-    eventGroups: PublicationWorkspaceEventGroupRecord[],
-    treeEvents: PublicationWorkspaceEventRecord[],
-  ): Promise<PublicationWorkspaceEventGroupRecord[]> {
-    const listedEventGroupIds = new Set(eventGroups.map((eventGroup) => eventGroup.id));
-    const contextEventGroupIds = [
-      ...new Set(
-        treeEvents
-          .filter((event) => !event.majorEventId)
-          .map((event) => event.eventGroupId)
-          .filter((eventGroupId): eventGroupId is string => eventGroupId != null),
-      ),
-    ].filter((eventGroupId) => !listedEventGroupIds.has(eventGroupId));
-    if (contextEventGroupIds.length === 0) {
-      return Promise.resolve([]);
-    }
-
-    return this.prisma.eventGroup.findMany({
-      where: this.andWhere<Prisma.EventGroupWhereInput>(eventGroupWhere, {
-        id: { in: contextEventGroupIds },
-      }),
-      select: PUBLICATION_WORKSPACE_EVENT_GROUP_SELECT,
-      orderBy: { updatedAt: 'desc' },
-    });
-  }
-
-  private mergeRecords<TRecord extends { id: string }>(records: TRecord[], contextRecords: TRecord[]): TRecord[] {
-    const seen = new Set<string>();
-    return [...records, ...contextRecords].filter((record) => {
-      if (seen.has(record.id)) {
-        return false;
-      }
-      seen.add(record.id);
-      return true;
-    });
-  }
-
   private buildNameSearchWhere<TWhere>(query: string | null): TWhere | null {
     if (!query) {
       return null;
@@ -543,6 +469,49 @@ export class PublicationService {
         { name: { contains: query, mode: 'insensitive' } },
         { majorEvent: { name: { contains: query, mode: 'insensitive' } } },
         { eventGroup: { name: { contains: query, mode: 'insensitive' } } },
+      ],
+    };
+  }
+
+  private buildMajorEventRootSearchWhere(
+    query: string | null,
+    accessibleEventWhere: Prisma.EventWhereInput,
+  ): Prisma.MajorEventWhereInput | null {
+    if (!query) {
+      return null;
+    }
+
+    return {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        {
+          events: {
+            some: this.andWhere(accessibleEventWhere, this.buildEventSearchWhere(query)),
+          },
+        },
+      ],
+    };
+  }
+
+  private buildEventGroupRootSearchWhere(
+    query: string | null,
+    accessibleEventWhere: Prisma.EventWhereInput,
+  ): Prisma.EventGroupWhereInput | null {
+    if (!query) {
+      return null;
+    }
+
+    return {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        {
+          events: {
+            some: this.andWhere(accessibleEventWhere, {
+              majorEventId: null,
+              name: { contains: query, mode: 'insensitive' },
+            }),
+          },
+        },
       ],
     };
   }

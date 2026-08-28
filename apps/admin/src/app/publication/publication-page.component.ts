@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -37,7 +37,6 @@ import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   defaultScheduledPublicationDate,
-  flattenPublicationListItems,
   flattenPublicationNodes,
   localDateTimeInputToIso,
   publicationChildCountLabel,
@@ -58,6 +57,7 @@ import {
     MatInputModule,
     MatListModule,
     MatTooltipModule,
+    NgTemplateOutlet,
   ],
   templateUrl: './publication-page.component.html',
   styleUrls: [
@@ -86,13 +86,13 @@ export class PublicationPageComponent {
   readonly loading = signal(false);
   readonly workspace = signal<PublicationWorkspace | null>(null);
   readonly selectedNode = signal<PublicationNode | null>(null);
+  readonly expandedNodeKeys = signal<ReadonlySet<string>>(new Set());
   readonly pageIndex = signal(0);
-  readonly pageSize = 50;
+  readonly pageSize = 10;
   readonly query = signal('');
   private readonly requestedNode = signal<Pick<PublicationNode, 'targetType' | 'id'> | null>(null);
   readonly workspaceTree = computed(() => this.workspace()?.tree ?? this.workspace()?.items ?? []);
   readonly workspaceItems = computed(() => flattenPublicationNodes(this.workspaceTree()));
-  readonly workspaceListItems = computed(() => flattenPublicationListItems(this.workspaceTree()));
   readonly hasPreviousPage = computed(() => this.pageIndex() > 0);
   readonly hasNextPage = computed(() => this.workspace()?.hasMore ?? false);
   readonly paginationLabel = computed(() => {
@@ -102,7 +102,8 @@ export class PublicationPageComponent {
     }
     const firstItem = workspace.skip + 1;
     const lastItem = Math.min(workspace.skip + workspace.take, workspace.totalCount);
-    return `${firstItem}-${lastItem} de ${workspace.totalCount}`;
+    const itemLabel = workspace.totalCount === 1 ? 'item principal' : 'itens principais';
+    return `${firstItem}-${lastItem} de ${workspace.totalCount} ${itemLabel}`;
   });
   readonly selectedWarnings = computed(() => {
     const selected = this.selectedNode();
@@ -143,6 +144,7 @@ export class PublicationPageComponent {
     try {
       const workspace = await firstValueFrom(this.api.getWorkspace(this.workspaceFilters()));
       this.workspace.set(workspace);
+      this.expandPathsToRelevantNodes(workspace.tree ?? workspace.items);
       const currentSelection = this.selectedNode();
       const requestedSelection = this.findRequestedNode(workspace);
       const nextSelection =
@@ -166,6 +168,32 @@ export class PublicationPageComponent {
     this.selectedNode.set(node);
   }
 
+  activateNode(node: PublicationNode): void {
+    this.selectNode(node);
+    if ((node.children?.length ?? 0) === 0) {
+      return;
+    }
+
+    const key = this.nodeKey(node);
+    this.expandedNodeKeys.update((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  isExpanded(node: PublicationNode): boolean {
+    return this.expandedNodeKeys().has(this.nodeKey(node));
+  }
+
+  nodeKey(node: PublicationNode): string {
+    return `${node.targetType}:${node.id}`;
+  }
+
   async applySearch(): Promise<void> {
     this.query.set(this.filterForm.controls.query.value.trim());
     this.pageIndex.set(0);
@@ -176,6 +204,7 @@ export class PublicationPageComponent {
     this.filterForm.controls.query.setValue('', { emitEvent: false });
     this.query.set('');
     this.pageIndex.set(0);
+    this.expandedNodeKeys.set(new Set());
     await this.refresh();
   }
 
@@ -398,6 +427,32 @@ export class PublicationPageComponent {
       focusTargetType: requested?.targetType ?? null,
       focusTargetId: requested?.id ?? null,
     };
+  }
+
+  private expandPathsToRelevantNodes(nodes: PublicationNode[]): void {
+    const normalizedQuery = this.query().toLocaleLowerCase('pt-BR');
+    const requested = this.requestedNode();
+    if (!normalizedQuery && !requested) {
+      return;
+    }
+
+    const expanded = normalizedQuery ? new Set<string>() : new Set(this.expandedNodeKeys());
+    const visit = (node: PublicationNode, ancestors: PublicationNode[]): void => {
+      const matchesQuery = normalizedQuery
+        ? node.label.toLocaleLowerCase('pt-BR').includes(normalizedQuery)
+        : false;
+      const matchesRequested = requested?.id === node.id && requested.targetType === node.targetType;
+      if (matchesQuery || matchesRequested) {
+        ancestors.forEach((ancestor) => expanded.add(this.nodeKey(ancestor)));
+      }
+
+      for (const child of node.children ?? []) {
+        visit(child, [...ancestors, node]);
+      }
+    };
+
+    nodes.forEach((node) => visit(node, []));
+    this.expandedNodeKeys.set(expanded);
   }
 
   private async setSelectedState(state: PublicationState, scheduledPublishAt?: string): Promise<void> {

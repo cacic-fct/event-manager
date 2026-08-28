@@ -17,51 +17,11 @@
     font-size: 0.9rem;
   }
 
-  mat-list-item {
-    --mdc-list-list-item-one-line-container-height: auto;
-    --mdc-list-list-item-two-line-container-height: auto;
-    width: 100%;
-    min-height: 4.25rem;
-    border: 0;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-block: 0.125rem;
-    padding-block: 0.45rem;
-  }
-
-  .level-1 {
-    width: calc(100% - 1.25rem);
-    margin-left: 1.25rem;
-  }
-
-  .level-2 {
-    width: calc(100% - 2.4rem);
-    margin-left: 2.4rem;
-  }
-
-  .mdc-list-item__content {
-    min-width: 0;
-    align-self: center;
-    overflow: visible;
-  }
-
-  .mdc-list-item__primary-text,
-  .mdc-list-item__secondary-text {
-    display: block;
-    height: auto;
-    max-height: none;
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    -webkit-box-orient: initial;
-    -webkit-line-clamp: unset;
-  }
-
   .hidden {
     opacity: 0.65;
   }
 
-  .warning mat-icon {
+  .warning .publication-target-icon {
     color: var(--mat-sys-error);
   }
 }
@@ -69,7 +29,72 @@
 .publication-list {
   flex: 1 1 auto;
   min-height: 0;
+  margin: 0;
   overflow: auto;
+  padding: 0.25rem;
+  list-style: none;
+  scrollbar-color: var(--mat-sys-outline-variant) transparent;
+}
+
+.publication-tree-entry,
+.publication-tree-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publication-tree-node {
+  width: calc(100% - (var(--publication-level) * 1.25rem));
+  min-height: 4.25rem;
+  display: grid;
+  grid-template-columns: 1.5rem 1.5rem minmax(0, 1fr);
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0.125rem 0 0.125rem calc(var(--publication-level) * 1.25rem);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.55rem 0.5rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--mat-sys-on-surface) 7%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 1px;
+  }
+
+  .publication-disclosure,
+  .publication-target-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1.5rem;
+  }
+}
+
+.publication-disclosure-spacer {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.publication-node-content {
+  min-width: 0;
+}
+
+.publication-list-empty {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 0.5rem;
+
+  span {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.9rem;
+  }
 }
 
 .tree-heading {
@@ -117,7 +142,9 @@
 }
 
 .publication-list-line {
+  margin-top: 0.15rem;
   color: var(--mat-sys-on-surface-variant);
+  font-size: 0.86rem;
 }
 
 .selected-list-item {

@@ -59,7 +59,7 @@ export class GlobalOperationsPageComponent {
     try {
       const result = await firstValueFrom(this.certificatesApi.reissueAllCertificates());
       this.snackbar.open(
-        `${result.certificateCount} certificado(s) processado(s) em ${result.configCount} configuração(ões).`,
+        `${result.certificateCount} certificado(s) reemitido(s) em ${result.configCount} configuração(ões) ativa(s).`,
         'Fechar',
         { duration: 3500 },
       );

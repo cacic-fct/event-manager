@@ -132,11 +132,23 @@ test('completes ranked major-event subscription with automatic and grouped prefe
   await expect(page.getByText('Trilha Backend')).toBeVisible();
   await expect(page.getByText('Credenciamento')).toBeVisible();
   await page.getByRole('button', { name: 'Continuar' }).click();
-  await expect(page.getByRole('heading', { name: 'Revise sua inscrição' })).toBeVisible();
+
+  await expect(page.getByRole('heading', { name: 'Camiseta da inscrição preferencial' })).toBeVisible();
+  await page.getByRole('radio', { name: 'M' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.getByRole('heading', { name: 'Acessibilidade da atividade' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Sim' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
   await page
-    .getByRole('dialog', { name: 'Revise sua inscrição' })
-    .getByRole('button', { name: 'Confirmar inscrição' })
+    .getByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de uso de imagem/i })
     .click();
+  await page.getByRole('button', { name: 'Revisar inscrição' }).click();
+
+  const reviewDialog = page.getByRole('dialog', { name: 'Revise sua inscrição' });
+  await expect(reviewDialog.getByText('Tamanho da camiseta')).toBeVisible();
+  await expect(reviewDialog.getByText('Precisa de recurso de acessibilidade?')).toBeVisible();
+  await expect(reviewDialog.getByRole('radio')).toHaveCount(0);
+  await reviewDialog.getByRole('button', { name: 'Confirmar inscrição' }).click();
 
   await expect(page.getByText('Inscrição realizada.')).toBeVisible();
   expect(api.rankedMajorEventUpserts()).toEqual([
@@ -146,6 +158,23 @@ test('completes ranked major-event subscription with automatic and grouped prefe
       desiredCourses: 2,
       desiredLectures: 0,
       desiredUncategorized: 1,
+      formResponses: [
+        {
+          formId: 'ranked-shirt-form',
+          linkId: 'ranked-shirt-link',
+          targetType: 'MAJOR_EVENT',
+          majorEventId: 'ranked-major',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+        {
+          formId: 'ranked-accessibility-form',
+          linkId: 'ranked-accessibility-link',
+          targetType: 'EVENT',
+          eventId: 'ranked-api',
+          answersJson: JSON.stringify([{ elementId: 'accessibility', value: 'yes' }]),
+        },
+      ],
+      imageLicenseAgreementAccepted: true,
     },
   ]);
 });
@@ -188,6 +217,8 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
     desiredCourses: number | null;
     desiredLectures: number | null;
     desiredUncategorized: number | null;
+    formResponses: unknown[];
+    imageLicenseAgreementAccepted: boolean;
   }>;
 }> {
   let standaloneSubscribed = false;
@@ -205,6 +236,8 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
     desiredCourses: number | null;
     desiredLectures: number | null;
     desiredUncategorized: number | null;
+    formResponses: unknown[];
+    imageLicenseAgreementAccepted: boolean;
   }> = [];
 
   await page.route('**/api/**', async (route) => {
@@ -280,6 +313,8 @@ async function fulfillGraphql(
       desiredCourses: number | null;
       desiredLectures: number | null;
       desiredUncategorized: number | null;
+      formResponses: unknown[];
+      imageLicenseAgreementAccepted: boolean;
     }>;
   },
 ): Promise<void> {
@@ -396,12 +431,13 @@ async function fulfillGraphql(
     const targetId =
       targetType === 'EVENT' ? stringVariable(variables, 'eventId') : stringVariable(variables, 'majorEventId');
     await fulfillGraphqlData(route, {
-      currentUserEventForms: standardSubscriptionFormsFixture().filter((form) =>
-        form.links.some(
-          (link) =>
-            link.targetType === targetType &&
-            (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
-        ),
+      currentUserEventForms: [...standardSubscriptionFormsFixture(), ...rankedSubscriptionFormsFixture()].filter(
+        (form) =>
+          form.links.some(
+            (link) =>
+              link.targetType === targetType &&
+              (targetType === 'EVENT' ? link.eventId === targetId : link.majorEventId === targetId),
+          ),
       ),
     });
     return;
@@ -420,6 +456,8 @@ async function fulfillGraphql(
       desiredCourses: nullableNumberVariable(variables, 'desiredCourses'),
       desiredLectures: nullableNumberVariable(variables, 'desiredLectures'),
       desiredUncategorized: nullableNumberVariable(variables, 'desiredUncategorized'),
+      formResponses: Array.isArray(variables['formResponses']) ? variables['formResponses'] : [],
+      imageLicenseAgreementAccepted: variables['imageLicenseAgreementAccepted'] === true,
     });
     await fulfillGraphqlData(route, {
       upsertCurrentUserMajorEventSubscription: majorEventSubscriptionFixture(
@@ -613,7 +651,61 @@ function rankedMajorEventSubscriptionFixture(): PublicMajorEvent {
     maxCoursesPerAttendee: 2,
     maxLecturesPerAttendee: 1,
     maxUncategorizedPerAttendee: 1,
+    requiresImageLicenseAgreement: true,
   });
+}
+
+function rankedSubscriptionFormsFixture() {
+  return [
+    createPublicEventForm({
+      id: 'ranked-shirt-form',
+      name: 'Camiseta da inscrição preferencial',
+      links: [
+        createPublicEventFormLink({
+          id: 'ranked-shirt-link',
+          formId: 'ranked-shirt-form',
+          targetType: 'MAJOR_EVENT',
+          eventId: null,
+          majorEventId: 'ranked-major',
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          displayOrder: 10,
+        }),
+      ],
+      createdAt: publicFixtureDateFromNow(-10),
+      updatedAt: publicFixtureDateFromNow(-1),
+    }),
+    createPublicEventForm({
+      id: 'ranked-accessibility-form',
+      name: 'Acessibilidade da atividade',
+      elementsJson: JSON.stringify([
+        {
+          id: 'accessibility',
+          type: 'singleChoice',
+          title: 'Precisa de recurso de acessibilidade?',
+          required: true,
+          options: [
+            { id: 'yes', label: 'Sim' },
+            { id: 'no', label: 'Não' },
+          ],
+        },
+      ]),
+      links: [
+        createPublicEventFormLink({
+          id: 'ranked-accessibility-link',
+          formId: 'ranked-accessibility-form',
+          targetType: 'EVENT',
+          eventId: 'ranked-api',
+          majorEventId: null,
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          displayOrder: 0,
+        }),
+      ],
+      createdAt: publicFixtureDateFromNow(-10),
+      updatedAt: publicFixtureDateFromNow(-1),
+    }),
+  ];
 }
 
 function standardSubscriptionEventsFixture(): PublicEvent[] {
