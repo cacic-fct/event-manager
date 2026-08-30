@@ -15,6 +15,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { subscriptionFormKey } from '../../major-events/registration/standard/subscription-flow.models';
 import { SubscriptionReviewDialog } from '../../major-events/registration/standard/subscription-review-dialog';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
+import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
 
 interface EventComponentFixtureOptions {
   authenticated?: boolean;
@@ -158,11 +159,6 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     currentUserAttendance: null,
     ...overrides,
   };
-}
-
-async function waitForDrawRefresh(fixture: ComponentFixture<Event>): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 120));
-  await fixture.whenStable();
 }
 
 function subscriptionFormFixture(): PublicEventForm {

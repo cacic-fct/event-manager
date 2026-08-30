@@ -66,6 +66,7 @@ export class PaymentInfo {
   private readonly destroyRef = inject(DestroyRef);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly receiptUploadCooldown = createRateLimitCooldown(this.destroyRef);
+  private pageRequestId = 0;
 
   readonly majorEventId =
     this.route.snapshot.paramMap.get('majorEventId') ?? this.route.snapshot.paramMap.get('eventID') ?? '';
@@ -182,12 +183,14 @@ export class PaymentInfo {
       return;
     }
 
+    const requestId = ++this.pageRequestId;
     if (!background) this.state.set({ status: 'loading' });
     this.receiptUploadCooldown.clear();
     this.pageRequest()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ subscription, receipt }) => {
+          if (requestId !== this.pageRequestId) return;
           if (!subscription) {
             this.state.set({ status: 'error', message: 'Inscrição não encontrada.' });
             return;
@@ -202,6 +205,7 @@ export class PaymentInfo {
           });
         },
         error: (error: unknown) => {
+          if (requestId !== this.pageRequestId) return;
           if (background && this.state().status === 'ready') return;
           this.state.set({
             status: 'error',

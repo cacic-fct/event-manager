@@ -17,6 +17,7 @@ import { type EventFormInput } from '@cacic-fct/event-manager-admin-contracts';
 import type { FormImage } from '@cacic-fct/form-contracts';
 import { FormsService } from './forms.service';
 import { ShellUiService } from '../app-shell/ui.service';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('FormsService integration', () => {
   let service: FormsService;
@@ -508,8 +509,3 @@ describe('FormsService integration', () => {
     expect(service.previousSubscriberCount(service.links()[0])).toBeNull();
   });
 });
-
-async function flushAsync(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-  await Promise.resolve();
-}

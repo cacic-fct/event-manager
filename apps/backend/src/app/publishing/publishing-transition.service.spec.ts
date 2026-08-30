@@ -36,9 +36,20 @@ describe('PublicationTransitionService', () => {
     const targets = {
       resolveChildEventIds: jest.fn(),
     };
-    const service = new PublicationTransitionService(searchSync as never, stateWriter as never, targets as never);
+    const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new PublicationTransitionService(
+      searchSync as never,
+      stateWriter as never,
+      targets as never,
+      sitemap as never,
+      realtime as never,
+    );
 
-    return { searchSync, service, stateWriter, targets };
+    return { realtime, searchSync, service, sitemap, stateWriter, targets };
   }
 
   it('publishes a single event and syncs search for the changed target', async () => {
@@ -76,6 +87,23 @@ describe('PublicationTransitionService', () => {
     );
     expect(targets.resolveChildEventIds).not.toHaveBeenCalled();
     expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
+  });
+
+  it('does not turn a committed publication into an error when realtime invalidation fails', async () => {
+    const { realtime, service, stateWriter } = createService();
+    stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: ['event-1'], majorEventIds: [] });
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+
+    await expect(
+      service.setPublicationState(
+        {
+          targetType: PublicationTargetType.EVENT,
+          targetId: 'event-1',
+          state: PublicationState.PUBLISHED,
+        },
+        createUser(),
+      ),
+    ).resolves.toMatchObject({ result: { ok: true } });
   });
 
   it('schedules a major event with the provided timestamp', async () => {

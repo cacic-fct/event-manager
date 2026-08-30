@@ -1,4 +1,5 @@
-import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { DestroyRef, PLATFORM_ID, Service, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -61,6 +62,7 @@ export class FormsService {
   private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly ui = inject(ShellUiService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   readonly loading = this.ui.loading;
   readonly forms = signal<EventForm[]>([]);
@@ -1013,7 +1015,7 @@ export class FormsService {
   }
 
   private shouldStreamResults(form: EventForm): boolean {
-    return Boolean(form.id) && typeof EventSource !== 'undefined';
+    return Boolean(form.id) && isPlatformBrowser(this.platformId);
   }
 
   private connectResultsStream(formId: string, generation: number): void {

@@ -8,7 +8,7 @@ import {
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, NotFoundException, Optional } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { addDays, subDays } from 'date-fns';
 import {
@@ -158,6 +158,7 @@ export class MajorEventsResolver {
       assertMajorEventUpdateAllowed: async () => undefined,
       assertMajorEventDeleteAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,
@@ -312,16 +313,17 @@ export class MajorEventsResolver {
       );
       return created;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: majorEvent.id,
-      name: majorEvent.name,
-      description: majorEvent.description,
-      startDate: majorEvent.startDate,
-      endDate: majorEvent.endDate,
-      publicationState: majorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: majorEvent.id,
+        name: majorEvent.name,
+        description: majorEvent.description,
+        startDate: majorEvent.startDate,
+        endDate: majorEvent.endDate,
+        publicationState: majorEvent.publicationState,
+      });
     });
-    await this.publishInvalidations();
     return majorEvent;
   }
 
@@ -401,16 +403,17 @@ export class MajorEventsResolver {
       );
       return updated;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: updatedMajorEvent.id,
-      name: updatedMajorEvent.name,
-      description: updatedMajorEvent.description,
-      startDate: updatedMajorEvent.startDate,
-      endDate: updatedMajorEvent.endDate,
-      publicationState: updatedMajorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: updatedMajorEvent.id,
+        name: updatedMajorEvent.name,
+        description: updatedMajorEvent.description,
+        startDate: updatedMajorEvent.startDate,
+        endDate: updatedMajorEvent.endDate,
+        publicationState: updatedMajorEvent.publicationState,
+      });
     });
-    await this.publishInvalidations();
     return updatedMajorEvent;
   }
 
@@ -527,16 +530,17 @@ export class MajorEventsResolver {
       );
       return created;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: majorEvent.id,
-      name: majorEvent.name,
-      description: majorEvent.description,
-      startDate: majorEvent.startDate,
-      endDate: majorEvent.endDate,
-      publicationState: majorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: majorEvent.id,
+        name: majorEvent.name,
+        description: majorEvent.description,
+        startDate: majorEvent.startDate,
+        endDate: majorEvent.endDate,
+        publicationState: majorEvent.publicationState,
+      });
     });
-    await this.publishInvalidations();
     return majorEvent;
   }
 
@@ -570,9 +574,10 @@ export class MajorEventsResolver {
         tx,
       );
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.deleteMajorEvent(id);
-    await this.publishInvalidations();
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.deleteMajorEvent(id);
+    });
     return {
       deleted: true,
       id,
@@ -589,6 +594,27 @@ export class MajorEventsResolver {
       this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
       this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
     ]);
+  }
+
+  private async runPostCommitEffects(effects: () => Promise<void>): Promise<void> {
+    let effectsError: unknown;
+    try {
+      await effects();
+    } catch (error: unknown) {
+      effectsError = error;
+    }
+
+    try {
+      await this.publishInvalidations();
+    } catch (error: unknown) {
+      if (effectsError === undefined) {
+        throw error;
+      }
+    }
+
+    if (effectsError !== undefined) {
+      throw effectsError;
+    }
   }
 
   private buildMajorEventCreateData(

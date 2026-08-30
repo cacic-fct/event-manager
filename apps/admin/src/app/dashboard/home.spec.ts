@@ -254,4 +254,21 @@ describe('Home', () => {
     expect(component.error()).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Não foi possível carregar o painel');
   });
+
+  it('applies only the newest dashboard response when invalidations overlap', () => {
+    fixture.detectChanges();
+    const older = new Subject<ReturnType<typeof createAdminWorkspaceDashboardInsights>>();
+    const newer = new Subject<ReturnType<typeof createAdminWorkspaceDashboardInsights>>();
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    const newest = createAdminWorkspaceDashboardInsights({ generatedAt: adminFixtureDateFromNow(1) });
+
+    workspaceEvents.next();
+    workspaceEvents.next();
+    newer.next(newest);
+    newer.complete();
+    older.next(createAdminWorkspaceDashboardInsights({ generatedAt: adminFixtureDateFromNow(-1) }));
+    older.complete();
+
+    expect(component.insights()).toBe(newest);
+  });
 });

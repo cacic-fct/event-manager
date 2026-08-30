@@ -1,5 +1,5 @@
 import { Service } from '@angular/core';
-import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { Observable } from 'rxjs';
 
 export type SportsOperationsApplicationRealtimeReason =
@@ -64,7 +64,7 @@ function decodeSportsOperationsApplicationInvalidation(
   }
 
   if (parsed['type'] === APPLICATION_EVENT_TYPE) {
-    const applicationId = decodeTypedSseEvent<string, 'applicationId'>(event, APPLICATION_EVENT_TYPE, 'applicationId');
+    const applicationId = readRequiredString(parsed['applicationId']);
     const tournamentId = readRequiredString(parsed['tournamentId']);
     const reason = readReason(parsed['reason']);
     if (typeof applicationId !== 'string' || !applicationId || !tournamentId || !reason) {
@@ -99,7 +99,7 @@ function decodeSportsOperationsApplicationInvalidation(
     return null;
   }
 
-  const subscriptionId = decodeTypedSseEvent<string, 'subscriptionId'>(event, PAYMENT_EVENT_TYPE, 'subscriptionId');
+  const subscriptionId = readRequiredString(parsed['subscriptionId']);
   const tournamentId = readRequiredString(parsed['tournamentId']);
   const reason = readReason(parsed['reason']);
   const subscriptionStatus = readRequiredString(parsed['subscriptionStatus']);

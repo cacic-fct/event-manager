@@ -13,11 +13,12 @@ import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { EMPTY, auditTime, catchError, defer, forkJoin, map, merge, of, retry, switchMap, timer } from 'rxjs';
+import { EMPTY, auditTime, catchError, forkJoin, map, merge, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 type MajorEventPageState =
   | { status: 'loading' }
@@ -38,8 +39,6 @@ const RECEIPT_UPLOAD_STATUSES = new Set([
   'REJECTED_SCHEDULE_CONFLICT',
 ]);
 const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
-const PRIZE_DRAW_RECONNECT_BASE_DELAY_MS = 1000;
-const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-major-event',
@@ -65,6 +64,7 @@ export class MajorEvent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
 
   readonly emoji = inject(EmojiService);
@@ -252,21 +252,9 @@ export class MajorEvent {
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {
     const majorEventIds = events.map((event) => event.id);
     const invalidations = isPlatformBrowser(this.platformId) && majorEventIds.length > 0
-      ? merge(
-          ...majorEventIds.map((majorEventId) =>
-            defer(() => this.prizeDrawsApi.watch({ targetType: 'MAJOR_EVENT', targetId: majorEventId })).pipe(
-              retry({
-                delay: (_, retryCount) =>
-                  timer(
-                    Math.min(
-                      PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
-                      PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
-                    ),
-                  ),
-              }),
-            ),
-          ),
-        ).pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
+      ? this.realtime
+          .watchCatalog(() => this.prizeDrawsApi.availability({ majorEventIds }))
+          .pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
       : EMPTY;
 
     merge(of(undefined), invalidations)

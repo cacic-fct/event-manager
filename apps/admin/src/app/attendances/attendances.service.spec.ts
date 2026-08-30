@@ -22,6 +22,7 @@ import {
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from './attendances.service';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('AttendancesService', () => {
   let service: AttendancesService;
@@ -280,6 +281,7 @@ describe('AttendancesService', () => {
   });
 
   it('coalesces event-feed invalidations, reloads the selected page, and closes the old stream on selection change', async () => {
+    vi.useFakeTimers();
     const restoreEventSource = installFakeEventSource();
     const nextEvent = createAdminEvent({ id: 'event-2', name: 'Palestra' });
     api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
@@ -295,7 +297,7 @@ describe('AttendancesService', () => {
       firstSource.emitMessage();
       firstSource.emitMessage();
       firstSource.emitMessage();
-      await flushAsync();
+      await vi.advanceTimersByTimeAsync(500);
 
       expect(api.listEventAttendances).toHaveBeenCalledTimes(2);
       expect(api.listEventAttendanceScannerFeed).toHaveBeenCalledOnce();
@@ -308,6 +310,7 @@ describe('AttendancesService', () => {
       expect(FakeEventSource.instances).toHaveLength(2);
       expect((FakeEventSource.instances[1] as FakeEventSource).url).toContain('event-2');
     } finally {
+      vi.useRealTimers();
       restoreEventSource();
     }
   });
@@ -526,9 +529,4 @@ function attendanceStream(eventId: string) {
     decode: () => [],
     errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
   });
-}
-
-async function flushAsync(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-  await Promise.resolve();
 }

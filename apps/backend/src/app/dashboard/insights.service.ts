@@ -1,5 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { ForbiddenException, Injectable, Logger, Optional } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
@@ -37,6 +37,7 @@ export class DashboardInsightsService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly weatherService: WeatherService,
     private readonly redis: Redis,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: () => 'admin-workspace',
@@ -98,11 +99,19 @@ export class DashboardInsightsService {
         }`,
       );
     } finally {
-      await this.realtime.publish(this.realtime.scope('admin-workspace'), {
-        type: 'ADMIN_WORKSPACE_INVALIDATED',
-        domain: 'dashboard',
-        occurredAt: new Date().toISOString(),
-      });
+      try {
+        await this.realtime.publish(this.realtime.scope('admin-workspace'), {
+          type: 'ADMIN_WORKSPACE_INVALIDATED',
+          domain: 'dashboard',
+          occurredAt: new Date().toISOString(),
+        });
+      } catch (error: unknown) {
+        this.logger.warn(
+          `Dashboard insight invalidation publication failed after a committed mutation: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
   }
 

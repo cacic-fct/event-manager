@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { EventType, Prisma, PublicationState } from '@prisma/client';
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -73,6 +73,7 @@ export class EventPostCommitEffectsService {
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly sitemap: EventSitemapService,
     private readonly onlineAttendanceNotifications: OnlineAttendanceNotificationJobsService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,

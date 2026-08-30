@@ -156,6 +156,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
     this.api.representativeWorkspace(this.teamId).subscribe({
       next: (workspace) => {
+        options.onSettled?.();
         if (requestId !== this.workspaceRequestId) {
           return;
         }
@@ -181,9 +182,9 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         this.selectInitialMatch(workspace);
         this.loading.set(false);
         this.error.set(null);
-        options.onSettled?.();
       },
       error: (error: unknown) => {
+        options.onSettled?.();
         if (requestId !== this.workspaceRequestId) {
           return;
         }
@@ -195,7 +196,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         } else {
           this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
         }
-        options.onSettled?.();
       },
     });
   }

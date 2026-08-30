@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogOperation, PublicationState } from '@prisma/client';
@@ -36,6 +36,7 @@ export class EventFormPublicationWorkflowService {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly formNotifications: EventFormNotificationService,
     private readonly auditLog: AuditLogService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,

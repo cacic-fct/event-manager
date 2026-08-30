@@ -37,6 +37,7 @@ export class OnlineAttendanceListComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly attendanceCoordinator = inject(OnlineAttendanceCoordinatorService);
+  private requestId = 0;
 
   readonly emoji = inject(EmojiService);
   readonly returnUrl = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')), {
@@ -49,11 +50,22 @@ export class OnlineAttendanceListComponent {
     this.attendanceCoordinator
       .changes()
       .pipe(
-        switchMap(() => this.api.listPendingEvents().pipe(take(1), catchError(() => EMPTY))),
+        switchMap(() => {
+          const requestId = ++this.requestId;
+          return this.api.listPendingEvents().pipe(
+            take(1),
+            map((items) => ({ items, requestId })),
+            catchError(() => EMPTY),
+          );
+        }),
         catchError(() => EMPTY),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((items) => this.state.set({ status: 'ready', items }));
+      .subscribe(({ items, requestId }) => {
+        if (requestId === this.requestId) {
+          this.state.set({ status: 'ready', items });
+        }
+      });
   }
 
   back(): void {
@@ -65,12 +77,18 @@ export class OnlineAttendanceListComponent {
   }
 
   private loadPendingEvents(initial: boolean): void {
+    const requestId = ++this.requestId;
     this.api
       .listPendingEvents()
       .pipe(take(1), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (items) => this.state.set({ status: 'ready', items }),
+        next: (items) => {
+          if (requestId === this.requestId) {
+            this.state.set({ status: 'ready', items });
+          }
+        },
         error: (error: unknown) => {
+          if (requestId !== this.requestId) return;
           if (initial || this.state().status !== 'ready') {
             this.state.set({
               status: 'error',

@@ -5,11 +5,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../graphql/receipt-validation-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsPageComponent } from './subscriptions-page.component';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('SubscriptionsPageComponent receipt queue live updates', () => {
   let workspace: {
@@ -176,6 +177,18 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
       restoreEventSource();
     }
   });
+
+  it('keeps the stream field empty after a synchronous subscription error', () => {
+    receiptApi.watchQueue.mockReturnValue(throwError(() => new Error('EventSource indisponível')));
+    receiptApi.getQueue.mockReturnValue(NEVER);
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+
+    fixture.detectChanges();
+
+    expect(
+      (fixture.componentInstance as unknown as { receiptQueueStream: unknown }).receiptQueueStream,
+    ).toBeNull();
+  });
 });
 
 function queueStream(majorEventId: string) {
@@ -191,9 +204,4 @@ function pendingCount(component: SubscriptionsPageComponent): number {
       selectedMajorEventPendingReceiptsCount: () => number;
     }
   ).selectedMajorEventPendingReceiptsCount();
-}
-
-async function flushAsync(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-  await Promise.resolve();
 }

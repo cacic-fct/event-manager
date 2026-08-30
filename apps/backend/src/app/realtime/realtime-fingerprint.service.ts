@@ -1,11 +1,56 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+interface AggregateFingerprint {
+  _count: number;
+  _max: object;
+}
+
+export interface CurrentUserRealtimeFingerprint {
+  type: 'CURRENT_USER_DATA_INVALIDATED';
+  minute: number;
+  attendances: AggregateFingerprint;
+  eventSubscriptions: AggregateFingerprint;
+  eventGroupSubscriptions: AggregateFingerprint;
+  majorEventSubscriptions: AggregateFingerprint;
+  certificates: AggregateFingerprint;
+  applications: AggregateFingerprint;
+  participants: AggregateFingerprint;
+  lecturers: AggregateFingerprint;
+  attendanceCollectors: AggregateFingerprint;
+  teamRepresentatives: AggregateFingerprint;
+  officialAssignments: AggregateFingerprint;
+  teamMemberships: AggregateFingerprint;
+  registrationMemberships: AggregateFingerprint;
+  rosterEntries: AggregateFingerprint;
+  roleAssignments: AggregateFingerprint;
+  roleAssignmentScopes: AggregateFingerprint;
+  permissionGroupMemberships: AggregateFingerprint;
+}
+
+export interface EventSubscriptionsRealtimeFingerprint {
+  type: 'EVENT_SUBSCRIPTIONS_INVALIDATED';
+  subscriptions: AggregateFingerprint;
+  selections: AggregateFingerprint;
+  rankedSubscriptions: AggregateFingerprint;
+}
+
+export interface MajorEventSubscriptionsRealtimeFingerprint {
+  type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED';
+  subscriptions: AggregateFingerprint;
+  selections: AggregateFingerprint;
+  receipts: AggregateFingerprint;
+  applications: AggregateFingerprint;
+  participants: AggregateFingerprint;
+  teams: AggregateFingerprint;
+  members: AggregateFingerprint;
+}
+
 @Injectable()
 export class RealtimeFingerprintService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async currentUser(personId: string): Promise<object> {
+  async currentUser(personId: string): Promise<CurrentUserRealtimeFingerprint> {
     const [
       attendances,
       eventSubscriptions,
@@ -141,7 +186,7 @@ export class RealtimeFingerprintService {
     };
   }
 
-  async eventSubscriptions(eventId: string): Promise<object> {
+  async eventSubscriptions(eventId: string): Promise<EventSubscriptionsRealtimeFingerprint> {
     const [subscriptions, selections, rankedSubscriptions] = await Promise.all([
       this.prisma.eventSubscription.aggregate({
         where: { eventId },
@@ -162,7 +207,7 @@ export class RealtimeFingerprintService {
     return { type: 'EVENT_SUBSCRIPTIONS_INVALIDATED', subscriptions, selections, rankedSubscriptions };
   }
 
-  async majorEventSubscriptions(majorEventId: string): Promise<object> {
+  async majorEventSubscriptions(majorEventId: string): Promise<MajorEventSubscriptionsRealtimeFingerprint> {
     const [subscriptions, selections, receipts, applications, participants, teams, members] = await Promise.all([
       this.prisma.majorEventSubscription.aggregate({
         where: { majorEventId },

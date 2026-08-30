@@ -1,6 +1,7 @@
 import {
   decodeTypedSseEvent,
   watchRecoveringReplayableEventSource,
+  watchRecoveringReplayableEventSourcePing,
   watchReplayableEventSource,
 } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
@@ -140,11 +141,13 @@ describe('watchReplayableEventSource', () => {
     installFakeEventSource();
     const recover = vi.fn().mockRejectedValue(new Error('Sessão indisponível.'));
     const complete = vi.fn();
+    const onTerminalError = vi.fn();
     const subscription = watchRecoveringReplayableEventSource('/api/events', {
       decode: (event) => event.data,
       errorMessage: 'Falha no stream.',
       recover,
       maxRetries: 2,
+      onTerminalError,
       retryDelayMs: 10,
       retryMaxDelayMs: 20,
     }).subscribe({ complete });
@@ -168,8 +171,25 @@ describe('watchReplayableEventSource', () => {
     expect(recover).toHaveBeenCalledTimes(2);
     expect(FakeEventSource.instances).toHaveLength(3);
     expect(complete).toHaveBeenCalledOnce();
+    expect(onTerminalError).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ message: 'Falha no stream.' }));
 
     subscription.unsubscribe();
     vi.useRealTimers();
+  });
+
+  it('does not emit heartbeat messages as invalidations', () => {
+    installFakeEventSource();
+    const next = vi.fn();
+    const subscription = watchRecoveringReplayableEventSourcePing('/api/events', {
+      errorMessage: 'Falha no stream.',
+      recover: () => Promise.resolve(),
+    }).subscribe(next);
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+
+    source.emitMessage(JSON.stringify({ type: 'heartbeat', timestamp: 1 }));
+    source.emitMessage(JSON.stringify({ type: 'CATALOG_INVALIDATED' }));
+
+    expect(next).toHaveBeenCalledOnce();
+    subscription.unsubscribe();
   });
 });

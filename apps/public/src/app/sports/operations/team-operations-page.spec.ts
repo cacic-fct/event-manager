@@ -147,7 +147,33 @@ describe('SportsTeamOperationsPage', () => {
     expect(watchMatch).toHaveBeenCalledTimes(2);
   });
 
-  it('stops reacting to the selected match stream after destruction', () => {
+  it('settles a stale recovery request and restarts the selected match stream', () => {
+    const workspace = createRepresentativeTeamWorkspace();
+    const staleRecovery = new Subject<ReturnType<typeof createRepresentativeTeamWorkspace>>();
+    const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
+      typeof vi.fn
+    >;
+    representativeWorkspace
+      .mockReturnValueOnce(of(workspace))
+      .mockReturnValueOnce(staleRecovery)
+      .mockReturnValueOnce(of(workspace));
+    const page = createPage();
+    page.ngOnInit();
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+
+    firstStream.error(new Error('closed'));
+    page.load({ preserveDrafts: true });
+    expect(watchMatch).toHaveBeenCalledOnce();
+
+    staleRecovery.next(workspace);
+    staleRecovery.complete();
+
+    expect(watchMatch).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops reacting to the selected match stream after destruction', async () => {
+    vi.useFakeTimers();
     const page = createPage();
     page.ngOnInit();
     const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
@@ -155,6 +181,7 @@ describe('SportsTeamOperationsPage', () => {
     >;
     page.ngOnDestroy();
     realtimeStreams[0]?.next({ type: 'MATCH_PROJECTION_CHANGED', matchId: 'match-story', revision: 9 });
+    await vi.advanceTimersByTimeAsync(76);
 
     expect(representativeWorkspace).toHaveBeenCalledOnce();
   });

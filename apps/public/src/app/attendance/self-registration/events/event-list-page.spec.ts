@@ -7,7 +7,7 @@ import { EmojiService } from '../../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
 import { OnlineAttendanceCoordinatorService } from '../coordinator.service';
 import { OnlineAttendanceListComponent } from './event-list-page';
-import { BehaviorSubject, Subject, throwError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, throwError, of } from 'rxjs';
 
 describe('OnlineAttendanceListComponent', () => {
   it('renders pending attendance events with major-event context', async () => {
@@ -92,6 +92,20 @@ describe('OnlineAttendanceListComponent', () => {
 
     expect(api.listPendingEvents).toHaveBeenCalledTimes(requestCount);
   });
+
+  it('does not let the initial response overwrite a newer live refresh', async () => {
+    const initial = new Subject<PendingOnlineAttendanceEvent[]>();
+    const live = new Subject<PendingOnlineAttendanceEvent[]>();
+    const newest = pendingAttendanceEvent();
+    newest.event = createPublicEvent({ id: newest.eventId, name: 'Estado mais recente' });
+    const { component, changes } = await createFixture({ responses: [initial, live] });
+
+    changes.next();
+    live.next([newest]);
+    initial.next([pendingAttendanceEvent()]);
+
+    expect(component.state()).toEqual({ status: 'ready', items: [newest] });
+  });
 });
 
 async function createFixture({
@@ -99,12 +113,14 @@ async function createFixture({
   pendingEvents = [pendingAttendanceEvent()],
   pendingEventsAfterChange,
   liveError,
+  responses,
   queryParams = {},
 }: {
   error?: Error;
   pendingEvents?: PendingOnlineAttendanceEvent[];
   pendingEventsAfterChange?: PendingOnlineAttendanceEvent[];
   liveError?: Error;
+  responses?: Observable<PendingOnlineAttendanceEvent[]>[];
   queryParams?: Record<string, string>;
 } = {}): Promise<{
   component: OnlineAttendanceListComponent;
@@ -117,9 +133,13 @@ async function createFixture({
   const api = {
     listPendingEvents: vi.fn(),
   };
-  api.listPendingEvents.mockReturnValueOnce(error ? throwError(() => error) : of(pendingEvents));
-  if (pendingEventsAfterChange !== undefined || liveError) {
-    api.listPendingEvents.mockReturnValueOnce(liveError ? throwError(() => liveError) : of(pendingEventsAfterChange));
+  if (responses) {
+    responses.forEach((response) => api.listPendingEvents.mockReturnValueOnce(response));
+  } else {
+    api.listPendingEvents.mockReturnValueOnce(error ? throwError(() => error) : of(pendingEvents));
+    if (pendingEventsAfterChange !== undefined || liveError) {
+      api.listPendingEvents.mockReturnValueOnce(liveError ? throwError(() => liveError) : of(pendingEventsAfterChange));
+    }
   }
   const changes = new Subject<void>();
   const attendanceCoordinator = {

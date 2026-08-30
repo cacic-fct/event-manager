@@ -7,6 +7,8 @@ import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEvent } from './event-list-page';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
+import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 describe('MajorEvent', () => {
   let component: MajorEvent;
@@ -50,6 +52,7 @@ describe('MajorEvent', () => {
           provide: PublicPrizeDrawApiService,
           useValue: { availability: vi.fn(() => of([])), watch: vi.fn(() => NEVER) },
         },
+        { provide: RealtimeInvalidationService, useValue: { watchCatalog: () => NEVER } },
       ],
     }).compileComponents();
 
@@ -131,7 +134,7 @@ describe('MajorEvent', () => {
     const { component, fixture } = await createMajorEventFixture({
       events: [majorEvent],
       availability,
-      watch: () => updates,
+      watchCatalog: () => updates,
     });
 
     expect(component.hasPrizeDraws('major-live')).toBe(false);
@@ -157,7 +160,7 @@ describe('MajorEvent', () => {
 async function createMajorEventFixture(input: {
   events: ReturnType<typeof createPublicMajorEvent>[];
   availability: ReturnType<typeof vi.fn>;
-  watch: () => Subject<void>;
+  watchCatalog: () => Subject<void>;
 }): Promise<{ component: MajorEvent; fixture: ComponentFixture<MajorEvent> }> {
   await TestBed.configureTestingModule({
     imports: [MajorEvent],
@@ -187,8 +190,9 @@ async function createMajorEventFixture(input: {
       },
       {
         provide: PublicPrizeDrawApiService,
-        useValue: { availability: input.availability, watch: vi.fn(input.watch) },
+        useValue: { availability: input.availability, watch: vi.fn(() => NEVER) },
       },
+      { provide: RealtimeInvalidationService, useValue: { watchCatalog: vi.fn(input.watchCatalog) } },
     ],
   }).compileComponents();
 
@@ -196,9 +200,4 @@ async function createMajorEventFixture(input: {
   fixture.detectChanges();
   await fixture.whenStable();
   return { component: fixture.componentInstance, fixture };
-}
-
-async function waitForDrawRefresh(fixture: ComponentFixture<MajorEvent>): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 120));
-  await fixture.whenStable();
 }

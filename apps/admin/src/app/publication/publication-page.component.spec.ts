@@ -4,7 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import type {
   PublicationActionResult,
   PublicationNode,
@@ -159,6 +159,25 @@ describe('PublicationPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.publication-tree-node')).toHaveLength(3);
     expect(component.workspaceItems().map((node) => node.id)).toEqual(['major-1', 'group-1', 'event-1']);
+  });
+
+  it('ignores an older workspace response after a newer refresh completes', async () => {
+    const { component } = await createComponent();
+    const older = new Subject<PublicationWorkspace>();
+    const newer = new Subject<PublicationWorkspace>();
+    api.getWorkspace.mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    const olderRefresh = component.refresh();
+    const newerRefresh = component.refresh();
+    const newestWorkspace = workspaceFixture({ generatedAt: adminFixtureDateFromNow(1) });
+
+    newer.next(newestWorkspace);
+    newer.complete();
+    older.next(workspaceFixture({ generatedAt: adminFixtureDateFromNow(-1) }));
+    older.complete();
+    await Promise.all([olderRefresh, newerRefresh]);
+
+    expect(component.workspace()).toBe(newestWorkspace);
+    expect(component.loading()).toBe(false);
   });
 
   it('maps publish, draft, unpublish, and schedule actions and refetches after success', async () => {

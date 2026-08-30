@@ -8,6 +8,7 @@ export interface ReplayableSseOptions<T> {
 export interface RecoveringReplayableSseOptions<T> extends ReplayableSseOptions<T> {
   recover(): ObservableInput<unknown>;
   maxRetries?: number;
+  onTerminalError?(error: unknown): void;
   retryDelayMs?: number;
   retryMaxDelayMs?: number;
 }
@@ -56,7 +57,8 @@ export function watchRecoveringReplayableEventSource<T>(
 ): Observable<T> {
   const {
     recover,
-    maxRetries = 5,
+    maxRetries = Number.POSITIVE_INFINITY,
+    onTerminalError,
     retryDelayMs = 1_000,
     retryMaxDelayMs = 30_000,
     ...streamOptions
@@ -70,7 +72,10 @@ export function watchRecoveringReplayableEventSource<T>(
           switchMap(() => timer(Math.min(retryDelayMs * 2 ** (retryCount - 1), retryMaxDelayMs))),
         ),
     }),
-    catchError(() => EMPTY),
+    catchError((error: unknown) => {
+      onTerminalError?.(error);
+      return EMPTY;
+    }),
   );
 }
 
@@ -82,7 +87,7 @@ export function decodeTypedSseEvent<T, K extends string>(event: MessageEvent<str
 
 export function watchReplayableEventSourcePing(url: string, errorMessage: string): Observable<void> {
   return watchReplayableEventSource(url, {
-    decode: () => undefined,
+    decode: decodeSsePing,
     errorMessage,
   });
 }
@@ -93,6 +98,15 @@ export function watchRecoveringReplayableEventSourcePing(
 ): Observable<void> {
   return watchRecoveringReplayableEventSource(url, {
     ...options,
-    decode: () => undefined,
+    decode: decodeSsePing,
   });
+}
+
+function decodeSsePing(event: MessageEvent<string>): void | null {
+  const parsed: unknown = JSON.parse(event.data);
+  return isRecord(parsed) && parsed['type'] === 'heartbeat' ? null : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -26,6 +26,7 @@ export class PublicationTransitionService {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,
@@ -186,9 +187,10 @@ export class PublicationTransitionService {
   }
 
   private async finish(sync: TargetSync): Promise<void> {
-    const [sitemapResult, searchResult] = await Promise.allSettled([
+    const [sitemapResult, searchResult, realtimeResult] = await Promise.allSettled([
       this.sitemap.refresh(),
       this.searchSync.syncSearch(sync),
+      this.publishInvalidations(sync),
     ]);
     if (sitemapResult.status === 'rejected') {
       this.logger.warn(`Publication committed but sitemap refresh failed: ${formatFailure(sitemapResult.reason)}`);
@@ -198,7 +200,11 @@ export class PublicationTransitionService {
         `Publication committed but search synchronization failed: ${formatFailure(searchResult.reason)}`,
       );
     }
-    await this.publishInvalidations(sync);
+    if (realtimeResult.status === 'rejected') {
+      this.logger.warn(
+        `Publication committed but realtime invalidation failed: ${formatFailure(realtimeResult.reason)}`,
+      );
+    }
   }
 
   private async publishInvalidations(sync: TargetSync): Promise<void> {

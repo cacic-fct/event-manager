@@ -1,9 +1,13 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { interval, map, merge, Observable, Subject } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { SseReplayService } from '../realtime/sse-replay.service';
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
 
 const PRIZE_DRAW_REDIS_CHANNEL = 'prize-draw:realtime:v1';
 
@@ -21,6 +25,7 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
     private readonly redis: Redis,
     private readonly replay: SseReplayService,
     private readonly prisma: PrismaService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly invalidations: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,
@@ -89,14 +94,23 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
     const parentMajorEventId = draw.event?.majorEventId ?? draw.event?.eventGroup?.majorEventId;
     if (parentMajorEventId) scopes.push(this.scope('major-event', parentMajorEventId));
     if (draw.majorEventId) scopes.push(this.scope('major-event', draw.majorEventId));
-    await Promise.all([
+    const results = await Promise.allSettled([
       ...scopes.map((scope) => this.publish(scope, payload)),
       this.invalidations.publish(this.invalidations.scope('admin-workspace'), {
         type: 'PRIZE_DRAWS_INVALIDATED',
         drawId,
         occurredAt: payload.occurredAt,
       }),
+      this.invalidations.publish(
+        this.invalidations.scope(PUBLIC_CATALOG_REALTIME_CHANNEL),
+        createPublicCatalogInvalidation(),
+      ),
     ]);
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(`Prize draw invalidation ${index + 1} failed after the mutation committed.`, result.reason);
+      }
+    });
   }
 
   private async publish(scope: string, data: object): Promise<void> {

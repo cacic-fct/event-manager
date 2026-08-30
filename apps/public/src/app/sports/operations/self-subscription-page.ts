@@ -11,7 +11,19 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, Subscription, debounceTime, finalize, forkJoin, firstValueFrom } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  Subject,
+  Subscription,
+  catchError,
+  debounceTime,
+  finalize,
+  firstValueFrom,
+  forkJoin,
+  map,
+  tap,
+} from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import type {
   SportsOperationsApplicationInvalidation,
@@ -332,39 +344,13 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
       return;
     }
 
-    const refreshRequestId = ++this.realtimeRefreshRequestId;
-    const applicationRequestId = ++this.applicationRequestId;
-    const tournamentRequestId = ++this.tournamentRequestId;
-    const requestedTeamId = this.currentRequestedTeamId();
-    const preserveDraft = !this.applicationIsReadOnly();
-
-    forkJoin({
-      applications: this.api.currentUserApplications(this.tournamentId),
-      tournament: this.api.tournament(this.tournamentId, requestedTeamId),
+    this.runCombinedRefresh((refreshRequestId) => {
+      if (refreshRequestId === this.realtimeRefreshRequestId) {
+        this.showRealtimeRefreshError();
+      }
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: ({ applications, tournament }) => {
-          if (refreshRequestId !== this.realtimeRefreshRequestId) {
-            return;
-          }
-          this.applicationLoaded = true;
-          if (applicationRequestId === this.applicationRequestId) {
-            this.applyApplications(applications, preserveDraft);
-          }
-          if (
-            tournamentRequestId === this.tournamentRequestId &&
-            requestedTeamId === this.currentRequestedTeamId()
-          ) {
-            this.applyTournamentData(tournament, preserveDraft);
-          }
-        },
-        error: () => {
-          if (refreshRequestId === this.realtimeRefreshRequestId) {
-            this.showRealtimeRefreshError();
-          }
-        },
-      });
+      .subscribe();
   }
 
   private recoverAfterRealtimeFailure(): void {
@@ -373,16 +359,7 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
     }
 
     this.realtimeRecoveryInFlight = true;
-    const refreshRequestId = ++this.realtimeRefreshRequestId;
-    const applicationRequestId = ++this.applicationRequestId;
-    const tournamentRequestId = ++this.tournamentRequestId;
-    const requestedTeamId = this.currentRequestedTeamId();
-    const preserveDraft = !this.applicationIsReadOnly();
-
-    forkJoin({
-      applications: this.api.currentUserApplications(this.tournamentId),
-      tournament: this.api.tournament(this.tournamentId, requestedTeamId),
-    })
+    this.runCombinedRefresh(() => this.showRealtimeRefreshError())
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {
@@ -392,24 +369,41 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
           }
         }),
       )
-      .subscribe({
-        next: ({ applications, tournament }) => {
-          if (refreshRequestId !== this.realtimeRefreshRequestId) {
-            return;
-          }
-          this.applicationLoaded = true;
-          if (applicationRequestId === this.applicationRequestId) {
-            this.applyApplications(applications, preserveDraft);
-          }
-          if (
-            tournamentRequestId === this.tournamentRequestId &&
-            requestedTeamId === this.currentRequestedTeamId()
-          ) {
-            this.applyTournamentData(tournament, preserveDraft);
-          }
-        },
-        error: () => this.showRealtimeRefreshError(),
-      });
+      .subscribe();
+  }
+
+  private runCombinedRefresh(onError: (refreshRequestId: number) => void): Observable<void> {
+    const refreshRequestId = ++this.realtimeRefreshRequestId;
+    const applicationRequestId = ++this.applicationRequestId;
+    const tournamentRequestId = ++this.tournamentRequestId;
+    const requestedTeamId = this.currentRequestedTeamId();
+    const preserveDraft = !this.applicationIsReadOnly();
+
+    return forkJoin({
+      applications: this.api.currentUserApplications(this.tournamentId),
+      tournament: this.api.tournament(this.tournamentId, requestedTeamId),
+    }).pipe(
+      tap(({ applications, tournament }) => {
+        if (refreshRequestId !== this.realtimeRefreshRequestId) {
+          return;
+        }
+        this.applicationLoaded = true;
+        if (applicationRequestId === this.applicationRequestId) {
+          this.applyApplications(applications, preserveDraft);
+        }
+        if (
+          tournamentRequestId === this.tournamentRequestId &&
+          requestedTeamId === this.currentRequestedTeamId()
+        ) {
+          this.applyTournamentData(tournament, preserveDraft);
+        }
+      }),
+      catchError(() => {
+        onError(refreshRequestId);
+        return EMPTY;
+      }),
+      map(() => undefined),
+    );
   }
 
   private currentRequestedTeamId(): string | null {

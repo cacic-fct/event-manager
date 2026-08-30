@@ -8,17 +8,30 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { Request } from 'express';
-import { Observable, defer, exhaustMap, interval, map, merge, startWith, switchMap } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  Subject,
+  catchError,
+  defer,
+  exhaustMap,
+  interval,
+  map,
+  merge,
+  share,
+  startWith,
+  switchMap,
+  throwError,
+} from 'rxjs';
 import { createHash } from 'node:crypto';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { Public } from '../auth/decorators/public.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { CurrentUserEventAttendanceResolver } from '../current-user/events/attendance.resolver';
-import { DashboardInsightsService } from '../dashboard/insights.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
@@ -33,31 +46,64 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 const PERSONAL_REFRESH_INTERVAL_MS = 5_000;
 const SUBSCRIPTION_REFRESH_INTERVAL_MS = 3_000;
 const ORGANIZER_REFRESH_INTERVAL_MS = 2_000;
+const LAST_EVENT_ID_HEADER = {
+  name: 'Last-Event-ID',
+  required: false,
+  description: 'Cursor do último evento SSE recebido, usado para replay após reconexão.',
+  example: 'sse1.scope.abc123',
+};
+const REALTIME_SSE_RESPONSE = {
+  description: 'Stream SSE com invalidações replayable e heartbeats de manutenção.',
+  schema: {
+    oneOf: [
+      { type: 'object', example: { type: 'ADMIN_WORKSPACE_INVALIDATED', occurredAt: '2026-08-30T12:00:00.000Z' } },
+      { type: 'object', example: { type: 'CURRENT_USER_DATA_INVALIDATED', minute: 29804280 } },
+      { type: 'object', example: { type: 'EVENT_SUBSCRIPTIONS_INVALIDATED', subscriptions: { _count: 12 } } },
+      { type: 'object', example: { type: 'heartbeat', timestamp: 1788091200000 } },
+    ],
+  },
+};
 
 @ApiTags('SSE', 'realtime')
-@ApiBearerAuth()
 @Controller('realtime')
 export class RealtimeInvalidationController {
+  private readonly pollingSnapshots = new Map<string, Observable<MessageEvent>>();
+
   constructor(
     private readonly invalidations: RealtimeInvalidationService,
     private readonly replay: SseReplayService,
     private readonly fingerprints: RealtimeFingerprintService,
-    private readonly dashboard: DashboardInsightsService,
     private readonly currentUser: CurrentUserContextService,
     private readonly organizerInfo: CurrentUserEventAttendanceResolver,
     private readonly policy: AuthorizationPolicyService,
   ) {}
 
   @Sse('admin/workspace/events')
-  @ApiOperation({ summary: 'Stream replayable administrative workspace invalidations' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream replayable administrative workspace invalidations',
+    description: 'Notifica usuários do workspace sobre dados administrativos alterados sem expor identificadores de outros escopos.',
+  })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamAdminWorkspace(
     @Req() request: RequestWithUser,
     @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
     const scope = this.invalidations.scope('admin-workspace');
-    return defer(() => this.dashboard.getWorkspaceDashboardInsights({ req: request })).pipe(
-      switchMap(() => this.replay.replay(scope, lastEventId, this.invalidations.watch(scope))),
+    return defer(() => {
+      if (!this.policy.hasEventManagerAccess(request.user)) {
+        throw new ForbiddenException('Acesso ao workspace administrativo não autorizado.');
+      }
+      return this.replay.replay(scope, lastEventId, this.invalidations.watch(scope));
+    }).pipe(
+      map((event) => {
+        const data = event.data as { type?: string };
+        return data?.type === 'heartbeat'
+          ? event
+          : { ...event, data: { type: 'ADMIN_WORKSPACE_INVALIDATED', occurredAt: new Date().toISOString() } };
+      }),
     );
   }
 
@@ -65,8 +111,13 @@ export class RealtimeInvalidationController {
   @Sse('public/catalog/events')
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
-  @ApiOperation({ summary: 'Stream replayable public event-catalog invalidations' })
+  @ApiOperation({
+    summary: 'Stream replayable public event-catalog invalidations',
+    description: 'Notifica alterações no catálogo público e mudanças de fronteira temporal sem exigir autenticação.',
+  })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamPublicCatalog(@Headers('last-event-id') lastEventId: string | undefined): Observable<MessageEvent> {
     const scope = this.invalidations.scope(PUBLIC_CATALOG_REALTIME_CHANNEL);
     const minuteBoundary = interval(60_000).pipe(
@@ -76,8 +127,14 @@ export class RealtimeInvalidationController {
   }
 
   @Sse('current-user/data/events')
-  @ApiOperation({ summary: 'Stream replayable current-user data revisions' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream replayable current-user data revisions',
+    description: 'Emite fingerprints de dados pertencentes à pessoa autenticada para atualização dos clientes.',
+  })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamCurrentUserData(
     @Req() request: RequestWithUser,
     @Headers('last-event-id') lastEventId: string | undefined,
@@ -95,8 +152,16 @@ export class RealtimeInvalidationController {
   }
 
   @Sse('current-user/organizer/:targetType/:targetId/events')
-  @ApiOperation({ summary: 'Stream replayable organizer metrics revisions for an authorized target' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream replayable organizer metrics revisions for an authorized target',
+    description: 'Atualiza métricas de organização somente após validar o acesso da pessoa autenticada ao destino.',
+  })
+  @ApiParam({ name: 'targetType', description: 'Tipo do destino', example: 'EVENT' })
+  @ApiParam({ name: 'targetId', description: 'Identificador do destino', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamOrganizerInfo(
     @Param('targetType') targetType: string,
     @Param('targetId') targetId: string,
@@ -123,8 +188,15 @@ export class RealtimeInvalidationController {
   }
 
   @Sse('admin/events/:eventId/subscriptions/events')
-  @ApiOperation({ summary: 'Stream replayable event-subscription revisions for administrators' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream replayable event-subscription revisions for administrators',
+    description: 'Emite revisões de inscrições após validar a permissão de leitura no evento solicitado.',
+  })
+  @ApiParam({ name: 'eventId', description: 'Identificador do evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamEventSubscriptions(
     @Param('eventId') eventId: string,
     @Req() request: RequestWithUser,
@@ -143,8 +215,15 @@ export class RealtimeInvalidationController {
   }
 
   @Sse('admin/major-events/:majorEventId/subscriptions/events')
-  @ApiOperation({ summary: 'Stream replayable major-event subscription revisions for administrators' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream replayable major-event subscription revisions for administrators',
+    description: 'Emite revisões de inscrições após validar a permissão de leitura no grande evento solicitado.',
+  })
+  @ApiParam({ name: 'majorEventId', description: 'Identificador do grande evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
+  @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamMajorEventSubscriptions(
     @Param('majorEventId') majorEventId: string,
     @Req() request: RequestWithUser,
@@ -170,11 +249,39 @@ export class RealtimeInvalidationController {
     refreshIntervalMs: number,
     load: () => Promise<object>,
   ): Observable<MessageEvent> {
-    const snapshots = interval(refreshIntervalMs).pipe(
-      startWith(0),
-      exhaustMap(load),
-      map((data) => ({ data })),
-    );
+    let snapshots = this.pollingSnapshots.get(scope);
+    if (!snapshots) {
+      const sharedSnapshots = interval(refreshIntervalMs).pipe(
+        startWith(0),
+        exhaustMap(() =>
+          defer(load).pipe(
+            catchError((error: unknown) =>
+              error instanceof ForbiddenException ? throwError(() => error) : EMPTY,
+            ),
+          ),
+        ),
+        map((data) => ({ data })),
+        share({
+          connector: () => new Subject<MessageEvent>(),
+          resetOnComplete: true,
+          resetOnError: true,
+          resetOnRefCountZero: true,
+        }),
+      );
+      let subscribers = 0;
+      snapshots = new Observable<MessageEvent>((subscriber) => {
+        subscribers += 1;
+        const subscription = sharedSnapshots.subscribe(subscriber);
+        return () => {
+          subscription.unsubscribe();
+          subscribers -= 1;
+          if (subscribers === 0 && this.pollingSnapshots.get(scope) === snapshots) {
+            this.pollingSnapshots.delete(scope);
+          }
+        };
+      });
+      this.pollingSnapshots.set(scope, snapshots);
+    }
     const heartbeat = interval(HEARTBEAT_INTERVAL_MS).pipe(
       map(() => ({ data: { type: 'heartbeat', timestamp: Date.now() } })),
     );

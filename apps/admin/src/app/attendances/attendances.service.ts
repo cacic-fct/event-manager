@@ -81,6 +81,7 @@ type AttendanceCategoryGroup = {
 const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
 const EXPORT_PAGE_SIZE = 1000;
 const OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
+const ATTENDANCE_LIVE_REFRESH_INTERVAL_MS = 500;
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
@@ -960,7 +961,7 @@ export class AttendancesService {
     let stream: Subscription | null = null;
     stream = this.api
       .watchEventAttendanceScannerFeed(eventId)
-      .pipe(auditTime(0))
+      .pipe(auditTime(ATTENDANCE_LIVE_REFRESH_INTERVAL_MS))
       .subscribe({
         next: () => {
           if (!this.isCurrentAttendanceStream(eventId, generation)) {

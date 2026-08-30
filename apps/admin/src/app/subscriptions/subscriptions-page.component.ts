@@ -157,8 +157,8 @@ export class SubscriptionsPageComponent implements OnDestroy {
       return;
     }
 
-    let stream: Subscription | null = null;
-    stream = this.receiptValidationApi
+    let terminated = false;
+    const stream = this.receiptValidationApi
       .watchQueue(majorEventId)
       .pipe(auditTime(0))
       .subscribe({
@@ -171,6 +171,7 @@ export class SubscriptionsPageComponent implements OnDestroy {
           this.receiptQueueTerminal = false;
         },
         error: () => {
+          terminated = true;
           if (!this.isCurrentReceiptQueueStream(majorEventId, generation)) {
             return;
           }
@@ -184,7 +185,9 @@ export class SubscriptionsPageComponent implements OnDestroy {
           void this.recoverReceiptQueueStream(majorEventId, generation);
         },
       });
-    this.receiptQueueStream = stream;
+    if (!terminated) {
+      this.receiptQueueStream = stream;
+    }
   }
 
   private async recoverReceiptQueueStream(majorEventId: string, generation: number): Promise<void> {

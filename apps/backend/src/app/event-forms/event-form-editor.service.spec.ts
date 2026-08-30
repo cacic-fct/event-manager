@@ -19,6 +19,8 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
 import { EventFormImagesService } from './event-form-images.service';
+import { Test } from '@nestjs/testing';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 type EventFormLinkInput = NonNullable<EventFormInput['links']>[number];
 
@@ -58,6 +60,35 @@ describe('EventFormEditorService', () => {
       auditLog as unknown as jest.Mocked<AuditLogService>,
       images as unknown as jest.Mocked<EventFormImagesService>,
     );
+  });
+
+  it('uses the concrete realtime provider when Nest constructs the service', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        EventFormEditorService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuthorizationPolicyService, useValue: authorizationPolicy },
+        { provide: AuditLogService, useValue: auditLog },
+        { provide: EventFormImagesService, useValue: images },
+        { provide: RealtimeInvalidationService, useValue: realtime },
+      ],
+    }).compile();
+    const injected = moduleRef.get(EventFormEditorService);
+
+    await (
+      injected as unknown as { publishInvalidations(formId: string): Promise<void> }
+    ).publishInvalidations('form-1');
+
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
+    );
+    await moduleRef.close();
   });
 
   it('creates forms with normalized fields, links, permissions, and audit log entries', async () => {

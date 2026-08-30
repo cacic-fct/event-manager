@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
   EventFormDraft as EventFormDraftModel,
@@ -50,6 +50,7 @@ export class EventFormEditorService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly auditLog: AuditLogService,
     private readonly images: EventFormImagesService,
+    @Inject(RealtimeInvalidationService)
     @Optional()
     private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
       scope: (channel) => channel,

@@ -28,6 +28,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
   private readonly channels = new Map<string, RealtimeInvalidationChannel>();
   private readonly destroy$ = new Subject<void>();
   private subscriber?: Redis;
+  private subscriberReady = false;
   private destroyed = false;
 
   constructor(
@@ -71,10 +72,14 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
         }
       });
       subscriber.on('error', (error: Error) => {
+        this.subscriberReady = false;
         this.logger.warn(
           `Realtime invalidation Redis subscriber error; delivery will recover through Redis or local fallback.`,
           error instanceof Error ? error.stack : String(error),
         );
+      });
+      subscriber.on('ready', () => {
+        this.subscriberReady = true;
       });
 
       await subscriber.subscribe(REALTIME_INVALIDATION_REDIS_CHANNEL);
@@ -83,6 +88,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
         return;
       }
       this.subscriber = subscriber;
+      this.subscriberReady = true;
     } catch (error: unknown) {
       this.logger.warn(
         'Realtime invalidation Redis subscription failed; local delivery will be used.',
@@ -110,6 +116,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
 
     const subscriber = this.subscriber;
     this.subscriber = undefined;
+    this.subscriberReady = false;
     if (subscriber) {
       await this.disconnectSubscriber(subscriber, true);
     }
@@ -164,7 +171,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
     }
 
     const publisher = this.redis as RedisWithRealtimeSupport;
-    if (!this.subscriber || typeof publisher.publish !== 'function') {
+    if (!this.subscriber || !this.subscriberReady || typeof publisher.publish !== 'function') {
       this.deliverLocally(scope, event);
       return event;
     }

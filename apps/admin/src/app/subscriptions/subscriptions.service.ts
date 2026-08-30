@@ -74,6 +74,7 @@ export class SubscriptionsService {
   private readonly realtime = inject(RealtimeApiService);
   private eventLiveSubscription?: Subscription;
   private majorEventLiveSubscription?: Subscription;
+  private eventSelectionRequest = 0;
   private eventSubscriptionsRequest = 0;
   private majorEventSubscriptionsRequest = 0;
 
@@ -231,23 +232,41 @@ export class SubscriptionsService {
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
+    const selectionRequest = ++this.eventSelectionRequest;
     this.stopMajorEventLiveUpdates();
     void this.router.navigate(['/subscriptions/event', eventItem.id]);
     this.selectedEvent.set(eventItem);
     this.eventSubscriptionForm.controls.eventId.setValue(eventItem.id);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventItem.id);
+    if (
+      selectionRequest !== this.eventSelectionRequest ||
+      this.eventSubscriptionForm.controls.eventId.value !== eventItem.id
+    ) {
+      return;
+    }
     this.watchEventSubscriptions(eventItem.id);
   }
 
   async selectEventById(eventId: string): Promise<void> {
+    const selectionRequest = ++this.eventSelectionRequest;
     this.stopMajorEventLiveUpdates();
     if (this.selectedEvent()?.id !== eventId) {
-      this.selectedEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
+      const selectedEvent = await firstValueFrom(this.eventApi.getEvent(eventId));
+      if (selectionRequest !== this.eventSelectionRequest) {
+        return;
+      }
+      this.selectedEvent.set(selectedEvent);
     }
     this.eventSubscriptionForm.controls.eventId.setValue(eventId);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventId);
+    if (
+      selectionRequest !== this.eventSelectionRequest ||
+      this.eventSubscriptionForm.controls.eventId.value !== eventId
+    ) {
+      return;
+    }
     this.watchEventSubscriptions(eventId);
   }
 
@@ -315,6 +334,9 @@ export class SubscriptionsService {
     }
     resetPagination(this.majorEventSubscriptionsPagination);
     await this.loadMajorEventSubscriptions();
+    if (this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
     this.watchMajorEventSubscriptions(majorEventId);
   }
 

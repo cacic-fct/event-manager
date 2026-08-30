@@ -86,7 +86,7 @@ describe('RealtimeInvalidationService', () => {
 
   it('reference-counts watchers, emits a heartbeat, and cleans up timers and channels', async () => {
     jest.useFakeTimers();
-    const service = new RealtimeInvalidationService({} as never, createReplayMock());
+    const service = new RealtimeInvalidationService({} as never, createReplayMock() as never);
     const firstValues: MessageEvent[] = [];
     const secondValues: MessageEvent[] = [];
     const first = service.watch('event:event-1').subscribe((event) => firstValues.push(event));
@@ -157,6 +157,53 @@ describe('RealtimeInvalidationService', () => {
     await service.onModuleDestroy();
   });
 
+  it('delivers locally when Redis reports zero subscribers', async () => {
+    const subscriber = createSubscriber();
+    const stored: MessageEvent = { id: 'cursor-zero', data: { type: 'EVENT_UPDATED' }, retry: 3_000 };
+    const redis = {
+      duplicate: jest.fn(() => subscriber),
+      publish: jest.fn().mockResolvedValue(0),
+    };
+    const service = new RealtimeInvalidationService(redis as never, createReplayMock(stored) as never);
+    await service.onModuleInit();
+    const received = firstValueFrom(service.watch('event:event-1').pipe(take(1)));
+
+    await expect(service.publish('event:event-1', stored.data as object)).resolves.toEqual(stored);
+    await expect(received).resolves.toEqual(stored);
+    expect(redis.publish).toHaveBeenCalledTimes(1);
+    await service.onModuleDestroy();
+  });
+
+  it('falls back locally while the Redis subscriber is disconnected and resumes after ready', async () => {
+    let errorHandler: ((error: Error) => void) | undefined;
+    let readyHandler: (() => void) | undefined;
+    const subscriber = createSubscriber((event, handler) => {
+      if (event === 'error') errorHandler = handler as (error: Error) => void;
+      if (event === 'ready') readyHandler = handler as () => void;
+    });
+    const stored: MessageEvent = { id: 'cursor-readiness', data: { type: 'EVENT_UPDATED' }, retry: 3_000 };
+    const redis = {
+      duplicate: jest.fn(() => subscriber),
+      publish: jest.fn().mockResolvedValue(1),
+    };
+    const service = new RealtimeInvalidationService(redis as never, createReplayMock(stored) as never);
+    await service.onModuleInit();
+    const values: MessageEvent[] = [];
+    const subscription = service.watch('event:event-1').subscribe((event) => values.push(event));
+
+    errorHandler?.(new Error('Disconnected'));
+    await service.publish('event:event-1', stored.data as object);
+    expect(values).toEqual([stored]);
+    expect(redis.publish).not.toHaveBeenCalled();
+
+    readyHandler?.();
+    await service.publish('event:event-1', stored.data as object);
+    expect(redis.publish).toHaveBeenCalledTimes(1);
+
+    subscription.unsubscribe();
+    await service.onModuleDestroy();
+  });
+
   it('falls back locally when Redis has no subscriber path or replay recording fails', async () => {
     const replay = createReplayMock();
     replay.record.mockRejectedValueOnce(new Error('Replay unavailable'));
@@ -195,7 +242,7 @@ describe('RealtimeInvalidationService', () => {
     jest.useFakeTimers();
     const subscriber = createSubscriber();
     const redis = { duplicate: jest.fn(() => subscriber) };
-    const service = new RealtimeInvalidationService(redis as never, createReplayMock());
+    const service = new RealtimeInvalidationService(redis as never, createReplayMock() as never);
     await service.onModuleInit();
     const complete = jest.fn();
     service.watch('event:event-1').subscribe({ complete });

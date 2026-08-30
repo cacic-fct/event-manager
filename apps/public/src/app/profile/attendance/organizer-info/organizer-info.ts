@@ -46,7 +46,7 @@ export class OrganizerInfoComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly refresh = signal(0);
-  private hasLoadedOrganizerInfo = false;
+  private loadedOrganizerTarget: string | null = null;
 
   readonly emoji = inject(EmojiService);
 
@@ -127,16 +127,19 @@ export class OrganizerInfoComponent {
     const targetId = params.get('eventId')?.trim();
 
     if (!targetType || !targetId) {
+      this.loadedOrganizerTarget = null;
       return of({
         status: 'error',
         message: 'Página de organizador inválida.',
       } satisfies OrganizerInfoState);
     }
 
+    const targetKey = `${targetType}:${targetId}`;
+
     return this.api.getOrganizerInfoStrict(targetType, targetId).pipe(
       map((info) => {
         if (info) {
-          this.hasLoadedOrganizerInfo = true;
+          this.loadedOrganizerTarget = targetKey;
           return { status: 'ready', info } satisfies OrganizerInfoState;
         }
         return {
@@ -145,7 +148,7 @@ export class OrganizerInfoComponent {
         } satisfies OrganizerInfoState;
       }),
       catchError((error: unknown) =>
-        this.hasLoadedOrganizerInfo
+        this.loadedOrganizerTarget === targetKey
           ? EMPTY
           : of({
               status: 'error',
