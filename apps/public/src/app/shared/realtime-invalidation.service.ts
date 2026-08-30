@@ -9,23 +9,24 @@ import type { Observable, ObservableInput } from 'rxjs';
 @Service()
 export class RealtimeInvalidationService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly currentUserId = toObservable(inject(AuthService).user).pipe(
+  private readonly auth = inject(AuthService);
+  private readonly currentUserId = toObservable(this.auth.user).pipe(
     map((user) => user?.sub ?? null),
     distinctUntilChanged(),
   );
 
-  watchCatalog(recover: () => ObservableInput<unknown>): Observable<void> {
-    return this.watch('/api/realtime/public/catalog/events', 'Não foi possível atualizar os eventos ao vivo.', recover);
+  watchCatalog(): Observable<void> {
+    return this.watch('/api/realtime/public/catalog/events', 'Não foi possível atualizar os eventos ao vivo.');
   }
 
-  watchCurrentUserData(recover: () => ObservableInput<unknown>): Observable<void> {
+  watchCurrentUserData(): Observable<void> {
     return this.currentUserId.pipe(
       switchMap((userId) =>
         userId
           ? this.watch(
               '/api/realtime/current-user/data/events',
               'Não foi possível atualizar seus dados ao vivo.',
-              recover,
+              () => this.auth.refreshMe(),
             )
           : EMPTY,
       ),
@@ -35,16 +36,25 @@ export class RealtimeInvalidationService {
   watchOrganizer(
     targetType: string,
     targetId: string,
-    recover: () => ObservableInput<unknown>,
   ): Observable<void> {
-    return this.watch(
-      `/api/realtime/current-user/organizer/${encodeURIComponent(targetType)}/${encodeURIComponent(targetId)}/events`,
-      'Não foi possível atualizar os dados da organização ao vivo.',
-      recover,
+    return this.currentUserId.pipe(
+      switchMap((userId) =>
+        userId
+          ? this.watch(
+              `/api/realtime/current-user/organizer/${encodeURIComponent(targetType)}/${encodeURIComponent(targetId)}/events`,
+              'Não foi possível atualizar os dados da organização ao vivo.',
+              () => this.auth.refreshMe(),
+            )
+          : EMPTY,
+      ),
     );
   }
 
-  private watch(url: string, errorMessage: string, recover: () => ObservableInput<unknown>): Observable<void> {
+  private watch(
+    url: string,
+    errorMessage: string,
+    recover: () => ObservableInput<unknown> = () => Promise.resolve(),
+  ): Observable<void> {
     if (!this.isBrowser || typeof EventSource === 'undefined') return EMPTY;
     return watchRecoveringReplayableEventSourcePing(url, { errorMessage, recover });
   }

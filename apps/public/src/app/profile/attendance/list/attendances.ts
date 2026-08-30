@@ -184,11 +184,11 @@ export class Attendances {
 
   constructor() {
     this.realtime
-      .watchCurrentUserData(() => this.api.getSubscriptionsFeed())
+      .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.feedRefresh.update((value) => value + 1));
     this.realtime
-      .watchCatalog(() => this.api.getSubscriptionsFeed())
+      .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.feedRefresh.update((value) => value + 1));
   }

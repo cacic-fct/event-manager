@@ -20,7 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { firstValueFrom, from } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
@@ -141,7 +141,7 @@ export class PublicationPageComponent {
     });
     void this.refresh();
     this.realtime
-      .watchWorkspace(() => from(this.refresh()))
+      .watchWorkspace()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.refresh());
   }

@@ -253,7 +253,7 @@ export class MajorEvent {
     const majorEventIds = events.map((event) => event.id);
     const invalidations = isPlatformBrowser(this.platformId) && majorEventIds.length > 0
       ? this.realtime
-          .watchCatalog(() => this.prizeDrawsApi.availability({ majorEventIds }))
+          .watchCatalog()
           .pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
       : EMPTY;
 

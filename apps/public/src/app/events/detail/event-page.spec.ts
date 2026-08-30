@@ -229,17 +229,17 @@ describe('Event', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows and hides the prize-draw link as live availability changes', async () => {
+  it('hides a removed prize-draw link and closes its live stream', async () => {
     TestBed.resetTestingModule();
     const updates = new Subject<void>();
     const availability = vi
       .fn()
-      .mockReturnValueOnce(of([]))
       .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]))
       .mockReturnValueOnce(of([]));
     const liveFixture = await createEventComponentFixture(
       {},
       {
+        authenticated: true,
         prizeDrawsApi: {
           availability,
           watch: vi.fn(() => updates),
@@ -249,7 +249,7 @@ describe('Event', () => {
     liveFixture.detectChanges();
     await liveFixture.whenStable();
 
-    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
 
     updates.next();
     updates.next();
@@ -257,14 +257,45 @@ describe('Event', () => {
     liveFixture.detectChanges();
 
     expect(availability).toHaveBeenCalledTimes(2);
-    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
-
-    updates.next();
-    await waitForDrawRefresh(liveFixture);
-    liveFixture.detectChanges();
-
-    expect(availability).toHaveBeenCalledTimes(3);
     expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+    expect(updates.observed).toBe(false);
+  });
+
+  it('does not open a retrying prize-draw stream when no draw is visible', async () => {
+    TestBed.resetTestingModule();
+    const watch = vi.fn(() => NEVER);
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: {
+          availability: vi.fn(() => of([])),
+          watch,
+        },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect(watch).not.toHaveBeenCalled();
+    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+  });
+
+  it('does not query or stream authenticated prize draws for an anonymous event page', async () => {
+    TestBed.resetTestingModule();
+    const availability = vi.fn(() => of([]));
+    const watch = vi.fn(() => NEVER);
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        prizeDrawsApi: { availability, watch },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect(availability).not.toHaveBeenCalled();
+    expect(watch).not.toHaveBeenCalled();
   });
 
   it('keeps an available prize-draw link when a live availability refresh fails', async () => {
@@ -273,6 +304,7 @@ describe('Event', () => {
     const liveFixture = await createEventComponentFixture(
       {},
       {
+        authenticated: true,
         prizeDrawsApi: {
           availability: vi
             .fn()

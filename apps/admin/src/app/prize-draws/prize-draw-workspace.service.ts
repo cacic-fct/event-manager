@@ -17,7 +17,7 @@ import {
   PrizeDrawWinnerContact,
   SavePrizeDrawInput,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { Subscription, firstValueFrom, from } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -106,7 +106,7 @@ export class PrizeDrawWorkspaceService {
       this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
     }
     this.liveSubscription = this.realtime
-      .watchWorkspace(() => from(this.refreshFromRealtime()))
+      .watchWorkspace()
       .subscribe(() => void this.refreshFromRealtime());
     this.destroyRef.onDestroy(() => this.liveSubscription?.unsubscribe());
   }

@@ -6,7 +6,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { Subscription, firstValueFrom, from } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -408,16 +408,14 @@ export class SubscriptionsService {
   private watchEventSubscriptions(eventId: string): void {
     this.eventLiveSubscription?.unsubscribe();
     this.eventLiveSubscription = this.realtime
-      .watchEventSubscriptions(eventId, () => from(this.loadEventSubscriptions(eventId)))
+      .watchEventSubscriptions(eventId)
       .subscribe(() => void this.loadEventSubscriptions(eventId));
   }
 
   private watchMajorEventSubscriptions(majorEventId: string): void {
     this.majorEventLiveSubscription?.unsubscribe();
     this.majorEventLiveSubscription = this.realtime
-      .watchMajorEventSubscriptions(majorEventId, () =>
-        from(this.loadMajorEventSubscriptions({ preserveSelection: true })),
-      )
+      .watchMajorEventSubscriptions(majorEventId)
       .subscribe(() => void this.loadMajorEventSubscriptions({ preserveSelection: true }));
   }
 

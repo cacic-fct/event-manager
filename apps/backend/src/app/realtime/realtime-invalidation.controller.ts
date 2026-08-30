@@ -17,6 +17,7 @@ import {
   Subject,
   catchError,
   defer,
+  distinctUntilChanged,
   exhaustMap,
   interval,
   map,
@@ -27,6 +28,7 @@ import {
   throwError,
 } from 'rxjs';
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { Public } from '../auth/decorators/public.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -260,6 +262,7 @@ export class RealtimeInvalidationController {
             ),
           ),
         ),
+        distinctUntilChanged((previous, current) => isDeepStrictEqual(previous, current)),
         map((data) => ({ data })),
         share({
           connector: () => new Subject<MessageEvent>(),

@@ -186,14 +186,11 @@ export class PublicMapPage implements AfterViewInit {
 
   constructor() {
     this.realtime
-      .watchCatalog(() => this.api.getEvents(true))
+      .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.dataRefresh.update((value) => value + 1));
     this.realtime
-      .watchCurrentUserData(() => {
-        const userId = this.auth.user()?.sub;
-        return userId ? this.api.getCurrentUserEventIds(userId, true) : of(new Set<string>());
-      })
+      .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.dataRefresh.update((value) => value + 1));
     if (isPlatformBrowser(this.platformId)) {

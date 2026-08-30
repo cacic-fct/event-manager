@@ -161,7 +161,7 @@ export class Home implements OnInit, OnDestroy {
       startWith(0),
       map(() => undefined),
     );
-    const liveRefresh = this.realtime.watchWorkspace(() => this.loadDashboard());
+    const liveRefresh = this.realtime.watchWorkspace();
     this.insightsSubscription = merge(fallbackRefresh, liveRefresh)
       .pipe(
         switchMap(() => this.loadDashboard()),

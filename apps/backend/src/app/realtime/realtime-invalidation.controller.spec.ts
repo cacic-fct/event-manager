@@ -46,6 +46,44 @@ describe('RealtimeInvalidationController', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it('publishes only changed fingerprint snapshots', async () => {
+    jest.useFakeTimers();
+    const controller = createController();
+    const firstSnapshot = {
+      type: 'CURRENT_USER_DATA_INVALIDATED',
+      revision: { _count: 1, _max: { createdAt: new Date('2026-08-30T12:00:00.000Z'), deletedAt: null } },
+    };
+    const identicalSnapshot = {
+      revision: { _max: { deletedAt: null, createdAt: new Date('2026-08-30T12:00:00.000Z') }, _count: 1 },
+      type: 'CURRENT_USER_DATA_INVALIDATED',
+    };
+    const changedSnapshot = {
+      ...identicalSnapshot,
+      revision: { ...identicalSnapshot.revision, _count: 2 },
+    };
+    const load = jest
+      .fn()
+      .mockResolvedValueOnce(firstSnapshot)
+      .mockResolvedValueOnce(identicalSnapshot)
+      .mockResolvedValueOnce(changedSnapshot);
+    const events: MessageEvent[] = [];
+    const subscription = getReplayPolling(controller)('person:dedupe', undefined, 5_000, load).subscribe((event) => {
+      events.push(event);
+    });
+
+    await jest.advanceTimersByTimeAsync(0);
+    expect(events).toEqual([{ data: firstSnapshot }]);
+
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(events).toEqual([{ data: firstSnapshot }]);
+
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(events).toEqual([{ data: firstSnapshot }, { data: changedSnapshot }]);
+    expect(load).toHaveBeenCalledTimes(3);
+
+    subscription.unsubscribe();
+  });
+
   it('propagates forbidden polling failures', async () => {
     const controller = createController();
     const events = getReplayPolling(controller)(

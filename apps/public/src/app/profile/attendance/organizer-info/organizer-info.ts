@@ -64,11 +64,7 @@ export class OrganizerInfoComponent {
         switchMap((params) => {
           const targetType = parseEventTargetType(params.get('eventType'));
           const targetId = params.get('eventId')?.trim();
-          return targetType && targetId
-            ? this.realtime.watchOrganizer(targetType, targetId, () =>
-                this.api.getOrganizerInfoStrict(targetType, targetId),
-              )
-            : EMPTY;
+          return targetType && targetId ? this.realtime.watchOrganizer(targetType, targetId) : EMPTY;
         }),
         takeUntilDestroyed(this.destroyRef),
       )

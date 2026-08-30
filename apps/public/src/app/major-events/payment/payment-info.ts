@@ -91,11 +91,11 @@ export class PaymentInfo {
   constructor() {
     this.loadPage();
     this.realtime
-      .watchCurrentUserData(() => this.pageRequest())
+      .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadPage(true));
     this.realtime
-      .watchCatalog(() => this.pageRequest())
+      .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadPage(true));
   }

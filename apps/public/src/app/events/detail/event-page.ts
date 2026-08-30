@@ -49,6 +49,7 @@ import {
   startWith,
   switchMap,
   take,
+  takeWhile,
   timer,
 } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
@@ -220,7 +221,9 @@ export class Event {
   readonly hasPrizeDraws = signal(false);
   private readonly prizeDrawTargetId = computed(() => {
     const currentState = this.eventState();
-    return currentState.status === 'ready' && !currentState.data.preview ? currentState.data.event.id : null;
+    return currentState.status === 'ready' && !currentState.data.preview && this.isAuthenticated()
+      ? currentState.data.event.id
+      : null;
   });
   readonly calendarDownloadUrl = computed(() => {
     const currentState = this.eventState();
@@ -294,9 +297,22 @@ export class Event {
     }
 
     this.hasPrizeDraws.set(false);
-    const invalidations = this.isBrowser
-      ? defer(() => this.prizeDrawsApi.watch({ targetType: 'EVENT', targetId: eventId }))
-          .pipe(
+    const subscription = this.prizeDrawsApi
+      .availability({ eventIds: [eventId] })
+      .pipe(
+        catchError(() => EMPTY),
+        take(1),
+        switchMap((initialAvailability) => {
+          const hasVisibleDraw = initialAvailability.some(
+            (item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0,
+          );
+          if (!this.isBrowser || !hasVisibleDraw) {
+            return of(initialAvailability);
+          }
+
+          const invalidations = defer(() =>
+            this.prizeDrawsApi.watch({ targetType: 'EVENT', targetId: eventId }),
+          ).pipe(
             auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
             retry({
               delay: (_, retryCount) =>
@@ -307,16 +323,27 @@ export class Event {
                   ),
                 ),
             }),
-          )
-      : EMPTY;
-    const subscription = merge(of(undefined), invalidations)
-      .pipe(
-        switchMap(() =>
-          this.prizeDrawsApi.availability({ eventIds: [eventId] }).pipe(
-            catchError(() => EMPTY),
-            take(1),
-          ),
-        ),
+          );
+          return merge(
+            of(initialAvailability),
+            invalidations.pipe(
+              switchMap(() =>
+                this.prizeDrawsApi.availability({ eventIds: [eventId] }).pipe(
+                  catchError(() => EMPTY),
+                  take(1),
+                ),
+              ),
+            ),
+          ).pipe(
+            takeWhile(
+              (availability) =>
+                availability.some(
+                  (item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0,
+                ),
+              true,
+            ),
+          );
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((availability) => {

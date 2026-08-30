@@ -157,11 +157,11 @@ export class Calendar {
       .subscribe(() => this.refreshCounter.update((value) => value + 1));
 
     this.realtime
-      .watchCatalog(() => this.loadEvents(this.filterModel(), this.listStartDate(), this.isAuthenticated()))
+      .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshCounter.update((value) => value + 1));
     this.realtime
-      .watchCurrentUserData(() => this.loadEvents(this.filterModel(), this.listStartDate(), this.isAuthenticated()))
+      .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.refreshCounter.update((value) => value + 1));
   }

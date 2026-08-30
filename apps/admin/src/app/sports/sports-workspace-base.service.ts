@@ -17,7 +17,7 @@ import {
 } from '@cacic-fct/shared-data-types/sports-metadata';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
-import { Subscription, firstValueFrom, from } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
@@ -493,7 +493,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   private watchWorkspaceIndex(): void {
     if (this.workspaceIndexSubscription) return;
     this.workspaceIndexSubscription = this.realtime
-      .watchWorkspace(() => from(this.refreshWorkspaceIndex()))
+      .watchWorkspace()
       .subscribe(() => void this.refreshWorkspaceIndex());
   }
 

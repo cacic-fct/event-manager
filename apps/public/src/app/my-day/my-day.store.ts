@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
 import { MyDayCacheService } from '@cacic-fct/public-indexed-db';
-import { Subject, firstValueFrom, filter, from, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, filter, takeUntil } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
 import { NetworkStatusService } from '../shared/network-status.service';
@@ -76,11 +76,11 @@ export class MyDayStore {
       .subscribe(() => void this.load(this.selectedDateSignal(), true));
 
     this.realtime
-      .watchCurrentUserData(() => from(this.load(this.selectedDateSignal(), true)))
+      .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.load(this.selectedDateSignal(), true));
     this.realtime
-      .watchCatalog(() => from(this.load(this.selectedDateSignal(), true)))
+      .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.load(this.selectedDateSignal(), true));
   }
