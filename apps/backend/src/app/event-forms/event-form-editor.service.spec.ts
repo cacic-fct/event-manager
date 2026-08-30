@@ -13,6 +13,7 @@ import {
   EventFormTargetType,
   PublicationState,
 } from '@prisma/client';
+import { Logger } from '@nestjs/common';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -95,6 +96,27 @@ describe('EventFormEditorService', () => {
       expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
     );
     await moduleRef.close();
+  });
+
+  it('returns the committed form when realtime invalidation publication fails', async () => {
+    const created = formRecord({ id: 'form-created' });
+    prisma.eventForm.create.mockResolvedValue({ id: 'form-created' });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue(created);
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await expect(service.saveForm(formInput(), authenticatedUser)).resolves.toEqual(
+        expect.objectContaining({ id: 'form-created' }),
+      );
+      expect(realtime.publish).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Event-form realtime invalidation failed after mutation form-created committed'),
+        expect.any(String),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('creates forms with normalized fields, links, permissions, and audit log entries', async () => {

@@ -141,6 +141,8 @@ export class PrizeDrawWorkspaceService {
       do {
         this.liveRefreshQueued = false;
         const selectedId = this.selected()?.id;
+        const selectionGeneration = this.selectionRequestGeneration;
+        const hadUnsavedChanges = this.unsavedChanges();
         const [draws, events, majorEvents] = await Promise.all([
           firstValueFrom(this.api.list()),
           firstValueFrom(this.eventApi.listEvents({ take: 500 })),
@@ -149,8 +151,16 @@ export class PrizeDrawWorkspaceService {
         this.draws.set(draws);
         this.events.set(events);
         this.majorEvents.set(majorEvents);
-        if (!selectedId || this.unsavedChanges()) continue;
-        const requestGeneration = this.selectionRequestGeneration;
+        if (
+          !selectedId ||
+          hadUnsavedChanges ||
+          selectionGeneration !== this.selectionRequestGeneration ||
+          this.selected()?.id !== selectedId ||
+          this.unsavedChanges()
+        ) {
+          continue;
+        }
+        const requestGeneration = selectionGeneration;
         const draw = await firstValueFrom(this.api.get(selectedId));
         if (
           requestGeneration !== this.selectionRequestGeneration ||

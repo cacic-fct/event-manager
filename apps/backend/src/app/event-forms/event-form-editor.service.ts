@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
   EventFormDraft as EventFormDraftModel,
@@ -45,6 +45,8 @@ import {
 
 @Injectable()
 export class EventFormEditorService {
+  private readonly logger = new Logger(EventFormEditorService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
@@ -141,7 +143,7 @@ export class EventFormEditorService {
 
       await this.images.deleteObjectsBestEffort(result.removedImageKeys);
       const model = toEventFormModel(result.updated);
-      await this.publishInvalidations(model.id);
+      await this.publishInvalidationsBestEffort(model.id);
       return model;
     }
 
@@ -194,7 +196,7 @@ export class EventFormEditorService {
     });
 
     const model = toEventFormModel(created);
-    await this.publishInvalidations(model.id);
+    await this.publishInvalidationsBestEffort(model.id);
     return model;
   }
 
@@ -307,7 +309,7 @@ export class EventFormEditorService {
     });
 
     const model = toEventFormModel(updated);
-    await this.publishInvalidations(model.id);
+    await this.publishInvalidationsBestEffort(model.id);
     return model;
   }
 
@@ -321,6 +323,19 @@ export class EventFormEditorService {
       this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
       this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
     ]);
+  }
+
+  private async publishInvalidationsBestEffort(formId: string): Promise<void> {
+    try {
+      await this.publishInvalidations(formId);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Event-form realtime invalidation failed after mutation ${formId} committed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }
 

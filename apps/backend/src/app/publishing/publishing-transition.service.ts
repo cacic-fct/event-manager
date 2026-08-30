@@ -121,7 +121,7 @@ export class PublicationTransitionService {
     if (!options.skipSitemap) {
       await this.refreshSitemapBestEffort();
     }
-    await this.publishInvalidations(sync);
+    await this.publishInvalidationsBestEffort(sync);
     return sync;
   }
 
@@ -139,7 +139,7 @@ export class PublicationTransitionService {
     if (!options.skipSitemap) {
       await this.refreshSitemapBestEffort();
     }
-    await this.publishInvalidations(sync);
+    await this.publishInvalidationsBestEffort(sync);
     return sync;
   }
 
@@ -219,6 +219,14 @@ export class PublicationTransitionService {
       this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
       this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
     ]);
+  }
+
+  private async publishInvalidationsBestEffort(sync: TargetSync): Promise<void> {
+    try {
+      await this.publishInvalidations(sync);
+    } catch (error: unknown) {
+      this.logger.warn(`Publication realtime invalidation failed after commit: ${formatFailure(error)}`);
+    }
   }
 
   async refreshSitemapBestEffort(): Promise<void> {

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { EventType, Prisma, PublicationState } from '@prisma/client';
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -68,6 +68,8 @@ const EVENT_GROUP_EFFECTS_SELECT = {
 
 @Injectable()
 export class EventPostCommitEffectsService {
+  private readonly logger = new Logger(EventPostCommitEffectsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
@@ -87,7 +89,7 @@ export class EventPostCommitEffectsService {
       await this.upsertEventSearchDocument(event);
       await this.onlineAttendanceNotifications.scheduleEvent(event);
     } finally {
-      await this.publishInvalidations('event');
+      await this.publishInvalidationsBestEffort('event');
     }
   }
 
@@ -96,7 +98,7 @@ export class EventPostCommitEffectsService {
       await this.sitemap.refresh();
       await this.typesenseSearch.deleteEvent(eventId);
     } finally {
-      await this.publishInvalidations('event');
+      await this.publishInvalidationsBestEffort('event');
     }
   }
 
@@ -128,7 +130,7 @@ export class EventPostCommitEffectsService {
         }),
       );
     } finally {
-      await this.publishInvalidations('event');
+      await this.publishInvalidationsBestEffort('event');
     }
   }
 
@@ -136,7 +138,7 @@ export class EventPostCommitEffectsService {
     try {
       await this.typesenseSearch.upsertEventGroup(eventGroup);
     } finally {
-      await this.publishInvalidations('event-group');
+      await this.publishInvalidationsBestEffort('event-group');
     }
   }
 
@@ -144,7 +146,7 @@ export class EventPostCommitEffectsService {
     try {
       await this.typesenseSearch.deleteEventGroup(eventGroupId);
     } finally {
-      await this.publishInvalidations('event-group');
+      await this.publishInvalidationsBestEffort('event-group');
     }
   }
 
@@ -172,7 +174,7 @@ export class EventPostCommitEffectsService {
         }),
       );
     } finally {
-      await this.publishInvalidations('event-group');
+      await this.publishInvalidationsBestEffort('event-group');
     }
   }
 
@@ -186,6 +188,19 @@ export class EventPostCommitEffectsService {
       this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
       this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
     ]);
+  }
+
+  private async publishInvalidationsBestEffort(domain: 'event' | 'event-group'): Promise<void> {
+    try {
+      await this.publishInvalidations(domain);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Catalog realtime invalidation failed after ${domain} post-commit effects: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   private upsertEventSearchDocument(event: EventPostCommitRecord): Promise<void> {

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { EventPostCommitEffectsService, EventPostCommitRecord } from './event-post-commit-effects.service';
 
 const eventRecord = (overrides: Partial<EventPostCommitRecord> = {}): EventPostCommitRecord => ({
@@ -82,6 +83,49 @@ describe('EventPostCommitEffectsService', () => {
     await expect(service.upsertEvent(eventRecord())).rejects.toBe(failure);
 
     expect(realtime.publish).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps post-commit event effects successful when realtime invalidation fails', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockRejectedValue(new Error('Realtime unavailable')),
+    };
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn() } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    try {
+      await expect(service.upsertEvent(eventRecord())).resolves.toBeUndefined();
+      expect(realtime.publish).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Catalog realtime invalidation failed after event post-commit effects'),
+        expect.any(String),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('preserves a post-commit search error when invalidation also fails', async () => {
+    const searchFailure = new Error('Typesense unavailable');
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockRejectedValue(new Error('Realtime unavailable')),
+    };
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn().mockRejectedValue(searchFailure) } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await expect(service.upsertEvent(eventRecord())).rejects.toBe(searchFailure);
   });
 
   it('reconciles active and deleted backing events after a committed sports mutation', async () => {

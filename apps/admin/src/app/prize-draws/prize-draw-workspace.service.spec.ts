@@ -272,13 +272,15 @@ describe('PrizeDrawWorkspaceService', () => {
   it('does not let a live refresh cancel a newer manual draw selection', async () => {
     const initialDraw = drawFixture({ id: 'draw-1', title: 'Sorteio inicial' });
     const selectedDraw = drawFixture({ id: 'draw-2', title: 'Sorteio escolhido' });
-    const staleRefresh = new Subject<PrizeDraw>();
+    const pendingList = new Subject<PrizeDraw[]>();
     const pendingSelection = new Subject<PrizeDraw>();
     api.list.mockReturnValue(of([initialDraw, selectedDraw]));
     api.get.mockReturnValue(of(initialDraw));
     await service.initialize('draw-1');
+    api.list.mockReset();
+    api.list.mockReturnValueOnce(pendingList);
     api.get.mockReset();
-    api.get.mockReturnValueOnce(pendingSelection).mockReturnValueOnce(staleRefresh);
+    api.get.mockReturnValueOnce(pendingSelection);
 
     const selection = service.selectById('draw-2', false);
     workspaceEvents.next();
@@ -286,11 +288,16 @@ describe('PrizeDrawWorkspaceService', () => {
     await Promise.resolve();
     pendingSelection.next(selectedDraw);
     pendingSelection.complete();
-    staleRefresh.next(initialDraw);
-    staleRefresh.complete();
     await selection;
+
+    pendingList.next([initialDraw, selectedDraw]);
+    pendingList.complete();
     await flushAsync();
 
+    expect(api.get).toHaveBeenCalledOnce();
+    expect(api.get).toHaveBeenCalledWith('draw-2');
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(service.draws()).toEqual([initialDraw, selectedDraw]);
     expect(service.selected()?.id).toBe('draw-2');
     expect(service.form.controls.title.value).toBe('Sorteio escolhido');
   });

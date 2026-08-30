@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogOperation, PublicationState } from '@prisma/client';
@@ -30,6 +30,8 @@ import { findEventLinkRecord, formTargetInputs } from './event-form-targets';
 
 @Injectable()
 export class EventFormPublicationWorkflowService {
+  private readonly logger = new Logger(EventFormPublicationWorkflowService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
@@ -87,7 +89,7 @@ export class EventFormPublicationWorkflowService {
         return updated;
       });
       const model = toEventFormModel(scheduled);
-      await this.publishInvalidations(model.id);
+      await this.publishInvalidationsBestEffort(model.id);
       return model;
     }
 
@@ -163,13 +165,13 @@ export class EventFormPublicationWorkflowService {
     });
 
     const model = toEventFormModel(updated);
-    await this.publishInvalidations(model.id);
+    await this.publishInvalidationsBestEffort(model.id);
     return model;
   }
 
   async publishDueScheduledForms(): Promise<number> {
     const published = await publishDueScheduledEventForms(this.prisma, this.formNotifications, this.auditLog);
-    if (published > 0) await this.publishInvalidations();
+    if (published > 0) await this.publishInvalidationsBestEffort();
     return published;
   }
 
@@ -183,7 +185,7 @@ export class EventFormPublicationWorkflowService {
     actor: AuditRecordOptions['actor'],
   ): Promise<EventFormModel> {
     const model = await publishEventFormNow(this.prisma, this.formNotifications, formId, actorId, this.auditLog, actor);
-    await this.publishInvalidations(model.id);
+    await this.publishInvalidationsBestEffort(model.id);
     return model;
   }
 
@@ -197,5 +199,18 @@ export class EventFormPublicationWorkflowService {
       this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
       this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
     ]);
+  }
+
+  private async publishInvalidationsBestEffort(formId?: string): Promise<void> {
+    try {
+      await this.publishInvalidations(formId);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Event-form realtime invalidation failed after mutation ${formId ?? 'scheduled forms'} committed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { EventFormTargetType, PublicationState } from '@prisma/client';
 import { EventFormPublicationWorkflowService } from './event-form-publication-workflow.service';
 import {
@@ -58,6 +59,41 @@ describe('event form publication and service support helpers', () => {
       'scope:public-catalog-v2',
       expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
     );
+  });
+
+  it('keeps a committed scheduled-form mutation successful when realtime publication fails', async () => {
+    const scheduledPublishAt = new Date(Date.now() + 60_000);
+    const form = formRecord({ publicationState: PublicationState.UNPUBLISHED });
+    const scheduled = formRecord({ publicationState: PublicationState.SCHEDULED, scheduledPublishAt });
+    const tx = { eventForm: { update: jest.fn().mockResolvedValue(scheduled) } };
+    const prisma = {
+      eventForm: { findFirst: jest.fn().mockResolvedValue(form) },
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
+    };
+    const realtime = createRealtimeMock();
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new EventFormPublicationWorkflowService(
+      prisma as never,
+      { assertPermissions: jest.fn() } as never,
+      {} as never,
+      {} as never,
+      { record: jest.fn() } as never,
+      realtime as never,
+    );
+
+    try {
+      await expect(service.publishForm('form-1', scheduledPublishAt, { sub: 'admin-1' } as never)).resolves.toEqual(
+        expect.objectContaining({ id: 'form-1', publicationState: PublicationState.SCHEDULED }),
+      );
+      expect(realtime.publish).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Event-form realtime invalidation failed after mutation form-1 committed'),
+        expect.any(String),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('publishes an invalidation after unpublishing a form', async () => {
