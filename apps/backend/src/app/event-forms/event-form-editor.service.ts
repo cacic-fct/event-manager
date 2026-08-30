@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
   EventFormDraft as EventFormDraftModel,
@@ -14,6 +14,11 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { eventFormAuditRecord } from './event-form-audit';
 import { assertQuestionsHaveTitles, parseElementsJson } from './event-form-answer-normalization';
 import { EventFormImagesService, parseEventFormImageReferences } from './event-form-images.service';
@@ -40,11 +45,19 @@ import {
 
 @Injectable()
 export class EventFormEditorService {
+  private readonly logger = new Logger(EventFormEditorService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly auditLog: AuditLogService,
     private readonly images: EventFormImagesService,
+    @Inject(RealtimeInvalidationService)
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
@@ -129,7 +142,9 @@ export class EventFormEditorService {
       });
 
       await this.images.deleteObjectsBestEffort(result.removedImageKeys);
-      return toEventFormModel(result.updated);
+      const model = toEventFormModel(result.updated);
+      await this.publishInvalidationsBestEffort(model.id);
+      return model;
     }
 
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Create], {
@@ -180,7 +195,9 @@ export class EventFormEditorService {
       return created;
     });
 
-    return toEventFormModel(created);
+    const model = toEventFormModel(created);
+    await this.publishInvalidationsBestEffort(model.id);
+    return model;
   }
 
   async saveDraft(
@@ -291,7 +308,34 @@ export class EventFormEditorService {
       return deleted;
     });
 
-    return toEventFormModel(updated);
+    const model = toEventFormModel(updated);
+    await this.publishInvalidationsBestEffort(model.id);
+    return model;
+  }
+
+  private async publishInvalidations(formId: string): Promise<void> {
+    const payload = {
+      type: 'EVENT_FORMS_INVALIDATED',
+      formId,
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
+  }
+
+  private async publishInvalidationsBestEffort(formId: string): Promise<void> {
+    try {
+      await this.publishInvalidations(formId);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Event-form realtime invalidation failed after mutation ${formId} committed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }
 

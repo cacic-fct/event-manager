@@ -157,6 +157,7 @@ function createAttendanceWorkspaceMock(
     scanAttendance: fn(async () => undefined),
     importAttendancesFromCsv: fn(async () => undefined),
     loadAttendances: fn(async () => undefined),
+    closeAttendanceLiveStream: fn(() => undefined),
     exportEventAttendancesCsv: fn(async () => undefined),
     showAttendanceInfo: fn(() => undefined),
     deleteAttendance: fn(async () => undefined),

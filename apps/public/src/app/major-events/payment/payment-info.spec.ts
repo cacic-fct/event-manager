@@ -1,5 +1,7 @@
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
+import { Subject } from 'rxjs';
 import { PaymentInfo } from './payment-info';
 
 describe('PaymentInfo', () => {
@@ -79,5 +81,41 @@ describe('PaymentInfo', () => {
         new HttpErrorResponse({ status: 400, error: { message: 'Envie um arquivo com no máximo 10 páginas.' } }),
       ),
     ).toBe('Envie um arquivo com no máximo 10 páginas.');
+  });
+
+  it('keeps the newest live refresh when requests finish out of order', () => {
+    const older = new Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>();
+    const newer = new Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>();
+    const requests = [older, newer];
+    const liveComponent = Object.create(PaymentInfo.prototype) as unknown as {
+      majorEventId: string;
+      state: ReturnType<typeof signal>;
+      pageRequestId: number;
+      pageRequest(): Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>;
+      loadPage(background?: boolean): void;
+      receiptUploadCooldown: { clear(): void };
+      destroyRef: { onDestroy(callback: () => void): () => void };
+      analytics: { trackMajorEventTransaction(): void };
+      resolveApplicablePrice(): number | null;
+    };
+    liveComponent.majorEventId = 'major-1';
+    liveComponent.state = signal({ status: 'loading' });
+    liveComponent.pageRequestId = 0;
+    liveComponent.pageRequest = () => requests.shift() as typeof older;
+    liveComponent.receiptUploadCooldown = { clear: vi.fn() };
+    liveComponent.destroyRef = { onDestroy: () => () => undefined };
+    const trackMajorEventTransaction = vi.fn();
+    liveComponent.analytics = { trackMajorEventTransaction };
+    liveComponent.resolveApplicablePrice = () => null;
+    const oldSubscription = { id: 'old', majorEvent: {} } as CurrentUserMajorEventSubscription;
+    const newSubscription = { id: 'new', majorEvent: {} } as CurrentUserMajorEventSubscription;
+
+    liveComponent.loadPage(true);
+    liveComponent.loadPage(true);
+    newer.next({ subscription: newSubscription, receipt: null });
+    older.next({ subscription: oldSubscription, receipt: null });
+
+    expect(liveComponent.state()).toEqual({ status: 'ready', subscription: newSubscription, receipt: null });
+    expect(trackMajorEventTransaction).not.toHaveBeenCalled();
   });
 });

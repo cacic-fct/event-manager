@@ -10,7 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { AztecScannerDialogComponent, ScannerFeedbackService } from '@cacic-fct/shared-angular';
-import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, concat, finalize, map, merge, of, scan, switchMap, take } from 'rxjs';
 import { EmojiService } from '../../../shared/emoji.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
@@ -20,6 +20,11 @@ type AttendanceCodeState =
   | { status: 'loading' }
   | { status: 'ready'; item: PendingOnlineAttendanceEvent; total: number }
   | { status: 'error'; message: string };
+
+type AttendanceCodeStateEmission = {
+  state: AttendanceCodeState;
+  preserveStateOnError: boolean;
+};
 
 @Component({
   selector: 'app-online-attendance-code',
@@ -211,34 +216,69 @@ export class OnlineAttendanceCodeComponent {
   }
 
   private createState() {
-    return combineLatest([this.route.paramMap, toObservable(this.reloadCounter)]).pipe(
-      switchMap(() =>
-        this.api.listPendingEvents().pipe(
-          map((items): AttendanceCodeState => {
-            const item = items.find(({ eventId }) => eventId === this.eventId());
-            if (!item) {
-              if (this.openedFromNotification() && this.eventId()) {
-                void this.router.navigate(['/profile', 'attendances', 'event', this.eventId()]);
-              }
-              return {
-                status: 'error',
-                message: this.openedFromNotification()
-                  ? 'Esta presença não está mais pendente. Abrindo os detalhes da participação.'
-                  : 'Não há presença pendente para este evento.',
-              };
-            }
+    const routeReloads = combineLatest([this.route.paramMap, toObservable(this.reloadCounter)]).pipe(
+      map(() => ({ preserveStateOnError: false })),
+    );
+    const liveReloads = this.attendanceCoordinator.changes().pipe(
+      map(() => ({ preserveStateOnError: true })),
+      catchError(() => EMPTY),
+    );
 
-            return { status: 'ready', item, total: items.length };
-          }),
+    return merge(routeReloads, liveReloads).pipe(
+      switchMap(({ preserveStateOnError }) => {
+        const request = this.api.listPendingEvents().pipe(
+          take(1),
+          map((items): AttendanceCodeStateEmission => ({
+            state: this.stateFor(items),
+            preserveStateOnError: false,
+          })),
           catchError((error: unknown) =>
             of({
-              status: 'error',
-              message: error instanceof Error ? error.message : 'Não foi possível carregar a presença.',
-            } satisfies AttendanceCodeState),
+              state: {
+                status: 'error',
+                message: error instanceof Error ? error.message : 'Não foi possível carregar a presença.',
+              },
+              preserveStateOnError,
+            } satisfies AttendanceCodeStateEmission),
           ),
-        ),
+        );
+
+        return preserveStateOnError
+          ? request
+          : concat(
+              of({
+                state: { status: 'loading' } satisfies AttendanceCodeState,
+                preserveStateOnError: false,
+              }),
+              request,
+            );
+      }),
+      scan<AttendanceCodeStateEmission, AttendanceCodeState>(
+        (current, next) =>
+          next.state.status === 'error' && next.preserveStateOnError && current.status === 'ready'
+            ? current
+            : next.state,
+        { status: 'loading' },
       ),
+      takeUntilDestroyed(this.destroyRef),
     );
+  }
+
+  private stateFor(items: PendingOnlineAttendanceEvent[]): AttendanceCodeState {
+    const item = items.find(({ eventId }) => eventId === this.eventId());
+    if (!item) {
+      if (this.openedFromNotification() && this.eventId()) {
+        void this.router.navigate(['/profile', 'attendances', 'event', this.eventId()]);
+      }
+      return {
+        status: 'error',
+        message: this.openedFromNotification()
+          ? 'Esta presença não está mais pendente. Abrindo os detalhes da participação.'
+          : 'Não há presença pendente para este evento.',
+      };
+    }
+
+    return { status: 'ready', item, total: items.length };
   }
 
   private afterRegistration(): void {

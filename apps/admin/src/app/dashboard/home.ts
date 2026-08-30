@@ -23,7 +23,7 @@ import type {
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import type { AttendanceReviewEventSummary } from '@cacic-fct/event-manager-admin-contracts';
-import { Subscription, forkJoin, interval, of, startWith, switchMap } from 'rxjs';
+import { Subscription, catchError, finalize, forkJoin, interval, map, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
@@ -31,6 +31,7 @@ import { navigationLinkItems } from '../app-shell/navigation';
 import { PermissionsService } from '../permissions/permissions.service';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { timeAwareGreeting } from '@cacic-fct/shared-utils';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -58,6 +59,7 @@ export class Home implements OnInit, OnDestroy {
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly permissions = inject(PermissionsService);
+  private readonly realtime = inject(RealtimeApiService);
 
   private minuteTimeoutId?: ReturnType<typeof setTimeout>;
   private minuteIntervalId?: ReturnType<typeof setInterval>;
@@ -155,31 +157,40 @@ export class Home implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.scheduleClock();
-    this.insightsSubscription = interval(5 * 60 * 1000)
+    const fallbackRefresh = interval(5 * 60 * 1000).pipe(
+      startWith(0),
+      map(() => undefined),
+    );
+    const liveRefresh = this.realtime.watchWorkspace();
+    this.insightsSubscription = merge(fallbackRefresh, liveRefresh)
       .pipe(
-        startWith(0),
-        switchMap(() => {
-          this.loading.set(true);
-          this.error.set(null);
-          return forkJoin({
-            insights: this.dashboardApi.getWorkspaceDashboardInsights(),
-            attendanceReviewEvents: this.permissions.has(Permission.EventAttendance.Update)
-              ? this.attendanceApi.listAttendanceReviewEventSummaries()
-              : of([]),
-          });
-        }),
+        switchMap(() => this.loadDashboard()),
       )
-      .subscribe({
-        next: ({ insights, attendanceReviewEvents }) => {
-          this.insights.set(insights);
-          this.attendanceReviewEvents.set(attendanceReviewEvents);
-          this.loading.set(false);
-        },
-        error: (error: unknown) => {
+      .subscribe();
+  }
+
+  private loadDashboard() {
+    const background = this.insights() !== null;
+    if (!background) this.loading.set(true);
+    this.error.set(null);
+    return forkJoin({
+      insights: this.dashboardApi.getWorkspaceDashboardInsights(),
+      attendanceReviewEvents: this.permissions.has(Permission.EventAttendance.Update)
+        ? this.attendanceApi.listAttendanceReviewEventSummaries()
+        : of([]),
+    }).pipe(
+      tap(({ insights, attendanceReviewEvents }) => {
+        this.insights.set(insights);
+        this.attendanceReviewEvents.set(attendanceReviewEvents);
+      }),
+      catchError((error: unknown) => {
+        if (!background) {
           this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar o painel.');
-          this.loading.set(false);
-        },
-      });
+        }
+        return of(null);
+      }),
+      finalize(() => this.loading.set(false)),
+    );
   }
 
   ngOnDestroy(): void {

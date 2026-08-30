@@ -7,7 +7,9 @@ import { NEVER, Subject } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { RateLimitError } from '../shared/rate-limit-error';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 import { MyDayApiService } from './my-day-api.service';
+import { myDayDateKey } from './my-day-date';
 import { MyDayStore } from './my-day.store';
 
 const requests: Array<{ date: string; subject: Subject<CurrentUserMyDay> }> = [];
@@ -26,9 +28,13 @@ describe('MyDayStore request control', () => {
     put: vi.fn().mockResolvedValue(undefined),
   };
   let store: MyDayStore;
+  let currentUserChanges: Subject<void>;
+  let catalogChanges: Subject<void>;
 
   beforeEach(() => {
     requests.length = 0;
+    currentUserChanges = new Subject<void>();
+    catalogChanges = new Subject<void>();
     authUser.set({ sub: 'user-1' });
     api.get.mockClear();
     cache.get.mockClear();
@@ -42,6 +48,13 @@ describe('MyDayStore request control', () => {
         { provide: MyDayCacheService, useValue: cache },
         { provide: NetworkStatusService, useValue: { isOnline: () => true, watchStatusChanges: () => NEVER } },
         { provide: PublicFeatureFlagService, useValue: { booleanValue: () => true } },
+        {
+          provide: RealtimeInvalidationService,
+          useValue: {
+            watchCurrentUserData: () => currentUserChanges,
+            watchCatalog: () => catalogChanges,
+          },
+        },
       ],
     });
     store = TestBed.inject(MyDayStore);
@@ -108,6 +121,41 @@ describe('MyDayStore request control', () => {
     expect(cache.put).toHaveBeenCalledWith('user-2', expect.objectContaining({ selectedDate: '2026-08-16' }));
     expect(cache.put).not.toHaveBeenCalledWith('user-1', expect.anything());
     expect(store.data()?.selectedDate).toBe('2026-08-16');
+  });
+
+  it('force-refreshes the selected day after an invalidation while retaining the last good snapshot on failure', async () => {
+    const selectedDate = myDayDateKey(new Date(Date.now() - 86_400_000));
+    const initialSnapshot = day(selectedDate);
+    const initialLoad = store.load(selectedDate);
+    await Promise.resolve();
+    latestRequest(selectedDate).next(initialSnapshot);
+    latestRequest(selectedDate).complete();
+    await initialLoad;
+
+    const today = myDayDateKey(new Date());
+    cache.get.mockImplementation((_userId: string, date: string) =>
+      Promise.resolve(date === selectedDate ? initialSnapshot : date === today ? day(date) : null),
+    );
+    TestBed.runInInjectionContext(() => store.start());
+    TestBed.flushEffects();
+    await Promise.resolve();
+    const callsBeforeInvalidation = api.get.mock.calls.length;
+
+    currentUserChanges.next();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api.get).toHaveBeenCalledTimes(callsBeforeInvalidation + 1);
+    latestRequest(selectedDate).error(new Error('Falha transitória'));
+    await Promise.resolve();
+
+    expect(store.state()).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        data: initialSnapshot,
+        message: 'Falha transitória',
+      }),
+    );
   });
 });
 

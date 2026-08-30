@@ -16,6 +16,9 @@ describe('SportsRealtimeController', () => {
     sportsTournament: {
       findFirstOrThrow: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
     },
+    sportsTeam: {
+      findFirst: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }),
+    },
   };
   const policy = {
     assertPermissions: jest.fn().mockResolvedValue(undefined),
@@ -23,7 +26,9 @@ describe('SportsRealtimeController', () => {
   const replay = {
     replay: jest.fn().mockReturnValue(of(event)),
   };
-  const currentUser = {};
+  const currentUser = {
+    requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }),
+  };
   const realtime = {
     scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
     watch: jest.fn(() => of()),
@@ -37,6 +42,8 @@ describe('SportsRealtimeController', () => {
     prisma.sportsTournament.findFirstOrThrow.mockResolvedValue({
       id: 'tournament-1',
     });
+    prisma.sportsTeam.findFirst.mockResolvedValue({ tournamentId: 'tournament-1' });
+    currentUser.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     policy.assertPermissions.mockResolvedValue(undefined);
     replay.replay.mockReturnValue(of(event));
     controller = new SportsRealtimeController(
@@ -103,6 +110,38 @@ describe('SportsRealtimeController', () => {
       sportsMatchId: 'match-1',
     });
     expect(replay.replay).toHaveBeenCalledWith('review:match-1', 'review-cursor', expect.any(Object));
+  });
+
+  it('authorizes a representative before replaying opaque private team invalidations', async () => {
+    const request = { user: { sub: 'representative-1' } } as never;
+
+    await expect(
+      firstValueFrom(controller.streamRepresentativeTeam('team-1', 'team-cursor', request)),
+    ).resolves.toEqual({
+      ...event,
+      data: { type: 'SPORTS_REPRESENTATIVE_TEAM_INVALIDATED' },
+    });
+
+    expect(currentUser.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
+    expect(prisma.sportsTeam.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'team-1',
+        deletedAt: null,
+        representatives: { some: { personId: 'person-1', active: true, revokedAt: null } },
+      },
+      select: { tournamentId: true },
+    });
+    expect(replay.replay).toHaveBeenCalledWith('admin-tournament:tournament-1', 'team-cursor', expect.any(Object));
+  });
+
+  it('does not disclose representative replay history for another team', async () => {
+    prisma.sportsTeam.findFirst.mockResolvedValueOnce(null);
+
+    await expect(
+      firstValueFrom(controller.streamRepresentativeTeam('team-private', undefined, { user: {} } as never)),
+    ).rejects.toThrow('Sports team team-private was not found.');
+
+    expect(replay.replay).not.toHaveBeenCalled();
   });
 
   it('applies the same publication gate to tournament replay streams', async () => {

@@ -6,7 +6,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -50,6 +50,7 @@ import type {
   MajorEventSportsParticipant,
   MajorEventSportsSubscriptionWorkspace,
 } from '../graphql/subscription-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 const EXPORT_PAGE_SIZE = 1000;
@@ -70,6 +71,14 @@ export class SubscriptionsService {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
+  private readonly realtime = inject(RealtimeApiService);
+  private eventLiveSubscription?: Subscription;
+  private majorEventLiveSubscription?: Subscription;
+  private eventSelectionRequest = 0;
+  private majorEventSelectionRequest = 0;
+  private eventSubscriptionsRequest = 0;
+  private majorEventSubscriptionsRequest = 0;
+  private liveUpdatesRevision = 0;
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.group({
@@ -130,6 +139,8 @@ export class SubscriptionsService {
   readonly majorEventSportsWorkspace = signal<MajorEventSportsSubscriptionWorkspace | null>(null);
   private readonly sportsAssignedTeams = signal<Record<string, string | null>>({});
   private readonly sportsParticipantTeams = signal<Record<string, string | null>>({});
+  private readonly dirtySportsAssignedTeams = new Set<string>();
+  private readonly dirtySportsParticipantTeams = new Set<string>();
   readonly selectedMajorEvent = computed(() => {
     return this.majorEvents().find((item) => item.id === this.selectedMajorEventId()) ?? null;
   });
@@ -173,7 +184,10 @@ export class SubscriptionsService {
     this.setMajorEventEditMode(false);
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((majorEventId) => this.selectedMajorEventId.set(majorEventId));
+      .subscribe((majorEventId) => {
+        this.selectedMajorEventId.set(majorEventId);
+        if (!majorEventId) this.stopMajorEventLiveUpdates();
+      });
     this.majorEventSearchForm.controls.query.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((query) => this.majorEventSearchQuery.set(query));
@@ -186,6 +200,10 @@ export class SubscriptionsService {
       control: this.majorEventSubscriptionSearchForm.controls.query,
       destroyRef: this.destroyRef,
       search: () => this.searchMajorEventSubscriptions(),
+    });
+    this.destroyRef.onDestroy(() => {
+      this.eventLiveSubscription?.unsubscribe();
+      this.majorEventLiveSubscription?.unsubscribe();
     });
   }
 
@@ -218,20 +236,48 @@ export class SubscriptionsService {
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
+    const selectionRequest = ++this.eventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
+    this.stopMajorEventLiveUpdates();
+    this.stopEventLiveUpdates();
     void this.router.navigate(['/subscriptions/event', eventItem.id]);
     this.selectedEvent.set(eventItem);
     this.eventSubscriptionForm.controls.eventId.setValue(eventItem.id);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventItem.id);
+    if (
+      selectionRequest !== this.eventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
+      this.eventSubscriptionForm.controls.eventId.value !== eventItem.id
+    ) {
+      return;
+    }
+    this.watchEventSubscriptions(eventItem.id);
   }
 
   async selectEventById(eventId: string): Promise<void> {
+    const selectionRequest = ++this.eventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
+    this.stopMajorEventLiveUpdates();
+    this.stopEventLiveUpdates();
     if (this.selectedEvent()?.id !== eventId) {
-      this.selectedEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
+      const selectedEvent = await firstValueFrom(this.eventApi.getEvent(eventId));
+      if (selectionRequest !== this.eventSelectionRequest || liveUpdatesRevision !== this.liveUpdatesRevision) {
+        return;
+      }
+      this.selectedEvent.set(selectedEvent);
     }
     this.eventSubscriptionForm.controls.eventId.setValue(eventId);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventId);
+    if (
+      selectionRequest !== this.eventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
+      this.eventSubscriptionForm.controls.eventId.value !== eventId
+    ) {
+      return;
+    }
+    this.watchEventSubscriptions(eventId);
   }
 
   async loadEventSubscriptions(eventId?: string): Promise<void> {
@@ -240,16 +286,19 @@ export class SubscriptionsService {
       this.eventSubscriptions.set([]);
       return;
     }
-    this.eventSubscriptions.set(
-      applyPagedResult(
-        await firstValueFrom(
-          this.api.listEventSubscriptions(resolvedEventId, {
-            ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
-          }),
-        ),
-        this.eventSubscriptionsPagination,
-      ),
+    const request = ++this.eventSubscriptionsRequest;
+    const subscriptions = await firstValueFrom(
+      this.api.listEventSubscriptions(resolvedEventId, {
+        ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
+      }),
     );
+    if (
+      request !== this.eventSubscriptionsRequest ||
+      this.eventSubscriptionForm.controls.eventId.value !== resolvedEventId
+    ) {
+      return;
+    }
+    this.eventSubscriptions.set(applyPagedResult(subscriptions, this.eventSubscriptionsPagination));
   }
 
   async previousEventSubscriptionsPage(): Promise<void> {
@@ -286,6 +335,10 @@ export class SubscriptionsService {
   }
 
   async selectMajorEventById(majorEventId: string, navigate = true): Promise<void> {
+    const selectionRequest = ++this.majorEventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
+    this.stopEventLiveUpdates();
+    this.stopMajorEventLiveUpdates();
     this.majorEventSubscriptionSelectionRequest++;
     this.majorEventForm.controls.majorEventId.setValue(majorEventId);
     if (navigate) {
@@ -293,9 +346,17 @@ export class SubscriptionsService {
     }
     resetPagination(this.majorEventSubscriptionsPagination);
     await this.loadMajorEventSubscriptions();
+    if (
+      selectionRequest !== this.majorEventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
+      this.majorEventForm.controls.majorEventId.value !== majorEventId
+    ) {
+      return;
+    }
+    this.watchMajorEventSubscriptions(majorEventId);
   }
 
-  async loadMajorEventSubscriptions(): Promise<void> {
+  async loadMajorEventSubscriptions(options: { preserveSelection?: boolean } = {}): Promise<void> {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventSubscriptions.set([]);
@@ -304,8 +365,11 @@ export class SubscriptionsService {
       this.majorEventSportsWorkspace.set(null);
       this.sportsAssignedTeams.set({});
       this.sportsParticipantTeams.set({});
+      this.clearDirtySportsTeamSelections();
       return;
     }
+    const request = ++this.majorEventSubscriptionsRequest;
+    const selected = options.preserveSelection ? this.selectedMajorEventSubscription() : null;
     const [subscriptions, sportsWorkspace] = await Promise.all([
       firstValueFrom(
         this.api.listMajorEventSubscriptions(majorEventId, {
@@ -317,22 +381,20 @@ export class SubscriptionsService {
         ? firstValueFrom(this.api.majorEventSportsWorkspace(majorEventId))
         : Promise.resolve(null),
     ]);
-    this.majorEventSportsWorkspace.set(sportsWorkspace);
-    this.sportsAssignedTeams.set(
-      Object.fromEntries(
-        (sportsWorkspace?.applications ?? []).map((application) => [
-          application.id,
-          application.requestedTeam?.id ?? null,
-        ]),
-      ),
+    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
+    const assignedTeams = Object.fromEntries(
+      (sportsWorkspace?.applications ?? []).map((application) => [
+        application.id,
+        application.requestedTeam?.id ?? null,
+      ]),
     );
-    this.sportsParticipantTeams.set(
-      Object.fromEntries(
-        (sportsWorkspace?.participants ?? []).map((participant) => [
-          participant.id,
-          participant.teams.find((membership) => membership.status === 'APPROVED')?.teamId ?? null,
-        ]),
-      ),
+    const participantTeams = Object.fromEntries(
+      (sportsWorkspace?.participants ?? []).map((participant) => [
+        participant.id,
+        participant.teams.find((membership) => membership.status === 'APPROVED')?.teamId ?? null,
+      ]),
     );
     const events =
       subscriptions[0]?.events ??
@@ -343,10 +405,70 @@ export class SubscriptionsService {
         subscribed: false,
         isLecturerSubscription: false,
       }));
+    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
+    this.majorEventSportsWorkspace.set(sportsWorkspace);
+    if (options.preserveSelection) {
+      this.sportsAssignedTeams.set(
+        this.mergeDirtySportsTeamSelections(assignedTeams, this.sportsAssignedTeams(), this.dirtySportsAssignedTeams),
+      );
+      this.sportsParticipantTeams.set(
+        this.mergeDirtySportsTeamSelections(
+          participantTeams,
+          this.sportsParticipantTeams(),
+          this.dirtySportsParticipantTeams,
+        ),
+      );
+    } else {
+      this.sportsAssignedTeams.set(assignedTeams);
+      this.sportsParticipantTeams.set(participantTeams);
+      this.clearDirtySportsTeamSelections();
+    }
     this.majorEventEvents.set(events);
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
-    this.selectMajorEventSubscription(null, false);
+    if (!options.preserveSelection) {
+      this.selectMajorEventSubscription(null, false);
+      return;
+    }
+    if (!selected || this.editMode()) return;
+    const refreshed = visibleSubscriptions.find((item) => item.id === selected.id);
+    if (refreshed) this.selectMajorEventSubscription(refreshed, false);
+  }
+
+  private watchEventSubscriptions(eventId: string): void {
+    this.stopEventLiveUpdates();
+    this.eventLiveSubscription = this.realtime
+      .watchEventSubscriptions(eventId)
+      .subscribe(() => void this.loadEventSubscriptions(eventId));
+  }
+
+  private stopEventLiveUpdates(): void {
+    this.eventLiveSubscription?.unsubscribe();
+    this.eventLiveSubscription = undefined;
+  }
+
+  private watchMajorEventSubscriptions(majorEventId: string): void {
+    this.majorEventLiveSubscription?.unsubscribe();
+    this.majorEventLiveSubscription = this.realtime
+      .watchMajorEventSubscriptions(majorEventId)
+      .subscribe(() => void this.loadMajorEventSubscriptions({ preserveSelection: true }));
+  }
+
+  private stopMajorEventLiveUpdates(): void {
+    this.majorEventLiveSubscription?.unsubscribe();
+    this.majorEventLiveSubscription = undefined;
+  }
+
+  closeLiveUpdates(): void {
+    this.liveUpdatesRevision++;
+    this.eventSelectionRequest++;
+    this.majorEventSelectionRequest++;
+    this.eventSubscriptionsRequest++;
+    this.majorEventSubscriptionsRequest++;
+    this.stopEventLiveUpdates();
+    this.stopMajorEventLiveUpdates();
   }
 
   sportsAssignedTeamId(applicationId: string): string | null {
@@ -354,6 +476,7 @@ export class SubscriptionsService {
   }
 
   setSportsAssignedTeam(applicationId: string, teamId: string | null): void {
+    this.dirtySportsAssignedTeams.add(applicationId);
     this.sportsAssignedTeams.update((current) => ({ ...current, [applicationId]: teamId || null }));
   }
 
@@ -362,6 +485,7 @@ export class SubscriptionsService {
   }
 
   setSportsParticipantTeamSelection(participantId: string, teamId: string | null): void {
+    this.dirtySportsParticipantTeams.add(participantId);
     this.sportsParticipantTeams.update((current) => ({ ...current, [participantId]: teamId || null }));
   }
 
@@ -373,7 +497,8 @@ export class SubscriptionsService {
           teamId: this.sportsParticipantTeamId(participant.id),
         }),
       );
-      await this.loadMajorEventSubscriptions();
+      this.dirtySportsParticipantTeams.delete(participant.id);
+      await this.loadMajorEventSubscriptions({ preserveSelection: true });
       this.snackbar.open('Equipe da participação esportiva atualizada.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível atualizar a equipe da participação.');
@@ -426,11 +551,27 @@ export class SubscriptionsService {
           reviewMessage: reviewMessage || null,
         }),
       );
-      await this.loadMajorEventSubscriptions();
+      this.dirtySportsAssignedTeams.delete(application.id);
+      await this.loadMajorEventSubscriptions({ preserveSelection: true });
       this.snackbar.open('Inscrição esportiva revisada.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível revisar a inscrição esportiva.');
     }
+  }
+
+  private mergeDirtySportsTeamSelections(
+    remote: Record<string, string | null>,
+    local: Record<string, string | null>,
+    dirtyIds: ReadonlySet<string>,
+  ): Record<string, string | null> {
+    return Object.fromEntries(
+      Object.entries(remote).map(([id, teamId]) => [id, dirtyIds.has(id) ? (local[id] ?? null) : teamId]),
+    );
+  }
+
+  private clearDirtySportsTeamSelections(): void {
+    this.dirtySportsAssignedTeams.clear();
+    this.dirtySportsParticipantTeams.clear();
   }
 
   async searchMajorEventSubscriptions(): Promise<void> {

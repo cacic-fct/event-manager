@@ -105,7 +105,7 @@ describe('DashboardInsightsService cache and jobs', () => {
   });
 
   it('invalidates cached dashboard keys after a committed mutation', async () => {
-    const { redis, service } = createInsightsServiceTestContext();
+    const { redis, realtime, service } = createInsightsServiceTestContext();
     redis.scanStream.mockReturnValue(
       (async function* scan() {
         yield ['dashboard:workspace:v6:event#update', 'dashboard:workspace:v6:none'];
@@ -118,5 +118,24 @@ describe('DashboardInsightsService cache and jobs', () => {
 
     expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v6:event#update', 'dashboard:workspace:v6:none');
     expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v6:certificate#issue');
+    expect(realtime.scope).toHaveBeenCalledWith('admin-workspace');
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'ADMIN_WORKSPACE_INVALIDATED', domain: 'dashboard' }),
+    );
+  });
+
+  it('still publishes the workspace invalidation when cache eviction fails', async () => {
+    const { redis, realtime, service } = createInsightsServiceTestContext();
+    redis.scanStream.mockImplementation(() => {
+      throw new Error('Redis scan unavailable');
+    });
+
+    await expect(service.invalidateCachedInsights()).resolves.toBeUndefined();
+
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'ADMIN_WORKSPACE_INVALIDATED', domain: 'dashboard' }),
+    );
   });
 });

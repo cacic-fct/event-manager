@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
+import { authenticatedUserFixture } from './support/authenticated-user.fixture';
 import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 import {
   createPublicEvent,
@@ -61,7 +62,7 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await expect(page.getByRole('img', { name: 'Comprovante pendente' })).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
   await expect(page.getByText(/\d{1,2} [a-z]{3} \d{4}, \d{2}:\d{2}-\d{2}:\d{2}/)).toBeVisible();
-  await expect(page.getByText(/\d{1,2} a \d{1,2} [a-z]{3} \d{4}/)).toBeVisible();
+  await expect(page.getByText(/\d{1,2}(?: [a-z]{3}(?: \d{4})?)? a \d{1,2} [a-z]{3} \d{4}/)).toBeVisible();
   await expect(page.getByText('Grande evento', { exact: true })).toBeVisible();
   await expect(page.getByText('Minicurso', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Presença registrada' })).toBeVisible();
@@ -438,26 +439,6 @@ async function fulfillGraphqlData(route: Route, data: Record<string, unknown>): 
     contentType: 'application/json',
     body: JSON.stringify({ data }),
   });
-}
-
-function authenticatedUserFixture(): Record<string, unknown> {
-  return {
-    realm_access: {
-      roles: [],
-    },
-    sub: 'user-1',
-    preferredUsername: 'usuario.teste',
-    email: 'usuario.teste@example.edu',
-    roles: [],
-    permissions: [],
-    scopes: ['openid'],
-    claims: {
-      exp: Math.floor(Date.now() / 1000) + 3600,
-      is_onboarded: true,
-      name: 'Usuário Teste',
-      picture: null,
-    },
-  };
 }
 
 function paidMajorEventFixture(): PublicMajorEvent {

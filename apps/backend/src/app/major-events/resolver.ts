@@ -8,7 +8,7 @@ import {
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { addDays, subDays } from 'date-fns';
 import {
@@ -30,6 +30,11 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 
 const PAYMENT_INFO_SELECT = {
@@ -136,6 +141,7 @@ type GraphqlContext = {
 
 @Resolver(() => MajorEvent)
 export class MajorEventsResolver {
+  private readonly logger = new Logger(MajorEventsResolver.name);
   private paymentInfoTableExistsPromise?: Promise<boolean>;
 
   constructor(
@@ -153,6 +159,12 @@ export class MajorEventsResolver {
       assertMajorEventUpdateAllowed: async () => undefined,
       assertMajorEventDeleteAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    @Inject(RealtimeInvalidationService)
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -302,14 +314,16 @@ export class MajorEventsResolver {
       );
       return created;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: majorEvent.id,
-      name: majorEvent.name,
-      description: majorEvent.description,
-      startDate: majorEvent.startDate,
-      endDate: majorEvent.endDate,
-      publicationState: majorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: majorEvent.id,
+        name: majorEvent.name,
+        description: majorEvent.description,
+        startDate: majorEvent.startDate,
+        endDate: majorEvent.endDate,
+        publicationState: majorEvent.publicationState,
+      });
     });
     return majorEvent;
   }
@@ -390,14 +404,16 @@ export class MajorEventsResolver {
       );
       return updated;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: updatedMajorEvent.id,
-      name: updatedMajorEvent.name,
-      description: updatedMajorEvent.description,
-      startDate: updatedMajorEvent.startDate,
-      endDate: updatedMajorEvent.endDate,
-      publicationState: updatedMajorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: updatedMajorEvent.id,
+        name: updatedMajorEvent.name,
+        description: updatedMajorEvent.description,
+        startDate: updatedMajorEvent.startDate,
+        endDate: updatedMajorEvent.endDate,
+        publicationState: updatedMajorEvent.publicationState,
+      });
     });
     return updatedMajorEvent;
   }
@@ -515,14 +531,16 @@ export class MajorEventsResolver {
       );
       return created;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertMajorEvent({
-      id: majorEvent.id,
-      name: majorEvent.name,
-      description: majorEvent.description,
-      startDate: majorEvent.startDate,
-      endDate: majorEvent.endDate,
-      publicationState: majorEvent.publicationState,
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.upsertMajorEvent({
+        id: majorEvent.id,
+        name: majorEvent.name,
+        description: majorEvent.description,
+        startDate: majorEvent.startDate,
+        endDate: majorEvent.endDate,
+        publicationState: majorEvent.publicationState,
+      });
     });
     return majorEvent;
   }
@@ -557,12 +575,48 @@ export class MajorEventsResolver {
         tx,
       );
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.deleteMajorEvent(id);
+    await this.runPostCommitEffects(async () => {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.deleteMajorEvent(id);
+    });
     return {
       deleted: true,
       id,
     };
+  }
+
+  private async publishInvalidations(): Promise<void> {
+    const payload = {
+      type: 'CATALOG_INVALIDATED',
+      domain: 'major-event',
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
+  }
+
+  private async runPostCommitEffects(effects: () => Promise<void>): Promise<void> {
+    let effectsError: unknown;
+    try {
+      await effects();
+    } catch (error: unknown) {
+      effectsError = error;
+    }
+
+    try {
+      await this.publishInvalidations();
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Major-event realtime invalidation failed after the mutation committed.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    if (effectsError !== undefined) {
+      throw effectsError;
+    }
   }
 
   private buildMajorEventCreateData(

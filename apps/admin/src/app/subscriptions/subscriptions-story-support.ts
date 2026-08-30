@@ -66,6 +66,7 @@ function createReceiptValidationStoryApi(pendingReceiptsCount: number) {
   return {
     getPendingCount: () => of({ pendingCount: pendingReceiptsCount }),
     getQueue: () => of({ pendingCount: pendingReceiptsCount, items: [] }),
+    watchQueue: () => of({ pendingCount: pendingReceiptsCount, items: [] }),
   } satisfies Partial<ReceiptValidationApiService>;
 }
 
@@ -257,6 +258,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       return Promise.resolve();
     },
     loadEventSubscriptions: () => Promise.resolve(),
+    closeLiveUpdates: () => undefined,
     previousEventSubscriptionsPage: () => Promise.resolve(),
     nextEventSubscriptionsPage: () => Promise.resolve(),
     exportEventSubscriptionsCsv: () => Promise.resolve(),

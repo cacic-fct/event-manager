@@ -3,8 +3,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   adminFixtureDate,
   adminFixtureDateFromNow,
@@ -13,6 +14,7 @@ import {
   createAdminDashboardInconsistency,
   createAdminWorkspaceDashboardInsights,
 } from '../testing/admin-entity-fixtures';
+import { flushAsync } from '../testing/async-test-helpers';
 import { Home } from './home';
 
 describe('Home', () => {
@@ -21,12 +23,16 @@ describe('Home', () => {
   let dashboardApi: {
     getWorkspaceDashboardInsights: ReturnType<typeof vi.fn>;
   };
+  let workspaceEvents: Subject<void>;
+  let fixtureDestroyed = false;
   const user = signal(createAdminAuthenticatedUser());
 
   beforeEach(async () => {
     dashboardApi = {
       getWorkspaceDashboardInsights: vi.fn(() => of(createAdminWorkspaceDashboardInsights())),
     };
+    workspaceEvents = new Subject<void>();
+    fixtureDestroyed = false;
     user.set(createAdminAuthenticatedUser());
 
     await TestBed.configureTestingModule({
@@ -36,6 +42,7 @@ describe('Home', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { user } },
         { provide: DashboardApiService, useValue: dashboardApi },
+        { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
       ],
     }).compileComponents();
 
@@ -45,7 +52,7 @@ describe('Home', () => {
   });
 
   afterEach(() => {
-    fixture.destroy();
+    if (!fixtureDestroyed) fixture.destroy();
   });
 
   it('creates action links for dashboard targets', () => {
@@ -231,5 +238,53 @@ describe('Home', () => {
 
     expect(text).toContain('Não foi possível carregar o painel');
     expect(text).toContain('Falha no painel.');
+  });
+
+  it('refreshes from live invalidations and preserves the last dashboard when a background request fails', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const initialInsights = component.insights();
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(
+      throwError(() => new Error('Falha temporária.')),
+    );
+
+    workspaceEvents.next();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(dashboardApi.getWorkspaceDashboardInsights).toHaveBeenCalledTimes(2);
+    expect(component.insights()).toBe(initialInsights);
+    expect(component.error()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Não foi possível carregar o painel');
+  });
+
+  it('applies only the newest dashboard response when invalidations overlap', () => {
+    fixture.detectChanges();
+    const older = new Subject<ReturnType<typeof createAdminWorkspaceDashboardInsights>>();
+    const newer = new Subject<ReturnType<typeof createAdminWorkspaceDashboardInsights>>();
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    const newest = createAdminWorkspaceDashboardInsights({ generatedAt: adminFixtureDateFromNow(1) });
+
+    workspaceEvents.next();
+    workspaceEvents.next();
+    newer.next(newest);
+    newer.complete();
+    older.next(createAdminWorkspaceDashboardInsights({ generatedAt: adminFixtureDateFromNow(-1) }));
+    older.complete();
+
+    expect(component.insights()).toBe(newest);
+  });
+
+  it('stops refreshing when the dashboard component is destroyed', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    dashboardApi.getWorkspaceDashboardInsights.mockClear();
+
+    fixture.destroy();
+    fixtureDestroyed = true;
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(dashboardApi.getWorkspaceDashboardInsights).not.toHaveBeenCalled();
   });
 });

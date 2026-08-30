@@ -13,12 +13,15 @@ import {
   EventFormTargetType,
   PublicationState,
 } from '@prisma/client';
+import { Logger } from '@nestjs/common';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
 import { EventFormImagesService } from './event-form-images.service';
+import { Test } from '@nestjs/testing';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 type EventFormLinkInput = NonNullable<EventFormInput['links']>[number];
 
@@ -28,6 +31,7 @@ describe('EventFormEditorService', () => {
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let auditLog: ReturnType<typeof createAuditLog>;
   let images: ReturnType<typeof createImages>;
+  let realtime: { scope: jest.Mock; publish: jest.Mock };
 
   const authenticatedUser: AuthenticatedUser = {
     realm_access: { roles: [] },
@@ -52,12 +56,67 @@ describe('EventFormEditorService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     auditLog = createAuditLog();
     images = createImages();
+    realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     service = new EventFormEditorService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as unknown as jest.Mocked<AuditLogService>,
       images as unknown as jest.Mocked<EventFormImagesService>,
+      realtime as never,
     );
+  });
+
+  it('uses the concrete realtime provider when Nest constructs the service', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        EventFormEditorService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuthorizationPolicyService, useValue: authorizationPolicy },
+        { provide: AuditLogService, useValue: auditLog },
+        { provide: EventFormImagesService, useValue: images },
+        { provide: RealtimeInvalidationService, useValue: realtime },
+      ],
+    }).compile();
+    const injected = moduleRef.get(EventFormEditorService);
+
+    await (
+      injected as unknown as { publishInvalidations(formId: string): Promise<void> }
+    ).publishInvalidations('form-1');
+
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
+    );
+    await moduleRef.close();
+  });
+
+  it('returns the committed form when realtime invalidation publication fails', async () => {
+    const created = formRecord({ id: 'form-created' });
+    prisma.eventForm.create.mockResolvedValue({ id: 'form-created' });
+    prisma.eventForm.findUniqueOrThrow.mockResolvedValue(created);
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await expect(service.saveForm(formInput(), authenticatedUser)).resolves.toEqual(
+        expect.objectContaining({ id: 'form-created' }),
+      );
+      expect(realtime.publish).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Event-form realtime invalidation failed after mutation form-created committed'),
+        expect.any(String),
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('creates forms with normalized fields, links, permissions, and audit log entries', async () => {
@@ -155,6 +214,15 @@ describe('EventFormEditorService', () => {
         summary: 'Formulário "Pesquisa inicial" criado.',
       }),
       prisma,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-created' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
     );
   });
 
@@ -256,6 +324,11 @@ describe('EventFormEditorService', () => {
         summary: 'Formulário "Pesquisa revisada" atualizado.',
       }),
       prisma,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
     );
   });
 
@@ -421,6 +494,11 @@ describe('EventFormEditorService', () => {
         summary: 'Formulário "Pesquisa de camiseta" excluído.',
       }),
       prisma,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
     );
   });
 });

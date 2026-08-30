@@ -2,11 +2,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { createPublicEvent } from '../../../testing/public-entity-fixtures';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { EmojiService } from '../../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
 import { OnlineAttendanceCoordinatorService } from '../coordinator.service';
 import { OnlineAttendanceListComponent } from './event-list-page';
-import { BehaviorSubject, throwError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, throwError, of } from 'rxjs';
 
 describe('OnlineAttendanceListComponent', () => {
   it('renders pending attendance events with major-event context', async () => {
@@ -53,27 +54,97 @@ describe('OnlineAttendanceListComponent', () => {
 
     expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['online-event'], '/profile/attendances');
   });
+
+  it('removes the last pending attendance when a live empty snapshot arrives', async () => {
+    const { fixture, changes } = await createFixture({ pendingEventsAfterChange: [] });
+
+    expect(fixture.componentInstance.state()).toEqual({
+      status: 'ready',
+      items: [pendingAttendanceEvent()],
+    });
+
+    changes.next();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.state()).toEqual({ status: 'ready', items: [] });
+    expect(fixture.nativeElement.textContent).toContain('Nenhuma presença pendente.');
+  });
+
+  it('keeps the last good list when a live refetch fails', async () => {
+    const { fixture, changes } = await createFixture({ liveError: new Error('Falha transitória') });
+
+    changes.next();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.state()).toEqual({
+      status: 'ready',
+      items: [pendingAttendanceEvent()],
+    });
+  });
+
+  it('stops listening for live changes when destroyed', async () => {
+    const { fixture, changes, api } = await createFixture({ pendingEventsAfterChange: [] });
+    const requestCount = api.listPendingEvents.mock.calls.length;
+
+    fixture.destroy();
+    changes.next();
+
+    expect(api.listPendingEvents).toHaveBeenCalledTimes(requestCount);
+  });
+
+  it('does not let the initial response overwrite a newer live refresh', async () => {
+    const initial = new Subject<PendingOnlineAttendanceEvent[]>();
+    const live = new Subject<PendingOnlineAttendanceEvent[]>();
+    const newest = pendingAttendanceEvent();
+    newest.event = createPublicEvent({ id: newest.eventId, name: 'Estado mais recente' });
+    const { component, changes } = await createFixture({ responses: [initial, live] });
+
+    changes.next();
+    live.next([newest]);
+    initial.next([pendingAttendanceEvent()]);
+
+    expect(component.state()).toEqual({ status: 'ready', items: [newest] });
+  });
 });
 
 async function createFixture({
   error,
   pendingEvents = [pendingAttendanceEvent()],
+  pendingEventsAfterChange,
+  liveError,
+  responses,
   queryParams = {},
 }: {
   error?: Error;
   pendingEvents?: PendingOnlineAttendanceEvent[];
+  pendingEventsAfterChange?: PendingOnlineAttendanceEvent[];
+  liveError?: Error;
+  responses?: Observable<PendingOnlineAttendanceEvent[]>[];
   queryParams?: Record<string, string>;
 } = {}): Promise<{
   component: OnlineAttendanceListComponent;
   fixture: ComponentFixture<OnlineAttendanceListComponent>;
+  api: { listPendingEvents: ReturnType<typeof vi.fn> };
   attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
+  changes: Subject<void>;
 }> {
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
-    listPendingEvents: vi.fn(() => (error ? throwError(() => error) : of(pendingEvents))),
+    listPendingEvents: vi.fn(),
   };
+  if (responses) {
+    responses.forEach((response) => api.listPendingEvents.mockReturnValueOnce(response));
+  } else {
+    api.listPendingEvents.mockReturnValueOnce(error ? throwError(() => error) : of(pendingEvents));
+    if (pendingEventsAfterChange !== undefined || liveError) {
+      api.listPendingEvents.mockReturnValueOnce(liveError ? throwError(() => liveError) : of(pendingEventsAfterChange));
+    }
+  }
+  const changes = new Subject<void>();
   const attendanceCoordinator = {
     dismissPending: vi.fn(),
+    changes: () => changes.asObservable(),
   };
 
   await TestBed.configureTestingModule({
@@ -110,7 +181,9 @@ async function createFixture({
   return {
     component: fixture.componentInstance,
     fixture,
+    api,
     attendanceCoordinator,
+    changes,
   };
 }
 
@@ -121,8 +194,8 @@ function pendingAttendanceEvent(): PendingOnlineAttendanceEvent {
       id: 'online-event',
       name: 'Presença on-line',
       emoji: 'check_circle',
-      startDate: '2027-08-01T14:00:00.000Z',
-      endDate: '2027-08-01T16:00:00.000Z',
+      startDate: publicFixtureDateFromNow(1, 14),
+      endDate: publicFixtureDateFromNow(1, 16),
       majorEvent: {
         id: 'paid-major',
         name: 'SECOMPP Pago',

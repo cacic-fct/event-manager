@@ -8,18 +8,23 @@ import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { of } from 'rxjs';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { EventApiService, type EventPageData } from './event-api.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { subscriptionFormKey } from '../../major-events/registration/standard/subscription-flow.models';
 import { SubscriptionReviewDialog } from '../../major-events/registration/standard/subscription-review-dialog';
+import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
+import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 interface EventComponentFixtureOptions {
   authenticated?: boolean;
   eventPageData?: EventPageData;
   eventApi?: Partial<EventApiService>;
   formsApi?: Partial<PublicEventFormApiService>;
+  prizeDrawsApi?: Partial<PublicPrizeDrawApiService>;
+  realtimeInvalidations?: Partial<RealtimeInvalidationService>;
   dialog?: Partial<MatDialog>;
   routeParams?: Params;
   parentRoutePath?: string;
@@ -72,6 +77,21 @@ async function createEventComponentFixture(
           listCurrentUserForms: vi.fn(() => of([])),
           getCurrentUserResponse: vi.fn(() => of(null)),
           ...options.formsApi,
+        },
+      },
+      {
+        provide: PublicPrizeDrawApiService,
+        useValue: {
+          availability: vi.fn(() => of([])),
+          watch: vi.fn(() => NEVER),
+          ...options.prizeDrawsApi,
+        },
+      },
+      {
+        provide: RealtimeInvalidationService,
+        useValue: {
+          watchCatalog: vi.fn(() => NEVER),
+          ...options.realtimeInvalidations,
         },
       },
       {
@@ -216,6 +236,142 @@ describe('Event', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('hides a removed prize-draw link and closes its live stream', async () => {
+    TestBed.resetTestingModule();
+    const updates = new Subject<void>();
+    const availability = vi
+      .fn()
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]))
+      .mockReturnValueOnce(of([]));
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: {
+          availability,
+          watch: vi.fn(() => updates),
+        },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
+
+    updates.next();
+    updates.next();
+    await waitForDrawRefresh(liveFixture);
+    liveFixture.detectChanges();
+
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+    expect(updates.observed).toBe(false);
+  });
+
+  it('keeps catalog discovery active and opens the target stream when the first draw appears', async () => {
+    TestBed.resetTestingModule();
+    const catalogUpdates = new Subject<void>();
+    const watch = vi.fn(() => NEVER);
+    const availability = vi
+      .fn()
+      .mockReturnValueOnce(of([]))
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]));
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: {
+          availability,
+          watch,
+        },
+        realtimeInvalidations: { watchCatalog: vi.fn(() => catalogUpdates) },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect(watch).not.toHaveBeenCalled();
+    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+
+    catalogUpdates.next();
+    await waitForDrawRefresh(liveFixture);
+    liveFixture.detectChanges();
+
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect(watch).toHaveBeenCalledWith({ targetType: 'EVENT', targetId: 'event-1' });
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
+  });
+
+  it('keeps catalog discovery active after the initial prize-draw availability request fails', async () => {
+    TestBed.resetTestingModule();
+    const catalogUpdates = new Subject<void>();
+    const availability = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new Error('Falha transitória')))
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]));
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: { availability, watch: vi.fn(() => NEVER) },
+        realtimeInvalidations: { watchCatalog: vi.fn(() => catalogUpdates) },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+
+    catalogUpdates.next();
+    await waitForDrawRefresh(liveFixture);
+    liveFixture.detectChanges();
+
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
+  });
+
+  it('does not query or stream authenticated prize draws for an anonymous event page', async () => {
+    TestBed.resetTestingModule();
+    const availability = vi.fn(() => of([]));
+    const watch = vi.fn(() => NEVER);
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        prizeDrawsApi: { availability, watch },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect(availability).not.toHaveBeenCalled();
+    expect(watch).not.toHaveBeenCalled();
+  });
+
+  it('keeps an available prize-draw link when a live availability refresh fails', async () => {
+    TestBed.resetTestingModule();
+    const updates = new Subject<void>();
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: {
+          availability: vi
+            .fn()
+            .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]))
+            .mockReturnValueOnce(throwError(() => new Error('Falha transitória'))),
+          watch: vi.fn(() => updates),
+        },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    updates.next();
+    await waitForDrawRefresh(liveFixture);
+
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
   });
 
   it('uses a concise toolbar label and renders the event name in the page body', () => {

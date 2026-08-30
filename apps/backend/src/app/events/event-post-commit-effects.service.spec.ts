@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { EventPostCommitEffectsService, EventPostCommitRecord } from './event-post-commit-effects.service';
 
 const eventRecord = (overrides: Partial<EventPostCommitRecord> = {}): EventPostCommitRecord => ({
@@ -28,11 +29,16 @@ describe('EventPostCommitEffectsService', () => {
     const typesense = { upsertEvent: jest.fn(), deleteEvent: jest.fn() };
     const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
     const notifications = { scheduleEvent: jest.fn() };
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     const service = new EventPostCommitEffectsService(
       {} as never,
       typesense as never,
       sitemap as never,
       notifications as never,
+      realtime as never,
     );
     const event = eventRecord();
 
@@ -49,6 +55,77 @@ describe('EventPostCommitEffectsService', () => {
       }),
     );
     expect(notifications.scheduleEvent).toHaveBeenCalledWith(event);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
+    expect(realtime.publish.mock.calls[1]?.[1]).not.toHaveProperty('domain');
+  });
+
+  it('still publishes an invalidation when a committed event side effect fails', async () => {
+    const failure = new Error('Typesense indisponível.');
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn().mockRejectedValue(failure) } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await expect(service.upsertEvent(eventRecord())).rejects.toBe(failure);
+
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps post-commit event effects successful when realtime invalidation fails', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockRejectedValue(new Error('Realtime unavailable')),
+    };
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn() } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    try {
+      await expect(service.upsertEvent(eventRecord())).resolves.toBeUndefined();
+      expect(realtime.publish).toHaveBeenCalledTimes(2);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Catalog realtime invalidation failed after event post-commit effects'),
+        expect.any(String),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('preserves a post-commit search error when invalidation also fails', async () => {
+    const searchFailure = new Error('Typesense unavailable');
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockRejectedValue(new Error('Realtime unavailable')),
+    };
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn().mockRejectedValue(searchFailure) } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await expect(service.upsertEvent(eventRecord())).rejects.toBe(searchFailure);
   });
 
   it('reconciles active and deleted backing events after a committed sports mutation', async () => {
@@ -62,11 +139,16 @@ describe('EventPostCommitEffectsService', () => {
     const typesense = { upsertEvent: jest.fn(), deleteEvent: jest.fn() };
     const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
     const notifications = { scheduleEvent: jest.fn() };
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     const service = new EventPostCommitEffectsService(
       prisma as never,
       typesense as never,
       sitemap as never,
       notifications as never,
+      realtime as never,
     );
 
     await service.syncEvents(['event-1', 'event-2', 'missing-event', 'event-1']);
@@ -79,6 +161,11 @@ describe('EventPostCommitEffectsService', () => {
     expect(typesense.deleteEvent).toHaveBeenCalledWith('event-2');
     expect(typesense.deleteEvent).toHaveBeenCalledWith('missing-event');
     expect(notifications.scheduleEvent).toHaveBeenCalledTimes(1);
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
   });
 
   it('reconciles active and deleted event groups for sports categories', async () => {
@@ -103,5 +190,61 @@ describe('EventPostCommitEffectsService', () => {
     expect(typesense.upsertEventGroup).toHaveBeenCalledWith({ id: 'group-1', name: 'Futsal' });
     expect(typesense.deleteEventGroup).toHaveBeenCalledWith('group-2');
     expect(typesense.deleteEventGroup).toHaveBeenCalledWith('missing-group');
+  });
+
+  it('invalidates the catalog for event deletion and event-group reconciliation', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const prisma = {
+      eventGroup: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'group-1', name: 'Futsal', deletedAt: null }]),
+      },
+    };
+    const typesense = {
+      deleteEvent: jest.fn(),
+      upsertEventGroup: jest.fn(),
+    };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      typesense as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await service.deleteEvent('event-deleted');
+    await service.syncEventGroups(['group-1']);
+
+    expect(typesense.deleteEvent).toHaveBeenCalledWith('event-deleted');
+    expect(realtime.publish).toHaveBeenCalledTimes(4);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event-group' }),
+    );
+  });
+
+  it('does not publish when an empty event reconciliation has no committed target', async () => {
+    const realtime = {
+      scope: jest.fn(),
+      publish: jest.fn(),
+    };
+    const service = new EventPostCommitEffectsService(
+      { event: { findMany: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      realtime as never,
+    );
+
+    await service.syncEvents([]);
+    await service.syncEventGroups(['', '']);
+
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 });

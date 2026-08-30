@@ -1,9 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { EventType, Prisma, PublicationState } from '@prisma/client';
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 export interface EventPostCommitRecord {
   id: string;
@@ -63,22 +68,38 @@ const EVENT_GROUP_EFFECTS_SELECT = {
 
 @Injectable()
 export class EventPostCommitEffectsService {
+  private readonly logger = new Logger(EventPostCommitEffectsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
     private readonly sitemap: EventSitemapService,
     private readonly onlineAttendanceNotifications: OnlineAttendanceNotificationJobsService,
+    @Inject(RealtimeInvalidationService)
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async upsertEvent(event: EventPostCommitRecord): Promise<void> {
-    await this.sitemap.refresh();
-    await this.upsertEventSearchDocument(event);
-    await this.onlineAttendanceNotifications.scheduleEvent(event);
+    try {
+      await this.sitemap.refresh();
+      await this.upsertEventSearchDocument(event);
+      await this.onlineAttendanceNotifications.scheduleEvent(event);
+    } finally {
+      await this.publishInvalidationsBestEffort('event');
+    }
   }
 
   async deleteEvent(eventId: string): Promise<void> {
-    await this.sitemap.refresh();
-    await this.typesenseSearch.deleteEvent(eventId);
+    try {
+      await this.sitemap.refresh();
+      await this.typesenseSearch.deleteEvent(eventId);
+    } finally {
+      await this.publishInvalidationsBestEffort('event');
+    }
   }
 
   async syncEvent(eventId: string): Promise<void> {
@@ -95,26 +116,38 @@ export class EventPostCommitEffectsService {
     });
     const eventsById = new Map(events.map((event) => [event.id, event]));
 
-    await this.sitemap.refresh();
-    await Promise.all(
-      uniqueIds.map(async (eventId) => {
-        const event = eventsById.get(eventId);
-        if (!event || event.deletedAt) {
-          await this.typesenseSearch.deleteEvent(eventId);
-          return;
-        }
-        await this.upsertEventSearchDocument(event);
-        await this.onlineAttendanceNotifications.scheduleEvent(event);
-      }),
-    );
+    try {
+      await this.sitemap.refresh();
+      await Promise.all(
+        uniqueIds.map(async (eventId) => {
+          const event = eventsById.get(eventId);
+          if (!event || event.deletedAt) {
+            await this.typesenseSearch.deleteEvent(eventId);
+            return;
+          }
+          await this.upsertEventSearchDocument(event);
+          await this.onlineAttendanceNotifications.scheduleEvent(event);
+        }),
+      );
+    } finally {
+      await this.publishInvalidationsBestEffort('event');
+    }
   }
 
   async upsertEventGroup(eventGroup: EventGroupPostCommitRecord): Promise<void> {
-    await this.typesenseSearch.upsertEventGroup(eventGroup);
+    try {
+      await this.typesenseSearch.upsertEventGroup(eventGroup);
+    } finally {
+      await this.publishInvalidationsBestEffort('event-group');
+    }
   }
 
   async deleteEventGroup(eventGroupId: string): Promise<void> {
-    await this.typesenseSearch.deleteEventGroup(eventGroupId);
+    try {
+      await this.typesenseSearch.deleteEventGroup(eventGroupId);
+    } finally {
+      await this.publishInvalidationsBestEffort('event-group');
+    }
   }
 
   async syncEventGroup(eventGroupId: string): Promise<void> {
@@ -131,14 +164,43 @@ export class EventPostCommitEffectsService {
     });
     const eventGroupsById = new Map(eventGroups.map((eventGroup) => [eventGroup.id, eventGroup]));
 
-    await Promise.all(
-      uniqueIds.map((eventGroupId) => {
-        const eventGroup = eventGroupsById.get(eventGroupId);
-        return !eventGroup || eventGroup.deletedAt
-          ? this.typesenseSearch.deleteEventGroup(eventGroupId)
-          : this.typesenseSearch.upsertEventGroup({ id: eventGroup.id, name: eventGroup.name });
-      }),
-    );
+    try {
+      await Promise.all(
+        uniqueIds.map((eventGroupId) => {
+          const eventGroup = eventGroupsById.get(eventGroupId);
+          return !eventGroup || eventGroup.deletedAt
+            ? this.typesenseSearch.deleteEventGroup(eventGroupId)
+            : this.typesenseSearch.upsertEventGroup({ id: eventGroup.id, name: eventGroup.name });
+        }),
+      );
+    } finally {
+      await this.publishInvalidationsBestEffort('event-group');
+    }
+  }
+
+  private async publishInvalidations(domain: 'event' | 'event-group'): Promise<void> {
+    const payload = {
+      type: 'CATALOG_INVALIDATED',
+      domain,
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
+  }
+
+  private async publishInvalidationsBestEffort(domain: 'event' | 'event-group'): Promise<void> {
+    try {
+      await this.publishInvalidations(domain);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Catalog realtime invalidation failed after ${domain} post-commit effects: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   private upsertEventSearchDocument(event: EventPostCommitRecord): Promise<void> {

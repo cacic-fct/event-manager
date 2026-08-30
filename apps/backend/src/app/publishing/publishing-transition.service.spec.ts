@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PublicationBulkOperation } from './publishing.models';
@@ -36,13 +36,24 @@ describe('PublicationTransitionService', () => {
     const targets = {
       resolveChildEventIds: jest.fn(),
     };
-    const service = new PublicationTransitionService(searchSync as never, stateWriter as never, targets as never);
+    const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new PublicationTransitionService(
+      searchSync as never,
+      stateWriter as never,
+      targets as never,
+      sitemap as never,
+      realtime as never,
+    );
 
-    return { searchSync, service, stateWriter, targets };
+    return { realtime, searchSync, service, sitemap, stateWriter, targets };
   }
 
   it('publishes a single event and syncs search for the changed target', async () => {
-    const { searchSync, service, stateWriter, targets } = createService();
+    const { realtime, searchSync, service, stateWriter, targets } = createService();
     const user = createUser();
     const sync = { eventIds: ['event-1'], majorEventIds: [] };
     stateWriter.updateEventPublicationState.mockResolvedValue(sync);
@@ -76,6 +87,59 @@ describe('PublicationTransitionService', () => {
     );
     expect(targets.resolveChildEventIds).not.toHaveBeenCalled();
     expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({
+        type: 'PUBLICATION_INVALIDATED',
+        eventIds: ['event-1'],
+        majorEventIds: [],
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
+  });
+
+  it('does not turn a committed publication into an error when realtime invalidation fails', async () => {
+    const { realtime, service, stateWriter } = createService();
+    stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: ['event-1'], majorEventIds: [] });
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+
+    await expect(
+      service.setPublicationState(
+        {
+          targetType: PublicationTargetType.EVENT,
+          targetId: 'event-1',
+          state: PublicationState.PUBLISHED,
+        },
+        createUser(),
+      ),
+    ).resolves.toMatchObject({ result: { ok: true } });
+  });
+
+  it('does not publish a catalog invalidation when no target changed', async () => {
+    const { realtime, service, stateWriter } = createService();
+    stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: [], majorEventIds: [] });
+
+    await expect(
+      service.setPublicationState(
+        {
+          targetType: PublicationTargetType.EVENT,
+          targetId: 'event-1',
+          state: PublicationState.PUBLISHED,
+        },
+        createUser(),
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        affectedEventIds: [],
+        affectedMajorEventIds: [],
+      },
+    });
+
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('schedules a major event with the provided timestamp', async () => {
@@ -378,7 +442,7 @@ describe('PublicationTransitionService', () => {
   });
 
   it('delegates scheduled job publication helpers to the state writer', async () => {
-    const { service, stateWriter } = createService();
+    const { realtime, service, stateWriter } = createService();
     const user = createUser();
     stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: ['event-1'], majorEventIds: [] });
     stateWriter.updateMajorEventPublicationState.mockResolvedValue({ eventIds: [], majorEventIds: ['major-1'] });
@@ -404,6 +468,48 @@ describe('PublicationTransitionService', () => {
       null,
       undefined,
     );
+    expect(realtime.publish).toHaveBeenCalledTimes(4);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PUBLICATION_INVALIDATED', eventIds: ['event-1'] }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PUBLICATION_INVALIDATED', majorEventIds: ['major-1'] }),
+    );
+  });
+
+  it('keeps direct scheduled publication successful when realtime invalidation fails', async () => {
+    const { realtime, service, stateWriter } = createService();
+    const sync = { eventIds: ['event-1'], majorEventIds: [] };
+    stateWriter.updateEventPublicationState.mockResolvedValue(sync);
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await expect(service.publishEventById('event-1', createUser())).resolves.toEqual(sync);
+      expect(warn).toHaveBeenCalledWith('Publication realtime invalidation failed after commit: Realtime unavailable');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('keeps direct major-event publication successful when realtime invalidation fails', async () => {
+    const { realtime, service, stateWriter } = createService();
+    const sync = { eventIds: [], majorEventIds: ['major-1'] };
+    stateWriter.updateMajorEventPublicationState.mockResolvedValue(sync);
+    realtime.publish.mockRejectedValue(new Error('Realtime unavailable'));
+
+    await expect(service.publishMajorEventById('major-1', null, { skipSitemap: true })).resolves.toEqual(sync);
+  });
+
+  it('does not mask a direct publication state-writer error as a realtime result', async () => {
+    const { realtime, service, stateWriter } = createService();
+    const failure = new Error('State writer unavailable');
+    stateWriter.updateEventPublicationState.mockRejectedValue(failure);
+
+    await expect(service.publishEventById('event-1', createUser())).rejects.toBe(failure);
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('merges sync batches while preserving first-seen target order', () => {

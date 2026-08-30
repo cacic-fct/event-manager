@@ -18,6 +18,7 @@ import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PaymentReceipt, PaymentReceiptApiService } from './receipt-api.service';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 type PaymentState =
   | { status: 'loading' }
@@ -63,7 +64,9 @@ export class PaymentInfo {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly receiptUploadCooldown = createRateLimitCooldown(this.destroyRef);
+  private pageRequestId = 0;
 
   readonly majorEventId =
     this.route.snapshot.paramMap.get('majorEventId') ?? this.route.snapshot.paramMap.get('eventID') ?? '';
@@ -87,6 +90,14 @@ export class PaymentInfo {
 
   constructor() {
     this.loadPage();
+    this.realtime
+      .watchCurrentUserData()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadPage(true));
+    this.realtime
+      .watchCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadPage(true));
   }
 
   onDragOver(event: DragEvent): void {
@@ -166,41 +177,51 @@ export class PaymentInfo {
     return true;
   }
 
-  private loadPage(): void {
+  private loadPage(background = false): void {
     if (!this.majorEventId) {
       this.state.set({ status: 'error', message: 'Página de pagamento inválida.' });
       return;
     }
 
-    this.state.set({ status: 'loading' });
+    const requestId = ++this.pageRequestId;
+    if (!background) this.state.set({ status: 'loading' });
     this.receiptUploadCooldown.clear();
-    forkJoin({
-      subscription: this.subscriptionApi.getCurrentUserSubscription(this.majorEventId),
-      receipt: this.receiptApi.getCurrentReceipt(this.majorEventId),
-    })
+    this.pageRequest()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ subscription, receipt }) => {
+          if (requestId !== this.pageRequestId) return;
           if (!subscription) {
             this.state.set({ status: 'error', message: 'Inscrição não encontrada.' });
             return;
           }
 
           this.state.set({ status: 'ready', subscription, receipt });
-          this.analytics.trackMajorEventTransaction({
-            stage: 'payment_page_viewed',
-            majorEvent: subscription.majorEvent,
-            subscription,
-            priceInCents: this.resolveApplicablePrice(subscription),
-          });
+          if (!background) {
+            this.analytics.trackMajorEventTransaction({
+              stage: 'payment_page_viewed',
+              majorEvent: subscription.majorEvent,
+              subscription,
+              priceInCents: this.resolveApplicablePrice(subscription),
+            });
+          }
         },
         error: (error: unknown) => {
+          if (requestId !== this.pageRequestId) return;
+          if (background && this.state().status === 'ready') return;
           this.state.set({
             status: 'error',
             message: error instanceof Error ? error.message : 'Não foi possível carregar as informações de pagamento.',
           });
         },
       });
+  }
+
+  private pageRequest() {
+    return forkJoin({
+      subscription: this.subscriptionApi.getCurrentUserSubscription(this.majorEventId),
+      receipt: this.receiptApi.getCurrentReceipt(this.majorEventId),
+    });
   }
 
   private reviewFile(file: File): void {

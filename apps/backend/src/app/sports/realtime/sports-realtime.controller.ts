@@ -2,7 +2,7 @@ import { Controller, Headers, MessageEvent, NotFoundException, Param, Req, Sse, 
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { PublicationState, SportsTournamentStatus } from '@prisma/client';
 import type { Request } from 'express';
-import { defer, NEVER, Observable, switchMap } from 'rxjs';
+import { defer, map, NEVER, Observable, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Public } from '../../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -46,6 +46,48 @@ export class SportsRealtimeController {
       switchMap((person) => {
         const scope = this.realtime.scope('autoroute', person.id);
         return this.replay.replay(scope, lastEventId, this.realtime.watch(scope));
+      }),
+    );
+  }
+
+  @Sse('teams/:teamId/representative-events')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream representative team-workspace invalidations',
+    description:
+      'Authenticated and replayable invalidations for a team represented by the current person. Payloads are reduced to an opaque refresh signal.',
+  })
+  @ApiParam({ name: 'teamId', description: 'Team represented by the authenticated person.' })
+  @ApiProduces('text/event-stream')
+  streamRepresentativeTeam(
+    @Param('teamId') teamId: string,
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Req() request: RequestWithUser,
+  ): Observable<MessageEvent> {
+    return defer(() => this.currentUser.requireCurrentPerson({ req: request })).pipe(
+      switchMap(async (person) => {
+        const team = await this.prisma.sportsTeam.findFirst({
+          where: {
+            id: teamId,
+            deletedAt: null,
+            representatives: { some: { personId: person.id, active: true, revokedAt: null } },
+          },
+          select: { tournamentId: true },
+        });
+        if (!team) {
+          throw new NotFoundException(`Sports team ${teamId} was not found.`);
+        }
+        return team.tournamentId;
+      }),
+      switchMap((tournamentId) => {
+        const scope = this.realtime.scope('admin-tournament', tournamentId);
+        return this.replay.replay(scope, lastEventId, this.realtime.watch(scope));
+      }),
+      map((event) => {
+        const data = event.data as { type?: string };
+        return data?.type === 'heartbeat'
+          ? event
+          : { ...event, data: { type: 'SPORTS_REPRESENTATIVE_TEAM_INVALIDATED' } };
       }),
     );
   }

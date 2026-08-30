@@ -1,10 +1,11 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { signal } from '@angular/core';
-import { NEVER, firstValueFrom, of } from 'rxjs';
-import { RealtimeEventsService } from '../../shared/realtime-events.service';
+import { NEVER, Observable, Subject, firstValueFrom, of } from 'rxjs';
+import { RealtimeEventMessage, RealtimeEventsService } from '../../shared/realtime-events.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
 import { OnlineAttendanceCoordinatorService } from './coordinator.service';
 
@@ -26,9 +27,32 @@ describe('OnlineAttendanceCoordinatorService', () => {
     const secondInterruption = await resolve(service);
     expect(secondInterruption).toEqual(expect.objectContaining({ id: 'online-attendance:event-2' }));
   });
+
+  it('emits a change for every matching message, including an empty pending list', () => {
+    const messages = new Subject<RealtimeEventMessage>();
+    const { service } = createService(messages.asObservable());
+    const changes: void[] = [];
+    const subscription = service.changes().subscribe((change) => changes.push(change));
+
+    messages.next({
+      type: 'event',
+      channel: 'current-user.online-attendance',
+      event: 'pendingOnlineAttendancesChanged',
+      payload: { eventIds: [] },
+    });
+    messages.next({
+      type: 'event',
+      channel: 'current-user.online-attendance',
+      event: 'pendingOnlineAttendancesChanged',
+      payload: { eventIds: ['event-1'] },
+    });
+
+    expect(changes).toHaveLength(2);
+    subscription.unsubscribe();
+  });
 });
 
-function createService(): {
+function createService(realtimeMessages: Observable<RealtimeEventMessage> = NEVER): {
   api: { listPendingEvents: ReturnType<typeof vi.fn> };
   router: { navigateByUrl: ReturnType<typeof vi.fn> };
   service: OnlineAttendanceCoordinatorService;
@@ -54,7 +78,7 @@ function createService(): {
       },
       {
         provide: RealtimeEventsService,
-        useValue: { watch: () => NEVER },
+        useValue: { watch: () => realtimeMessages },
       },
       {
         provide: Router,
@@ -83,14 +107,14 @@ function resolve(service: OnlineAttendanceCoordinatorService) {
 function pendingAttendanceEvent(eventId: string): PendingOnlineAttendanceEvent {
   return {
     eventId,
-    event: {
+    event: createPublicEvent({
       id: eventId,
       name: 'Evento teste',
       emoji: '🎓',
-      startDate: '2026-06-25T12:00:00.000Z',
-      endDate: '2026-06-25T13:00:00.000Z',
+      startDate: publicFixtureDateFromNow(1, 12),
+      endDate: publicFixtureDateFromNow(1, 13),
       type: 'OTHER',
       majorEvent: null,
-    },
+    }),
   };
 }

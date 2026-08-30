@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -21,7 +21,7 @@ import {
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { catchError, finalize, from, interval, map, of, startWith, switchMap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, distinctUntilChanged, finalize, from, interval, map, of, startWith, switchMap } from 'rxjs';
 import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -34,6 +34,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
+import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 
 type ParticipationTypeFilter = 'majorEvent' | 'eventGroup' | 'event';
 type AttendanceStatusFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
@@ -104,12 +105,14 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
 export class Attendances {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(PublicDataAccessService);
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly realtime = inject(RealtimeInvalidationService);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
   private readonly certificateArchiveCooldownEndsAt = signal(0);
@@ -151,25 +154,53 @@ export class Attendances {
     { value: 'lecturer', label: 'Palestrante', icon: 'record_voice_over' },
     { value: 'sportsManager', label: 'Gestão esportiva', icon: 'sports' },
   ];
+  private readonly feedRefresh = signal(0);
+  private readonly feedUserId = computed(() => this.auth.user()?.sub ?? null);
+  private loadedFeedTarget: string | null = null;
 
   readonly feedState = toSignal(
-    this.loadFeed().pipe(
-      map(
-        (feed): FeedState => ({
-          status: 'ready',
-          data: this.normalizeFeed(feed),
-        }),
-      ),
-      startWith({ status: 'loading' } satisfies FeedState),
-      catchError((error: unknown) =>
-        of({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
-        } satisfies FeedState),
-      ),
+    combineLatest([
+      toObservable(this.feedUserId).pipe(distinctUntilChanged()),
+      toObservable(this.feedRefresh),
+    ]).pipe(
+      switchMap(([userId]) => {
+        const target = userId ? `user:${userId}` : 'anonymous';
+        const preserveReadyState = this.loadedFeedTarget === target;
+        const load = this.loadFeed(userId).pipe(
+          map(
+            (feed): FeedState => {
+              this.loadedFeedTarget = target;
+              return {
+                status: 'ready',
+                data: this.normalizeFeed(feed),
+              };
+            },
+          ),
+          catchError((error: unknown) =>
+            preserveReadyState
+              ? EMPTY
+              : of({
+                  status: 'error',
+                  message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
+              } satisfies FeedState),
+          ),
+        );
+        return preserveReadyState ? load : load.pipe(startWith({ status: 'loading' } satisfies FeedState));
+      }),
     ),
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
+
+  constructor() {
+    this.realtime
+      .watchCurrentUserData()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.feedRefresh.update((value) => value + 1));
+    this.realtime
+      .watchCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.feedRefresh.update((value) => value + 1));
+  }
 
   readonly activeFilterCount = computed(() => this.selectedTypeFilters().length + this.selectedStatusFilters().length);
 
@@ -328,11 +359,9 @@ export class Attendances {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
-  private loadFeed() {
-    const userId = this.auth.user()?.sub;
-
+  private loadFeed(userId: string | null) {
     if (!this.networkStatus.isOnline()) {
-      return from(this.loadOfflineFeed());
+      return from(this.loadOfflineFeed(userId));
     }
 
     if (!userId) {
@@ -342,12 +371,12 @@ export class Attendances {
 
     return this.api.getSubscriptionsFeed().pipe(
       switchMap((feed) => from(this.offlineData.replaceAttendanceFeed(userId, feed)).pipe(map(() => feed))),
-      catchError(() => from(this.loadOfflineFeed())),
+      catchError(() => from(this.loadOfflineFeed(userId))),
     );
   }
 
-  private async loadOfflineFeed(): Promise<SubscriptionsFeed> {
-    const userId = this.auth.user()?.sub ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
+  private async loadOfflineFeed(currentUserId: string | null): Promise<SubscriptionsFeed> {
+    const userId = currentUserId ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
     const feed = userId ? await this.offlineData.getAttendanceFeed(userId) : null;
 
     return feed ?? EMPTY_SUBSCRIPTIONS_FEED;

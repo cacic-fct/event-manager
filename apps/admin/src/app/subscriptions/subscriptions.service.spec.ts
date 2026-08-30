@@ -6,7 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { parseDateOnly } from '@cacic-fct/shared-utils';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import {
   adminFixtureDateFromNow,
   createAdminEvent,
@@ -23,6 +23,8 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { flushAsync } from '../testing/async-test-helpers';
 import { SubscriptionsService } from './subscriptions.service';
 
 describe('SubscriptionsService', () => {
@@ -49,6 +51,7 @@ describe('SubscriptionsService', () => {
   let feedback: { error: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
   let permissions: { has: ReturnType<typeof vi.fn> };
+  let workspaceEvents: Subject<void>;
 
   const event = createAdminEvent({ id: 'event-1', name: 'Credenciamento', majorEventId: 'major-event-1' });
   const majorEvent = createAdminMajorEvent({ id: 'major-event-1', name: 'Semana' });
@@ -94,6 +97,7 @@ describe('SubscriptionsService', () => {
     feedback = { error: vi.fn() };
     router = { navigate: vi.fn() };
     permissions = { has: vi.fn(() => true) };
+    workspaceEvents = new Subject<void>();
 
     TestBed.configureTestingModule({
       providers: [
@@ -111,6 +115,14 @@ describe('SubscriptionsService', () => {
         { provide: AdminFeedbackService, useValue: feedback },
         { provide: Router, useValue: router },
         { provide: DOCUMENT, useValue: document },
+        {
+          provide: RealtimeApiService,
+          useValue: {
+            watchWorkspace: vi.fn(() => workspaceEvents),
+            watchEventSubscriptions: vi.fn(() => workspaceEvents),
+            watchMajorEventSubscriptions: vi.fn(() => workspaceEvents),
+          },
+        },
       ],
     });
 
@@ -158,6 +170,74 @@ describe('SubscriptionsService', () => {
     expect(service.eventSubscriptionForm.controls.eventId.value).toBe(event.id);
   });
 
+  it('refetches the selected event subscriptions after a live invalidation and stops after teardown', async () => {
+    await service.selectEvent(event);
+    const refreshed = createAdminWorkspaceEventSubscription({ id: 'event-subscription-2' }, person, event);
+    api.listEventSubscriptions.mockClear();
+    api.listEventSubscriptions.mockReturnValueOnce(of([refreshed]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listEventSubscriptions).toHaveBeenCalledOnce();
+    expect(api.listEventSubscriptions).toHaveBeenCalledWith(event.id, { skip: 0, take: 51 });
+    expect(service.eventSubscriptions()).toEqual([refreshed]);
+
+    service.closeLiveUpdates();
+    api.listEventSubscriptions.mockClear();
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listEventSubscriptions).not.toHaveBeenCalled();
+  });
+
+  it('stops the previous event stream before loading a new selection', async () => {
+    await service.selectEvent(event);
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Encerramento' });
+    const pendingSubscriptions = new Subject<(typeof eventSubscription)[]>();
+    api.listEventSubscriptions.mockReturnValueOnce(pendingSubscriptions);
+
+    const selection = service.selectEvent(nextEvent);
+    await Promise.resolve();
+
+    expect(workspaceEvents.observed).toBe(false);
+    workspaceEvents.next();
+    expect(api.listEventSubscriptions).toHaveBeenCalledTimes(2);
+
+    pendingSubscriptions.next([]);
+    pendingSubscriptions.complete();
+    await selection;
+
+    expect(workspaceEvents.observed).toBe(true);
+  });
+
+  it('does not reopen event or major-event streams after live updates are closed', async () => {
+    const realtime = TestBed.inject(RealtimeApiService) as unknown as {
+      watchEventSubscriptions: ReturnType<typeof vi.fn>;
+      watchMajorEventSubscriptions: ReturnType<typeof vi.fn>;
+    };
+    const pendingEventSubscriptions = new Subject<(typeof eventSubscription)[]>();
+    api.listEventSubscriptions.mockReturnValueOnce(pendingEventSubscriptions);
+    const eventSelection = service.selectEvent(event);
+    await Promise.resolve();
+    service.closeLiveUpdates();
+    pendingEventSubscriptions.next([]);
+    pendingEventSubscriptions.complete();
+    await eventSelection;
+
+    const pendingMajorSubscriptions = new Subject<(typeof majorSubscription)[]>();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(pendingMajorSubscriptions);
+    const majorSelection = service.selectMajorEventById(majorEvent.id);
+    await Promise.resolve();
+    service.closeLiveUpdates();
+    pendingMajorSubscriptions.next([]);
+    pendingMajorSubscriptions.complete();
+    await majorSelection;
+
+    expect(realtime.watchEventSubscriptions).not.toHaveBeenCalled();
+    expect(realtime.watchMajorEventSubscriptions).not.toHaveBeenCalled();
+  });
+
   it('loads major subscriptions, sports workspace, fallback events, filters, and paginates', async () => {
     await service.selectMajorEventById(majorEvent.id);
 
@@ -180,6 +260,93 @@ describe('SubscriptionsService', () => {
     api.listMajorEventSubscriptions.mockReturnValueOnce(of([]));
     await service.loadMajorEventSubscriptions();
     expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 200 });
+  });
+
+  it('stops the previous major-event stream before loading a new selection', async () => {
+    await service.selectMajorEventById(majorEvent.id);
+    const pendingSubscriptions = new Subject<(typeof majorSubscription)[]>();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(pendingSubscriptions);
+
+    const selection = service.selectMajorEventById('major-event-2');
+    await Promise.resolve();
+
+    expect(workspaceEvents.observed).toBe(false);
+    workspaceEvents.next();
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledTimes(2);
+
+    pendingSubscriptions.next([]);
+    pendingSubscriptions.complete();
+    await selection;
+
+    expect(workspaceEvents.observed).toBe(true);
+  });
+
+  it('refreshes major subscriptions from a live invalidation without overwriting an editor draft', async () => {
+    await service.selectMajorEventById(majorEvent.id);
+    service.selectMajorEventSubscription(majorSubscription, false);
+    service.enableMajorEventEdit();
+    service.majorEventEditForm.controls.paymentTier.setValue('Tier local');
+
+    const refreshed = createAdminWorkspaceMajorEventSubscription(
+      { id: majorSubscription.id, paymentTier: 'Tier remoto' },
+      person,
+      majorEvent,
+    );
+    api.listMajorEventSubscriptions.mockClear();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(of([refreshed]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledOnce();
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledWith(majorEvent.id, {
+      query: undefined,
+      skip: 0,
+      take: 51,
+    });
+    expect(service.majorEventSubscriptions()).toEqual([refreshed]);
+    expect(service.selectedMajorEventSubscription()).toBe(majorSubscription);
+    expect(service.majorEventEditForm.controls.paymentTier.value).toBe('Tier local');
+    expect(service.editMode()).toBe(true);
+  });
+
+  it('preserves pending sports team choices across live refreshes', async () => {
+    const sportsWorkspace = {
+      tournamentId: 'tournament-1',
+      teams: [
+        { id: 'team-1', name: 'Equipe 1' },
+        { id: 'team-2', name: 'Equipe 2' },
+      ],
+      applications: [
+        {
+          id: 'application-1',
+          applicant: { personId: person.id, name: person.name },
+          requestedTeam: { id: 'team-1', name: 'Equipe 1' },
+          status: 'PENDING',
+          categories: [],
+        },
+      ],
+      participants: [
+        {
+          id: 'participant-1',
+          person,
+          source: 'SUBSCRIPTION',
+          status: 'ACTIVE',
+          paymentStatus: 'PAID',
+          teams: [{ status: 'APPROVED', teamId: 'team-1' }],
+        },
+      ],
+    };
+    api.majorEventSportsWorkspace.mockReturnValue(of(sportsWorkspace));
+    await service.selectMajorEventById(majorEvent.id);
+    service.setSportsAssignedTeam('application-1', 'team-2');
+    service.setSportsParticipantTeamSelection('participant-1', 'team-2');
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(service.sportsAssignedTeamId('application-1')).toBe('team-2');
+    expect(service.sportsParticipantTeamId('participant-1')).toBe('team-2');
   });
 
   it('tracks sports assignment selections and handles review cancellation, success, and failure', async () => {

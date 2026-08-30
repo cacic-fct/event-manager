@@ -1,12 +1,18 @@
 import { By } from '@angular/platform-browser';
+import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
-import type { CurrentUserSportsPlayerApplication } from './sports-operations.types';
+import type {
+  CurrentUserSportsPlayerApplication,
+} from './sports-operations.types';
+import type { SportsOperationsApplicationInvalidation } from './sports-operations-realtime.service';
 
 describe('SportsSelfSubscriptionPage', () => {
   const open = vi.fn();
@@ -16,6 +22,8 @@ describe('SportsSelfSubscriptionPage', () => {
     void args;
     return of(createCurrentUserTournamentOperations());
   });
+  let realtimeStreams: Subject<SportsOperationsApplicationInvalidation>[];
+  let watchCurrentUserApplications: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     open.mockReset();
@@ -25,9 +33,16 @@ describe('SportsSelfSubscriptionPage', () => {
     currentUserApplications.mockReturnValue(of([]));
     tournament.mockReset();
     tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
+    realtimeStreams = [];
+    watchCurrentUserApplications = vi.fn(() => {
+      const stream = new Subject<SportsOperationsApplicationInvalidation>();
+      realtimeStreams.push(stream);
+      return stream;
+    });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        { provide: PLATFORM_ID, useValue: 'browser' },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -39,11 +54,15 @@ describe('SportsSelfSubscriptionPage', () => {
         },
         { provide: MatSnackBar, useValue: { open } },
         { provide: SportsOperationsApiService, useValue: { tournament, currentUserApplications, submitApplication } },
+        { provide: SportsOperationsRealtimeService, useValue: { watchCurrentUserApplications } },
       ],
     });
   });
 
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
 
   it('loads shared fixture data and applies tournament-specific validators', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
@@ -319,5 +338,249 @@ describe('SportsSelfSubscriptionPage', () => {
     page.load();
     expect(page.error()).toBe('Não foi possível abrir a inscrição.');
     expect(page.loading()).toBe(false);
+  });
+
+  it('does not open the authenticated realtime stream during server rendering', () => {
+    TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+
+    page.ngOnInit();
+
+    expect(watchCurrentUserApplications).not.toHaveBeenCalled();
+  });
+
+  it('coalesces application updates and preserves an editable draft', async () => {
+    vi.useFakeTimers();
+    const data = createCurrentUserTournamentOperations();
+    const category = data.tournament.categories[1];
+    const application: CurrentUserSportsPlayerApplication = {
+      id: 'application-pending',
+      tournamentId: 'tournament-fixture',
+      requestedTeam: data.tournament.teams[0] ?? null,
+      categories: data.tournament.categories.slice(0, 1),
+      status: 'PENDING',
+      participantStatus: 'PENDING',
+      paymentStatus: 'WAITING_APPROVAL',
+      paymentTier: 'Estudante',
+      imageLicenseAgreementAccepted: true,
+      reviewedAt: null,
+      reviewMessage: null,
+    };
+    currentUserApplications.mockReturnValueOnce(of([application])).mockReturnValueOnce(
+      of([{ ...application, paymentStatus: 'PAID' }]),
+    );
+    tournament.mockReturnValue(of(data));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    if (!category) throw new Error('Expected a category fixture.');
+
+    page.form.controls.requestedTeamId.setValue('team-away');
+    page.toggleCategory(category.id, true);
+    realtimeStreams[0]?.next({
+      type: 'SPORTS_PLAYER_APPLICATION_CHANGED',
+      applicationId: application.id,
+      tournamentId: 'tournament-fixture',
+      reason: 'REVIEWED',
+    });
+    realtimeStreams[0]?.next({
+      type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED',
+      tournamentId: 'tournament-fixture',
+      subscriptionId: 'subscription-1',
+      reason: 'PAYMENT_APPROVED',
+      subscriptionStatus: 'CONFIRMED',
+      participantStatus: 'ACTIVE',
+      paymentStatus: 'PAID',
+      applications: [{ id: application.id, status: 'PENDING' }],
+      occurredAt: publicFixtureDateFromNow(0, 12),
+    });
+    await vi.advanceTimersByTimeAsync(75);
+
+    expect(currentUserApplications).toHaveBeenCalledTimes(2);
+    expect(tournament).toHaveBeenCalledTimes(2);
+    expect(page.application()?.paymentStatus).toBe('PAID');
+    expect(page.form.controls.requestedTeamId.value).toBe('team-away');
+    expect(page.selectedCategories()).toEqual(new Set(['futsal-open', category.id]));
+  });
+
+  it('discards the editable draft when the authoritative application becomes read-only', async () => {
+    vi.useFakeTimers();
+    const data = createCurrentUserTournamentOperations();
+    const pending: CurrentUserSportsPlayerApplication = {
+      id: 'application-pending',
+      tournamentId: 'tournament-fixture',
+      requestedTeam: data.tournament.teams[0] ?? null,
+      categories: data.tournament.categories.slice(0, 1),
+      status: 'PENDING',
+      paymentTier: 'Estudante',
+      imageLicenseAgreementAccepted: true,
+      reviewMessage: null,
+    };
+    const approved = { ...pending, status: 'APPROVED' as const, paymentStatus: 'PAID' };
+    currentUserApplications.mockReturnValueOnce(of([pending])).mockReturnValueOnce(of([approved]));
+    tournament.mockReturnValue(of(data));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+
+    page.form.controls.requestedTeamId.setValue('team-away');
+    page.toggleCategory('volleyball-mixed', true);
+    realtimeStreams[0]?.next({
+      type: 'SPORTS_PLAYER_APPLICATION_CHANGED',
+      applicationId: pending.id,
+      tournamentId: 'tournament-fixture',
+      reason: 'REVIEWED',
+      status: 'APPROVED',
+    });
+    await vi.advanceTimersByTimeAsync(75);
+
+    expect(page.application()?.status).toBe('APPROVED');
+    expect(page.form.disabled).toBe(true);
+    expect(page.form.controls.requestedTeamId.value).toBe('team-home');
+    expect(page.selectedCategories()).toEqual(new Set(['futsal-open']));
+  });
+
+  it('lets the newest invalidation refresh win over an older in-flight refresh', async () => {
+    vi.useFakeTimers();
+    const firstApplications = new Subject<CurrentUserSportsPlayerApplication[]>();
+    const secondApplications = new Subject<CurrentUserSportsPlayerApplication[]>();
+    const firstTournament = new Subject<ReturnType<typeof createCurrentUserTournamentOperations>>();
+    const secondTournament = new Subject<ReturnType<typeof createCurrentUserTournamentOperations>>();
+    const latest = createCurrentUserTournamentOperations({ empty: true });
+    currentUserApplications
+      .mockReturnValueOnce(of([]))
+      .mockReturnValueOnce(firstApplications)
+      .mockReturnValueOnce(secondApplications);
+    tournament
+      .mockReturnValueOnce(of(createCurrentUserTournamentOperations()))
+      .mockReturnValueOnce(firstTournament)
+      .mockReturnValueOnce(secondTournament);
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+
+    realtimeStreams[0]?.next({
+      type: 'SPORTS_PLAYER_APPLICATION_CHANGED',
+      applicationId: 'application-1',
+      tournamentId: 'tournament-fixture',
+      reason: 'REVIEWED',
+    });
+    await vi.advanceTimersByTimeAsync(75);
+    realtimeStreams[0]?.next({
+      type: 'SPORTS_PLAYER_APPLICATION_CHANGED',
+      applicationId: 'application-2',
+      tournamentId: 'tournament-fixture',
+      reason: 'REVIEWED',
+    });
+    await vi.advanceTimersByTimeAsync(75);
+
+    secondApplications.next([]);
+    secondApplications.complete();
+    secondTournament.next(latest);
+    secondTournament.complete();
+    firstApplications.next([
+      {
+        id: 'stale-application',
+        tournamentId: 'tournament-fixture',
+        requestedTeam: null,
+        categories: [],
+        status: 'APPROVED',
+        imageLicenseAgreementAccepted: false,
+        reviewMessage: null,
+      },
+    ]);
+    firstApplications.complete();
+    firstTournament.next(createCurrentUserTournamentOperations());
+    firstTournament.complete();
+
+    expect(page.data()?.tournament.teams).toEqual([]);
+    expect(page.application()).toBeNull();
+  });
+
+  it('recovers the authenticated snapshot and reconnects after a terminal SSE failure', () => {
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+
+    firstStream.error(new Error('closed'));
+
+    expect(currentUserApplications).toHaveBeenCalledTimes(2);
+    expect(tournament).toHaveBeenCalledTimes(2);
+    expect(watchCurrentUserApplications).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenCalledWith(
+      'A conexão em tempo real foi interrompida. Atualizando sua inscrição…',
+      'Fechar',
+      { duration: 5000 },
+    );
+    expect(realtimeStreams).toHaveLength(2);
+  });
+
+  it('retains the last good application and draft when authenticated recovery fails', () => {
+    const data = createCurrentUserTournamentOperations();
+    const application: CurrentUserSportsPlayerApplication = {
+      id: 'application-pending',
+      tournamentId: 'tournament-fixture',
+      requestedTeam: data.tournament.teams[0] ?? null,
+      categories: data.tournament.categories.slice(0, 1),
+      status: 'PENDING',
+      paymentTier: 'Estudante',
+      imageLicenseAgreementAccepted: true,
+      reviewMessage: null,
+    };
+    currentUserApplications.mockReturnValueOnce(of([application])).mockReturnValueOnce(
+      throwError(() => new Error('offline')),
+    );
+    tournament.mockReturnValue(of(data));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    page.form.controls.requestedTeamId.setValue('team-away');
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+
+    firstStream.error(new Error('closed'));
+
+    expect(page.application()?.id).toBe(application.id);
+    expect(page.form.controls.requestedTeamId.value).toBe('team-away');
+    expect(watchCurrentUserApplications).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenCalledWith(
+      'Não foi possível atualizar sua inscrição. Os últimos dados continuam disponíveis.',
+      'Fechar',
+      { duration: 6000 },
+    );
+  });
+
+  it('does not report an obsolete recovery failure after the team selection changes', () => {
+    const recoveryApplications = new Subject<CurrentUserSportsPlayerApplication[]>();
+    currentUserApplications.mockReturnValueOnce(of([])).mockReturnValueOnce(recoveryApplications);
+    tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+
+    firstStream.error(new Error('closed'));
+    page.teamSelectionChanged('team-home');
+    recoveryApplications.error(new Error('stale recovery failure'));
+
+    expect(open).not.toHaveBeenCalledWith(
+      'Não foi possível atualizar sua inscrição. Os últimos dados continuam disponíveis.',
+      'Fechar',
+      { duration: 6000 },
+    );
+  });
+
+  it('unsubscribes from realtime events when destroyed', () => {
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    const stream = realtimeStreams[0];
+    if (!stream) throw new Error('Expected the initial realtime subscription.');
+
+    page.ngOnDestroy();
+    stream.next({
+      type: 'SPORTS_PLAYER_APPLICATION_CHANGED',
+      applicationId: 'application-1',
+      tournamentId: 'tournament-fixture',
+      reason: 'REVIEWED',
+    });
+
+    expect(currentUserApplications).toHaveBeenCalledTimes(1);
   });
 });

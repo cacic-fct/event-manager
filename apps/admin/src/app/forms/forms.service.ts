@@ -1,9 +1,10 @@
-import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { DestroyRef, PLATFORM_ID, Service, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { auditTime, firstValueFrom, Subscription } from 'rxjs';
 import { watchReplayableEventSourcePing } from '@cacic-fct/shared-angular';
 import {
   Event,
@@ -61,6 +62,7 @@ export class FormsService {
   private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly ui = inject(ShellUiService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   readonly loading = this.ui.loading;
   readonly forms = signal<EventForm[]>([]);
@@ -124,6 +126,10 @@ export class FormsService {
     return ids;
   });
   private resultsStream: Subscription | null = null;
+  private resultsStreamGeneration = 0;
+  private resultsStreamFormId: string | null = null;
+  private resultsStreamRecoveryAttempted = false;
+  private loadResultsRequestId = 0;
   private loadFormsRequestId = 0;
 
   readonly filtersForm = this.formBuilder.nonNullable.group({
@@ -149,6 +155,10 @@ export class FormsService {
     this.formStatus();
     return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasUntitledQuestions();
   });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.closeResultsStream());
+  }
 
   async initialize(): Promise<void> {
     if (this.events().length === 0 || this.majorEvents().length === 0) {
@@ -552,6 +562,7 @@ export class FormsService {
   }
 
   async loadResults(): Promise<void> {
+    const requestId = ++this.loadResultsRequestId;
     const selected = this.selectedForm();
     if (!selected) {
       this.selectedResults.set(null);
@@ -559,9 +570,14 @@ export class FormsService {
     }
 
     try {
-      this.selectedResults.set(await firstValueFrom(this.api.results(selected.id)));
+      const results = await firstValueFrom(this.api.results(selected.id));
+      if (requestId !== this.loadResultsRequestId || this.selectedForm()?.id !== selected.id) {
+        return;
+      }
+      this.selectedResults.set(results);
+      this.reconcileSelectedFormResultCount(selected.id, results.responseCount);
     } catch {
-      this.selectedResults.set(null);
+      // Keep the last good result snapshot visible when a manual or live refresh fails.
     }
   }
 
@@ -619,6 +635,7 @@ export class FormsService {
   }
 
   private patchSelectedForm(form: EventForm): void {
+    this.loadResultsRequestId++;
     this.selectedForm.set(form);
     this.selectedResults.set(null);
     this.elements.set(parseFormElementsJson(form.elementsJson));
@@ -645,6 +662,7 @@ export class FormsService {
   }
 
   private clearSelectedForm(): void {
+    this.loadResultsRequestId++;
     this.selectedForm.set(null);
     this.selectedResults.set(null);
     this.closeResultsStream();
@@ -693,6 +711,13 @@ export class FormsService {
 
   private isCurrentFormsRequestId(requestId: number): boolean {
     return requestId === this.loadFormsRequestId;
+  }
+
+  private reconcileSelectedFormResultCount(formId: string, responseCount: number): void {
+    this.selectedForm.update((form) => (form?.id === formId ? { ...form, responseCount } : form));
+    this.forms.update((forms) =>
+      forms.map((form) => (form.id === formId ? { ...form, responseCount } : form)),
+    );
   }
 
   private formsRoute(): string[] {
@@ -980,31 +1005,74 @@ export class FormsService {
 
   private syncLiveResultsStream(form: EventForm): void {
     this.closeResultsStream();
-    if (!this.shouldStreamLiveResults(form)) {
+    if (!this.shouldStreamResults(form)) {
+      return;
+    }
+
+    this.resultsStreamFormId = form.id;
+    this.resultsStreamRecoveryAttempted = false;
+    this.connectResultsStream(form.id, this.resultsStreamGeneration);
+  }
+
+  private shouldStreamResults(form: EventForm): boolean {
+    return Boolean(form.id) && isPlatformBrowser(this.platformId);
+  }
+
+  private connectResultsStream(formId: string, generation: number): void {
+    if (!this.isCurrentResultsStream(formId, generation)) {
       return;
     }
 
     let stream: Subscription | null = null;
     stream = watchReplayableEventSourcePing(
-      `/api/event-forms/${encodeURIComponent(form.id)}/results/events`,
+      `/api/event-forms/${encodeURIComponent(formId)}/results/events`,
       'Não foi possível acompanhar os resultados em tempo real.',
-    ).subscribe({
-      next: () => void this.loadResults(),
-      error: () => {
-        if (this.resultsStream === stream) {
+    )
+      .pipe(auditTime(0))
+      .subscribe({
+        next: () => {
+          if (!this.isCurrentResultsStream(formId, generation)) {
+            return;
+          }
+          this.resultsStreamRecoveryAttempted = false;
+          void this.loadResults();
+        },
+        error: () => {
+          if (!this.isCurrentResultsStream(formId, generation)) {
+            return;
+          }
           this.resultsStream = null;
-        }
-      },
-    });
+          if (this.resultsStreamRecoveryAttempted) {
+            return;
+          }
+          this.resultsStreamRecoveryAttempted = true;
+          void this.recoverResultsStream(formId, generation);
+        },
+      });
     this.resultsStream = stream;
   }
 
-  private shouldStreamLiveResults(form: EventForm): boolean {
-    return form.resultsPublic && form.resultsLive && typeof EventSource !== 'undefined';
+  private async recoverResultsStream(formId: string, generation: number): Promise<void> {
+    await this.loadResults();
+    if (this.isCurrentResultsStream(formId, generation)) {
+      this.connectResultsStream(formId, generation);
+    }
+  }
+
+  private isCurrentResultsStream(formId: string, generation: number): boolean {
+    return (
+      generation === this.resultsStreamGeneration &&
+      this.resultsStreamFormId === formId &&
+      this.selectedForm()?.id === formId
+    );
   }
 
   closeResultsStream(): void {
+    this.loadResultsRequestId++;
+    this.resultsStreamGeneration++;
     this.resultsStream?.unsubscribe();
     this.resultsStream = null;
+    this.resultsStreamFormId = null;
+    this.resultsStreamRecoveryAttempted = false;
   }
 }

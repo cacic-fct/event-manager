@@ -116,7 +116,7 @@ describe('PublicMapPage', () => {
     });
     await refresh();
 
-    expect(api.getCurrentUserEventIds).toHaveBeenCalledWith('user-1');
+    expect(api.getCurrentUserEventIds).toHaveBeenCalledWith('user-1', false);
     expect(component.filteredEvents().map(({ id }) => id)).toEqual(['event-2']);
     expect(fixture.nativeElement.querySelector('[aria-label="Filtros ativos"]')?.textContent).toContain('1');
   });

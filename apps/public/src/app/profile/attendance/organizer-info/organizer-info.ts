@@ -1,6 +1,6 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -10,10 +10,11 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 import { toSVG } from '@bwip-js/browser';
 import { parseEventTargetType } from '@cacic-fct/shared-utils';
-import { Observable, catchError, map, of, startWith, switchMap } from 'rxjs';
+import { EMPTY, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService, OrganizerInfo } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
+import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 
 type OrganizerInfoState =
   | { status: 'loading' }
@@ -39,19 +40,36 @@ type OrganizerInfoState =
 export class OrganizerInfoComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(AttendancesApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly realtime = inject(RealtimeInvalidationService);
+  private readonly refresh = signal(0);
+  private loadedOrganizerTarget: string | null = null;
 
   readonly emoji = inject(EmojiService);
 
   readonly state = toSignal(
-    this.route.paramMap.pipe(
-      switchMap((params) => this.loadOrganizerInfo(params)),
+    combineLatest([this.route.paramMap, toObservable(this.refresh)]).pipe(
+      switchMap(([params]) => this.loadOrganizerInfo(params)),
       startWith({ status: 'loading' } satisfies OrganizerInfoState),
     ),
     { initialValue: { status: 'loading' } satisfies OrganizerInfoState },
   );
+
+  constructor() {
+    this.route.paramMap
+      .pipe(
+        switchMap((params) => {
+          const targetType = parseEventTargetType(params.get('eventType'));
+          const targetId = params.get('eventId')?.trim();
+          return targetType && targetId ? this.realtime.watchOrganizer(targetType, targetId) : EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.refresh.update((value) => value + 1));
+  }
 
   backRoute(info: OrganizerInfo): string[] {
     return ['/profile', 'attendances', info.targetType, info.targetId];
@@ -105,26 +123,34 @@ export class OrganizerInfoComponent {
     const targetId = params.get('eventId')?.trim();
 
     if (!targetType || !targetId) {
+      this.loadedOrganizerTarget = null;
       return of({
         status: 'error',
         message: 'Página de organizador inválida.',
       } satisfies OrganizerInfoState);
     }
 
-    return this.api.getOrganizerInfo(targetType, targetId).pipe(
-      map((info) =>
-        info
-          ? ({ status: 'ready', info } satisfies OrganizerInfoState)
-          : ({
-              status: 'error',
-              message: 'Informações restritas aos ministrantes deste evento.',
-            } satisfies OrganizerInfoState),
-      ),
-      catchError((error: unknown) =>
-        of({
+    const targetKey = `${targetType}:${targetId}`;
+
+    return this.api.getOrganizerInfoStrict(targetType, targetId).pipe(
+      map((info) => {
+        if (info) {
+          this.loadedOrganizerTarget = targetKey;
+          return { status: 'ready', info } satisfies OrganizerInfoState;
+        }
+        return {
           status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar as informações do organizador.',
-        } satisfies OrganizerInfoState),
+          message: 'Informações restritas aos ministrantes deste evento.',
+        } satisfies OrganizerInfoState;
+      }),
+      catchError((error: unknown) =>
+        this.loadedOrganizerTarget === targetKey
+          ? EMPTY
+          : of({
+              status: 'error',
+              message:
+                error instanceof Error ? error.message : 'Não foi possível carregar as informações do organizador.',
+            } satisfies OrganizerInfoState),
       ),
     );
   }

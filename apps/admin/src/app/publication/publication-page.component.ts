@@ -35,6 +35,7 @@ import {
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationNodes,
@@ -82,6 +83,8 @@ export class PublicationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(RealtimeApiService);
+  private refreshRequestId = 0;
 
   readonly loading = signal(false);
   readonly workspace = signal<PublicationWorkspace | null>(null);
@@ -137,12 +140,18 @@ export class PublicationPageComponent {
       this.selectRequestedNode();
     });
     void this.refresh();
+    this.realtime
+      .watchWorkspace()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.refresh());
   }
 
   async refresh(): Promise<void> {
+    const requestId = ++this.refreshRequestId;
     this.loading.set(true);
     try {
       const workspace = await firstValueFrom(this.api.getWorkspace(this.workspaceFilters()));
+      if (requestId !== this.refreshRequestId) return;
       this.workspace.set(workspace);
       this.expandPathsToRelevantNodes(workspace.tree ?? workspace.items);
       const currentSelection = this.selectedNode();
@@ -158,9 +167,12 @@ export class PublicationPageComponent {
         null;
       this.selectedNode.set(nextSelection ?? this.workspaceItems()[0] ?? null);
     } catch (error) {
+      if (requestId !== this.refreshRequestId) return;
       this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
-      this.loading.set(false);
+      if (requestId === this.refreshRequestId) {
+        this.loading.set(false);
+      }
     }
   }
 

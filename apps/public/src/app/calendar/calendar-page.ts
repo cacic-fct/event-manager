@@ -25,7 +25,6 @@ import {
   forkJoin,
   map,
   of,
-  startWith,
   switchMap,
 } from 'rxjs';
 import { NetworkStatusService } from '../shared/network-status.service';
@@ -33,6 +32,7 @@ import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.s
 import { CalendarApiService, CalendarEventTypeFilter } from './calendar-api.service';
 import { CalendarListView } from './list/list-view';
 import { CalendarWeekDay, CalendarWeekView } from './week/week-view';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 
 type CalendarViewMode = 'list' | 'week';
 
@@ -76,6 +76,7 @@ export class Calendar {
   private readonly destroyRef = inject(DestroyRef);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(PublicDataAccessService);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly todayDate = startOfDay(new Date());
   private readonly minimumDate = startOfDay(subMonths(this.todayDate, 1));
   private readonly refreshCooldownMs = 5 * 60 * 1000;
@@ -154,6 +155,15 @@ export class Calendar {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => this.refreshCounter.update((value) => value + 1));
+
+    this.realtime
+      .watchCatalog()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshCounter.update((value) => value + 1));
+    this.realtime
+      .watchCurrentUserData()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshCounter.update((value) => value + 1));
   }
 
   setViewMode(mode: string): void {
@@ -223,7 +233,6 @@ export class Calendar {
                 subscribedEventIds,
               }) satisfies CalendarState,
           ),
-          startWith({ status: 'loading' } satisfies CalendarState),
           catchError((error: unknown) =>
             of({
               status: 'error',

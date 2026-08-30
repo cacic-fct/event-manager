@@ -1,8 +1,10 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   OnInit,
+  PLATFORM_ID,
   computed,
   effect,
   inject,
@@ -27,6 +29,10 @@ import {
   AttendanceScannerFeedItem,
 } from '../attendance-collection-api.service';
 import { AttendanceOfflineSyncService } from '../offline/sync.service';
+import { catchError, concatMap, concatWith, defer, EMPTY, from, retry, take, tap, timer, throwError } from 'rxjs';
+
+const ORAL_FEED_RECONNECT_BASE_DELAY_MS = 1000;
+const ORAL_FEED_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-oral-attendance-page',
@@ -65,9 +71,11 @@ export class OralAttendancePage implements OnInit {
   private readonly offlineSync = inject(AttendanceOfflineSyncService);
   private readonly network = inject(NetworkStatusService);
   private readonly offline = inject(OralAttendanceOfflineService);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private oralFeedErrorNotified = false;
 
   protected readonly event = signal<AttendanceCollectionEvent | null>(null);
   protected readonly people = signal<OralAttendancePerson[]>([]);
@@ -100,18 +108,21 @@ export class OralAttendancePage implements OnInit {
       .watchPending(userId, eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((items) => this.pendingCount.set(items.length));
-    this.api.listCollectionEvents().subscribe({
-      next: (events) => {
-        const selected = events.find((item) => item.eventId === eventId) ?? null;
-        if (!selected?.event.shouldAllowOralAttendance) {
-          void this.router.navigate(['/attendance/collect']);
-          return;
-        }
-        this.event.set(selected);
-        this.loadRoster(eventId, userId);
-      },
-      error: () => void this.loadCached(eventId, userId),
-    });
+    this.api
+      .listCollectionEvents()
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (events) => {
+          const selected = events.find((item) => item.eventId === eventId) ?? null;
+          if (!selected?.event.shouldAllowOralAttendance) {
+            void this.router.navigate(['/attendance/collect']);
+            return;
+          }
+          this.event.set(selected);
+          this.loadRoster(eventId, userId);
+        },
+        error: () => void this.loadCached(eventId, userId),
+      });
   }
 
   protected goBack(): void {
@@ -208,10 +219,57 @@ export class OralAttendancePage implements OnInit {
   }
 
   private loadRoster(eventId: string, userId: string): void {
-    this.api.listOralRoster(eventId).subscribe({
-      next: (items) => void this.applyRoster(items, userId, eventId),
-      error: () => void this.loadCached(eventId, userId),
-    });
+    this.api
+      .listOralRoster(eventId)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (items) => {
+          void this.applyRoster(items, userId, eventId)
+            .then(() => this.watchRosterFeed(eventId, userId))
+            .catch(() => void this.loadCached(eventId, userId));
+        },
+        error: () => void this.loadCached(eventId, userId),
+      });
+  }
+
+  private watchRosterFeed(eventId: string, userId: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    defer(() => this.api.watchFeed(eventId))
+      .pipe(
+        tap(() => {
+          this.oralFeedErrorNotified = false;
+        }),
+        concatMap((items) => from(this.applyRoster(items, userId, eventId)).pipe(catchError(() => EMPTY))),
+        catchError(() => {
+          if (!this.oralFeedErrorNotified) {
+            this.oralFeedErrorNotified = true;
+            this.snackbar.open('A chamada oral perdeu a conexão. Tentando reconectar…', 'Fechar', {
+              duration: 3500,
+            });
+          }
+
+          return this.api.listOralRoster(eventId).pipe(
+            take(1),
+            concatMap((items) => from(this.applyRoster(items, userId, eventId))),
+            catchError(() => EMPTY),
+            concatWith(throwError(() => new Error('A chamada oral perdeu a conexão.'))),
+          );
+        }),
+        retry({
+          delay: (_, retryCount) =>
+            timer(
+              Math.min(
+                ORAL_FEED_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                ORAL_FEED_RECONNECT_MAX_DELAY_MS,
+              ),
+            ),
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
   }
 
   private async applyRoster(items: AttendanceScannerFeedItem[], userId: string, eventId: string): Promise<void> {
@@ -246,5 +304,6 @@ export class OralAttendancePage implements OnInit {
     this.event.set(event);
     this.people.set(people);
     this.decisions.set(new Map(savedDecisions.map((item) => [item.personId, item.status])));
+    this.watchRosterFeed(eventId, userId);
   }
 }

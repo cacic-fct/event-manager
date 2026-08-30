@@ -1,3 +1,4 @@
+import { signal, type WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,6 +12,7 @@ import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { of, Subject, throwError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
+import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { Attendances } from './attendances';
 import { CertificateDialog } from '../certificate-dialog/certificate-dialog';
@@ -164,6 +166,57 @@ describe('Attendances', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Feed salvo');
     expect(offlineData.getAttendanceFeed).toHaveBeenCalledWith('user-1');
+  });
+
+  it('refreshes the visible feed from a current-user invalidation and keeps it on a transient failure', async () => {
+    const { fixture, component, api, currentUserChanges, offlineData } = await createFixture();
+    await settle(fixture);
+
+    const updatedFeed: SubscriptionsFeed = {
+      ...subscriptionsFeedFixture,
+      majorEventItems: [
+        {
+          ...subscriptionsFeedFixture.majorEventItems[0],
+          majorEvent: {
+            ...subscriptionsFeedFixture.majorEventItems[0]?.majorEvent,
+            name: 'SECOMPP atualizado',
+          },
+        },
+      ],
+    };
+    api.getSubscriptionsFeed.mockReturnValueOnce(of(updatedFeed));
+    currentUserChanges.next();
+    await settle(fixture);
+
+    expect(component.feedState()).toEqual(expect.objectContaining({ status: 'ready' }));
+    expect(api.getSubscriptionsFeed).toHaveBeenCalledTimes(2);
+    expect(component.visibleParticipations().map((item) => item.title)).toContain('SECOMPP atualizado');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP atualizado');
+
+    offlineData.getAttendanceFeed.mockResolvedValueOnce(updatedFeed);
+    api.getSubscriptionsFeed.mockReturnValueOnce(throwError(() => new Error('Falha transitória')));
+    currentUserChanges.next();
+    await settle(fixture);
+
+    expect(component.feedState()).toEqual(expect.objectContaining({ status: 'ready' }));
+    fixture.detectChanges();
+    expect(component.visibleParticipations().map((item) => item.title)).toContain('SECOMPP atualizado');
+    expect(fixture.nativeElement.textContent).toContain('SECOMPP atualizado');
+  });
+
+  it('discards the previous user feed when the next user load and offline fallback fail', async () => {
+    const { api, authUser, component, fixture, offlineData } = await createFixture();
+    await settle(fixture);
+    api.getSubscriptionsFeed.mockReturnValueOnce(throwError(() => new Error('Falha para a nova pessoa')));
+    offlineData.getAttendanceFeed.mockRejectedValueOnce(new Error('Cache indisponível'));
+
+    authUser.set({ sub: 'user-2' });
+    await settle(fixture);
+
+    expect(component.feedState()).toEqual({ status: 'error', message: 'Cache indisponível' });
+    expect(component.visibleParticipations()).toEqual([]);
+    expect(offlineData.getAttendanceFeed).toHaveBeenCalledWith('user-2');
   });
 
   it('loads the latest offline user snapshot when the browser is offline', async () => {
@@ -447,6 +500,8 @@ async function createFixture({
     replaceAttendanceFeed: ReturnType<typeof vi.fn>;
   };
   snackBar: { open: ReturnType<typeof vi.fn> };
+  currentUserChanges: Subject<void>;
+  authUser: WritableSignal<{ sub: string } | null>;
 }> {
   const api = {
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
@@ -473,6 +528,9 @@ async function createFixture({
   const dialog = {
     open: vi.fn(),
   };
+  const currentUserChanges = new Subject<void>();
+  const catalogChanges = new Subject<void>();
+  const authUser = signal(user);
 
   await TestBed.configureTestingModule({
     imports: [Attendances],
@@ -482,7 +540,7 @@ async function createFixture({
       {
         provide: AuthService,
         useValue: {
-          user: () => user,
+          user: authUser,
         },
       },
       {
@@ -511,6 +569,13 @@ async function createFixture({
         provide: MatDialog,
         useValue: dialog,
       },
+      {
+        provide: RealtimeInvalidationService,
+        useValue: {
+          watchCurrentUserData: vi.fn(() => currentUserChanges),
+          watchCatalog: vi.fn(() => catalogChanges),
+        },
+      },
     ],
   })
     .overrideProvider(MatDialog, { useValue: dialog })
@@ -522,12 +587,14 @@ async function createFixture({
 
   return {
     api,
+    authUser,
     component: fixture.componentInstance,
     dialog,
     fileDownload,
     fixture,
     offlineData,
     snackBar,
+    currentUserChanges,
   };
 }
 

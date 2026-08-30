@@ -17,12 +17,13 @@ import {
   PrizeDrawWinnerContact,
   SavePrizeDrawInput,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 @Service()
 export class PrizeDrawWorkspaceService {
@@ -36,8 +37,12 @@ export class PrizeDrawWorkspaceService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly realtime = inject(RealtimeApiService);
   private selectionRequestGeneration = 0;
   private personSearchRequestGeneration = 0;
+  private liveSubscription?: Subscription;
+  private liveRefreshRunning = false;
+  private liveRefreshQueued = false;
 
   readonly loading = signal(false);
   readonly draws = signal<PrizeDraw[]>([]);
@@ -100,6 +105,10 @@ export class PrizeDrawWorkspaceService {
       query.addEventListener('change', listener);
       this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
     }
+    this.liveSubscription = this.realtime
+      .watchWorkspace()
+      .subscribe(() => void this.refreshFromRealtime());
+    this.destroyRef.onDestroy(() => this.liveSubscription?.unsubscribe());
   }
 
   async initialize(drawId?: string | null): Promise<void> {
@@ -119,6 +128,58 @@ export class PrizeDrawWorkspaceService {
       this.feedback.error(error, 'Não foi possível carregar os sorteios.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async refreshFromRealtime(): Promise<void> {
+    if (this.liveRefreshRunning) {
+      this.liveRefreshQueued = true;
+      return;
+    }
+    this.liveRefreshRunning = true;
+    try {
+      do {
+        this.liveRefreshQueued = false;
+        const selectedId = this.selected()?.id;
+        const selectionGeneration = this.selectionRequestGeneration;
+        const hadUnsavedChanges = this.unsavedChanges();
+        const [draws, events, majorEvents] = await Promise.all([
+          firstValueFrom(this.api.list()),
+          firstValueFrom(this.eventApi.listEvents({ take: 500 })),
+          firstValueFrom(this.majorEventApi.listMajorEvents({ take: 500 })),
+        ]);
+        this.draws.set(draws);
+        this.events.set(events);
+        this.majorEvents.set(majorEvents);
+        if (
+          !selectedId ||
+          hadUnsavedChanges ||
+          selectionGeneration !== this.selectionRequestGeneration ||
+          this.selected()?.id !== selectedId ||
+          this.unsavedChanges()
+        ) {
+          continue;
+        }
+        const requestGeneration = selectionGeneration;
+        const draw = await firstValueFrom(this.api.get(selectedId));
+        if (
+          requestGeneration !== this.selectionRequestGeneration ||
+          this.selected()?.id !== selectedId ||
+          this.unsavedChanges()
+        ) {
+          continue;
+        }
+        this.patch(draw);
+        await this.loadEligibleEntries(requestGeneration);
+      } while (this.liveRefreshQueued);
+    } catch {
+      this.snackbar.open('Não foi possível aplicar uma atualização ao vivo.', 'Fechar', { duration: 4000 });
+    } finally {
+      this.liveRefreshRunning = false;
+      if (this.liveRefreshQueued) {
+        this.liveRefreshQueued = false;
+        void this.refreshFromRealtime();
+      }
     }
   }
 

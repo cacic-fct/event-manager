@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { firstValueFrom } from 'rxjs';
+import { auditTime, firstValueFrom, Subscription } from 'rxjs';
 import { ReceiptValidationApiService } from '../graphql/receipt-validation-api.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -26,24 +26,33 @@ import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.co
     './subscription-subtabs.shared.scss',
   ],
 })
-export class SubscriptionsPageComponent {
+export class SubscriptionsPageComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(SubscriptionsService);
   protected readonly permissions = inject(PermissionsService);
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly selectedTabIndex = signal(0);
   protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
   private majorEventRouteRequest = 0;
+  private receiptQueueStream: Subscription | null = null;
+  private receiptQueueTargetId: string | null = null;
+  private receiptQueueStreamGeneration = 0;
+  private receiptQueueRecoveryAttempted = false;
+  private receiptQueueRecoveryInFlight = false;
+  private receiptQueueTerminal = false;
 
   constructor() {
     void this.initializeReceiptValidation();
 
-    this.workspace.majorEventForm.controls.majorEventId.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
-      void this.loadSelectedMajorEventPendingReceiptCount();
-    });
+    this.workspace.majorEventForm.controls.majorEventId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.syncReceiptQueueStream());
+
+    this.destroyRef.onDestroy(() => this.closeReceiptQueueStream());
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const routeRequest = ++this.majorEventRouteRequest;
@@ -92,29 +101,127 @@ export class SubscriptionsPageComponent {
   }
 
   private async initializeReceiptValidation(): Promise<void> {
-    await this.permissions.evaluateWorkspacePermissions();
-    if (!this.permissions.has(Permission.Receipt.Read)) {
+    try {
+      await this.permissions.evaluateWorkspacePermissions();
+    } catch {
+      this.closeReceiptQueueStream();
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
 
-    await this.loadSelectedMajorEventPendingReceiptCount();
+    if (this.destroyRef.destroyed) {
+      return;
+    }
+    this.syncReceiptQueueStream();
   }
 
-  private async loadSelectedMajorEventPendingReceiptCount(): Promise<void> {
+  ngOnDestroy(): void {
+    this.workspace.closeLiveUpdates();
+  }
+
+  private syncReceiptQueueStream(): void {
+    if (this.destroyRef.destroyed) {
+      return;
+    }
+
     if (!this.permissions.has(Permission.Receipt.Read)) {
+      this.closeReceiptQueueStream();
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
 
     const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
     if (!majorEventId) {
+      this.closeReceiptQueueStream();
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
     }
 
-    const queue = await firstValueFrom(this.receiptValidationApi.getQueue(majorEventId));
-    this.selectedMajorEventPendingReceiptsCount.set(queue.pendingCount);
+    if (
+      this.receiptQueueTargetId === majorEventId &&
+      (this.receiptQueueStream || this.receiptQueueRecoveryInFlight || this.receiptQueueTerminal)
+    ) {
+      return;
+    }
+
+    this.closeReceiptQueueStream();
+    this.receiptQueueTargetId = majorEventId;
+    this.selectedMajorEventPendingReceiptsCount.set(0);
+    this.receiptQueueRecoveryAttempted = false;
+    this.receiptQueueTerminal = false;
+    this.connectReceiptQueueStream(majorEventId, this.receiptQueueStreamGeneration);
+  }
+
+  private connectReceiptQueueStream(majorEventId: string, generation: number): void {
+    if (!this.isCurrentReceiptQueueStream(majorEventId, generation)) {
+      return;
+    }
+
+    let terminated = false;
+    const stream = this.receiptValidationApi
+      .watchQueue(majorEventId)
+      .pipe(auditTime(0))
+      .subscribe({
+        next: (queue) => {
+          if (!this.isCurrentReceiptQueueStream(majorEventId, generation)) {
+            return;
+          }
+          this.selectedMajorEventPendingReceiptsCount.set(queue.pendingCount);
+          this.receiptQueueRecoveryAttempted = false;
+          this.receiptQueueTerminal = false;
+        },
+        error: () => {
+          terminated = true;
+          if (!this.isCurrentReceiptQueueStream(majorEventId, generation)) {
+            return;
+          }
+          this.receiptQueueStream = null;
+          if (this.receiptQueueRecoveryAttempted) {
+            this.receiptQueueTerminal = true;
+            return;
+          }
+          this.receiptQueueRecoveryAttempted = true;
+          this.receiptQueueRecoveryInFlight = true;
+          void this.recoverReceiptQueueStream(majorEventId, generation);
+        },
+      });
+    if (!terminated) {
+      this.receiptQueueStream = stream;
+    }
+  }
+
+  private async recoverReceiptQueueStream(majorEventId: string, generation: number): Promise<void> {
+    try {
+      const queue = await firstValueFrom(this.receiptValidationApi.getQueue(majorEventId));
+      if (this.isCurrentReceiptQueueStream(majorEventId, generation)) {
+        this.selectedMajorEventPendingReceiptsCount.set(queue.pendingCount);
+      }
+    } catch {
+      // Keep the last good badge count visible while the replayable stream reconnects.
+    } finally {
+      if (this.isCurrentReceiptQueueStream(majorEventId, generation)) {
+        this.receiptQueueRecoveryInFlight = false;
+        this.connectReceiptQueueStream(majorEventId, generation);
+      }
+    }
+  }
+
+  private isCurrentReceiptQueueStream(majorEventId: string, generation: number): boolean {
+    return (
+      generation === this.receiptQueueStreamGeneration &&
+      this.receiptQueueTargetId === majorEventId &&
+      this.workspace.majorEventForm.controls.majorEventId.value === majorEventId
+    );
+  }
+
+  private closeReceiptQueueStream(): void {
+    this.receiptQueueStreamGeneration++;
+    this.receiptQueueStream?.unsubscribe();
+    this.receiptQueueStream = null;
+    this.receiptQueueTargetId = null;
+    this.receiptQueueRecoveryAttempted = false;
+    this.receiptQueueRecoveryInFlight = false;
+    this.receiptQueueTerminal = false;
   }
 
   protected onSelectedTabIndexChange(index: number): void {

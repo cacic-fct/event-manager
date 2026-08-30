@@ -25,6 +25,7 @@ type AdminE2EGraphqlState = {
   permissionRoles: Record<string, unknown>[];
   permissionGroups: Record<string, unknown>[];
 };
+type AdminE2EDashboardInsightsSource = AdminE2EDashboardInsights | (() => AdminE2EDashboardInsights);
 
 const relativeIsoDate = (daysFromNow: number, hours = 12, minutes = 0): string => {
   const date = new Date();
@@ -146,7 +147,7 @@ export async function mockAdminApi(
   page: Page,
   options: {
     user: AdminE2EUser | null;
-    dashboardInsights?: AdminE2EDashboardInsights;
+    dashboardInsights?: AdminE2EDashboardInsightsSource;
     permissions?: string[];
     onLoginRedirect?: (url: URL) => void;
     onPasswordLogin?: (body: Record<string, unknown>) => void;
@@ -852,7 +853,7 @@ export function createAdminE2EMajorEventUserAttendance(
 
 function graphqlData(
   body: unknown,
-  dashboardInsights: AdminE2EDashboardInsights | undefined,
+  dashboardInsights: AdminE2EDashboardInsightsSource | undefined,
   state: AdminE2EGraphqlState,
 ): Record<string, unknown> {
   const query = graphqlQuery(body);
@@ -864,7 +865,10 @@ function graphqlData(
 
   if (query.includes('query WorkspaceDashboardInsights')) {
     return {
-      workspaceDashboardInsights: dashboardInsights ?? createAdminE2EDashboardInsights(),
+      workspaceDashboardInsights:
+        typeof dashboardInsights === 'function'
+          ? dashboardInsights()
+          : (dashboardInsights ?? createAdminE2EDashboardInsights()),
     };
   }
 

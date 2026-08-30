@@ -27,6 +27,15 @@ describe('PrizeDrawRealtimeService', () => {
       'prize-draw:realtime:v1',
       expect.stringContaining('"type":"SPIN_PRESENTED"'),
     );
+    expect(context.invalidations.publish).toHaveBeenCalledTimes(2);
+    expect(context.invalidations.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PRIZE_DRAWS_INVALIDATED', drawId: 'draw-1' }),
+    );
+    expect(context.invalidations.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
   });
 
   it('delivers locally when Redis pub/sub is unavailable and releases the channel after unsubscribe', async () => {
@@ -85,6 +94,19 @@ describe('PrizeDrawRealtimeService', () => {
     await context.service.publishDraw('missing', 'DRAW_UPDATED', 1);
     expect(context.replay.record).not.toHaveBeenCalled();
   });
+
+  it('keeps a committed draw update successful when an invalidation publisher fails', async () => {
+    const context = createContext({ duplicate: false });
+    context.prisma.prizeDraw.findUnique.mockResolvedValue({
+      eventId: null,
+      majorEventId: 'major-1',
+      event: null,
+    });
+    context.replay.record.mockImplementation(async (_scope: string, event: object) => event);
+    context.invalidations.publish.mockRejectedValue(new Error('Publisher unavailable'));
+
+    await expect(context.service.publishDraw('draw-1', 'DRAW_UPDATED', 2)).resolves.toBeUndefined();
+  });
 });
 
 function createContext(options: { duplicate?: boolean } = {}) {
@@ -103,6 +125,15 @@ function createContext(options: { duplicate?: boolean } = {}) {
     record: jest.fn(),
   };
   const prisma = { prizeDraw: { findUnique: jest.fn() } };
-  const service = new PrizeDrawRealtimeService(redis as never, replay as never, prisma as never);
-  return { prisma, redis, replay, service, subscriber };
+  const invalidations = {
+    scope: jest.fn((channel: string) => channel),
+    publish: jest.fn().mockResolvedValue({}),
+  };
+  const service = new PrizeDrawRealtimeService(
+    redis as never,
+    replay as never,
+    prisma as never,
+    invalidations as never,
+  );
+  return { invalidations, prisma, redis, replay, service, subscriber };
 }

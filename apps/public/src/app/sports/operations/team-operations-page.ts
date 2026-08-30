@@ -1,5 +1,6 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -13,7 +14,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
 import {
@@ -36,6 +37,7 @@ import {
   type LineupMember,
 } from './team-operations-page.utils';
 import { createTeamOperationsForms } from './team-operations-page.forms';
+import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 
 @Component({
   selector: 'app-sports-team-operations-page',
@@ -58,13 +60,15 @@ import { createTeamOperationsForms } from './team-operations-page.forms';
   ],
   templateUrl: './team-operations-page.html',
   styleUrl: './team-operations-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private readonly api = inject(SportsOperationsApiService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(SportsOperationsRealtimeService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly workspace = signal<RepresentativeTeamWorkspace | null>(null);
   readonly loading = signal(true);
@@ -94,6 +98,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private teamId = '';
   private workspaceRequestId = 0;
   private lineupRequestId = 0;
+  private realtimeSubscription?: Subscription;
+  private realtimeRecoveryInFlight = false;
+  private realtimeRecoveryAttempted = false;
+  private realtimeRecoveryMatchId: string | null = null;
+  private destroyed = false;
   protected profileRequest: RepresentativeTeamChange | null = null;
 
   ngOnInit(): void {
@@ -106,6 +115,8 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.realtimeSubscription?.unsubscribe();
     this.revokeLogoPreview();
   }
 
@@ -135,14 +146,21 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     });
   }
 
-  load(): void {
+  load(options: { preserveDrafts?: boolean } = {}): void {
     const requestId = ++this.workspaceRequestId;
-    this.loading.set(true);
+    const preserveDrafts = options.preserveDrafts === true;
+    if (!preserveDrafts) {
+      this.realtimeRecoveryAttempted = false;
+    }
+    if (!preserveDrafts || !this.workspace()) {
+      this.loading.set(true);
+    }
     this.api.representativeWorkspace(this.teamId).subscribe({
       next: (workspace) => {
         if (requestId !== this.workspaceRequestId) {
           return;
         }
+        this.settleRealtimeRecovery();
         this.workspace.set(workspace);
         this.profileRequest =
           [...workspace.queuedChanges]
@@ -153,13 +171,15 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
             ) ?? null;
         const queuedDelta = this.parseDelta(this.profileRequest?.deltaJson);
         const queuedSet = this.readRecord(queuedDelta['set']);
-        this.profileForm.setValue({
-          name: typeof queuedSet['name'] === 'string' ? queuedSet['name'] : workspace.team.name,
-          institution:
-            typeof queuedSet['institution'] === 'string'
-              ? queuedSet['institution']
-              : (workspace.team.institution ?? ''),
-        });
+        if (!preserveDrafts || this.profileForm.pristine) {
+          this.profileForm.setValue({
+            name: typeof queuedSet['name'] === 'string' ? queuedSet['name'] : workspace.team.name,
+            institution:
+              typeof queuedSet['institution'] === 'string'
+                ? queuedSet['institution']
+                : (workspace.team.institution ?? ''),
+          });
+        }
         this.selectInitialMatch(workspace);
         this.loading.set(false);
         this.error.set(null);
@@ -168,16 +188,28 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         if (requestId !== this.workspaceRequestId) {
           return;
         }
+        this.settleRealtimeRecovery();
         this.loading.set(false);
-        this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
+        if (preserveDrafts && this.workspace()) {
+          this.snackbar.open('Não foi possível atualizar a equipe. Os últimos dados continuam disponíveis.', 'Fechar', {
+            duration: 6000,
+          });
+        } else {
+          this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
+        }
       },
     });
   }
 
   selectMatch(matchId: string): void {
+    this.realtimeRecoveryInFlight = false;
+    this.realtimeRecoveryAttempted = false;
+    this.realtimeRecoveryMatchId = null;
     const workspace = this.workspace();
     const match = workspace?.matches.find((candidate) => candidate.id === matchId);
     if (!workspace || !match) {
+      this.realtimeSubscription?.unsubscribe();
+      this.realtimeSubscription = undefined;
       this.selectedMatchId.set('');
       this.lineupForm.reset({ matchId: '', registrationId: '', expectedRevision: null });
       this.lineupMembers.set([]);
@@ -189,8 +221,9 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       [match.homeRegistrationId, match.awayRegistrationId].find((candidate): candidate is string =>
         Boolean(candidate && registrationIds.has(candidate)),
       ) ?? '';
-    this.lineupForm.patchValue({ matchId, registrationId, expectedRevision: null });
+    this.lineupForm.patchValue({ matchId, registrationId, expectedRevision: null }, { emitEvent: false });
     this.lineupMembers.set([]);
+    this.watchSelectedMatch(matchId);
     this.loadLineup();
   }
 
@@ -463,9 +496,99 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
 
   private selectInitialMatch(workspace: RepresentativeTeamWorkspace): void {
     const requestedMatchId = this.lineupForm.controls.matchId.value;
-    const initial = workspace.matches.find((match) => match.id === requestedMatchId) ?? workspace.matches[0];
-    if (initial) {
-      this.selectMatch(initial.id);
+    const initial =
+      workspace.matches.find((match) => match.id === this.selectedMatchId()) ??
+      workspace.matches.find((match) => match.id === requestedMatchId) ??
+      workspace.matches[0];
+    if (!initial) {
+      this.selectMatch('');
+      return;
+    }
+
+    if (this.selectedMatchId() === initial.id) {
+      this.syncMatchSelection(initial);
+      this.loadLineup();
+      if (!this.realtimeSubscription && !this.realtimeRecoveryInFlight) {
+        this.watchSelectedMatch(initial.id);
+      }
+      return;
+    }
+    this.selectMatch(initial.id);
+  }
+
+  private syncMatchSelection(match: RepresentativeTeamWorkspace['matches'][number]): void {
+    const registrationIds = new Set(this.workspace()?.registrations.map((registration) => registration.id) ?? []);
+    const registrationId =
+      [match.homeRegistrationId, match.awayRegistrationId].find((candidate): candidate is string =>
+        Boolean(candidate && registrationIds.has(candidate)),
+      ) ?? '';
+    this.lineupForm.patchValue(
+      { matchId: match.id, registrationId, expectedRevision: null },
+      { emitEvent: false },
+    );
+  }
+
+  private watchSelectedMatch(matchId: string): void {
+    this.realtimeSubscription?.unsubscribe();
+    this.realtimeSubscription = undefined;
+    if (!this.isBrowser || this.destroyed || !matchId) {
+      return;
+    }
+
+    const subscription = this.realtime
+      .watchRepresentativeTeam(this.teamId)
+      .pipe(debounceTime(75), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (this.selectedMatchId() === matchId) {
+            this.realtimeRecoveryAttempted = false;
+            this.refreshAfterRealtimeInvalidation();
+          }
+        },
+        error: () => {
+          this.realtimeSubscription = undefined;
+          if (this.destroyed || this.selectedMatchId() !== matchId || this.realtimeRecoveryInFlight) {
+            return;
+          }
+          if (this.realtimeRecoveryAttempted) {
+            this.snackbar.open('A conexão da partida continua indisponível. Tente novamente.', 'Fechar', {
+              duration: 6000,
+            });
+            return;
+          }
+          this.realtimeRecoveryAttempted = true;
+          this.realtimeRecoveryInFlight = true;
+          this.realtimeRecoveryMatchId = matchId;
+          this.snackbar.open(
+            'A conexão da partida foi interrompida. Atualizando os dados…',
+            'Fechar',
+            { duration: 5000 },
+          );
+          this.load({ preserveDrafts: true });
+        },
+      });
+    if (!this.destroyed && !this.realtimeSubscription && !subscription.closed) {
+      this.realtimeSubscription = subscription;
+    }
+  }
+
+  private refreshAfterRealtimeInvalidation(): void {
+    if (this.destroyed || this.realtimeRecoveryInFlight || !this.selectedMatchId()) {
+      return;
+    }
+    this.load({ preserveDrafts: true });
+  }
+
+  private settleRealtimeRecovery(): void {
+    if (!this.realtimeRecoveryInFlight) {
+      return;
+    }
+
+    const matchId = this.realtimeRecoveryMatchId;
+    this.realtimeRecoveryInFlight = false;
+    this.realtimeRecoveryMatchId = null;
+    if (!this.destroyed && matchId && this.selectedMatchId() === matchId) {
+      this.watchSelectedMatch(matchId);
     }
   }
 

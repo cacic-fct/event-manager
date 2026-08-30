@@ -124,7 +124,7 @@ export class OnlineAttendanceCoordinatorService implements InterruptionFlow {
           message.type === 'event' &&
             message.channel === ONLINE_ATTENDANCE_CHANNEL &&
             message.event === 'pendingOnlineAttendancesChanged' &&
-            payload?.eventIds?.length,
+            Array.isArray(payload?.eventIds),
         );
       }),
       map(() => undefined),

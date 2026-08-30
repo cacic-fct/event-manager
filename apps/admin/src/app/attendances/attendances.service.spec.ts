@@ -5,7 +5,9 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
+import { Subject, of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
@@ -20,6 +22,7 @@ import {
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from './attendances.service';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('AttendancesService', () => {
   let service: AttendancesService;
@@ -29,6 +32,7 @@ describe('AttendancesService', () => {
     importEventAttendancesFromCsv: ReturnType<typeof vi.fn>;
     listEventAttendances: ReturnType<typeof vi.fn>;
     listEventAttendanceScannerFeed: ReturnType<typeof vi.fn>;
+    watchEventAttendanceScannerFeed: ReturnType<typeof vi.fn>;
     getEventAttendanceCount: ReturnType<typeof vi.fn>;
     listOfflineEventAttendanceSubmissions: ReturnType<typeof vi.fn>;
     deleteEventAttendance: ReturnType<typeof vi.fn>;
@@ -68,6 +72,7 @@ describe('AttendancesService', () => {
         of(filters?.status === 'ABSENT' ? [] : [createAdminEventAttendance({}, person, event)]),
       ),
       listEventAttendanceScannerFeed: vi.fn(() => of([{ personId: person.id, status: false }])),
+      watchEventAttendanceScannerFeed: vi.fn(() => of([])),
       getEventAttendanceCount: vi.fn(() => of(1)),
       listOfflineEventAttendanceSubmissions: vi.fn(() => of([])),
       deleteEventAttendance: vi.fn(() => of({ deleted: true, id: person.id })),
@@ -275,6 +280,144 @@ describe('AttendancesService', () => {
     expect(service.attendanceTotalCount()).toBe(0);
   });
 
+  it('coalesces event-feed invalidations, reloads the selected page, and closes the old stream on selection change', async () => {
+    vi.useFakeTimers();
+    const restoreEventSource = installFakeEventSource();
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Palestra' });
+    api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
+
+    try {
+      await service.selectAttendanceEvent(event);
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      api.listEventAttendances.mockClear();
+      api.listEventAttendanceScannerFeed.mockClear();
+      api.getEventAttendanceCount.mockClear();
+      api.listOfflineEventAttendanceSubmissions.mockClear();
+
+      firstSource.emitMessage();
+      firstSource.emitMessage();
+      firstSource.emitMessage();
+      await vi.advanceTimersByTimeAsync(500);
+
+      expect(api.listEventAttendances).toHaveBeenCalledTimes(2);
+      expect(api.listEventAttendanceScannerFeed).toHaveBeenCalledOnce();
+      expect(api.getEventAttendanceCount).toHaveBeenCalledOnce();
+      expect(api.listOfflineEventAttendanceSubmissions).toHaveBeenCalledOnce();
+
+      await service.selectAttendanceEvent(nextEvent);
+
+      expect(firstSource.close).toHaveBeenCalledOnce();
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect((FakeEventSource.instances[1] as FakeEventSource).url).toContain('event-2');
+    } finally {
+      vi.useRealTimers();
+      restoreEventSource();
+    }
+  });
+
+  it('ignores invalidations from a previously selected event', async () => {
+    vi.useFakeTimers();
+    const restoreEventSource = installFakeEventSource();
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Palestra' });
+    api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
+
+    try {
+      await service.selectAttendanceEvent(event);
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      await service.selectAttendanceEvent(nextEvent);
+      const secondSource = FakeEventSource.instances[1] as FakeEventSource;
+      api.listEventAttendances.mockClear();
+
+      firstSource.emitMessage();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(api.listEventAttendances).not.toHaveBeenCalled();
+
+      secondSource.emitMessage();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(api.listEventAttendances).toHaveBeenCalledTimes(2);
+      expect(api.listEventAttendances).toHaveBeenNthCalledWith(1, nextEvent.id, expect.anything());
+      expect(api.listEventAttendances).toHaveBeenNthCalledWith(2, nextEvent.id, expect.anything());
+    } finally {
+      vi.useRealTimers();
+      restoreEventSource();
+    }
+  });
+
+  it('recovers an initial terminal attendance stream through HTTP before reconnecting', async () => {
+    const restoreEventSource = installFakeEventSource();
+    api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
+
+    try {
+      const selection = service.selectAttendanceEvent(event);
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      firstSource.readyState = FakeEventSource.CLOSED;
+      firstSource.emitError();
+
+      await selection;
+      await flushAsync();
+
+      expect(api.watchEventAttendanceScannerFeed).toHaveBeenCalledTimes(2);
+      expect(FakeEventSource.instances).toHaveLength(2);
+      expect(service.attendances()).toHaveLength(1);
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('retains the last good attendance projections when terminal recovery HTTP fails', async () => {
+    const restoreEventSource = installFakeEventSource();
+    api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
+
+    try {
+      await service.selectAttendanceEvent(event);
+      const previousAttendances = service.attendances();
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      api.listEventAttendances.mockImplementation((_eventId: string, filters?: { status?: string }) =>
+        filters?.status === 'PRESENT' ? throwError(() => new Error('Sessão indisponível')) : of([]),
+      );
+
+      firstSource.readyState = FakeEventSource.CLOSED;
+      firstSource.emitError();
+      await flushAsync();
+
+      expect(service.attendances()).toEqual(previousAttendances);
+      expect(api.watchEventAttendanceScannerFeed).toHaveBeenCalledTimes(2);
+      expect(FakeEventSource.instances).toHaveLength(2);
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('ignores a stale attendance response after the selected event changes', async () => {
+    const stalePresentResponse = new Subject<ReturnType<typeof createAdminEventAttendance>[]>();
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Palestra' });
+    const nextAttendance = createAdminEventAttendance({}, person, nextEvent);
+    api.listEventAttendances.mockImplementation((eventId: string, filters?: { status?: string }) => {
+      if (filters?.status === 'PRESENT') {
+        return eventId === event.id ? stalePresentResponse : of([nextAttendance]);
+      }
+      return of([]);
+    });
+    api.listEventAttendanceScannerFeed.mockReturnValue(of([]));
+
+    service.selectedAttendanceEvent.set(event);
+    service.attendanceForm.controls.eventId.setValue(event.id);
+    const staleLoad = service.loadAttendances(event.id);
+
+    service.selectedAttendanceEvent.set(nextEvent);
+    service.attendanceForm.controls.eventId.setValue(nextEvent.id);
+    const currentLoad = service.loadAttendances(nextEvent.id);
+    await currentLoad;
+
+    stalePresentResponse.next([createAdminEventAttendance({}, person, event)]);
+    stalePresentResponse.complete();
+    await staleLoad;
+
+    expect(service.attendances()).toEqual([
+      expect.objectContaining({ eventId: nextEvent.id, personId: person.id }),
+    ]);
+  });
+
   it('reviews offline submissions with confirmation, cancellation, correction, and issue labels', async () => {
     const ready = createAdminOfflineEventAttendanceSubmission({ eventId: event.id }, event, person);
     const invalid = createAdminOfflineEventAttendanceSubmission(
@@ -407,4 +550,11 @@ describe('AttendancesService', () => {
 
 function csvFile(name: string, content: string): File {
   return { name, text: () => Promise.resolve(content) } as File;
+}
+
+function attendanceStream(eventId: string) {
+  return watchReplayableEventSource(`/test/event-attendances/${eventId}`, {
+    decode: () => [],
+    errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
+  });
 }
