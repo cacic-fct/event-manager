@@ -197,12 +197,14 @@ export class PaymentInfo {
           }
 
           this.state.set({ status: 'ready', subscription, receipt });
-          this.analytics.trackMajorEventTransaction({
-            stage: 'payment_page_viewed',
-            majorEvent: subscription.majorEvent,
-            subscription,
-            priceInCents: this.resolveApplicablePrice(subscription),
-          });
+          if (!background) {
+            this.analytics.trackMajorEventTransaction({
+              stage: 'payment_page_viewed',
+              majorEvent: subscription.majorEvent,
+              subscription,
+              priceInCents: this.resolveApplicablePrice(subscription),
+            });
+          }
         },
         error: (error: unknown) => {
           if (requestId !== this.pageRequestId) return;

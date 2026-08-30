@@ -49,12 +49,13 @@ describe('RealtimeInvalidationController', () => {
   it('publishes only changed fingerprint snapshots', async () => {
     jest.useFakeTimers();
     const controller = createController();
+    const snapshotTime = new Date();
     const firstSnapshot = {
       type: 'CURRENT_USER_DATA_INVALIDATED',
-      revision: { _count: 1, _max: { createdAt: new Date('2026-08-30T12:00:00.000Z'), deletedAt: null } },
+      revision: { _count: 1, _max: { createdAt: snapshotTime, deletedAt: null } },
     };
     const identicalSnapshot = {
-      revision: { _max: { deletedAt: null, createdAt: new Date('2026-08-30T12:00:00.000Z') }, _count: 1 },
+      revision: { _max: { deletedAt: null, createdAt: snapshotTime }, _count: 1 },
       type: 'CURRENT_USER_DATA_INVALIDATED',
     };
     const changedSnapshot = {

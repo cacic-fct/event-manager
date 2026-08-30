@@ -147,16 +147,17 @@ describe('SportsTeamOperationsPage', () => {
     expect(watchMatch).toHaveBeenCalledTimes(2);
   });
 
-  it('settles a stale recovery request and restarts the selected match stream', () => {
+  it('lets only the newest workspace request settle realtime recovery', () => {
     const workspace = createRepresentativeTeamWorkspace();
     const staleRecovery = new Subject<ReturnType<typeof createRepresentativeTeamWorkspace>>();
+    const currentLoad = new Subject<ReturnType<typeof createRepresentativeTeamWorkspace>>();
     const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
       typeof vi.fn
     >;
     representativeWorkspace
       .mockReturnValueOnce(of(workspace))
       .mockReturnValueOnce(staleRecovery)
-      .mockReturnValueOnce(of(workspace));
+      .mockReturnValueOnce(currentLoad);
     const page = createPage();
     page.ngOnInit();
     const firstStream = realtimeStreams[0];
@@ -168,6 +169,11 @@ describe('SportsTeamOperationsPage', () => {
 
     staleRecovery.next(workspace);
     staleRecovery.complete();
+
+    expect(watchMatch).toHaveBeenCalledOnce();
+
+    currentLoad.next(workspace);
+    currentLoad.complete();
 
     expect(watchMatch).toHaveBeenCalledTimes(2);
   });

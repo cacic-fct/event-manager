@@ -101,6 +101,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private realtimeSubscription?: Subscription;
   private realtimeRecoveryInFlight = false;
   private realtimeRecoveryAttempted = false;
+  private realtimeRecoveryMatchId: string | null = null;
   private destroyed = false;
   protected profileRequest: RepresentativeTeamChange | null = null;
 
@@ -145,7 +146,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     });
   }
 
-  load(options: { preserveDrafts?: boolean; onSettled?: () => void } = {}): void {
+  load(options: { preserveDrafts?: boolean } = {}): void {
     const requestId = ++this.workspaceRequestId;
     const preserveDrafts = options.preserveDrafts === true;
     if (!preserveDrafts) {
@@ -156,10 +157,10 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
     this.api.representativeWorkspace(this.teamId).subscribe({
       next: (workspace) => {
-        options.onSettled?.();
         if (requestId !== this.workspaceRequestId) {
           return;
         }
+        this.settleRealtimeRecovery();
         this.workspace.set(workspace);
         this.profileRequest =
           [...workspace.queuedChanges]
@@ -184,10 +185,10 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         this.error.set(null);
       },
       error: (error: unknown) => {
-        options.onSettled?.();
         if (requestId !== this.workspaceRequestId) {
           return;
         }
+        this.settleRealtimeRecovery();
         this.loading.set(false);
         if (preserveDrafts && this.workspace()) {
           this.snackbar.open('Não foi possível atualizar a equipe. Os últimos dados continuam disponíveis.', 'Fechar', {
@@ -203,6 +204,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   selectMatch(matchId: string): void {
     this.realtimeRecoveryInFlight = false;
     this.realtimeRecoveryAttempted = false;
+    this.realtimeRecoveryMatchId = null;
     const workspace = this.workspace();
     const match = workspace?.matches.find((candidate) => candidate.id === matchId);
     if (!workspace || !match) {
@@ -561,20 +563,13 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
           }
           this.realtimeRecoveryAttempted = true;
           this.realtimeRecoveryInFlight = true;
+          this.realtimeRecoveryMatchId = matchId;
           this.snackbar.open(
             'A conexão da partida foi interrompida. Atualizando os dados…',
             'Fechar',
             { duration: 5000 },
           );
-          this.load({
-            preserveDrafts: true,
-            onSettled: () => {
-              this.realtimeRecoveryInFlight = false;
-              if (!this.destroyed && this.selectedMatchId() === matchId) {
-                this.watchSelectedMatch(matchId);
-              }
-            },
-          });
+          this.load({ preserveDrafts: true });
         },
       });
     if (!this.destroyed && !this.realtimeSubscription && !subscription.closed) {
@@ -587,6 +582,19 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       return;
     }
     this.load({ preserveDrafts: true });
+  }
+
+  private settleRealtimeRecovery(): void {
+    if (!this.realtimeRecoveryInFlight) {
+      return;
+    }
+
+    const matchId = this.realtimeRecoveryMatchId;
+    this.realtimeRecoveryInFlight = false;
+    this.realtimeRecoveryMatchId = null;
+    if (!this.destroyed && matchId && this.selectedMatchId() === matchId) {
+      this.watchSelectedMatch(matchId);
+    }
   }
 
   private readShirtNumber(value: string | null): string | null {

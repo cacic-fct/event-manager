@@ -124,7 +124,7 @@ describe('MyDayStore request control', () => {
   });
 
   it('force-refreshes the selected day after an invalidation while retaining the last good snapshot on failure', async () => {
-    const selectedDate = '2026-08-16';
+    const selectedDate = myDayDateKey(new Date(Date.now() - 86_400_000));
     const initialSnapshot = day(selectedDate);
     const initialLoad = store.load(selectedDate);
     await Promise.resolve();

@@ -8,7 +8,7 @@ import {
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, Inject, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { addDays, subDays } from 'date-fns';
 import {
@@ -141,6 +141,7 @@ type GraphqlContext = {
 
 @Resolver(() => MajorEvent)
 export class MajorEventsResolver {
+  private readonly logger = new Logger(MajorEventsResolver.name);
   private paymentInfoTableExistsPromise?: Promise<boolean>;
 
   constructor(
@@ -607,9 +608,10 @@ export class MajorEventsResolver {
     try {
       await this.publishInvalidations();
     } catch (error: unknown) {
-      if (effectsError === undefined) {
-        throw error;
-      }
+      this.logger.warn(
+        'Major-event realtime invalidation failed after the mutation committed.',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
 
     if (effectsError !== undefined) {

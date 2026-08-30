@@ -547,6 +547,26 @@ describe('SportsSelfSubscriptionPage', () => {
     );
   });
 
+  it('does not report an obsolete recovery failure after the team selection changes', () => {
+    const recoveryApplications = new Subject<CurrentUserSportsPlayerApplication[]>();
+    currentUserApplications.mockReturnValueOnce(of([])).mockReturnValueOnce(recoveryApplications);
+    tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+
+    firstStream.error(new Error('closed'));
+    page.teamSelectionChanged('team-home');
+    recoveryApplications.error(new Error('stale recovery failure'));
+
+    expect(open).not.toHaveBeenCalledWith(
+      'Não foi possível atualizar sua inscrição. Os últimos dados continuam disponíveis.',
+      'Fechar',
+      { duration: 6000 },
+    );
+  });
+
   it('unsubscribes from realtime events when destroyed', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();

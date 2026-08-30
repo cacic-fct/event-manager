@@ -234,6 +234,7 @@ export class SubscriptionsService {
   async selectEvent(eventItem: Event): Promise<void> {
     const selectionRequest = ++this.eventSelectionRequest;
     this.stopMajorEventLiveUpdates();
+    this.stopEventLiveUpdates();
     void this.router.navigate(['/subscriptions/event', eventItem.id]);
     this.selectedEvent.set(eventItem);
     this.eventSubscriptionForm.controls.eventId.setValue(eventItem.id);
@@ -251,6 +252,7 @@ export class SubscriptionsService {
   async selectEventById(eventId: string): Promise<void> {
     const selectionRequest = ++this.eventSelectionRequest;
     this.stopMajorEventLiveUpdates();
+    this.stopEventLiveUpdates();
     if (this.selectedEvent()?.id !== eventId) {
       const selectedEvent = await firstValueFrom(this.eventApi.getEvent(eventId));
       if (selectionRequest !== this.eventSelectionRequest) {
@@ -406,10 +408,15 @@ export class SubscriptionsService {
   }
 
   private watchEventSubscriptions(eventId: string): void {
-    this.eventLiveSubscription?.unsubscribe();
+    this.stopEventLiveUpdates();
     this.eventLiveSubscription = this.realtime
       .watchEventSubscriptions(eventId)
       .subscribe(() => void this.loadEventSubscriptions(eventId));
+  }
+
+  private stopEventLiveUpdates(): void {
+    this.eventLiveSubscription?.unsubscribe();
+    this.eventLiveSubscription = undefined;
   }
 
   private watchMajorEventSubscriptions(majorEventId: string): void {
@@ -427,8 +434,7 @@ export class SubscriptionsService {
   closeLiveUpdates(): void {
     this.eventSubscriptionsRequest++;
     this.majorEventSubscriptionsRequest++;
-    this.eventLiveSubscription?.unsubscribe();
-    this.eventLiveSubscription = undefined;
+    this.stopEventLiveUpdates();
     this.stopMajorEventLiveUpdates();
   }
 

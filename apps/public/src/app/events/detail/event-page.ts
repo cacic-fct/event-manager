@@ -35,11 +35,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { isAfter, isBefore, parseISO } from 'date-fns';
 import {
   EMPTY,
+  BehaviorSubject,
   Observable,
   auditTime,
   catchError,
   combineLatest,
   defer,
+  distinctUntilChanged,
   finalize,
   forkJoin,
   map,
@@ -49,7 +51,7 @@ import {
   startWith,
   switchMap,
   take,
-  takeWhile,
+  tap,
   timer,
 } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
@@ -75,6 +77,7 @@ import {
 } from '../../major-events/registration/standard/subscription-review-dialog';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 type EventPageState =
   | { status: 'loading' }
@@ -162,6 +165,7 @@ export class Event {
   private readonly destroyRef = inject(DestroyRef);
   private readonly formsApi = inject(PublicEventFormApiService);
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
+  private readonly catalogRealtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
@@ -303,46 +307,43 @@ export class Event {
         catchError(() => EMPTY),
         take(1),
         switchMap((initialAvailability) => {
-          const hasVisibleDraw = initialAvailability.some(
-            (item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0,
-          );
-          if (!this.isBrowser || !hasVisibleDraw) {
+          const hasVisibleDraw = (availability: typeof initialAvailability) =>
+            availability.some((item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0);
+          if (!this.isBrowser) {
             return of(initialAvailability);
           }
 
-          const invalidations = defer(() =>
-            this.prizeDrawsApi.watch({ targetType: 'EVENT', targetId: eventId }),
-          ).pipe(
-            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
-            retry({
-              delay: (_, retryCount) =>
-                timer(
-                  Math.min(
-                    PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
-                    PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
-                  ),
-                ),
-            }),
+          const visibleDraw = new BehaviorSubject(hasVisibleDraw(initialAvailability));
+          const targetInvalidations = visibleDraw.pipe(
+            distinctUntilChanged(),
+            switchMap((visible) =>
+              visible
+                ? defer(() => this.prizeDrawsApi.watch({ targetType: 'EVENT', targetId: eventId })).pipe(
+                    retry({
+                      delay: (_, retryCount) =>
+                        timer(
+                          Math.min(
+                            PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                            PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
+                          ),
+                        ),
+                    }),
+                  )
+                : EMPTY,
+            ),
           );
-          return merge(
-            of(initialAvailability),
-            invalidations.pipe(
-              switchMap(() =>
-                this.prizeDrawsApi.availability({ eventIds: [eventId] }).pipe(
-                  catchError(() => EMPTY),
-                  take(1),
-                ),
+          const invalidations = merge(this.catalogRealtime.watchCatalog(), targetInvalidations).pipe(
+            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+            switchMap(() =>
+              this.prizeDrawsApi.availability({ eventIds: [eventId] }).pipe(
+                catchError(() => EMPTY),
+                take(1),
               ),
             ),
-          ).pipe(
-            takeWhile(
-              (availability) =>
-                availability.some(
-                  (item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0,
-                ),
-              true,
-            ),
+            tap((availability) => visibleDraw.next(hasVisibleDraw(availability))),
+            finalize(() => visibleDraw.complete()),
           );
+          return merge(of(initialAvailability), invalidations);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -350,7 +351,9 @@ export class Event {
         if (this.prizeDrawTargetId() !== eventId) {
           return;
         }
-        this.hasPrizeDraws.set(availability.some((item) => item.targetType === 'EVENT' && item.drawCount > 0));
+        this.hasPrizeDraws.set(
+          availability.some((item) => item.targetType === 'EVENT' && item.targetId === eventId && item.drawCount > 0),
+        );
       });
 
     onCleanup(() => subscription.unsubscribe());

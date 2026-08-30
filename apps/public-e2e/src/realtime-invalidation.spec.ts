@@ -6,8 +6,8 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
-    installControlledEventSource();
   });
+  await page.addInitScript(installControlledEventSource);
 });
 
 test('refetches event-scoped availability after SSE invalidation without accepting another scope', async ({ page }) => {
@@ -41,15 +41,30 @@ test('refetches event-scoped availability after SSE invalidation without accepti
   await expect(page.getByText('Sorteios')).toHaveCount(0);
 
   availableDraws = true;
-  await emitSse(page, '/api/prize-draws/public/events/realtime-event/events', {
-    type: 'PRIZE_DRAW_INVALIDATED',
-    targetType: 'EVENT',
-    targetId: 'realtime-event',
+  await emitSse(page, '/api/realtime/public/catalog/events', {
+    type: 'PUBLIC_CATALOG_INVALIDATED',
   });
 
   await expect.poll(() => availabilityVariables.length).toBe(2);
   await expect(page.getByText('Sorteios')).toBeVisible();
   expect(availabilityVariables[1]).toEqual({ eventIds: ['realtime-event'] });
+
+  availableDraws = false;
+  await emitSse(page, '/api/prize-draws/public/events/unrelated-event/events', {
+    type: 'PRIZE_DRAW_INVALIDATED',
+  });
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
+  expect(availabilityVariables).toHaveLength(2);
+
+  await emitSse(page, '/api/prize-draws/public/events/realtime-event/events', {
+    type: 'PRIZE_DRAW_INVALIDATED',
+    targetType: 'EVENT',
+    targetId: 'realtime-event',
+  });
+  await expect.poll(() => availabilityVariables.length).toBe(3);
+  await expect(page.getByText('Sorteios')).toHaveCount(0);
   expect(mainFrameNavigations).toBe(0);
 });
 
@@ -78,7 +93,11 @@ async function fulfillRealtimeApi(
   const apiPath = url.pathname.replace(/^\/app(?=\/api\/)/, '');
 
   if (apiPath === '/api/auth/me') {
-    await route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(authenticatedUserFixture()),
+    });
     return;
   }
 
@@ -142,6 +161,24 @@ function realtimeEventFixture() {
   });
 }
 
+function authenticatedUserFixture(): Record<string, unknown> {
+  return {
+    realm_access: { roles: [] },
+    sub: 'user-1',
+    preferredUsername: 'usuario.teste',
+    email: 'usuario.teste@example.edu',
+    roles: [],
+    permissions: [],
+    scopes: ['openid'],
+    claims: {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      is_onboarded: true,
+      name: 'Usuário Teste',
+      picture: null,
+    },
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -158,7 +195,10 @@ function installControlledEventSource(): void {
     onerror: ((event: Event) => void) | null = null;
     readonly readyState = ControlledEventSource.OPEN;
 
-    constructor(readonly url: string, readonly init?: EventSourceInit) {
+    constructor(
+      readonly url: string,
+      readonly init?: EventSourceInit,
+    ) {
       ControlledEventSource.instances.push(this);
     }
 

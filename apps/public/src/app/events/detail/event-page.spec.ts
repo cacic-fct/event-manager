@@ -16,6 +16,7 @@ import { subscriptionFormKey } from '../../major-events/registration/standard/su
 import { SubscriptionReviewDialog } from '../../major-events/registration/standard/subscription-review-dialog';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
+import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 
 interface EventComponentFixtureOptions {
   authenticated?: boolean;
@@ -23,6 +24,7 @@ interface EventComponentFixtureOptions {
   eventApi?: Partial<EventApiService>;
   formsApi?: Partial<PublicEventFormApiService>;
   prizeDrawsApi?: Partial<PublicPrizeDrawApiService>;
+  realtimeInvalidations?: Partial<RealtimeInvalidationService>;
   dialog?: Partial<MatDialog>;
   routeParams?: Params;
   parentRoutePath?: string;
@@ -83,6 +85,13 @@ async function createEventComponentFixture(
           availability: vi.fn(() => of([])),
           watch: vi.fn(() => NEVER),
           ...options.prizeDrawsApi,
+        },
+      },
+      {
+        provide: RealtimeInvalidationService,
+        useValue: {
+          watchCatalog: vi.fn(() => NEVER),
+          ...options.realtimeInvalidations,
         },
       },
       {
@@ -261,17 +270,23 @@ describe('Event', () => {
     expect(updates.observed).toBe(false);
   });
 
-  it('does not open a retrying prize-draw stream when no draw is visible', async () => {
+  it('keeps catalog discovery active and opens the target stream when the first draw appears', async () => {
     TestBed.resetTestingModule();
+    const catalogUpdates = new Subject<void>();
     const watch = vi.fn(() => NEVER);
+    const availability = vi
+      .fn()
+      .mockReturnValueOnce(of([]))
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]));
     const liveFixture = await createEventComponentFixture(
       {},
       {
         authenticated: true,
         prizeDrawsApi: {
-          availability: vi.fn(() => of([])),
+          availability,
           watch,
         },
+        realtimeInvalidations: { watchCatalog: vi.fn(() => catalogUpdates) },
       },
     );
     liveFixture.detectChanges();
@@ -279,6 +294,14 @@ describe('Event', () => {
 
     expect(watch).not.toHaveBeenCalled();
     expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+
+    catalogUpdates.next();
+    await waitForDrawRefresh(liveFixture);
+    liveFixture.detectChanges();
+
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect(watch).toHaveBeenCalledWith({ targetType: 'EVENT', targetId: 'event-1' });
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
   });
 
   it('does not query or stream authenticated prize draws for an anonymous event page', async () => {

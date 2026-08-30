@@ -8,6 +8,13 @@ import {
 import { normalizeFormName, replaceEventFormLinks } from './event-form-service-support';
 import { formRecord } from './event-form.spec-support';
 
+function createRealtimeMock(scope = (channel: string) => channel) {
+  return {
+    scope: jest.fn(scope),
+    publish: jest.fn().mockResolvedValue({}),
+  };
+}
+
 describe('event form publication and service support helpers', () => {
   it('publishes scheduled-form mutations to both administrative and public catalog streams', async () => {
     const scheduledPublishAt = new Date(Date.now() + 60_000);
@@ -28,10 +35,7 @@ describe('event form publication and service support helpers', () => {
     const currentUser = {};
     const notifications = {};
     const auditLog = { record: jest.fn() };
-    const realtime = {
-      scope: jest.fn((channel: string) => `scope:${channel}`),
-      publish: jest.fn().mockResolvedValue({}),
-    };
+    const realtime = createRealtimeMock((channel) => `scope:${channel}`);
     const service = new EventFormPublicationWorkflowService(
       prisma as never,
       authorizationPolicy as never,
@@ -70,10 +74,7 @@ describe('event form publication and service support helpers', () => {
       },
       $transaction: jest.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx)),
     };
-    const realtime = {
-      scope: jest.fn((channel: string) => channel),
-      publish: jest.fn().mockResolvedValue({}),
-    };
+    const realtime = createRealtimeMock();
     const service = new EventFormPublicationWorkflowService(
       prisma as never,
       { assertPermissions: jest.fn() } as never,
@@ -111,10 +112,7 @@ describe('event form publication and service support helpers', () => {
       eventForm,
       $transaction: jest.fn(async (callback: (transaction: typeof transactionState) => unknown) => callback(transactionState)),
     };
-    const realtime = {
-      scope: jest.fn((channel: string) => channel),
-      publish: jest.fn().mockResolvedValue({}),
-    };
+    const realtime = createRealtimeMock();
     const service = new EventFormPublicationWorkflowService(
       prisma as never,
       { assertPermissions: jest.fn() } as never,
@@ -151,7 +149,7 @@ describe('event form publication and service support helpers', () => {
             id: args.where.id,
             publicationState: PublicationState.PUBLISHED,
             scheduledPublishAt: null,
-            publishedAt: new Date('2026-07-01T12:00:00.000Z'),
+            publishedAt: new Date(),
             unpublishedAt: null,
             publicationUpdatedBy: null,
           }),

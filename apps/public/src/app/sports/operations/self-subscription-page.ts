@@ -359,7 +359,11 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
     }
 
     this.realtimeRecoveryInFlight = true;
-    this.runCombinedRefresh(() => this.showRealtimeRefreshError())
+    this.runCombinedRefresh((refreshRequestId) => {
+      if (refreshRequestId === this.realtimeRefreshRequestId) {
+        this.showRealtimeRefreshError();
+      }
+    })
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {

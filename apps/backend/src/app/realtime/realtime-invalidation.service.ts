@@ -60,8 +60,9 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
         }
         return;
       }
+      const activeSubscriber = subscriber;
 
-      subscriber.on('message', (channel, payload) => {
+      activeSubscriber.on('message', (channel, payload) => {
         if (channel !== REALTIME_INVALIDATION_REDIS_CHANNEL) {
           return;
         }
@@ -71,24 +72,23 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
           this.channels.get(envelope.scope)?.subject.next(envelope.event);
         }
       });
-      subscriber.on('error', (error: Error) => {
+      activeSubscriber.on('error', (error: Error) => {
         this.subscriberReady = false;
         this.logger.warn(
           `Realtime invalidation Redis subscriber error; delivery will recover through Redis or local fallback.`,
           error instanceof Error ? error.stack : String(error),
         );
       });
-      subscriber.on('ready', () => {
-        this.subscriberReady = true;
-      });
-
-      await subscriber.subscribe(REALTIME_INVALIDATION_REDIS_CHANNEL);
+      await activeSubscriber.subscribe(REALTIME_INVALIDATION_REDIS_CHANNEL);
       if (this.destroyed) {
-        await this.disconnectSubscriber(subscriber, true);
+        await this.disconnectSubscriber(activeSubscriber, true);
         return;
       }
-      this.subscriber = subscriber;
+      this.subscriber = activeSubscriber;
       this.subscriberReady = true;
+      activeSubscriber.on('ready', () => {
+        void this.confirmSubscriberReady(activeSubscriber);
+      });
     } catch (error: unknown) {
       this.logger.warn(
         'Realtime invalidation Redis subscription failed; local delivery will be used.',
@@ -171,15 +171,21 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
     }
 
     const publisher = this.redis as RedisWithRealtimeSupport;
-    if (!this.subscriber || !this.subscriberReady || typeof publisher.publish !== 'function') {
+    if (typeof publisher.publish !== 'function') {
       this.deliverLocally(scope, event);
       return event;
     }
 
+    const shouldDeliverLocally = !this.subscriber || !this.subscriberReady;
     try {
       const payload = JSON.stringify({ scope, event } satisfies RealtimeInvalidationEnvelope);
       const subscriberCount = await publisher.publish(REALTIME_INVALIDATION_REDIS_CHANNEL, payload);
-      if (typeof subscriberCount !== 'number' || !Number.isFinite(subscriberCount) || subscriberCount <= 0) {
+      if (
+        shouldDeliverLocally ||
+        typeof subscriberCount !== 'number' ||
+        !Number.isFinite(subscriberCount) ||
+        subscriberCount <= 0
+      ) {
         this.deliverLocally(scope, event);
       }
     } catch (error: unknown) {
@@ -222,6 +228,25 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
 
   private deliverLocally(scope: string, event: MessageEvent): void {
     this.channels.get(scope)?.subject.next(event);
+  }
+
+  private async confirmSubscriberReady(subscriber: Redis): Promise<void> {
+    if (this.destroyed || this.subscriber !== subscriber) {
+      return;
+    }
+
+    this.subscriberReady = false;
+    try {
+      await subscriber.subscribe(REALTIME_INVALIDATION_REDIS_CHANNEL);
+      if (!this.destroyed && this.subscriber === subscriber) {
+        this.subscriberReady = true;
+      }
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Realtime invalidation Redis resubscription failed; local delivery will remain active.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async disconnectSubscriber(subscriber: Redis, unsubscribe: boolean): Promise<void> {

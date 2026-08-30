@@ -104,7 +104,8 @@ describe('PaymentInfo', () => {
     liveComponent.pageRequest = () => requests.shift() as typeof older;
     liveComponent.receiptUploadCooldown = { clear: vi.fn() };
     liveComponent.destroyRef = { onDestroy: () => () => undefined };
-    liveComponent.analytics = { trackMajorEventTransaction: vi.fn() };
+    const trackMajorEventTransaction = vi.fn();
+    liveComponent.analytics = { trackMajorEventTransaction };
     liveComponent.resolveApplicablePrice = () => null;
     const oldSubscription = { id: 'old', majorEvent: {} } as CurrentUserMajorEventSubscription;
     const newSubscription = { id: 'new', majorEvent: {} } as CurrentUserMajorEventSubscription;
@@ -115,5 +116,6 @@ describe('PaymentInfo', () => {
     older.next({ subscription: oldSubscription, receipt: null });
 
     expect(liveComponent.state()).toEqual({ status: 'ready', subscription: newSubscription, receipt: null });
+    expect(trackMajorEventTransaction).not.toHaveBeenCalled();
   });
 });

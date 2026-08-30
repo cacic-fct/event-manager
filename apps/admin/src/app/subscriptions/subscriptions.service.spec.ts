@@ -191,6 +191,26 @@ describe('SubscriptionsService', () => {
     expect(api.listEventSubscriptions).not.toHaveBeenCalled();
   });
 
+  it('stops the previous event stream before loading a new selection', async () => {
+    await service.selectEvent(event);
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Encerramento' });
+    const pendingSubscriptions = new Subject<(typeof eventSubscription)[]>();
+    api.listEventSubscriptions.mockReturnValueOnce(pendingSubscriptions);
+
+    const selection = service.selectEvent(nextEvent);
+    await Promise.resolve();
+
+    expect(workspaceEvents.observed).toBe(false);
+    workspaceEvents.next();
+    expect(api.listEventSubscriptions).toHaveBeenCalledTimes(2);
+
+    pendingSubscriptions.next([]);
+    pendingSubscriptions.complete();
+    await selection;
+
+    expect(workspaceEvents.observed).toBe(true);
+  });
+
   it('loads major subscriptions, sports workspace, fallback events, filters, and paginates', async () => {
     await service.selectMajorEventById(majorEvent.id);
 

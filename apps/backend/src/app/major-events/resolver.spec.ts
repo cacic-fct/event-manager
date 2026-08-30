@@ -492,6 +492,22 @@ describe('MajorEventsResolver', () => {
     );
   });
 
+  it('does not reject a committed major-event mutation when realtime invalidation fails', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockRejectedValue(new Error('Realtime unavailable')),
+    };
+    const { resolver, tx } = createResolver({ realtime });
+    const created = majorEventRecord({ id: 'major-created' });
+    tx.majorEvent.create.mockResolvedValue(created);
+
+    await expect(
+      resolver.createMajorEvent({ id: 'major-created', name: 'SECOMPP' } as never, context() as never),
+    ).resolves.toBe(created);
+
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects payment information when the payment info table is unavailable', async () => {
     const { resolver, prisma } = createResolver({ paymentInfoTableExists: false });
 

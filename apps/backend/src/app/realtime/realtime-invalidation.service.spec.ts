@@ -174,13 +174,17 @@ describe('RealtimeInvalidationService', () => {
     await service.onModuleDestroy();
   });
 
-  it('falls back locally while the Redis subscriber is disconnected and resumes after ready', async () => {
+  it('publishes remotely and falls back locally until Redis resubscription is confirmed', async () => {
     let errorHandler: ((error: Error) => void) | undefined;
     let readyHandler: (() => void) | undefined;
+    let confirmResubscription!: (count: number) => void;
     const subscriber = createSubscriber((event, handler) => {
       if (event === 'error') errorHandler = handler as (error: Error) => void;
       if (event === 'ready') readyHandler = handler as () => void;
     });
+    subscriber.subscribe
+      .mockResolvedValueOnce(1)
+      .mockImplementationOnce(() => new Promise<number>((resolve) => (confirmResubscription = resolve)));
     const stored: MessageEvent = { id: 'cursor-readiness', data: { type: 'EVENT_UPDATED' }, retry: 3_000 };
     const redis = {
       duplicate: jest.fn(() => subscriber),
@@ -194,11 +198,19 @@ describe('RealtimeInvalidationService', () => {
     errorHandler?.(new Error('Disconnected'));
     await service.publish('event:event-1', stored.data as object);
     expect(values).toEqual([stored]);
-    expect(redis.publish).not.toHaveBeenCalled();
+    expect(redis.publish).toHaveBeenCalledTimes(1);
 
     readyHandler?.();
+    await Promise.resolve();
     await service.publish('event:event-1', stored.data as object);
-    expect(redis.publish).toHaveBeenCalledTimes(1);
+    expect(values).toEqual([stored, stored]);
+    expect(redis.publish).toHaveBeenCalledTimes(2);
+
+    confirmResubscription(1);
+    await Promise.resolve();
+    await service.publish('event:event-1', stored.data as object);
+    expect(values).toEqual([stored, stored]);
+    expect(redis.publish).toHaveBeenCalledTimes(3);
 
     subscription.unsubscribe();
     await service.onModuleDestroy();
@@ -234,7 +246,7 @@ describe('RealtimeInvalidationService', () => {
     const received = firstValueFrom(service.watch('event:event-1').pipe(take(1)));
     await expect(service.publish('event:event-1', { type: 'EVENT_UPDATED' })).resolves.toEqual(stored);
     await expect(received).resolves.toEqual(stored);
-    expect(redis.publish).not.toHaveBeenCalled();
+    expect(redis.publish).toHaveBeenCalledTimes(1);
     expect(subscriber.disconnect).toHaveBeenCalled();
   });
 

@@ -61,7 +61,7 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await expect(page.getByRole('img', { name: 'Comprovante pendente' })).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
   await expect(page.getByText(/\d{1,2} [a-z]{3} \d{4}, \d{2}:\d{2}-\d{2}:\d{2}/)).toBeVisible();
-  await expect(page.getByText(/\d{1,2} a \d{1,2} [a-z]{3} \d{4}/)).toBeVisible();
+  await expect(page.getByText(/\d{1,2}(?: [a-z]{3}(?: \d{4})?)? a \d{1,2} [a-z]{3} \d{4}/)).toBeVisible();
   await expect(page.getByText('Grande evento', { exact: true })).toBeVisible();
   await expect(page.getByText('Minicurso', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Presença registrada' })).toBeVisible();
