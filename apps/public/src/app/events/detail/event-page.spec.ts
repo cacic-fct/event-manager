@@ -304,6 +304,34 @@ describe('Event', () => {
     expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
   });
 
+  it('keeps catalog discovery active after the initial prize-draw availability request fails', async () => {
+    TestBed.resetTestingModule();
+    const catalogUpdates = new Subject<void>();
+    const availability = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new Error('Falha transitória')))
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]));
+    const liveFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        prizeDrawsApi: { availability, watch: vi.fn(() => NEVER) },
+        realtimeInvalidations: { watchCatalog: vi.fn(() => catalogUpdates) },
+      },
+    );
+    liveFixture.detectChanges();
+    await liveFixture.whenStable();
+
+    expect((liveFixture.nativeElement as HTMLElement).textContent).not.toContain('Sorteios');
+
+    catalogUpdates.next();
+    await waitForDrawRefresh(liveFixture);
+    liveFixture.detectChanges();
+
+    expect(availability).toHaveBeenCalledTimes(2);
+    expect((liveFixture.nativeElement as HTMLElement).textContent).toContain('Sorteios');
+  });
+
   it('does not query or stream authenticated prize draws for an anonymous event page', async () => {
     TestBed.resetTestingModule();
     const availability = vi.fn(() => of([]));

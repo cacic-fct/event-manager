@@ -1,6 +1,7 @@
 import type { Page, Route } from '@playwright/test';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { expect, test } from './support/e2e-test';
+import { authenticatedUserFixture } from './support/authenticated-user.fixture';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -159,24 +160,6 @@ function realtimeEventFixture() {
     longitude: null,
     locationDescription: 'Laboratório de testes',
   });
-}
-
-function authenticatedUserFixture(): Record<string, unknown> {
-  return {
-    realm_access: { roles: [] },
-    sub: 'user-1',
-    preferredUsername: 'usuario.teste',
-    email: 'usuario.teste@example.edu',
-    roles: [],
-    permissions: [],
-    scopes: ['openid'],
-    claims: {
-      exp: Math.floor(Date.now() / 1000) + 3600,
-      is_onboarded: true,
-      name: 'Usuário Teste',
-      picture: null,
-    },
-  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

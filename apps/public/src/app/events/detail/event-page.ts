@@ -304,7 +304,7 @@ export class Event {
     const subscription = this.prizeDrawsApi
       .availability({ eventIds: [eventId] })
       .pipe(
-        catchError(() => EMPTY),
+        catchError(() => of([])),
         take(1),
         switchMap((initialAvailability) => {
           const hasVisibleDraw = (availability: typeof initialAvailability) =>

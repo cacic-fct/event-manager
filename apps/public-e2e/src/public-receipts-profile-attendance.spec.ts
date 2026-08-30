@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
+import { authenticatedUserFixture } from './support/authenticated-user.fixture';
 import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 import {
   createPublicEvent,
@@ -438,26 +439,6 @@ async function fulfillGraphqlData(route: Route, data: Record<string, unknown>): 
     contentType: 'application/json',
     body: JSON.stringify({ data }),
   });
-}
-
-function authenticatedUserFixture(): Record<string, unknown> {
-  return {
-    realm_access: {
-      roles: [],
-    },
-    sub: 'user-1',
-    preferredUsername: 'usuario.teste',
-    email: 'usuario.teste@example.edu',
-    roles: [],
-    permissions: [],
-    scopes: ['openid'],
-    claims: {
-      exp: Math.floor(Date.now() / 1000) + 3600,
-      is_onboarded: true,
-      name: 'Usuário Teste',
-      picture: null,
-    },
-  };
 }
 
 function paidMajorEventFixture(): PublicMajorEvent {

@@ -216,6 +216,29 @@ describe('RealtimeInvalidationService', () => {
     await service.onModuleDestroy();
   });
 
+  it('falls back locally when the subscriber disconnects while Redis publication is pending', async () => {
+    let errorHandler: ((error: Error) => void) | undefined;
+    const subscriber = createSubscriber((event, handler) => {
+      if (event === 'error') errorHandler = handler as (error: Error) => void;
+    });
+    const stored: MessageEvent = { id: 'cursor-pending', data: { type: 'EVENT_UPDATED' }, retry: 3_000 };
+    const redis = {
+      duplicate: jest.fn(() => subscriber),
+      publish: jest.fn(async () => {
+        errorHandler?.(new Error('Disconnected during publication'));
+        return 1;
+      }),
+    };
+    const service = new RealtimeInvalidationService(redis as never, createReplayMock(stored) as never);
+    await service.onModuleInit();
+    const received = firstValueFrom(service.watch('event:event-1').pipe(take(1)));
+
+    await expect(service.publish('event:event-1', stored.data as object)).resolves.toEqual(stored);
+    await expect(received).resolves.toEqual(stored);
+    expect(redis.publish).toHaveBeenCalledTimes(1);
+    await service.onModuleDestroy();
+  });
+
   it('falls back locally when Redis has no subscriber path or replay recording fails', async () => {
     const replay = createReplayMock();
     replay.record.mockRejectedValueOnce(new Error('Replay unavailable'));

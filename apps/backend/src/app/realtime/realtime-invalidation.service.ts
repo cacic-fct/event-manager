@@ -182,6 +182,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
       const subscriberCount = await publisher.publish(REALTIME_INVALIDATION_REDIS_CHANNEL, payload);
       if (
         shouldDeliverLocally ||
+        !this.subscriberReady ||
         typeof subscriberCount !== 'number' ||
         !Number.isFinite(subscriberCount) ||
         subscriberCount <= 0
