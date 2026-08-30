@@ -136,6 +136,37 @@ describe('watchReplayableEventSource', () => {
     vi.useRealTimers();
   });
 
+  it('cancels a pending recovery instead of reopening after teardown', async () => {
+    vi.useFakeTimers();
+    installFakeEventSource();
+    let resolveRecovery!: () => void;
+    const recover = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRecovery = resolve;
+        }),
+    );
+    const subscription = watchRecoveringReplayableEventSource('/api/events', {
+      decode: (event) => event.data,
+      errorMessage: 'Falha no stream.',
+      recover,
+      retryDelayMs: 100,
+    }).subscribe();
+    const first = FakeEventSource.instances[0] as FakeEventSource;
+    first.readyState = FakeEventSource.CLOSED;
+    first.emitError();
+    await Promise.resolve();
+
+    expect(recover).toHaveBeenCalledOnce();
+    subscription.unsubscribe();
+    resolveRecovery();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(FakeEventSource.instances).toHaveLength(1);
+    expect(first.close).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
   it('backs off and stops after repeated terminal recovery failures', async () => {
     vi.useFakeTimers();
     installFakeEventSource();

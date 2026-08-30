@@ -238,6 +238,19 @@ describe('RealtimeInvalidationService', () => {
     expect(subscriber.disconnect).toHaveBeenCalled();
   });
 
+  it('does not create a second Redis subscriber when module initialization is repeated', async () => {
+    const subscriber = createSubscriber();
+    const redis = { duplicate: jest.fn(() => subscriber) };
+    const service = new RealtimeInvalidationService(redis as never, createReplayMock() as never);
+
+    await service.onModuleInit();
+    await service.onModuleInit();
+
+    expect(redis.duplicate).toHaveBeenCalledTimes(1);
+    expect(subscriber.subscribe).toHaveBeenCalledTimes(1);
+    await service.onModuleDestroy();
+  });
+
   it('completes active watches and disconnects the duplicate on module destroy', async () => {
     jest.useFakeTimers();
     const subscriber = createSubscriber();

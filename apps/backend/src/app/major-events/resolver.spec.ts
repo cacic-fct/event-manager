@@ -404,7 +404,9 @@ describe('MajorEventsResolver', () => {
   });
 
   it('creates draft major events with default labels, nested payment settings, and audit context', async () => {
-    const { resolver, prisma, tx, typesenseSearch, auditLog } = createResolver({ paymentInfoTableExists: true });
+    const { resolver, prisma, tx, typesenseSearch, auditLog, realtime } = createResolver({
+      paymentInfoTableExists: true,
+    });
     const endDate = new Date('2026-10-02T12:00:00.000Z');
     const created = majorEventRecord({
       id: 'major-created',
@@ -479,6 +481,15 @@ describe('MajorEventsResolver', () => {
     );
     expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'major-created' }));
     expect(prisma.$transaction).toHaveBeenCalled();
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'major-event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
   });
 
   it('rejects payment information when the payment info table is unavailable', async () => {
@@ -838,6 +849,28 @@ describe('MajorEventsResolver', () => {
     expect(typesenseSearch.deleteMajorEvent).toHaveBeenCalledWith('major-delete');
   });
 
+  it('publishes a catalog invalidation after a major-event deletion commits', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const { resolver, tx, typesenseSearch } = createResolver({ realtime });
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord({ id: 'major-delete' }));
+
+    await resolver.deleteMajorEvent('major-delete', context() as never);
+
+    expect(typesenseSearch.deleteMajorEvent).toHaveBeenCalledWith('major-delete');
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'major-event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
+  });
+
   it('throws when deleting a missing major event', async () => {
     const { resolver, tx, typesenseSearch } = createResolver();
     tx.majorEvent.findFirst.mockResolvedValue(null);
@@ -870,7 +903,10 @@ function context(sub = 'admin-1') {
   };
 }
 
-function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
+function createResolver(options: {
+  paymentInfoTableExists?: boolean;
+  realtime?: { scope: jest.Mock; publish: jest.Mock };
+} = {}) {
   const tx = {
     majorEvent: {
       create: jest.fn(),
@@ -922,6 +958,10 @@ function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
   const auditLog = {
     record: jest.fn(),
   };
+  const realtime = options.realtime ?? {
+    scope: jest.fn((channel: string) => channel),
+    publish: jest.fn().mockResolvedValue({}),
+  };
   return {
     resolver: new MajorEventsResolver(
       prisma as never,
@@ -929,6 +969,9 @@ function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
       frozenResources as never,
       authorizationPolicy as never,
       auditLog as never,
+      undefined,
+      undefined,
+      realtime as never,
     ),
     prisma,
     tx,
@@ -936,6 +979,7 @@ function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
     frozenResources,
     authorizationPolicy,
     auditLog,
+    realtime,
   };
 }
 

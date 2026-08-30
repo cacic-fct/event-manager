@@ -16,6 +16,8 @@ import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { flushAsync } from '../testing/async-test-helpers';
 import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
 
 const FIXTURE_TIMESTAMP = new Date().toISOString();
@@ -28,6 +30,7 @@ describe('PrizeDrawWorkspaceService', () => {
   let peopleApi: { listRelatedPeople: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
   let snackbar: { open: ReturnType<typeof vi.fn> };
+  let workspaceEvents: Subject<void>;
   let service: PrizeDrawWorkspaceService;
 
   beforeEach(() => {
@@ -38,6 +41,7 @@ describe('PrizeDrawWorkspaceService', () => {
     peopleApi = { listRelatedPeople: vi.fn(() => of([])) };
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
     snackbar = { open: vi.fn() };
+    workspaceEvents = new Subject<void>();
     TestBed.configureTestingModule({
       providers: [
         FormBuilder,
@@ -50,6 +54,7 @@ describe('PrizeDrawWorkspaceService', () => {
         { provide: AdminFeedbackService, useValue: feedback },
         { provide: Router, useValue: router },
         { provide: MatSnackBar, useValue: snackbar },
+        { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
       ],
     });
     service = TestBed.inject(PrizeDrawWorkspaceService);
@@ -212,6 +217,56 @@ describe('PrizeDrawWorkspaceService', () => {
     await service.initialize();
     expect(feedback.error).toHaveBeenCalledWith(expect.any(Error), 'Não foi possível carregar os sorteios.');
     expect(service.loading()).toBe(false);
+  });
+
+  it('refreshes the selected draw and eligibility preview after a workspace invalidation', async () => {
+    const initialDraw = drawFixture({ title: 'Sorteio inicial' });
+    const refreshedDraw = drawFixture({ title: 'Sorteio atualizado' });
+    const refreshedEntry = eligibleFixture({ displayName: 'Grace Hopper', identityKey: 'person:person-2' });
+    api.list.mockReturnValue(of([initialDraw]));
+    api.get.mockReturnValue(of(initialDraw));
+    api.eligibleEntries.mockReturnValue(of([]));
+
+    await service.initialize('draw-1');
+    api.list.mockClear();
+    api.get.mockClear();
+    api.eligibleEntries.mockClear();
+    api.list.mockReturnValueOnce(of([refreshedDraw]));
+    api.get.mockReturnValueOnce(of(refreshedDraw));
+    api.eligibleEntries.mockReturnValueOnce(of([refreshedEntry]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(api.get).toHaveBeenCalledWith('draw-1');
+    expect(api.eligibleEntries).toHaveBeenCalledWith('draw-1');
+    expect(service.selected()?.title).toBe('Sorteio atualizado');
+    expect(service.draws()).toEqual([refreshedDraw]);
+    expect(service.eligibleEntries()).toEqual([refreshedEntry]);
+  });
+
+  it('updates the draw index but leaves an unsaved editor draft untouched during invalidation refresh', async () => {
+    const initialDraw = drawFixture({ title: 'Sorteio inicial' });
+    const refreshedDraw = drawFixture({ title: 'Sorteio remoto' });
+    api.list.mockReturnValue(of([initialDraw]));
+    api.get.mockReturnValue(of(initialDraw));
+    await service.initialize('draw-1');
+    service.form.controls.title.setValue('Alteração local não salva');
+
+    api.list.mockClear();
+    api.get.mockClear();
+    api.list.mockReturnValueOnce(of([refreshedDraw]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(api.get).not.toHaveBeenCalled();
+    expect(service.draws()).toEqual([refreshedDraw]);
+    expect(service.selected()?.title).toBe('Sorteio inicial');
+    expect(service.form.controls.title.value).toBe('Alteração local não salva');
+    expect(service.unsavedChanges()).toBe(true);
   });
 
   it('toggles freeze, undoes the last spin, and deduplicates protected contact requests', async () => {

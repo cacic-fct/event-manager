@@ -315,6 +315,34 @@ describe('AttendancesService', () => {
     }
   });
 
+  it('ignores invalidations from a previously selected event', async () => {
+    vi.useFakeTimers();
+    const restoreEventSource = installFakeEventSource();
+    const nextEvent = createAdminEvent({ id: 'event-2', name: 'Palestra' });
+    api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));
+
+    try {
+      await service.selectAttendanceEvent(event);
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      await service.selectAttendanceEvent(nextEvent);
+      const secondSource = FakeEventSource.instances[1] as FakeEventSource;
+      api.listEventAttendances.mockClear();
+
+      firstSource.emitMessage();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(api.listEventAttendances).not.toHaveBeenCalled();
+
+      secondSource.emitMessage();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(api.listEventAttendances).toHaveBeenCalledTimes(2);
+      expect(api.listEventAttendances).toHaveBeenNthCalledWith(1, nextEvent.id, expect.anything());
+      expect(api.listEventAttendances).toHaveBeenNthCalledWith(2, nextEvent.id, expect.anything());
+    } finally {
+      vi.useRealTimers();
+      restoreEventSource();
+    }
+  });
+
   it('recovers an initial terminal attendance stream through HTTP before reconnecting', async () => {
     const restoreEventSource = installFakeEventSource();
     api.watchEventAttendanceScannerFeed.mockImplementation((eventId: string) => attendanceStream(eventId));

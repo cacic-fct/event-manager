@@ -95,11 +95,16 @@ describe('EventPostCommitEffectsService', () => {
     const typesense = { upsertEvent: jest.fn(), deleteEvent: jest.fn() };
     const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
     const notifications = { scheduleEvent: jest.fn() };
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     const service = new EventPostCommitEffectsService(
       prisma as never,
       typesense as never,
       sitemap as never,
       notifications as never,
+      realtime as never,
     );
 
     await service.syncEvents(['event-1', 'event-2', 'missing-event', 'event-1']);
@@ -112,6 +117,11 @@ describe('EventPostCommitEffectsService', () => {
     expect(typesense.deleteEvent).toHaveBeenCalledWith('event-2');
     expect(typesense.deleteEvent).toHaveBeenCalledWith('missing-event');
     expect(notifications.scheduleEvent).toHaveBeenCalledTimes(1);
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
   });
 
   it('reconciles active and deleted event groups for sports categories', async () => {
@@ -136,5 +146,61 @@ describe('EventPostCommitEffectsService', () => {
     expect(typesense.upsertEventGroup).toHaveBeenCalledWith({ id: 'group-1', name: 'Futsal' });
     expect(typesense.deleteEventGroup).toHaveBeenCalledWith('group-2');
     expect(typesense.deleteEventGroup).toHaveBeenCalledWith('missing-group');
+  });
+
+  it('invalidates the catalog for event deletion and event-group reconciliation', async () => {
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const prisma = {
+      eventGroup: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'group-1', name: 'Futsal', deletedAt: null }]),
+      },
+    };
+    const typesense = {
+      deleteEvent: jest.fn(),
+      upsertEventGroup: jest.fn(),
+    };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      typesense as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await service.deleteEvent('event-deleted');
+    await service.syncEventGroups(['group-1']);
+
+    expect(typesense.deleteEvent).toHaveBeenCalledWith('event-deleted');
+    expect(realtime.publish).toHaveBeenCalledTimes(4);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event-group' }),
+    );
+  });
+
+  it('does not publish when an empty event reconciliation has no committed target', async () => {
+    const realtime = {
+      scope: jest.fn(),
+      publish: jest.fn(),
+    };
+    const service = new EventPostCommitEffectsService(
+      { event: { findMany: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      realtime as never,
+    );
+
+    await service.syncEvents([]);
+    await service.syncEventGroups(['', '']);
+
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 });

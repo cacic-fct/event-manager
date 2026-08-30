@@ -1,15 +1,21 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { registerLocaleData } from '@angular/common';
+import localePtBr from '@angular/common/locales/pt';
 import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
+import { CalendarPreferencesStorageService, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { EMPTY, Subject, of } from 'rxjs';
 import { CalendarApiService } from './calendar-api.service';
 import { Calendar } from './calendar-page';
 import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 import { NetworkStatusService } from '../shared/network-status.service';
+
+registerLocaleData(localePtBr);
 
 describe('Calendar', () => {
   let component: Calendar;
@@ -24,6 +30,8 @@ describe('Calendar', () => {
   let calendarDefaultView = signal('list');
   let catalogEvents: Subject<void>;
   let currentUserEvents: Subject<void>;
+  let liveEvents: PublicEvent[];
+  let subscribedEventIds: Set<string>;
 
   beforeEach(async () => {
     calendarPreferences = {
@@ -35,11 +43,13 @@ describe('Calendar', () => {
       stringValue: vi.fn(() => calendarDefaultView()),
     };
     calendarApi = {
-      getCalendarEvents: vi.fn(() => of([])),
-      getCurrentUserSubscribedEventIds: vi.fn(() => of(new Set<string>())),
+      getCalendarEvents: vi.fn(() => of(liveEvents)),
+      getCurrentUserSubscribedEventIds: vi.fn(() => of(subscribedEventIds)),
     };
     catalogEvents = new Subject<void>();
     currentUserEvents = new Subject<void>();
+    liveEvents = [calendarEvent('event-1', 'Evento inicial')];
+    subscribedEventIds = new Set(['event-1']);
 
     await TestBed.configureTestingModule({
       imports: [Calendar],
@@ -53,6 +63,14 @@ describe('Calendar', () => {
         {
           provide: NetworkStatusService,
           useValue: { isOnline: signal(true), watchStatusChanges: () => EMPTY },
+        },
+        {
+          provide: PublicDataAccessService,
+          useValue: {
+            getCalendarEvents: vi.fn(() => Promise.resolve([])),
+            getLastRefresh: vi.fn(() => Promise.resolve(null)),
+            upsertCalendarEvents: vi.fn(() => Promise.resolve()),
+          },
         },
         {
           provide: RealtimeInvalidationService,
@@ -143,17 +161,36 @@ describe('Calendar', () => {
     expect('setDefaultItemView' in calendarPreferences).toBe(false);
   });
 
-  it('reloads catalog and personal subscription data from their live invalidations', async () => {
-    await vi.waitFor(() => expect(calendarApi.getCalendarEvents).toHaveBeenCalled());
-    const initialCalls = calendarApi.getCalendarEvents.mock.calls.length;
+  it('reloads visible catalog data and personal subscriptions from their live invalidations', async () => {
+    await vi.waitFor(() =>
+      expect(component.calendarState()).toEqual(
+        expect.objectContaining({ status: 'ready', events: [expect.objectContaining({ id: 'event-1' })] }),
+      ),
+    );
 
+    liveEvents = [calendarEvent('event-2', 'Evento atualizado')];
     catalogEvents.next();
-    await vi.waitFor(() => expect(calendarApi.getCalendarEvents.mock.calls.length).toBeGreaterThan(initialCalls));
+    await vi.waitFor(() =>
+      expect(component.calendarState()).toEqual(
+        expect.objectContaining({ status: 'ready', events: [expect.objectContaining({ id: 'event-2' })] }),
+      ),
+    );
 
-    const afterCatalog = calendarApi.getCurrentUserSubscribedEventIds.mock.calls.length;
+    subscribedEventIds = new Set(['event-2']);
     currentUserEvents.next();
     await vi.waitFor(() =>
-      expect(calendarApi.getCurrentUserSubscribedEventIds.mock.calls.length).toBeGreaterThan(afterCatalog),
+      expect(component.calendarState()).toEqual(
+        expect.objectContaining({ status: 'ready', subscribedEventIds: new Set(['event-2']) }),
+      ),
     );
   });
 });
+
+function calendarEvent(id: string, name: string): PublicEvent {
+  return createPublicEvent({
+    id,
+    name,
+    startDate: publicFixtureDateFromNow(1, 12),
+    endDate: publicFixtureDateFromNow(1, 14),
+  });
+}

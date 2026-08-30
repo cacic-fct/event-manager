@@ -27,12 +27,17 @@ export function createInsightsServiceTestContext() {
     del: jest.fn().mockResolvedValue(1),
     scanStream: jest.fn(),
   };
+  const realtime = {
+    scope: jest.fn((channel: string) => `scope:${channel}`),
+    publish: jest.fn().mockResolvedValue({}),
+  };
   const service = new DashboardInsightsService(
     prisma as unknown as PrismaService,
     currentUserContext as unknown as CurrentUserContextService,
     authorizationPolicy as unknown as AuthorizationPolicyService,
     weatherService as unknown as WeatherService,
     redis as unknown as Redis,
+    realtime as never,
   );
 
   return {
@@ -41,6 +46,7 @@ export function createInsightsServiceTestContext() {
     authorizationPolicy,
     weatherService,
     redis,
+    realtime,
     service,
   };
 }

@@ -56,6 +56,20 @@ describe('PublicMapApiService', () => {
     expect(cache.read).toHaveBeenCalledWith('events');
   });
 
+  it('bypasses the map event cache for an invalidation refresh', async () => {
+    const cachedEvent = eventFixture();
+    const refreshedEvent = { ...cachedEvent, id: 'event-2', name: 'Evento atualizado' };
+    cache.read.mockReturnValue([cachedEvent]);
+
+    const response = firstValueFrom(api.getEvents(true));
+    const request = httpTesting.expectOne('/api/graphql');
+    request.flush({ data: { publicMapEvents: [refreshedEvent] } });
+
+    await expect(response).resolves.toEqual([refreshedEvent]);
+    expect(cache.read).not.toHaveBeenCalled();
+    expect(cache.writeEvents).toHaveBeenCalledWith([refreshedEvent], 300_000);
+  });
+
   it('isolates and caches my-event ids by user', async () => {
     const response = firstValueFrom(api.getCurrentUserEventIds('user-1'));
     const request = httpTesting.expectOne('/api/graphql');
@@ -75,6 +89,18 @@ describe('PublicMapApiService', () => {
     expect(result).toEqual(new Set(['event-2']));
     expect(result).toBeInstanceOf(Set);
     httpTesting.expectNone('/api/graphql');
+  });
+
+  it('bypasses a user-specific association cache for an invalidation refresh', async () => {
+    cache.read.mockReturnValue(['event-old']);
+
+    const response = firstValueFrom(api.getCurrentUserEventIds('user-1', true));
+    const request = httpTesting.expectOne('/api/graphql');
+    request.flush({ data: { currentUserMapEventIds: ['event-new'] } });
+
+    await expect(response).resolves.toEqual(new Set(['event-new']));
+    expect(cache.read).not.toHaveBeenCalled();
+    expect(cache.writeUserEventIds).toHaveBeenCalledWith('user-1', ['event-new'], 300_000);
   });
 
   it.each([

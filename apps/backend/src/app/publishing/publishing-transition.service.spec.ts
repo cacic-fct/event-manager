@@ -53,7 +53,7 @@ describe('PublicationTransitionService', () => {
   }
 
   it('publishes a single event and syncs search for the changed target', async () => {
-    const { searchSync, service, stateWriter, targets } = createService();
+    const { realtime, searchSync, service, stateWriter, targets } = createService();
     const user = createUser();
     const sync = { eventIds: ['event-1'], majorEventIds: [] };
     stateWriter.updateEventPublicationState.mockResolvedValue(sync);
@@ -87,6 +87,19 @@ describe('PublicationTransitionService', () => {
     );
     expect(targets.resolveChildEventIds).not.toHaveBeenCalled();
     expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({
+        type: 'PUBLICATION_INVALIDATED',
+        eventIds: ['event-1'],
+        majorEventIds: [],
+      }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
   });
 
   it('does not turn a committed publication into an error when realtime invalidation fails', async () => {
@@ -104,6 +117,29 @@ describe('PublicationTransitionService', () => {
         createUser(),
       ),
     ).resolves.toMatchObject({ result: { ok: true } });
+  });
+
+  it('does not publish a catalog invalidation when no target changed', async () => {
+    const { realtime, service, stateWriter } = createService();
+    stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: [], majorEventIds: [] });
+
+    await expect(
+      service.setPublicationState(
+        {
+          targetType: PublicationTargetType.EVENT,
+          targetId: 'event-1',
+          state: PublicationState.PUBLISHED,
+        },
+        createUser(),
+      ),
+    ).resolves.toMatchObject({
+      result: {
+        affectedEventIds: [],
+        affectedMajorEventIds: [],
+      },
+    });
+
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('schedules a major event with the provided timestamp', async () => {
@@ -406,7 +442,7 @@ describe('PublicationTransitionService', () => {
   });
 
   it('delegates scheduled job publication helpers to the state writer', async () => {
-    const { service, stateWriter } = createService();
+    const { realtime, service, stateWriter } = createService();
     const user = createUser();
     stateWriter.updateEventPublicationState.mockResolvedValue({ eventIds: ['event-1'], majorEventIds: [] });
     stateWriter.updateMajorEventPublicationState.mockResolvedValue({ eventIds: [], majorEventIds: ['major-1'] });
@@ -431,6 +467,15 @@ describe('PublicationTransitionService', () => {
       PublicationState.PUBLISHED,
       null,
       undefined,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(4);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PUBLICATION_INVALIDATED', eventIds: ['event-1'] }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PUBLICATION_INVALIDATED', majorEventIds: ['major-1'] }),
     );
   });
 

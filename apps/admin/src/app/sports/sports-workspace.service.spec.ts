@@ -2,11 +2,12 @@ import { FormBuilder } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { EMPTY, of, throwError } from 'rxjs';
+import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SportsApiService } from './sports-api.service';
 import { SportsWorkspaceService } from './sports-workspace.service';
@@ -15,11 +16,17 @@ import {
   createAdminSportsCategoryRead,
   createAdminSportsTeamRead,
   createAdminSportsTournamentRead,
+  adminSportsRelativeDate,
 } from './sports-story.fixtures';
 import { toLocalDate } from './sports-workspace-form.utils';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('SportsWorkspaceService', () => {
   let workspace: SportsWorkspaceService;
+  let workspaceEvents: Subject<void>;
+  let sportsApi: { tournaments: ReturnType<typeof vi.fn> };
+  let majorEventApi: { listMajorEvents: ReturnType<typeof vi.fn> };
+  let placePresetApi: { listPlacePresets: ReturnType<typeof vi.fn> };
   const permissions = {
     has: vi.fn((permission: string) => permission.startsWith('sports-')),
     hasAll: vi.fn(() => true),
@@ -28,16 +35,21 @@ describe('SportsWorkspaceService', () => {
   beforeEach(() => {
     permissions.has.mockImplementation((permission: string) => permission.startsWith('sports-'));
     permissions.hasAll.mockReturnValue(true);
+    workspaceEvents = new Subject<void>();
+    sportsApi = { tournaments: vi.fn(() => of([])) };
+    majorEventApi = { listMajorEvents: vi.fn(() => of([])) };
+    placePresetApi = { listPlacePresets: vi.fn(() => of([])) };
     TestBed.configureTestingModule({
       providers: [
         FormBuilder,
         SportsWorkspaceService,
-        { provide: SportsApiService, useValue: {} },
-        { provide: MajorEventApiService, useValue: {} },
+        { provide: SportsApiService, useValue: sportsApi },
+        { provide: MajorEventApiService, useValue: majorEventApi },
         { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
-        { provide: PlacePresetApiService, useValue: {} },
+        { provide: PlacePresetApiService, useValue: placePresetApi },
         { provide: PermissionsService, useValue: permissions },
+        { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
       ],
@@ -219,6 +231,47 @@ describe('SportsWorkspaceService', () => {
       scorePointStep: 1,
     });
     expect(workspace.categoryForm.controls.sport.invalid).toBe(true);
+  });
+
+  it('refreshes the major-event index from a live invalidation and stops after destruction', async () => {
+    permissions.has.mockReturnValue(true);
+    const initialMajorEvent = {
+      id: 'major-event-1',
+      name: 'Semana inicial',
+      startDate: adminSportsRelativeDate(1),
+      endDate: adminSportsRelativeDate(2),
+    };
+    const refreshedMajorEvent = {
+      ...initialMajorEvent,
+      name: 'Semana atualizada',
+    };
+    const tournament = {
+      tournament: { id: 'tournament-1', majorEventId: initialMajorEvent.id },
+      majorEvent: initialMajorEvent,
+    };
+    let currentMajorEvents = [initialMajorEvent];
+    let currentTournaments: typeof tournament[] = [];
+    majorEventApi.listMajorEvents.mockImplementation(() => of(currentMajorEvents));
+    sportsApi.tournaments.mockImplementation(() => of(currentTournaments));
+
+    await workspace.initialize();
+    expect(workspace.majorEventWorkspaceItems().map((item) => item.majorEvent.name)).toEqual(['Semana inicial']);
+
+    currentMajorEvents = [refreshedMajorEvent];
+    currentTournaments = [{ ...tournament, majorEvent: refreshedMajorEvent }];
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(majorEventApi.listMajorEvents).toHaveBeenCalledTimes(2);
+    expect(sportsApi.tournaments).toHaveBeenCalledTimes(2);
+    expect(workspace.majorEventWorkspaceItems().map((item) => item.majorEvent.name)).toEqual(['Semana atualizada']);
+
+    workspace.ngOnDestroy();
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(majorEventApi.listMajorEvents).toHaveBeenCalledTimes(2);
+    expect(sportsApi.tournaments).toHaveBeenCalledTimes(2);
   });
 
   it('applies format, roster, period, score, and timer defaults when selecting a sport', () => {

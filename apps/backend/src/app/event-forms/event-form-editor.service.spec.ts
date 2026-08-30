@@ -30,6 +30,7 @@ describe('EventFormEditorService', () => {
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let auditLog: ReturnType<typeof createAuditLog>;
   let images: ReturnType<typeof createImages>;
+  let realtime: { scope: jest.Mock; publish: jest.Mock };
 
   const authenticatedUser: AuthenticatedUser = {
     realm_access: { roles: [] },
@@ -54,11 +55,16 @@ describe('EventFormEditorService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     auditLog = createAuditLog();
     images = createImages();
+    realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     service = new EventFormEditorService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       auditLog as unknown as jest.Mocked<AuditLogService>,
       images as unknown as jest.Mocked<EventFormImagesService>,
+      realtime as never,
     );
   });
 
@@ -187,6 +193,15 @@ describe('EventFormEditorService', () => {
       }),
       prisma,
     );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-created' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
   });
 
   it('updates forms and only keeps live results when public results stay enabled', async () => {
@@ -287,6 +302,11 @@ describe('EventFormEditorService', () => {
         summary: 'Formulário "Pesquisa revisada" atualizado.',
       }),
       prisma,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
     );
   });
 
@@ -452,6 +472,11 @@ describe('EventFormEditorService', () => {
         summary: 'Formulário "Pesquisa de camiseta" excluído.',
       }),
       prisma,
+    );
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'EVENT_FORMS_INVALIDATED', formId: 'form-1' }),
     );
   });
 });

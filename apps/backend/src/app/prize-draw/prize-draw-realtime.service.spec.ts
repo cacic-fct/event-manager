@@ -28,6 +28,14 @@ describe('PrizeDrawRealtimeService', () => {
       expect.stringContaining('"type":"SPIN_PRESENTED"'),
     );
     expect(context.invalidations.publish).toHaveBeenCalledTimes(2);
+    expect(context.invalidations.publish).toHaveBeenCalledWith(
+      'admin-workspace',
+      expect.objectContaining({ type: 'PRIZE_DRAWS_INVALIDATED', drawId: 'draw-1' }),
+    );
+    expect(context.invalidations.publish).toHaveBeenCalledWith(
+      'public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
   });
 
   it('delivers locally when Redis pub/sub is unavailable and releases the channel after unsubscribe', async () => {

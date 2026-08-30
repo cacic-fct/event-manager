@@ -6,7 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { parseDateOnly } from '@cacic-fct/shared-utils';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import {
   adminFixtureDateFromNow,
   createAdminEvent,
@@ -23,6 +23,8 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { flushAsync } from '../testing/async-test-helpers';
 import { SubscriptionsService } from './subscriptions.service';
 
 describe('SubscriptionsService', () => {
@@ -49,6 +51,7 @@ describe('SubscriptionsService', () => {
   let feedback: { error: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
   let permissions: { has: ReturnType<typeof vi.fn> };
+  let workspaceEvents: Subject<void>;
 
   const event = createAdminEvent({ id: 'event-1', name: 'Credenciamento', majorEventId: 'major-event-1' });
   const majorEvent = createAdminMajorEvent({ id: 'major-event-1', name: 'Semana' });
@@ -94,6 +97,7 @@ describe('SubscriptionsService', () => {
     feedback = { error: vi.fn() };
     router = { navigate: vi.fn() };
     permissions = { has: vi.fn(() => true) };
+    workspaceEvents = new Subject<void>();
 
     TestBed.configureTestingModule({
       providers: [
@@ -111,6 +115,14 @@ describe('SubscriptionsService', () => {
         { provide: AdminFeedbackService, useValue: feedback },
         { provide: Router, useValue: router },
         { provide: DOCUMENT, useValue: document },
+        {
+          provide: RealtimeApiService,
+          useValue: {
+            watchWorkspace: vi.fn(() => workspaceEvents),
+            watchEventSubscriptions: vi.fn(() => workspaceEvents),
+            watchMajorEventSubscriptions: vi.fn(() => workspaceEvents),
+          },
+        },
       ],
     });
 
@@ -158,6 +170,27 @@ describe('SubscriptionsService', () => {
     expect(service.eventSubscriptionForm.controls.eventId.value).toBe(event.id);
   });
 
+  it('refetches the selected event subscriptions after a live invalidation and stops after teardown', async () => {
+    await service.selectEvent(event);
+    const refreshed = createAdminWorkspaceEventSubscription({ id: 'event-subscription-2' }, person, event);
+    api.listEventSubscriptions.mockClear();
+    api.listEventSubscriptions.mockReturnValueOnce(of([refreshed]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listEventSubscriptions).toHaveBeenCalledOnce();
+    expect(api.listEventSubscriptions).toHaveBeenCalledWith(event.id, { skip: 0, take: 51 });
+    expect(service.eventSubscriptions()).toEqual([refreshed]);
+
+    service.closeLiveUpdates();
+    api.listEventSubscriptions.mockClear();
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listEventSubscriptions).not.toHaveBeenCalled();
+  });
+
   it('loads major subscriptions, sports workspace, fallback events, filters, and paginates', async () => {
     await service.selectMajorEventById(majorEvent.id);
 
@@ -180,6 +213,35 @@ describe('SubscriptionsService', () => {
     api.listMajorEventSubscriptions.mockReturnValueOnce(of([]));
     await service.loadMajorEventSubscriptions();
     expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 200 });
+  });
+
+  it('refreshes major subscriptions from a live invalidation without overwriting an editor draft', async () => {
+    await service.selectMajorEventById(majorEvent.id);
+    service.selectMajorEventSubscription(majorSubscription, false);
+    service.enableMajorEventEdit();
+    service.majorEventEditForm.controls.paymentTier.setValue('Tier local');
+
+    const refreshed = createAdminWorkspaceMajorEventSubscription(
+      { id: majorSubscription.id, paymentTier: 'Tier remoto' },
+      person,
+      majorEvent,
+    );
+    api.listMajorEventSubscriptions.mockClear();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(of([refreshed]));
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledOnce();
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledWith(majorEvent.id, {
+      query: undefined,
+      skip: 0,
+      take: 51,
+    });
+    expect(service.majorEventSubscriptions()).toEqual([refreshed]);
+    expect(service.selectedMajorEventSubscription()).toBe(majorSubscription);
+    expect(service.majorEventEditForm.controls.paymentTier.value).toBe('Tier local');
+    expect(service.editMode()).toBe(true);
   });
 
   it('tracks sports assignment selections and handles review cancellation, success, and failure', async () => {

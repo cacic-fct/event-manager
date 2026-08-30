@@ -14,6 +14,7 @@ import {
   createAdminDashboardInconsistency,
   createAdminWorkspaceDashboardInsights,
 } from '../testing/admin-entity-fixtures';
+import { flushAsync } from '../testing/async-test-helpers';
 import { Home } from './home';
 
 describe('Home', () => {
@@ -23,6 +24,7 @@ describe('Home', () => {
     getWorkspaceDashboardInsights: ReturnType<typeof vi.fn>;
   };
   let workspaceEvents: Subject<void>;
+  let fixtureDestroyed = false;
   const user = signal(createAdminAuthenticatedUser());
 
   beforeEach(async () => {
@@ -30,6 +32,7 @@ describe('Home', () => {
       getWorkspaceDashboardInsights: vi.fn(() => of(createAdminWorkspaceDashboardInsights())),
     };
     workspaceEvents = new Subject<void>();
+    fixtureDestroyed = false;
     user.set(createAdminAuthenticatedUser());
 
     await TestBed.configureTestingModule({
@@ -49,7 +52,7 @@ describe('Home', () => {
   });
 
   afterEach(() => {
-    fixture.destroy();
+    if (!fixtureDestroyed) fixture.destroy();
   });
 
   it('creates action links for dashboard targets', () => {
@@ -270,5 +273,18 @@ describe('Home', () => {
     older.complete();
 
     expect(component.insights()).toBe(newest);
+  });
+
+  it('stops refreshing when the dashboard component is destroyed', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    dashboardApi.getWorkspaceDashboardInsights.mockClear();
+
+    fixture.destroy();
+    fixtureDestroyed = true;
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(dashboardApi.getWorkspaceDashboardInsights).not.toHaveBeenCalled();
   });
 });
