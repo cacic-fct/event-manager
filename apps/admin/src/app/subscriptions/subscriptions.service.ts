@@ -6,7 +6,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom, from } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -50,6 +50,7 @@ import type {
   MajorEventSportsParticipant,
   MajorEventSportsSubscriptionWorkspace,
 } from '../graphql/subscription-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 const EXPORT_PAGE_SIZE = 1000;
@@ -70,6 +71,11 @@ export class SubscriptionsService {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
+  private readonly realtime = inject(RealtimeApiService);
+  private eventLiveSubscription?: Subscription;
+  private majorEventLiveSubscription?: Subscription;
+  private eventSubscriptionsRequest = 0;
+  private majorEventSubscriptionsRequest = 0;
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.group({
@@ -173,7 +179,10 @@ export class SubscriptionsService {
     this.setMajorEventEditMode(false);
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((majorEventId) => this.selectedMajorEventId.set(majorEventId));
+      .subscribe((majorEventId) => {
+        this.selectedMajorEventId.set(majorEventId);
+        if (!majorEventId) this.stopMajorEventLiveUpdates();
+      });
     this.majorEventSearchForm.controls.query.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((query) => this.majorEventSearchQuery.set(query));
@@ -186,6 +195,10 @@ export class SubscriptionsService {
       control: this.majorEventSubscriptionSearchForm.controls.query,
       destroyRef: this.destroyRef,
       search: () => this.searchMajorEventSubscriptions(),
+    });
+    this.destroyRef.onDestroy(() => {
+      this.eventLiveSubscription?.unsubscribe();
+      this.majorEventLiveSubscription?.unsubscribe();
     });
   }
 
@@ -218,20 +231,24 @@ export class SubscriptionsService {
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
+    this.stopMajorEventLiveUpdates();
     void this.router.navigate(['/subscriptions/event', eventItem.id]);
     this.selectedEvent.set(eventItem);
     this.eventSubscriptionForm.controls.eventId.setValue(eventItem.id);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventItem.id);
+    this.watchEventSubscriptions(eventItem.id);
   }
 
   async selectEventById(eventId: string): Promise<void> {
+    this.stopMajorEventLiveUpdates();
     if (this.selectedEvent()?.id !== eventId) {
       this.selectedEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
     }
     this.eventSubscriptionForm.controls.eventId.setValue(eventId);
     resetPagination(this.eventSubscriptionsPagination);
     await this.loadEventSubscriptions(eventId);
+    this.watchEventSubscriptions(eventId);
   }
 
   async loadEventSubscriptions(eventId?: string): Promise<void> {
@@ -240,16 +257,19 @@ export class SubscriptionsService {
       this.eventSubscriptions.set([]);
       return;
     }
-    this.eventSubscriptions.set(
-      applyPagedResult(
-        await firstValueFrom(
-          this.api.listEventSubscriptions(resolvedEventId, {
-            ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
-          }),
-        ),
-        this.eventSubscriptionsPagination,
-      ),
+    const request = ++this.eventSubscriptionsRequest;
+    const subscriptions = await firstValueFrom(
+      this.api.listEventSubscriptions(resolvedEventId, {
+        ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
+      }),
     );
+    if (
+      request !== this.eventSubscriptionsRequest ||
+      this.eventSubscriptionForm.controls.eventId.value !== resolvedEventId
+    ) {
+      return;
+    }
+    this.eventSubscriptions.set(applyPagedResult(subscriptions, this.eventSubscriptionsPagination));
   }
 
   async previousEventSubscriptionsPage(): Promise<void> {
@@ -286,6 +306,8 @@ export class SubscriptionsService {
   }
 
   async selectMajorEventById(majorEventId: string, navigate = true): Promise<void> {
+    this.eventLiveSubscription?.unsubscribe();
+    this.eventLiveSubscription = undefined;
     this.majorEventSubscriptionSelectionRequest++;
     this.majorEventForm.controls.majorEventId.setValue(majorEventId);
     if (navigate) {
@@ -293,9 +315,10 @@ export class SubscriptionsService {
     }
     resetPagination(this.majorEventSubscriptionsPagination);
     await this.loadMajorEventSubscriptions();
+    this.watchMajorEventSubscriptions(majorEventId);
   }
 
-  async loadMajorEventSubscriptions(): Promise<void> {
+  async loadMajorEventSubscriptions(options: { preserveSelection?: boolean } = {}): Promise<void> {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventSubscriptions.set([]);
@@ -306,6 +329,8 @@ export class SubscriptionsService {
       this.sportsParticipantTeams.set({});
       return;
     }
+    const request = ++this.majorEventSubscriptionsRequest;
+    const selected = options.preserveSelection ? this.selectedMajorEventSubscription() : null;
     const [subscriptions, sportsWorkspace] = await Promise.all([
       firstValueFrom(
         this.api.listMajorEventSubscriptions(majorEventId, {
@@ -317,6 +342,9 @@ export class SubscriptionsService {
         ? firstValueFrom(this.api.majorEventSportsWorkspace(majorEventId))
         : Promise.resolve(null),
     ]);
+    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
     this.majorEventSportsWorkspace.set(sportsWorkspace);
     this.sportsAssignedTeams.set(
       Object.fromEntries(
@@ -346,7 +374,42 @@ export class SubscriptionsService {
     this.majorEventEvents.set(events);
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
-    this.selectMajorEventSubscription(null, false);
+    if (!options.preserveSelection) {
+      this.selectMajorEventSubscription(null, false);
+      return;
+    }
+    if (!selected || this.editMode()) return;
+    const refreshed = visibleSubscriptions.find((item) => item.id === selected.id);
+    if (refreshed) this.selectMajorEventSubscription(refreshed, false);
+  }
+
+  private watchEventSubscriptions(eventId: string): void {
+    this.eventLiveSubscription?.unsubscribe();
+    this.eventLiveSubscription = this.realtime
+      .watchEventSubscriptions(eventId, () => from(this.loadEventSubscriptions(eventId)))
+      .subscribe(() => void this.loadEventSubscriptions(eventId));
+  }
+
+  private watchMajorEventSubscriptions(majorEventId: string): void {
+    this.majorEventLiveSubscription?.unsubscribe();
+    this.majorEventLiveSubscription = this.realtime
+      .watchMajorEventSubscriptions(majorEventId, () =>
+        from(this.loadMajorEventSubscriptions({ preserveSelection: true })),
+      )
+      .subscribe(() => void this.loadMajorEventSubscriptions({ preserveSelection: true }));
+  }
+
+  private stopMajorEventLiveUpdates(): void {
+    this.majorEventLiveSubscription?.unsubscribe();
+    this.majorEventLiveSubscription = undefined;
+  }
+
+  closeLiveUpdates(): void {
+    this.eventSubscriptionsRequest++;
+    this.majorEventSubscriptionsRequest++;
+    this.eventLiveSubscription?.unsubscribe();
+    this.eventLiveSubscription = undefined;
+    this.stopMajorEventLiveUpdates();
   }
 
   sportsAssignedTeamId(applicationId: string): string | null {

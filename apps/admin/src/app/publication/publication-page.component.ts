@@ -20,7 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, from } from 'rxjs';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
@@ -35,6 +35,7 @@ import {
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationNodes,
@@ -82,6 +83,7 @@ export class PublicationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(RealtimeApiService);
 
   readonly loading = signal(false);
   readonly workspace = signal<PublicationWorkspace | null>(null);
@@ -137,6 +139,10 @@ export class PublicationPageComponent {
       this.selectRequestedNode();
     });
     void this.refresh();
+    this.realtime
+      .watchWorkspace(() => from(this.refresh()))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.refresh());
   }
 
   async refresh(): Promise<void> {

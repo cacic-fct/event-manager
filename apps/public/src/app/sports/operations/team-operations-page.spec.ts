@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,16 +8,27 @@ import { SportsTeamOperationsPage } from './team-operations-page';
 import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './sports-operations.fixtures';
 import type { SportsLineupRead } from './sports-operations.types';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
+import type { SportsViewerInvalidation } from '../viewer/sports-viewer.types';
 
 describe('SportsTeamOperationsPage', () => {
   let submitTeamChange: ReturnType<typeof vi.fn>;
   let lineup: ReturnType<typeof vi.fn>;
+  let realtimeStreams: Subject<SportsViewerInvalidation>[];
+  let watchMatch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     submitTeamChange = vi.fn(() => of('change-1'));
     lineup = vi.fn(() => of(createSportsLineupRead()));
+    realtimeStreams = [];
+    watchMatch = vi.fn(() => {
+      const stream = new Subject<SportsViewerInvalidation>();
+      realtimeStreams.push(stream);
+      return stream;
+    });
     TestBed.configureTestingModule({
       providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -33,11 +45,15 @@ describe('SportsTeamOperationsPage', () => {
             representativeWorkspace: vi.fn(() => of(createRepresentativeTeamWorkspace())),
           },
         },
+        { provide: SportsViewerRealtimeService, useValue: { watchMatch } },
       ],
     });
   });
 
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.resetTestingModule();
+  });
 
   it('retains the member identifier when the submission fails', async () => {
     submitTeamChange.mockReturnValueOnce(throwError(() => new Error('Servidor indisponível')));
@@ -82,6 +98,74 @@ describe('SportsTeamOperationsPage', () => {
     expect(page.lineupReadOnly()).toBe(true);
     expect(lineup).toHaveBeenCalledWith(match.id, 'registration-home');
     expect(page.lineupMembers()).not.toHaveLength(0);
+  });
+
+  it('refreshes the selected workspace and lineup while preserving profile and member drafts', async () => {
+    vi.useFakeTimers();
+    const initialWorkspace = createRepresentativeTeamWorkspace();
+    const refreshedWorkspace = createRepresentativeTeamWorkspace();
+    refreshedWorkspace.teamRevision = initialWorkspace.teamRevision + 1;
+    refreshedWorkspace.matches = refreshedWorkspace.matches.map((match) =>
+      match.id === 'match-story' ? { ...match, state: 'CHECK_IN' as const } : match,
+    );
+    const refreshedLineup = createSportsLineupRead({ selected: false });
+    const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
+      typeof vi.fn
+    >;
+    representativeWorkspace.mockReturnValueOnce(of(initialWorkspace)).mockReturnValueOnce(of(refreshedWorkspace));
+    lineup.mockReturnValueOnce(of(createSportsLineupRead())).mockReturnValueOnce(of(refreshedLineup));
+    const page = createPage();
+    page.ngOnInit();
+
+    page.profileForm.controls.name.setValue('Nome editado localmente');
+    page.profileForm.markAsDirty();
+    page.identityForm.controls.value.setValue('atleta@example.edu');
+    realtimeStreams[0]?.next({ type: 'MATCH_PROJECTION_CHANGED', matchId: 'match-story', revision: 9 });
+    await vi.advanceTimersByTimeAsync(75);
+
+    expect(page.workspace()?.teamRevision).toBe(refreshedWorkspace.teamRevision);
+    expect(page.selectedMatch()?.state).toBe('CHECK_IN');
+    expect(page.profileForm.controls.name.value).toBe('Nome editado localmente');
+    expect(page.identityForm.controls.value.value).toBe('atleta@example.edu');
+    expect(page.lineupMembers().every((member) => !member.selected)).toBe(true);
+    expect(watchMatch).toHaveBeenCalledWith('match-story');
+  });
+
+  it('reconnects the selected public match stream after terminal failure through an authenticated refresh', () => {
+    const workspace = createRepresentativeTeamWorkspace();
+    const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
+      typeof vi.fn
+    >;
+    representativeWorkspace.mockReturnValue(of(workspace));
+    const page = createPage();
+    page.ngOnInit();
+    const firstStream = realtimeStreams[0];
+    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    firstStream.error(new Error('closed'));
+
+    expect(representativeWorkspace).toHaveBeenCalledTimes(2);
+    expect(watchMatch).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops reacting to the selected match stream after destruction', () => {
+    const page = createPage();
+    page.ngOnInit();
+    const representativeWorkspace = TestBed.inject(SportsOperationsApiService).representativeWorkspace as ReturnType<
+      typeof vi.fn
+    >;
+    page.ngOnDestroy();
+    realtimeStreams[0]?.next({ type: 'MATCH_PROJECTION_CHANGED', matchId: 'match-story', revision: 9 });
+
+    expect(representativeWorkspace).toHaveBeenCalledOnce();
+  });
+
+  it('does not open a public match stream during server rendering', () => {
+    TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
+    const page = createPage();
+
+    page.ngOnInit();
+
+    expect(watchMatch).not.toHaveBeenCalled();
   });
 });
 

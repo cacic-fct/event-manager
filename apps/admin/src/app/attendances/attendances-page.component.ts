@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -21,7 +21,7 @@ import { MajorEventAttendancesComponent } from './major-event-attendances.compon
     './attendances-page.component.scss',
   ],
 })
-export class AttendancesPageComponent {
+export class AttendancesPageComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(AttendancesService);
@@ -58,5 +58,9 @@ export class AttendancesPageComponent {
 
     const majorEventId = this.workspace.majorEventAttendanceForm.controls.majorEventId.value;
     void this.router.navigate(majorEventId ? ['/attendances/major-event', majorEventId] : ['/attendances']);
+  }
+
+  ngOnDestroy(): void {
+    this.workspace.closeAttendanceLiveStream();
   }
 }

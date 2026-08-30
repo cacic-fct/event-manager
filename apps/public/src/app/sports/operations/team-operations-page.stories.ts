@@ -3,6 +3,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { NEVER, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './sports-operations.fixtures';
 import type { RepresentativeTeamChange } from './sports-operations.types';
 import { SportsTeamOperationsPage } from './team-operations-page';
@@ -90,6 +91,10 @@ const meta: Meta<TeamOperationsStoryArgs> = {
             forfeit: () => of('forfeit-story'),
             reviewTeamApplication: () => of('application-story'),
           },
+        },
+        {
+          provide: SportsViewerRealtimeService,
+          useValue: { watchMatch: () => NEVER },
         },
       ],
     }),

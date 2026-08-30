@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
   EventFormDraft as EventFormDraftModel,
@@ -14,6 +14,11 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { eventFormAuditRecord } from './event-form-audit';
 import { assertQuestionsHaveTitles, parseElementsJson } from './event-form-answer-normalization';
 import { EventFormImagesService, parseEventFormImageReferences } from './event-form-images.service';
@@ -45,6 +50,11 @@ export class EventFormEditorService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly auditLog: AuditLogService,
     private readonly images: EventFormImagesService,
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
@@ -129,7 +139,9 @@ export class EventFormEditorService {
       });
 
       await this.images.deleteObjectsBestEffort(result.removedImageKeys);
-      return toEventFormModel(result.updated);
+      const model = toEventFormModel(result.updated);
+      await this.publishInvalidations(model.id);
+      return model;
     }
 
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Create], {
@@ -180,7 +192,9 @@ export class EventFormEditorService {
       return created;
     });
 
-    return toEventFormModel(created);
+    const model = toEventFormModel(created);
+    await this.publishInvalidations(model.id);
+    return model;
   }
 
   async saveDraft(
@@ -291,7 +305,21 @@ export class EventFormEditorService {
       return deleted;
     });
 
-    return toEventFormModel(updated);
+    const model = toEventFormModel(updated);
+    await this.publishInvalidations(model.id);
+    return model;
+  }
+
+  private async publishInvalidations(formId: string): Promise<void> {
+    const payload = {
+      type: 'EVENT_FORMS_INVALIDATED',
+      formId,
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
   }
 }
 

@@ -1,0 +1,214 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class RealtimeFingerprintService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async currentUser(personId: string): Promise<object> {
+    const [
+      attendances,
+      eventSubscriptions,
+      eventGroupSubscriptions,
+      majorEventSubscriptions,
+      certificates,
+      applications,
+      participants,
+      lecturers,
+      attendanceCollectors,
+      teamRepresentatives,
+      officialAssignments,
+      teamMemberships,
+      registrationMemberships,
+      rosterEntries,
+      roleAssignments,
+      roleAssignmentScopes,
+      permissionGroupMemberships,
+    ] = await Promise.all([
+        this.prisma.eventAttendance.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { createdAt: true, attendedAt: true },
+        }),
+        this.prisma.eventSubscription.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { createdAt: true, deletedAt: true },
+        }),
+        this.prisma.eventGroupSubscription.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { createdAt: true, deletedAt: true },
+        }),
+        this.prisma.majorEventSubscription.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.certificate.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.sportsPlayerApplication.aggregate({
+          where: { applicantPersonId: personId },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.sportsTournamentParticipant.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.eventLecturer.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { createdAt: true },
+        }),
+        this.prisma.eventAttendanceCollector.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { createdAt: true },
+        }),
+        this.prisma.sportsTeamRepresentative.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, revokedAt: true },
+        }),
+        this.prisma.sportsOfficialAssignment.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, revokedAt: true },
+        }),
+        this.prisma.sportsTeamMember.aggregate({
+          where: { participant: { personId } },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.sportsRegistrationMember.aggregate({
+          where: { teamMember: { participant: { personId } } },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.sportsMatchRosterEntry.aggregate({
+          where: { registrationMember: { teamMember: { participant: { personId } } } },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.eventManagerRoleAssignment.aggregate({
+          where: {
+            OR: [{ personId }, { group: { members: { some: { personId } } } }],
+          },
+          _count: true,
+          _max: { updatedAt: true, validFrom: true, validUntil: true, archivedAt: true },
+        }),
+        this.prisma.eventManagerRoleAssignmentScope.aggregate({
+          where: {
+            assignment: {
+              OR: [{ personId }, { group: { members: { some: { personId } } } }],
+            },
+          },
+          _count: true,
+          _max: { updatedAt: true, validFrom: true, validUntil: true, archivedAt: true },
+        }),
+        this.prisma.eventManagerPermissionGroupMember.aggregate({
+          where: { personId },
+          _count: true,
+          _max: { updatedAt: true, validFrom: true, validUntil: true, archivedAt: true },
+        }),
+      ]);
+
+    return {
+      type: 'CURRENT_USER_DATA_INVALIDATED',
+      minute: Math.floor(Date.now() / 60_000),
+      attendances,
+      eventSubscriptions,
+      eventGroupSubscriptions,
+      majorEventSubscriptions,
+      certificates,
+      applications,
+      participants,
+      lecturers,
+      attendanceCollectors,
+      teamRepresentatives,
+      officialAssignments,
+      teamMemberships,
+      registrationMemberships,
+      rosterEntries,
+      roleAssignments,
+      roleAssignmentScopes,
+      permissionGroupMemberships,
+    };
+  }
+
+  async eventSubscriptions(eventId: string): Promise<object> {
+    const [subscriptions, selections, rankedSubscriptions] = await Promise.all([
+      this.prisma.eventSubscription.aggregate({
+        where: { eventId },
+        _count: true,
+        _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventSubscriptionEventSelection.aggregate({
+        where: { eventId },
+        _count: true,
+        _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventSubscription.aggregate({
+        where: { selectedEvents: { some: { eventId } } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+    ]);
+    return { type: 'EVENT_SUBSCRIPTIONS_INVALIDATED', subscriptions, selections, rankedSubscriptions };
+  }
+
+  async majorEventSubscriptions(majorEventId: string): Promise<object> {
+    const [subscriptions, selections, receipts, applications, participants, teams, members] = await Promise.all([
+      this.prisma.majorEventSubscription.aggregate({
+        where: { majorEventId },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventSubscriptionEventSelection.aggregate({
+        where: { subscription: { majorEventId } },
+        _count: true,
+        _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventReceipt.aggregate({
+        where: { subscription: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true },
+      }),
+      this.prisma.sportsPlayerApplication.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTournamentParticipant.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTeam.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTeamMember.aggregate({
+        where: { participant: { tournament: { majorEventId } } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+    ]);
+    return {
+      type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
+      subscriptions,
+      selections,
+      receipts,
+      applications,
+      participants,
+      teams,
+      members,
+    };
+  }
+}

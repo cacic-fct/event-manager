@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogActorType, AuditLogOperation, PublicationState } from '@prisma/client';
@@ -10,6 +10,11 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { assertPersonIsEventLecturer } from './event-form-eligibility';
 import { eventFormAuditRecord } from './event-form-audit';
 import { toEventFormModel } from './event-form-model.mapper';
@@ -31,6 +36,11 @@ export class EventFormPublicationWorkflowService {
     private readonly currentUserContext: CurrentUserContextService,
     private readonly formNotifications: EventFormNotificationService,
     private readonly auditLog: AuditLogService,
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async publishForm(
@@ -75,7 +85,9 @@ export class EventFormPublicationWorkflowService {
         );
         return updated;
       });
-      return toEventFormModel(scheduled);
+      const model = toEventFormModel(scheduled);
+      await this.publishInvalidations(model.id);
+      return model;
     }
 
     return this.publishFormNow(form.id, user?.sub, user);
@@ -149,11 +161,15 @@ export class EventFormPublicationWorkflowService {
       return unpublished;
     });
 
-    return toEventFormModel(updated);
+    const model = toEventFormModel(updated);
+    await this.publishInvalidations(model.id);
+    return model;
   }
 
   async publishDueScheduledForms(): Promise<number> {
-    return publishDueScheduledEventForms(this.prisma, this.formNotifications, this.auditLog);
+    const published = await publishDueScheduledEventForms(this.prisma, this.formNotifications, this.auditLog);
+    if (published > 0) await this.publishInvalidations();
+    return published;
   }
 
   async notifyDueAvailableLinks(): Promise<number> {
@@ -165,6 +181,20 @@ export class EventFormPublicationWorkflowService {
     actorId: string | undefined,
     actor: AuditRecordOptions['actor'],
   ): Promise<EventFormModel> {
-    return publishEventFormNow(this.prisma, this.formNotifications, formId, actorId, this.auditLog, actor);
+    const model = await publishEventFormNow(this.prisma, this.formNotifications, formId, actorId, this.auditLog, actor);
+    await this.publishInvalidations(model.id);
+    return model;
+  }
+
+  private async publishInvalidations(formId?: string): Promise<void> {
+    const payload = {
+      type: 'EVENT_FORMS_INVALIDATED',
+      formId: formId ?? null,
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
   }
 }

@@ -12,6 +12,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -46,6 +47,7 @@ import { PublicMapFilterDialog, PublicMapFilterDialogData } from './public-map-f
 import { DEFAULT_PUBLIC_MAP_FILTERS, PublicMapFilters } from './public-map.models';
 import { PublicMapStateService } from './public-map-state.service';
 import { PUBLIC_MAP_EVENT_QUERY_PARAM, averageCoordinates, filterPublicMapEvents } from './public-map.utils';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 
 type MapState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; message: string };
 
@@ -84,6 +86,7 @@ export class PublicMapPage implements AfterViewInit {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly stateStorage = inject(PublicMapStateService);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
 
   readonly state = signal<MapState>({ status: 'loading' });
@@ -94,6 +97,7 @@ export class PublicMapPage implements AfterViewInit {
   readonly utilityMenuOpen = signal(false);
   readonly utilityMenuMounted = signal(false);
   readonly mapInteractionReady = signal(false);
+  private readonly dataRefresh = signal(0);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly locationPermission = this.geolocation.permission;
   readonly isLocating = this.geolocation.isRequesting;
@@ -126,6 +130,7 @@ export class PublicMapPage implements AfterViewInit {
   private utilityMenuAnimationFrame: number | null = null;
   private mapRenderRevision = 0;
   private lastMapNotice: string | null = null;
+  private consumedDataRefresh = 0;
 
   private readonly mapNotice = effect(() => {
     const notice = this.getMapNotice();
@@ -140,6 +145,8 @@ export class PublicMapPage implements AfterViewInit {
   });
 
   private readonly dataLoader = effect((onCleanup) => {
+    const dataRefresh = this.dataRefresh();
+    const forceRefresh = dataRefresh !== this.consumedDataRefresh;
     const authenticated = this.auth.isAuthenticated();
     const userId = this.auth.user()?.sub;
     if (!authenticated && this.filters().audience === 'MINE') {
@@ -148,10 +155,10 @@ export class PublicMapPage implements AfterViewInit {
 
     this.state.set({ status: 'loading' });
     const request = forkJoin({
-      events: this.api.getEvents(),
+      events: this.api.getEvents(forceRefresh),
       currentUserEventIds:
         authenticated && userId
-          ? this.api.getCurrentUserEventIds(userId).pipe(
+          ? this.api.getCurrentUserEventIds(userId, forceRefresh).pipe(
               catchError(() => {
                 this.showSnackBar('Não foi possível carregar seus eventos. Mostrando todos os eventos.', 5000);
                 this.filters.update((filters) => ({ ...filters, audience: 'ALL' }));
@@ -162,6 +169,7 @@ export class PublicMapPage implements AfterViewInit {
           : of(new Set<string>()),
     }).subscribe({
       next: ({ events, currentUserEventIds }) => {
+        this.consumedDataRefresh = dataRefresh;
         this.events.set(events);
         this.currentUserEventIds.set(currentUserEventIds);
         this.state.set({ status: 'ready' });
@@ -177,6 +185,17 @@ export class PublicMapPage implements AfterViewInit {
   });
 
   constructor() {
+    this.realtime
+      .watchCatalog(() => this.api.getEvents(true))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.dataRefresh.update((value) => value + 1));
+    this.realtime
+      .watchCurrentUserData(() => {
+        const userId = this.auth.user()?.sub;
+        return userId ? this.api.getCurrentUserEventIds(userId, true) : of(new Set<string>());
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.dataRefresh.update((value) => value + 1));
     if (isPlatformBrowser(this.platformId)) {
       const onVisibilityChange = () => {
         if (this.document.visibilityState === 'hidden') {

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -9,6 +9,11 @@ import { PublicationStateWriterService } from './publishing-state-writer.service
 import { PublicationTargetService } from './publishing-target.service';
 import { PublicationTransitionOutcome, TargetSync } from './publishing.types';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 @Injectable()
 export class PublicationTransitionService {
@@ -21,6 +26,11 @@ export class PublicationTransitionService {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async setPublicationState(
@@ -110,6 +120,7 @@ export class PublicationTransitionService {
     if (!options.skipSitemap) {
       await this.refreshSitemapBestEffort();
     }
+    await this.publishInvalidations(sync);
     return sync;
   }
 
@@ -127,6 +138,7 @@ export class PublicationTransitionService {
     if (!options.skipSitemap) {
       await this.refreshSitemapBestEffort();
     }
+    await this.publishInvalidations(sync);
     return sync;
   }
 
@@ -186,6 +198,21 @@ export class PublicationTransitionService {
         `Publication committed but search synchronization failed: ${formatFailure(searchResult.reason)}`,
       );
     }
+    await this.publishInvalidations(sync);
+  }
+
+  private async publishInvalidations(sync: TargetSync): Promise<void> {
+    if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) return;
+    const payload = {
+      type: 'PUBLICATION_INVALIDATED',
+      eventIds: sync.eventIds,
+      majorEventIds: sync.majorEventIds,
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
   }
 
   async refreshSitemapBestEffort(): Promise<void> {

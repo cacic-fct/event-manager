@@ -82,6 +82,9 @@ import { EventFormPublicationWorkflowService } from './event-forms/event-form-pu
 import { EventFormResponsesService } from './event-forms/event-form-responses.service';
 import { EventFormResultEventsService } from './event-forms/event-form-result-events.service';
 import { EventFormResultsAccessService } from './event-forms/event-form-results-access.service';
+import { RealtimeFingerprintService } from './realtime/realtime-fingerprint.service';
+import { RealtimeInvalidationController } from './realtime/realtime-invalidation.controller';
+import { RealtimeInvalidationService } from './realtime/realtime-invalidation.service';
 import { SseReplayService } from './realtime/sse-replay.service';
 import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
@@ -385,6 +388,7 @@ const schedulerProviders = useInMemoryTestInfra
     SportsTeamRepresentativeLogoController,
     SportsMatchOverlayController,
     PrizeDrawRealtimeController,
+    RealtimeInvalidationController,
   ],
   providers: [
     HealthService,
@@ -507,6 +511,8 @@ const schedulerProviders = useInMemoryTestInfra
     EventFormPublicationWorkflowService,
     EventFormResponsesService,
     EventFormResultEventsService,
+    RealtimeFingerprintService,
+    RealtimeInvalidationService,
     SseReplayService,
     EventFormResultsAccessService,
     EventLecturersResolver,

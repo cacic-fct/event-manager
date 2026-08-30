@@ -3,19 +3,29 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
 import { NetworkStatusService } from '../../../shared/network-status.service';
+import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 import { MoreInfo } from './more-info';
 
 describe('MoreInfo', () => {
   let component: MoreInfo;
   let fixture: ComponentFixture<MoreInfo>;
   let httpTesting: HttpTestingController;
+  let prizeDrawsApi: {
+    availability: ReturnType<typeof vi.fn>;
+    watch: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
+    prizeDrawsApi = {
+      availability: vi.fn(() => of([])),
+      watch: vi.fn(() => NEVER),
+    };
     await TestBed.configureTestingModule({
       imports: [MoreInfo, NoopAnimationsModule],
       providers: [
@@ -49,6 +59,10 @@ describe('MoreInfo', () => {
         {
           provide: PublicDatabaseProvider,
           useValue: { getDatabase: () => null },
+        },
+        {
+          provide: PublicPrizeDrawApiService,
+          useValue: prizeDrawsApi,
         },
       ],
     }).compileComponents();
@@ -219,4 +233,74 @@ describe('MoreInfo', () => {
       }),
     ).toBe('receipt_long');
   });
+
+  it('updates participation prize-draw discovery live and preserves it on refresh failure', async () => {
+    const updates = new Subject<void>();
+    prizeDrawsApi.availability
+      .mockReset()
+      .mockReturnValueOnce(of([]))
+      .mockReturnValueOnce(of([{ targetType: 'EVENT', targetId: 'event-1', drawCount: 1 }]))
+      .mockReturnValueOnce(throwError(() => new Error('Falha transitória')))
+      .mockReturnValueOnce(of([]));
+    prizeDrawsApi.watch.mockReturnValue(updates);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const requests = httpTesting.match(() => true);
+    const detailsRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserEventDetails'),
+    );
+    const certificatesRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserCertificates'),
+    );
+    const organizerRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserOrganizerInfo'),
+    );
+    const publicEventRequest = requests.find((request) =>
+      String(request.request.body.query).includes('PublicEventForAttendanceDetails'),
+    );
+
+    detailsRequest?.flush({
+      data: {
+        currentUserEventSubscription: {
+          eventId: 'event-1',
+          eventGroupSubscriptionId: null,
+          createdAt: publicFixtureDateFromNow(-1, 12),
+          event: createPublicEvent({
+            id: 'event-1',
+            name: 'Evento teste',
+            startDate: publicFixtureDateFromNow(1, 12),
+            endDate: publicFixtureDateFromNow(1, 14),
+          }),
+        },
+        currentUserEventAttendance: null,
+      },
+    });
+    certificatesRequest?.flush({ data: { currentUserCertificates: [] } });
+    organizerRequest?.flush({ data: { currentUserOrganizerInfo: null } });
+    publicEventRequest?.flush({ data: { publicEvent: null } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const formsRequest = httpTesting.match((request) => String(request.body.query).includes('CurrentUserEventForms'))[0];
+    formsRequest?.flush({ data: { currentUserEventForms: [] } });
+    await fixture.whenStable();
+
+    expect(component.detailState()).toEqual(expect.objectContaining({ status: 'ready', hasPrizeDraws: false }));
+
+    updates.next();
+    await waitForDrawRefresh(fixture);
+    expect(component.detailState()).toEqual(expect.objectContaining({ status: 'ready', hasPrizeDraws: true }));
+
+    updates.next();
+    await waitForDrawRefresh(fixture);
+    expect(component.detailState()).toEqual(expect.objectContaining({ status: 'ready', hasPrizeDraws: true }));
+
+    updates.next();
+    await waitForDrawRefresh(fixture);
+    expect(component.detailState()).toEqual(expect.objectContaining({ status: 'ready', hasPrizeDraws: false }));
+  });
 });
+
+async function waitForDrawRefresh(fixture: ComponentFixture<MoreInfo>): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await fixture.whenStable();
+}

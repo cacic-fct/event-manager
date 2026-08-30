@@ -1,5 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
@@ -21,6 +21,7 @@ import { buildPublicationConsistencyWarnings } from '../publishing/publishing-co
 import { normalizeSportsScoreboard } from '../sports/domain/sports-scoreboard';
 import { loadSportsDashboardRecords } from './insights/sports-dashboard-records';
 import { addDays, startOfDay, subDays } from 'date-fns';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
@@ -36,6 +37,11 @@ export class DashboardInsightsService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly weatherService: WeatherService,
     private readonly redis: Redis,
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: () => 'admin-workspace',
+      publish: async () => ({}),
+    },
   ) {}
 
   async getWorkspaceDashboardInsights(context: GraphqlContext): Promise<WorkspaceDashboardInsights> {
@@ -91,6 +97,12 @@ export class DashboardInsightsService {
           error instanceof Error ? error.message : String(error)
         }`,
       );
+    } finally {
+      await this.realtime.publish(this.realtime.scope('admin-workspace'), {
+        type: 'ADMIN_WORKSPACE_INVALIDATED',
+        domain: 'dashboard',
+        occurredAt: new Date().toISOString(),
+      });
     }
   }
 

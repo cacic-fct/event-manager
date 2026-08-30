@@ -13,6 +13,8 @@ import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
 import { ptBR } from 'date-fns/locale/pt-BR';
+import { NEVER } from 'rxjs';
+import { RealtimeApiService } from '../src/app/graphql/realtime-api.service';
 
 const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
 
@@ -192,6 +194,14 @@ const preview: Preview = {
         { provide: MAT_DIALOG_DATA, useValue: adminDialogData },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: AuthService, useClass: StorybookAuthService },
+        {
+          provide: RealtimeApiService,
+          useValue: {
+            watchWorkspace: () => NEVER,
+            watchEventSubscriptions: () => NEVER,
+            watchMajorEventSubscriptions: () => NEVER,
+          },
+        },
       ],
     }),
     (story, context) => {

@@ -3,8 +3,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 import {
   adminFixtureDate,
   adminFixtureDateFromNow,
@@ -21,12 +22,14 @@ describe('Home', () => {
   let dashboardApi: {
     getWorkspaceDashboardInsights: ReturnType<typeof vi.fn>;
   };
+  let workspaceEvents: Subject<void>;
   const user = signal(createAdminAuthenticatedUser());
 
   beforeEach(async () => {
     dashboardApi = {
       getWorkspaceDashboardInsights: vi.fn(() => of(createAdminWorkspaceDashboardInsights())),
     };
+    workspaceEvents = new Subject<void>();
     user.set(createAdminAuthenticatedUser());
 
     await TestBed.configureTestingModule({
@@ -36,6 +39,7 @@ describe('Home', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { user } },
         { provide: DashboardApiService, useValue: dashboardApi },
+        { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
       ],
     }).compileComponents();
 
@@ -231,5 +235,23 @@ describe('Home', () => {
 
     expect(text).toContain('Não foi possível carregar o painel');
     expect(text).toContain('Falha no painel.');
+  });
+
+  it('refreshes from live invalidations and preserves the last dashboard when a background request fails', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const initialInsights = component.insights();
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(
+      throwError(() => new Error('Falha temporária.')),
+    );
+
+    workspaceEvents.next();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(dashboardApi.getWorkspaceDashboardInsights).toHaveBeenCalledTimes(2);
+    expect(component.insights()).toBe(initialInsights);
+    expect(component.error()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Não foi possível carregar o painel');
   });
 });

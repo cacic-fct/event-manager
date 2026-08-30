@@ -35,9 +35,11 @@ function isSportsViewerInvalidation(value: unknown): value is SportsViewerInvali
     return false;
   }
   const payload = value as Record<string, unknown>;
+  if (payload['type'] === 'heartbeat') {
+    return false;
+  }
   return (
-    typeof payload['type'] === 'string' ||
-    typeof payload['matchId'] === 'string' ||
-    typeof payload['tournamentId'] === 'string'
+    (payload['type'] === undefined || typeof payload['type'] === 'string') &&
+    (typeof payload['matchId'] === 'string' || typeof payload['tournamentId'] === 'string')
   );
 }

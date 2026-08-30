@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -192,20 +192,20 @@ describe('FormsService integration', () => {
     expect(service.selectedResults()?.responseCount).toBe(1);
   });
 
-  it('reloads selected results from the live result stream', async () => {
+  it('reloads private selected results from the admin live result stream', async () => {
     const restoreEventSource = installFakeEventSource();
-    const liveForm = createAdminEventForm({
+    const privateForm = createAdminEventForm({
       id: 'form-1',
       ownerEventId: 'event-1',
-      resultsPublic: true,
-      resultsLive: true,
+      resultsPublic: false,
+      resultsLive: false,
     });
-    formApi.listForms.mockReturnValue(of([liveForm]));
-    formApi.getForm.mockReturnValue(of(liveForm));
+    formApi.listForms.mockReturnValue(of([privateForm]));
+    formApi.getForm.mockReturnValue(of(privateForm));
 
     try {
       await service.initialize();
-      await service.selectForm(liveForm);
+      await service.selectForm(privateForm);
 
       const source = FakeEventSource.instances[0] as FakeEventSource;
       expect(source.url).toBe('/api/event-forms/form-1/results/events');
@@ -221,22 +221,62 @@ describe('FormsService integration', () => {
     }
   });
 
-  it('does not open a live result stream when live results are disabled', async () => {
+  it('coalesces private result invalidations and reconciles response counts without resetting a draft', async () => {
     const restoreEventSource = installFakeEventSource();
-    const publicForm = createAdminEventForm({
+    const privateForm = createAdminEventForm({
       id: 'form-1',
       ownerEventId: 'event-1',
-      resultsPublic: true,
+      resultsPublic: false,
       resultsLive: false,
     });
-    formApi.listForms.mockReturnValue(of([publicForm]));
-    formApi.getForm.mockReturnValue(of(publicForm));
+    formApi.listForms.mockReturnValue(of([privateForm]));
+    formApi.getForm.mockReturnValue(of(privateForm));
 
     try {
       await service.initialize();
-      await service.selectForm(publicForm);
+      await service.selectForm(privateForm);
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+      const refreshedResults = createAdminEventFormResults({ form: privateForm, responseCount: 4 });
+      formApi.results.mockClear();
+      formApi.results.mockReturnValue(of(refreshedResults));
+      service.form.controls.name.setValue('Rascunho local');
 
-      expect(FakeEventSource.instances).toHaveLength(0);
+      source.emitMessage();
+      source.emitMessage();
+      source.emitMessage();
+      await flushAsync();
+
+      expect(formApi.results).toHaveBeenCalledOnce();
+      expect(service.selectedResults()?.responseCount).toBe(4);
+      expect(service.selectedForm()?.responseCount).toBe(4);
+      expect(service.forms()[0]?.responseCount).toBe(4);
+      expect(service.form.controls.name.value).toBe('Rascunho local');
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('keeps the last good results while recovering a terminal result stream', async () => {
+    const restoreEventSource = installFakeEventSource();
+    const privateForm = createAdminEventForm({ id: 'form-1', resultsPublic: false, resultsLive: false });
+    formApi.listForms.mockReturnValue(of([privateForm]));
+    formApi.getForm.mockReturnValue(of(privateForm));
+
+    try {
+      await service.initialize();
+      await service.selectForm(privateForm);
+      const previousResults = service.selectedResults();
+      const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+      formApi.results.mockClear();
+      formApi.results.mockReturnValueOnce(throwError(() => new Error('Sessão indisponível')));
+
+      firstSource.readyState = FakeEventSource.CLOSED;
+      firstSource.emitError();
+      await flushAsync();
+
+      expect(service.selectedResults()).toEqual(previousResults);
+      expect(formApi.results).toHaveBeenCalledOnce();
+      expect(FakeEventSource.instances).toHaveLength(2);
     } finally {
       restoreEventSource();
     }
@@ -468,3 +508,8 @@ describe('FormsService integration', () => {
     expect(service.previousSubscriberCount(service.links()[0])).toBeNull();
   });
 });
+
+async function flushAsync(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await Promise.resolve();
+}

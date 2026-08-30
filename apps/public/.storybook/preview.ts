@@ -17,6 +17,7 @@ import { NEVER, of } from 'rxjs';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { publicHandlers } from './storybook-mocks';
 import { ptBR } from 'date-fns/locale/pt-BR';
+import { RealtimeInvalidationService } from '../src/app/shared/realtime-invalidation.service';
 
 const [publicGraphqlHandler, ...publicRestHandlers] = publicHandlers;
 
@@ -273,6 +274,14 @@ const preview: Preview = {
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: AuthService, useClass: StorybookAuthService },
         { provide: SwUpdate, useValue: swUpdateMock },
+        {
+          provide: RealtimeInvalidationService,
+          useValue: {
+            watchCatalog: () => NEVER,
+            watchCurrentUserData: () => NEVER,
+            watchOrganizer: () => NEVER,
+          },
+        },
       ],
     }),
     (story, context) => {

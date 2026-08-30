@@ -4,7 +4,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { auditTime, firstValueFrom, Subscription } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -137,6 +137,11 @@ export class AttendancesService {
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private attendanceStream: Subscription | null = null;
+  private attendanceStreamEventId: string | null = null;
+  private attendanceStreamGeneration = 0;
+  private attendanceStreamRecoveryAttempted = false;
+  private attendanceLoadRequestId = 0;
 
   readonly majorEvents = this.majorEventsService.majorEvents;
 
@@ -213,6 +218,9 @@ export class AttendancesService {
       destroyRef: this.destroyRef,
       search: () => this.searchAttendanceEvents(),
     });
+    this.destroyRef.onDestroy(() => {
+      this.closeAttendanceLiveStream();
+    });
   }
 
   async searchAttendanceEvents(): Promise<void> {
@@ -262,16 +270,19 @@ export class AttendancesService {
     this.attendanceForm.controls.eventId.setValue(eventItem.id);
     this.attendancePersonMatches.set([]);
     resetPagination(this.attendancesPagination);
+    this.startAttendanceLiveStream(eventItem.id);
     await this.loadAttendances(eventItem.id);
   }
 
   async selectAttendanceEventById(eventId: string): Promise<void> {
     if (this.selectedAttendanceEvent()?.id !== eventId) {
+      this.closeAttendanceLiveStream();
       this.selectedAttendanceEvent.set(await firstValueFrom(this.eventApi.getEvent(eventId)));
     }
     this.attendanceForm.controls.eventId.setValue(eventId);
     this.attendancePersonMatches.set([]);
     resetPagination(this.attendancesPagination);
+    this.startAttendanceLiveStream(eventId);
     await this.loadAttendances(eventId);
   }
 
@@ -443,7 +454,9 @@ export class AttendancesService {
   }
 
   async loadAttendances(eventId: string): Promise<void> {
+    const requestId = ++this.attendanceLoadRequestId;
     if (!eventId) {
+      this.closeAttendanceLiveStream();
       this.attendances.set([]);
       this.explicitAbsences.set([]);
       this.implicitAbsences.set([]);
@@ -463,6 +476,9 @@ export class AttendancesService {
       firstValueFrom(this.api.getEventAttendanceCount(eventId, 'PRESENT')),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
+    if (!this.isCurrentAttendanceLoad(requestId, eventId)) {
+      return;
+    }
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
     this.attendanceTotalCount.set(attendanceTotalCount);
     this.attendances.set(visibleAttendances.map(mapAttendanceListItem));
@@ -726,6 +742,8 @@ export class AttendancesService {
   }
 
   async loadMajorEventUserAttendances(): Promise<void> {
+    // Keep this cross-event aggregate HTTP-only: the existing live source is event-scoped,
+    // so subscribing to every constituent event would either omit data or be unbounded.
     const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventUserAttendances.set([]);
@@ -907,6 +925,106 @@ export class AttendancesService {
         return attendances;
       }
     }
+  }
+
+  private isCurrentAttendanceLoad(requestId: number, eventId: string): boolean {
+    if (requestId !== this.attendanceLoadRequestId) {
+      return false;
+    }
+
+    const selectedEventId = this.selectedAttendanceEvent()?.id;
+    if (selectedEventId) {
+      return selectedEventId === eventId;
+    }
+
+    const formEventId = this.attendanceForm.controls.eventId.value;
+    return !formEventId || formEventId === eventId;
+  }
+
+  private startAttendanceLiveStream(eventId: string): void {
+    this.closeAttendanceLiveStream();
+    if (!eventId || typeof EventSource === 'undefined') {
+      return;
+    }
+
+    this.attendanceStreamEventId = eventId;
+    this.attendanceStreamRecoveryAttempted = false;
+    this.connectAttendanceLiveStream(eventId, this.attendanceStreamGeneration);
+  }
+
+  private connectAttendanceLiveStream(eventId: string, generation: number): void {
+    if (!this.isCurrentAttendanceStream(eventId, generation)) {
+      return;
+    }
+
+    let stream: Subscription | null = null;
+    stream = this.api
+      .watchEventAttendanceScannerFeed(eventId)
+      .pipe(auditTime(0))
+      .subscribe({
+        next: () => {
+          if (!this.isCurrentAttendanceStream(eventId, generation)) {
+            return;
+          }
+          this.attendanceStreamRecoveryAttempted = false;
+          this.refreshAttendanceFromLiveStream(eventId);
+        },
+        error: () => {
+          if (!this.isCurrentAttendanceStream(eventId, generation)) {
+            return;
+          }
+          this.attendanceStream = null;
+          if (this.attendanceStreamRecoveryAttempted) {
+            return;
+          }
+          this.attendanceStreamRecoveryAttempted = true;
+          void this.recoverAttendanceLiveStream(eventId, generation);
+        },
+      });
+    this.attendanceStream = stream;
+  }
+
+  private refreshAttendanceFromLiveStream(eventId: string): void {
+    if (!this.isCurrentAttendanceSelection(eventId)) {
+      return;
+    }
+
+    this.invalidateExplicitAbsences(eventId);
+    void this.loadAttendances(eventId).catch(() => undefined);
+  }
+
+  private async recoverAttendanceLiveStream(eventId: string, generation: number): Promise<void> {
+    this.invalidateExplicitAbsences(eventId);
+    try {
+      await this.loadAttendances(eventId);
+    } catch {
+      // Keep the last good projections visible while the replayable stream is re-established.
+    }
+
+    if (this.isCurrentAttendanceStream(eventId, generation)) {
+      this.connectAttendanceLiveStream(eventId, generation);
+    }
+  }
+
+  private isCurrentAttendanceSelection(eventId: string): boolean {
+    return (
+      this.attendanceStreamEventId === eventId &&
+      this.selectedAttendanceEvent()?.id === eventId &&
+      this.attendanceForm.controls.eventId.value === eventId
+    );
+  }
+
+  private isCurrentAttendanceStream(eventId: string, generation: number): boolean {
+    return generation === this.attendanceStreamGeneration && this.isCurrentAttendanceSelection(eventId);
+  }
+
+  closeAttendanceLiveStream(): void {
+    this.attendanceLoadRequestId++;
+    this.attendanceStreamGeneration++;
+    this.attendanceStream?.unsubscribe();
+    this.attendanceStream = null;
+    this.attendanceStreamEventId = null;
+    this.attendanceStreamRecoveryAttempted = false;
   }
 
   private fetchExplicitAbsences(eventId: string): Promise<EventAttendance[]> {

@@ -20,9 +20,9 @@ export class PublicMapApiService {
   private readonly cache = inject(PublicMapCacheService);
   readonly isUsingSavedData = signal(false);
 
-  getEvents(): Observable<PublicMapEvent[]> {
+  getEvents(force = false): Observable<PublicMapEvent[]> {
     this.isUsingSavedData.set(false);
-    const cached = this.cache.read<PublicMapEvent[]>('events');
+    const cached = force ? null : this.cache.read<PublicMapEvent[]>('events');
     if (cached) {
       return of(cached);
     }
@@ -46,9 +46,9 @@ export class PublicMapApiService {
     );
   }
 
-  getCurrentUserEventIds(userId: string): Observable<Set<string>> {
+  getCurrentUserEventIds(userId: string, force = false): Observable<Set<string>> {
     const cacheKey = `mine:${userId}`;
-    const cached = this.cache.read<string[]>(cacheKey);
+    const cached = force ? null : this.cache.read<string[]>(cacheKey);
     if (cached) {
       return of(new Set(cached));
     }

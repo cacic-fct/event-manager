@@ -35,4 +35,17 @@ describe('SportsViewerRealtimeService', () => {
     expect(values).toEqual([{ matchId: 'match-1', state: 'LIVE', revision: 4 }]);
     subscription.unsubscribe();
   });
+
+  it('ignores backend heartbeats instead of reloading the public view', () => {
+    installFakeEventSource();
+    const service = TestBed.inject(SportsViewerRealtimeService);
+    const next = vi.fn();
+    const subscription = service.watchMatch('match-1').subscribe(next);
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+
+    source.emitMessage({ type: 'heartbeat' });
+    expect(next).not.toHaveBeenCalled();
+
+    subscription.unsubscribe();
+  });
 });

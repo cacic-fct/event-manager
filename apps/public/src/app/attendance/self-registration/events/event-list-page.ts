@@ -1,16 +1,21 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { catchError, map, of, startWith } from 'rxjs';
+import { EMPTY, catchError, map, switchMap, take } from 'rxjs';
 import { EmojiService } from '../../../shared/emoji.service';
-import { OnlineAttendanceApiService } from '../online-attendance-api.service';
+import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
 import { OnlineAttendanceCoordinatorService } from '../coordinator.service';
+
+type OnlineAttendanceListState =
+  | { status: 'loading' }
+  | { status: 'ready'; items: PendingOnlineAttendanceEvent[] }
+  | { status: 'error'; message: string };
 
 @Component({
   selector: 'app-online-attendance-list',
@@ -29,6 +34,7 @@ import { OnlineAttendanceCoordinatorService } from '../coordinator.service';
 })
 export class OnlineAttendanceListComponent {
   private readonly api = inject(OnlineAttendanceApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly attendanceCoordinator = inject(OnlineAttendanceCoordinatorService);
 
@@ -36,19 +42,19 @@ export class OnlineAttendanceListComponent {
   readonly returnUrl = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('returnUrl') || '/menu')), {
     initialValue: '/menu',
   });
-  readonly state = toSignal(
-    this.api.listPendingEvents().pipe(
-      map((items) => ({ status: 'ready', items }) as const),
-      startWith({ status: 'loading' } as const),
-      catchError((error: unknown) =>
-        of({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar presenças pendentes.',
-        } as const),
-      ),
-    ),
-    { initialValue: { status: 'loading' } as const },
-  );
+  readonly state = signal<OnlineAttendanceListState>({ status: 'loading' });
+
+  constructor() {
+    this.loadPendingEvents(true);
+    this.attendanceCoordinator
+      .changes()
+      .pipe(
+        switchMap(() => this.api.listPendingEvents().pipe(take(1), catchError(() => EMPTY))),
+        catchError(() => EMPTY),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((items) => this.state.set({ status: 'ready', items }));
+  }
 
   back(): void {
     const state = this.state();
@@ -56,5 +62,22 @@ export class OnlineAttendanceListComponent {
       state.status === 'ready' ? state.items.map(({ eventId }) => eventId) : [],
       this.returnUrl() || '/menu',
     );
+  }
+
+  private loadPendingEvents(initial: boolean): void {
+    this.api
+      .listPendingEvents()
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (items) => this.state.set({ status: 'ready', items }),
+        error: (error: unknown) => {
+          if (initial || this.state().status !== 'ready') {
+            this.state.set({
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Não foi possível carregar presenças pendentes.',
+            });
+          }
+        },
+      });
   }
 }

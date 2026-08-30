@@ -17,7 +17,7 @@ import {
 } from '@cacic-fct/shared-data-types/sports-metadata';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom, from } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
@@ -48,6 +48,7 @@ import {
 } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
+import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 interface SportsMajorEventWorkspaceFilters {
   query: string;
@@ -70,11 +71,14 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(RealtimeApiService);
   protected liveSubscription: Subscription | null = null;
+  private workspaceIndexSubscription: Subscription | null = null;
   protected liveRefreshRunning = false;
   protected liveRefreshQueued = false;
   protected selectionRevision = 0;
   private tournamentLoadRevision = 0;
+  private workspaceIndexRequest = 0;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -378,6 +382,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       ]);
       this.places.set(places);
     });
+    this.watchWorkspaceIndex();
   }
 
   async applyMajorEventWorkspaceFilters(): Promise<void> {
@@ -459,6 +464,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   }
 
   private async loadMajorEventWorkspaceData(): Promise<void> {
+    const request = ++this.workspaceIndexRequest;
     const filters = this.majorEventWorkspaceFilters();
     const query = filters.query.trim();
     const startDateFrom = dateFilterIso(filters.startDateFrom, 'start');
@@ -479,8 +485,21 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         ? firstValueFrom(this.majorEventsApi.listMajorEvents(majorEventFilters))
         : Promise.resolve([]),
     ]);
+    if (request !== this.workspaceIndexRequest) return;
     this.tournaments.set(tournaments);
     this.majorEvents.set(majorEvents);
+  }
+
+  private watchWorkspaceIndex(): void {
+    if (this.workspaceIndexSubscription) return;
+    this.workspaceIndexSubscription = this.realtime
+      .watchWorkspace(() => from(this.refreshWorkspaceIndex()))
+      .subscribe(() => void this.refreshWorkspaceIndex());
+  }
+
+  private async refreshWorkspaceIndex(): Promise<void> {
+    if (this.tournamentRead()) return;
+    await this.loadMajorEventWorkspaceData();
   }
 
   async loadTournament(id = this.tournamentId()): Promise<void> {
@@ -608,6 +627,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.tournamentLoadRevision += 1;
     this.invalidateSelection();
     this.liveSubscription?.unsubscribe();
+    this.workspaceIndexSubscription?.unsubscribe();
   }
 
   protected beginSelection(): number {

@@ -28,11 +28,16 @@ describe('EventPostCommitEffectsService', () => {
     const typesense = { upsertEvent: jest.fn(), deleteEvent: jest.fn() };
     const sitemap = { refresh: jest.fn().mockResolvedValue([]) };
     const notifications = { scheduleEvent: jest.fn() };
+    const realtime = {
+      scope: jest.fn((channel: string) => `scope:${channel}`),
+      publish: jest.fn().mockResolvedValue({}),
+    };
     const service = new EventPostCommitEffectsService(
       {} as never,
       typesense as never,
       sitemap as never,
       notifications as never,
+      realtime as never,
     );
     const event = eventRecord();
 
@@ -49,6 +54,34 @@ describe('EventPostCommitEffectsService', () => {
       }),
     );
     expect(notifications.scheduleEvent).toHaveBeenCalledWith(event);
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:admin-workspace',
+      expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'scope:public-catalog-v2',
+      expect.objectContaining({ type: 'PUBLIC_CATALOG_INVALIDATED', revision: expect.any(String) }),
+    );
+    expect(realtime.publish.mock.calls[1]?.[1]).not.toHaveProperty('domain');
+  });
+
+  it('still publishes an invalidation when a committed event side effect fails', async () => {
+    const failure = new Error('Typesense indisponível.');
+    const realtime = {
+      scope: jest.fn((channel: string) => channel),
+      publish: jest.fn().mockResolvedValue({}),
+    };
+    const service = new EventPostCommitEffectsService(
+      {} as never,
+      { upsertEvent: jest.fn().mockRejectedValue(failure) } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+      realtime as never,
+    );
+
+    await expect(service.upsertEvent(eventRecord())).rejects.toBe(failure);
+
+    expect(realtime.publish).toHaveBeenCalledTimes(2);
   });
 
   it('reconciles active and deleted backing events after a committed sports mutation', async () => {

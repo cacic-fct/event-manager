@@ -3,12 +3,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
 import { MyDayCacheService } from '@cacic-fct/public-indexed-db';
-import { Subject, firstValueFrom, filter, takeUntil } from 'rxjs';
+import { Subject, firstValueFrom, filter, from, takeUntil } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { MyDayApiService } from './my-day-api.service';
 import { myDayDateKey } from './my-day-date';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 
 export type MyDayLoadState =
   | { status: 'idle'; data: null; offline: boolean }
@@ -24,6 +25,7 @@ export class MyDayStore {
   private readonly network = inject(NetworkStatusService);
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly stateSignal = signal<MyDayLoadState>({ status: 'idle', data: null, offline: false });
   private readonly selectedDateSignal = signal(myDayDateKey(new Date()));
   private readonly availableSignal = signal<boolean | null>(null);
@@ -71,6 +73,15 @@ export class MyDayStore {
         filter((status) => status === 'online'),
         takeUntilDestroyed(this.destroyRef),
       )
+      .subscribe(() => void this.load(this.selectedDateSignal(), true));
+
+    this.realtime
+      .watchCurrentUserData(() => from(this.load(this.selectedDateSignal(), true)))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.load(this.selectedDateSignal(), true));
+    this.realtime
+      .watchCatalog(() => from(this.load(this.selectedDateSignal(), true)))
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.load(this.selectedDateSignal(), true));
   }
 

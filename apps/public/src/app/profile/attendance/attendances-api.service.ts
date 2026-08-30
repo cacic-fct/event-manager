@@ -477,6 +477,10 @@ export class AttendancesApiService {
   }
 
   getOrganizerInfo(targetType: EventTargetType, targetId: string): Observable<OrganizerInfo | null> {
+    return this.getOrganizerInfoStrict(targetType, targetId).pipe(catchError(() => of(null)));
+  }
+
+  getOrganizerInfoStrict(targetType: EventTargetType, targetId: string): Observable<OrganizerInfo | null> {
     return this.query<{ currentUserOrganizerInfo: OrganizerInfo | null }>(
       `
         query CurrentUserOrganizerInfo($targetType: String!, $targetId: String!) {
@@ -497,10 +501,7 @@ export class AttendancesApiService {
         }
       `,
       { targetType, targetId },
-    ).pipe(
-      map((data) => data.currentUserOrganizerInfo),
-      catchError(() => of(null)),
-    );
+    ).pipe(map((data) => data.currentUserOrganizerInfo));
   }
 
   getCurrentUserLecturerProfile(): Observable<LecturerProfile | null> {

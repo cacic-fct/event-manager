@@ -1,8 +1,9 @@
-import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import Redis from 'ioredis';
 import { interval, map, merge, Observable, Subject } from 'rxjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { SseReplayService } from '../realtime/sse-replay.service';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 
 const PRIZE_DRAW_REDIS_CHANNEL = 'prize-draw:realtime:v1';
 
@@ -20,6 +21,11 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
     private readonly redis: Redis,
     private readonly replay: SseReplayService,
     private readonly prisma: PrismaService,
+    @Optional()
+    private readonly invalidations: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -83,7 +89,14 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
     const parentMajorEventId = draw.event?.majorEventId ?? draw.event?.eventGroup?.majorEventId;
     if (parentMajorEventId) scopes.push(this.scope('major-event', parentMajorEventId));
     if (draw.majorEventId) scopes.push(this.scope('major-event', draw.majorEventId));
-    await Promise.all(scopes.map((scope) => this.publish(scope, payload)));
+    await Promise.all([
+      ...scopes.map((scope) => this.publish(scope, payload)),
+      this.invalidations.publish(this.invalidations.scope('admin-workspace'), {
+        type: 'PRIZE_DRAWS_INVALIDATED',
+        drawId,
+        occurredAt: payload.occurredAt,
+      }),
+    ]);
   }
 
   private async publish(scope: string, data: object): Promise<void> {

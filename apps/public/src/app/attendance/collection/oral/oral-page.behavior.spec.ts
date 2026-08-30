@@ -1,7 +1,9 @@
 import { WritableSignal, computed, signal } from '@angular/core';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { OralAttendanceDecision, OralAttendancePerson } from '@cacic-fct/shared-angular';
-import { of, throwError } from 'rxjs';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
+import { NEVER, Subject, of, throwError } from 'rxjs';
+import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import {
   AttendanceCollectionEvent,
   AttendanceCollectionLocation,
@@ -11,7 +13,7 @@ import { OralAttendancePage } from './oral-page';
 
 type OralDependencies = {
   access: { getPreciseLocation: MockFunction };
-  api: { listCollectionEvents: MockFunction; listOralRoster: MockFunction };
+  api: { listCollectionEvents: MockFunction; listOralRoster: MockFunction; watchFeed: MockFunction };
   auth: { user: MockFunction };
   collectionEventsQueue: { getCollectionEvent: MockFunction };
   destroyRef: { onDestroy: MockFunction };
@@ -33,6 +35,7 @@ type MockFunction = {
   (...args: never[]): unknown;
   mockClear: () => void;
   mockReturnValue: (value: unknown) => MockFunction;
+  mockReturnValueOnce: (value: unknown) => MockFunction;
   mockResolvedValue: (value: unknown) => MockFunction;
   mockRejectedValue: (value: unknown) => MockFunction;
 };
@@ -69,6 +72,7 @@ function createPage(overrides: Partial<Record<keyof OralDependencies, unknown>> 
     api: {
       listCollectionEvents: makeMock().mockReturnValue(of([collectionEvent()])),
       listOralRoster: makeMock().mockReturnValue(of([])),
+      watchFeed: makeMock().mockReturnValue(NEVER),
     },
     auth: {
       user: makeMock().mockReturnValue({
@@ -101,6 +105,7 @@ function createPage(overrides: Partial<Record<keyof OralDependencies, unknown>> 
   Object.assign(page, {
     ...deps,
     route: { snapshot: { paramMap: { get: () => 'event-oral' } } },
+    platformId: 'browser',
     event,
     people,
     decisions,
@@ -144,6 +149,11 @@ function goBack(page: OralAttendancePage) {
 }
 
 describe('OralAttendancePage operations', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
   it('loads the allowed roster, preserves server decisions, overlays unsynced decisions, and caches people', async () => {
     const roster: AttendanceScannerFeedItem[] = [
       {
@@ -186,6 +196,80 @@ describe('OralAttendancePage operations', () => {
     expect(state.pendingCount()).toBe(2);
     expect(deps.offline.cacheRoster).toHaveBeenCalledWith('collector-1', 'event-oral', state.people());
     expect(deps.offlineSync.syncPending).not.toHaveBeenCalled();
+  });
+
+  it('merges remote roster snapshots through the existing overlay so unsynced local decisions win', async () => {
+    const initialRoster: AttendanceScannerFeedItem[] = [
+      { personId: 'person-1', eventId: 'event-oral', fullName: 'Pessoa Um', status: 'PRESENT' },
+    ];
+    const remoteRoster: AttendanceScannerFeedItem[] = [
+      { personId: 'person-1', eventId: 'event-oral', fullName: 'Pessoa Um atualizada', status: 'PRESENT' },
+      { personId: 'person-2', eventId: 'event-oral', fullName: 'Pessoa Dois', status: 'ABSENT' },
+    ];
+    const remoteUpdates = new Subject<AttendanceScannerFeedItem[]>();
+    const { page, deps, state } = createPage();
+    deps.api.listOralRoster.mockReturnValue(of(initialRoster));
+    deps.api.watchFeed.mockReturnValue(remoteUpdates.asObservable());
+    deps.offline.listAll.mockResolvedValue([
+      {
+        clientId: 'decision-1',
+        queuedByUserId: 'collector-1',
+        eventId: 'event-oral',
+        personId: 'person-1',
+        status: 'ABSENT' as const,
+        location,
+        collectedAt: publicFixtureDateFromNow(0, 12),
+        queuedAt: Date.parse(publicFixtureDateFromNow(0, 12)),
+        attempts: 0,
+        syncedAt: null,
+        lastError: null,
+      },
+    ]);
+
+    page.ngOnInit();
+    await vi.waitFor(() => expect(deps.api.watchFeed).toHaveBeenCalledWith('event-oral'));
+
+    remoteUpdates.next(remoteRoster);
+    await vi.waitFor(() => expect(state.people()).toHaveLength(2));
+
+    expect(state.people()[0]?.fullName).toBe('Pessoa Um atualizada');
+    expect(state.decisions()).toEqual(
+      new Map([
+        ['person-1', 'ABSENT'],
+        ['person-2', 'ABSENT'],
+      ]),
+    );
+  });
+
+  it('reloads once after a terminal feed error, keeps the roster, and reconnects a single stream', async () => {
+    vi.useFakeTimers();
+    installFakeEventSource();
+    const roster: AttendanceScannerFeedItem[] = [
+      { personId: 'person-1', eventId: 'event-oral', fullName: 'Pessoa Um', status: 'PRESENT' },
+    ];
+    const { page, deps, state } = createPage();
+    deps.api.listOralRoster.mockReturnValueOnce(of(roster)).mockReturnValueOnce(of(roster));
+    deps.api.watchFeed.mockReturnValue(
+      watchReplayableEventSource('/api/oral-feed', {
+        decode: () => null,
+        errorMessage: 'Falha no feed.',
+      }),
+    );
+
+    page.ngOnInit();
+    await vi.waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    const firstSource = FakeEventSource.instances[0] as FakeEventSource;
+    firstSource.readyState = FakeEventSource.CLOSED;
+    firstSource.emitError();
+
+    await vi.waitFor(() => expect(deps.api.listOralRoster).toHaveBeenCalledTimes(2));
+    expect(state.people()).toEqual([{ personId: 'person-1', fullName: 'Pessoa Um' }]);
+    expect(state.decisions()).toEqual(new Map([['person-1', 'PRESENT']]));
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.waitFor(() => expect(FakeEventSource.instances).toHaveLength(2));
+    expect(firstSource.close).toHaveBeenCalledOnce();
+    expect(deps.api.watchFeed).toHaveBeenCalledTimes(2);
   });
 
   it.each([

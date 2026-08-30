@@ -33,7 +33,24 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { isAfter, isBefore, parseISO } from 'date-fns';
-import { Observable, catchError, combineLatest, finalize, forkJoin, map, of, startWith, switchMap } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  auditTime,
+  catchError,
+  combineLatest,
+  defer,
+  finalize,
+  forkJoin,
+  map,
+  merge,
+  of,
+  retry,
+  startWith,
+  switchMap,
+  take,
+  timer,
+} from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './location-map';
 import { EventSubscriptionRealtimeService } from './subscription-realtime.service';
@@ -85,6 +102,9 @@ const PAGE_TITLE_SUFFIX = 'CACiC Eventos';
 const DEFAULT_DESCRIPTION = 'Calendário de eventos dos estudantes da FCT-Unesp.';
 const DEFAULT_OG_IMAGE = `${PUBLIC_APP_ORIGIN}/app/icons/ogp.png`;
 const STRUCTURED_DATA_ID = 'event-page-structured-data';
+const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
+const PRIZE_DRAW_RECONNECT_BASE_DELAY_MS = 1000;
+const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
 
 type EventStructuredData = {
   '@context': 'https://schema.org';
@@ -197,19 +217,11 @@ export class Event {
     initialValue: [] satisfies EventFormPageLink[],
   });
   readonly isPreview = computed(() => Boolean(this.previewToken()));
-  readonly hasPrizeDraws = toSignal(
-    this.route.paramMap.pipe(
-      switchMap((params) => {
-        const eventId = params.get('eventId');
-        return eventId && !params.get('previewToken')
-          ? this.prizeDrawsApi.availability({ eventIds: [eventId] })
-          : of([]);
-      }),
-      map((availability) => availability.some((item) => item.targetType === 'EVENT' && item.drawCount > 0)),
-      catchError(() => of(false)),
-    ),
-    { initialValue: false },
-  );
+  readonly hasPrizeDraws = signal(false);
+  private readonly prizeDrawTargetId = computed(() => {
+    const currentState = this.eventState();
+    return currentState.status === 'ready' && !currentState.data.preview ? currentState.data.event.id : null;
+  });
   readonly calendarDownloadUrl = computed(() => {
     const currentState = this.eventState();
     if (currentState.status !== 'ready' || currentState.data.preview) {
@@ -270,6 +282,49 @@ export class Event {
     const subscription = this.realtime.watch(eventId).subscribe((availability) => {
       this.realtimeAvailability.set(availability);
     });
+
+    onCleanup(() => subscription.unsubscribe());
+  });
+
+  private readonly prizeDrawAvailabilityWatcher = effect((onCleanup) => {
+    const eventId = this.prizeDrawTargetId();
+    if (!eventId) {
+      this.hasPrizeDraws.set(false);
+      return;
+    }
+
+    this.hasPrizeDraws.set(false);
+    const invalidations = this.isBrowser
+      ? defer(() => this.prizeDrawsApi.watch({ targetType: 'EVENT', targetId: eventId }))
+          .pipe(
+            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+            retry({
+              delay: (_, retryCount) =>
+                timer(
+                  Math.min(
+                    PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                    PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
+                  ),
+                ),
+            }),
+          )
+      : EMPTY;
+    const subscription = merge(of(undefined), invalidations)
+      .pipe(
+        switchMap(() =>
+          this.prizeDrawsApi.availability({ eventIds: [eventId] }).pipe(
+            catchError(() => EMPTY),
+            take(1),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((availability) => {
+        if (this.prizeDrawTargetId() !== eventId) {
+          return;
+        }
+        this.hasPrizeDraws.set(availability.some((item) => item.targetType === 'EVENT' && item.drawCount > 0));
+      });
 
     onCleanup(() => subscription.unsubscribe());
   });

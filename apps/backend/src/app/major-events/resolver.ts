@@ -8,7 +8,7 @@ import {
   PaymentInfoInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { addDays, subDays } from 'date-fns';
 import {
@@ -30,6 +30,11 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import {
+  PUBLIC_CATALOG_REALTIME_CHANNEL,
+  createPublicCatalogInvalidation,
+} from '../realtime/public-catalog-invalidation';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 
 const PAYMENT_INFO_SELECT = {
@@ -153,6 +158,11 @@ export class MajorEventsResolver {
       assertMajorEventUpdateAllowed: async () => undefined,
       assertMajorEventDeleteAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    @Optional()
+    private readonly realtime: Pick<RealtimeInvalidationService, 'publish' | 'scope'> = {
+      scope: (channel) => channel,
+      publish: async () => ({}),
+    },
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -311,6 +321,7 @@ export class MajorEventsResolver {
       endDate: majorEvent.endDate,
       publicationState: majorEvent.publicationState,
     });
+    await this.publishInvalidations();
     return majorEvent;
   }
 
@@ -399,6 +410,7 @@ export class MajorEventsResolver {
       endDate: updatedMajorEvent.endDate,
       publicationState: updatedMajorEvent.publicationState,
     });
+    await this.publishInvalidations();
     return updatedMajorEvent;
   }
 
@@ -524,6 +536,7 @@ export class MajorEventsResolver {
       endDate: majorEvent.endDate,
       publicationState: majorEvent.publicationState,
     });
+    await this.publishInvalidations();
     return majorEvent;
   }
 
@@ -559,10 +572,23 @@ export class MajorEventsResolver {
     });
     await this.sitemap.refresh();
     await this.typesenseSearch.deleteMajorEvent(id);
+    await this.publishInvalidations();
     return {
       deleted: true,
       id,
     };
+  }
+
+  private async publishInvalidations(): Promise<void> {
+    const payload = {
+      type: 'CATALOG_INVALIDATED',
+      domain: 'major-event',
+      occurredAt: new Date().toISOString(),
+    };
+    await Promise.all([
+      this.realtime.publish(this.realtime.scope('admin-workspace'), payload),
+      this.realtime.publish(this.realtime.scope(PUBLIC_CATALOG_REALTIME_CHANNEL), createPublicCatalogInvalidation()),
+    ]);
   }
 
   private buildMajorEventCreateData(

@@ -4,6 +4,7 @@ import { NEVER, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
 
 type LoadMode = 'ready' | 'loading' | 'error';
@@ -76,6 +77,10 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
             },
             submitApplication: () => of('application-story'),
           },
+        },
+        {
+          provide: SportsOperationsRealtimeService,
+          useValue: { watchCurrentUserApplications: () => NEVER },
         },
       ],
     }),

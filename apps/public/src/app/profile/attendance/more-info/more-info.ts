@@ -1,6 +1,21 @@
-import type { EventFormTargetType, EventTargetType, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { isPlatformBrowser } from '@angular/common';
+import type {
+  EventFormTargetType,
+  EventTargetType,
+  PublicEventForm,
+  PublicPrizeDrawAvailability,
+} from '@cacic-fct/event-manager-public-contracts';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +26,7 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
-import { Observable, catchError, forkJoin, from, map, of, startWith, switchMap } from 'rxjs';
+import { EMPTY, Observable, auditTime, catchError, defer, forkJoin, from, map, of, retry, startWith, switchMap, timer } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
@@ -33,6 +48,13 @@ type DetailState =
   | { status: 'loading' }
   | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean }
   | { status: 'error'; message: string };
+type ReadyDetailState = Extract<DetailState, { status: 'ready' }>;
+
+type PrizeDrawTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
+
+const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
+const PRIZE_DRAW_RECONNECT_BASE_DELAY_MS = 1000;
+const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-more-info',
@@ -51,6 +73,8 @@ type DetailState =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoreInfo {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(AttendancesApiService);
@@ -62,13 +86,94 @@ export class MoreInfo {
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   readonly emoji = inject(EmojiService);
 
-  readonly detailState = toSignal(
+  private readonly detailStateSnapshot = toSignal(
     this.route.paramMap.pipe(
       switchMap((params) => this.loadDetailState(params)),
       startWith({ status: 'loading' } satisfies DetailState),
     ),
     { initialValue: { status: 'loading' } satisfies DetailState },
   );
+  private readonly prizeDrawAvailability = signal<{ snapshot: ReadyDetailState; value: boolean } | null>(null);
+  readonly detailState = computed(() => {
+    const state = this.detailStateSnapshot();
+    if (state.status !== 'ready') {
+      return state;
+    }
+
+    const liveAvailability = this.prizeDrawAvailability();
+    return {
+      ...state,
+      hasPrizeDraws:
+        liveAvailability?.snapshot === state ? liveAvailability.value : state.hasPrizeDraws,
+    };
+  });
+  private readonly prizeDrawTargetType = computed<PrizeDrawTargetType | null>(() => {
+    const state = this.detailStateSnapshot();
+    if (state.status !== 'ready') {
+      return null;
+    }
+
+    return {
+      event: 'EVENT',
+      'event-group': 'EVENT_GROUP',
+      'major-event': 'MAJOR_EVENT',
+    }[state.detail.targetType] as PrizeDrawTargetType;
+  });
+  private readonly prizeDrawTargetId = computed(() => {
+    const state = this.detailStateSnapshot();
+    return state.status === 'ready' ? state.detail.targetId : null;
+  });
+
+  private readonly prizeDrawAvailabilityWatcher = effect((onCleanup) => {
+    const targetType = this.prizeDrawTargetType();
+    const targetId = this.prizeDrawTargetId();
+    if (!targetType || !targetId) {
+      return;
+    }
+
+    const target = { targetType, targetId };
+    const invalidations = isPlatformBrowser(this.platformId)
+      ? defer(() => this.prizeDrawsApi.watch(target))
+          .pipe(
+            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+            retry({
+              delay: (_, retryCount) =>
+                timer(
+                  Math.min(
+                    PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                    PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
+                  ),
+                ),
+            }),
+          )
+      : EMPTY;
+    const subscription = invalidations
+      .pipe(
+        switchMap(() =>
+          this.prizeDrawsApi.availability(this.prizeDrawAvailabilityInput(target)).pipe(
+            catchError((): Observable<PublicPrizeDrawAvailability[]> => EMPTY),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((availability) => {
+        const state = this.detailStateSnapshot();
+        if (
+          state.status !== 'ready' ||
+          state.detail.targetType !== this.detailTargetType(targetType) ||
+          state.detail.targetId !== targetId
+        ) {
+          return;
+        }
+
+        this.prizeDrawAvailability.set({
+          snapshot: state,
+          value: availability.some((item) => item.drawCount > 0),
+        });
+      });
+
+    onCleanup(() => subscription.unsubscribe());
+  });
 
   openCertificates(detail: DetailViewModel): void {
     this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
@@ -210,6 +315,26 @@ export class MoreInfo {
         } satisfies DetailState),
       ),
     );
+  }
+
+  private prizeDrawAvailabilityInput(target: { targetType: PrizeDrawTargetType; targetId: string }): {
+    eventIds?: string[];
+    eventGroupIds?: string[];
+    majorEventIds?: string[];
+  } {
+    return {
+      eventIds: target.targetType === 'EVENT' ? [target.targetId] : undefined,
+      eventGroupIds: target.targetType === 'EVENT_GROUP' ? [target.targetId] : undefined,
+      majorEventIds: target.targetType === 'MAJOR_EVENT' ? [target.targetId] : undefined,
+    };
+  }
+
+  private detailTargetType(targetType: PrizeDrawTargetType): EventTargetType {
+    return {
+      EVENT: 'event',
+      EVENT_GROUP: 'event-group',
+      MAJOR_EVENT: 'major-event',
+    }[targetType] as EventTargetType;
   }
 
   private loadDetail(eventType: EventTargetType, eventId: string): Observable<DetailViewModel | null> {

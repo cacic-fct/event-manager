@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Params, Router, convertToParamMap } from '@angular/router';
+import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { EmojiService } from '../../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from '../online-attendance-api.service';
 import { OnlineAttendanceCoordinatorService } from '../coordinator.service';
@@ -138,6 +139,32 @@ describe('OnlineAttendanceCodeComponent', () => {
 
     expect(router.navigate).toHaveBeenCalledWith(['/profile', 'attendances', 'event', 'event-1']);
   });
+
+  it('shows that the current attendance is no longer pending after an empty live snapshot', async () => {
+    const { attendanceChanges, component, fixture } = await createFixture({ pendingEventsAfterLiveChange: [] });
+
+    expect(component.state()).toEqual({ status: 'ready', item: pendingAttendanceEvent, total: 1 });
+
+    attendanceChanges.next();
+    await fixture.whenStable();
+
+    expect(component.state()).toEqual({
+      status: 'error',
+      message: 'Não há presença pendente para este evento.',
+    });
+  });
+
+  it('keeps the current code page when a live refetch fails', async () => {
+    const { attendanceChanges, component, fixture } = await createFixture({
+      liveError: new Error('Falha transitória'),
+    });
+    const previousState = component.state();
+
+    attendanceChanges.next();
+    await fixture.whenStable();
+
+    expect(component.state()).toEqual(previousState);
+  });
 });
 
 async function createFixture({
@@ -145,12 +172,16 @@ async function createFixture({
   queryParams = {},
   pendingEventsAfterSubmit = [],
   pendingEvents = [pendingAttendanceEvent],
+  pendingEventsAfterLiveChange,
+  liveError,
   scannerCode = null,
 }: {
   routeParams?: Params;
   queryParams?: Params;
   pendingEventsAfterSubmit?: PendingOnlineAttendanceEvent[];
   pendingEvents?: PendingOnlineAttendanceEvent[];
+  pendingEventsAfterLiveChange?: PendingOnlineAttendanceEvent[];
+  liveError?: Error;
   scannerCode?: string | null;
 } = {}): Promise<{
   api: {
@@ -159,6 +190,7 @@ async function createFixture({
   };
   component: OnlineAttendanceCodeComponent;
   attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
+  attendanceChanges: Subject<void>;
   dialog: { open: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<OnlineAttendanceCodeComponent>;
   router: { navigate: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
@@ -175,6 +207,12 @@ async function createFixture({
   if (pendingEventsAfterSubmit.length > 0) {
     api.listPendingEvents.mockReturnValueOnce(of(pendingEventsAfterSubmit));
   }
+  if (pendingEventsAfterLiveChange !== undefined || liveError) {
+    api.listPendingEvents.mockReturnValueOnce(
+      liveError ? throwError(() => liveError) : of(pendingEventsAfterLiveChange ?? []),
+    );
+  }
+  const attendanceChanges = new Subject<void>();
   const dialog = {
     open: vi.fn(() => ({
       afterClosed: () => of(scannerCode),
@@ -192,6 +230,7 @@ async function createFixture({
   };
   const attendanceCoordinator = {
     dismissPending: vi.fn(),
+    changes: () => attendanceChanges.asObservable(),
   };
 
   await TestBed.configureTestingModule({
@@ -248,6 +287,7 @@ async function createFixture({
     api,
     component: fixture.componentInstance,
     attendanceCoordinator,
+    attendanceChanges,
     dialog,
     fixture,
     router,
@@ -258,13 +298,13 @@ async function createFixture({
 
 const pendingAttendanceEvent = {
   eventId: 'event-1',
-  event: {
+  event: createPublicEvent({
     id: 'event-1',
     name: 'Evento teste',
-    startDate: '2026-06-25T12:00:00.000Z',
-    endDate: '2026-06-25T13:00:00.000Z',
+    startDate: publicFixtureDateFromNow(1, 12),
+    endDate: publicFixtureDateFromNow(1, 13),
     type: 'OTHER',
     emoji: '🎓',
     majorEvent: null,
-  },
+  }),
 } satisfies PendingOnlineAttendanceEvent;

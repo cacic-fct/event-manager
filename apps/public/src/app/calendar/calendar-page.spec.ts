@@ -5,9 +5,11 @@ import { provideRouter } from '@angular/router';
 import { CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
-import { of } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import { CalendarApiService } from './calendar-api.service';
 import { Calendar } from './calendar-page';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
+import { NetworkStatusService } from '../shared/network-status.service';
 
 describe('Calendar', () => {
   let component: Calendar;
@@ -20,6 +22,8 @@ describe('Calendar', () => {
   let isAuthenticated = signal(true);
   let featureFlags: { stringValue: ReturnType<typeof vi.fn> };
   let calendarDefaultView = signal('list');
+  let catalogEvents: Subject<void>;
+  let currentUserEvents: Subject<void>;
 
   beforeEach(async () => {
     calendarPreferences = {
@@ -34,6 +38,8 @@ describe('Calendar', () => {
       getCalendarEvents: vi.fn(() => of([])),
       getCurrentUserSubscribedEventIds: vi.fn(() => of(new Set<string>())),
     };
+    catalogEvents = new Subject<void>();
+    currentUserEvents = new Subject<void>();
 
     await TestBed.configureTestingModule({
       imports: [Calendar],
@@ -44,6 +50,17 @@ describe('Calendar', () => {
         { provide: PublicFeatureFlagService, useValue: featureFlags },
         { provide: AuthService, useValue: { isAuthenticated } },
         { provide: CalendarApiService, useValue: calendarApi },
+        {
+          provide: NetworkStatusService,
+          useValue: { isOnline: signal(true), watchStatusChanges: () => EMPTY },
+        },
+        {
+          provide: RealtimeInvalidationService,
+          useValue: {
+            watchCatalog: vi.fn(() => catalogEvents),
+            watchCurrentUserData: vi.fn(() => currentUserEvents),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -124,5 +141,19 @@ describe('Calendar', () => {
     expect(component.viewMode()).toBe('list');
     expect(calendarPreferences.watchDefaultItemView).toHaveBeenCalled();
     expect('setDefaultItemView' in calendarPreferences).toBe(false);
+  });
+
+  it('reloads catalog and personal subscription data from their live invalidations', async () => {
+    await vi.waitFor(() => expect(calendarApi.getCalendarEvents).toHaveBeenCalled());
+    const initialCalls = calendarApi.getCalendarEvents.mock.calls.length;
+
+    catalogEvents.next();
+    await vi.waitFor(() => expect(calendarApi.getCalendarEvents.mock.calls.length).toBeGreaterThan(initialCalls));
+
+    const afterCatalog = calendarApi.getCurrentUserSubscribedEventIds.mock.calls.length;
+    currentUserEvents.next();
+    await vi.waitFor(() =>
+      expect(calendarApi.getCurrentUserSubscribedEventIds.mock.calls.length).toBeGreaterThan(afterCatalog),
+    );
   });
 });

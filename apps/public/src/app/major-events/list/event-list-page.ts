@@ -13,7 +13,7 @@ import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { catchError, forkJoin, map, of } from 'rxjs';
+import { EMPTY, auditTime, catchError, defer, forkJoin, map, merge, of, retry, switchMap, timer } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
@@ -37,6 +37,9 @@ const RECEIPT_UPLOAD_STATUSES = new Set([
   'REJECTED_NO_SLOTS',
   'REJECTED_SCHEDULE_CONFLICT',
 ]);
+const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
+const PRIZE_DRAW_RECONNECT_BASE_DELAY_MS = 1000;
+const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-major-event',
@@ -247,16 +250,44 @@ export class MajorEvent {
   }
 
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {
-    this.prizeDrawsApi
-      .availability({ majorEventIds: events.map((event) => event.id) })
+    const majorEventIds = events.map((event) => event.id);
+    const invalidations = isPlatformBrowser(this.platformId) && majorEventIds.length > 0
+      ? merge(
+          ...majorEventIds.map((majorEventId) =>
+            defer(() => this.prizeDrawsApi.watch({ targetType: 'MAJOR_EVENT', targetId: majorEventId })).pipe(
+              retry({
+                delay: (_, retryCount) =>
+                  timer(
+                    Math.min(
+                      PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                      PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
+                    ),
+                  ),
+              }),
+            ),
+          ),
+        ).pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
+      : EMPTY;
+
+    merge(of(undefined), invalidations)
       .pipe(
-        catchError(() => of([])),
-        map((availability) => availability.filter((item) => item.drawCount > 0).map((item) => item.targetId)),
+        switchMap(() =>
+          this.prizeDrawsApi.availability({ majorEventIds }).pipe(
+            catchError(() => EMPTY),
+          ),
+        ),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((prizeDrawTargetIds) => {
+      .subscribe((availability) => {
         const state = this.pageState();
-        if (state.status === 'ready' && !state.preview) this.pageState.set({ ...state, prizeDrawTargetIds });
+        if (state.status !== 'ready' || state.preview) {
+          return;
+        }
+
+        this.pageState.set({
+          ...state,
+          prizeDrawTargetIds: availability.filter((item) => item.drawCount > 0).map((item) => item.targetId),
+        });
       });
   }
 }
