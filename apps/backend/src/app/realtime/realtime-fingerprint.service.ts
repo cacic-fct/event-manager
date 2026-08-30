@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface AggregateFingerprint {
@@ -11,6 +12,7 @@ export interface CurrentUserRealtimeFingerprint {
   minute: number;
   attendances: AggregateFingerprint;
   eventSubscriptions: AggregateFingerprint;
+  eventSubscriptionGroups: string;
   eventGroupSubscriptions: AggregateFingerprint;
   majorEventSubscriptions: AggregateFingerprint;
   certificates: AggregateFingerprint;
@@ -31,6 +33,8 @@ export interface CurrentUserRealtimeFingerprint {
 export interface EventSubscriptionsRealtimeFingerprint {
   type: 'EVENT_SUBSCRIPTIONS_INVALIDATED';
   subscriptions: AggregateFingerprint;
+  subscriptionGroups: string;
+  lecturers: AggregateFingerprint;
   selections: AggregateFingerprint;
   rankedSubscriptions: AggregateFingerprint;
 }
@@ -44,6 +48,7 @@ export interface MajorEventSubscriptionsRealtimeFingerprint {
   participants: AggregateFingerprint;
   teams: AggregateFingerprint;
   members: AggregateFingerprint;
+  registrationMembers: AggregateFingerprint;
 }
 
 @Injectable()
@@ -54,6 +59,7 @@ export class RealtimeFingerprintService {
     const [
       attendances,
       eventSubscriptions,
+      eventSubscriptionGroups,
       eventGroupSubscriptions,
       majorEventSubscriptions,
       certificates,
@@ -80,6 +86,7 @@ export class RealtimeFingerprintService {
           _count: true,
           _max: { createdAt: true, deletedAt: true },
         }),
+        this.eventSubscriptionGroupFingerprint({ personId }),
         this.prisma.eventGroupSubscription.aggregate({
           where: { personId },
           _count: true,
@@ -168,6 +175,7 @@ export class RealtimeFingerprintService {
       minute: Math.floor(Date.now() / 60_000),
       attendances,
       eventSubscriptions,
+      eventSubscriptionGroups,
       eventGroupSubscriptions,
       majorEventSubscriptions,
       certificates,
@@ -187,11 +195,17 @@ export class RealtimeFingerprintService {
   }
 
   async eventSubscriptions(eventId: string): Promise<EventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, selections, rankedSubscriptions] = await Promise.all([
+    const [subscriptions, subscriptionGroups, lecturers, selections, rankedSubscriptions] = await Promise.all([
       this.prisma.eventSubscription.aggregate({
         where: { eventId },
         _count: true,
         _max: { createdAt: true, deletedAt: true },
+      }),
+      this.eventSubscriptionGroupFingerprint({ eventId }),
+      this.prisma.eventLecturer.aggregate({
+        where: { eventId },
+        _count: true,
+        _max: { createdAt: true },
       }),
       this.prisma.majorEventSubscriptionEventSelection.aggregate({
         where: { eventId },
@@ -204,11 +218,19 @@ export class RealtimeFingerprintService {
         _max: { updatedAt: true, deletedAt: true },
       }),
     ]);
-    return { type: 'EVENT_SUBSCRIPTIONS_INVALIDATED', subscriptions, selections, rankedSubscriptions };
+    return {
+      type: 'EVENT_SUBSCRIPTIONS_INVALIDATED',
+      subscriptions,
+      subscriptionGroups,
+      lecturers,
+      selections,
+      rankedSubscriptions,
+    };
   }
 
   async majorEventSubscriptions(majorEventId: string): Promise<MajorEventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, selections, receipts, applications, participants, teams, members] = await Promise.all([
+    const [subscriptions, selections, receipts, applications, participants, teams, members, registrationMembers] =
+      await Promise.all([
       this.prisma.majorEventSubscription.aggregate({
         where: { majorEventId },
         _count: true,
@@ -244,6 +266,11 @@ export class RealtimeFingerprintService {
         _count: true,
         _max: { updatedAt: true, deletedAt: true },
       }),
+      this.prisma.sportsRegistrationMember.aggregate({
+        where: { registration: { category: { tournament: { majorEventId } } } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
     ]);
     return {
       type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
@@ -254,6 +281,23 @@ export class RealtimeFingerprintService {
       participants,
       teams,
       members,
+      registrationMembers,
     };
+  }
+
+  private async eventSubscriptionGroupFingerprint(where: { eventId: string } | { personId: string }): Promise<string> {
+    const subscriptions = await this.prisma.eventSubscription.findMany({
+      where,
+      select: { id: true, eventGroupSubscriptionId: true },
+      orderBy: { id: 'asc' },
+    });
+    const digest = createHash('sha256');
+    for (const subscription of subscriptions) {
+      digest.update(subscription.id);
+      digest.update('\0');
+      digest.update(subscription.eventGroupSubscriptionId ?? '');
+      digest.update('\0');
+    }
+    return digest.digest('base64url');
   }
 }

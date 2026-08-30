@@ -6,7 +6,7 @@ describe('RealtimeFingerprintService', () => {
     const aggregate = () => ({ aggregate: jest.fn().mockResolvedValue(revision) });
     const prisma = {
       eventAttendance: aggregate(),
-      eventSubscription: aggregate(),
+      eventSubscription: { ...aggregate(), findMany: jest.fn().mockResolvedValue([]) },
       eventGroupSubscription: aggregate(),
       majorEventSubscription: aggregate(),
       certificate: aggregate(),
@@ -29,6 +29,7 @@ describe('RealtimeFingerprintService', () => {
       expect.objectContaining({
         type: 'CURRENT_USER_DATA_INVALIDATED',
         minute: expect.any(Number),
+        eventSubscriptionGroups: expect.any(String),
         lecturers: revision,
         attendanceCollectors: revision,
         teamRepresentatives: revision,
@@ -55,27 +56,52 @@ describe('RealtimeFingerprintService', () => {
     );
   });
 
-  it('builds a bounded event-subscription revision from aggregates only', async () => {
+  it('tracks grouping and lecturer changes in event-subscription revisions', async () => {
     const directSubscriptions = { _count: 4, _max: { createdAt: null, deletedAt: null } };
     const selections = { _count: 3, _max: { createdAt: null, deletedAt: null } };
     const rankedSubscriptions = { _count: 2, _max: { updatedAt: null, deletedAt: null } };
     const prisma = {
-      eventSubscription: { aggregate: jest.fn().mockResolvedValue(directSubscriptions) },
+      eventSubscription: {
+        aggregate: jest.fn().mockResolvedValue(directSubscriptions),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ id: 'subscription-1', eventGroupSubscriptionId: null }])
+          .mockResolvedValueOnce([
+            { id: 'subscription-1', eventGroupSubscriptionId: 'group-subscription-1' },
+          ]),
+      },
+      eventLecturer: { aggregate: jest.fn().mockResolvedValue({ _count: 1, _max: { createdAt: null } }) },
       majorEventSubscriptionEventSelection: { aggregate: jest.fn().mockResolvedValue(selections) },
       majorEventSubscription: { aggregate: jest.fn().mockResolvedValue(rankedSubscriptions) },
     };
     const service = new RealtimeFingerprintService(prisma as never);
 
-    await expect(service.eventSubscriptions('event-1')).resolves.toEqual({
+    const standalone = await service.eventSubscriptions('event-1');
+    const grouped = await service.eventSubscriptions('event-1');
+
+    expect(standalone).toEqual({
       type: 'EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions: directSubscriptions,
+      subscriptionGroups: expect.any(String),
+      lecturers: { _count: 1, _max: { createdAt: null } },
       selections,
       rankedSubscriptions,
     });
+    expect(grouped.subscriptionGroups).not.toBe(standalone.subscriptionGroups);
 
     expect(prisma.eventSubscription.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { eventId: 'event-1' }, _count: true }),
     );
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith({
+      where: { eventId: 'event-1' },
+      select: { id: true, eventGroupSubscriptionId: true },
+      orderBy: { id: 'asc' },
+    });
+    expect(prisma.eventLecturer.aggregate).toHaveBeenCalledWith({
+      where: { eventId: 'event-1' },
+      _count: true,
+      _max: { createdAt: true },
+    });
     expect(prisma.majorEventSubscriptionEventSelection.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { eventId: 'event-1' }, _count: true }),
     );
@@ -99,6 +125,9 @@ describe('RealtimeFingerprintService', () => {
       },
       sportsTeam: { aggregate: jest.fn().mockResolvedValue({ _count: 6, _max: { updatedAt: null } }) },
       sportsTeamMember: { aggregate: jest.fn().mockResolvedValue({ _count: 7, _max: { updatedAt: null } }) },
+      sportsRegistrationMember: {
+        aggregate: jest.fn().mockResolvedValue({ _count: 8, _max: { updatedAt: null } }),
+      },
     };
     const service = new RealtimeFingerprintService(prisma as never);
 
@@ -111,6 +140,7 @@ describe('RealtimeFingerprintService', () => {
       participants: { _count: 5, _max: { updatedAt: null } },
       teams: { _count: 6, _max: { updatedAt: null } },
       members: { _count: 7, _max: { updatedAt: null } },
+      registrationMembers: { _count: 8, _max: { updatedAt: null } },
     });
 
     expect(prisma.majorEventSubscription.aggregate).toHaveBeenCalledWith(
@@ -133,6 +163,12 @@ describe('RealtimeFingerprintService', () => {
     );
     expect(prisma.sportsTeamMember.aggregate).toHaveBeenCalledWith(
       expect.objectContaining({ where: { participant: { tournament: { majorEventId: 'major-1' } } }, _count: true }),
+    );
+    expect(prisma.sportsRegistrationMember.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { registration: { category: { tournament: { majorEventId: 'major-1' } } } },
+        _count: true,
+      }),
     );
   });
 });

@@ -75,8 +75,10 @@ export class SubscriptionsService {
   private eventLiveSubscription?: Subscription;
   private majorEventLiveSubscription?: Subscription;
   private eventSelectionRequest = 0;
+  private majorEventSelectionRequest = 0;
   private eventSubscriptionsRequest = 0;
   private majorEventSubscriptionsRequest = 0;
+  private liveUpdatesRevision = 0;
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.group({
@@ -137,6 +139,8 @@ export class SubscriptionsService {
   readonly majorEventSportsWorkspace = signal<MajorEventSportsSubscriptionWorkspace | null>(null);
   private readonly sportsAssignedTeams = signal<Record<string, string | null>>({});
   private readonly sportsParticipantTeams = signal<Record<string, string | null>>({});
+  private readonly dirtySportsAssignedTeams = new Set<string>();
+  private readonly dirtySportsParticipantTeams = new Set<string>();
   readonly selectedMajorEvent = computed(() => {
     return this.majorEvents().find((item) => item.id === this.selectedMajorEventId()) ?? null;
   });
@@ -233,6 +237,7 @@ export class SubscriptionsService {
 
   async selectEvent(eventItem: Event): Promise<void> {
     const selectionRequest = ++this.eventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
     this.stopMajorEventLiveUpdates();
     this.stopEventLiveUpdates();
     void this.router.navigate(['/subscriptions/event', eventItem.id]);
@@ -242,6 +247,7 @@ export class SubscriptionsService {
     await this.loadEventSubscriptions(eventItem.id);
     if (
       selectionRequest !== this.eventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
       this.eventSubscriptionForm.controls.eventId.value !== eventItem.id
     ) {
       return;
@@ -251,11 +257,12 @@ export class SubscriptionsService {
 
   async selectEventById(eventId: string): Promise<void> {
     const selectionRequest = ++this.eventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
     this.stopMajorEventLiveUpdates();
     this.stopEventLiveUpdates();
     if (this.selectedEvent()?.id !== eventId) {
       const selectedEvent = await firstValueFrom(this.eventApi.getEvent(eventId));
-      if (selectionRequest !== this.eventSelectionRequest) {
+      if (selectionRequest !== this.eventSelectionRequest || liveUpdatesRevision !== this.liveUpdatesRevision) {
         return;
       }
       this.selectedEvent.set(selectedEvent);
@@ -265,6 +272,7 @@ export class SubscriptionsService {
     await this.loadEventSubscriptions(eventId);
     if (
       selectionRequest !== this.eventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
       this.eventSubscriptionForm.controls.eventId.value !== eventId
     ) {
       return;
@@ -327,8 +335,10 @@ export class SubscriptionsService {
   }
 
   async selectMajorEventById(majorEventId: string, navigate = true): Promise<void> {
-    this.eventLiveSubscription?.unsubscribe();
-    this.eventLiveSubscription = undefined;
+    const selectionRequest = ++this.majorEventSelectionRequest;
+    const liveUpdatesRevision = this.liveUpdatesRevision;
+    this.stopEventLiveUpdates();
+    this.stopMajorEventLiveUpdates();
     this.majorEventSubscriptionSelectionRequest++;
     this.majorEventForm.controls.majorEventId.setValue(majorEventId);
     if (navigate) {
@@ -336,7 +346,11 @@ export class SubscriptionsService {
     }
     resetPagination(this.majorEventSubscriptionsPagination);
     await this.loadMajorEventSubscriptions();
-    if (this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+    if (
+      selectionRequest !== this.majorEventSelectionRequest ||
+      liveUpdatesRevision !== this.liveUpdatesRevision ||
+      this.majorEventForm.controls.majorEventId.value !== majorEventId
+    ) {
       return;
     }
     this.watchMajorEventSubscriptions(majorEventId);
@@ -351,6 +365,7 @@ export class SubscriptionsService {
       this.majorEventSportsWorkspace.set(null);
       this.sportsAssignedTeams.set({});
       this.sportsParticipantTeams.set({});
+      this.clearDirtySportsTeamSelections();
       return;
     }
     const request = ++this.majorEventSubscriptionsRequest;
@@ -369,22 +384,17 @@ export class SubscriptionsService {
     if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
       return;
     }
-    this.majorEventSportsWorkspace.set(sportsWorkspace);
-    this.sportsAssignedTeams.set(
-      Object.fromEntries(
-        (sportsWorkspace?.applications ?? []).map((application) => [
-          application.id,
-          application.requestedTeam?.id ?? null,
-        ]),
-      ),
+    const assignedTeams = Object.fromEntries(
+      (sportsWorkspace?.applications ?? []).map((application) => [
+        application.id,
+        application.requestedTeam?.id ?? null,
+      ]),
     );
-    this.sportsParticipantTeams.set(
-      Object.fromEntries(
-        (sportsWorkspace?.participants ?? []).map((participant) => [
-          participant.id,
-          participant.teams.find((membership) => membership.status === 'APPROVED')?.teamId ?? null,
-        ]),
-      ),
+    const participantTeams = Object.fromEntries(
+      (sportsWorkspace?.participants ?? []).map((participant) => [
+        participant.id,
+        participant.teams.find((membership) => membership.status === 'APPROVED')?.teamId ?? null,
+      ]),
     );
     const events =
       subscriptions[0]?.events ??
@@ -395,6 +405,26 @@ export class SubscriptionsService {
         subscribed: false,
         isLecturerSubscription: false,
       }));
+    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
+    this.majorEventSportsWorkspace.set(sportsWorkspace);
+    if (options.preserveSelection) {
+      this.sportsAssignedTeams.set(
+        this.mergeDirtySportsTeamSelections(assignedTeams, this.sportsAssignedTeams(), this.dirtySportsAssignedTeams),
+      );
+      this.sportsParticipantTeams.set(
+        this.mergeDirtySportsTeamSelections(
+          participantTeams,
+          this.sportsParticipantTeams(),
+          this.dirtySportsParticipantTeams,
+        ),
+      );
+    } else {
+      this.sportsAssignedTeams.set(assignedTeams);
+      this.sportsParticipantTeams.set(participantTeams);
+      this.clearDirtySportsTeamSelections();
+    }
     this.majorEventEvents.set(events);
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
@@ -432,6 +462,9 @@ export class SubscriptionsService {
   }
 
   closeLiveUpdates(): void {
+    this.liveUpdatesRevision++;
+    this.eventSelectionRequest++;
+    this.majorEventSelectionRequest++;
     this.eventSubscriptionsRequest++;
     this.majorEventSubscriptionsRequest++;
     this.stopEventLiveUpdates();
@@ -443,6 +476,7 @@ export class SubscriptionsService {
   }
 
   setSportsAssignedTeam(applicationId: string, teamId: string | null): void {
+    this.dirtySportsAssignedTeams.add(applicationId);
     this.sportsAssignedTeams.update((current) => ({ ...current, [applicationId]: teamId || null }));
   }
 
@@ -451,6 +485,7 @@ export class SubscriptionsService {
   }
 
   setSportsParticipantTeamSelection(participantId: string, teamId: string | null): void {
+    this.dirtySportsParticipantTeams.add(participantId);
     this.sportsParticipantTeams.update((current) => ({ ...current, [participantId]: teamId || null }));
   }
 
@@ -462,7 +497,8 @@ export class SubscriptionsService {
           teamId: this.sportsParticipantTeamId(participant.id),
         }),
       );
-      await this.loadMajorEventSubscriptions();
+      this.dirtySportsParticipantTeams.delete(participant.id);
+      await this.loadMajorEventSubscriptions({ preserveSelection: true });
       this.snackbar.open('Equipe da participação esportiva atualizada.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível atualizar a equipe da participação.');
@@ -515,11 +551,27 @@ export class SubscriptionsService {
           reviewMessage: reviewMessage || null,
         }),
       );
-      await this.loadMajorEventSubscriptions();
+      this.dirtySportsAssignedTeams.delete(application.id);
+      await this.loadMajorEventSubscriptions({ preserveSelection: true });
       this.snackbar.open('Inscrição esportiva revisada.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível revisar a inscrição esportiva.');
     }
+  }
+
+  private mergeDirtySportsTeamSelections(
+    remote: Record<string, string | null>,
+    local: Record<string, string | null>,
+    dirtyIds: ReadonlySet<string>,
+  ): Record<string, string | null> {
+    return Object.fromEntries(
+      Object.entries(remote).map(([id, teamId]) => [id, dirtyIds.has(id) ? (local[id] ?? null) : teamId]),
+    );
+  }
+
+  private clearDirtySportsTeamSelections(): void {
+    this.dirtySportsAssignedTeams.clear();
+    this.dirtySportsParticipantTeams.clear();
   }
 
   async searchMajorEventSubscriptions(): Promise<void> {

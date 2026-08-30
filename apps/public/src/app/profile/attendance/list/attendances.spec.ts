@@ -1,3 +1,4 @@
+import { signal, type WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
@@ -202,6 +203,20 @@ describe('Attendances', () => {
     fixture.detectChanges();
     expect(component.visibleParticipations().map((item) => item.title)).toContain('SECOMPP atualizado');
     expect(fixture.nativeElement.textContent).toContain('SECOMPP atualizado');
+  });
+
+  it('discards the previous user feed when the next user load and offline fallback fail', async () => {
+    const { api, authUser, component, fixture, offlineData } = await createFixture();
+    await settle(fixture);
+    api.getSubscriptionsFeed.mockReturnValueOnce(throwError(() => new Error('Falha para a nova pessoa')));
+    offlineData.getAttendanceFeed.mockRejectedValueOnce(new Error('Cache indisponível'));
+
+    authUser.set({ sub: 'user-2' });
+    await settle(fixture);
+
+    expect(component.feedState()).toEqual({ status: 'error', message: 'Cache indisponível' });
+    expect(component.visibleParticipations()).toEqual([]);
+    expect(offlineData.getAttendanceFeed).toHaveBeenCalledWith('user-2');
   });
 
   it('loads the latest offline user snapshot when the browser is offline', async () => {
@@ -486,6 +501,7 @@ async function createFixture({
   };
   snackBar: { open: ReturnType<typeof vi.fn> };
   currentUserChanges: Subject<void>;
+  authUser: WritableSignal<{ sub: string } | null>;
 }> {
   const api = {
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
@@ -514,6 +530,7 @@ async function createFixture({
   };
   const currentUserChanges = new Subject<void>();
   const catalogChanges = new Subject<void>();
+  const authUser = signal(user);
 
   await TestBed.configureTestingModule({
     imports: [Attendances],
@@ -523,7 +540,7 @@ async function createFixture({
       {
         provide: AuthService,
         useValue: {
-          user: () => user,
+          user: authUser,
         },
       },
       {
@@ -570,6 +587,7 @@ async function createFixture({
 
   return {
     api,
+    authUser,
     component: fixture.componentInstance,
     dialog,
     fileDownload,

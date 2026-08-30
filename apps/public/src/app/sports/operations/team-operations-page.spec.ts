@@ -8,21 +8,20 @@ import { SportsTeamOperationsPage } from './team-operations-page';
 import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './sports-operations.fixtures';
 import type { SportsLineupRead } from './sports-operations.types';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
-import type { SportsViewerInvalidation } from '../viewer/sports-viewer.types';
+import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 
 describe('SportsTeamOperationsPage', () => {
   let submitTeamChange: ReturnType<typeof vi.fn>;
   let lineup: ReturnType<typeof vi.fn>;
-  let realtimeStreams: Subject<SportsViewerInvalidation>[];
-  let watchMatch: ReturnType<typeof vi.fn>;
+  let realtimeStreams: Subject<void>[];
+  let watchRepresentativeTeam: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     submitTeamChange = vi.fn(() => of('change-1'));
     lineup = vi.fn(() => of(createSportsLineupRead()));
     realtimeStreams = [];
-    watchMatch = vi.fn(() => {
-      const stream = new Subject<SportsViewerInvalidation>();
+    watchRepresentativeTeam = vi.fn(() => {
+      const stream = new Subject<void>();
       realtimeStreams.push(stream);
       return stream;
     });
@@ -45,7 +44,7 @@ describe('SportsTeamOperationsPage', () => {
             representativeWorkspace: vi.fn(() => of(createRepresentativeTeamWorkspace())),
           },
         },
-        { provide: SportsViewerRealtimeService, useValue: { watchMatch } },
+        { provide: SportsOperationsRealtimeService, useValue: { watchRepresentativeTeam } },
       ],
     });
   });
@@ -120,7 +119,7 @@ describe('SportsTeamOperationsPage', () => {
     page.profileForm.controls.name.setValue('Nome editado localmente');
     page.profileForm.markAsDirty();
     page.identityForm.controls.value.setValue('atleta@example.edu');
-    realtimeStreams[0]?.next({ type: 'MATCH_PROJECTION_CHANGED', matchId: 'match-story', revision: 9 });
+    realtimeStreams[0]?.next();
     await vi.advanceTimersByTimeAsync(75);
 
     expect(page.workspace()?.teamRevision).toBe(refreshedWorkspace.teamRevision);
@@ -128,7 +127,7 @@ describe('SportsTeamOperationsPage', () => {
     expect(page.profileForm.controls.name.value).toBe('Nome editado localmente');
     expect(page.identityForm.controls.value.value).toBe('atleta@example.edu');
     expect(page.lineupMembers().every((member) => !member.selected)).toBe(true);
-    expect(watchMatch).toHaveBeenCalledWith('match-story');
+    expect(watchRepresentativeTeam).toHaveBeenCalledWith('team-home');
   });
 
   it('reconnects the selected public match stream after terminal failure through an authenticated refresh', () => {
@@ -144,7 +143,7 @@ describe('SportsTeamOperationsPage', () => {
     firstStream.error(new Error('closed'));
 
     expect(representativeWorkspace).toHaveBeenCalledTimes(2);
-    expect(watchMatch).toHaveBeenCalledTimes(2);
+    expect(watchRepresentativeTeam).toHaveBeenCalledTimes(2);
   });
 
   it('lets only the newest workspace request settle realtime recovery', () => {
@@ -165,17 +164,17 @@ describe('SportsTeamOperationsPage', () => {
 
     firstStream.error(new Error('closed'));
     page.load({ preserveDrafts: true });
-    expect(watchMatch).toHaveBeenCalledOnce();
+    expect(watchRepresentativeTeam).toHaveBeenCalledOnce();
 
     staleRecovery.next(workspace);
     staleRecovery.complete();
 
-    expect(watchMatch).toHaveBeenCalledOnce();
+    expect(watchRepresentativeTeam).toHaveBeenCalledOnce();
 
     currentLoad.next(workspace);
     currentLoad.complete();
 
-    expect(watchMatch).toHaveBeenCalledTimes(2);
+    expect(watchRepresentativeTeam).toHaveBeenCalledTimes(2);
   });
 
   it('stops reacting to the selected match stream after destruction', async () => {
@@ -186,7 +185,7 @@ describe('SportsTeamOperationsPage', () => {
       typeof vi.fn
     >;
     page.ngOnDestroy();
-    realtimeStreams[0]?.next({ type: 'MATCH_PROJECTION_CHANGED', matchId: 'match-story', revision: 9 });
+    realtimeStreams[0]?.next();
     await vi.advanceTimersByTimeAsync(76);
 
     expect(representativeWorkspace).toHaveBeenCalledOnce();
@@ -198,7 +197,7 @@ describe('SportsTeamOperationsPage', () => {
 
     page.ngOnInit();
 
-    expect(watchMatch).not.toHaveBeenCalled();
+    expect(watchRepresentativeTeam).not.toHaveBeenCalled();
   });
 });
 

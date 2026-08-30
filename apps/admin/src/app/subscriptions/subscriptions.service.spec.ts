@@ -211,6 +211,33 @@ describe('SubscriptionsService', () => {
     expect(workspaceEvents.observed).toBe(true);
   });
 
+  it('does not reopen event or major-event streams after live updates are closed', async () => {
+    const realtime = TestBed.inject(RealtimeApiService) as unknown as {
+      watchEventSubscriptions: ReturnType<typeof vi.fn>;
+      watchMajorEventSubscriptions: ReturnType<typeof vi.fn>;
+    };
+    const pendingEventSubscriptions = new Subject<(typeof eventSubscription)[]>();
+    api.listEventSubscriptions.mockReturnValueOnce(pendingEventSubscriptions);
+    const eventSelection = service.selectEvent(event);
+    await Promise.resolve();
+    service.closeLiveUpdates();
+    pendingEventSubscriptions.next([]);
+    pendingEventSubscriptions.complete();
+    await eventSelection;
+
+    const pendingMajorSubscriptions = new Subject<(typeof majorSubscription)[]>();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(pendingMajorSubscriptions);
+    const majorSelection = service.selectMajorEventById(majorEvent.id);
+    await Promise.resolve();
+    service.closeLiveUpdates();
+    pendingMajorSubscriptions.next([]);
+    pendingMajorSubscriptions.complete();
+    await majorSelection;
+
+    expect(realtime.watchEventSubscriptions).not.toHaveBeenCalled();
+    expect(realtime.watchMajorEventSubscriptions).not.toHaveBeenCalled();
+  });
+
   it('loads major subscriptions, sports workspace, fallback events, filters, and paginates', async () => {
     await service.selectMajorEventById(majorEvent.id);
 
@@ -233,6 +260,25 @@ describe('SubscriptionsService', () => {
     api.listMajorEventSubscriptions.mockReturnValueOnce(of([]));
     await service.loadMajorEventSubscriptions();
     expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 200 });
+  });
+
+  it('stops the previous major-event stream before loading a new selection', async () => {
+    await service.selectMajorEventById(majorEvent.id);
+    const pendingSubscriptions = new Subject<(typeof majorSubscription)[]>();
+    api.listMajorEventSubscriptions.mockReturnValueOnce(pendingSubscriptions);
+
+    const selection = service.selectMajorEventById('major-event-2');
+    await Promise.resolve();
+
+    expect(workspaceEvents.observed).toBe(false);
+    workspaceEvents.next();
+    expect(api.listMajorEventSubscriptions).toHaveBeenCalledTimes(2);
+
+    pendingSubscriptions.next([]);
+    pendingSubscriptions.complete();
+    await selection;
+
+    expect(workspaceEvents.observed).toBe(true);
   });
 
   it('refreshes major subscriptions from a live invalidation without overwriting an editor draft', async () => {
@@ -262,6 +308,45 @@ describe('SubscriptionsService', () => {
     expect(service.selectedMajorEventSubscription()).toBe(majorSubscription);
     expect(service.majorEventEditForm.controls.paymentTier.value).toBe('Tier local');
     expect(service.editMode()).toBe(true);
+  });
+
+  it('preserves pending sports team choices across live refreshes', async () => {
+    const sportsWorkspace = {
+      tournamentId: 'tournament-1',
+      teams: [
+        { id: 'team-1', name: 'Equipe 1' },
+        { id: 'team-2', name: 'Equipe 2' },
+      ],
+      applications: [
+        {
+          id: 'application-1',
+          applicant: { personId: person.id, name: person.name },
+          requestedTeam: { id: 'team-1', name: 'Equipe 1' },
+          status: 'PENDING',
+          categories: [],
+        },
+      ],
+      participants: [
+        {
+          id: 'participant-1',
+          person,
+          source: 'SUBSCRIPTION',
+          status: 'ACTIVE',
+          paymentStatus: 'PAID',
+          teams: [{ status: 'APPROVED', teamId: 'team-1' }],
+        },
+      ],
+    };
+    api.majorEventSportsWorkspace.mockReturnValue(of(sportsWorkspace));
+    await service.selectMajorEventById(majorEvent.id);
+    service.setSportsAssignedTeam('application-1', 'team-2');
+    service.setSportsParticipantTeamSelection('participant-1', 'team-2');
+
+    workspaceEvents.next();
+    await flushAsync();
+
+    expect(service.sportsAssignedTeamId('application-1')).toBe('team-2');
+    expect(service.sportsParticipantTeamId('participant-1')).toBe('team-2');
   });
 
   it('tracks sports assignment selections and handles review cancellation, success, and failure', async () => {

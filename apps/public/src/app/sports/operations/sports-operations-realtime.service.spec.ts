@@ -41,6 +41,23 @@ describe('SportsOperationsRealtimeService', () => {
     expect(source.close).toHaveBeenCalledOnce();
   });
 
+  it('opens an authenticated representative stream that ignores heartbeats', () => {
+    installFakeEventSource();
+    const service = TestBed.inject(SportsOperationsRealtimeService);
+    const next = vi.fn();
+    const subscription = service.watchRepresentativeTeam('team/private').subscribe(next);
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+
+    expect(source.url).toBe('/api/sports/teams/team%2Fprivate/representative-events');
+    expect(source.init).toEqual({ withCredentials: true });
+    source.emitMessage({ type: 'heartbeat' });
+    expect(next).not.toHaveBeenCalled();
+
+    source.emitMessage({ type: 'SPORTS_REPRESENTATIVE_TEAM_INVALIDATED' });
+    expect(next).toHaveBeenCalledOnce();
+    subscription.unsubscribe();
+  });
+
   it('decodes payment changes with the affected application projection', () => {
     installFakeEventSource();
     const service = TestBed.inject(SportsOperationsRealtimeService);

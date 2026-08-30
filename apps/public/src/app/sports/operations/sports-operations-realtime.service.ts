@@ -1,5 +1,5 @@
 import { Service } from '@angular/core';
-import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { watchReplayableEventSource, watchReplayableEventSourcePing } from '@cacic-fct/shared-angular';
 import type { Observable } from 'rxjs';
 
 export type SportsOperationsApplicationRealtimeReason =
@@ -52,6 +52,13 @@ export class SportsOperationsRealtimeService {
       decode: (event) => decodeSportsOperationsApplicationInvalidation(event),
       errorMessage: SPORTS_APPLICATION_STREAM_ERROR,
     });
+  }
+
+  watchRepresentativeTeam(teamId: string): Observable<void> {
+    return watchReplayableEventSourcePing(
+      `/api/sports/teams/${encodeURIComponent(teamId)}/representative-events`,
+      'Não foi possível manter a equipe atualizada em tempo real.',
+    );
   }
 }
 

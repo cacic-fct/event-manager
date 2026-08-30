@@ -150,9 +150,15 @@ export class PrizeDrawWorkspaceService {
         this.events.set(events);
         this.majorEvents.set(majorEvents);
         if (!selectedId || this.unsavedChanges()) continue;
-        const requestGeneration = ++this.selectionRequestGeneration;
+        const requestGeneration = this.selectionRequestGeneration;
         const draw = await firstValueFrom(this.api.get(selectedId));
-        if (requestGeneration !== this.selectionRequestGeneration || this.unsavedChanges()) continue;
+        if (
+          requestGeneration !== this.selectionRequestGeneration ||
+          this.selected()?.id !== selectedId ||
+          this.unsavedChanges()
+        ) {
+          continue;
+        }
         this.patch(draw);
         await this.loadEligibleEntries(requestGeneration);
       } while (this.liveRefreshQueued);
@@ -160,6 +166,10 @@ export class PrizeDrawWorkspaceService {
       this.snackbar.open('Não foi possível aplicar uma atualização ao vivo.', 'Fechar', { duration: 4000 });
     } finally {
       this.liveRefreshRunning = false;
+      if (this.liveRefreshQueued) {
+        this.liveRefreshQueued = false;
+        void this.refreshFromRealtime();
+      }
     }
   }
 

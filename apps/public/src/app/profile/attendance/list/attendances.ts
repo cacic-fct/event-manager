@@ -21,7 +21,7 @@ import {
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { EMPTY, catchError, finalize, from, interval, map, of, startWith, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, combineLatest, distinctUntilChanged, finalize, from, interval, map, of, startWith, switchMap } from 'rxjs';
 import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -155,29 +155,38 @@ export class Attendances {
     { value: 'sportsManager', label: 'Gestão esportiva', icon: 'sports' },
   ];
   private readonly feedRefresh = signal(0);
-  private feedLoaded = false;
+  private readonly feedUserId = computed(() => this.auth.user()?.sub ?? null);
+  private loadedFeedTarget: string | null = null;
 
   readonly feedState = toSignal(
-    toObservable(this.feedRefresh).pipe(
-      switchMap(() =>
-        this.loadFeed().pipe(
+    combineLatest([
+      toObservable(this.feedUserId).pipe(distinctUntilChanged()),
+      toObservable(this.feedRefresh),
+    ]).pipe(
+      switchMap(([userId]) => {
+        const target = userId ? `user:${userId}` : 'anonymous';
+        const preserveReadyState = this.loadedFeedTarget === target;
+        const load = this.loadFeed(userId).pipe(
           map(
-            (feed): FeedState => ({
-              status: 'ready',
-              data: this.normalizeFeed(feed),
-            }),
+            (feed): FeedState => {
+              this.loadedFeedTarget = target;
+              return {
+                status: 'ready',
+                data: this.normalizeFeed(feed),
+              };
+            },
           ),
-          tap(() => (this.feedLoaded = true)),
           catchError((error: unknown) =>
-            this.feedLoaded
+            preserveReadyState
               ? EMPTY
               : of({
                   status: 'error',
                   message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
-                } satisfies FeedState),
+              } satisfies FeedState),
           ),
-        ),
-      ),
+        );
+        return preserveReadyState ? load : load.pipe(startWith({ status: 'loading' } satisfies FeedState));
+      }),
     ),
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
@@ -350,11 +359,9 @@ export class Attendances {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
-  private loadFeed() {
-    const userId = this.auth.user()?.sub;
-
+  private loadFeed(userId: string | null) {
     if (!this.networkStatus.isOnline()) {
-      return from(this.loadOfflineFeed());
+      return from(this.loadOfflineFeed(userId));
     }
 
     if (!userId) {
@@ -364,12 +371,12 @@ export class Attendances {
 
     return this.api.getSubscriptionsFeed().pipe(
       switchMap((feed) => from(this.offlineData.replaceAttendanceFeed(userId, feed)).pipe(map(() => feed))),
-      catchError(() => from(this.loadOfflineFeed())),
+      catchError(() => from(this.loadOfflineFeed(userId))),
     );
   }
 
-  private async loadOfflineFeed(): Promise<SubscriptionsFeed> {
-    const userId = this.auth.user()?.sub ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
+  private async loadOfflineFeed(currentUserId: string | null): Promise<SubscriptionsFeed> {
+    const userId = currentUserId ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
     const feed = userId ? await this.offlineData.getAttendanceFeed(userId) : null;
 
     return feed ?? EMPTY_SUBSCRIPTIONS_FEED;

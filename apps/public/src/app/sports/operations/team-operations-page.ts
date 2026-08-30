@@ -16,7 +16,6 @@ import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-ang
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
 import {
   RepresentativeTeamChange,
@@ -38,6 +37,7 @@ import {
   type LineupMember,
 } from './team-operations-page.utils';
 import { createTeamOperationsForms } from './team-operations-page.forms';
+import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 
 @Component({
   selector: 'app-sports-team-operations-page',
@@ -67,7 +67,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly snackbar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly realtime = inject(SportsViewerRealtimeService);
+  private readonly realtime = inject(SportsOperationsRealtimeService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly workspace = signal<RepresentativeTeamWorkspace | null>(null);
@@ -528,8 +528,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     );
   }
 
-  // The public match stream covers published projection and roster changes for the selected match.
-  // Private queued team-change updates stay on the authenticated administrator scope by design.
   private watchSelectedMatch(matchId: string): void {
     this.realtimeSubscription?.unsubscribe();
     this.realtimeSubscription = undefined;
@@ -538,14 +536,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
 
     const subscription = this.realtime
-      .watchMatch(matchId)
+      .watchRepresentativeTeam(this.teamId)
       .pipe(debounceTime(75), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (invalidation) => {
-          if (
-            this.selectedMatchId() === matchId &&
-            (!invalidation.matchId || invalidation.matchId === matchId)
-          ) {
+        next: () => {
+          if (this.selectedMatchId() === matchId) {
             this.realtimeRecoveryAttempted = false;
             this.refreshAfterRealtimeInvalidation();
           }
