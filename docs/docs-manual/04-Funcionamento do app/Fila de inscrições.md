@@ -5,7 +5,7 @@ title: Fila de inscrições
 A fila de inscrições em Grandes Eventos é cronológica, com base na última edição da inscrição.
 
 Ao editar a inscrição, o participante retorna para o final da fila.  
-Isso é para evitar os casos em que um participante inscreve-se em eventos aleatórios para garantir sua vaga e depois edita a inscrição para os eventos desejados.
+Isso é para evitar os casos em que um participante se inscreve em eventos aleatórios para garantir sua vaga e depois edita a inscrição para os eventos desejados.
 Dessa forma, é responsabilidade do participante verificar se ele selecionou os eventos desejados corretos.
 
 Ao ter a inscrição recusada, o participante retorna para o final da fila.  

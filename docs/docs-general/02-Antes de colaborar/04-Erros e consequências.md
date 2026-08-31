@@ -22,7 +22,7 @@ A perda de dados pode ocorrer:
 
 A depender de como e onde o dado é perdido, as perdas podem ser irreversíveis:
 
-- Se as presenças não forem transmitidas e armazenadas corretamente, como certificar-se das pessoas que realmente participaram de um evento?
+- Se as presenças não forem transmitidas e armazenadas corretamente, como se certificar das pessoas que realmente participaram de um evento?
 
   - Coletar as presenças novamente depende da honestidade e da boa vontade das pessoas.
   - Se a pessoa é da comunidade externa, o contato para confirmação é muito difícil.

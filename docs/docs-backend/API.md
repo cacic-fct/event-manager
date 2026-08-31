@@ -21,7 +21,7 @@ Caso haja algum problema em requisitar o `introspection` do GraphQL, limpe os da
 
 Utilizamos a abordagem code first para o desenvolvimento da API GraphQL, o que significa que o esquema GraphQL é gerado automaticamente a partir do código-fonte. Isso nos permite manter o esquema e a implementação sincronizados, além de facilitar a adição de novas funcionalidades sem a necessidade de atualizar manualmente o esquema.
 
-Dessa forma, não deve-se editar o esquema GraphQL manualmente.
+Dessa forma, não se deve editar o esquema GraphQL manualmente.
 
 ### Fronteiras
 
