@@ -112,6 +112,18 @@ describe('MajorEventsService', () => {
     });
   });
 
+  it('serializes an event-disabled tier while leaving the default-enabled value omitted', async () => {
+    service.priceTiers.at(0).controls.value.setValue('40');
+    service.priceTiers.at(0).controls.includesEventRegistration.setValue(false);
+
+    await service.saveMajorEvent();
+
+    expect(lastPayload?.price).toEqual({
+      type: 'SINGLE',
+      tiers: [{ name: 'Preço único', value: 4000, includesEventRegistration: false }],
+    });
+  });
+
   it('searches events for a selected major event as the query changes', async () => {
     vi.useFakeTimers();
     service.selectedMajorEvent.set(createAdminMajorEventFromInput({ id: 'major-event-1' }));
@@ -258,6 +270,7 @@ describe('MajorEventsService', () => {
       id: 'major-event-1-price-tier-1',
       name: 'Preço único',
       value: '30.00',
+      includesEventRegistration: true,
       includesSportsRegistration: false,
     });
   });
@@ -291,12 +304,14 @@ describe('MajorEventsService', () => {
         id: 'major-event-1-price-tier-1',
         name: 'Aluno',
         value: '30.00',
+        includesEventRegistration: true,
         includesSportsRegistration: false,
       },
       {
         id: 'major-event-1-price-tier-2',
         name: 'Professor',
         value: '60.50',
+        includesEventRegistration: true,
         includesSportsRegistration: false,
       },
     ]);

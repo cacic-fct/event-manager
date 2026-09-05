@@ -48,7 +48,11 @@ describe('admin entity fixtures', () => {
       expect.objectContaining({
         id: 'major-custom-price',
         tiers: [
-          expect.objectContaining({ id: 'major-custom-price-tier-1', value: 2500 }),
+          expect.objectContaining({
+            id: 'major-custom-price-tier-1',
+            value: 2500,
+            includesEventRegistration: true,
+          }),
           expect.objectContaining({ id: 'tier-community', value: 5000 }),
         ],
       }),

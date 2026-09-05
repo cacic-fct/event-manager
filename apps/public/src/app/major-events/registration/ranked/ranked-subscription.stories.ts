@@ -157,8 +157,20 @@ function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): Publi
         id: 'price-1',
         type: 'TIERED',
         tiers: [
-          { id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false },
-          { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
+          {
+            id: 'tier-student',
+            name: 'Estudante',
+            value: 2500,
+            includesEventRegistration: true,
+            includesSportsRegistration: false,
+          },
+          {
+            id: 'tier-community',
+            name: 'Comunidade',
+            value: 5000,
+            includesEventRegistration: true,
+            includesSportsRegistration: false,
+          },
         ],
       }),
     ],
@@ -455,6 +467,16 @@ const expectSelectionStep = async (canvasElement: HTMLElement) => {
 
 const goToRankingStep = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
+  await canvas.findByRole('heading', { name: /Escolha sua modalidade de inscrição|Selecione todos os eventos/i });
+  const tierHeading = canvas.queryByRole('heading', { name: /Escolha sua modalidade de inscrição/i });
+  if (tierHeading) {
+    const selectedTier = canvas.queryAllByRole('radio')[0];
+    if (selectedTier && selectedTier.getAttribute('aria-checked') !== 'true') {
+      await userEvent.click(selectedTier);
+    }
+    const continueButton = await canvas.findByRole('button', { name: /Continuar para eventos/i });
+    await userEvent.click(continueButton);
+  }
   await expectSelectionStep(canvasElement);
   const optionalCheckbox = canvas.queryAllByRole('checkbox').find((checkbox) => !checkbox.hasAttribute('disabled'));
   if (optionalCheckbox) {
@@ -500,7 +522,6 @@ export const PaymentRanking: Story = {
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Preço')).toBeVisible();
     await expect(await canvas.findByText('Estudante')).toBeVisible();
   },
 };
@@ -523,8 +544,8 @@ export const ExistingSubscription: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Comprovante em análise')).toBeVisible();
-    await userEvent.click(await canvas.findByRole('button', { name: /ordenar preferências/i }));
-    await expect(await canvas.findByText('Atualizar inscrição')).toBeVisible();
+    await goToRankingStep(canvasElement);
+    await expect(await canvas.findByRole('button', { name: /^Continuar$/i })).toBeVisible();
   },
 };
 

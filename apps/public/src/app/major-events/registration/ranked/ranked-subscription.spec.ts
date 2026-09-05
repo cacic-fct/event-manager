@@ -6,10 +6,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicEvent, PublicMajorEvent, PublicMajorEventPriceTier } from '@cacic-fct/event-manager-public-contracts';
 import { createPublicEventForm, createPublicEventFormLink } from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { NEVER, of } from 'rxjs';
+import { BehaviorSubject, NEVER, of } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionFormKey } from '../standard/subscription-flow.models';
@@ -23,9 +23,11 @@ describe('RankedMajorEventSubscription', () => {
   let fixture: ComponentFixture<RankedMajorEventSubscription>;
   let component: RankedMajorEventSubscription;
   let http: HttpTestingController;
+  let routeParams: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let openReview: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    routeParams = new BehaviorSubject(convertToParamMap({ majorEventId: 'major-1' }));
     openReview = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));
     TestBed.configureTestingModule({
       imports: [RankedMajorEventSubscription],
@@ -37,7 +39,7 @@ describe('RankedMajorEventSubscription', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ majorEventId: 'major-1' })),
+            paramMap: routeParams,
             queryParamMap: of(convertToParamMap({})),
             snapshot: {
               paramMap: convertToParamMap({ majorEventId: 'major-1' }),
@@ -89,6 +91,140 @@ describe('RankedMajorEventSubscription', () => {
     expect(store.rankingItems().some((item) => item.label === 'Trilha Web')).toBe(true);
     expect(store.rankingItems().some((item) => item.label === 'Angular')).toBe(false);
     expect(store.autoSelectedEvents().map((event) => event.id)).toEqual(['event-1']);
+  });
+
+  it('shows the tier page before ranked selection and keeps the chosen modality summary', () => {
+    const majorEvent = paidMajorEvent([
+      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+    expect(component.showingTierStep()).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-subscription-tier-selection')).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-ranked-subscription-select-step')).toBeNull();
+
+    store.selectPriceTier('Eventos');
+    component.continueFromTier();
+    fixture.detectChanges();
+
+    expect(component.showingTierStep()).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-ranked-subscription-select-step')).not.toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.selected-tier-summary')?.textContent).toContain(
+      'Eventos',
+    );
+  });
+
+  it('returns to tier selection when the route changes to another major event', () => {
+    const majorEvent = paidMajorEvent([
+      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+    component.continueFromTier();
+    expect(component.currentStep()).toBe('select');
+    routeParams.next(convertToParamMap({ majorEventId: 'major-2' }));
+    fixture.detectChanges();
+    flushInitialRequests(http, { ...majorEvent, id: 'major-2' });
+    fixture.detectChanges();
+    expect(component.currentStep()).toBe('tier');
+    expect(component.showingTierStep()).toBe(true);
+  });
+
+  it('resets ranked selections and drafts when the tier changes', () => {
+    const majorEvent = paidMajorEvent([
+      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+      { id: 'neither', name: 'Participação', value: 1000, includesEventRegistration: false, includesSportsRegistration: false },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    store.selectPriceTier('Eventos');
+    component.continueFromTier();
+    store.toggleEvent(eventFixtures[1] as PublicEvent);
+    expect(store.rankingItems().length).toBeGreaterThan(0);
+    store.selectPriceTier('Participação');
+
+    expect(store.selectedEventIds().size).toBe(0);
+    expect(store.rankingItems()).toEqual([]);
+    expect(store.notWantedItems()).toEqual([]);
+    expect(store.desiredCourses()).toBe(0);
+    expect(store.desiredLectures()).toBe(0);
+    expect(store.desiredUncategorized()).toBe(0);
+    expect(store.subscriptionFormFlow()).toBeNull();
+  });
+
+  it.each([true, false])('submits an empty ranked selection with sports access %s', async (includesSportsRegistration) => {
+    const majorEvent = paidMajorEvent([
+      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    expect(store.selectedPriceTierName()).toBe('Esportes');
+    expect(store.effectiveSelectedEventIds().size).toBe(0);
+    expect(store.desiredCourses()).toBe(0);
+    component.continueFromTier();
+    const formRequest = http.expectOne(
+      (request) =>
+        request.url === '/api/graphql' &&
+        typeof request.body === 'object' &&
+        String(request.body?.query).includes('CurrentUserEventForms'),
+    );
+    expect(formRequest.request.body.variables).toEqual(
+      expect.objectContaining({ targetType: 'MAJOR_EVENT', majorEventId: 'major-1', selectedPriceTierId: 'sports' }),
+    );
+    formRequest.flush({ data: { currentUserEventForms: [] } });
+    await fixture.whenStable();
+
+    const mutation = http.expectOne(
+      (request) =>
+        request.url === '/api/graphql' &&
+        typeof request.body === 'object' &&
+        String(request.body?.query).includes('UpsertCurrentUserRankedMajorEventSubscription'),
+    );
+    expect(mutation.request.body.variables).toEqual(
+      expect.objectContaining({
+        selectedEventIds: [],
+        desiredCourses: 0,
+        desiredLectures: 0,
+        desiredUncategorized: 0,
+        paymentTier: 'Esportes',
+      }),
+    );
+  });
+
+  it('hydrates an existing tier once and locks confirmed subscriptions to it', () => {
+    const majorEvent = paidMajorEvent([
+      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
+    ]);
+    const subscription = {
+      id: 'subscription-1',
+      majorEventId: 'major-1',
+      subscriptionStatus: 'CONFIRMED',
+      amountPaid: 3000,
+      paymentDate: null,
+      paymentTier: 'Eventos',
+      imageLicenseAgreementAccepted: true,
+      majorEvent,
+      selectedEvents: eventFixtures,
+      notSubscribedEvents: [],
+    };
+    flushPageRequest(http, majorEvent);
+    flushCurrentSubscriptionRequest(http, subscription);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    expect(store.selectedPriceTierName()).toBe('Eventos');
+    expect(store.effectiveSelectedEventIds()).toEqual(new Set(eventFixtures.map((event) => event.id)));
+    expect(store.tierSelectionLocked()).toBe(true);
+    store.selectPriceTier('Esportes');
+    expect(store.selectedPriceTierName()).toBe('Eventos');
   });
 
   it('prepares the shared page-level form flow before review', async () => {
@@ -288,12 +424,12 @@ describe('RankedMajorEventSubscription', () => {
   });
 });
 
-function flushInitialRequests(http: HttpTestingController, majorEvent = majorEventFixture): void {
+function flushInitialRequests(http: HttpTestingController, majorEvent: PublicMajorEvent = majorEventFixture): void {
   flushPageRequest(http, majorEvent);
   flushCurrentSubscriptionRequest(http);
 }
 
-function flushPageRequest(http: HttpTestingController, majorEvent = majorEventFixture): void {
+function flushPageRequest(http: HttpTestingController, majorEvent: PublicMajorEvent = majorEventFixture): void {
   const pageRequest = http.expectOne(
     (request) =>
       request.url === '/api/graphql' &&
@@ -311,7 +447,7 @@ function flushPageRequest(http: HttpTestingController, majorEvent = majorEventFi
   });
 }
 
-function flushCurrentSubscriptionRequest(http: HttpTestingController): void {
+function flushCurrentSubscriptionRequest(http: HttpTestingController, subscription: unknown = null): void {
   const subscriptionRequest = http.expectOne(
     (request) =>
       request.url === '/api/graphql' &&
@@ -320,12 +456,12 @@ function flushCurrentSubscriptionRequest(http: HttpTestingController): void {
   );
   subscriptionRequest.flush({
     data: {
-      currentUserMajorEventSubscription: null,
+      currentUserMajorEventSubscription: subscription,
     },
   });
 }
 
-const majorEventFixture = {
+const majorEventFixture: PublicMajorEvent = {
   id: 'major-1',
   name: 'SECOMPP',
   emoji: '💻',
@@ -342,6 +478,14 @@ const majorEventFixture = {
   isPaymentRequired: false,
   majorEventPrices: [],
 };
+
+function paidMajorEvent(tiers: PublicMajorEventPriceTier[]): PublicMajorEvent {
+  return {
+    ...majorEventFixture,
+    isPaymentRequired: true,
+    majorEventPrices: [{ id: 'price-1', type: 'TIERED', tiers }],
+  };
+}
 
 const eventFixtures = [
   {

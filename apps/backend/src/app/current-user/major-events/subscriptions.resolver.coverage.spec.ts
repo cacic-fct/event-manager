@@ -2,7 +2,10 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import { CurrentUserMajorEventSubscriptionsResolver } from './subscriptions.resolver';
+import {
+  CurrentUserMajorEventSubscriptionsResolver,
+  majorEventIncludesEventRegistration,
+} from './subscriptions.resolver';
 import {
   createPublicEventRecord,
   createPublicMajorEventRecord,
@@ -162,6 +165,189 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(harness.frozenResources.assertMajorEventMutable).toHaveBeenCalledWith('major-1', harness.user, 'edit');
     expect(harness.prisma.majorEvent.findFirst).toHaveBeenCalled();
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('defaults omitted event-registration permissions to enabled for existing tiers', () => {
+    expect(
+      majorEventIncludesEventRegistration(
+        {
+          isPaymentRequired: true,
+          majorEventPrices: [{ tiers: [{ name: 'Comunidade', includesSportsRegistration: false }] }],
+        },
+        'comunidade',
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    { selectedEventIds: ['event-1'] },
+    { selectedEventIds: [], desiredCourses: 1 },
+    { selectedEventIds: [], desiredLectures: 1 },
+    { selectedEventIds: [], desiredUncategorized: 1 },
+  ])('rejects activity selections or counts for an event-disabled tier: %j', async (selection) => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            {
+              id: 'tier-sports',
+              name: 'Somente torneio',
+              value: 5000,
+              includesSportsRegistration: true,
+              includesEventRegistration: false,
+            },
+          ],
+        },
+      ],
+    });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 5000,
+      paymentTier: 'Somente torneio',
+    });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', ...selection, paymentTier: 'Somente torneio' },
+        { req: {} } as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(harness.prisma.event.findMany).not.toHaveBeenCalled();
+    expect(harness.prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('allows eventless registration with sports permission %s and skips automatic events', async (includesSportsRegistration) => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            {
+              id: 'tier-sports',
+              name: 'Somente torneio',
+              value: 5000,
+              includesSportsRegistration,
+              includesEventRegistration: false,
+            },
+          ],
+        },
+      ],
+    });
+    const updatedSubscription = {
+      ...subscriptionRecord(majorEvent),
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      amountPaid: 5000,
+      paymentTier: 'Somente torneio',
+    };
+    const tx = createUpsertTransaction(majorEvent, eventRecord('auto-event'), updatedSubscription);
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 5000,
+      paymentTier: 'Somente torneio',
+    });
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: [], paymentTier: 'Somente torneio' },
+        { req: {} } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        paymentTier: 'Somente torneio',
+        selectedEvents: [],
+      }),
+    );
+
+    expect(harness.prisma.event.findMany).not.toHaveBeenCalled();
+    expect(tx.event.findMany).not.toHaveBeenCalled();
+    expect(harness.majorEventSubscriptions.ensureMajorEventEventLimits).not.toHaveBeenCalled();
+    expect(harness.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts).not.toHaveBeenCalled();
+    expect(harness.majorEventSubscriptions.ensureEventGroupsAreFullySelected).not.toHaveBeenCalled();
+    expect(harness.eventForms.submitSubscriptionFlowResponses).toHaveBeenCalledWith(
+      tx,
+      'person-1',
+      undefined,
+      expect.objectContaining({ selectedEventIds: new Set() }),
+      harness.user,
+    );
+  });
+
+  it('rechecks event-registration permission inside the serializable transaction', async () => {
+    const harness = createHarness();
+    const preflightMajorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            {
+              id: 'tier-events',
+              name: 'Atividades',
+              value: 3000,
+              includesSportsRegistration: false,
+              includesEventRegistration: true,
+            },
+          ],
+        },
+      ],
+    });
+    const transactionMajorEvent = majorEventRecord({
+      ...preflightMajorEvent,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            {
+              id: 'tier-events',
+              name: 'Atividades',
+              value: 3000,
+              includesSportsRegistration: false,
+              includesEventRegistration: false,
+            },
+          ],
+        },
+      ],
+    });
+    const selectedEvent = eventRecord('event-1');
+    const tx = createUpsertTransaction(transactionMajorEvent, selectedEvent, subscriptionRecord(transactionMajorEvent));
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(preflightMajorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 3000,
+      paymentTier: 'Atividades',
+    });
+    tx.majorEvent.findFirst.mockResolvedValue(transactionMajorEvent);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'], paymentTier: 'Atividades' },
+        { req: {} } as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
+    expect(tx.event.findMany).not.toHaveBeenCalled();
   });
 
   it('allows image consent after registration closes and before the event ends without changing registration', async () => {

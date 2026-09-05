@@ -59,6 +59,7 @@ describe('public event models', () => {
               id: 'tier-1',
               name: 'Lote 1',
               value: 2500,
+              includesEventRegistration: true,
             },
           ],
         },
@@ -78,6 +79,22 @@ describe('public event models', () => {
       pixCity: 'Presidente Prudente',
       majorEventId: 'major-event-1',
     });
+  });
+
+  it('preserves an explicit event-registration restriction in public tier data', () => {
+    const majorEvent = majorEventFixture({
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'student',
+          tiers: [{ id: 'tier-1', name: 'Somente torneio', value: 2500, includesEventRegistration: false }],
+        },
+      ],
+    });
+
+    expect(mapPublicMajorEvent(majorEvent as never).majorEventPrices[0]?.tiers[0]?.includesEventRegistration).toBe(
+      false,
+    );
   });
 
   it('marks major events without active certificate configs as not issuing certificates', () => {

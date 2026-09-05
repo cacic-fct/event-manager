@@ -67,6 +67,7 @@ export interface MajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesEventRegistration?: boolean;
   includesSportsRegistration: boolean;
 }
 
@@ -225,6 +226,7 @@ export interface PriceTierInput {
   id?: string;
   name: string;
   value: number;
+  includesEventRegistration?: boolean;
   includesSportsRegistration?: boolean;
 }
 

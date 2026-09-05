@@ -1,33 +1,10 @@
-@let data = store.data(); @if (data) { @let majorEvent = data.majorEvent;
+@if (store.data()) {
 <section aria-labelledby="ranked-order-title">
-  <h2 id="ranked-order-title" class="step-title">
+  <h2 id="ranked-order-title" class="step-title" data-step-title>
     Agora, ordene os eventos por ordem de preferência
     <br />
     Tentaremos garantir sua vaga na opção mais alta possível
   </h2>
-
-  @if (majorEvent.isPaymentRequired && store.priceTiers().length > 1) {
-  <section class="price-section">
-    <h3>Preço</h3>
-    <mat-radio-group
-      class="price-options"
-      [value]="store.selectedPriceTierName()"
-      aria-label="Selecionar preço"
-      (change)="store.selectPriceTier($event.value)">
-      @for (tier of store.priceTiers(); track tier.id) {
-      <mat-radio-button [value]="tier.name">
-        <span>{{ tier.name }}</span>
-        <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
-      </mat-radio-button>
-      }
-    </mat-radio-group>
-  </section>
-  } @else if (majorEvent.isPaymentRequired && store.priceTiers().length === 1) {
-  <section class="price-section">
-    <h3>Preço</h3>
-    <p>{{ store.priceTiers()[0].name }} · {{ store.priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
-  </section>
-  }
 
   <section class="ranking-board">
     <div class="ranking-section">
@@ -151,7 +128,7 @@
       store.isSubmitting() ||
       store.isPreparingSubscriptionFlow() ||
       store.currentUserSubscription() === undefined ||
-      store.effectiveSelectedEventIds().size === 0 ||
+      (store.decisions().includesEvents && store.effectiveSelectedEventIds().size === 0) ||
       (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
         !store.confirmedSportsOnlySubscription() &&
         !store.needsImageLicenseAgreement()) ||

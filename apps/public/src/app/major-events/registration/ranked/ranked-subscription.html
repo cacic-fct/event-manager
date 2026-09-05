@@ -36,7 +36,7 @@
       <mat-icon matChipAvatar>ballot</mat-icon>
       Voto preferencial
     </mat-chip>
-    @if (majorEvent.isPaymentRequired) {
+    @if (!showingTierStep() && majorEvent.isPaymentRequired && store.selectedPriceTier()?.value !== 0) {
     <mat-chip>
       <mat-icon matChipAvatar>payments</mat-icon>
       Requer pagamento
@@ -51,6 +51,23 @@
 
   @if (majorEvent.description && !store.subscriptionFormFlow()) {
   <lib-markdown class="description" [content]="majorEvent.description" />
+  } @if (showingTierStep()) {
+  <app-subscription-tier-selection
+    [majorEvent]="majorEvent"
+    [tiers]="store.priceTiers()"
+    [selectedName]="store.selectedPriceTierName()"
+    [busy]="store.isSubmitting() || store.isPreparingSubscriptionFlow() || store.currentUserSubscription() === undefined"
+    [locked]="store.tierSelectionLocked()"
+    (selectTier)="store.selectPriceTier($event)"
+    (continue)="continueFromTier()" />
+  } @else {
+  @if (!store.isPreparingSubscriptionFlow() && !store.subscriptionFormFlow() && store.decisions().hasTierStep && store.selectedPriceTier(); as tier) {
+  <section class="selected-tier-summary" aria-label="Modalidade selecionada">
+    <p><strong>{{ tier.name }}</strong> · {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
+    <button matButton type="button" [disabled]="store.tierSelectionLocked()" (click)="returnToTier()">
+      Alterar modalidade
+    </button>
+  </section>
   } @if (store.isPreparingSubscriptionFlow()) {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando formulários"></mat-progress-bar>
   <section class="empty-section compact" aria-live="polite">
@@ -60,16 +77,17 @@
   } @else if (store.subscriptionFormFlow(); as formFlow) {
   <app-subscription-form-flow
     [forms]="formFlow.forms"
-    firstBackLabel="Voltar à classificação"
+    [firstBackLabel]="store.decisions().includesEvents ? 'Voltar à classificação' : 'Voltar à modalidade'"
     [requireImageLicenseAgreement]="majorEvent.requiresImageLicenseAgreement === true"
     [imageLicenseAgreementAccepted]="store.currentUserSubscription()?.imageLicenseAgreementAccepted === true"
     [initialDraft]="formFlow.draft"
-    (backToSelection)="store.returnToRanking($event)"
+    (backToSelection)="returnFromForms($event)"
     (reviewRequested)="store.reviewSubscription($event)" />
-  } @else if (currentStep() === 'select') {
+  } @else if (currentStep() !== 'rank') {
   <app-ranked-subscription-select-step (continue)="showRankingStep()" />
   } @else {
   <app-ranked-subscription-rank-step (back)="showSelectionStep()" />
   } }
+  }
 </main>
 }

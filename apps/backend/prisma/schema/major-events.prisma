@@ -190,6 +190,7 @@ model PriceTier {
 
   name                       String
   value                      Int
+  includesEventRegistration  Boolean @default(true)
   includesSportsRegistration Boolean @default(false)
 
   eventFormLinks EventFormLinkPriceTier[]

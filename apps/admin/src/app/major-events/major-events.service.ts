@@ -355,6 +355,7 @@ export class MajorEventsService {
               tier.name,
               this.fromCentsToCurrencyInput(tier.value),
               Boolean(majorEvent.sportsTournament && tier.includesSportsRegistration),
+              tier.includesEventRegistration !== false,
             ),
           )
         : [this.createPriceTierGroup(null, 'Preço único', '', false)],
@@ -468,13 +469,19 @@ export class MajorEventsService {
         ...(tier.id ? { id: tier.id } : {}),
         name: tier.name.trim(),
         value: this.toCents(tier.value),
+        ...(tier.includesEventRegistration === false ? { includesEventRegistration: false } : {}),
         ...(Boolean(this.selectedMajorEvent()?.sportsTournament) && tier.includesSportsRegistration
           ? { includesSportsRegistration: true }
           : {}),
       }))
       .filter((tier) => tier.name.length > 0 || tier.value !== null);
     const validPriceTiers = priceTiers.filter(
-      (tier): tier is { name: string; value: number; includesSportsRegistration?: true } => tier.value !== null,
+      (tier): tier is {
+        name: string;
+        value: number;
+        includesEventRegistration?: false;
+        includesSportsRegistration?: true;
+      } => tier.value !== null,
     );
 
     return {
@@ -587,11 +594,18 @@ export class MajorEventsService {
     return (value / 100).toFixed(2);
   }
 
-  private createPriceTierGroup(id: string | null, name: string, value: string, includesSportsRegistration: boolean) {
+  private createPriceTierGroup(
+    id: string | null,
+    name: string,
+    value: string,
+    includesSportsRegistration: boolean,
+    includesEventRegistration = true,
+  ) {
     return this.formBuilder.nonNullable.group({
       id: [id],
       name: [name],
       value: [value],
+      includesEventRegistration: [includesEventRegistration],
       includesSportsRegistration: [includesSportsRegistration],
     });
   }

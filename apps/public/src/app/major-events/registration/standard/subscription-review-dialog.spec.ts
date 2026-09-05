@@ -63,6 +63,29 @@ describe('SubscriptionReviewDialog', () => {
     expect(close).toHaveBeenCalledWith({ confirmed: true });
   });
 
+  it('explains a sports-only modality without displaying an empty event list', async () => {
+    const data: SubscriptionReviewDialogData = {
+      majorEvent: createPublicMajorEvent({ sportsTournament: { id: 'tournament' }, majorEventPrices: [createPublicMajorEventPrice({ tiers: [{
+        id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true,
+      }] })] }),
+      events: [], forms: [], draft: createSubscriptionFlowDraft([], false),
+      paymentTier: 'Esportes', requireImageLicenseAgreement: false,
+    };
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionReviewDialog],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: EmojiService, useValue: { getTwemojiUrl: () => '/emoji.svg' } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SubscriptionReviewDialog);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Inscrição no grande evento.');
+    expect(fixture.nativeElement.textContent).toContain('Inscrição em esportes');
+    expect(fixture.nativeElement.querySelector('#selected-events-title')).toBeNull();
+  });
+
   it('renders missing and empty option answers without crashing', async () => {
     const [fixtureForm] = createSubscriptionFlowFormFixtures();
     const form = {

@@ -44,7 +44,7 @@ export function createPublicPaymentInfo(overrides: Partial<PublicPaymentInfo> = 
 }
 
 export function createPublicMajorEventPrice(overrides: Partial<PublicMajorEventPrice> = {}): PublicMajorEventPrice {
-  return {
+  const price: PublicMajorEventPrice = {
     id: 'price-1',
     type: 'TIERED',
     tiers: [
@@ -52,6 +52,14 @@ export function createPublicMajorEventPrice(overrides: Partial<PublicMajorEventP
       { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
     ],
     ...overrides,
+  };
+
+  return {
+    ...price,
+    tiers: price.tiers.map((tier) => ({
+      ...tier,
+      includesEventRegistration: tier.includesEventRegistration ?? true,
+    })),
   };
 }
 

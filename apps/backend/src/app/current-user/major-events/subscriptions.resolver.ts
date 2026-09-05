@@ -41,6 +41,58 @@ export function isConfirmedSportsOnlySubscription(subscription: {
   );
 }
 
+export function majorEventIncludesEventRegistration(
+  majorEvent: {
+    isPaymentRequired: boolean;
+    majorEventPrices: Array<{
+      tiers: Array<{ name: string; includesEventRegistration?: boolean }>;
+    }>;
+  },
+  paymentTier: string | null,
+): boolean {
+  if (!majorEvent.isPaymentRequired || !paymentTier) {
+    return true;
+  }
+
+  const normalizedPaymentTier = paymentTier.trim().toLocaleLowerCase('pt-BR');
+  const selectedTier = majorEvent.majorEventPrices
+    .flatMap((price) => price.tiers)
+    .find((tier) => tier.name.trim().toLocaleLowerCase('pt-BR') === normalizedPaymentTier);
+
+  return selectedTier?.includesEventRegistration !== false;
+}
+
+function ensureEventRegistrationSelectionIsAllowed(
+  includesEventRegistration: boolean,
+  selectedEventIds: readonly string[],
+): void {
+  if (!includesEventRegistration && selectedEventIds.length > 0) {
+    throw new BadRequestException('A modalidade selecionada não permite inscrição em eventos.');
+  }
+
+  if (includesEventRegistration && selectedEventIds.length === 0) {
+    throw new BadRequestException('At least one event must be selected for the major-event subscription.');
+  }
+}
+
+function ensureEventRegistrationCountsAreAllowed(
+  includesEventRegistration: boolean,
+  input: {
+    desiredCourses?: number | null;
+    desiredLectures?: number | null;
+    desiredUncategorized?: number | null;
+  },
+): void {
+  if (
+    !includesEventRegistration &&
+    [input.desiredCourses, input.desiredLectures, input.desiredUncategorized].some(
+      (value) => value !== undefined && value !== null && value !== 0,
+    )
+  ) {
+    throw new BadRequestException('A modalidade selecionada não permite definir quantidades de eventos.');
+  }
+}
+
 @Resolver()
 export class CurrentUserMajorEventSubscriptionsResolver {
   constructor(
@@ -280,80 +332,92 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     }
     this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
 
+    let selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
+    const includesEventRegistration = majorEventIncludesEventRegistration(majorEvent, selfServicePayment.paymentTier);
     let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
-    if (selectedEventIds.length === 0) {
-      throw new BadRequestException('At least one event must be selected for the major-event subscription.');
-    }
+    ensureEventRegistrationSelectionIsAllowed(includesEventRegistration, selectedEventIds);
+    ensureEventRegistrationCountsAreAllowed(includesEventRegistration, input);
 
     let isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
-    let allSubscriptionEvents = await this.prisma.event.findMany({
-      where: {
-        AND: [publicRegularSubscriptionEventWhere(now), { majorEventId: input.majorEventId }],
-      },
-      select: EVENT_SELECT,
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
-
-    let allSubscriptionEventsById = new Map(allSubscriptionEvents.map((event) => [event.id, event]));
-    let requiredAutoSubscribeEventIds = allSubscriptionEvents
-      .filter((event) => event.autoSubscribe)
-      .map((event) => event.id);
-    selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds([
-      ...requiredAutoSubscribeEventIds,
-      ...selectedEventIds,
-    ]);
-    let selectedEvents = selectedEventIds
-      .map((eventId) => allSubscriptionEventsById.get(eventId))
-      .filter((event): event is EventRecord => Boolean(event));
-
-    let selectedEventsById = new Map(selectedEvents.map((event) => [event.id, event]));
-    const missingSelectedEventIds = selectedEventIds.filter((eventId) => !selectedEventsById.has(eventId));
-    if (missingSelectedEventIds.length > 0) {
-      throw new BadRequestException(
-        `Some selected events are invalid for major event ${input.majorEventId}: ${missingSelectedEventIds.join(', ')}.`,
-      );
-    }
-    let selectedEventIdSet = new Set(selectedEventIds);
+    let allSubscriptionEvents: EventRecord[] = [];
+    let allSubscriptionEventsById = new Map<string, EventRecord>();
+    let requiredAutoSubscribeEventIds: string[] = [];
+    let selectedEvents: EventRecord[] = [];
+    let selectedEventsById = new Map<string, EventRecord>();
+    let selectedEventIdSet = new Set<string>();
 
     let desiredCounts: ReturnType<CurrentUserMajorEventSubscriptionService['resolveRankedDesiredCounts']> | null = null;
-    if (isRankedSubscription) {
-      desiredCounts = this.majorEventSubscriptions.resolveRankedDesiredCounts(majorEvent, allSubscriptionEvents, input);
-    } else {
-      this.majorEventSubscriptions.ensureMajorEventEventLimits(majorEvent, selectedEvents);
-      this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(selectedEvents);
-    }
+    if (includesEventRegistration) {
+      allSubscriptionEvents = await this.prisma.event.findMany({
+        where: {
+          AND: [publicRegularSubscriptionEventWhere(now), { majorEventId: input.majorEventId }],
+        },
+        select: EVENT_SELECT,
+        orderBy: {
+          startDate: 'asc',
+        },
+      });
 
-    const allGroupedEvents = await this.prisma.event.findMany({
-      where: {
-        AND: [
-          publicRegularSubscriptionEventWhere(now),
-          {
-            majorEventId: input.majorEventId,
-            eventGroupId: {
-              not: null,
+      allSubscriptionEventsById = new Map(allSubscriptionEvents.map((event) => [event.id, event]));
+      requiredAutoSubscribeEventIds = allSubscriptionEvents
+        .filter((event) => event.autoSubscribe)
+        .map((event) => event.id);
+      selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds([
+        ...requiredAutoSubscribeEventIds,
+        ...selectedEventIds,
+      ]);
+      selectedEvents = selectedEventIds
+        .map((eventId) => allSubscriptionEventsById.get(eventId))
+        .filter((event): event is EventRecord => Boolean(event));
+
+      selectedEventsById = new Map(selectedEvents.map((event) => [event.id, event]));
+      const missingSelectedEventIds = selectedEventIds.filter((eventId) => !selectedEventsById.has(eventId));
+      if (missingSelectedEventIds.length > 0) {
+        throw new BadRequestException(
+          `Some selected events are invalid for major event ${input.majorEventId}: ${missingSelectedEventIds.join(', ')}.`,
+        );
+      }
+      selectedEventIdSet = new Set(selectedEventIds);
+
+      if (isRankedSubscription) {
+        desiredCounts = this.majorEventSubscriptions.resolveRankedDesiredCounts(
+          majorEvent,
+          allSubscriptionEvents,
+          input,
+        );
+      } else {
+        this.majorEventSubscriptions.ensureMajorEventEventLimits(majorEvent, selectedEvents);
+        this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(selectedEvents);
+      }
+
+      const allGroupedEvents = await this.prisma.event.findMany({
+        where: {
+          AND: [
+            publicRegularSubscriptionEventWhere(now),
+            {
+              majorEventId: input.majorEventId,
+              eventGroupId: {
+                not: null,
+              },
             },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        eventGroupId: true,
-      },
-    });
-    this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(selectedEventIdSet, allGroupedEvents);
+          ],
+        },
+        select: {
+          id: true,
+          eventGroupId: true,
+        },
+      });
+      this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(selectedEventIdSet, allGroupedEvents);
 
-    const missingAutoSubscribeEventIds = requiredAutoSubscribeEventIds.filter(
-      (eventId) => !selectedEventIdSet.has(eventId),
-    );
-    if (missingAutoSubscribeEventIds.length > 0) {
-      throw new BadRequestException(
-        `Auto-subscribe events must be selected: ${missingAutoSubscribeEventIds.join(', ')}.`,
+      const missingAutoSubscribeEventIds = requiredAutoSubscribeEventIds.filter(
+        (eventId) => !selectedEventIdSet.has(eventId),
       );
+      if (missingAutoSubscribeEventIds.length > 0) {
+        throw new BadRequestException(
+          `Auto-subscribe events must be selected: ${missingAutoSubscribeEventIds.join(', ')}.`,
+        );
+      }
     }
-
-    let selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
 
     const upsertResult = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const transactionNow = new Date();
@@ -379,78 +443,106 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
       this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(transactionMajorEvent);
 
-      const transactionAllSubscriptionEvents = await tx.event.findMany({
-        where: {
-          AND: [publicRegularSubscriptionEventWhere(transactionNow), { majorEventId: input.majorEventId }],
-        },
-        select: EVENT_SELECT,
-        orderBy: {
-          startDate: 'asc',
-        },
-      });
+      const transactionSelfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(
+        transactionMajorEvent,
+        input.paymentTier,
+      );
+      const transactionIncludesEventRegistration = majorEventIncludesEventRegistration(
+        transactionMajorEvent,
+        transactionSelfServicePayment.paymentTier,
+      );
+      const transactionExplicitSelectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(
+        input.selectedEventIds,
+      );
+      ensureEventRegistrationSelectionIsAllowed(
+        transactionIncludesEventRegistration,
+        transactionExplicitSelectedEventIds,
+      );
+      ensureEventRegistrationCountsAreAllowed(transactionIncludesEventRegistration, input);
+
+      const transactionAllSubscriptionEvents: EventRecord[] = transactionIncludesEventRegistration
+        ? await tx.event.findMany({
+            where: {
+              AND: [publicRegularSubscriptionEventWhere(transactionNow), { majorEventId: input.majorEventId }],
+            },
+            select: EVENT_SELECT,
+            orderBy: {
+              startDate: 'asc',
+            },
+          })
+        : [];
       const transactionEventsById = new Map(transactionAllSubscriptionEvents.map((event) => [event.id, event]));
       const transactionRequiredAutoSubscribeEventIds = transactionAllSubscriptionEvents
         .filter((event) => event.autoSubscribe)
         .map((event) => event.id);
-      const transactionSelectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds([
-        ...transactionRequiredAutoSubscribeEventIds,
-        ...input.selectedEventIds,
-      ]);
+      const transactionSelectedEventIds = transactionIncludesEventRegistration
+        ? this.majorEventSubscriptions.normalizeSelectedEventIds([
+            ...transactionRequiredAutoSubscribeEventIds,
+            ...transactionExplicitSelectedEventIds,
+          ])
+        : [];
       const transactionSelectedEvents = transactionSelectedEventIds
         .map((eventId) => transactionEventsById.get(eventId))
         .filter((event): event is EventRecord => Boolean(event));
       const transactionSelectedEventsById = new Map(transactionSelectedEvents.map((event) => [event.id, event]));
-      const transactionMissingSelectedEventIds = transactionSelectedEventIds.filter(
-        (eventId) => !transactionSelectedEventsById.has(eventId),
-      );
-      if (transactionMissingSelectedEventIds.length > 0) {
-        throw new BadRequestException(
-          `Some selected events are invalid for major event ${input.majorEventId}: ${transactionMissingSelectedEventIds.join(', ')}.`,
-        );
-      }
       const transactionSelectedEventIdSet = new Set(transactionSelectedEventIds);
-      const transactionDesiredCounts = transactionMajorEvent.rankedSubscriptionEnabled
-        ? this.majorEventSubscriptions.resolveRankedDesiredCounts(
-            transactionMajorEvent,
-            transactionAllSubscriptionEvents,
-            input,
-          )
-        : null;
-      if (transactionMajorEvent.rankedSubscriptionEnabled && transactionDesiredCounts) {
-        // resolveRankedDesiredCounts performs the ranked count validation;
-        // keeping this call inside the transaction protects it from stale
-        // price/category configuration.
-      } else {
-        this.majorEventSubscriptions.ensureMajorEventEventLimits(transactionMajorEvent, transactionSelectedEvents);
-        this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(transactionSelectedEvents);
-      }
+      let transactionDesiredCounts: ReturnType<
+        CurrentUserMajorEventSubscriptionService['resolveRankedDesiredCounts']
+      > | null = null;
 
-      const transactionAllGroupedEvents = await tx.event.findMany({
-        where: {
-          AND: [
-            publicRegularSubscriptionEventWhere(transactionNow),
-            {
-              majorEventId: input.majorEventId,
-              eventGroupId: { not: null },
-            },
-          ],
-        },
-        select: {
-          id: true,
-          eventGroupId: true,
-        },
-      });
-      this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(
-        transactionSelectedEventIdSet,
-        transactionAllGroupedEvents,
-      );
-      const transactionMissingAutoSubscribeEventIds = transactionRequiredAutoSubscribeEventIds.filter(
-        (eventId) => !transactionSelectedEventIdSet.has(eventId),
-      );
-      if (transactionMissingAutoSubscribeEventIds.length > 0) {
-        throw new BadRequestException(
-          `Auto-subscribe events must be selected: ${transactionMissingAutoSubscribeEventIds.join(', ')}.`,
+      if (transactionIncludesEventRegistration) {
+        const transactionMissingSelectedEventIds = transactionSelectedEventIds.filter(
+          (eventId) => !transactionSelectedEventsById.has(eventId),
         );
+        if (transactionMissingSelectedEventIds.length > 0) {
+          throw new BadRequestException(
+            `Some selected events are invalid for major event ${input.majorEventId}: ${transactionMissingSelectedEventIds.join(', ')}.`,
+          );
+        }
+
+        transactionDesiredCounts = transactionMajorEvent.rankedSubscriptionEnabled
+          ? this.majorEventSubscriptions.resolveRankedDesiredCounts(
+              transactionMajorEvent,
+              transactionAllSubscriptionEvents,
+              input,
+            )
+          : null;
+        if (transactionMajorEvent.rankedSubscriptionEnabled && transactionDesiredCounts) {
+          // resolveRankedDesiredCounts performs the ranked count validation;
+          // keeping this call inside the transaction protects it from stale
+          // price/category configuration.
+        } else {
+          this.majorEventSubscriptions.ensureMajorEventEventLimits(transactionMajorEvent, transactionSelectedEvents);
+          this.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts(transactionSelectedEvents);
+        }
+
+        const transactionAllGroupedEvents = await tx.event.findMany({
+          where: {
+            AND: [
+              publicRegularSubscriptionEventWhere(transactionNow),
+              {
+                majorEventId: input.majorEventId,
+                eventGroupId: { not: null },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            eventGroupId: true,
+          },
+        });
+        this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(
+          transactionSelectedEventIdSet,
+          transactionAllGroupedEvents,
+        );
+        const transactionMissingAutoSubscribeEventIds = transactionRequiredAutoSubscribeEventIds.filter(
+          (eventId) => !transactionSelectedEventIdSet.has(eventId),
+        );
+        if (transactionMissingAutoSubscribeEventIds.length > 0) {
+          throw new BadRequestException(
+            `Auto-subscribe events must be selected: ${transactionMissingAutoSubscribeEventIds.join(', ')}.`,
+          );
+        }
       }
 
       majorEvent = transactionMajorEvent;
@@ -463,10 +555,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       selectedEventsById = transactionSelectedEventsById;
       selectedEventIdSet = transactionSelectedEventIdSet;
       desiredCounts = transactionDesiredCounts;
-      selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(
-        transactionMajorEvent,
-        input.paymentTier,
-      );
+      selfServicePayment = transactionSelfServicePayment;
 
       const submittedFormIds: string[] = [];
       const existingSubscription = await tx.majorEventSubscription.findFirst({

@@ -44,6 +44,9 @@ export class MajorEventPriceTier {
   value!: number;
 
   @Field(() => Boolean)
+  includesEventRegistration!: boolean;
+
+  @Field(() => Boolean)
   includesSportsRegistration!: boolean;
 }
 

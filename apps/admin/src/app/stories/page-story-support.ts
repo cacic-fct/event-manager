@@ -201,10 +201,16 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     pixCity: [''],
     priceType: ['TIERED' as const],
     priceTiers: formBuilder.array([
-      formBuilder.nonNullable.group({ name: ['Estudante'], value: ['40'], includesSportsRegistration: [false] }),
+      formBuilder.nonNullable.group({
+        name: ['Estudante'],
+        value: ['40'],
+        includesEventRegistration: [true],
+        includesSportsRegistration: [false],
+      }),
       formBuilder.nonNullable.group({
         name: ['Comunidade externa'],
         value: ['80'],
+        includesEventRegistration: [true],
         includesSportsRegistration: [false],
       }),
     ]),

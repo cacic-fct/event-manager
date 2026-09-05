@@ -61,6 +61,7 @@ describe('public entity fixtures', () => {
       id: 'tier-1',
       name: 'Comunidade',
       value: 5000,
+      includesEventRegistration: true,
       includesSportsRegistration: false,
     });
   });

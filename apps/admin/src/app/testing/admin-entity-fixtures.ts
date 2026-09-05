@@ -340,6 +340,7 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
               id: tier.id ?? `${id}-price-tier-${index + 1}`,
               name: tier.name,
               value: tier.value,
+              includesEventRegistration: tier.includesEventRegistration ?? true,
               includesSportsRegistration: tier.includesSportsRegistration ?? false,
             })),
           },

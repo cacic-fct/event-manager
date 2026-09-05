@@ -391,6 +391,13 @@
                   <span matTextPrefix>R$&nbsp;</span>
                 </mat-form-field>
 
+                <mat-checkbox
+                  formControlName="includesEventRegistration"
+                  class="span-2"
+                  matTooltip="Após escolher esta faixa, a pessoa continuará para a inscrição nas atividades do grande evento.">
+                  Inclui inscrição em eventos
+                </mat-checkbox>
+
                 @if (workspace.selectedMajorEvent()?.sportsTournament) {
                   <mat-checkbox
                     formControlName="includesSportsRegistration"

@@ -57,6 +57,7 @@ const MAJOR_EVENT_PRICE_SELECT = {
       id: true,
       name: true,
       value: true,
+      includesEventRegistration: true,
       includesSportsRegistration: true,
     },
     orderBy: {
@@ -499,6 +500,7 @@ export class MajorEventsResolver {
                   tiers: sourcePrice.tiers.map((tier) => ({
                     name: tier.name,
                     value: tier.value,
+                    includesEventRegistration: tier.includesEventRegistration,
                     includesSportsRegistration: false,
                   })),
                 }
@@ -1045,6 +1047,7 @@ export class MajorEventsResolver {
     const tiers = input.tiers.map((tier) => ({
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
+      includesEventRegistration: tier.includesEventRegistration !== false,
       ...(tier.includesSportsRegistration === true ? { includesSportsRegistration: true } : {}),
     }));
 

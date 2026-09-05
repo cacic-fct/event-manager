@@ -195,8 +195,8 @@ describe('MajorEventsResolver', () => {
               type: 'TIERED',
               tiers: {
                 create: [
-                  { name: 'Aluno', value: 4000 },
-                  { name: 'Professor', value: 6000 },
+                  { name: 'Aluno', value: 4000, includesEventRegistration: true },
+                  { name: 'Professor', value: 6000, includesEventRegistration: true },
                 ],
               },
             }),
@@ -465,7 +465,7 @@ describe('MajorEventsResolver', () => {
             create: {
               type: 'SINGLE',
               tiers: {
-                create: [{ name: 'Inteira', value: 1235 }],
+                create: [{ name: 'Inteira', value: 1235, includesEventRegistration: true }],
               },
             },
           },
@@ -685,11 +685,11 @@ describe('MajorEventsResolver', () => {
     expect(tx.priceTier.update).toHaveBeenCalledTimes(2);
     expect(tx.priceTier.update).toHaveBeenNthCalledWith(1, {
       where: { id: 'tier-student' },
-      data: { name: 'Aluno', value: 4000 },
+      data: { name: 'Aluno', value: 4000, includesEventRegistration: true },
     });
     expect(tx.priceTier.update).toHaveBeenNthCalledWith(2, {
       where: { id: 'tier-professor' },
-      data: { name: 'Professor', value: 6000 },
+      data: { name: 'Professor', value: 6000, includesEventRegistration: true },
     });
     expect(tx.priceTier.deleteMany).toHaveBeenCalledWith({
       where: {

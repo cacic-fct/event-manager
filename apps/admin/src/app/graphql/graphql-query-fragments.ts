@@ -142,6 +142,7 @@ export const MAJOR_EVENT_LIST_FIELDS = `
       id
       name
       value
+      includesEventRegistration
       includesSportsRegistration
     }
   }
@@ -194,6 +195,7 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
       id
       name
       value
+      includesEventRegistration
       includesSportsRegistration
     }
   }
