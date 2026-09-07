@@ -32,8 +32,7 @@
       @for (group of workspace.majorEventUserAttendanceGroups(); track group.category) {
         <div
           class="category-heading"
-          [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
-          [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'">
+          [class.category-NON_REGULAR]="group.category === 'NON_REGULAR'">
           <h4>{{ group.label }}</h4>
           <span>{{ group.description }}</span>
         </div>

@@ -35,6 +35,7 @@ import {
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
+import { resolveRegistrationDecisions } from '../tier/registration-decisions';
 
 export type RankedSubscriptionPageState =
   | { status: 'loading' }
@@ -82,7 +83,10 @@ export class RankedSubscriptionStore {
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly confirmedSportsOnlySubscription = computed(() => {
     const subscription = this.currentUserSubscription();
-    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0;
+    const majorEvent = this.data()?.majorEvent;
+    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0
+      && Boolean(majorEvent?.sportsTournament)
+      && (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true);
   });
   readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
   readonly rankingItems = signal<RankedItem[]>([]);
@@ -103,6 +107,7 @@ export class RankedSubscriptionStore {
   });
 
   private readonly initializedMajorEventId = signal<string | null>(null);
+  private readonly agreementFlowAutoStartAttempted = signal(false);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
   private readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
   private readonly imageLicenseAgreementQueryRequested = toSignal(
@@ -127,16 +132,21 @@ export class RankedSubscriptionStore {
   readonly summariesByEventId = computed(
     () => new Map(this.data()?.subscriptionSummaries.map((summary) => [summary.eventId, summary]) ?? []),
   );
-  readonly autoSelectedEventIds = computed(
-    () =>
-      new Set(
-        this.sortedEvents()
-          .filter((event) => event.autoSubscribe)
-          .map((event) => event.id),
-      ),
-  );
+  readonly autoSelectedEventIds = computed(() => {
+    if (!this.decisions().includesEvents) {
+      return new Set<string>();
+    }
+    return new Set(
+      this.sortedEvents()
+        .filter((event) => event.autoSubscribe)
+        .map((event) => event.id),
+    );
+  });
   readonly effectiveSelectedEventIds = computed(
-    () => new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()]),
+    () =>
+      this.decisions().includesEvents
+        ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
+        : new Set<string>(),
   );
   readonly selectedEvents = computed(() =>
     this.sortedEvents().filter((event) => this.effectiveSelectedEventIds().has(event.id)),
@@ -150,6 +160,10 @@ export class RankedSubscriptionStore {
     const selectedName = this.selectedPriceTierName();
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
   });
+  readonly decisions = computed(() =>
+    resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()),
+  );
+  readonly tierSelectionLocked = computed(() => this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED');
   readonly courseOptions = computed(() => this.categoryOptions('course'));
   readonly lectureOptions = computed(() => this.categoryOptions('lecture'));
   readonly uncategorizedOptions = computed(() => this.categoryOptions('uncategorized'));
@@ -165,6 +179,7 @@ export class RankedSubscriptionStore {
       untracked(() => {
         this.pageState.set({ status: 'loading' });
         this.initializedMajorEventId.set(null);
+        this.agreementFlowAutoStartAttempted.set(false);
         this.pendingRealtimeDelta.set(null);
         this.selectedPriceTierName.set(null);
         this.subscriptionFormFlow.set(null);
@@ -218,6 +233,22 @@ export class RankedSubscriptionStore {
 
       untracked(() => this.initializeFromPageData(data, currentUserSubscription));
     });
+
+    effect(() => {
+      if (
+        !this.imageLicenseAgreementQueryRequested() ||
+        !this.needsImageLicenseAgreement() ||
+        !this.data() ||
+        this.currentUserSubscription() === undefined ||
+        this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
+        this.agreementFlowAutoStartAttempted()
+      ) {
+        return;
+      }
+
+      this.agreementFlowAutoStartAttempted.set(true);
+      untracked(() => this.submit());
+    });
   }
 
   dateLine(): string {
@@ -234,7 +265,7 @@ export class RankedSubscriptionStore {
   }
 
   toggleEvent(event: PublicEvent): void {
-    if (this.autoSelectedEventIds().has(event.id)) {
+    if (!this.decisions().includesEvents || this.autoSelectedEventIds().has(event.id)) {
       return;
     }
     const eventIds = this.getEventIdsForStepOneToggle(event);
@@ -260,6 +291,9 @@ export class RankedSubscriptionStore {
   }
 
   drop(event: CdkDragDrop<RankedItem[]>): void {
+    if (!this.decisions().includesEvents) {
+      return;
+    }
     if (event.previousContainer === event.container) {
       const items = [...event.container.data];
       moveItemInArray(items, event.previousIndex, event.currentIndex);
@@ -277,7 +311,21 @@ export class RankedSubscriptionStore {
   }
 
   selectPriceTier(tierName: string): void {
+    if (this.tierSelectionLocked() || !this.priceTiers().some((tier) => tier.name === tierName)) {
+      return;
+    }
+    if (tierName === this.selectedPriceTierName()) {
+      return;
+    }
     this.selectedPriceTierName.set(tierName);
+    this.selectedEventIds.set(new Set());
+    this.rankingItems.set([]);
+    this.notWantedItems.set([]);
+    this.desiredCourses.set(0);
+    this.desiredLectures.set(0);
+    this.desiredUncategorized.set(0);
+    this.subscriptionFormFlow.set(null);
+    this.subscriptionFlowDraft.set(null);
   }
 
   submit(): void {
@@ -291,8 +339,10 @@ export class RankedSubscriptionStore {
       return;
     }
 
-    const rankedEventIds = [...this.autoSelectedEventIds(), ...this.rankingItems().flatMap((item) => item.eventIds)];
-    if (rankedEventIds.length === 0) {
+    const rankedEventIds = this.decisions().includesEvents
+      ? [...this.autoSelectedEventIds(), ...this.rankingItems().flatMap((item) => item.eventIds)]
+      : [];
+    if (this.decisions().includesEvents && rankedEventIds.length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', { duration: 3000 });
       return;
     }
@@ -305,6 +355,18 @@ export class RankedSubscriptionStore {
 
     if (!this.isAuthenticated()) {
       void this.auth.login({ returnTo: this.router.url });
+      return;
+    }
+
+    if (
+      this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
+      !this.needsImageLicenseAgreement() &&
+      !this.decisions().includesEvents
+    ) {
+      const successRoute = subscriptionSuccessRoute(data.majorEvent, this.selectedPriceTier());
+      if (successRoute) {
+        void this.router.navigate(successRoute.commands, { queryParams: successRoute.queryParams });
+      }
       return;
     }
 
@@ -374,18 +436,29 @@ export class RankedSubscriptionStore {
     data: PublicMajorEventSubscriptionPage,
     currentUserSubscription: CurrentUserMajorEventSubscription | null,
   ): void {
-    const validEventIds = new Set(data.events.map((event) => event.id));
-    const selected = new Set([...this.selectedEventIds()].filter((eventId) => validEventIds.has(eventId)));
-    for (const eventId of this.autoSelectedEventIds()) {
-      selected.add(eventId);
+    const isInitialLoad = this.initializedMajorEventId() !== data.majorEvent.id;
+    if (isInitialLoad) {
+      this.syncSelectedPriceTier(currentUserSubscription);
     }
 
-    if (this.initializedMajorEventId() !== data.majorEvent.id) {
+    const validEventIds = new Set(data.events.map((event) => event.id));
+    const selected = this.decisions().includesEvents
+      ? new Set([...this.selectedEventIds()].filter((eventId) => validEventIds.has(eventId)))
+      : new Set<string>();
+    if (this.decisions().includesEvents) {
+      for (const eventId of this.autoSelectedEventIds()) {
+        selected.add(eventId);
+      }
+    }
+
+    if (isInitialLoad && this.decisions().includesEvents) {
       for (const event of currentUserSubscription?.selectedEvents ?? []) {
         if (validEventIds.has(event.id)) {
           selected.add(event.id);
         }
       }
+    }
+    if (isInitialLoad) {
       this.initializedMajorEventId.set(data.majorEvent.id);
     }
 
@@ -394,7 +467,6 @@ export class RankedSubscriptionStore {
     }
     this.syncRankedItems();
     this.syncDesiredDefaults();
-    this.syncSelectedPriceTier(currentUserSubscription);
   }
 
   private syncSelectedPriceTier(currentUserSubscription: CurrentUserMajorEventSubscription | null): void {
@@ -550,6 +622,11 @@ export class RankedSubscriptionStore {
   }
 
   private syncRankedItems(): void {
+    if (!this.decisions().includesEvents) {
+      this.rankingItems.set([]);
+      this.notWantedItems.set([]);
+      return;
+    }
     const currentRankingKeys = new Set(this.rankingItems().map((item) => item.key));
     const allItems = this.buildRankedItems();
     const selectedKeys = new Set(
@@ -597,6 +674,12 @@ export class RankedSubscriptionStore {
   }
 
   private syncDesiredDefaults(): void {
+    if (!this.decisions().includesEvents) {
+      this.desiredCourses.set(0);
+      this.desiredLectures.set(0);
+      this.desiredUncategorized.set(0);
+      return;
+    }
     this.desiredCourses.set(this.clampDesired(this.desiredCourses(), 'course'));
     this.desiredLectures.set(this.clampDesired(this.desiredLectures(), 'lecture'));
     this.desiredUncategorized.set(this.clampDesired(this.desiredUncategorized(), 'uncategorized'));

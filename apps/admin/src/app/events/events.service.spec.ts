@@ -41,6 +41,7 @@ describe('EventsService', () => {
     setPublicationState: ReturnType<typeof vi.fn>;
   };
   let majorEventApi: {
+    getMajorEvent: ReturnType<typeof vi.fn>;
     listMajorEvents: ReturnType<typeof vi.fn>;
   };
   let router: {
@@ -75,6 +76,7 @@ describe('EventsService', () => {
       setPublicationState: vi.fn(() => of({ ok: true })),
     };
     majorEventApi = {
+      getMajorEvent: vi.fn(() => of(createAdminMajorEvent())),
       listMajorEvents: vi.fn(() => of([createAdminMajorEvent({ id: 'major-event-1', name: 'SECOMPP' })])),
     };
     router = {
@@ -129,6 +131,26 @@ describe('EventsService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('saves the selected regular attendance tiers and clears them when changing major events', async () => {
+    const majorEvent = createAdminMajorEvent({
+      id: 'major-event-1',
+      majorEventPrices: [{ id: 'price', type: 'TIERED', tiers: [
+        { id: 'kit-tier', name: 'Com kit', value: 5000, includesSportsRegistration: false },
+      ] }],
+    });
+    majorEventApi.getMajorEvent.mockReturnValue(of(majorEvent));
+    service.assignMajorEventToEvent(majorEvent);
+    await Promise.resolve();
+    expect(service.attendancePriceTiers().map((tier) => tier.id)).toEqual(['kit-tier']);
+    service.eventForm.controls.regularAttendancePriceTierIds.setValue(['kit-tier']);
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({ regularAttendancePriceTierIds: ['kit-tier'] });
+    service.assignMajorEventToEvent(createAdminMajorEvent({ id: 'other-major-event' }));
+    expect(service.eventForm.controls.regularAttendancePriceTierIds.value).toEqual([]);
   });
 
   it('keeps a reversed event range in the browser instead of sending it to the API', async () => {

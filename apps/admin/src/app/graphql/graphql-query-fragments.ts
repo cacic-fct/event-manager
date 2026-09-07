@@ -47,6 +47,7 @@ export const EVENT_DETAIL_FIELDS = `
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
+  regularAttendancePriceTierIds
   shouldCollectAttendance
   shouldAllowOralAttendance
   isOnlineAttendanceAllowed
@@ -142,6 +143,7 @@ export const MAJOR_EVENT_LIST_FIELDS = `
       id
       name
       value
+      includesEventRegistration
       includesSportsRegistration
     }
   }
@@ -194,6 +196,7 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
       id
       name
       value
+      includesEventRegistration
       includesSportsRegistration
     }
   }
@@ -299,6 +302,7 @@ export const EVENT_ATTENDANCE_WRITE_FIELDS = `
   personId
   attendedAt
   category
+  currentAssessment
   status
   createdByMethod
 `;
@@ -471,6 +475,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   isActive
   issuedTo
   certificateTypeLabel
+  paymentTiers
   certificateFieldsJson
   createdAt
   deletedAt

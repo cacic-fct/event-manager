@@ -78,19 +78,15 @@ type AttendanceCategoryGroup = {
   attendances: MajorEventUserAttendance[];
 };
 
-const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
+const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_REGULAR', 'UNKNOWN'];
 const EXPORT_PAGE_SIZE = 1000;
 const OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
 const ATTENDANCE_LIVE_REFRESH_INTERVAL_MS = 500;
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
-  NON_PAYING: {
-    label: 'Sem pagamento',
-    description: 'Presenças em grande evento pago sem pagamento confirmado.',
-  },
-  NON_SUBSCRIBED: {
-    label: 'Sem inscrição na atividade',
-    description: 'Presenças em atividades com inscrição obrigatória.',
+  NON_REGULAR: {
+    label: 'Não regulares',
+    description: 'Presenças com pendências de inscrição, pagamento ou faixa de preço.',
   },
   REGULAR: {
     label: 'Regulares',
@@ -839,6 +835,8 @@ export class AttendancesService {
         return 'Comprovante de pagamento do grande evento em análise.';
       case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
         return 'Pagamento do grande evento não confirmado.';
+      case 'PRICE_TIER_NOT_ELIGIBLE':
+        return 'Faixa de preço não elegível';
       case 'REQUIREMENTS_CURRENTLY_MET':
         return 'Requisitos atuais atendidos.';
       case null:
@@ -851,7 +849,7 @@ export class AttendancesService {
     const assessments = [
       ...new Set(
         attendance.attendances
-          .filter((eventAttendance) => eventAttendance.attended && eventAttendance.category === 'UNKNOWN')
+          .filter((eventAttendance) => eventAttendance.attended && eventAttendance.category !== 'REGULAR')
           .map((eventAttendance) => eventAttendance.currentAssessment)
           .filter((assessment): assessment is AttendanceCurrentAssessment => Boolean(assessment)),
       ),

@@ -1,0 +1,59 @@
+<section aria-labelledby="tier-selection-title">
+  <h2 id="tier-selection-title" tabindex="-1">Escolha sua modalidade de inscrição</h2>
+
+  @if (locked()) {
+  <p>Sua inscrição já está confirmada. A modalidade selecionada não pode ser alterada.</p>
+  }
+
+  <mat-radio-group
+    class="tier-options"
+    [value]="selectedName()"
+    aria-labelledby="tier-selection-title"
+    (change)="selectTier.emit($event.value)"
+    [disabled]="busy() || locked()">
+    @for (tier of tiers(); track tier.id) {
+    <div class="tier-option" [class.selected]="selectedName() === tier.name">
+      <mat-radio-button [value]="tier.name" [aria-describedby]="'tier-access-' + tier.id">
+        <span class="tier-name">{{ tier.name }}</span>
+        <strong class="tier-price">{{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</strong>
+      </mat-radio-button>
+      <ul [id]="'tier-access-' + tier.id" class="tier-access">
+        <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição no grande evento</li>
+        @if (tier.includesEventRegistration !== false) {
+        <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição em eventos</li>
+        } @if (majorEvent().sportsTournament && tier.includesSportsRegistration) {
+        <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição em esportes</li>
+        }
+      </ul>
+    </div>
+    }
+  </mat-radio-group>
+
+  <div class="next-step" aria-live="polite">
+    @if (selectedTier(); as tier) { @if (tier.includesEventRegistration !== false) {
+    <p>Em seguida, você escolherá os eventos de que deseja participar.</p>
+    } @else if (majorEvent().sportsTournament && tier.includesSportsRegistration) {
+    <p>Revise sua inscrição antes de escolher os esportes.</p>
+    } @else {
+    <p>Em seguida, revise os dados da sua participação no grande evento.</p>
+    } @if (majorEvent().sportsTournament && tier.includesSportsRegistration) { @if (sportsOpen()) {
+    <p>
+      Você poderá escolher os esportes após confirmar a inscrição no grande evento. A participação depende das vagas e
+      das regras do torneio.
+    </p>
+    } @else {
+    <p>
+      A inscrição em esportes não está disponível no momento. A modalidade inclui esse acesso quando as inscrições do
+      torneio estiverem abertas.
+    </p>
+    } } } @else {
+    <p>Selecione uma modalidade para continuar.</p>
+    }
+  </div>
+  <div class="tier-actions">
+    <button matButton="filled" type="button" [disabled]="!selectedTier() || busy()" (click)="continue.emit()">
+      {{ selectedTier()?.includesEventRegistration !== false ? 'Continuar para eventos' : 'Continuar inscrição' }}
+      <mat-icon>arrow_forward</mat-icon>
+    </button>
+  </div>
+</section>

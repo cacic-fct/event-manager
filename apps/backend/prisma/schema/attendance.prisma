@@ -6,6 +6,7 @@ model EventAttendance {
   event  Event  @relation(fields: [eventId], references: [id])
 
   category AttendanceCategory    @default(UNKNOWN)
+  currentAssessment AttendanceCurrentAssessment?
   status   EventAttendanceStatus @default(PRESENT)
 
   attendedAt DateTime @default(now())
@@ -114,9 +115,17 @@ enum EventAttendanceStatus {
   ABSENT
 }
 
+enum AttendanceCurrentAssessment {
+  ACTIVITY_SUBSCRIPTION_MISSING
+  MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT
+  MAJOR_EVENT_PAYMENT_NOT_CONFIRMED
+  MAJOR_EVENT_PAYMENT_UNDER_REVIEW
+  PRICE_TIER_NOT_ELIGIBLE
+  REQUIREMENTS_CURRENTLY_MET
+}
+
 enum AttendanceCategory {
-  NON_PAYING
-  NON_SUBSCRIBED
+  NON_REGULAR
   REGULAR
   UNKNOWN
 }

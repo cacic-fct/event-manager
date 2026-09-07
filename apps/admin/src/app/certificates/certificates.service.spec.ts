@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { CertificateApiService } from '../graphql/certificate-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
@@ -56,6 +56,7 @@ describe('CertificatesService', () => {
     updateCertificateConfig: ReturnType<typeof vi.fn>;
     updateCertificateFolder: ReturnType<typeof vi.fn>;
   };
+  let majorEventsApi: { getMajorEvent: ReturnType<typeof vi.fn> };
   let lastPayload: CertificateConfigInput | null;
   let peopleApi: {
     listPeopleSummaries: ReturnType<typeof vi.fn>;
@@ -124,6 +125,7 @@ describe('CertificatesService', () => {
         }),
       ),
     };
+    majorEventsApi = { getMajorEvent: vi.fn(() => throwError(() => new Error("Forbidden"))) };
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
     };
@@ -141,7 +143,7 @@ describe('CertificatesService', () => {
         { provide: CertificateApiService, useValue: api },
         { provide: EventApiService, useValue: {} },
         { provide: EventGroupApiService, useValue: {} },
-        { provide: MajorEventApiService, useValue: {} },
+        { provide: MajorEventApiService, useValue: majorEventsApi },
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -162,6 +164,61 @@ describe('CertificatesService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('opens an event certificate workspace when parent-event read is forbidden', async () => {
+    const event = createAdminEvent({ id: 'scoped-event', majorEventId: 'parent-event' });
+    const config = createAdminCertificateConfig({ paymentTiers: ['Aluno'] }, certificateTemplate);
+    api.listCertificateConfigs.mockReturnValue(of([config]));
+
+    await expect(service.selectTarget(event)).resolves.toBeUndefined();
+
+    expect(service.selectedTarget()).toEqual({ id: event.id, name: event.name });
+    expect(api.listCertificateConfigs).toHaveBeenCalled();
+    expect(api.listCertificates).toHaveBeenCalled();
+    expect(service.certificateConfigs()).toEqual([config]);
+    expect(service.availablePaymentTiers()).toEqual([]);
+    service.selectCertificateConfig(config);
+    expect(service.paymentTierOptions()).toEqual(['Aluno']);
+    expect(service.certificateConfigForm.paymentTiers().value()).toEqual(['Aluno']);
+  });
+
+  it('ignores late tier options after another certificate target is selected', async () => {
+    const tiers = new Subject<{ majorEventPrices: { tiers: { name: string }[] }[] }>();
+    majorEventsApi.getMajorEvent.mockReturnValue(tiers);
+    const pendingSelection = service.selectTarget(createAdminEvent({ id: 'first', majorEventId: 'parent' }));
+    expect(service.selectedTarget()?.id).toBe('first');
+    await service.selectTarget(createAdminEvent({ id: 'second', majorEventId: null }));
+    tiers.next({ majorEventPrices: [{ tiers: [{ name: 'Stale' }] }] });
+    await pendingSelection;
+    expect(service.selectedTarget()?.id).toBe('second');
+    expect(service.availablePaymentTiers()).toEqual([]);
+  });
+
+  it('loads optional tier choices when the parent event is readable', async () => {
+    majorEventsApi.getMajorEvent.mockReturnValue(of({ majorEventPrices: [{ tiers: [{ name: 'Aluno' }] }] }));
+    await service.selectTarget(createAdminEvent({ majorEventId: 'parent-event' }));
+    expect(service.availablePaymentTiers()).toEqual(['Aluno']);
+    service.clearSelection();
+    expect(service.availablePaymentTiers()).toEqual([]);
+  });
+
+  it('defaults to all tiers and saves multiple selected tiers', async () => {
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual([]);
+    service.certificateConfigForm.paymentTiers().value.set(['Aluno', 'Professor']);
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual(['Aluno', 'Professor']);
+  });
+
+  it('restores tier selections and clears them when saving non-participant certificates', async () => {
+    service.selectCertificateConfig(createAdminCertificateConfig({ paymentTiers: ['Aluno', 'Professor'] }, certificateTemplate));
+    expect(service.certificateConfigForm.paymentTiers().value()).toEqual(['Aluno', 'Professor']);
+    expect(service.showPaymentTiers()).toBe(true);
+    service.onCertificateIssuedToChanged('LECTURER_PALESTRA');
+    expect(service.showPaymentTiers()).toBe(false);
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual([]);
   });
 
   it('uses template defaults without materializing them as config overrides', async () => {

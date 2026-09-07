@@ -160,6 +160,20 @@ export const ExistingSubscription: Story = {
   },
 };
 
+export const TierComparison: Story = { args: { requiresPayment: true } };
+
+export const TierFirstRegistration: Story = {
+  args: { requiresPayment: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Escolha sua modalidade de inscrição' })).toBeVisible();
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('radio', { name: /^Eventos R/ }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Continuar para eventos' }));
+    await expect(await canvas.findByRole('heading', { name: 'Escolha seus eventos' })).toBeVisible();
+  },
+};
+
 export const ReceiptUploadRequired: Story = {
   args: { existingSubscription: true, requiresPayment: true, subscriptionStatus: 'WAITING_RECEIPT_UPLOAD' },
   play: async ({ canvasElement }) => {
@@ -317,8 +331,14 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
     subscriptionEndDate: isoDaysFromNow(10, 23),
     rankedSubscriptionEnabled: false,
     isPaymentRequired: args.requiresPayment,
+    sportsTournament: args.requiresPayment ? { id: 'tournament', selfSubscriptionEnabled: true, registrationOpen: true } : null,
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
-    majorEventPrices: [],
+    majorEventPrices: args.requiresPayment ? [{ id: 'price', type: 'TIERED', tiers: [
+      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
+      { id: 'both', name: 'Eventos e esportes', value: 4500, includesEventRegistration: true, includesSportsRegistration: true },
+      { id: 'support', name: 'Participação no grande evento', value: 0, includesEventRegistration: false, includesSportsRegistration: false },
+    ] }] : [],
   });
   const count = Math.min(Math.max(Math.trunc(args.eventCount), 0), 30);
   const events = Array.from({ length: count }, (_, index) =>

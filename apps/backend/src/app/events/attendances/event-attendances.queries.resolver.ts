@@ -72,6 +72,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         collectedLongitude: true,
         collectedAccuracyMeters: true,
         category: true,
+        currentAssessment: true,
         person: true,
         event: {
           select: EVENT_RELATION_SELECT,
@@ -263,6 +264,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         eventId: true,
         attendedAt: true,
         category: true,
+        currentAssessment: true,
         person: {
           include: {
             user: true,
@@ -316,6 +318,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
             attended: attendance != null,
             attendedAt: attendance?.attendedAt,
             category: attendance?.category ?? 'UNKNOWN',
+            currentAssessment: attendance?.currentAssessment,
             ...(attendance && currentAssessments.get(attendanceAssessmentKey(resolvedPersonId, event.id))
               ? {
                   currentAssessment: currentAssessments.get(attendanceAssessmentKey(resolvedPersonId, event.id)),
@@ -350,6 +353,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         createdByMethod: true,
         status: true,
         category: true,
+        currentAssessment: true,
         person: true,
         event: {
           select: EVENT_RELATION_SELECT,

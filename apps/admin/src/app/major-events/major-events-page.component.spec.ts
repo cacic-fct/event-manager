@@ -66,6 +66,11 @@ describe('MajorEventsPageComponent', () => {
         'mat-checkbox[formcontrolname="includesSportsRegistration"]',
       ),
     ).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'mat-checkbox[formcontrolname="includesEventRegistration"]',
+      ),
+    ).not.toBeNull();
 
     fixture.componentInstance.workspace.selectedMajorEvent.set({ ...selectedMajorEvent, sportsTournament: null });
     fixture.detectChanges();

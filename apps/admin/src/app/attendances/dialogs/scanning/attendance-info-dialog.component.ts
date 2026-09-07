@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { AttendanceCategory } from '@cacic-fct/event-manager-admin-contracts';
+import { AttendanceCategory, AttendanceCurrentAssessment } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendanceLocationMapComponent } from './attendance-location-map.component';
 
 type AttendanceInfoDialogData = {
@@ -22,6 +22,7 @@ type AttendanceInfoDialogData = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  currentAssessment?: AttendanceCurrentAssessment | null;
   status: 'PRESENT' | 'ABSENT';
 };
 
@@ -176,6 +177,7 @@ export class AttendanceInfoDialogComponent {
     { label: 'ID da Pessoa', value: this.data.personId },
     { label: 'ID do Evento', value: this.data.eventId },
     { label: 'Categoria', value: this.getCategoryLabel(this.data.category) },
+    { label: 'Situação atual', value: this.getAssessmentLabel(this.data.currentAssessment) },
     { label: 'Presença registrada em', value: this.formatDate(this.data.attendedAt) },
     { label: 'Método', value: this.getMethodLabel(this.data.createdByMethod) },
     { label: 'Coletado por', value: this.data.collectedByFullName },
@@ -202,10 +204,22 @@ export class AttendanceInfoDialogComponent {
     }).format(new Date(value));
   }
 
+  private getAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
+    if (!assessment) return null;
+    const labels: Record<AttendanceCurrentAssessment, string> = {
+      ACTIVITY_SUBSCRIPTION_MISSING: 'Sem inscrição na atividade',
+      MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'Aguardando comprovante de pagamento',
+      MAJOR_EVENT_PAYMENT_NOT_CONFIRMED: 'Pagamento não confirmado',
+      MAJOR_EVENT_PAYMENT_UNDER_REVIEW: 'Comprovante em análise',
+      PRICE_TIER_NOT_ELIGIBLE: 'Faixa de preço não elegível',
+      REQUIREMENTS_CURRENTLY_MET: 'Requisitos atuais atendidos',
+    };
+    return labels[assessment];
+  }
+
   private getCategoryLabel(category: AttendanceCategory): string {
     const labels: Record<AttendanceCategory, string> = {
-      NON_PAYING: 'Sem pagamento',
-      NON_SUBSCRIBED: 'Sem inscrição',
+      NON_REGULAR: 'Não regular',
       REGULAR: 'Regular',
       UNKNOWN: 'Indefinida',
     };

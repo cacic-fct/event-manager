@@ -373,6 +373,8 @@ export class CertificateConfigsService {
     }
     await this.ensureNoDuplicateName(scope, targetId, name);
 
+    const paymentTiers = await this.validatePaymentTiers(input.paymentTiers ?? [], scope, majorEventId, eventId);
+
     const createdConfig = await this.prisma.$transaction(async (tx) => {
       const config = await tx.certificateConfig.create({
         data: {
@@ -389,6 +391,7 @@ export class CertificateConfigsService {
           isActive: input.isActive ?? true,
           issuedTo,
           certificateTypeLabel,
+          paymentTiers,
           ...(certificateFields === undefined
             ? {}
             : certificateFields === null
@@ -509,7 +512,19 @@ export class CertificateConfigsService {
       input.eventId !== undefined ||
       input.folderId !== undefined;
 
+    const requestedPaymentTiers = input.paymentTiers === undefined
+      ? existingConfig.paymentTiers ?? []
+      : input.paymentTiers ?? [];
+    const samePaymentTierTarget = mergedScope === existingConfig.scope &&
+      mergedMajorEventId === existingConfig.majorEventId && mergedEventId === existingConfig.eventId;
+    const unchangedPaymentTiers = requestedPaymentTiers.length === (existingConfig.paymentTiers?.length ?? 0) &&
+      requestedPaymentTiers.every((tier) => existingConfig.paymentTiers?.includes(tier));
+    const paymentTiers = samePaymentTierTarget && unchangedPaymentTiers
+      ? requestedPaymentTiers
+      : await this.validatePaymentTiers(requestedPaymentTiers, mergedScope, mergedMajorEventId, mergedEventId);
+
     const data: Prisma.CertificateConfigUpdateInput = {
+      ...(input.paymentTiers === undefined ? {} : { paymentTiers }),
       ...(input.name === undefined ? {} : { name: mergedName }),
       ...(shouldUpdateScopeOrTargets
         ? {
@@ -687,6 +702,11 @@ export class CertificateConfigsService {
         isActive: parts?.activeState ? source.isActive : true,
         issuedTo,
         certificateTypeLabel,
+        paymentTiers:
+          shouldCopyRecipientData && scope === source.scope &&
+          majorEventId === source.majorEventId && eventId === source.eventId
+            ? source.paymentTiers ?? []
+            : [],
         certificateFields: this.toJsonCreateValue(certificateFields),
         createdById: options.actor?.sub,
         updatedById: options.actor?.sub,
@@ -791,6 +811,38 @@ export class CertificateConfigsService {
       },
       prisma,
     );
+  }
+
+  private async validatePaymentTiers(
+    values: string[],
+    scope: CertificateScope,
+    majorEventId?: string | null,
+    eventId?: string | null,
+  ): Promise<string[]> {
+    const tiers = [...new Set(values.map((value) => value.trim()))];
+    if (tiers.length === 0) return [];
+    if (tiers.some((tier) => !tier)) {
+      throw new BadRequestException('Payment tiers cannot be blank.');
+    }
+    const targetMajorEventId = scope === CertificateScope.MAJOR_EVENT
+      ? majorEventId
+      : scope === CertificateScope.EVENT && eventId
+        ? (await this.prisma.event.findFirst({
+            where: { id: eventId, deletedAt: null },
+            select: { majorEventId: true },
+          }))?.majorEventId
+        : null;
+    if (!targetMajorEventId) {
+      throw new BadRequestException('Payment tiers require a major-event target or one of its events.');
+    }
+    const available = await this.prisma.priceTier.findMany({
+      where: { price: { majorEventId: targetMajorEventId } },
+      select: { name: true },
+    });
+    if (tiers.some((tier) => !available.some((option) => option.name === tier))) {
+      throw new BadRequestException('Select payment tiers belonging to the target major event.');
+    }
+    return tiers;
   }
 
   private async ensureTemplateExists(templateId: string): Promise<void> {

@@ -59,6 +59,7 @@ export interface CertificateConfig {
   isActive: boolean;
   issuedTo: CertificateIssuedTo;
   certificateTypeLabel?: string | null;
+  paymentTiers?: string[];
   certificateFieldsJson?: string | null;
   createdAt: string;
   createdById?: string | null;
@@ -108,6 +109,7 @@ export interface CertificateConfigInput {
   isActive?: boolean;
   issuedTo?: CertificateIssuedTo;
   certificateTypeLabel?: string | null;
+  paymentTiers?: string[];
   certificateFieldsJson?: string | null;
 }
 

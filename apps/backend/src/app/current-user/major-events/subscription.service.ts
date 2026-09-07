@@ -260,9 +260,10 @@ export class CurrentUserMajorEventSubscriptionService {
 
   resolveNextSubscriptionStatus(
     isPaymentRequired: boolean,
+    amountPaid: number | null,
     currentStatus?: SubscriptionStatus,
   ): SubscriptionStatus | undefined {
-    if (!isPaymentRequired) {
+    if (!isPaymentRequired || amountPaid === 0) {
       return SubscriptionStatus.CONFIRMED;
     }
 

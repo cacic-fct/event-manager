@@ -73,6 +73,9 @@ export class EventCreateInput {
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
 
+  @Field(() => [String], { nullable: true })
+  regularAttendancePriceTierIds?: string[];
+
   @Field(() => Boolean, { nullable: true })
   shouldCollectAttendance?: boolean;
 
@@ -189,6 +192,9 @@ export class EventUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+
+  @Field(() => [String], { nullable: true })
+  regularAttendancePriceTierIds?: string[];
 
   @Field(() => Boolean, { nullable: true })
   shouldCollectAttendance?: boolean;

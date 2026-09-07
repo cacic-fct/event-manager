@@ -140,3 +140,9 @@ Oriente os ministrantes a não fazerem isso.
 As pessoas cadastradas nessa seção poderão coletar presença com a interface pública, a partir de 3 horas antes do início do evento e até 6 horas depois, mas não terão acesso à interface administrativa do sistema.
 
 Administradores com permissões de coleta de presenças não precisam ser cadastrados nessa seção.
+
+## Presença regular por faixa de preço
+
+Em "Inscrição e presença", eventos vinculados a um grande evento com faixas de preço permitem selecionar as Faixas de preço com presença regular. Sem seleção, não há restrição por faixa. As regras existentes de inscrição e pagamento continuam valendo.
+
+As presenças de participantes fora das faixas selecionadas continuam registradas, mas ficam como "Não regulares", com a situação "Faixa de preço não elegível". Essa configuração pode ser usada em um evento não listado no site público para registrar a entrega de kits. Trocar o grande evento limpa a seleção de faixas; alterar a regra recalcula as presenças já registradas no evento.

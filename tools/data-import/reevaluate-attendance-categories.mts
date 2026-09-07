@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { attendanceState, type LegacyAttendanceCategory } from './lib/attendance-state.mts';
 import process from 'node:process';
 import { chunks, connectPostgres, databaseUrlFromOptions, formatCounter, isMain } from './lib/common.mts';
 import {
@@ -13,7 +14,7 @@ import {
 } from './firestore-to-postgres.mts';
 import type { DatabaseClient, DatabaseQueryResult, LegacyCollection } from './firestore-to-postgres.mts';
 
-export type AttendanceCategory = 'REGULAR' | 'NON_SUBSCRIBED' | 'NON_PAYING';
+export type AttendanceCategory = LegacyAttendanceCategory;
 
 export interface FirestoreAttendanceRow {
   legacyEventId: string;
@@ -308,11 +309,11 @@ export async function selectChangedAttendances(
   existing: readonly AttendanceUpdateRow[],
   { includeNonUnknown = false }: SelectChangedOptions = {},
 ): Promise<AttendanceUpdateRow[]> {
-  const currentCategoryByPair = new Map<string, unknown>();
+  const currentCategoryByPair = new Map<string, { category: unknown; currentAssessment: unknown }>();
   for (const chunk of chunks(existing, 1000)) {
     const result = await db.query(
       `
-      SELECT "personId", "eventId", category::text
+      SELECT "personId", "eventId", category::text, "currentAssessment"::text
       FROM event_attendances
       WHERE ("personId", "eventId") IN (
         SELECT * FROM UNNEST($1::text[], $2::text[])
@@ -321,28 +322,30 @@ export async function selectChangedAttendances(
       [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
     );
     for (const row of rowsOf(result)) {
-      if (Array.isArray(row)) currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), row[2]);
-      else if (isRecord(row)) currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), row.category);
+      if (Array.isArray(row)) currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), { category: row[2], currentAssessment: row[3] });
+      else if (isRecord(row)) currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), { category: row.category, currentAssessment: row.currentAssessment });
     }
   }
   return existing.filter((row) => {
     const currentCategory = currentCategoryByPair.get(JSON.stringify([row.personId, row.eventId]));
-    if (currentCategory === row.category) return false;
-    if (currentCategory !== 'UNKNOWN' && !includeNonUnknown) return false;
+    const desired = attendanceState(row.category);
+    if (currentCategory?.category === desired.category && currentCategory.currentAssessment === desired.currentAssessment) return false;
+    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
     return true;
   });
 }
 
 export async function applyUpdates(db: DatabaseClient, updates: readonly AttendanceUpdateRow[]): Promise<void> {
   for (const row of updates) {
+    const state = attendanceState(row.category);
     await db.query(
       `
       UPDATE event_attendances
-      SET category = $1::"AttendanceCategory"
+      SET category = $1::"AttendanceCategory", "currentAssessment" = $4::"AttendanceCurrentAssessment"
       WHERE "personId" = $2
         AND "eventId" = $3
     `,
-      [row.category, row.personId, row.eventId],
+      [state.category, row.personId, row.eventId, state.currentAssessment],
     );
   }
 }

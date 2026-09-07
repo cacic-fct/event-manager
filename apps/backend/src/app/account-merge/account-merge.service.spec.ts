@@ -277,7 +277,8 @@ describe('AccountMergeService', () => {
           createdAt: new Date('2026-01-01T12:10:00.000Z'),
           createdById: 'collector-1',
           createdByMethod: 'MANUAL',
-          category: 'ATTENDEE',
+          category: 'NON_REGULAR',
+          currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
         },
       ])
       .mockResolvedValueOnce([]);
@@ -349,7 +350,10 @@ describe('AccountMergeService', () => {
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: [expect.objectContaining({ personId: 'target-person', eventId: 'event-1' })],
+        data: [expect.objectContaining({
+          personId: 'target-person', eventId: 'event-1',
+          category: 'NON_REGULAR', currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+        })],
         skipDuplicates: true,
       }),
     );

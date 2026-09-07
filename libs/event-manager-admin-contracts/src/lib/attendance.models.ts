@@ -10,12 +10,13 @@ export type AttendanceCreationMethod =
   | 'ONLINE_CODE'
   | 'UNKNOWN';
 export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
-export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type AttendanceCategory = 'NON_REGULAR' | 'REGULAR' | 'UNKNOWN';
 export type AttendanceCurrentAssessment =
   | 'ACTIVITY_SUBSCRIPTION_MISSING'
   | 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT'
   | 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'
   | 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW'
+  | 'PRICE_TIER_NOT_ELIGIBLE'
   | 'REQUIREMENTS_CURRENTLY_MET';
 export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 export type SubscriptionStatus =

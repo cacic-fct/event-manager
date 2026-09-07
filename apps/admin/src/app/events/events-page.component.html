@@ -520,6 +520,22 @@
 
         <section class="surface field-group">
           <h4>Inscrição e presença</h4>
+          @if (workspace.attendancePriceTiers().length) {
+            <div class="field-grid">
+              <mat-form-field class="span-2" subscriptSizing="dynamic">
+                <mat-label>Faixas de preço com presença regular</mat-label>
+                <mat-select formControlName="regularAttendancePriceTierIds" multiple>
+                  @for (tier of workspace.attendancePriceTiers(); track tier.id) {
+                    <mat-option [value]="tier.id">{{ tier.name }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>
+                  Sem seleção, não há restrição por faixa. Fora das faixas selecionadas, a presença é registrada
+                  como não regular. As regras de inscrição e pagamento continuam valendo.
+                </mat-hint>
+              </mat-form-field>
+            </div>
+          }
           <div class="checkbox-grid">
             <mat-checkbox formControlName="allowSubscription"> Permitir inscrição </mat-checkbox>
             <mat-checkbox formControlName="requiresImageLicenseAgreement">

@@ -38,12 +38,13 @@ export type SubscriptionStatus =
   | 'REJECTED_GENERIC'
   | 'CONFIRMED'
   | 'CANCELED';
-export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type AttendanceCategory = 'NON_REGULAR' | 'REGULAR' | 'UNKNOWN';
 export type AttendanceCurrentAssessment =
   | 'ACTIVITY_SUBSCRIPTION_MISSING'
   | 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT'
   | 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'
   | 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW'
+  | 'PRICE_TIER_NOT_ELIGIBLE'
   | 'REQUIREMENTS_CURRENTLY_MET';
 
 export interface PaymentInfo {
@@ -187,6 +188,7 @@ export interface Event {
   shouldIssueCertificate: boolean;
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
+  regularAttendancePriceTierIds?: string[];
   shouldCollectAttendance: boolean;
   shouldAllowOralAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;

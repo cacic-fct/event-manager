@@ -1,0 +1,23 @@
+:host { display: block; }
+h2 { font: var(--mat-sys-headline-small); margin: 24px 0 8px; }
+.intro { color: var(--mat-sys-on-surface-variant); max-width: 70ch; margin: 0 0 24px; }
+.tier-options { display: grid; gap: 16px; }
+.tier-option { border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; padding: 16px; min-width: 0; }
+.tier-option.selected { border-color: var(--mat-sys-primary); background: var(--mat-sys-surface-container); }
+.tier-name { font: var(--mat-sys-title-medium); overflow-wrap: anywhere; }
+.tier-price { display: block; font: var(--mat-sys-title-large); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.tier-access { list-style: none; padding: 0 0 0 44px; margin: 12px 0 0; display: grid; gap: 8px; }
+.tier-access li { display: flex; align-items: flex-start; gap: 8px; }
+.tier-access mat-icon { flex-shrink: 0; }
+.next-step { margin-top: 24px; max-width: 70ch; }
+.next-step p { margin: 8px 0; }
+.tier-actions { display: flex; justify-content: flex-end; margin-top: 24px; }
+@media (max-width: 640px) {
+  .tier-option { padding: 12px; }
+  .tier-access { padding-left: 8px; }
+  .tier-actions button { width: 100%; }
+}
+@media (min-width: 641px) {
+  .tier-option { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  .tier-access { padding: 0; margin: 0; }
+}

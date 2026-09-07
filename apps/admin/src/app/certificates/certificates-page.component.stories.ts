@@ -1,3 +1,8 @@
+import { inject, provideAppInitializer } from '@angular/core';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { applicationConfig } from '@storybook/angular';
+import { of } from 'rxjs';
+import { CertificatesService } from './certificates.service';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import {
@@ -136,4 +141,25 @@ export const LongTemplateNamesMobile: Story = {
   args: { count: 12, longContent: true, latencyMs: 0 },
   parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const ParticipantPriceTiers: Story = {
+  decorators: [applicationConfig({
+    providers: [
+      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ targetType: 'major-event', targetId: 'major-1' })) } },
+      provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+    ],
+  })],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const tiers = await canvas.findByRole('combobox', { name: 'Faixas de preço para emissão' });
+    await expect(tiers).toHaveTextContent('Todas as faixas');
+    await userEvent.click(tiers);
+    const screen = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await screen.findByRole('option', { name: 'Estudante' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Comunidade' }));
+    await userEvent.keyboard('{Escape}');
+    await expect(tiers).toHaveTextContent('Estudante');
+    await expect(tiers).toHaveTextContent('Comunidade');
+  },
 };

@@ -373,7 +373,7 @@ function emptyCounters() {
   );
 }
 
-async function refreshDerivedData(target, operations) {
+export async function refreshDerivedData(target, operations) {
   const eventIds = [
     ...new Set(
       operations
@@ -395,17 +395,26 @@ async function refreshDerivedData(target, operations) {
     [eventIds],
   );
   await target.query(
-    `UPDATE event_attendances attendance SET category=CASE
+    `WITH assessments AS (
+      SELECT attendance."personId", attendance."eventId", CASE
       WHEN event."majorEventId" IS NOT NULL AND major_event."isPaymentRequired"=true
         AND NOT EXISTS (SELECT 1 FROM major_event_subscriptions item WHERE item."majorEventId"=event."majorEventId"
           AND item."personId"=attendance."personId" AND item."deletedAt" IS NULL AND item."subscriptionStatus"='CONFIRMED')
-        THEN 'NON_PAYING'::"AttendanceCategory"
+        THEN 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'
       WHEN event."allowSubscription"=true AND NOT EXISTS
         (SELECT 1 FROM event_subscriptions item WHERE item."eventId"=event.id AND item."personId"=attendance."personId" AND item."deletedAt" IS NULL)
-        THEN 'NON_SUBSCRIBED'::"AttendanceCategory"
-      ELSE 'REGULAR'::"AttendanceCategory" END
-     FROM events event LEFT JOIN major_events major_event ON major_event.id=event."majorEventId"
-     WHERE attendance."eventId"=event.id AND event.id=ANY($1::text[])`,
+        THEN 'ACTIVITY_SUBSCRIPTION_MISSING'
+      ELSE 'REQUIREMENTS_CURRENTLY_MET' END AS assessment
+      FROM event_attendances attendance
+      JOIN events event ON attendance."eventId"=event.id
+      LEFT JOIN major_events major_event ON major_event.id=event."majorEventId"
+      WHERE event.id=ANY($1::text[])
+    )
+    UPDATE event_attendances attendance SET
+      category=(CASE WHEN assessments.assessment='REQUIREMENTS_CURRENTLY_MET' THEN 'REGULAR' ELSE 'NON_REGULAR' END)::"AttendanceCategory",
+      "currentAssessment"=assessments.assessment::"AttendanceCurrentAssessment"
+    FROM assessments
+    WHERE attendance."personId"=assessments."personId" AND attendance."eventId"=assessments."eventId"`,
     [eventIds],
   );
 }

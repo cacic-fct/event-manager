@@ -18,6 +18,8 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { AttendanceCategoryService } from './attendance-category.service';
+import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
@@ -122,6 +124,7 @@ const EVENT_DETAIL_SELECT = {
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  regularAttendancePriceTierIds: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -171,6 +174,7 @@ const EVENT_AUDIT_SELECT = {
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  regularAttendancePriceTierIds: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -227,6 +231,7 @@ export class EventDraftsService {
     private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
       assertEventUpdateAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    private readonly attendanceCategories: AttendanceCategoryService = new AttendanceCategoryService(prisma),
   ) {}
 
   async listEventDrafts(
@@ -355,6 +360,7 @@ export class EventDraftsService {
       }
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, draft.sourceEventId, payload);
 
+      await validateAttendancePriceTiers(tx, payload, previousEvent);
       await tx.event.updateMany({
         where: { id: draft.sourceEventId, deletedAt: null },
         data: {
@@ -367,6 +373,9 @@ export class EventDraftsService {
           publicationUpdatedBy: user?.sub ?? null,
         },
       });
+      if (attendancePriceTierPolicyChanged(payload, previousEvent)) {
+        await this.attendanceCategories.refreshForEvent(draft.sourceEventId, tx);
+      }
       await tx.eventDraft.delete({ where: { id: draft.id } });
 
       const updated = await tx.event.findUniqueOrThrow({

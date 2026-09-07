@@ -64,6 +64,7 @@ type CertificateConfigFormModel = {
   isActive: boolean;
   issuedTo: CertificateIssuedToOption;
   certificateTypeLabel: string;
+  paymentTiers: string[];
   certificateFields: Record<string, string>;
 };
 type CertificateFieldDefinition = {
@@ -96,6 +97,14 @@ export class CertificatesService {
   readonly issuableEventGroups = signal<EventGroup[]>([]);
   readonly issuableMajorEvents = signal<MajorEvent[]>([]);
   readonly certificateFolders = signal<CertificateFolder[]>([]);
+  readonly availablePaymentTiers = signal<string[]>([]);
+  readonly paymentTierOptions = computed(() => [...new Set([
+    ...this.availablePaymentTiers(),
+    ...this.certificateConfigModel().paymentTiers,
+  ])]);
+  readonly showPaymentTiers = computed(() =>
+    this.certificateConfigModel().issuedTo === 'ATTENDEE' && this.paymentTierOptions().length > 0,
+  );
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
@@ -261,6 +270,7 @@ export class CertificatesService {
     void this.router.navigate(['/certificates']);
     this.targetFiltersForm.controls.scope.setValue(scope);
     this.selectedTarget.set(null);
+    this.availablePaymentTiers.set([]);
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
     this.certificates.set([]);
@@ -313,6 +323,10 @@ export class CertificatesService {
   }
 
   private async applyTargetSelection(target: IssuableTarget): Promise<void> {
+    this.availablePaymentTiers.set([]);
+    const scope = this.targetFiltersForm.controls.scope.value;
+    const majorEventId = scope === 'MAJOR_EVENT' ? target.id
+      : scope === 'EVENT' ? (target as Event).majorEventId : null;
     this.selectedTarget.set({
       id: target.id,
       name: target.name,
@@ -331,7 +345,29 @@ export class CertificatesService {
     this.resetCertificateConfigForm();
     resetPagination(this.certificateConfigsPagination);
     resetPagination(this.certificatesPagination);
-    await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
+    await Promise.all([
+      this.loadCertificateConfigs(),
+      this.loadCertificates(),
+      this.loadOptionalPaymentTiers(majorEventId, target.id, scope),
+    ]);
+  }
+
+  private async loadOptionalPaymentTiers(
+    majorEventId: string | null | undefined,
+    targetId: string,
+    scope: WorkspaceCertificateScope,
+  ): Promise<void> {
+    if (!majorEventId) return;
+    try {
+      const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
+      if (this.selectedTarget()?.id === targetId && this.targetFiltersForm.controls.scope.value === scope) {
+        this.availablePaymentTiers.set(
+          majorEvent.majorEventPrices?.flatMap((price) => price.tiers.map((tier) => tier.name)) ?? [],
+        );
+      }
+    } catch {
+      // Parent-event read access is optional for certificate operators. Saved tier filters remain editable.
+    }
   }
 
   selectCertificateConfig(config: CertificateConfig): void {
@@ -358,6 +394,7 @@ export class CertificatesService {
       shouldAutofillSecondPage: config.shouldAutofillSecondPage,
       secondPageText: config.secondPageText ?? '',
       isActive: config.isActive,
+      paymentTiers: config.paymentTiers ?? [],
       issuedTo: this.buildIssuedToOption(
         config.issuedTo,
         this.parseLecturerEventCategory(config.certificateFieldsJson),
@@ -393,6 +430,7 @@ export class CertificatesService {
 
   clearSelection(): void {
     this.selectedTarget.set(null);
+    this.availablePaymentTiers.set([]);
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
     this.certificates.set([]);
@@ -475,6 +513,7 @@ export class CertificatesService {
   startNewFolder(): void {
     void this.router.navigate(['/certificates']);
     this.selectedTarget.set(null);
+    this.availablePaymentTiers.set([]);
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
     this.certificates.set([]);
@@ -930,6 +969,7 @@ export class CertificatesService {
       shouldAutofillSecondPage: isStandalone ? false : raw.shouldAutofillSecondPage,
       secondPageText: isStandalone || !raw.shouldAutofillSecondPage ? raw.secondPageText.trim() || null : null,
       isActive: raw.isActive,
+      paymentTiers: raw.issuedTo === 'ATTENDEE' && !isStandalone ? raw.paymentTiers : [],
       issuedTo: isStandalone ? 'OTHER' : this.normalizeIssuedTo(raw.issuedTo),
       certificateTypeLabel: this.buildCertificateTypeLabel(
         isStandalone ? 'OTHER' : raw.issuedTo,
@@ -1116,6 +1156,7 @@ export class CertificatesService {
       isActive: true,
       issuedTo: isStandalone ? 'OTHER' : 'ATTENDEE',
       certificateTypeLabel: isStandalone ? 'Manual' : 'Participação',
+      paymentTiers: [],
       certificateFields: {},
     };
   }

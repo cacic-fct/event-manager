@@ -38,6 +38,9 @@ export class PriceTierInput {
   value!: number;
 
   @Field(() => Boolean, { nullable: true })
+  includesEventRegistration?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   includesSportsRegistration?: boolean;
 }
 

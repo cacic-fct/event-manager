@@ -1,12 +1,11 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -21,6 +20,8 @@ import { AnalyticsService } from '../../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { SubscriptionEventList } from './event-list';
+import { SubscriptionTierSelection } from '../tier/tier-selection';
+import { resolveRegistrationDecisions } from '../tier/registration-decisions';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
 import { SubscriptionFormFlow } from './subscription-form-flow';
@@ -61,20 +62,20 @@ interface SubscriptionFlowSelection {
     MatDialogModule,
     MatIconModule,
     MatProgressBarModule,
-    MatRadioModule,
     MatSnackBarModule,
     MatToolbarModule,
     MarkdownComponent,
     RouterLink,
     RouterOutlet,
     SubscriptionEventList,
+    SubscriptionTierSelection,
     SubscriptionFormFlow,
   ],
   templateUrl: './subscription.html',
   styleUrl: './subscription.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MajorEventSubscription {
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly analytics = inject(AnalyticsService);
   private readonly auth = inject(AuthService);
@@ -95,11 +96,14 @@ export class MajorEventSubscription {
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly confirmedSportsOnlySubscription = computed(() => {
     const subscription = this.currentUserSubscription();
-    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0;
+    const majorEvent = this.data()?.majorEvent;
+    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0
+      && Boolean(majorEvent?.sportsTournament)
+      && (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true);
   });
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly selectedPriceTierName = signal<string | null>(null);
-  readonly flowPhase = signal<'selection' | 'loading-forms' | 'forms'>('selection');
+  readonly flowPhase = signal<'tier' | 'selection' | 'loading-forms' | 'forms'>('tier');
   readonly subscriptionForms = signal<SubscriptionFormContext[]>([]);
   readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
   readonly needsImageLicenseAgreement = computed(() => {
@@ -149,7 +153,7 @@ export class MajorEventSubscription {
 
   readonly sortedEvents = computed(() => {
     const data = this.data();
-    if (!data) {
+    if (!data || !this.decisions().includesEvents) {
       return [];
     }
 
@@ -183,7 +187,9 @@ export class MajorEventSubscription {
   );
 
   readonly effectiveSelectedEventIds = computed(
-    () => new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()]),
+    () => this.decisions().includesEvents
+      ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
+      : new Set<string>(),
   );
 
   readonly selectedEvents = computed(() =>
@@ -200,6 +206,9 @@ export class MajorEventSubscription {
     const selectedName = this.selectedPriceTierName();
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
   });
+
+  readonly decisions = computed(() => resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()));
+  readonly showingTierStep = computed(() => this.decisions().hasTierStep && this.flowPhase() === 'tier');
 
   statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
@@ -220,7 +229,7 @@ export class MajorEventSubscription {
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
       this.selectedPriceTierName.set(null);
-      this.flowPhase.set('selection');
+      this.flowPhase.set('tier');
       this.subscriptionForms.set([]);
       this.subscriptionFlowDraft.set(null);
       this.subscriptionFlowSelection.set(null);
@@ -312,15 +321,12 @@ export class MajorEventSubscription {
             nextSelected.add(event.id);
           }
         }
+        const tiers = untracked(() => this.priceTiers());
+        const initialTier = tiers.find((tier) => tier.name === currentUserSubscription?.paymentTier)
+          ?? (tiers.length === 1 ? tiers[0] : null);
+        this.selectedPriceTierName.set(initialTier?.name ?? null);
+        this.flowPhase.set(data.majorEvent.isPaymentRequired && tiers.length > 0 ? 'tier' : 'selection');
         this.initializedMajorEventId.set(majorEventId);
-      }
-
-      const tierNames = new Set(this.priceTiers().map((tier) => tier.name));
-      const currentTier = currentUserSubscription?.paymentTier ?? this.selectedPriceTierName();
-      if (currentTier && tierNames.has(currentTier) && currentTier !== this.selectedPriceTierName()) {
-        this.selectedPriceTierName.set(currentTier);
-      } else if (!currentTier && this.priceTiers().length === 1) {
-        this.selectedPriceTierName.set(this.priceTiers()[0].name);
       }
 
       if (!this.setsEqual(this.selectedEventIds(), nextSelected)) {
@@ -334,13 +340,14 @@ export class MajorEventSubscription {
         !this.needsImageLicenseAgreement() ||
         !this.data() ||
         this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
-        this.flowPhase() !== 'selection' ||
+        (this.flowPhase() !== 'selection' && this.flowPhase() !== 'tier') ||
         this.agreementFlowAutoStartAttempted()
       ) {
         return;
       }
 
       this.agreementFlowAutoStartAttempted.set(true);
+      this.flowPhase.set('selection');
       this.startSubscriptionFlow();
     });
   }
@@ -375,7 +382,7 @@ export class MajorEventSubscription {
   }
 
   toggleEvent(event: PublicEvent): void {
-    if (this.autoSelectedEventIds().has(event.id)) {
+    if (!this.decisions().includesEvents || this.showingTierStep() || this.autoSelectedEventIds().has(event.id)) {
       return;
     }
 
@@ -411,12 +418,16 @@ export class MajorEventSubscription {
       !data ||
       this.currentUserSubscription() === undefined ||
       this.isSubmitting() ||
-      this.flowPhase() === 'loading-forms'
+      this.flowPhase() === 'loading-forms' ||
+      this.showingTierStep()
     ) {
       return;
     }
 
-    if (this.selectedEvents().length === 0) {
+    if (this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
+      && !this.confirmedSportsOnlySubscription() && !this.needsImageLicenseAgreement()) return;
+
+    if (this.decisions().includesEvents && this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
         duration: 3000,
       });
@@ -481,7 +492,8 @@ export class MajorEventSubscription {
 
   returnToSelection(draft: SubscriptionFlowDraft): void {
     this.subscriptionFlowDraft.set(draft);
-    this.flowPhase.set('selection');
+    this.flowPhase.set(this.decisions().includesEvents ? 'selection' : 'tier');
+    this.focusStep();
   }
 
   reviewSubscription(draft: SubscriptionFlowDraft): void {
@@ -493,7 +505,40 @@ export class MajorEventSubscription {
   }
 
   selectPriceTier(tierName: string): void {
-    this.selectedPriceTierName.set(tierName);
+    if (!this.priceTiers().some((tier) => tier.name === tierName) || this.isSubmitting() || this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED') return;
+    if (tierName !== this.selectedPriceTierName()) {
+      this.selectedPriceTierName.set(tierName);
+      this.selectedEventIds.set(new Set());
+      this.subscriptionForms.set([]);
+      this.subscriptionFlowDraft.set(null);
+      this.subscriptionFlowSelection.set(null);
+    }
+  }
+
+  continueFromTier(): void {
+    const data = this.data();
+    if (!data || !this.decisions().tierResolved || this.currentUserSubscription() === undefined || this.isSubmitting()) return;
+    this.flowPhase.set('selection');
+    if (!this.decisions().includesEvents) {
+      if (this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !this.needsImageLicenseAgreement()) {
+        const route = subscriptionSuccessRoute(data.majorEvent, this.selectedPriceTier());
+        if (route) void this.router.navigate(route.commands, { queryParams: route.queryParams });
+      } else {
+        this.startSubscriptionFlow();
+      }
+    }
+    this.focusStep();
+  }
+
+  returnToTier(): void {
+    if (this.isSubmitting()) return;
+    this.flowPhase.set('tier');
+    this.focusStep();
+  }
+
+  private focusStep(): void {
+    // Defer until Angular has rendered the new page-level step; no browser globals during SSR.
+    setTimeout(() => this.element.nativeElement.querySelector<HTMLElement>('[data-step-title], #tier-selection-title')?.focus());
   }
 
   private confirmSubscription(

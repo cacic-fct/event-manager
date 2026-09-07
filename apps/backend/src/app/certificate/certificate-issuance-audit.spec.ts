@@ -9,7 +9,9 @@ describe('CertificateIssuanceAudit', () => {
         create: jest.fn(),
       },
     };
-    const audit = new CertificateIssuanceAudit(new AuditLogService(prisma as never, {} as never));
+    const audit = new CertificateIssuanceAudit(
+      new AuditLogService(prisma as never, {} as never, { refreshForEvent: jest.fn() } as never),
+    );
     const before = {
       id: 'certificate-1',
       person: { name: 'Ana Silva' },

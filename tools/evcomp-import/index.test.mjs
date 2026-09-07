@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { applyOperation, buildOperations } from './index.mjs';
+import { applyOperation, buildOperations, refreshDerivedData } from './index.mjs';
 
 test('uses text arrays for Prisma string IDs in PostgreSQL', async () => {
   const source = await readFile(new URL('./index.mjs', import.meta.url), 'utf8');
@@ -128,3 +128,18 @@ for (const testCase of [
     assert.deepEqual(counters[testCase.kind], { pending: 0, imported: 1, skipped: 1 });
   });
 }
+
+test('refreshes attendance using current enum values and retains the assessment reason', async () => {
+  const calls = [];
+  await refreshDerivedData({ async query(sql, parameters) { calls.push({ sql, parameters }); } }, [
+    { kind: 'attendances', targetId: 'event-1' },
+  ]);
+  const refresh = calls.find((call) => call.sql.includes('UPDATE event_attendances'));
+  assert.ok(refresh);
+  assert.doesNotMatch(refresh.sql, /'NON_PAYING'|'NON_SUBSCRIBED'/);
+  assert.match(refresh.sql, /'NON_REGULAR'/);
+  assert.match(refresh.sql, /'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'/);
+  assert.match(refresh.sql, /'ACTIVITY_SUBSCRIPTION_MISSING'/);
+  assert.match(refresh.sql, /"currentAssessment"=assessments.assessment::"AttendanceCurrentAssessment"/);
+  assert.deepEqual(refresh.parameters, [['event-1']]);
+});

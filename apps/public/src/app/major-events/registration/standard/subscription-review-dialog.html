@@ -14,10 +14,10 @@
   </header>
 
   @if (data.paymentTier) {
-  <section class="review-line" aria-label="Preço selecionado">
+  <section class="review-line" aria-label="Modalidade selecionada">
     <mat-icon aria-hidden="true">payments</mat-icon>
     <span>
-      <small>Tipo selecionado</small>
+      <small>Modalidade selecionada</small>
       <strong>
         {{ data.paymentTier }}@if (selectedPaymentTier; as tier) { - {{ tier.value / 100 | currency: 'BRL' : 'symbol' :
         '1.2-2' : 'pt-BR' }} }
@@ -26,6 +26,19 @@
   </section>
   }
 
+  @if (selectedPaymentTier; as tier) {
+  <section class="review-section" aria-label="O que a modalidade inclui">
+    <p>Inscrição no grande evento.</p>
+    @if (tier.includesEventRegistration !== false) {
+    <p>Inscrição em eventos.</p>
+    }
+    @if (data.majorEvent?.sportsTournament && tier.includesSportsRegistration) {
+    <p>Inscrição em esportes, conforme as vagas e regras do torneio.</p>
+    }
+  </section>
+  }
+
+  @if (data.events.length > 0) {
   <section class="review-section" aria-labelledby="selected-events-title">
     <h3 id="selected-events-title">Eventos selecionados</h3>
     <ul class="event-list">
@@ -40,6 +53,8 @@
       }
     </ul>
   </section>
+
+  }
 
   @if (data.forms.length > 0) {
   <section class="review-section" aria-labelledby="answers-title">

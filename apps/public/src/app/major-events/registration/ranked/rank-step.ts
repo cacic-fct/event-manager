@@ -1,16 +1,15 @@
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatRadioModule } from '@angular/material/radio';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { EmojiService } from '../../../shared/emoji.service';
 import { RankedSubscriptionStore } from './registration.store';
 
 @Component({
   selector: 'app-ranked-subscription-rank-step',
-  imports: [CurrencyPipe, DatePipe, DragDropModule, MatButtonModule, MatIconModule, MatRadioModule],
+  imports: [DatePipe, DragDropModule, MatButtonModule, MatIconModule],
   templateUrl: './rank-step.html',
   styleUrls: ['../standard/subscription.css', './ranked-subscription.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

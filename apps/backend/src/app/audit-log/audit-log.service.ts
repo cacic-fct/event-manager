@@ -18,6 +18,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { FrozenOperation, FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { findCurrentAuditEntityRecord, updateAuditEntityRecord } from './audit-log.entity-records';
@@ -56,6 +57,7 @@ export class AuditLogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly attendanceCategories: AttendanceCategoryService,
     private readonly typesenseSearch: TypesenseSearchService = {
       upsertEvent: async () => undefined,
       deleteEvent: async () => undefined,
@@ -253,6 +255,9 @@ export class AuditLogService {
     const revertResult = await this.prisma.$transaction(async (tx) => {
       const updated = await updateAuditEntityRecord(tx, targetEntry.entityType, targetEntry.entityId, revertData);
       await applyAuditLogRevertInvariants(tx, targetEntry.entityType, updated);
+      if (this.shouldRefreshEventAttendance(targetEntry.entityType, revertData)) {
+        await this.attendanceCategories.refreshForEvent(targetEntry.entityId, tx);
+      }
       const changes = diffAuditRecords(normalizeAuditSnapshot(currentRecord), normalizeAuditSnapshot(updated));
       const revertLog = await tx.auditLogEntry.create({
         data: {
@@ -708,6 +713,14 @@ export class AuditLogService {
     }
 
     return undefined;
+  }
+
+  private shouldRefreshEventAttendance(entityType: AuditLogEntityType, revertData: Record<string, unknown>): boolean {
+    if (entityType !== AuditLogEntityType.EVENT) {
+      return false;
+    }
+
+    return ['majorEventId', 'regularAttendancePriceTierIds', 'deletedAt'].some((field) => field in revertData);
   }
 
   private canRevertEntry(entry: PrismaAuditLogEntry): boolean {

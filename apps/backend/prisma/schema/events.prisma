@@ -71,6 +71,8 @@ model Event {
   shouldIssueCertificateForNonSubscribedAttendees Boolean             @default(false)
   certificateConfigs                              CertificateConfig[]
 
+  regularAttendancePriceTierIds String[] @default([])
+
   shouldCollectAttendance   Boolean   @default(false)
   shouldAllowOralAttendance Boolean   @default(false)
   isOnlineAttendanceAllowed Boolean   @default(false)

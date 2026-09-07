@@ -68,6 +68,72 @@ describe('CertificateEligibilityService', () => {
     majorEventId,
   };
 
+  it('does not treat an ineligible price tier as a payment or subscription certificate exception', async () => {
+    const service = new CertificateEligibilityService({
+      event: { findFirst: jest.fn().mockResolvedValue({
+        ...event,
+        shouldIssueCertificateForNonPayingAttendees: true,
+        shouldIssueCertificateForNonSubscribedAttendees: true,
+      }) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([{
+        personId: person.id, person, category: AttendanceCategory.NON_REGULAR,
+        currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+      }]) },
+    } as never, {} as never);
+    await expect(service.resolveEligibleRecipients({
+      ...config, scope: CertificateScope.EVENT, eventId: event.id,
+    } as never)).resolves.toEqual([]);
+  });
+
+  describe('participant payment tier restrictions', () => {
+    it.each([[[]], [['Aluno']], [['Aluno', 'Professor']]])('filters only when tiers are selected: %j', async (paymentTiers) => {
+      const findMany = jest.fn().mockResolvedValue([{ personId: person.id }]);
+      const service = new CertificateEligibilityService({
+        majorEventSubscription: { findMany },
+      } as never);
+      const recipients = [{ person, events: [event] }, { person: { ...person, id: 'excluded' }, events: [event] }];
+      jest.spyOn(service as never, 'resolveRecipients').mockResolvedValue(recipients as never);
+      const result = await service.resolveEligibleRecipients({ ...config, paymentTiers } as never);
+      expect(result).toEqual(paymentTiers.length ? [recipients[0]] : recipients);
+      if (paymentTiers.length) {
+        expect(findMany).toHaveBeenCalledWith({
+          where: { majorEventId, deletedAt: null, personId: { in: [person.id, 'excluded'] }, paymentTier: { in: paymentTiers } },
+          select: { personId: true },
+        });
+      } else {
+        expect(findMany).not.toHaveBeenCalled();
+      }
+    });
+
+    it('excludes participants with no matching registration, including individual issuance', async () => {
+      const service = new CertificateEligibilityService({
+        majorEventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+      } as never);
+      jest.spyOn(service as never, 'resolveRecipients').mockResolvedValue([{ person, events: [event] }] as never);
+      await expect(service.resolveEligibleRecipients({ ...config, paymentTiers: ['Aluno'] } as never, person.id))
+        .resolves.toEqual([]);
+    });
+
+    it('uses the parent major event for an event certificate', async () => {
+      const findMany = jest.fn().mockResolvedValue([{ personId: person.id }]);
+      const service = new CertificateEligibilityService({ majorEventSubscription: { findMany } } as never);
+      jest.spyOn(service as never, 'resolveRecipients').mockResolvedValue([{ person, events: [event] }] as never);
+      await service.resolveEligibleRecipients({ ...config, scope: CertificateScope.EVENT, majorEventId: null, event, paymentTiers: ['Aluno'] } as never);
+      expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ majorEventId }) }));
+    });
+
+    it.each([CertificateIssuedTo.LECTURER, CertificateIssuedTo.OTHER, CertificateIssuedTo.SPORTS_PLAYER])(
+      'does not restrict %s recipients', async (issuedTo) => {
+        const findMany = jest.fn();
+        const service = new CertificateEligibilityService({ majorEventSubscription: { findMany } } as never);
+        const recipients = [{ person, events: [event] }];
+        jest.spyOn(service as never, 'resolveRecipients').mockResolvedValue(recipients as never);
+        await expect(service.resolveEligibleRecipients({ ...config, issuedTo, paymentTiers: ['Aluno'] } as never)).resolves.toEqual(recipients);
+        expect(findMany).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it('skips confirmed major-event subscribers with no event attendance', async () => {
     const service = new CertificateEligibilityService({
       majorEvent: {
@@ -284,7 +350,8 @@ describe('CertificateEligibilityService', () => {
           groupedEvents.map((groupedEvent) => ({
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           })),
         ),
@@ -335,7 +402,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_PAYING,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
             person,
           },
         ]),
@@ -391,7 +459,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_PAYING,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
             person,
           },
         ]),
@@ -439,7 +508,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           },
         ]),
@@ -505,7 +575,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           },
         ]),

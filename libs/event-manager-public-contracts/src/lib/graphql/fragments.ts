@@ -17,6 +17,7 @@ export const PUBLIC_MAJOR_EVENT_PRICE_FIELDS = `
     id
     name
     value
+    includesEventRegistration
     includesSportsRegistration
   }
 `;

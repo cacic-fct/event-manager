@@ -69,3 +69,8 @@ export const EmptyReadonly: Story = {
   },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
+
+export const SwagKitAttendance: Story = {
+  args: { restrictAttendancePriceTiers: true, sportsEvery: 0 },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};

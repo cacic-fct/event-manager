@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
+import { attendanceState, type LegacyAttendanceCategory } from './lib/attendance-state.mts';
 import { buildPrefixedId, coerceText, decimalToInt, parseInsertRowsByTable } from './lib/legacy-sql.mts';
 import type { LegacyPostgresClient, ParsedSqlRow, ParsedSqlTables } from './lib/legacy-sql.mts';
 import { chunks, connectPostgres, databaseUrlFromOptions, formatCounter, isMain } from './lib/common.mts';
 
 const PREFIX = 'SYSCOMPP-1-';
 
-export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type AttendanceCategory = LegacyAttendanceCategory;
 export type EventKind = 'lecture' | 'shortcourse';
 
 export interface SecomppReevaluateOptions {
@@ -57,6 +58,7 @@ interface AttendancePairRow {
 
 interface CategoryRow extends AttendancePairRow {
   category: string;
+  currentAssessment: string | null;
 }
 
 type AttendanceMatchResult = [MatchedAttendance[], Set<number>, Set<string>];
@@ -405,27 +407,29 @@ export async function selectChangedAttendances(
   existing: readonly MatchedAttendance[],
   includeNonUnknown = false,
 ): Promise<MatchedAttendance[]> {
-  const currentCategoryByPair = new Map<string, string>();
+  const currentCategoryByPair = new Map<string, { category: string; currentAssessment: string | null }>();
   for (const chunk of chunks(existing, 1000)) {
     const result = await db.query<CategoryRow>(
-      'SELECT "personId", "eventId", category::text FROM event_attendances WHERE ("personId", "eventId") IN (SELECT * FROM UNNEST($1::text[], $2::text[]))',
+      'SELECT "personId", "eventId", category::text, "currentAssessment"::text FROM event_attendances WHERE ("personId", "eventId") IN (SELECT * FROM UNNEST($1::text[], $2::text[]))',
       [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
     );
-    result.rows.forEach((row) => currentCategoryByPair.set(`${row.personId}\u0000${row.eventId}`, row.category));
+    result.rows.forEach((row) => currentCategoryByPair.set(`${row.personId}\u0000${row.eventId}`, row));
   }
   return existing.filter((row) => {
     const currentCategory = currentCategoryByPair.get(`${row.personId}\u0000${row.eventId}`);
-    if (currentCategory === row.category) return false;
-    if (currentCategory !== 'UNKNOWN' && !includeNonUnknown) return false;
+    const desired = attendanceState(row.category);
+    if (currentCategory?.category === desired.category && currentCategory.currentAssessment === desired.currentAssessment) return false;
+    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
     return true;
   });
 }
 
 export async function applyUpdates(db: LegacyPostgresClient, updates: readonly MatchedAttendance[]): Promise<void> {
   for (const row of updates) {
+    const state = attendanceState(row.category);
     await db.query(
-      'UPDATE event_attendances SET category = $1::"AttendanceCategory" WHERE "personId" = $2 AND "eventId" = $3',
-      [row.category, row.personId, row.eventId],
+      'UPDATE event_attendances SET category = $1::"AttendanceCategory", "currentAssessment" = $4::"AttendanceCurrentAssessment" WHERE "personId" = $2 AND "eventId" = $3',
+      [state.category, row.personId, row.eventId, state.currentAssessment],
     );
   }
 }

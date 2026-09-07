@@ -32,11 +32,11 @@
   </header>
 
   <mat-chip-set aria-label="Resumo da inscrição">
-    @if (majorEvent.maxCoursesPerAttendee !== null && majorEvent.maxCoursesPerAttendee !== undefined) {
+    @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxCoursesPerAttendee !== null && majorEvent.maxCoursesPerAttendee !== undefined) {
     <mat-chip> {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos </mat-chip>
-    } @if (majorEvent.maxLecturesPerAttendee !== null && majorEvent.maxLecturesPerAttendee !== undefined) {
+    } @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxLecturesPerAttendee !== null && majorEvent.maxLecturesPerAttendee !== undefined) {
     <mat-chip> {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras </mat-chip>
-    } @if (majorEvent.isPaymentRequired) {
+    } @if (!showingTierStep() && majorEvent.isPaymentRequired && selectedPriceTier()?.value !== 0) {
     <mat-chip>
       <mat-icon matChipAvatar>payments</mat-icon>
       Requer pagamento
@@ -51,7 +51,19 @@
 
   @if (majorEvent.description && flowPhase() === 'selection') {
   <lib-markdown class="description" [content]="majorEvent.description" />
-  } @if (flowPhase() === 'selection') {
+  } @if (showingTierStep()) {
+  <app-subscription-tier-selection [majorEvent]="majorEvent" [tiers]="priceTiers()"
+    [selectedName]="selectedPriceTierName()" [locked]="currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'" [busy]="isSubmitting() || currentUserSubscription() === undefined"
+    (selectTier)="selectPriceTier($event)" (continue)="continueFromTier()" />
+  } @else if (flowPhase() === 'selection' || flowPhase() === 'tier') {
+  @if (decisions().hasTierStep && selectedPriceTier(); as tier) {
+  <section class="selected-tier-summary" aria-label="Modalidade selecionada">
+    <p><strong>{{ tier.name }}</strong> · {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
+    <button matButton type="button" (click)="returnToTier()">Alterar modalidade</button>
+  </section>
+  }
+  @if (decisions().includesEvents) {
+  <h2 data-step-title tabindex="-1">Escolha seus eventos</h2>
   <app-subscription-event-list
     [events]="sortedEvents()"
     [summariesByEventId]="summariesByEventId()"
@@ -60,35 +72,20 @@
     [disabledReasons]="disabledReasons()"
     (toggleEvent)="toggleEvent($event)"
     (openInfo)="openInfo($event)" />
+  } @else {
+  <h2 data-step-title tabindex="-1">Continue sua inscrição</h2>
+  <p>Revise os dados da sua participação no grande evento.</p>
+  }
 
-  @if (majorEvent.isPaymentRequired && priceTiers().length > 1) {
-  <section class="price-section">
-    <h2>Preço</h2>
-    <mat-radio-group
-      class="price-options"
-      [value]="selectedPriceTierName()"
-      aria-label="Selecionar preço"
-      (change)="selectPriceTier($event.value)">
-      @for (tier of priceTiers(); track tier.id) {
-      <mat-radio-button [value]="tier.name">
-        <span>{{ tier.name }}</span>
-        <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
-      </mat-radio-button>
-      }
-    </mat-radio-group>
-  </section>
-  } @else if (majorEvent.isPaymentRequired && priceTiers().length === 1) {
-  <section class="price-section">
-    <h2>Preço</h2>
-    <p>{{ priceTiers()[0].name }} · {{ priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
-  </section>
-  } @if (subscriptionCooldownSeconds() > 0) {
+  @if (subscriptionCooldownSeconds() > 0) {
   <p class="rate-limit-message">Aguarde {{ subscriptionCooldownSeconds() }}s para alterar a inscrição novamente.</p>
   }
 
   <mat-toolbar class="selection-actions" aria-label="Ações da seleção de eventos">
     <span class="selection-summary">
+      @if (decisions().includesEvents) {
       {{ selectedEvents().length }} {{ selectedEvents().length === 1 ? 'evento selecionado' : 'eventos selecionados' }}
+      }
     </span>
     <span class="action-spacer"></span>
     <button
@@ -96,7 +93,8 @@
       type="button"
       [disabled]="
         isSubmitting() ||
-        selectedEvents().length === 0 ||
+        (decisions().includesEvents && selectedEvents().length === 0) ||
+        currentUserSubscription() === undefined ||
         (currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
           !confirmedSportsOnlySubscription() &&
           !needsImageLicenseAgreement()) ||
@@ -116,7 +114,7 @@
   } @else {
   <app-subscription-form-flow
     [forms]="subscriptionForms()"
-    firstBackLabel="Alterar eventos"
+    [firstBackLabel]="decisions().includesEvents ? 'Alterar eventos' : 'Alterar modalidade'"
     [requireImageLicenseAgreement]="majorEvent.requiresImageLicenseAgreement === true"
     [imageLicenseAgreementAccepted]="currentUserSubscription()?.imageLicenseAgreementAccepted === true"
     [initialDraft]="subscriptionFlowDraft()"

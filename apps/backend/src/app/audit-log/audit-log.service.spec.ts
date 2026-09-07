@@ -11,6 +11,7 @@ describe('AuditLogService', () => {
   let typesenseSearch: ReturnType<typeof createTypesenseSearch>;
   let attendanceRealtime: { notifyAllConnectedPeople: jest.Mock };
   let frozenResources: ReturnType<typeof createFrozenResources>;
+  let attendanceCategories: { refreshForEvent: jest.Mock };
   let service: AuditLogService;
 
   beforeEach(() => {
@@ -19,9 +20,11 @@ describe('AuditLogService', () => {
     typesenseSearch = createTypesenseSearch();
     attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
     frozenResources = createFrozenResources();
+    attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
     service = new AuditLogService(
       prisma as never,
       authorizationPolicy as never,
+      attendanceCategories as never,
       typesenseSearch as never,
       attendanceRealtime as never,
       frozenResources as never,
@@ -1446,6 +1449,65 @@ describe('AuditLogService', () => {
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 
+  it('validates reverted event tier IDs and recalculates attendance in the same transaction', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-event-policy',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      eventId: 'event-1',
+      before: {
+        id: 'event-1',
+        majorEventId: 'major-1',
+        regularAttendancePriceTierIds: ['tier-old'],
+      },
+      after: {
+        id: 'event-1',
+        majorEventId: 'major-1',
+        regularAttendancePriceTierIds: ['tier-new'],
+      },
+      changedFields: ['regularAttendancePriceTierIds'],
+    });
+    const currentEvent = {
+      id: 'event-1',
+      majorEventId: 'major-1',
+      regularAttendancePriceTierIds: ['tier-new'],
+      deletedAt: null,
+    };
+    const revertedEvent = {
+      ...currentEvent,
+      regularAttendancePriceTierIds: ['tier-old'],
+    };
+    const revertLog = createAuditEntry({
+      id: 'audit-event-policy-revert',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.REVERT,
+      revertTargetId: 'audit-event-policy',
+    });
+    const tx = createTransaction(revertedEvent, revertLog);
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-old' }]);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue(currentEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await expect(
+      service.revertEntry({ entryId: 'audit-event-policy', mode: AuditLogRevertMode.ENTRY_ONLY }, undefined),
+    ).resolves.toEqual(expect.objectContaining({ id: 'audit-event-policy-revert' }));
+
+    expect(tx.priceTier.findMany).toHaveBeenCalledWith({
+      where: {
+        id: { in: ['tier-old'] },
+        price: { majorEventId: 'major-1' },
+      },
+      select: { id: true },
+    });
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+  });
+
   it('soft-deletes created events when reverting their creation', async () => {
     const targetEntry = createAuditEntry({
       id: 'audit-event-create',
@@ -1606,6 +1668,9 @@ function createTransaction(updated: Record<string, unknown>, revertLog: ReturnTy
     event: {
       update: jest.fn().mockResolvedValue(updated),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    priceTier: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     majorEvent: {
       update: jest.fn().mockResolvedValue(updated),

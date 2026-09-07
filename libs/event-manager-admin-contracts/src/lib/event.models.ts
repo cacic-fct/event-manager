@@ -67,6 +67,7 @@ export interface MajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesEventRegistration?: boolean;
   includesSportsRegistration: boolean;
 }
 
@@ -121,6 +122,7 @@ export interface Event {
   shouldIssueCertificate: boolean;
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
+  regularAttendancePriceTierIds?: string[];
   shouldCollectAttendance: boolean;
   shouldAllowOralAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
@@ -225,6 +227,7 @@ export interface PriceTierInput {
   id?: string;
   name: string;
   value: number;
+  includesEventRegistration?: boolean;
   includesSportsRegistration?: boolean;
 }
 
@@ -279,6 +282,7 @@ export interface EventInput {
   shouldIssueCertificate?: boolean;
   shouldIssueCertificateForNonPayingAttendees?: boolean;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+  regularAttendancePriceTierIds?: string[];
   shouldCollectAttendance?: boolean;
   shouldAllowOralAttendance?: boolean;
   isOnlineAttendanceAllowed?: boolean;

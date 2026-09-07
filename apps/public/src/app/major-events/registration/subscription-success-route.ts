@@ -9,6 +9,7 @@ export function subscriptionSuccessRoute(
   majorEvent: PublicMajorEvent,
   selectedTier: PublicMajorEventPriceTier | null,
 ): SubscriptionSuccessRoute | null {
+  const requiresPayment = majorEvent.isPaymentRequired === true && selectedTier?.value !== 0;
   const tournament = majorEvent.sportsTournament;
   if (
     selectedTier?.includesSportsRegistration &&
@@ -19,10 +20,10 @@ export function subscriptionSuccessRoute(
       commands: ['/tournament', tournament.id, 'subscribe'],
       queryParams: {
         paymentTier: selectedTier.name,
-        ...(majorEvent.isPaymentRequired ? { returnUrl: `/major-event/${majorEvent.id}/payment` } : {}),
+        ...(requiresPayment ? { returnUrl: `/major-event/${majorEvent.id}/payment` } : {}),
       },
     };
   }
 
-  return majorEvent.isPaymentRequired ? { commands: ['/major-event', majorEvent.id, 'payment'] } : null;
+  return requiresPayment ? { commands: ['/major-event', majorEvent.id, 'payment'] } : null;
 }
