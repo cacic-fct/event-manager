@@ -35,6 +35,7 @@ import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type GraphqlContext = {
@@ -117,6 +118,7 @@ const EVENT_BASE_SELECT = {
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  regularAttendancePriceTierIds: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -164,6 +166,7 @@ const EVENT_AUDIT_SELECT = {
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  regularAttendancePriceTierIds: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -239,6 +242,7 @@ export class EventsResolver {
     } as unknown as AuditLogService,
     private readonly attendanceCategories: AttendanceCategoryService = {
       refreshForEventPersons: async () => undefined,
+      refreshForEvent: async () => undefined,
     } as unknown as AttendanceCategoryService,
     private readonly onlineAttendanceNotifications: OnlineAttendanceNotificationJobsService = {
       scheduleEvent: async () => undefined,
@@ -412,6 +416,7 @@ export class EventsResolver {
     const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
       await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, eventInput.eventGroupId);
+      await validateAttendancePriceTiers(tx, eventInput);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,
@@ -491,6 +496,7 @@ export class EventsResolver {
         ...normalizedInput,
         publishAfterUpdate,
       });
+      await validateAttendancePriceTiers(tx, normalizedInput, previousEvent);
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {
@@ -500,6 +506,9 @@ export class EventsResolver {
       });
       if (updatedCount.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
+      }
+      if (attendancePriceTierPolicyChanged(normalizedInput, previousEvent)) {
+        await this.attendanceCategories.refreshForEvent(id, tx);
       }
       const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
       const updatedAudit = await tx.event.findUniqueOrThrow({
@@ -627,6 +636,7 @@ export class EventsResolver {
         : {}),
       ...(parts?.attendanceSettings
         ? {
+            regularAttendancePriceTierIds: source.regularAttendancePriceTierIds,
             shouldCollectAttendance: source.shouldCollectAttendance,
             shouldAllowOralAttendance: source.shouldAllowOralAttendance,
             isOnlineAttendanceAllowed: source.isOnlineAttendanceAllowed,
@@ -680,6 +690,7 @@ export class EventsResolver {
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
       await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, source.eventGroupId);
+      await validateAttendancePriceTiers(tx, eventInput);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,

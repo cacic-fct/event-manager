@@ -510,7 +510,7 @@ describe('AttendancesService', () => {
     const calls = api.listMajorEventUserAttendances.mock.calls.length;
     await service.refreshMajorEventUserAttendancesFor('other-major');
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledTimes(calls);
-    expect(service.getAttendanceCategoryLabel('NON_PAYING')).toBe('Sem pagamento');
+    expect(service.getAttendanceCategoryLabel('NON_REGULAR')).toBe('Não regulares');
     expect(service.getAttendanceCategoryHistoricalExplanation('UNKNOWN')).toBe(
       'Registro anterior à classificação automática.',
     );

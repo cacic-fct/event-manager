@@ -860,6 +860,7 @@ export class AccountMergeService {
           committedById: attendance.committedById,
           createdByMethod: attendance.createdByMethod,
           category: attendance.category,
+          currentAssessment: attendance.currentAssessment,
         })),
         skipDuplicates: true,
       });

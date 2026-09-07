@@ -77,7 +77,7 @@ const meta: Meta<AttendanceInfoStoryArgs> = {
   argTypes: {
     personName: { control: 'text' },
     eventName: { control: 'text' },
-    category: { control: 'select', options: ['REGULAR', 'NON_PAYING', 'NON_SUBSCRIBED', 'UNKNOWN'] },
+    category: { control: 'select', options: ['REGULAR', 'NON_REGULAR', 'UNKNOWN'] },
     createdByMethod: {
       control: 'select',
       options: ['SCANNER', 'MANUAL_INPUT', 'CSV_IMPORT', 'EVENT_DUPLICATION', 'ONLINE_CODE', 'UNKNOWN'],

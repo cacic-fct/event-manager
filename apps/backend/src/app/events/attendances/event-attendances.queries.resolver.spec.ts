@@ -113,7 +113,8 @@ describe('EventAttendancesQueriesResolver', () => {
         personId: 'person-2',
         eventId: 'event-2',
         attendedAt: new Date('2026-05-22T12:30:00.000Z'),
-        category: AttendanceCategory.NON_SUBSCRIBED,
+        category: AttendanceCategory.NON_REGULAR,
+        currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
         person: { id: 'person-2', name: 'Linus' },
       },
     ]);

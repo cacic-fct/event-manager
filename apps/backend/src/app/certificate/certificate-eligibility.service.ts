@@ -1,6 +1,6 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AttendanceCategory, Prisma, SubscriptionStatus } from '@prisma/client';
+import { AttendanceCategory, AttendanceCurrentAssessment, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CERTIFICATE_CONFIG_SELECT,
@@ -23,6 +23,8 @@ const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
     select: PERSON_SELECT,
   },
 } satisfies Prisma.MajorEventSubscriptionSelect;
+
+type AssessedAttendance = { category: AttendanceCategory; currentAssessment?: AttendanceCurrentAssessment | null };
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
@@ -309,6 +311,7 @@ export class CertificateEligibilityService {
       select: {
         personId: true,
         category: true,
+        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
@@ -316,7 +319,7 @@ export class CertificateEligibilityService {
     });
 
     return attendances
-      .filter((attendance) => this.canIssueForEventAttendance(attendance.category, event))
+      .filter((attendance) => this.canIssueForEventAttendance(attendance, event))
       .map((attendance) => ({
         person: attendance.person,
         events: [event],
@@ -385,6 +388,7 @@ export class CertificateEligibilityService {
         personId: true,
         eventId: true,
         category: true,
+        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
@@ -394,7 +398,7 @@ export class CertificateEligibilityService {
     const attendanceByPerson = new Map<string, { person: PersonRecord; eventIds: Set<string> }>();
     for (const attendance of attendances) {
       const event = eventById.get(attendance.eventId);
-      if (!event || !this.canIssueForGroupedEventAttendance(attendance.category, event)) {
+      if (!event || !this.canIssueForGroupedEventAttendance(attendance, event)) {
         continue;
       }
 
@@ -532,6 +536,7 @@ export class CertificateEligibilityService {
         personId: true,
         eventId: true,
         category: true,
+        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
@@ -547,7 +552,7 @@ export class CertificateEligibilityService {
     const attendedEventIdsByPersonId = new Map<string, Set<string>>();
     for (const attendance of attendancesByPerson) {
       const event = issuableEventById.get(attendance.eventId);
-      if (!event || !this.canIssueForMajorEventAttendance(attendance.category, event, majorEvent)) {
+      if (!event || !this.canIssueForMajorEventAttendance(attendance, event, majorEvent)) {
         continue;
       }
 
@@ -631,12 +636,12 @@ export class CertificateEligibilityService {
       });
   }
 
-  private canIssueForGroupedEventAttendance(category: AttendanceCategory, event: EventRecord): boolean {
-    return this.canIssueForEventAttendance(category, event);
+  private canIssueForGroupedEventAttendance(attendance: AssessedAttendance, event: EventRecord): boolean {
+    return this.canIssueForEventAttendance(attendance, event);
   }
 
   private canIssueForMajorEventAttendance(
-    category: AttendanceCategory,
+    attendance: AssessedAttendance,
     event: EventRecord,
     majorEvent: {
       shouldIssueCertificateForNonPayingAttendees: boolean;
@@ -644,15 +649,15 @@ export class CertificateEligibilityService {
     },
   ): boolean {
     return this.canIssueForAttendanceCategory(
-      category,
+      attendance,
       majorEvent.shouldIssueCertificateForNonPayingAttendees && this.canIssueForNonPayingEventAttendance(event),
       majorEvent.shouldIssueCertificateForNonSubscribedAttendees && this.canIssueForNonSubscribedEventAttendance(event),
     );
   }
 
-  private canIssueForEventAttendance(category: AttendanceCategory, event: EventRecord): boolean {
+  private canIssueForEventAttendance(attendance: AssessedAttendance, event: EventRecord): boolean {
     return this.canIssueForAttendanceCategory(
-      category,
+      attendance,
       this.canIssueForNonPayingEventAttendance(event),
       this.canIssueForNonSubscribedEventAttendance(event),
     );
@@ -681,19 +686,23 @@ export class CertificateEligibilityService {
   }
 
   private canIssueForAttendanceCategory(
-    category: AttendanceCategory,
+    attendance: AssessedAttendance,
     allowNonPaying: boolean,
     allowNonSubscribed: boolean,
   ): boolean {
-    if (category === AttendanceCategory.REGULAR || category === AttendanceCategory.UNKNOWN) {
+    if (attendance.category === AttendanceCategory.REGULAR || attendance.category === AttendanceCategory.UNKNOWN) {
       return true;
     }
 
-    if (category === AttendanceCategory.NON_PAYING) {
+    if (
+      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_NOT_CONFIRMED ||
+      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT ||
+      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_UNDER_REVIEW
+    ) {
       return allowNonPaying;
     }
 
-    if (category === AttendanceCategory.NON_SUBSCRIBED) {
+    if (attendance.currentAssessment === AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING) {
       return allowNonSubscribed;
     }
 

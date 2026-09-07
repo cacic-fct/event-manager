@@ -47,6 +47,7 @@ export const EVENT_DETAIL_FIELDS = `
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
+  regularAttendancePriceTierIds
   shouldCollectAttendance
   shouldAllowOralAttendance
   isOnlineAttendanceAllowed
@@ -301,6 +302,7 @@ export const EVENT_ATTENDANCE_WRITE_FIELDS = `
   personId
   attendedAt
   category
+  currentAssessment
   status
   createdByMethod
 `;

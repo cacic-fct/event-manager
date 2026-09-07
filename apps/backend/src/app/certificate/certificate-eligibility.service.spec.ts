@@ -68,6 +68,23 @@ describe('CertificateEligibilityService', () => {
     majorEventId,
   };
 
+  it('does not treat an ineligible price tier as a payment or subscription certificate exception', async () => {
+    const service = new CertificateEligibilityService({
+      event: { findFirst: jest.fn().mockResolvedValue({
+        ...event,
+        shouldIssueCertificateForNonPayingAttendees: true,
+        shouldIssueCertificateForNonSubscribedAttendees: true,
+      }) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([{
+        personId: person.id, person, category: AttendanceCategory.NON_REGULAR,
+        currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+      }]) },
+    } as never, {} as never);
+    await expect(service.resolveEligibleRecipients({
+      ...config, scope: CertificateScope.EVENT, eventId: event.id,
+    } as never)).resolves.toEqual([]);
+  });
+
   describe('participant payment tier restrictions', () => {
     it.each([[[]], [['Aluno']], [['Aluno', 'Professor']]])('filters only when tiers are selected: %j', async (paymentTiers) => {
       const findMany = jest.fn().mockResolvedValue([{ personId: person.id }]);
@@ -333,7 +350,8 @@ describe('CertificateEligibilityService', () => {
           groupedEvents.map((groupedEvent) => ({
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           })),
         ),
@@ -384,7 +402,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_PAYING,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
             person,
           },
         ]),
@@ -440,7 +459,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_PAYING,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
             person,
           },
         ]),
@@ -488,7 +508,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           },
         ]),
@@ -554,7 +575,8 @@ describe('CertificateEligibilityService', () => {
           {
             personId: person.id,
             eventId: groupedEvent.id,
-            category: AttendanceCategory.NON_SUBSCRIBED,
+            category: AttendanceCategory.NON_REGULAR,
+            currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
             person,
           },
         ]),

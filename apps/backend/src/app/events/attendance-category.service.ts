@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AttendanceCategory, Prisma, PrismaClient } from '@prisma/client';
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
+import { normalizeAttendancePriceTier } from './attendance-price-tier-policy';
 import { PrismaService } from '../prisma/prisma.service';
 
 type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
@@ -10,6 +11,7 @@ type AttendanceAssessmentSubject = {
   eventId: string;
   category: AttendanceCategory;
   event: {
+    regularAttendancePriceTierIds?: string[];
     allowSubscription: boolean;
     majorEventId: string | null;
     majorEvent: { isPaymentRequired: boolean } | null;
@@ -79,18 +81,35 @@ export class AttendanceCategoryService {
       ]),
     );
 
+    const restrictedEvents = await tx.event.findMany({
+      where: { id: { in: eventIds }, regularAttendancePriceTierIds: { isEmpty: false } },
+      select: { id: true, regularAttendancePriceTierIds: true, majorEventId: true },
+    });
+    const tierEligibility = new Map<string, boolean>();
+    for (const attendance of undefinedAttendances) {
+      const policy = restrictedEvents.find((event) => event.id === attendance.eventId);
+      if (policy) {
+        tierEligibility.set(
+          attendanceAssessmentKey(attendance.personId, attendance.eventId),
+          await this.isPriceTierEligible(tx, attendance.personId, { ...attendance.event, ...policy }),
+        );
+      }
+    }
+
     return new Map(
       undefinedAttendances.map((attendance) => [
         attendanceAssessmentKey(attendance.personId, attendance.eventId),
-        this.resolveCurrentAssessment(
-          attendance.event,
-          majorSubscriptionStatusByKey.get(
-            attendance.event.majorEventId
-              ? attendanceAssessmentKey(attendance.personId, attendance.event.majorEventId)
-              : '',
-          ),
-          eventSubscriptionKeys.has(attendanceAssessmentKey(attendance.personId, attendance.eventId)),
-        ),
+        tierEligibility.get(attendanceAssessmentKey(attendance.personId, attendance.eventId)) === false
+          ? AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE
+          : this.resolveCurrentAssessment(
+              attendance.event,
+              majorSubscriptionStatusByKey.get(
+                attendance.event.majorEventId
+                  ? attendanceAssessmentKey(attendance.personId, attendance.event.majorEventId)
+                  : '',
+              ),
+              eventSubscriptionKeys.has(attendanceAssessmentKey(attendance.personId, attendance.eventId)),
+            ),
       ]),
     );
   }
@@ -108,6 +127,7 @@ export class AttendanceCategoryService {
         event: {
           select: {
             id: true,
+            regularAttendancePriceTierIds: true,
             allowSubscription: true,
             majorEventId: true,
             majorEvent: {
@@ -124,7 +144,10 @@ export class AttendanceCategoryService {
       return;
     }
 
-    const category = await this.resolveCategory(tx, attendance.personId, attendance.event);
+    const currentAssessment = await this.assessAttendance(tx, attendance.personId, attendance.event);
+    const category = currentAssessment === AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
+      ? AttendanceCategory.REGULAR
+      : AttendanceCategory.NON_REGULAR;
 
     await tx.eventAttendance.update({
       where: {
@@ -135,6 +158,7 @@ export class AttendanceCategoryService {
       },
       data: {
         category,
+        currentAssessment,
       },
     });
   }
@@ -191,16 +215,52 @@ export class AttendanceCategoryService {
     }
   }
 
-  private async resolveCategory(
+  async refreshForEvent(eventId: string, tx: PrismaExecutor = this.prisma): Promise<void> {
+    const attendances = await tx.eventAttendance.findMany({
+      where: { eventId },
+      select: { personId: true },
+    });
+    for (const attendance of attendances) {
+      await this.refreshForAttendance(attendance.personId, eventId, tx);
+    }
+  }
+
+  private async isPriceTierEligible(
+    tx: PrismaExecutor,
+    personId: string,
+    event: AttendanceAssessmentSubject['event'],
+  ): Promise<boolean> {
+    if (!event.majorEventId) return false;
+    const [tiers, subscription] = await Promise.all([
+      tx.priceTier.findMany({
+        where: { id: { in: event.regularAttendancePriceTierIds ?? [] }, price: { majorEventId: event.majorEventId } },
+        select: { name: true },
+      }),
+      tx.majorEventSubscription.findFirst({
+        where: { majorEventId: event.majorEventId, personId, deletedAt: null },
+        select: { paymentTier: true },
+      }),
+    ]);
+    const paymentTier = normalizeAttendancePriceTier(subscription?.paymentTier);
+    return Boolean(paymentTier && tiers.some((tier) => normalizeAttendancePriceTier(tier.name) === paymentTier));
+  }
+
+  private async assessAttendance(
     tx: PrismaExecutor,
     personId: string,
     event: {
       id: string;
+      regularAttendancePriceTierIds?: string[];
       allowSubscription: boolean;
       majorEventId: string | null;
       majorEvent: { isPaymentRequired: boolean } | null;
     },
-  ): Promise<AttendanceCategory> {
+  ): Promise<AttendanceCurrentAssessment> {
+    if (event.regularAttendancePriceTierIds?.length) {
+      const eligible = await this.isPriceTierEligible(tx, personId, event);
+      if (!eligible) return AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE;
+    }
+
     if (event.majorEventId && event.majorEvent?.isPaymentRequired) {
       const majorEventSubscription = await tx.majorEventSubscription.findFirst({
         where: {
@@ -214,7 +274,7 @@ export class AttendanceCategoryService {
       });
 
       if (majorEventSubscription?.subscriptionStatus !== 'CONFIRMED') {
-        return AttendanceCategory.NON_PAYING;
+        return this.resolveCurrentAssessment(event, majorEventSubscription?.subscriptionStatus, true);
       }
     }
 
@@ -231,11 +291,11 @@ export class AttendanceCategoryService {
       });
 
       if (!eventSubscription) {
-        return AttendanceCategory.NON_SUBSCRIBED;
+        return AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING;
       }
     }
 
-    return AttendanceCategory.REGULAR;
+    return AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET;
   }
 
   private resolveCurrentAssessment(

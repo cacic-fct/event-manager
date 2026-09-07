@@ -136,7 +136,7 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
   argTypes: {
     eventId: { control: 'text' },
     feedCount: { control: { type: 'range', min: 0, max: 10, step: 1 } },
-    category: { control: 'select', options: ['REGULAR', 'NON_PAYING', 'NON_SUBSCRIBED', 'UNKNOWN'] },
+    category: { control: 'select', options: ['REGULAR', 'NON_REGULAR', 'UNKNOWN'] },
   },
   render: (args) => {
     attendanceApi.configure(args);

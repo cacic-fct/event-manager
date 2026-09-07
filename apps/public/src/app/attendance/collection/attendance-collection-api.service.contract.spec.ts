@@ -95,7 +95,7 @@ describe('AttendanceCollectionApiService GraphQL contracts', () => {
       eventId: 'event-1',
       personId: 'person-1',
       attendedAt,
-      category: 'NON_SUBSCRIBED' as const,
+      category: 'NON_REGULAR' as const,
     };
     request.flush({ data: { collectCurrentUserAttendanceFromScannerCode: attendance } });
 

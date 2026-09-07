@@ -92,6 +92,9 @@ export class Event {
   @Field(() => Boolean)
   shouldIssueCertificateForNonSubscribedAttendees!: boolean;
 
+  @Field(() => [String], { nullable: true })
+  regularAttendancePriceTierIds?: string[];
+
   @Field(() => Boolean)
   shouldCollectAttendance!: boolean;
 

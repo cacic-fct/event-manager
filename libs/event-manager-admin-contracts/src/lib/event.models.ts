@@ -122,6 +122,7 @@ export interface Event {
   shouldIssueCertificate: boolean;
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
+  regularAttendancePriceTierIds?: string[];
   shouldCollectAttendance: boolean;
   shouldAllowOralAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
@@ -281,6 +282,7 @@ export interface EventInput {
   shouldIssueCertificate?: boolean;
   shouldIssueCertificateForNonPayingAttendees?: boolean;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
+  regularAttendancePriceTierIds?: string[];
   shouldCollectAttendance?: boolean;
   shouldAllowOralAttendance?: boolean;
   isOnlineAttendanceAllowed?: boolean;

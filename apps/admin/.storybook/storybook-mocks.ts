@@ -348,7 +348,7 @@ function eventAttendance(index = 0) {
     eventId: selectedEvent.id,
     personId: selectedPerson.id,
     attendedAt: isoDaysFromNow(-index, 16),
-    category: index % 2 === 0 ? 'REGULAR' : 'NON_SUBSCRIBED',
+    category: index % 2 === 0 ? 'REGULAR' : 'NON_REGULAR',
     createdAt: isoDaysFromNow(-index, 16),
     createdById: 'storybook-admin',
     createdByMethod: index % 2 === 0 ? 'SCANNER' : 'MANUAL_INPUT',

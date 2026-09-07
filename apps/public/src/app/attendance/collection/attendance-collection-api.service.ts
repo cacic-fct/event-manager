@@ -1,3 +1,4 @@
+import type { AttendanceCurrentAssessment } from '@cacic-fct/shared-frontend-types';
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
@@ -12,7 +13,7 @@ export type AttendanceCreationMethod =
   | 'SCANNER'
   | 'ONLINE_CODE'
   | 'UNKNOWN';
-export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type AttendanceCategory = 'NON_REGULAR' | 'REGULAR' | 'UNKNOWN';
 export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 
 export interface AttendanceCollectionEvent {
@@ -46,6 +47,7 @@ export interface AttendanceRegistrationResult {
   personId: string;
   attendedAt: string;
   category: AttendanceCategory;
+  currentAssessment?: AttendanceCurrentAssessment | null;
 }
 
 export type OfflineAttendanceCommitStatus = 'CREATED' | 'STAGED' | 'DUPLICATE' | 'CONFLICT' | 'FORBIDDEN' | 'FAILED';
@@ -198,6 +200,7 @@ export class AttendanceCollectionApiService {
             personId
             attendedAt
             category
+            currentAssessment
           }
         }
       `,
@@ -218,6 +221,7 @@ export class AttendanceCollectionApiService {
             personId
             attendedAt
             category
+            currentAssessment
           }
         }
       `,
@@ -245,6 +249,7 @@ export class AttendanceCollectionApiService {
             personId
             attendedAt
             category
+            currentAssessment
           }
         }
       `,
@@ -268,6 +273,7 @@ export class AttendanceCollectionApiService {
               personId
               attendedAt
               category
+              currentAssessment
             }
             stagedSubmission {
               id

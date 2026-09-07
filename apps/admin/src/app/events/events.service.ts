@@ -15,6 +15,7 @@ import {
   EventGroup,
   EventInput,
   MajorEvent,
+  MajorEventPriceTier,
   Person,
   PlacePreset,
   PlacePresetInput,
@@ -103,6 +104,7 @@ export class EventsService {
   readonly selectedEventGroupAllowsNonPayingCertificates = signal<boolean | null>(true);
   readonly selectedEventGroupAllowsNonSubscribedCertificates = signal<boolean | null>(true);
   readonly selectedMajorEventName = signal('');
+  readonly attendancePriceTiers = signal<MajorEventPriceTier[]>([]);
   readonly majorEventSearchResults = signal<MajorEvent[]>([]);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly placePresetSuggestions = signal<PlacePreset[]>([]);
@@ -244,6 +246,7 @@ export class EventsService {
     this.eventLecturers.set([]);
     this.eventAttendanceCollectors.set([]);
     this.selectedMajorEventName.set('');
+    this.attendancePriceTiers.set([]);
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
     this.attendanceCollectorSearchResults.set([]);
@@ -291,6 +294,7 @@ export class EventsService {
       shouldIssueCertificate: false,
       shouldIssueCertificateForNonPayingAttendees: false,
       shouldIssueCertificateForNonSubscribedAttendees: false,
+      regularAttendancePriceTierIds: [],
       shouldCollectAttendance: false,
       shouldAllowOralAttendance: false,
       isOnlineAttendanceAllowed: false,
@@ -552,12 +556,16 @@ export class EventsService {
   }
 
   assignMajorEventToEvent(majorEvent: MajorEvent): void {
+    if (this.eventForm.controls.majorEventId.value !== majorEvent.id) {
+      this.eventForm.controls.regularAttendancePriceTierIds.setValue([]);
+    }
     this.eventForm.controls.majorEventId.setValue(majorEvent.id);
     this.applySelectedMajorEvent(majorEvent, { hasMajorEvent: true });
     this.majorEventLookupForm.controls.query.setValue(majorEvent.name, { emitEvent: false });
   }
 
   clearMajorEventFromEvent(): void {
+    this.eventForm.controls.regularAttendancePriceTierIds.setValue([]);
     this.eventForm.controls.majorEventId.setValue('');
     this.applySelectedMajorEvent(null, { hasMajorEvent: false });
     this.majorEventLookupForm.controls.query.setValue('', { emitEvent: false });
@@ -971,6 +979,7 @@ export class EventsService {
         raw.shouldIssueCertificate &&
         this.selectedEventGroupAllowsNonSubscribedCertificates() !== false &&
         raw.shouldIssueCertificateForNonSubscribedAttendees,
+      regularAttendancePriceTierIds: raw.regularAttendancePriceTierIds,
       shouldCollectAttendance: raw.shouldCollectAttendance,
       shouldAllowOralAttendance: raw.shouldAllowOralAttendance,
       isOnlineAttendanceAllowed,
@@ -1087,6 +1096,7 @@ export class EventsService {
       shouldIssueCertificate: eventItem.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees: eventItem.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees: eventItem.shouldIssueCertificateForNonSubscribedAttendees,
+      regularAttendancePriceTierIds: eventItem.regularAttendancePriceTierIds ?? [],
       shouldCollectAttendance: eventItem.shouldCollectAttendance,
       shouldAllowOralAttendance: eventItem.shouldAllowOralAttendance,
       isOnlineAttendanceAllowed: eventItem.isOnlineAttendanceAllowed,
@@ -1178,6 +1188,23 @@ export class EventsService {
         : (value as MajorEventResolution);
 
     this.selectedMajorEventName.set(resolution.status === 'found' ? resolution.majorEvent.name : '');
+    this.attendancePriceTiers.set([]);
+    if (resolution.status === 'found') {
+      void this.loadAttendancePriceTiers(resolution.majorEvent.id);
+    }
+  }
+
+  private async loadAttendancePriceTiers(majorEventId: string): Promise<void> {
+    try {
+      const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
+      if (this.eventForm.controls.majorEventId.value === majorEventId) {
+        this.attendancePriceTiers.set(majorEvent.majorEventPrices?.flatMap((price) => price.tiers) ?? []);
+      }
+    } catch {
+      if (this.eventForm.controls.majorEventId.value === majorEventId) {
+        this.snackbar.open('Não foi possível carregar as faixas de preço. Selecione o grande evento novamente para tentar de novo.', 'Fechar');
+      }
+    }
   }
 
   private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroupResolution> {

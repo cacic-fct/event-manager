@@ -397,6 +397,7 @@ export function createAdminEvent(overrides: Partial<Event> = {}): Event {
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
+    regularAttendancePriceTierIds: [],
     shouldCollectAttendance: true,
     shouldAllowOralAttendance: false,
     isOnlineAttendanceAllowed: false,

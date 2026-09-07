@@ -1033,6 +1033,16 @@ export class MajorEventsResolver {
     tx: Prisma.TransactionClient,
     where: Prisma.PriceTierWhereInput,
   ): Promise<void> {
+    const tiers = await tx.priceTier.findMany({ where, select: { id: true } });
+    if (tiers.length > 0) {
+      const restrictedEvent = await tx.event.findFirst({
+        where: { regularAttendancePriceTierIds: { hasSome: tiers.map((tier) => tier.id) }, deletedAt: null },
+        select: { id: true },
+      });
+      if (restrictedEvent) {
+        throw new BadRequestException('Remova as faixas de preço das regras de presença dos eventos antes de excluí-las.');
+      }
+    }
     const attachedTierCount = await tx.eventFormLinkPriceTier.count({
       where: { priceTier: where },
     });

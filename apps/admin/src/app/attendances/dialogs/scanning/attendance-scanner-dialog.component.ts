@@ -223,7 +223,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
         }),
       );
       this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
-      this.feedback.show(this.feedbackKindForCategory(attendance.category));
+      this.feedback.show(this.feedbackKindForCategory(attendance.category, attendance.currentAssessment));
       this.snackbar.open('Presença registrada pelo scanner.', 'Fechar', {
         duration: 2500,
       });
@@ -247,7 +247,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
         }),
       );
       this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
-      this.feedback.show(this.feedbackKindForCategory(attendance.category));
+      this.feedback.show(this.feedbackKindForCategory(attendance.category, attendance.currentAssessment));
       this.manualForm.reset({ value: '' });
       this.snackbar.open('Presença registrada manualmente.', 'Fechar', {
         duration: 2500,
@@ -349,7 +349,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
         }),
       );
       this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
-      this.feedback.show(this.feedbackKindForCategory(attendance.category));
+      this.feedback.show(this.feedbackKindForCategory(attendance.category, attendance.currentAssessment));
       this.manualForm.reset({ value: '' });
       this.snackbar.open('Presença registrada manualmente.', 'Fechar', {
         duration: 2500,
@@ -409,12 +409,13 @@ export class AttendanceScannerDialogComponent implements OnInit {
     });
   }
 
-  private feedbackKindForCategory(category: AttendanceCategory | null | undefined): ScannerFeedbackKind {
+  private feedbackKindForCategory(
+    category: AttendanceCategory | null | undefined,
+    assessment?: string | null,
+  ): ScannerFeedbackKind {
     switch (category) {
-      case 'NON_PAYING':
-        return 'nonPaying';
-      case 'NON_SUBSCRIBED':
-        return 'nonSubscribed';
+      case 'NON_REGULAR':
+        return assessment?.startsWith('MAJOR_EVENT_PAYMENT_') ? 'nonPaying' : 'nonSubscribed';
       case 'REGULAR':
       case 'UNKNOWN':
       case undefined:

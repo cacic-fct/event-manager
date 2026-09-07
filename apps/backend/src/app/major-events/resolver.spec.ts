@@ -730,6 +730,18 @@ describe('MajorEventsResolver', () => {
     expect(tx.majorEventPrice.upsert).not.toHaveBeenCalled();
   });
 
+  it('preserves price tiers referenced by an event attendance policy', async () => {
+    const { resolver, prisma, tx } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'kit-tier' }]);
+    tx.event.findFirst.mockResolvedValue({ id: 'kit-event' });
+
+    await expect(resolver.updateMajorEvent('major-1', { price: null } as never, context() as never))
+      .rejects.toThrow('Remova as faixas de preço das regras de presença');
+    expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
+  });
+
   it('deletes payment info and price tiers when update inputs clear them', async () => {
     const { resolver, prisma, tx } = createResolver({ paymentInfoTableExists: true });
     const existing = majorEventRecord({
@@ -924,6 +936,7 @@ function createResolver(options: {
   realtime?: { scope: jest.Mock; publish: jest.Mock };
 } = {}) {
   const tx = {
+    event: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEvent: {
       create: jest.fn(),
       findFirst: jest.fn(),

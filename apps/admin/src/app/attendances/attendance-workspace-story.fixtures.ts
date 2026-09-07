@@ -84,7 +84,7 @@ function createAttendanceWorkspaceMock(
   const majorAttendances = () => createMajorEventAttendances(getControls());
   const selectedMajorAttendance = () =>
     getControls().selectedMajorEventPerson ? (majorAttendances()[0] ?? null) : null;
-  const categories: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
+  const categories: AttendanceCategory[] = ['REGULAR', 'NON_REGULAR', 'UNKNOWN'];
 
   const attendanceForm = formBuilder.nonNullable.group({
     eventId: ['event-story-1'],
@@ -243,7 +243,7 @@ function createEvents(controls: AttendanceWorkspaceStoryControls): Event[] {
 
 function createAttendances(controls: AttendanceWorkspaceStoryControls, event: Event | null) {
   const people = createPeople(clamp(controls.attendanceCount, 80), controls.longNames);
-  const categories: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
+  const categories: AttendanceCategory[] = ['REGULAR', 'NON_REGULAR', 'UNKNOWN'];
   const now = new Date();
   return people.map((person, index) => ({
     eventId: event?.id ?? 'event-story-1',
@@ -256,7 +256,7 @@ function createAttendances(controls: AttendanceWorkspaceStoryControls, event: Ev
     createdByMethod: ['SCANNER', 'MANUAL_INPUT', 'CSV_IMPORT', 'ONLINE_CODE'][index % 4],
     category: categories[index % categories.length],
     currentAssessment:
-      categories[index % categories.length] === 'UNKNOWN' ? 'ACTIVITY_SUBSCRIPTION_MISSING' : undefined,
+      categories[index % categories.length] !== 'REGULAR' ? 'ACTIVITY_SUBSCRIPTION_MISSING' : undefined,
     status: 'PRESENT' as const,
   }));
 }
@@ -301,7 +301,7 @@ function createOfflineSubmissions(controls: AttendanceWorkspaceStoryControls, ev
 function createMajorEventAttendances(controls: AttendanceWorkspaceStoryControls): MajorEventUserAttendance[] {
   const people = createPeople(clamp(controls.majorEventPersonCount, 50), controls.longNames);
   const activityCount = clamp(controls.attendedActivitiesPerPerson, 12);
-  const categories: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
+  const categories: AttendanceCategory[] = ['REGULAR', 'NON_REGULAR', 'UNKNOWN'];
   return people.map((person, personIndex) => ({
     majorEventId: 'major-event-story',
     subscriptionId: `major-subscription-${personIndex + 1}`,
@@ -318,7 +318,7 @@ function createMajorEventAttendances(controls: AttendanceWorkspaceStoryControls)
       attendedAt: eventIndex < activityCount ? new Date().toISOString() : null,
       category: categories[(personIndex + eventIndex) % categories.length],
       currentAssessment:
-        categories[(personIndex + eventIndex) % categories.length] === 'UNKNOWN'
+        categories[(personIndex + eventIndex) % categories.length] !== 'REGULAR'
           ? 'ACTIVITY_SUBSCRIPTION_MISSING'
           : undefined,
     })),
@@ -369,8 +369,7 @@ function createPagination(getCount: () => number) {
 function categoryLabel(category: AttendanceCategory): string {
   return {
     REGULAR: 'Regulares',
-    NON_SUBSCRIBED: 'Sem inscrição na atividade',
-    NON_PAYING: 'Sem pagamento',
+    NON_REGULAR: 'Não regulares',
     UNKNOWN: 'Indefinidas',
   }[category];
 }
@@ -378,8 +377,7 @@ function categoryLabel(category: AttendanceCategory): string {
 function categoryDescription(category: AttendanceCategory): string {
   return {
     REGULAR: 'Presenças esperadas para inscrição e pagamento atuais.',
-    NON_SUBSCRIBED: 'Presenças em atividades com inscrição obrigatória.',
-    NON_PAYING: 'Presenças em grande evento pago sem pagamento confirmado.',
+    NON_REGULAR: 'Presenças com pendências de inscrição, pagamento ou faixa de preço.',
     UNKNOWN: 'Registros anteriores à classificação automática. A situação atual aparece em cada presença.',
   }[category];
 }
@@ -394,6 +392,8 @@ function currentAssessmentLabel(assessment: AttendanceCurrentAssessment | null |
       return 'Comprovante de pagamento do grande evento em análise.';
     case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
       return 'Pagamento do grande evento não confirmado.';
+    case 'PRICE_TIER_NOT_ELIGIBLE':
+      return 'Faixa de preço não elegível';
     case 'REQUIREMENTS_CURRENTLY_MET':
       return 'Requisitos atuais atendidos.';
     case null:

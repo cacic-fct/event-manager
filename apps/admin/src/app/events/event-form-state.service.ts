@@ -44,6 +44,7 @@ export class EventFormStateService {
         shouldIssueCertificate: [false],
         shouldIssueCertificateForNonPayingAttendees: [false],
         shouldIssueCertificateForNonSubscribedAttendees: [false],
+        regularAttendancePriceTierIds: this.formBuilder.nonNullable.control<string[]>([]),
         shouldCollectAttendance: [false],
         shouldAllowOralAttendance: [false],
         isOnlineAttendanceAllowed: [false],

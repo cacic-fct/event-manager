@@ -250,7 +250,8 @@ describe('AttendanceScanner operations', () => {
         eventId: 'event-1',
         personId: 'person-1',
         attendedAt: publicFixtureDateFromNow(0, 12),
-        category: 'NON_SUBSCRIBED',
+        category: 'NON_REGULAR',
+        currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING' as const,
       }),
     );
     deps.api.listFeed.mockReturnValue(of([present]));
