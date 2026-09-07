@@ -77,7 +77,7 @@ test('filters changed UNKNOWN rows and supports non-unknown override', async () 
           rows: [
             { personId: 'p1', eventId: 'e1', category: 'UNKNOWN' },
             { personId: 'p2', eventId: 'e2', category: 'REGULAR' },
-            { personId: 'p3', eventId: 'e3', category: 'REGULAR' },
+            { personId: 'p3', eventId: 'e3', category: 'REGULAR', currentAssessment: 'REQUIREMENTS_CURRENTLY_MET' },
           ],
         };
       }
@@ -101,7 +101,7 @@ test('filters changed UNKNOWN rows and supports non-unknown override', async () 
   );
 });
 
-test('applies only category updates with parameters', async () => {
+test('applies category and assessment updates with parameters', async () => {
   const calls: Array<{ sql: string; parameters?: readonly unknown[] }> = [];
   const db: DatabaseClient = {
     async query(sql: string, parameters?: readonly unknown[]) {
@@ -112,6 +112,37 @@ test('applies only category updates with parameters', async () => {
   assert.equal(calls.length, 1);
   const [call] = calls;
   assert.ok(call);
-  assert.deepEqual(call.parameters, ['REGULAR', 'p1', 'e1']);
+  assert.deepEqual(call.parameters, ['REGULAR', 'p1', 'e1', 'REQUIREMENTS_CURRENTLY_MET']);
   assert.match(call.sql, /UPDATE event_attendances/);
+});
+
+for (const [legacyCategory, assessment] of [
+  ['NON_PAYING', 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'],
+  ['NON_SUBSCRIBED', 'ACTIVITY_SUBSCRIPTION_MISSING'],
+] as const) {
+  test(`persists ${legacyCategory} with the replacement enum and original reason`, async () => {
+    const calls: Array<readonly unknown[] | undefined> = [];
+    const db: DatabaseClient = {
+      async query(sql, parameters) {
+        assert.match(sql, /"currentAssessment" = \$4::"AttendanceCurrentAssessment"/);
+        calls.push(parameters);
+      },
+    };
+    await applyUpdates(db, [{ personId: 'p1', eventId: 'e1', category: legacyCategory }]);
+    assert.deepEqual(calls, [['NON_REGULAR', 'p1', 'e1', assessment]]);
+  });
+}
+
+test('compares assessments as well as categories on repeated reevaluation', async () => {
+  const row: AttendanceUpdateRow = { personId: 'p1', eventId: 'e1', category: 'NON_SUBSCRIBED' };
+  let currentAssessment = 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED';
+  const db: DatabaseClient = {
+    async query() {
+      return { rows: [{ personId: row.personId, eventId: row.eventId, category: 'NON_REGULAR', currentAssessment }] };
+    },
+  };
+  assert.deepEqual(await selectChangedAttendances(db, [row]), []);
+  assert.deepEqual(await selectChangedAttendances(db, [row], { includeNonUnknown: true }), [row]);
+  currentAssessment = 'ACTIVITY_SUBSCRIPTION_MISSING';
+  assert.deepEqual(await selectChangedAttendances(db, [row], { includeNonUnknown: true }), []);
 });

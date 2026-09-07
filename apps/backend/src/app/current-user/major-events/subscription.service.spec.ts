@@ -82,6 +82,19 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
       paymentTier: 'Lote unico',
     });
 
+    expect(
+      service.resolveSelfServicePayment(
+        majorEventWithPrices([
+          { name: 'Participação', value: 0 },
+          { name: 'Com atividades', value: 2500 },
+        ]),
+        'participação',
+      ),
+    ).toEqual({
+      amountPaid: 0,
+      paymentTier: 'Participação',
+    });
+
     expect(() =>
       service.resolveSelfServicePayment(majorEventWithPrices([{ name: 'Aluno', value: 2500 }], true), 'VIP'),
     ).not.toThrow();
@@ -132,18 +145,22 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   });
 
   it('resolves the next subscription status from payment rules', () => {
-    expect(service.resolveNextSubscriptionStatus(false)).toBe(SubscriptionStatus.CONFIRMED);
-    expect(service.resolveNextSubscriptionStatus(true)).toBe(SubscriptionStatus.WAITING_RECEIPT_UPLOAD);
-    expect(service.resolveNextSubscriptionStatus(true, SubscriptionStatus.CANCELED)).toBe(
+    expect(service.resolveNextSubscriptionStatus(false, null)).toBe(SubscriptionStatus.CONFIRMED);
+    expect(service.resolveNextSubscriptionStatus(true, 0)).toBe(SubscriptionStatus.CONFIRMED);
+    expect(
+      service.resolveNextSubscriptionStatus(true, 0, SubscriptionStatus.WAITING_RECEIPT_UPLOAD),
+    ).toBe(SubscriptionStatus.CONFIRMED);
+    expect(service.resolveNextSubscriptionStatus(true, 2500)).toBe(SubscriptionStatus.WAITING_RECEIPT_UPLOAD);
+    expect(service.resolveNextSubscriptionStatus(true, 2500, SubscriptionStatus.CANCELED)).toBe(
       SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
     );
-    expect(service.resolveNextSubscriptionStatus(true, SubscriptionStatus.REJECTED_NO_SLOTS)).toBe(
+    expect(service.resolveNextSubscriptionStatus(true, 2500, SubscriptionStatus.REJECTED_NO_SLOTS)).toBe(
       SubscriptionStatus.RECEIPT_UNDER_REVIEW,
     );
-    expect(service.resolveNextSubscriptionStatus(true, SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT)).toBe(
+    expect(service.resolveNextSubscriptionStatus(true, 2500, SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT)).toBe(
       SubscriptionStatus.RECEIPT_UNDER_REVIEW,
     );
-    expect(service.resolveNextSubscriptionStatus(true, SubscriptionStatus.CONFIRMED)).toBeUndefined();
+    expect(service.resolveNextSubscriptionStatus(true, 2500, SubscriptionStatus.CONFIRMED)).toBeUndefined();
   });
 
   it('validates subscription windows, selection limits, schedule conflicts, and full event groups', () => {

@@ -611,7 +611,10 @@ describe('MajorEventsResolver', () => {
     prisma.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updated);
-    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-student' }, { id: 'tier-professor' }]);
+    tx.priceTier.findMany.mockResolvedValue([
+      { id: 'tier-student', name: 'Aluno' },
+      { id: 'tier-professor', name: 'Professor' },
+    ]);
 
     await expect(
       resolver.updateMajorEvent(
@@ -702,6 +705,92 @@ describe('MajorEventsResolver', () => {
     );
   });
 
+  it('synchronizes renamed tier snapshots for active and restorable subscriptions without changing payment history', async () => {
+    const { resolver, prisma, tx } = createResolver();
+    const existing = majorEventRecord();
+    const updated = majorEventRecord({
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            { id: 'tier-student', name: 'Professor', value: 4000 },
+            { id: 'tier-professor', name: 'Aluno', value: 6000 },
+          ],
+        },
+      ],
+    });
+    prisma.majorEvent.findFirst.mockResolvedValue(existing);
+    tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updated);
+    tx.priceTier.findMany.mockResolvedValue([
+      { id: 'tier-student', name: 'Aluno' },
+      { id: 'tier-professor', name: 'Professor' },
+    ]);
+    tx.majorEventSubscription.findMany.mockResolvedValue([
+      { id: 'subscription-student', paymentTier: ' aluno ' },
+      { id: 'subscription-professor', paymentTier: 'Professor' },
+      { id: 'subscription-restorable', paymentTier: 'Professor', deletedAt: new Date() },
+    ]);
+    tx.certificateConfig.findMany.mockResolvedValue([
+      { id: 'certificate-major-event', paymentTiers: ['Aluno', 'Outra faixa'] },
+      { id: 'certificate-event', paymentTiers: [' professor '] },
+      { id: 'certificate-all-tiers', paymentTiers: [] },
+    ]);
+
+    await expect(
+      resolver.updateMajorEvent(
+        'major-1',
+        {
+          price: {
+            type: 'TIERED',
+            tiers: [
+              { id: 'tier-student', name: ' Professor ', value: 4000 },
+              { id: 'tier-professor', name: 'Aluno', value: 6000 },
+            ],
+          },
+        } as never,
+        context() as never,
+      ),
+    ).resolves.toBe(updated);
+
+    expect(tx.majorEventSubscription.findMany).toHaveBeenCalledWith({
+      where: {
+        majorEventId: 'major-1',
+        paymentTier: { not: null },
+      },
+      select: { id: true, paymentTier: true },
+    });
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledTimes(2);
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['subscription-student'] } },
+      data: { paymentTier: 'Professor' },
+    });
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['subscription-professor', 'subscription-restorable'] } },
+      data: { paymentTier: 'Aluno' },
+    });
+    expect(tx.certificateConfig.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { majorEventId: 'major-1' },
+          { event: { majorEventId: 'major-1' } },
+          { eventGroup: { majorEventId: 'major-1' } },
+        ],
+      },
+      select: { id: true, paymentTiers: true },
+    });
+    expect(tx.certificateConfig.update).toHaveBeenCalledTimes(2);
+    expect(tx.certificateConfig.update).toHaveBeenCalledWith({
+      where: { id: 'certificate-major-event' },
+      data: { paymentTiers: ['Professor', 'Outra faixa'] },
+    });
+    expect(tx.certificateConfig.update).toHaveBeenCalledWith({
+      where: { id: 'certificate-event' },
+      data: { paymentTiers: ['Aluno'] },
+    });
+  });
+
   it('requires a linked tournament before a price tier can include sports registration', async () => {
     const { resolver, prisma, tx } = createResolver();
     prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
@@ -730,16 +819,20 @@ describe('MajorEventsResolver', () => {
     expect(tx.majorEventPrice.upsert).not.toHaveBeenCalled();
   });
 
-  it('preserves price tiers referenced by an event attendance policy', async () => {
+  it('preserves price tiers referenced by active or restorable event attendance policies', async () => {
     const { resolver, prisma, tx } = createResolver();
     prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.priceTier.findMany.mockResolvedValue([{ id: 'kit-tier' }]);
-    tx.event.findFirst.mockResolvedValue({ id: 'kit-event' });
+    tx.event.findFirst.mockResolvedValue({ id: 'deleted-kit-event' });
 
     await expect(resolver.updateMajorEvent('major-1', { price: null } as never, context() as never))
       .rejects.toThrow('Remova as faixas de preço das regras de presença');
     expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
+    expect(tx.event.findFirst).toHaveBeenCalledWith({
+      where: { regularAttendancePriceTierIds: { hasSome: ['kit-tier'] } },
+      select: { id: true },
+    });
   });
 
   it('deletes payment info and price tiers when update inputs clear them', async () => {
@@ -961,6 +1054,14 @@ function createResolver(options: {
     },
     sportsTournament: {
       findFirst: jest.fn(),
+    },
+    majorEventSubscription: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn(),
+    },
+    certificateConfig: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
     },
   };
   const prisma = {

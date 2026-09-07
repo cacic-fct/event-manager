@@ -1,4 +1,6 @@
 import { AuditLogEntityType, Prisma } from '@prisma/client';
+import { BadRequestException } from '@nestjs/common';
+import { validateAttendancePriceTiers } from '../events/attendance-price-tier-policy';
 
 export async function applyAuditLogRevertInvariants(
   tx: Prisma.TransactionClient,
@@ -16,6 +18,20 @@ export async function applyAuditLogRevertInvariants(
           shouldIssueCertificateForEachEvent: true,
         },
         data: { shouldIssueCertificateForEachEvent: false },
+      });
+    }
+
+    const regularAttendancePriceTierIds = updated['regularAttendancePriceTierIds'];
+    if (regularAttendancePriceTierIds !== undefined) {
+      if (
+        !Array.isArray(regularAttendancePriceTierIds) ||
+        !regularAttendancePriceTierIds.every((tierId): tierId is string => typeof tierId === 'string')
+      ) {
+        throw new BadRequestException('O estado de faixas de preço de presença do evento é inválido.');
+      }
+      await validateAttendancePriceTiers(tx, {
+        majorEventId,
+        regularAttendancePriceTierIds,
       });
     }
     return;

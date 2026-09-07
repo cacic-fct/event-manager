@@ -117,6 +117,24 @@ describe('RankedMajorEventSubscription', () => {
     );
   });
 
+  it('moves keyboard focus onto both ranked step headings', async () => {
+    flushInitialRequests(http);
+    fixture.detectChanges();
+    component.showSelectionStep();
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => setTimeout(resolve));
+    const selectTitle = (fixture.nativeElement as HTMLElement).querySelector('#ranked-select-title');
+    expect(selectTitle).not.toBeNull();
+    expect(document.activeElement).toBe(selectTitle);
+
+    component.showRankingStep();
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => setTimeout(resolve));
+    const rankTitle = (fixture.nativeElement as HTMLElement).querySelector('#ranked-order-title');
+    expect(rankTitle).not.toBeNull();
+    expect(document.activeElement).toBe(rankTitle);
+  });
+
   it('returns to tier selection when the route changes to another major event', () => {
     const majorEvent = paidMajorEvent([
       { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },

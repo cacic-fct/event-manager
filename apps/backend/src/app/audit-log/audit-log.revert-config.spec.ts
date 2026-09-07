@@ -37,11 +37,17 @@ describe('getAuditLogRevertConfig', () => {
     expect(getAuditLogRevertConfig(AuditLogEntityType.EVENT)).toMatchObject({
       updatePermission: Permission.Event.Update,
       deletePermission: Permission.Event.Delete,
-      mutableFields: expect.arrayContaining(['name', 'onlineAttendanceCode', 'deletedAt']),
+      mutableFields: expect.arrayContaining([
+        'name',
+        'onlineAttendanceCode',
+        'regularAttendancePriceTierIds',
+        'deletedAt',
+      ]),
       select: expect.objectContaining({
         id: true,
         name: true,
         onlineAttendanceCode: true,
+        regularAttendancePriceTierIds: true,
         deletedAt: true,
       }),
     });

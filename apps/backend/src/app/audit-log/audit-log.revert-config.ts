@@ -26,6 +26,7 @@ const EVENT_MUTABLE_FIELDS = [
   'shouldIssueCertificate',
   'shouldIssueCertificateForNonPayingAttendees',
   'shouldIssueCertificateForNonSubscribedAttendees',
+  'regularAttendancePriceTierIds',
   'shouldCollectAttendance',
   'isOnlineAttendanceAllowed',
   'shouldProvideSubscriberListToLecturer',

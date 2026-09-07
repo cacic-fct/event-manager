@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  applyUpdates,
+  selectChangedAttendances,
   buildLegacyAttendances,
   parseArgs,
   resolveLectureCategory,
@@ -50,4 +52,37 @@ test('builds and deduplicates legacy attendance intents', () => {
   const attendance = result.legacyAttendances[0];
   assert.ok(attendance);
   assert.equal(attendance.eventId.startsWith('SYSCOMPP-1-event-'), true);
+});
+
+test('writes replacement categories with assessments and skips an unchanged rerun', async () => {
+  const parsed = {
+    users: [{ idUser: 1, idDetailFK: 7 }],
+    lectures: [{ idLecture: 3, idEventFK: 10 }],
+    shortcourses: [{ idShortcourse: 4, idEventFK: 11 }],
+    users_registered: [{ idUserFK: 2, idEventFK: 10, amount: 25, status: 'S' }],
+    users_registered_shortcourses: [],
+    presence_lectures: [{ idUserFK: 1, idLectureFK: 3 }],
+    presence_shortcourses: [{ idUserFK: 1, idShortcourseFK: 4 }],
+  };
+  const rows = buildLegacyAttendances(parsed).legacyAttendances.map((row) => ({ ...row, personId: 'p1' }));
+  const saved: Record<string, unknown>[] = [];
+  const db = {
+    async query<Row = Record<string, unknown>>(sql: string, parameters?: readonly unknown[]) {
+      if (sql.startsWith('UPDATE')) {
+        assert.match(sql, /"currentAssessment" = \$4::"AttendanceCurrentAssessment"/);
+        assert.equal(parameters?.[0], 'NON_REGULAR');
+        saved.push({ category: parameters?.[0], personId: parameters?.[1], eventId: parameters?.[2], currentAssessment: parameters?.[3] });
+        return { rows: [] as Row[] };
+      }
+      return { rows: saved as Row[] };
+    },
+  };
+  await applyUpdates(db, rows);
+  assert.deepEqual(saved.map((row) => row.currentAssessment).sort(), ['ACTIVITY_SUBSCRIPTION_MISSING', 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED']);
+  assert.deepEqual(await selectChangedAttendances(db, rows, true), []);
+  const firstSaved = saved[0];
+  assert.ok(firstSaved);
+  firstSaved.currentAssessment = 'REQUIREMENTS_CURRENTLY_MET';
+  assert.equal((await selectChangedAttendances(db, rows, true)).length, 1);
+  assert.deepEqual(await selectChangedAttendances(db, rows), []);
 });

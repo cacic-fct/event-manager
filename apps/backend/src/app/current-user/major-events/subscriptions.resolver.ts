@@ -643,6 +643,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
       const nextStatus = this.majorEventSubscriptions.resolveNextSubscriptionStatus(
         majorEvent.isPaymentRequired,
+        selfServicePayment.amountPaid,
         existingSubscription?.subscriptionStatus,
       );
 
@@ -687,7 +688,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             desiredUncategorized: desiredCounts?.desiredUncategorized,
             subscriptionStatus:
               nextStatus ??
-              (majorEvent.isPaymentRequired ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD : SubscriptionStatus.CONFIRMED),
+              (majorEvent.isPaymentRequired && selfServicePayment.amountPaid !== 0
+                ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD
+                : SubscriptionStatus.CONFIRMED),
             imageLicenseAgreementAccepted:
               majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true,
           },

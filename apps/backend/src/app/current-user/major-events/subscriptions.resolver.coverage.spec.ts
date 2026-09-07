@@ -287,6 +287,66 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     );
   });
 
+  it('confirms a zero-valued tier and passes its authoritative amount to status resolution', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            {
+              id: 'tier-free',
+              name: 'Participação',
+              value: 0,
+              includesSportsRegistration: false,
+              includesEventRegistration: false,
+            },
+          ],
+        },
+      ],
+    });
+    const updatedSubscription = subscriptionRecord(majorEvent, {
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      amountPaid: 0,
+      paymentTier: 'Participação',
+    });
+    const tx = createUpsertTransaction(majorEvent, eventRecord('unused-event'), updatedSubscription);
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 0,
+      paymentTier: 'Participação',
+    });
+    harness.majorEventSubscriptions.resolveNextSubscriptionStatus.mockReturnValue(SubscriptionStatus.CONFIRMED);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: [], paymentTier: 'Participação' },
+        { req: {} } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      amountPaid: 0,
+      paymentTier: 'Participação',
+    }));
+
+    expect(harness.majorEventSubscriptions.resolveNextSubscriptionStatus).toHaveBeenCalledWith(true, 0, undefined);
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        amountPaid: 0,
+        paymentTier: 'Participação',
+        subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      }),
+    });
+  });
+
   it('rechecks event-registration permission inside the serializable transaction', async () => {
     const harness = createHarness();
     const preflightMajorEvent = majorEventRecord({

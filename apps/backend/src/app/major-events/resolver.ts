@@ -30,6 +30,7 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
 import {
   PUBLIC_CATALOG_REALTIME_CHANNEL,
   createPublicCatalogInvalidation,
@@ -988,12 +989,26 @@ export class MajorEventsResolver {
       requestedIds.length > 0
         ? await tx.priceTier.findMany({
             where: { id: { in: requestedIds }, priceId: price.id },
-            select: { id: true },
+            select: { id: true, name: true },
           })
         : [];
     if (existingRequestedTiers.length !== requestedIds.length) {
       throw new BadRequestException('A price tier does not belong to this major event.');
     }
+
+    const requestedTierNames = new Map(
+      input.tiers.flatMap((tier, index) => (tier.id ? [[tier.id, tiers[index].name] as const] : [])),
+    );
+    const renamedTiers = existingRequestedTiers.flatMap((existingTier) => {
+      const nextName = requestedTierNames.get(existingTier.id);
+      if (nextName === undefined || existingTier.name === nextName) {
+        return [];
+      }
+
+      return [{ previousName: existingTier.name, nextName }];
+    });
+    await this.syncMajorEventSubscriptionPaymentTiers(tx, majorEventId, renamedTiers);
+    await this.syncMajorEventCertificatePaymentTiers(tx, majorEventId, renamedTiers);
 
     const tiersToDeleteWhere = {
       priceId: price.id,
@@ -1036,7 +1051,7 @@ export class MajorEventsResolver {
     const tiers = await tx.priceTier.findMany({ where, select: { id: true } });
     if (tiers.length > 0) {
       const restrictedEvent = await tx.event.findFirst({
-        where: { regularAttendancePriceTierIds: { hasSome: tiers.map((tier) => tier.id) }, deletedAt: null },
+        where: { regularAttendancePriceTierIds: { hasSome: tiers.map((tier) => tier.id) } },
         select: { id: true },
       });
       if (restrictedEvent) {
@@ -1050,6 +1065,103 @@ export class MajorEventsResolver {
       throw new BadRequestException(
         'Detach forms from the affected price tiers before removing those tiers or the major-event price.',
       );
+    }
+  }
+
+  private async syncMajorEventSubscriptionPaymentTiers(
+    tx: Prisma.TransactionClient,
+    majorEventId: string,
+    renamedTiers: ReadonlyArray<{ previousName: string; nextName: string }>,
+  ): Promise<void> {
+    if (renamedTiers.length === 0) {
+      return;
+    }
+
+    const nextNameByNormalizedPreviousName = new Map(
+      renamedTiers.map(({ previousName, nextName }) => [
+        normalizeAttendancePriceTier(previousName),
+        nextName,
+      ]),
+    );
+    const subscriptions = await tx.majorEventSubscription.findMany({
+      where: {
+        majorEventId,
+        paymentTier: { not: null },
+      },
+      select: {
+        id: true,
+        paymentTier: true,
+      },
+    });
+    const subscriptionIdsByNextName = new Map<string, string[]>();
+
+    for (const subscription of subscriptions) {
+      if (!subscription.paymentTier) {
+        continue;
+      }
+
+      const nextName = nextNameByNormalizedPreviousName.get(
+        normalizeAttendancePriceTier(subscription.paymentTier),
+      );
+      if (!nextName || subscription.paymentTier === nextName) {
+        continue;
+      }
+
+      const subscriptionIds = subscriptionIdsByNextName.get(nextName) ?? [];
+      subscriptionIds.push(subscription.id);
+      subscriptionIdsByNextName.set(nextName, subscriptionIds);
+    }
+
+    for (const [nextName, subscriptionIds] of subscriptionIdsByNextName) {
+      await tx.majorEventSubscription.updateMany({
+        where: { id: { in: subscriptionIds } },
+        data: { paymentTier: nextName },
+      });
+    }
+  }
+
+  private async syncMajorEventCertificatePaymentTiers(
+    tx: Prisma.TransactionClient,
+    majorEventId: string,
+    renamedTiers: ReadonlyArray<{ previousName: string; nextName: string }>,
+  ): Promise<void> {
+    if (renamedTiers.length === 0) {
+      return;
+    }
+
+    const nextNameByNormalizedPreviousName = new Map(
+      renamedTiers.map(({ previousName, nextName }) => [
+        normalizeAttendancePriceTier(previousName),
+        nextName,
+      ]),
+    );
+    const configs = await tx.certificateConfig.findMany({
+      where: {
+        OR: [
+          { majorEventId },
+          { event: { majorEventId } },
+          { eventGroup: { majorEventId } },
+        ],
+      },
+      select: {
+        id: true,
+        paymentTiers: true,
+      },
+    });
+
+    for (const config of configs) {
+      const paymentTiers = config.paymentTiers.map(
+        (paymentTier) =>
+          nextNameByNormalizedPreviousName.get(normalizeAttendancePriceTier(paymentTier)) ?? paymentTier,
+      );
+      if (paymentTiers.every((paymentTier, index) => paymentTier === config.paymentTiers[index])) {
+        continue;
+      }
+
+      await tx.certificateConfig.update({
+        where: { id: config.id },
+        data: { paymentTiers },
+      });
     }
   }
 

@@ -50,15 +50,24 @@ describe('AttendanceCategoryService', () => {
       attendances: [{ eventId: 'event-1', personId: 'person-1' }],
     });
     await service.refreshForEvent('event-1', tx as never);
-    expect(tx.eventAttendance.update).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
       data: { category: AttendanceCategory.NON_REGULAR, currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE },
     }));
-    tx.eventAttendance.findUnique.mockResolvedValue({
-      personId: 'person-1',
-      event: { id: 'event-1', allowSubscription: false, majorEventId: 'major-event', majorEvent: { isPaymentRequired: false }, regularAttendancePriceTierIds: [] },
-    });
+    tx.eventAttendance.findMany.mockResolvedValue([
+      {
+        personId: 'person-1',
+        eventId: 'event-1',
+        event: {
+          id: 'event-1',
+          allowSubscription: false,
+          majorEventId: 'major-event',
+          majorEvent: { isPaymentRequired: false },
+          regularAttendancePriceTierIds: [],
+        },
+      },
+    ]);
     await service.refreshForEvent('event-1', tx as never);
-    expect(tx.eventAttendance.update).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
       data: { category: AttendanceCategory.REGULAR, currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET },
     }));
   });
@@ -279,14 +288,9 @@ describe('AttendanceCategoryService', () => {
         },
       }),
     );
-    expect(tx.eventAttendance.update).toHaveBeenCalledWith(
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          personId_eventId: {
-            personId: 'person-1',
-            eventId: 'major-session-1',
-          },
-        },
+        where: { OR: [{ personId: 'person-1', eventId: 'major-session-1' }] },
       }),
     );
   });
@@ -334,7 +338,103 @@ describe('AttendanceCategoryService', () => {
         },
       }),
     );
-    expect(tx.eventAttendance.update).toHaveBeenCalled();
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalled();
+  });
+
+  it('uses bounded reads and grouped writes for large attendance batches', async () => {
+    const attendances = Array.from({ length: 1001 }, (_, index) => ({
+      personId: `person-${index}`,
+      eventId: 'event-1',
+    }));
+    const tx = createTx({
+      event: {
+        id: 'event-1',
+        allowSubscription: false,
+        majorEventId: null,
+        majorEvent: null,
+      },
+      hasEventSubscription: false,
+      attendances,
+    });
+
+    await service.refreshForEvent('event-1', tx as never);
+
+    expect(tx.eventAttendance.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.eventSubscription.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.eventAttendance.findUnique).not.toHaveBeenCalled();
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledTimes(3);
+    expect(tx.eventAttendance.update).not.toHaveBeenCalled();
+  });
+
+  it('keeps tier eligibility scoped to each event policy in a shared batch', async () => {
+    const eventOne = {
+      id: 'event-1',
+      allowSubscription: false,
+      majorEventId: 'major-event',
+      majorEvent: { isPaymentRequired: false },
+      regularAttendancePriceTierIds: ['tier-one'],
+    };
+    const eventTwo = {
+      ...eventOne,
+      id: 'event-2',
+      regularAttendancePriceTierIds: ['tier-two'],
+    };
+    const tx = {
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          { personId: 'person-1', eventId: 'event-1', event: eventOne },
+          { personId: 'person-2', eventId: 'event-2', event: eventTwo },
+        ]),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+      },
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: 'person-1',
+            majorEventId: 'major-event',
+            paymentTier: 'Kit completo',
+            subscriptionStatus: 'CONFIRMED',
+          },
+          {
+            personId: 'person-2',
+            majorEventId: 'major-event',
+            paymentTier: 'Kit completo',
+            subscriptionStatus: 'CONFIRMED',
+          },
+        ]),
+        findFirst: jest.fn(),
+      },
+      priceTier: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'tier-one', name: 'Kit completo', price: { majorEventId: 'major-event' } },
+          { id: 'tier-two', name: 'Outro kit', price: { majorEventId: 'major-event' } },
+        ]),
+      },
+    };
+
+    await service.refreshForEventPersons(['event-1', 'event-2'], ['person-1', 'person-2'], tx as never);
+
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledTimes(2);
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: {
+        category: AttendanceCategory.REGULAR,
+        currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET,
+      },
+      where: { OR: [{ personId: 'person-1', eventId: 'event-1' }] },
+    }));
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: {
+        category: AttendanceCategory.NON_REGULAR,
+        currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
+      },
+      where: { OR: [{ personId: 'person-2', eventId: 'event-2' }] },
+    }));
   });
 });
 
@@ -353,7 +453,11 @@ function createTx(input: {
   attendances?: { personId: string; eventId: string }[];
 }) {
   return {
-    priceTier: { findMany: jest.fn().mockResolvedValue([{ name: 'Kit completo' }]) },
+    priceTier: {
+      findMany: jest
+        .fn()
+        .mockResolvedValue([{ id: 'kit-tier', name: 'Kit completo', price: { majorEventId: 'major-event' } }]),
+    },
     eventAttendance: {
       findUnique: jest.fn().mockResolvedValue(
         input.attendanceExists === false
@@ -364,12 +468,33 @@ function createTx(input: {
             },
       ),
       update: jest.fn().mockResolvedValue({}),
-      findMany: jest.fn().mockResolvedValue(input.attendances ?? []),
+      updateMany: jest.fn().mockResolvedValue({ count: input.attendances?.length ?? 0 }),
+      findMany: jest.fn().mockResolvedValue(
+        (input.attendances ?? []).map((attendance) => ({
+          ...attendance,
+          event: input.event,
+        })),
+      ),
     },
     eventSubscription: {
+      findMany: jest.fn().mockResolvedValue(
+        input.hasEventSubscription ? [{ eventId: input.event.id, personId: 'person-1' }] : [],
+      ),
       findFirst: jest.fn().mockResolvedValue(input.hasEventSubscription ? { id: 'subscription-1' } : null),
     },
     majorEventSubscription: {
+      findMany: jest.fn().mockResolvedValue(
+        input.majorEventSubscriptionStatus
+          ? [
+              {
+                majorEventId: input.event.majorEventId,
+                personId: 'person-1',
+                paymentTier: input.paymentTier,
+                subscriptionStatus: input.majorEventSubscriptionStatus,
+              },
+            ]
+          : [],
+      ),
       findFirst: jest.fn().mockResolvedValue(
         input.majorEventSubscriptionStatus
           ? {
