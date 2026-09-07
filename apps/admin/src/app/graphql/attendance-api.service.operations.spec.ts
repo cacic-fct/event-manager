@@ -301,7 +301,7 @@ describe('AttendanceApiService operation contracts', () => {
     const source = FakeEventSource.instances[0] as FakeEventSource;
 
     expect(source.url).toBe(
-      '/api/event-attendances/events/event%20%2F%201/analytics/events' +
+      '/api/event-attendances/events/event%20%2F%201/statistics/events' +
         '?windowStart=2026-08-16T12%3A00%3A00.000Z&windowEnd=2026-08-16T13%3A00%3A00.000Z',
     );
     expect(source.init).toEqual({ withCredentials: true });

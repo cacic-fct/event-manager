@@ -1,4 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
+import { PATH_METADATA, SSE_METADATA } from '@nestjs/common/constants';
 import { firstValueFrom, take } from 'rxjs';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { AttendanceAnalyticsController } from './attendance-analytics.controller';
@@ -17,6 +18,13 @@ describe('AttendanceAnalyticsController', () => {
     expect(
       Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, AttendanceAnalyticsController.prototype.streamAnalytics),
     ).toEqual([Permission.EventAttendance.Read]);
+  });
+
+  it('exposes the statistics SSE path', () => {
+    const handler = AttendanceAnalyticsController.prototype.streamAnalytics;
+
+    expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('events/:eventId/statistics/events');
+    expect(Reflect.getMetadata(SSE_METADATA, handler)).toBe(true);
   });
 
   it('emits an immediate snapshot with replay scope bound to event, window, and user', async () => {
