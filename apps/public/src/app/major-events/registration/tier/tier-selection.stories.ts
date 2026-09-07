@@ -27,6 +27,11 @@ const meta: Meta<SubscriptionTierSelection> = {
 };
 export default meta;
 type Story = StoryObj<SubscriptionTierSelection>;
+
+export const Playground: Story = {
+  globals: { theme: 'light', network: 'online' },
+};
+
 export const CompareModalities: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -37,6 +42,12 @@ export const CompareModalities: Story = {
 };
 export const SportsOnly: Story = { args: { selectedName: 'Esportes' } };
 export const NoActivities: Story = { args: { selectedName: 'Participação no grande evento' } };
+
+export const DarkReducedMotion: Story = {
+  args: { selectedName: 'Eventos e esportes' },
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+};
+
 export const SingleTier: Story = { args: { tiers: [tiers[0]], selectedName: 'Eventos' } };
 export const TournamentClosed: Story = {
   args: { selectedName: 'Esportes', majorEvent: createPublicMajorEvent({ isPaymentRequired: true, sportsTournament: { id: 'tournament', selfSubscriptionEnabled: true, registrationOpen: false } }) },
