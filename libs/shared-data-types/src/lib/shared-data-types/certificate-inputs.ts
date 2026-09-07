@@ -67,6 +67,9 @@ export class CertificateConfigCreateInput {
   @Field(() => String, { nullable: true })
   certificateTypeLabel?: string;
 
+  @Field(() => [String], { nullable: true })
+  paymentTiers?: string[];
+
   @Field(() => String, { nullable: true })
   certificateFieldsJson?: string;
 }
@@ -111,6 +114,9 @@ export class CertificateConfigUpdateInput {
 
   @Field(() => String, { nullable: true })
   certificateTypeLabel?: string;
+
+  @Field(() => [String], { nullable: true })
+  paymentTiers?: string[];
 
   @Field(() => String, { nullable: true })
   certificateFieldsJson?: string;

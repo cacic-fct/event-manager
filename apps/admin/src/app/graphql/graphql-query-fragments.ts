@@ -473,6 +473,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   isActive
   issuedTo
   certificateTypeLabel
+  paymentTiers
   certificateFieldsJson
   createdAt
   deletedAt

@@ -59,6 +59,33 @@ export class CertificateEligibilityService {
     config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
+    const recipients = await this.resolveRecipients(config, personId);
+    if (config.issuedTo !== CertificateIssuedTo.ATTENDEE || !config.paymentTiers?.length || recipients.length === 0) {
+      return recipients;
+    }
+
+    const majorEventId = config.scope === CertificateScope.MAJOR_EVENT
+      ? config.majorEventId
+      : config.scope === CertificateScope.EVENT ? config.event?.majorEventId : null;
+    if (!majorEventId) return [];
+
+    const subscriptions = await this.prisma.majorEventSubscription.findMany({
+      where: {
+        majorEventId,
+        deletedAt: null,
+        personId: { in: recipients.map((recipient) => recipient.person.id) },
+        paymentTier: { in: config.paymentTiers },
+      },
+      select: { personId: true },
+    });
+    const allowedPeople = new Set(subscriptions.map((subscription) => subscription.personId));
+    return recipients.filter((recipient) => allowedPeople.has(recipient.person.id));
+  }
+
+  private async resolveRecipients(
+    config: CertificateConfigRecord,
+    personId?: string,
+  ): Promise<EligibleCertificateRecipient[]> {
     if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       return personId ? this.resolveManualRecipient(config, personId) : [];
     }

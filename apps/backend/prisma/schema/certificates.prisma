@@ -106,6 +106,9 @@ model CertificateConfig {
   issuedTo             CertificateIssuedTo @default(OTHER)
   certificateTypeLabel String?
 
+  // Empty means all tiers; names match the registration paymentTier snapshot.
+  paymentTiers String[] @default([])
+
   certificates Certificate[]
 
   // Additional variable fields, depending on each template's needs

@@ -926,6 +926,7 @@ export function createAdminCertificateConfigFromInput(
       isActive: input.isActive ?? true,
       issuedTo: input.issuedTo ?? 'ATTENDEE',
       certificateTypeLabel: input.certificateTypeLabel,
+      paymentTiers: input.paymentTiers ?? [],
       certificateFieldsJson: input.certificateFieldsJson,
       ...overrides,
     },

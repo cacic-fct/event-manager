@@ -125,6 +125,9 @@ export class CertificateConfig {
   @Field(() => String, { nullable: true })
   certificateTypeLabel?: string | null;
 
+  @Field(() => [String])
+  paymentTiers!: string[];
+
   @Field(() => String, { nullable: true })
   certificateFieldsJson?: string | null;
 

@@ -64,6 +64,7 @@ type CertificateConfigFormModel = {
   isActive: boolean;
   issuedTo: CertificateIssuedToOption;
   certificateTypeLabel: string;
+  paymentTiers: string[];
   certificateFields: Record<string, string>;
 };
 type CertificateFieldDefinition = {
@@ -96,6 +97,14 @@ export class CertificatesService {
   readonly issuableEventGroups = signal<EventGroup[]>([]);
   readonly issuableMajorEvents = signal<MajorEvent[]>([]);
   readonly certificateFolders = signal<CertificateFolder[]>([]);
+  readonly availablePaymentTiers = signal<string[]>([]);
+  readonly paymentTierOptions = computed(() => [...new Set([
+    ...this.availablePaymentTiers(),
+    ...this.certificateConfigModel().paymentTiers,
+  ])]);
+  readonly showPaymentTiers = computed(() =>
+    this.certificateConfigModel().issuedTo === 'ATTENDEE' && this.paymentTierOptions().length > 0,
+  );
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
@@ -313,6 +322,14 @@ export class CertificatesService {
   }
 
   private async applyTargetSelection(target: IssuableTarget): Promise<void> {
+    this.availablePaymentTiers.set([]);
+    const scope = this.targetFiltersForm.controls.scope.value;
+    const majorEventId = scope === 'MAJOR_EVENT' ? target.id
+      : scope === 'EVENT' ? (target as Event).majorEventId : null;
+    if (majorEventId) {
+      const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
+      this.availablePaymentTiers.set(majorEvent.majorEventPrices?.flatMap((price) => price.tiers.map((tier) => tier.name)) ?? []);
+    }
     this.selectedTarget.set({
       id: target.id,
       name: target.name,
@@ -358,6 +375,7 @@ export class CertificatesService {
       shouldAutofillSecondPage: config.shouldAutofillSecondPage,
       secondPageText: config.secondPageText ?? '',
       isActive: config.isActive,
+      paymentTiers: config.paymentTiers ?? [],
       issuedTo: this.buildIssuedToOption(
         config.issuedTo,
         this.parseLecturerEventCategory(config.certificateFieldsJson),
@@ -930,6 +948,7 @@ export class CertificatesService {
       shouldAutofillSecondPage: isStandalone ? false : raw.shouldAutofillSecondPage,
       secondPageText: isStandalone || !raw.shouldAutofillSecondPage ? raw.secondPageText.trim() || null : null,
       isActive: raw.isActive,
+      paymentTiers: raw.issuedTo === 'ATTENDEE' && !isStandalone ? raw.paymentTiers : [],
       issuedTo: isStandalone ? 'OTHER' : this.normalizeIssuedTo(raw.issuedTo),
       certificateTypeLabel: this.buildCertificateTypeLabel(
         isStandalone ? 'OTHER' : raw.issuedTo,
@@ -1116,6 +1135,7 @@ export class CertificatesService {
       isActive: true,
       issuedTo: isStandalone ? 'OTHER' : 'ATTENDEE',
       certificateTypeLabel: isStandalone ? 'Manual' : 'Participação',
+      paymentTiers: [],
       certificateFields: {},
     };
   }

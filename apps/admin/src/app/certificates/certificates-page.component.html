@@ -400,6 +400,18 @@
               </mat-form-field>
             }
 
+            @if (workspace.showPaymentTiers()) {
+              <mat-form-field>
+                <mat-label>Faixas de preço para emissão</mat-label>
+                <mat-select multiple [formField]="workspace.certificateConfigForm.paymentTiers" placeholder="Todas as faixas">
+                  @for (tier of workspace.paymentTierOptions(); track tier) {
+                    <mat-option [value]="tier">{{ tier }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>Sem seleção, emite para todas as faixas. Aplica-se apenas a participantes.</mat-hint>
+              </mat-form-field>
+            }
+
             @if (workspace.shouldShowCertificateTypeLabel()) {
               <mat-form-field>
                 <mat-label>Tipo exibido no verso</mat-label>

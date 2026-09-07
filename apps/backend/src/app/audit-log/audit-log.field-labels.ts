@@ -45,6 +45,7 @@ const FIELD_LABELS: Record<string, string> = {
   shouldAllowOralAttendance: 'Permitir chamada oral',
   paymentDate: 'Data de pagamento',
   paymentTier: 'Faixa de pagamento',
+  paymentTiers: 'Faixas de preço para emissão',
   permission: 'Permissão',
   personId: 'Pessoa',
   phone: 'Telefone',

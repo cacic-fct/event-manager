@@ -164,6 +164,24 @@ describe('CertificatesService', () => {
     vi.useRealTimers();
   });
 
+  it('defaults to all tiers and saves multiple selected tiers', async () => {
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual([]);
+    service.certificateConfigForm.paymentTiers().value.set(['Aluno', 'Professor']);
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual(['Aluno', 'Professor']);
+  });
+
+  it('restores tier selections and clears them when saving non-participant certificates', async () => {
+    service.selectCertificateConfig(createAdminCertificateConfig({ paymentTiers: ['Aluno', 'Professor'] }, certificateTemplate));
+    expect(service.certificateConfigForm.paymentTiers().value()).toEqual(['Aluno', 'Professor']);
+    expect(service.showPaymentTiers()).toBe(true);
+    service.onCertificateIssuedToChanged('LECTURER_PALESTRA');
+    expect(service.showPaymentTiers()).toBe(false);
+    await service.saveCertificateConfig();
+    expect(lastPayload?.paymentTiers).toEqual([]);
+  });
+
   it('uses template defaults without materializing them as config overrides', async () => {
     await service.saveCertificateConfig();
 

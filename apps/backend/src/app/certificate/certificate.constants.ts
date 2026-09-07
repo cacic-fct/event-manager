@@ -181,6 +181,7 @@ export const CERTIFICATE_CONFIG_SELECT = {
   isActive: true,
   issuedTo: true,
   certificateTypeLabel: true,
+  paymentTiers: true,
   certificateFields: true,
   createdAt: true,
   createdById: true,
