@@ -22,7 +22,7 @@ export class AttendanceAnalyticsController {
     private readonly replay: SseReplayService,
   ) {}
 
-  @Sse('events/:eventId/analytics/events')
+  @Sse('events/:eventId/statistics/events')
   @RequirePermissions(Permission.EventAttendance.Read)
   @ApiOperation({ summary: 'Stream replayable event attendance analytics snapshots' })
   @ApiProduces('text/event-stream')

@@ -438,7 +438,7 @@ export class AttendanceApiService {
       ? `?windowStart=${encodeURIComponent(window.start)}&windowEnd=${encodeURIComponent(window.end)}`
       : '';
     return watchReplayableEventSource(
-      `/api/event-attendances/events/${encodeURIComponent(eventId)}/analytics/events${query}`,
+      `/api/event-attendances/events/${encodeURIComponent(eventId)}/statistics/events${query}`,
       {
         decode: (event) => {
           const parsed = JSON.parse(event.data) as {
