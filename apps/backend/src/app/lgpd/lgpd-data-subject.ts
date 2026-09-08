@@ -6,15 +6,13 @@ export async function resolveDataSubject(prisma: PrismaService, input: LgpdUserL
   const userIds = new Set<string>();
   const personIds = new Set<string>();
   const emails = new Set<string>();
-  const queriedEmails = new Set<string>();
+  // Account ids, recorded account merges, and person foreign keys are the only
+  // identity edges. The request email is metadata from the caller and must not
+  // turn a shared contact address into an export or deletion edge.
   const initialUserId = input.userId.trim();
-  const initialEmail = normalizeEmail(input.email);
 
   if (initialUserId) {
     userIds.add(initialUserId);
-  }
-  if (initialEmail) {
-    emails.add(initialEmail);
   }
 
   let changed = true;
@@ -22,16 +20,16 @@ export async function resolveDataSubject(prisma: PrismaService, input: LgpdUserL
     changed = false;
     changed = (await expandUsers(prisma, userIds, emails)) || changed;
     changed = (await expandAccountMerges(prisma, userIds)) || changed;
-    changed = (await expandPeopleByEmail(prisma, personIds, emails, queriedEmails)) || changed;
-    changed = (await expandPeople(prisma, userIds, personIds, emails)) || changed;
+    changed = (await expandPeople(prisma, userIds, personIds)) || changed;
   }
 
   const people = await findPeopleByIds(prisma, [...personIds]);
+  const safeEmails = await keepUnambiguousUserEmailMetadata(prisma, emails, userIds);
 
   return {
     userIds: [...userIds],
     personIds: people.map((person) => person.id),
-    emails: [...emails],
+    emails: safeEmails,
     people,
   };
 }
@@ -47,28 +45,8 @@ async function expandUsers(prisma: PrismaService, userIds: Set<string>, emails: 
 
     for (const user of users) {
       changed = add(userIds, user.id) || changed;
-      const email = normalizeEmail(user.email);
-      if (email) {
-        changed = add(emails, email) || changed;
-      }
-    }
-  }
-
-  if (emails.size > 0) {
-    const users = await prisma.user.findMany({
-      where: {
-        OR: [...emails].map((email) => ({
-          email: {
-            equals: email,
-            mode: 'insensitive' as const,
-          },
-        })),
-      },
-      select: { id: true, email: true },
-    });
-
-    for (const user of users) {
-      changed = add(userIds, user.id) || changed;
+      // These emails are used only for legacy actor metadata after we have
+      // resolved the authoritative account graph.
       const email = normalizeEmail(user.email);
       if (email) {
         changed = add(emails, email) || changed;
@@ -108,44 +86,10 @@ async function expandAccountMerges(prisma: PrismaService, userIds: Set<string>):
   return changed;
 }
 
-async function expandPeopleByEmail(
-  prisma: PrismaService,
-  personIds: Set<string>,
-  emails: Set<string>,
-  queriedEmails: Set<string>,
-): Promise<boolean> {
-  let changed = false;
-
-  for (const email of emails) {
-    if (queriedEmails.has(email)) {
-      continue;
-    }
-
-    queriedEmails.add(email);
-    const people = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id
-      FROM people
-      WHERE lower(email) = ${email}
-        OR EXISTS (
-          SELECT 1
-          FROM unnest("secondaryEmails") AS secondary_email(email)
-          WHERE lower(secondary_email.email) = ${email}
-        )
-    `;
-
-    for (const person of people) {
-      changed = add(personIds, person.id) || changed;
-    }
-  }
-
-  return changed;
-}
-
 async function expandPeople(
   prisma: PrismaService,
   userIds: Set<string>,
   personIds: Set<string>,
-  emails: Set<string>,
 ): Promise<boolean> {
   const where = peopleResolutionWhere(userIds, personIds);
   if (!where) {
@@ -160,8 +104,6 @@ async function expandPeople(
       userId: true,
       externalRef: true,
       mergedIntoId: true,
-      email: true,
-      secondaryEmails: true,
     },
   });
 
@@ -179,12 +121,6 @@ async function expandPeople(
       changed = add(userIds, externalUserId) || changed;
     }
 
-    for (const email of [person.email, ...person.secondaryEmails]) {
-      const normalizedEmail = normalizeEmail(email);
-      if (normalizedEmail) {
-        changed = add(emails, normalizedEmail) || changed;
-      }
-    }
   }
 
   return changed;
@@ -220,6 +156,33 @@ async function findPeopleByIds(prisma: PrismaService, personIds: string[]) {
     include: { user: true, mergedFrom: true, mergedInto: true },
     orderBy: { createdAt: 'asc' },
   });
+}
+
+async function keepUnambiguousUserEmailMetadata(
+  prisma: PrismaService,
+  emails: Set<string>,
+  userIds: Set<string>,
+): Promise<string[]> {
+  const candidates = [...emails];
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  const matchingUsers = await prisma.user.findMany({
+    where: {
+      OR: candidates.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })),
+    },
+    select: { id: true, email: true },
+  });
+  const ambiguous = new Set<string>();
+
+  for (const user of matchingUsers) {
+    const email = normalizeEmail(user.email);
+    if (email && !userIds.has(user.id)) {
+      ambiguous.add(email);
+    }
+  }
+  return candidates.filter((email) => !ambiguous.has(email));
 }
 
 function normalizeEmail(email?: string | null): string | null {

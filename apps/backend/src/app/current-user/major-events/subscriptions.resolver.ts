@@ -606,6 +606,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           });
           return {
             subscription: acceptedSubscription,
+            consentOnly: true,
             createdSubscription: false,
             submittedFormIds,
           };
@@ -941,7 +942,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     await this.eventForms.emitResultsDeltas(upsertResult.submittedFormIds);
     const subscription = upsertResult.subscription;
 
-    const orderedEvents = selectedEventIds.map((eventId) =>
+    const persistedEvents = 'consentOnly' in upsertResult
+      ? await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(person.id, input.majorEventId)
+      : null;
+    const orderedEvents = persistedEvents?.selectedEvents ?? selectedEventIds.map((eventId) =>
       this.mapper.mapPublicEvent(selectedEventsById.get(eventId) as EventRecord),
     );
 
@@ -955,7 +959,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       paymentTier: subscription.paymentTier ?? undefined,
       imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
       selectedEvents: orderedEvents,
-      notSubscribedEvents: [],
+      notSubscribedEvents: persistedEvents?.notSubscribedEvents ?? [],
     };
   }
 

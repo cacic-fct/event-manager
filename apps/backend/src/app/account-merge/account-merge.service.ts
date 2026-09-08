@@ -24,6 +24,14 @@ import {
   permissionRelationScopeKey,
   unionPermissionRelationValidity,
 } from '../people/permission-relation-validity';
+import { toAttendanceCreateData, toAttendanceSnapshot } from '../people/merge-candidates/operations/attendance';
+import { moveSportsPersonRelations } from '../people/merge-candidates/operations/sports-representatives';
+import {
+  AttendanceSnapshot,
+  SportsOfficialAssignmentSnapshot,
+  SportsTeamRepresentativeSnapshot,
+  SportsTournamentParticipantSnapshot,
+} from '../people/merge-candidates/operations/types';
 import {
   AccountMergeAcknowledgementDto,
   AccountMergeNotificationDto,
@@ -52,14 +60,6 @@ type PersonSnapshot = {
   deletedAt: string | null;
 };
 
-type AttendanceSnapshot = {
-  eventId: string;
-  attendedAt: string;
-  createdAt: string;
-  createdById: string | null;
-  committedById: string | null;
-};
-
 type LectureSnapshot = {
   eventId: string;
   createdAt: string;
@@ -80,6 +80,13 @@ type MovedRelationsSnapshot = {
   archivedRoleAssignmentIds: string[];
   movedPermissionGroupMembershipIds: string[];
   archivedPermissionGroupMembershipIds: string[];
+  movedSportsTeamRepresentativeIds: string[];
+  revokedSportsTeamRepresentativeIds: string[];
+  sportsTeamRepresentativeSnapshots: SportsTeamRepresentativeSnapshot[];
+  movedSportsTournamentParticipantIds: string[];
+  sportsTournamentParticipantSnapshots: SportsTournamentParticipantSnapshot[];
+  movedSportsOfficialAssignmentIds: string[];
+  sportsOfficialAssignmentSnapshots: SportsOfficialAssignmentSnapshot[];
 };
 
 const MAX_ACCOUNT_MERGE_SCORE_CANDIDATES = 100;
@@ -358,7 +365,7 @@ export class AccountMergeService {
 
     const targetSnapshot = this.toPersonSnapshot(targetPerson);
     const sourceSnapshot = this.toPersonSnapshot(sourcePerson);
-    const movedRelations = await this.moveRelations(tx, targetPerson.id, sourcePerson.id);
+    const movedRelations = await this.moveRelations(tx, targetPerson.id, sourcePerson.id, actorId);
     const targetData = this.buildTargetMergeData(targetPerson, sourcePerson, finalPersonData);
 
     await tx.people.update({
@@ -471,7 +478,14 @@ export class AccountMergeService {
     tx: Prisma.TransactionClient,
     targetPersonId: string,
     sourcePersonId: string,
+    revokedRepresentativeById: string | null = null,
   ): Promise<MovedRelationsSnapshot> {
+    const sportsRelations = await moveSportsPersonRelations(
+      tx,
+      targetPersonId,
+      sourcePersonId,
+      revokedRepresentativeById,
+    );
     const sourceAttendances = await tx.eventAttendance.findMany({
       where: { personId: sourcePersonId },
     });
@@ -499,13 +513,7 @@ export class AccountMergeService {
     const permissionRelations = await this.movePermissionRelations(tx, targetPersonId, sourcePersonId);
 
     return {
-      sourceAttendances: sourceAttendances.map((attendance) => ({
-        eventId: attendance.eventId,
-        attendedAt: attendance.attendedAt.toISOString(),
-        createdAt: attendance.createdAt.toISOString(),
-        createdById: attendance.createdById,
-        committedById: attendance.committedById,
-      })),
+      sourceAttendances: sourceAttendances.map(toAttendanceSnapshot),
       sourceLectures: sourceLectures.map((lecture) => ({
         eventId: lecture.eventId,
         createdAt: lecture.createdAt.toISOString(),
@@ -519,6 +527,7 @@ export class AccountMergeService {
       movedEventFormResponseIds: movedEventFormResponses.movedIds,
       coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
       ...permissionRelations,
+      ...sportsRelations,
     };
   }
 
@@ -847,21 +856,16 @@ export class AccountMergeService {
         })
       : [];
     const existingEventIds = new Set(existing.map((item) => item.eventId));
+    // When both identities attended the same event, the target row remains
+    // authoritative. The complete source row is retained in the merge
+    // snapshot, so a supported manual undo can restore it to the source.
     const inserted = sourceAttendances.filter((attendance) => !existingEventIds.has(attendance.eventId));
 
     if (inserted.length > 0) {
       await tx.eventAttendance.createMany({
-        data: inserted.map((attendance) => ({
-          personId: targetPersonId,
-          eventId: attendance.eventId,
-          attendedAt: attendance.attendedAt,
-          createdAt: attendance.createdAt,
-          createdById: attendance.createdById,
-          committedById: attendance.committedById,
-          createdByMethod: attendance.createdByMethod,
-          category: attendance.category,
-          currentAssessment: attendance.currentAssessment,
-        })),
+        data: inserted.map((attendance) =>
+          toAttendanceCreateData(targetPersonId, toAttendanceSnapshot(attendance)),
+        ),
         skipDuplicates: true,
       });
     }
@@ -978,17 +982,15 @@ export class AccountMergeService {
     for (const row of source) {
       const conflict = row.deletedAt === null ? activeTargetByMajorEvent.get(row.majorEventId) : undefined;
       if (conflict) {
+        const financialResolution = this.resolveMajorEventSubscriptionFinancialState(conflict, row);
         await tx.majorEventSubscription.update({
           where: { id: conflict.id },
           data: {
-            amountPaid: conflict.amountPaid ?? row.amountPaid,
-            paymentDate: conflict.paymentDate ?? row.paymentDate,
-            paymentTier: conflict.paymentTier ?? row.paymentTier,
+            ...financialResolution,
             desiredCourses: conflict.desiredCourses ?? row.desiredCourses,
             desiredLectures: conflict.desiredLectures ?? row.desiredLectures,
             desiredUncategorized: conflict.desiredUncategorized ?? row.desiredUncategorized,
             imageLicenseAgreementAccepted: conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
-            subscriptionStatus: this.mergeSubscriptionStatus(conflict.subscriptionStatus, row.subscriptionStatus),
           },
         });
         await this.mergeMajorEventSubscriptionChildren(tx, conflict.id, row.id, targetPersonId);
@@ -1049,6 +1051,70 @@ export class AccountMergeService {
   }
 
   private mergeSubscriptionStatus(left: SubscriptionStatus, right: SubscriptionStatus): SubscriptionStatus {
+    return this.subscriptionStatusRank(left) >= this.subscriptionStatusRank(right) ? left : right;
+  }
+
+  private resolveMajorEventSubscriptionFinancialState(
+    target: {
+      amountPaid: number | null;
+      paymentDate: Date | null;
+      paymentTier: string | null;
+      subscriptionStatus: SubscriptionStatus;
+      receiptRejectionReason?: string | null;
+      receiptValidatedAt?: Date | null;
+      receiptValidatedBy?: string | null;
+    },
+    source: {
+      amountPaid: number | null;
+      paymentDate: Date | null;
+      paymentTier: string | null;
+      subscriptionStatus: SubscriptionStatus;
+      receiptRejectionReason?: string | null;
+      receiptValidatedAt?: Date | null;
+      receiptValidatedBy?: string | null;
+    },
+  ) {
+    const sameFinancialTuple = this.sameFinancialTuple(target, source);
+    const bothConfirmed =
+      target.subscriptionStatus === SubscriptionStatus.CONFIRMED &&
+      source.subscriptionStatus === SubscriptionStatus.CONFIRMED;
+    const sameStatus = target.subscriptionStatus === source.subscriptionStatus;
+    if (!sameFinancialTuple && (bothConfirmed || sameStatus)) {
+      throw new ConflictException(
+        'Cannot merge major-event subscriptions with conflicting payment tuples at the same status.',
+      );
+    }
+
+    // A status winner owns the entire payment tuple. This prevents a
+    // confirmed status from being paired with the other row's expected price.
+    const winner =
+      this.subscriptionStatusRank(source.subscriptionStatus) > this.subscriptionStatusRank(target.subscriptionStatus)
+        ? source
+        : target;
+
+    return {
+      amountPaid: winner.amountPaid,
+      paymentDate: winner.paymentDate,
+      paymentTier: winner.paymentTier,
+      subscriptionStatus: this.mergeSubscriptionStatus(target.subscriptionStatus, source.subscriptionStatus),
+      receiptRejectionReason: winner.receiptRejectionReason ?? null,
+      receiptValidatedAt: winner.receiptValidatedAt ?? source.receiptValidatedAt ?? null,
+      receiptValidatedBy: winner.receiptValidatedBy ?? source.receiptValidatedBy ?? null,
+    };
+  }
+
+  private sameFinancialTuple(
+    left: { amountPaid: number | null; paymentDate: Date | null; paymentTier: string | null },
+    right: { amountPaid: number | null; paymentDate: Date | null; paymentTier: string | null },
+  ): boolean {
+    return (
+      left.amountPaid === right.amountPaid &&
+      left.paymentTier === right.paymentTier &&
+      left.paymentDate?.getTime() === right.paymentDate?.getTime()
+    );
+  }
+
+  private subscriptionStatusRank(status: SubscriptionStatus): number {
     const rank: Record<SubscriptionStatus, number> = {
       WAITING_RECEIPT_UPLOAD: 1,
       RECEIPT_UNDER_REVIEW: 2,
@@ -1059,7 +1125,7 @@ export class AccountMergeService {
       CONFIRMED: 3,
       CANCELED: 0,
     };
-    return rank[left] >= rank[right] ? left : right;
+    return rank[status];
   }
 
   private async recordFailure(

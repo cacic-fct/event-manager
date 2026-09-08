@@ -176,6 +176,9 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         const readiness =
           action.type === SportsMatchActionType.START ? await loadSportsMatchReadiness(tx, action.matchId) : undefined;
         this.validateCommand(action.type, payload, current, { ...action.match, readiness }, 'ADMIN');
+        await this.validateActionRelations(
+          tx, action.match, action.type, payload as Prisma.InputJsonValue, action.scorerRosterEntryId,
+        );
       }
       const reviewed = await tx.sportsMatchAction.update({
         where: { id: action.id },

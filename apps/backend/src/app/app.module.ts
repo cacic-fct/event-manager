@@ -263,6 +263,7 @@ const queueImports = useInMemoryTestInfra
   : [
       BullModule.forRoot({
         connection: getRedisConnectionOptions(),
+        prefix: process.env.BACKEND_E2E_QUEUE_PREFIX,
       }),
       BullModule.registerQueue({
         name: 'weather',

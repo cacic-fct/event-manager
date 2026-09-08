@@ -75,9 +75,17 @@ describe('merge candidate snapshot helpers', () => {
         sourceAttendances: [
           {
             eventId: 'event-1',
+            status: 'ABSENT',
+            category: 'REGULAR',
+            currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
             attendedAt: '2026-05-21T12:00:00.000Z',
             createdAt: '2026-05-21T11:00:00.000Z',
             createdById: null,
+            committedById: 'committer-1',
+            createdByMethod: 'ORAL_CALL',
+            collectedLatitude: -22.1,
+            collectedLongitude: -51.4,
+            collectedAccuracyMeters: 8,
           },
         ],
         sourceLectures: [
@@ -96,10 +104,17 @@ describe('merge candidate snapshot helpers', () => {
       sourceAttendances: [
         {
           eventId: 'event-1',
+          status: 'ABSENT',
+          category: 'REGULAR',
+          currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
           attendedAt: '2026-05-21T12:00:00.000Z',
           createdAt: '2026-05-21T11:00:00.000Z',
           createdById: null,
-          committedById: null,
+          committedById: 'committer-1',
+          createdByMethod: 'ORAL_CALL',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
         },
       ],
       sourceLectures: [
@@ -121,6 +136,13 @@ describe('merge candidate snapshot helpers', () => {
       roleAssignmentSnapshots: [],
       roleAssignmentScopeSnapshots: [],
       permissionGroupMembershipSnapshots: [],
+      movedSportsTeamRepresentativeIds: [],
+      revokedSportsTeamRepresentativeIds: [],
+      sportsTeamRepresentativeSnapshots: [],
+      movedSportsTournamentParticipantIds: [],
+      sportsTournamentParticipantSnapshots: [],
+      movedSportsOfficialAssignmentIds: [],
+      sportsOfficialAssignmentSnapshots: [],
     });
   });
 
@@ -129,6 +151,27 @@ describe('merge candidate snapshot helpers', () => {
     expect(() =>
       parseMovedRelations({
         sourceAttendances: [{}],
+        sourceLectures: [],
+        insertedAttendanceEventIds: [],
+        insertedLectureEventIds: [],
+        movedEventSubscriptionIds: [],
+        movedMajorEventSubscriptionIds: [],
+      }),
+    ).toThrow(ConflictException);
+  });
+
+  it('rejects legacy attendance snapshots without status or provenance', () => {
+    expect(() =>
+      parseMovedRelations({
+        sourceAttendances: [
+          {
+            eventId: 'event-1',
+            attendedAt: '2026-05-21T12:00:00.000Z',
+            createdAt: '2026-05-21T11:00:00.000Z',
+            createdById: null,
+            committedById: null,
+          },
+        ],
         sourceLectures: [],
         insertedAttendanceEventIds: [],
         insertedLectureEventIds: [],

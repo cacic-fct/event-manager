@@ -1170,11 +1170,18 @@ export class MajorEventsResolver {
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
       includesEventRegistration: tier.includesEventRegistration !== false,
-      ...(tier.includesSportsRegistration === true ? { includesSportsRegistration: true } : {}),
+      ...(tier.includesSportsRegistration != null
+        ? { includesSportsRegistration: tier.includesSportsRegistration }
+        : {}),
     }));
 
     if (tiers.some((tier) => tier.name.length === 0)) {
       throw new BadRequestException('Price tier names are required.');
+    }
+
+    const names = tiers.map((tier) => normalizeAttendancePriceTier(tier.name));
+    if (new Set(names).size !== names.length) {
+      throw new BadRequestException('Os nomes das faixas de preço devem ser únicos.');
     }
 
     return tiers;

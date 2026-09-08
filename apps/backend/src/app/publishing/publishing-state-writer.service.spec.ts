@@ -57,10 +57,12 @@ describe('PublicationStateWriterService', () => {
       event: {
         findFirst: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       majorEvent: {
         findFirst: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const prisma = {
@@ -216,6 +218,88 @@ describe('PublicationStateWriterService', () => {
           publicationUpdatedBy: 'admin-1',
         },
       }),
+    );
+  });
+
+  it('does not publish or audit an event when its scheduled timestamp changed before the conditional write', async () => {
+    const { auditLog, service, tx } = createService();
+    const scheduledPublishAt = new Date('2026-07-07T11:00:00.000Z');
+    const previous = {
+      ...eventRecord(),
+      publicationState: PublicationState.SCHEDULED,
+      scheduledPublishAt,
+    };
+    tx.event.findFirst.mockResolvedValue(previous);
+    tx.event.update.mockResolvedValue({ ...previous, publicationState: PublicationState.PUBLISHED });
+    (tx.event as { updateMany: jest.Mock }).updateMany = jest.fn().mockResolvedValue({ count: 0 });
+
+    await expect(service.publishScheduledEvent('event-1', scheduledPublishAt, undefined)).resolves.toEqual({
+      eventIds: [],
+      majorEventIds: [],
+    });
+
+    expect((tx.event as { updateMany: jest.Mock }).updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'event-1',
+        deletedAt: null,
+        publicationState: PublicationState.SCHEDULED,
+        scheduledPublishAt: { equals: scheduledPublishAt, lte: now },
+      },
+      data: {
+        publicationState: PublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: now,
+        unpublishedAt: null,
+        publicationScheduledBy: null,
+        publicationUpdatedBy: 'unknown-admin',
+      },
+    });
+    expect(tx.event.update).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('publishes and audits a still-due major event through the conditional transition', async () => {
+    const { auditLog, service, tx } = createService();
+    const scheduledPublishAt = new Date('2026-07-07T11:00:00.000Z');
+    const previous = {
+      ...majorEventRecord(),
+      publicationState: PublicationState.SCHEDULED,
+      scheduledPublishAt,
+    };
+    const updated = { ...previous, publicationState: PublicationState.PUBLISHED, scheduledPublishAt: null, publishedAt: now };
+    tx.majorEvent.findFirst.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
+    tx.majorEvent.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(service.publishScheduledMajorEvent('major-1', scheduledPublishAt, undefined)).resolves.toEqual({
+      eventIds: [],
+      majorEventIds: ['major-1'],
+    });
+
+    expect(tx.majorEvent.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'major-1',
+        deletedAt: null,
+        publicationState: PublicationState.SCHEDULED,
+        scheduledPublishAt: { equals: scheduledPublishAt, lte: now },
+      },
+      data: {
+        publicationState: PublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: now,
+        unpublishedAt: null,
+        publicationScheduledBy: null,
+        publicationUpdatedBy: 'unknown-admin',
+      },
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.MAJOR_EVENT,
+        operation: AuditLogOperation.UPDATE,
+        before: previous,
+        after: updated,
+        summary: 'Conteúdo publicado.',
+      }),
+      tx,
     );
   });
 

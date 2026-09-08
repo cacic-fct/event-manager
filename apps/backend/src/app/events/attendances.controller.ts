@@ -1,4 +1,4 @@
-import { Controller, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
+import { Controller, ForbiddenException, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, EventAttendanceStatus, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,
@@ -11,16 +11,20 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { Observable, interval, map, startWith, switchMap } from 'rxjs';
-import { Request } from 'express';
+import { Observable, defer, interval, map, startWith, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { authenticateHttpRequest, type AuthenticatedRequest } from '../auth/authenticated-request';
+import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
+import { readAuthCookie } from '../auth/auth-cookie-utils';
+import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 import { EventAttendancesScannerFeedSupport } from './attendances/shared/scanner-feed-support';
 import { SseReplayService } from '../realtime/sse-replay.service';
 
-type RequestWithUser = Request & { user?: { sub?: string } };
+type RequestWithUser = AuthenticatedRequest;
 
 class EventAttendanceScannerFeedItemDto {
   @ApiProperty({
@@ -136,6 +140,8 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
     prisma: PrismaService,
     attendanceCategories: AttendanceCategoryService,
     private readonly replay: SseReplayService,
+    private readonly keycloakAuthService: KeycloakAuthService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -174,7 +180,7 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
   ): Observable<MessageEvent> {
     const snapshots = interval(2_000).pipe(
       startWith(0),
-      switchMap(() => this.getScannerFeed(eventId)),
+      switchMap(() => this.authorizedScannerSnapshot(eventId, request)),
       map((attendances) => ({
         data: {
           type: 'event-attendance-scanner-feed',
@@ -183,10 +189,31 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
       })),
     );
 
-    return this.replay.replay(
-      this.replay.scope('event-attendance-scanner-feed', eventId, request.user?.sub ?? request.headers.cookie),
-      lastEventId,
-      snapshots,
+    const scope = this.replay.scope(
+      'event-attendance-scanner-feed',
+      eventId,
+      request.user?.sub ?? readAuthCookie(request, AUTH_SESSION_COOKIE_NAME) ?? request.headers.cookie,
     );
+
+    return defer(() => this.authorizeScannerFeed(eventId, request)).pipe(
+      switchMap(() => this.replay.replay(scope, lastEventId, snapshots)),
+    );
+  }
+
+  private async authorizedScannerSnapshot(eventId: string, request: RequestWithUser) {
+    await this.authorizeScannerFeed(eventId, request);
+    return this.getScannerFeed(eventId);
+  }
+
+  private async authorizeScannerFeed(eventId: string, request: RequestWithUser): Promise<void> {
+    const user = await authenticateHttpRequest(request, this.keycloakAuthService);
+    await this.authorizationPolicy.assertPermissions(user, [Permission.EventAttendance.Read], { eventId });
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, deletedAt: true },
+    });
+    if (!event || event.deletedAt) {
+      throw new ForbiddenException('Attendance feed is not available for this event.');
+    }
   }
 }

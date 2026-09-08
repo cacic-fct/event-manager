@@ -1,7 +1,7 @@
 import {
   PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB,
   PRIZE_DRAW_PRESENTATION_GRACE_MS,
-  PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS,
+  PRIZE_DRAW_RECONCILIATION_PAGE_SIZE,
   PrizeDrawNotificationJobsService,
   PRIZE_DRAW_PRESENTATION_JOB,
   PRIZE_DRAW_WINNER_JOB,
@@ -186,9 +186,9 @@ describe('PrizeDrawNotificationJobsService', () => {
       expect(context.prisma.prizeDrawSpin.findMany).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
-          where: expect.objectContaining({
-            drawnAt: { gte: new Date(now.getTime() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
-          }),
+          where: { presentationAcknowledgedAt: null, undoneAt: null },
+          orderBy: [{ drawnAt: 'asc' }, { id: 'asc' }],
+          take: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE,
         }),
       );
       expect(context.queue.add).toHaveBeenCalledWith(
@@ -220,6 +220,58 @@ describe('PrizeDrawNotificationJobsService', () => {
       { spinId: 'spin-undone' },
       expect.objectContaining({ delay: 0 }),
     );
+  });
+
+  it('reconciles old unpublished presentations and every bounded page', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-26T18:00:00.000Z'));
+    try {
+      const context = createContext();
+      const spins = Array.from({ length: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE + 1 }, (_, index) => ({
+        id: `spin-${String(index).padStart(3, '0')}`,
+        drawnAt: new Date('2026-08-20T18:00:00.000Z'),
+        countdownSeconds: 0,
+        reelDurationMs: 1_000,
+        preRevealPauseMs: 0,
+      }));
+      const unpublishedPages = [
+        spins.slice(0, PRIZE_DRAW_RECONCILIATION_PAGE_SIZE),
+        spins.slice(PRIZE_DRAW_RECONCILIATION_PAGE_SIZE),
+      ];
+      context.prisma.prizeDrawSpin.findMany.mockImplementation(async (input: { where: Record<string, unknown> }) =>
+        input.where.presentationAcknowledgedAt === null ? (unpublishedPages.shift() ?? []) : [],
+      );
+
+      await context.service.reconcilePending();
+
+      expect(context.queue.add).toHaveBeenCalledTimes(spins.length);
+      expect(context.prisma.prizeDrawSpin.findMany).toHaveBeenNthCalledWith(
+        4,
+        expect.objectContaining({ cursor: { id: 'spin-099' }, skip: 1, take: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('logs a cleanup enqueue failure without stopping other reconciliation pages', async () => {
+    const context = createContext();
+    const loggerWarn = jest.spyOn(context.service['logger'], 'warn').mockImplementation();
+    context.queue.add.mockImplementation(async (name: string) => {
+      if (name === PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB) {
+        throw new Error('Redis unavailable');
+      }
+      return undefined;
+    });
+    context.prisma.prizeDrawSpin.findMany.mockImplementation(async (input: { where: Record<string, unknown> }) =>
+      input.where.undoneAt ? [{ id: 'spin-undone' }] : [],
+    );
+
+    await expect(context.service.reconcilePending()).resolves.toBeUndefined();
+
+    expect(loggerWarn).toHaveBeenCalledWith(
+      'Could not enqueue undone notification cleanup for spin spin-undone: Redis unavailable',
+    );
+    loggerWarn.mockRestore();
   });
 
   it('registers the minute reconciliation scheduler and contains queue failures', async () => {
@@ -268,7 +320,7 @@ function createContext() {
     prizeDrawSpin: {
       updateMany: jest.fn(),
       findUnique: jest.fn(),
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue(undefined),
     },
   };

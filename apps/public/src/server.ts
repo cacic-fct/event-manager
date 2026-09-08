@@ -128,7 +128,7 @@ app.use(
 app.get(['/app/index.html', '/app/index.csr.html'], async (req, res, next) => {
   try {
     const html = await readFile(join(browserDistFolder, basename(req.path)), 'utf8');
-    writeResponseToNodeResponse(
+    await writeResponseToNodeResponse(
       await applyCspToHtmlResponse(
         new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -183,7 +183,7 @@ app.use('/{*splat}', (req, res, next) => {
       const configuredResponse = isHtmlResponse(response)
         ? await applyCspToHtmlResponse(response, publicCspPolicy, addTurnstileSiteKeyMeta)
         : response;
-      writeResponseToNodeResponse(configuredResponse, res);
+      await writeResponseToNodeResponse(configuredResponse, res);
     })
     .catch(next);
 });

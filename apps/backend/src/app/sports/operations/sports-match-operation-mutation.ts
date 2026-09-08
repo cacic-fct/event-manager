@@ -82,12 +82,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
     const readiness =
       input.type === SportsMatchActionType.START ? await loadSportsMatchReadiness(tx, match.id) : undefined;
     this.validateCommand(input.type, payload, current, { ...match, readiness }, actor.kind);
-    if (input.type === SportsMatchActionType.OCCURRENCE) {
-      await this.validateOccurrence(tx, match, this.requireRecord(payload));
-    }
-    if (input.scorerRosterEntryId) {
-      await this.validateScorer(tx, match, input.scorerRosterEntryId, payload);
-    }
+    await this.validateActionRelations(tx, match, input.type, payload, input.scorerRosterEntryId);
 
     const sequence = match.operationSequence + 1;
     const action = await tx.sportsMatchAction.create({

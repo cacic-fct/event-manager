@@ -31,6 +31,8 @@ describe('PublicationTransitionService', () => {
     const stateWriter = {
       updateEventPublicationState: jest.fn(),
       updateMajorEventPublicationState: jest.fn(),
+      publishScheduledEvent: jest.fn(),
+      publishScheduledMajorEvent: jest.fn(),
       updateTargetsPublicationState: jest.fn(),
     };
     const targets = {
@@ -477,6 +479,26 @@ describe('PublicationTransitionService', () => {
       'admin-workspace',
       expect.objectContaining({ type: 'PUBLICATION_INVALIDATED', majorEventIds: ['major-1'] }),
     );
+  });
+
+  it('does not publish derived effects when a scheduled target loses its conditional claim', async () => {
+    const { realtime, searchSync, service, sitemap, stateWriter } = createService();
+    const scheduledPublishAt = new Date('2026-07-07T11:00:00.000Z');
+    stateWriter.publishScheduledEvent.mockResolvedValue({ eventIds: [], majorEventIds: [] });
+    stateWriter.publishScheduledMajorEvent.mockResolvedValue({ eventIds: [], majorEventIds: [] });
+
+    await expect(
+      service.publishScheduledEventById('event-1', scheduledPublishAt, null),
+    ).resolves.toEqual({ eventIds: [], majorEventIds: [] });
+    await expect(
+      service.publishScheduledMajorEventById('major-1', scheduledPublishAt, null),
+    ).resolves.toEqual({ eventIds: [], majorEventIds: [] });
+
+    expect(stateWriter.publishScheduledEvent).toHaveBeenCalledWith('event-1', scheduledPublishAt, undefined);
+    expect(stateWriter.publishScheduledMajorEvent).toHaveBeenCalledWith('major-1', scheduledPublishAt, undefined);
+    expect(sitemap.refresh).not.toHaveBeenCalled();
+    expect(searchSync.syncSearch).not.toHaveBeenCalled();
+    expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it('keeps direct scheduled publication successful when realtime invalidation fails', async () => {

@@ -1,5 +1,6 @@
 import { AuthSessionStoreService } from './auth-session-store.service';
 import { AuthSession } from './keycloak-auth.types';
+import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 
 describe('AuthSessionStoreService', () => {
   const now = new Date('2026-05-21T12:00:00.000Z').getTime();
@@ -71,7 +72,7 @@ describe('AuthSessionStoreService', () => {
     await expect(service.acquireRefreshLock('session-1', 'worker-a')).resolves.toBe(true);
     await expect(service.acquireRefreshLock('session-1', 'worker-b')).resolves.toBe(false);
 
-    expect(redis.set).toHaveBeenCalledWith('auth:session:session-1:refresh-lock', 'worker-a', 'PX', 5000, 'NX');
+    expect(redis.set).toHaveBeenCalledWith('auth:session:session-1:refresh-lock', 'worker-a', 'PX', 10_000, 'NX');
 
     await service.releaseRefreshLock('session-1', 'worker-a');
 
@@ -91,6 +92,22 @@ describe('AuthSessionStoreService', () => {
     await waitPromise;
 
     expect(redis.exists).toHaveBeenCalledWith('auth:session:session-1:refresh-lock');
+  });
+
+  it('does not write a refreshed session after the canonical session was deleted', async () => {
+    const redis = new InMemoryRedisClient();
+    const store = new AuthSessionStoreService(redis as never);
+    const expected = sessionFixture();
+    const refreshed = sessionFixture({
+      accessToken: 'refreshed-access-token',
+      refreshToken: 'refreshed-refresh-token',
+    });
+
+    await store.set('session-1', expected);
+    await store.delete('session-1');
+
+    await expect(store.setIfCurrent('session-1', expected, refreshed)).resolves.toBe(false);
+    await expect(store.get('session-1')).resolves.toBeNull();
   });
 });
 

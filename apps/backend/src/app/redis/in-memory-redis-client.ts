@@ -118,6 +118,21 @@ export class InMemoryRedisClient implements OnModuleDestroy {
     const keys = args.slice(0, keyCount).map(String);
     const values = args.slice(keyCount);
 
+    if (script.includes('-- auth-session-set-if-current')) {
+      const key = keys[0];
+      const expected = String(values[0]);
+      const next = String(values[1]);
+      const ttlSeconds = Number(values[2]);
+      if ((await this.get(key)) !== expected) {
+        return 0;
+      }
+      if (ttlSeconds <= 0) {
+        return this.del(key);
+      }
+      await this.set(key, next, 'EX', ttlSeconds);
+      return 1;
+    }
+
     if (script.includes('redis.call("get", KEYS[1]) == ARGV[1]')) {
       const key = keys[0];
       const owner = String(values[0]);

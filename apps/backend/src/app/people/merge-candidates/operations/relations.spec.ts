@@ -8,8 +8,34 @@ describe('merge candidate relation movement', () => {
 
     tx.eventAttendance.findMany
       .mockResolvedValueOnce([
-        { eventId: 'event-new', attendedAt: firstDate, createdAt: firstDate, createdById: 'actor-1' },
-        { eventId: 'event-existing', attendedAt: secondDate, createdAt: secondDate, createdById: null },
+        {
+          eventId: 'event-new',
+          status: 'PRESENT',
+          category: 'REGULAR',
+          currentAssessment: null,
+          attendedAt: firstDate,
+          createdAt: firstDate,
+          createdById: 'actor-1',
+          committedById: 'committer-1',
+          createdByMethod: 'SCANNER',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
+        },
+        {
+          eventId: 'event-existing',
+          status: 'ABSENT',
+          category: 'NON_REGULAR',
+          currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
+          attendedAt: secondDate,
+          createdAt: secondDate,
+          createdById: null,
+          committedById: null,
+          createdByMethod: 'ORAL_CALL',
+          collectedLatitude: null,
+          collectedLongitude: null,
+          collectedAccuracyMeters: null,
+        },
       ])
       .mockResolvedValueOnce([{ eventId: 'event-existing' }]);
     tx.eventLecturer.findMany
@@ -32,15 +58,31 @@ describe('merge candidate relation movement', () => {
       sourceAttendances: [
         {
           eventId: 'event-new',
+          status: 'PRESENT',
+          category: 'REGULAR',
+          currentAssessment: null,
           attendedAt: '2026-05-21T10:00:00.000Z',
           createdAt: '2026-05-21T10:00:00.000Z',
           createdById: 'actor-1',
+          committedById: 'committer-1',
+          createdByMethod: 'SCANNER',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
         },
         {
           eventId: 'event-existing',
+          status: 'ABSENT',
+          category: 'NON_REGULAR',
+          currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
           attendedAt: '2026-05-21T11:00:00.000Z',
           createdAt: '2026-05-21T11:00:00.000Z',
           createdById: null,
+          committedById: null,
+          createdByMethod: 'ORAL_CALL',
+          collectedLatitude: null,
+          collectedLongitude: null,
+          collectedAccuracyMeters: null,
         },
       ],
       sourceLectures: [
@@ -67,6 +109,13 @@ describe('merge candidate relation movement', () => {
       roleAssignmentSnapshots: [],
       roleAssignmentScopeSnapshots: [],
       permissionGroupMembershipSnapshots: [],
+      movedSportsTeamRepresentativeIds: [],
+      revokedSportsTeamRepresentativeIds: [],
+      sportsTeamRepresentativeSnapshots: [],
+      movedSportsTournamentParticipantIds: [],
+      sportsTournamentParticipantSnapshots: [],
+      movedSportsOfficialAssignmentIds: [],
+      sportsOfficialAssignmentSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({
@@ -74,13 +123,22 @@ describe('merge candidate relation movement', () => {
         {
           personId: 'target-person',
           eventId: 'event-new',
+          status: 'PRESENT',
+          category: 'REGULAR',
+          currentAssessment: null,
           attendedAt: firstDate,
           createdAt: firstDate,
           createdById: 'actor-1',
+          committedById: 'committer-1',
+          createdByMethod: 'SCANNER',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
         },
       ],
       skipDuplicates: true,
     });
+    expect(tx.eventAttendance.createMany.mock.calls[0][0].data).toHaveLength(1);
     expect(tx.eventLecturer.createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -118,6 +176,13 @@ describe('merge candidate relation movement', () => {
       roleAssignmentSnapshots: [],
       roleAssignmentScopeSnapshots: [],
       permissionGroupMembershipSnapshots: [],
+      movedSportsTeamRepresentativeIds: [],
+      revokedSportsTeamRepresentativeIds: [],
+      sportsTeamRepresentativeSnapshots: [],
+      movedSportsTournamentParticipantIds: [],
+      sportsTournamentParticipantSnapshots: [],
+      movedSportsOfficialAssignmentIds: [],
+      sportsOfficialAssignmentSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).not.toHaveBeenCalled();
@@ -231,6 +296,18 @@ function createTransaction() {
     eventManagerPermissionGroupMember: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+    },
+    sportsTeamRepresentative: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+    },
+    sportsTournamentParticipant: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+    },
+    sportsOfficialAssignment: {
+      findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
     },
   };

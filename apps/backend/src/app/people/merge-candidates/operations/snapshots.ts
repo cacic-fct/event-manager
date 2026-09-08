@@ -1,12 +1,24 @@
 import { ConflictException } from '@nestjs/common';
 import { People, Prisma } from '@prisma/client';
-import { isRecord, readArray, readNullableString, readRequiredString, readStringArray } from './json-payload';
 import {
+  isRecord,
+  readArray,
+  readNullableNumber,
+  readNullableString,
+  readRequiredNumber,
+  readRequiredString,
+  readStringArray,
+} from './json-payload';
+import {
+  AttendanceSnapshot,
   MovedRelationsSnapshot,
   PermissionGroupMembershipSnapshot,
   PersonSnapshot,
   RoleAssignmentScopeSnapshot,
   RoleAssignmentSnapshot,
+  SportsOfficialAssignmentSnapshot,
+  SportsTeamRepresentativeSnapshot,
+  SportsTournamentParticipantSnapshot,
 } from './types';
 
 export function toPersonSnapshot(person: People): PersonSnapshot {
@@ -65,12 +77,33 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
     if (!isRecord(entry)) {
       throw new ConflictException('Invalid sourceAttendances payload entry.');
     }
+    const requiredFields = [
+      'status',
+      'category',
+      'currentAssessment',
+      'createdById',
+      'committedById',
+      'createdByMethod',
+      'collectedLatitude',
+      'collectedLongitude',
+      'collectedAccuracyMeters',
+    ];
+    if (requiredFields.some((field) => !Object.prototype.hasOwnProperty.call(entry, field))) {
+      throw new ConflictException('Attendance merge snapshot is incomplete and cannot be safely undone.');
+    }
     return {
       eventId: readRequiredString(entry, 'eventId'),
+      status: readRequiredString(entry, 'status') as AttendanceSnapshot['status'],
+      category: readRequiredString(entry, 'category') as AttendanceSnapshot['category'],
+      currentAssessment: readNullableString(entry, 'currentAssessment') as AttendanceSnapshot['currentAssessment'],
       attendedAt: readRequiredString(entry, 'attendedAt'),
       createdAt: readRequiredString(entry, 'createdAt'),
       createdById: readNullableString(entry, 'createdById'),
       committedById: readNullableString(entry, 'committedById'),
+      createdByMethod: readRequiredString(entry, 'createdByMethod') as AttendanceSnapshot['createdByMethod'],
+      collectedLatitude: readNullableNumber(entry, 'collectedLatitude'),
+      collectedLongitude: readNullableNumber(entry, 'collectedLongitude'),
+      collectedAccuracyMeters: readNullableNumber(entry, 'collectedAccuracyMeters'),
     };
   });
 
@@ -119,7 +152,79 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
       value.permissionGroupMembershipSnapshots === undefined
         ? []
         : readPermissionGroupMembershipSnapshots(value.permissionGroupMembershipSnapshots),
+    movedSportsTeamRepresentativeIds:
+      value.movedSportsTeamRepresentativeIds === undefined
+        ? []
+        : readStringArray(value, 'movedSportsTeamRepresentativeIds'),
+    revokedSportsTeamRepresentativeIds:
+      value.revokedSportsTeamRepresentativeIds === undefined
+        ? []
+        : readStringArray(value, 'revokedSportsTeamRepresentativeIds'),
+    sportsTeamRepresentativeSnapshots:
+      value.sportsTeamRepresentativeSnapshots === undefined
+        ? []
+        : readSportsTeamRepresentativeSnapshots(value.sportsTeamRepresentativeSnapshots),
+    movedSportsTournamentParticipantIds:
+      value.movedSportsTournamentParticipantIds === undefined
+        ? []
+        : readStringArray(value, 'movedSportsTournamentParticipantIds'),
+    sportsTournamentParticipantSnapshots:
+      value.sportsTournamentParticipantSnapshots === undefined
+        ? []
+        : readSportsTournamentParticipantSnapshots(value.sportsTournamentParticipantSnapshots),
+    movedSportsOfficialAssignmentIds:
+      value.movedSportsOfficialAssignmentIds === undefined
+        ? []
+        : readStringArray(value, 'movedSportsOfficialAssignmentIds'),
+    sportsOfficialAssignmentSnapshots:
+      value.sportsOfficialAssignmentSnapshots === undefined
+        ? []
+        : readSportsOfficialAssignmentSnapshots(value.sportsOfficialAssignmentSnapshots),
   };
+}
+
+function readSportsTournamentParticipantSnapshots(value: Prisma.JsonValue): SportsTournamentParticipantSnapshot[] {
+  return readArrayValue(value, 'sportsTournamentParticipantSnapshots').map((entry) => ({
+    id: readRequiredString(entry, 'id'),
+    tournamentId: readRequiredString(entry, 'tournamentId'),
+    personId: readRequiredString(entry, 'personId'),
+    deletedAt: readNullableString(entry, 'deletedAt'),
+  }));
+}
+
+function readSportsOfficialAssignmentSnapshots(value: Prisma.JsonValue): SportsOfficialAssignmentSnapshot[] {
+  return readArrayValue(value, 'sportsOfficialAssignmentSnapshots').map((entry) => ({
+    id: readRequiredString(entry, 'id'),
+    tournamentId: readRequiredString(entry, 'tournamentId'),
+    categoryId: readNullableString(entry, 'categoryId'),
+    matchId: readNullableString(entry, 'matchId'),
+    personId: readRequiredString(entry, 'personId'),
+    role: readRequiredString(entry, 'role') as SportsOfficialAssignmentSnapshot['role'],
+    active: readBoolean(entry, 'active'),
+    assignedAt: readRequiredString(entry, 'assignedAt'),
+    assignedById: readRequiredString(entry, 'assignedById'),
+    revokedAt: readNullableString(entry, 'revokedAt'),
+    revokedById: readNullableString(entry, 'revokedById'),
+    revision: readRequiredNumber(entry, 'revision'),
+    createdAt: readRequiredString(entry, 'createdAt'),
+  }));
+}
+
+function readSportsTeamRepresentativeSnapshots(value: Prisma.JsonValue): SportsTeamRepresentativeSnapshot[] {
+  return readArrayValue(value, 'sportsTeamRepresentativeSnapshots').map((entry) => ({
+    id: readRequiredString(entry, 'id'),
+    teamId: readRequiredString(entry, 'teamId'),
+    personId: readRequiredString(entry, 'personId'),
+    active: readBoolean(entry, 'active'),
+    assignedAt: readRequiredString(entry, 'assignedAt'),
+    assignedById: readRequiredString(entry, 'assignedById'),
+    revokedAt: readNullableString(entry, 'revokedAt'),
+    revokedById: readNullableString(entry, 'revokedById'),
+    createdAt: readRequiredString(entry, 'createdAt'),
+    mergeRevokedAt: readNullableString(entry, 'mergeRevokedAt'),
+    mergeRevokedById: readNullableString(entry, 'mergeRevokedById'),
+    mergeTargetRepresentativeId: readNullableString(entry, 'mergeTargetRepresentativeId'),
+  }));
 }
 
 function readRoleAssignmentSnapshots(value: Prisma.JsonValue): RoleAssignmentSnapshot[] {

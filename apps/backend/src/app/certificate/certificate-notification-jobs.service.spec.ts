@@ -87,7 +87,7 @@ describe('CertificateNotificationJobsService', () => {
       certificateNotificationOutbox: {
         findUnique: jest
           .fn()
-          .mockResolvedValueOnce({ status: 'PROCESSING' })
+          .mockResolvedValueOnce({ status: 'PROCESSING', certificate: availableCertificate() })
           .mockResolvedValueOnce({ attempts: 1, status: 'PROCESSING' }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
@@ -116,6 +116,63 @@ describe('CertificateNotificationJobsService', () => {
           status: 'PENDING',
           lastError: expect.stringContaining('was not acknowledged'),
         }),
+      }),
+    );
+  });
+
+  it('supersedes delivery when the certificate was revoked before the worker sends it', async () => {
+    const notifications = { notifyCertificateAvailable: jest.fn().mockResolvedValue(true) };
+    const prisma = {
+      certificateNotificationOutbox: {
+        findUnique: jest.fn().mockResolvedValue({
+          status: 'PROCESSING',
+          certificate: { ...availableCertificate(), deletedAt: new Date('2026-05-24T00:00:00.000Z') },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const service = new CertificateNotificationJobsService(
+      { add: jest.fn() } as never,
+      notifications as never,
+      prisma as never,
+    );
+
+    await service.deliver(notificationJob());
+
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+    expect(prisma.certificateNotificationOutbox.updateMany).toHaveBeenCalledWith({
+      where: { id: 'outbox-1', status: { in: ['PENDING', 'PROCESSING'] } },
+      data: {
+        status: 'SUPERSEDED',
+        lastError: 'Superseded because the certificate is no longer available.',
+      },
+    });
+  });
+
+  it('does not deliver an outbox payload for an older certificate generation', async () => {
+    const notifications = { notifyCertificateAvailable: jest.fn().mockResolvedValue(true) };
+    const prisma = {
+      certificateNotificationOutbox: {
+        findUnique: jest.fn().mockResolvedValue({
+          status: 'PROCESSING',
+          certificate: { ...availableCertificate(), issuedAt: new Date('2026-05-24T15:30:00.000Z') },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const service = new CertificateNotificationJobsService(
+      { add: jest.fn() } as never,
+      notifications as never,
+      prisma as never,
+    );
+
+    await service.deliver(notificationJob());
+
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+    expect(prisma.certificateNotificationOutbox.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'outbox-1', status: { in: ['PENDING', 'PROCESSING'] } },
+        data: { status: 'SUPERSEDED', lastError: 'Superseded because the certificate is no longer available.' },
       }),
     );
   });
@@ -182,3 +239,28 @@ describe('CertificateNotificationJobsService', () => {
     );
   });
 });
+
+function notificationJob() {
+  return {
+    certificateId: 'certificate-1',
+    configId: 'config-1',
+    certificateName: 'Config',
+    targetName: 'Evento',
+    issuedAt: '2026-05-23T15:30:00.000Z',
+    recipient: { subscriberId: 'person-1' },
+    outboxId: 'outbox-1',
+  };
+}
+
+function availableCertificate() {
+  return {
+    id: 'certificate-1',
+    issuedAt: new Date('2026-05-23T15:30:00.000Z'),
+    deletedAt: null,
+    config: {
+      id: 'config-1',
+      deletedAt: null,
+      isActive: true,
+    },
+  };
+}

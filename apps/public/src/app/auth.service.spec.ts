@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
@@ -166,6 +167,53 @@ describe('AuthService', () => {
     ]);
     expect(auth.user()).toEqual(user);
     expect(refreshTrackingCookies).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the current user when refresh succeeds but user reloading is temporarily unavailable', async () => {
+    const existingUser = authenticatedUser();
+    auth.user.set(existingUser);
+    const refresh = firstValueFrom(auth.refreshTokenSilently());
+
+    httpTesting.expectOne('/api/auth/refresh').flush({
+      expiresAt: Date.now() + 300_000,
+      sessionExpiresAt: Date.now() + 600_000,
+    });
+    httpTesting.expectOne('/api/auth/me').flush(
+      { message: 'temporarily unavailable' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+
+    await expect(refresh).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(auth.user()).toEqual(existingUser);
+  });
+
+  it('keeps the current user when both session discovery and refresh hit a transient failure', async () => {
+    const existingUser = authenticatedUser();
+    auth.user.set(existingUser);
+    const refresh = auth.refreshMe();
+
+    httpTesting.expectOne('/api/auth/me').flush(
+      { message: 'temporarily unavailable' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    (await waitForRequest('/api/auth/refresh')).flush(
+      { message: 'temporarily unavailable' },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+
+    await expect(refresh).resolves.toBeUndefined();
+    expect(auth.user()).toEqual(existingUser);
+  });
+
+  it('clears the current user when the refresh endpoint confirms that the session is invalid', async () => {
+    auth.user.set(authenticatedUser());
+    const refresh = auth.refreshMe();
+
+    httpTesting.expectOne('/api/auth/me').flush({}, { status: 401, statusText: 'Unauthorized' });
+    (await waitForRequest('/api/auth/refresh')).flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(refresh).resolves.toBeUndefined();
+    expect(auth.user()).toBeNull();
   });
 
   it('refreshes the token after the current-user endpoint returns unauthenticated', async () => {

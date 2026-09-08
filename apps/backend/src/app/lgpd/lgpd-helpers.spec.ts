@@ -16,7 +16,7 @@ import {
 import type { DataSubjectResolution } from './lgpd-records';
 
 describe('LGPD helper modules', () => {
-  it('resolves users, merged accounts, people, secondary emails, and Keycloak external refs', async () => {
+  it('resolves users, verified merged accounts, people, and Keycloak external refs', async () => {
     const users = [
       { id: 'old-user', email: 'old@example.com' },
       { id: 'new-user', email: 'new@example.com' },
@@ -69,10 +69,77 @@ describe('LGPD helper modules', () => {
     ).resolves.toEqual({
       userIds: expect.arrayContaining(['old-user', 'new-user', 'external-user']),
       personIds: ['source-person', 'target-person'],
-      emails: expect.arrayContaining(['alias@example.com', 'old@example.com', 'new@example.com']),
+      emails: expect.arrayContaining(['old@example.com', 'new@example.com', 'external@example.com']),
       people: [expect.objectContaining({ id: 'source-person' }), expect.objectContaining({ id: 'target-person' })],
     });
-    expect(prisma.$queryRaw).toHaveBeenCalled();
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('does not expand or expose an unrelated account through a contact email', async () => {
+    const users = [
+      { id: 'user-a', email: 'a@example.test' },
+      { id: 'user-b', email: 'b@example.test' },
+    ];
+    const people = [
+      {
+        id: 'person-a',
+        userId: 'user-a',
+        externalRef: 'kc:user-a',
+        mergedIntoId: null,
+        email: 'a@example.test',
+        secondaryEmails: ['b@example.test'],
+      },
+      {
+        id: 'person-b',
+        userId: 'user-b',
+        externalRef: 'kc:user-b',
+        mergedIntoId: null,
+        email: 'b@example.test',
+        secondaryEmails: [],
+      },
+    ];
+    const prisma = {
+      user: {
+        findMany: jest.fn(async ({ where }: { where: { id?: { in: string[] }; OR?: Array<{ email: { equals: string } }> } }) => {
+          if (where.id?.in) {
+            return users.filter((user) => where.id?.in.includes(user.id));
+          }
+          return users.filter((user) => where.OR?.some((condition) => user.email === condition.email.equals));
+        }),
+      },
+      accountUserMerge: { findMany: jest.fn().mockResolvedValue([]) },
+      externalAccountMergeOperation: { findMany: jest.fn().mockResolvedValue([]) },
+      people: {
+        findMany: jest.fn(async ({ where, include }: { where: { id?: { in: string[] }; OR?: Array<Record<string, unknown>> }; include?: unknown }) => {
+          if (include) {
+            return people
+              .filter((person) => where.id?.in.includes(person.id))
+              .map((person) => ({ ...person, user: null, mergedFrom: [], mergedInto: null }));
+          }
+          return people.filter((person) =>
+            where.OR?.some((condition) => {
+              const email = condition.email as { equals?: string } | undefined;
+              const secondaryEmails = condition.secondaryEmails as { has?: string } | undefined;
+              const userId = condition.userId as { in?: string[] } | undefined;
+              const externalRef = condition.externalRef as { in?: string[] } | undefined;
+              return (
+                (email?.equals && person.email === email.equals) ||
+                (secondaryEmails?.has && person.secondaryEmails.includes(secondaryEmails.has)) ||
+                (userId?.in && person.userId && userId.in.includes(person.userId)) ||
+                (externalRef?.in && person.externalRef && externalRef.in.includes(person.externalRef))
+              );
+            }),
+          );
+        }),
+      },
+    };
+
+    await expect(resolveDataSubject(prisma as never, { userId: 'user-a', email: 'b@example.test' })).resolves.toEqual({
+      userIds: ['user-a'],
+      personIds: ['person-a'],
+      emails: ['a@example.test'],
+      people: [expect.objectContaining({ id: 'person-a' })],
+    });
   });
 
   it('maps export payloads without exposing non-selected nested fields', () => {

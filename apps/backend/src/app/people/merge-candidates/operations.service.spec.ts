@@ -99,6 +99,21 @@ describe('MergeCandidateOperationsService', () => {
       }),
     );
     tx.people.findUnique.mockResolvedValueOnce(target).mockResolvedValueOnce(source);
+    tx.sportsTeamRepresentative.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'representative-1',
+          teamId: 'team-1',
+          personId: source.id,
+          active: true,
+          assignedAt: new Date('2026-01-01T10:00:00.000Z'),
+          assignedById: 'admin-1',
+          revokedAt: null,
+          revokedById: null,
+          createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([]);
     tx.mergeCandidate.update.mockResolvedValue(updatedCandidate);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
@@ -130,6 +145,10 @@ describe('MergeCandidateOperationsService', () => {
         updatedById: 'actor-1',
       },
     });
+    expect(tx.sportsTeamRepresentative.update).toHaveBeenCalledWith({
+      where: { id: 'representative-1' },
+      data: { personId: target.id },
+    });
     expect(tx.peopleMergeOperation.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         targetPersonId: target.id,
@@ -141,6 +160,7 @@ describe('MergeCandidateOperationsService', () => {
         movedRelations: expect.objectContaining({
           sourceAttendances: [],
           sourceLectures: [],
+          movedSportsTeamRepresentativeIds: ['representative-1'],
         }),
         createdById: 'actor-1',
       }),
@@ -189,9 +209,17 @@ describe('MergeCandidateOperationsService', () => {
         sourceAttendances: [
           {
             eventId: 'event-1',
+            status: 'ABSENT',
+            category: 'REGULAR',
+            currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
             attendedAt: '2026-05-21T10:00:00.000Z',
             createdAt: '2026-05-21T09:00:00.000Z',
             createdById: 'actor-1',
+            committedById: 'committer-1',
+            createdByMethod: 'ORAL_CALL',
+            collectedLatitude: -22.1,
+            collectedLongitude: -51.4,
+            collectedAccuracyMeters: 8,
           },
         ],
         sourceLectures: [
@@ -206,6 +234,51 @@ describe('MergeCandidateOperationsService', () => {
         movedEventSubscriptionIds: ['event-subscription-1'],
         movedEventGroupSubscriptionIds: ['group-subscription-1'],
         movedMajorEventSubscriptionIds: ['major-subscription-1'],
+        movedSportsTeamRepresentativeIds: [],
+        revokedSportsTeamRepresentativeIds: ['representative-1'],
+        sportsTeamRepresentativeSnapshots: [
+          {
+            id: 'representative-1',
+            teamId: 'team-1',
+            personId: 'source-person',
+            active: true,
+            assignedAt: '2026-01-01T10:00:00.000Z',
+            assignedById: 'admin-1',
+            revokedAt: null,
+            revokedById: null,
+            createdAt: '2026-01-01T10:00:00.000Z',
+            mergeRevokedAt: '2026-05-21T12:00:00.000Z',
+            mergeRevokedById: 'actor-1',
+            mergeTargetRepresentativeId: 'target-representative',
+          },
+        ],
+        movedSportsTournamentParticipantIds: ['participant-1'],
+        sportsTournamentParticipantSnapshots: [
+          {
+            id: 'participant-1',
+            tournamentId: 'tournament-1',
+            personId: 'source-person',
+            deletedAt: null,
+          },
+        ],
+        movedSportsOfficialAssignmentIds: ['official-1'],
+        sportsOfficialAssignmentSnapshots: [
+          {
+            id: 'official-1',
+            tournamentId: 'tournament-1',
+            categoryId: 'category-1',
+            matchId: 'match-1',
+            personId: 'source-person',
+            role: 'REFEREE',
+            active: true,
+            assignedAt: '2026-01-01T10:00:00.000Z',
+            assignedById: 'admin-1',
+            revokedAt: null,
+            revokedById: null,
+            revision: 1,
+            createdAt: '2026-01-01T10:00:00.000Z',
+          },
+        ],
         roleAssignmentSnapshots: [
           {
             id: 'role-assignment-1',
@@ -272,10 +345,46 @@ describe('MergeCandidateOperationsService', () => {
           attendedAt: new Date('2026-05-21T10:00:00.000Z'),
           createdAt: new Date('2026-05-21T09:00:00.000Z'),
           createdById: 'actor-1',
-          committedById: null,
+          committedById: 'committer-1',
+          status: 'ABSENT',
+          category: 'REGULAR',
+          currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
+          createdByMethod: 'ORAL_CALL',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
         },
       ],
       skipDuplicates: true,
+    });
+    expect(tx.sportsTeamRepresentative.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'representative-1',
+        personId: 'source-person',
+        active: false,
+        revokedAt: new Date('2026-05-21T12:00:00.000Z'),
+        revokedById: 'actor-1',
+      },
+      data: {
+        active: true,
+        assignedAt: new Date('2026-01-01T10:00:00.000Z'),
+        assignedById: 'admin-1',
+        revokedAt: null,
+        revokedById: null,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+      },
+    });
+    expect(tx.sportsTournamentParticipant.updateMany).toHaveBeenCalledWith({
+      where: { id: 'participant-1', personId: target.id },
+      data: { personId: source.id },
+    });
+    expect(tx.sportsOfficialAssignment.updateMany).toHaveBeenCalledWith({
+      where: { id: 'official-1', personId: target.id },
+      data: { personId: source.id },
+    });
+    expect(tx.sportsTeamRepresentative.findUnique).toHaveBeenCalledWith({
+      where: { id: 'target-representative' },
+      select: { personId: true, active: true, revokedAt: true },
     });
     expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
       where: { id: 'role-assignment-1' },
@@ -427,6 +536,24 @@ function createTransaction() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    sportsTeamRepresentative: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue({ personId: 'target-person', active: true, revokedAt: null }),
+      update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    sportsTournamentParticipant: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    sportsOfficialAssignment: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
   };
 }
 
@@ -494,5 +621,12 @@ function emptyMovedRelations() {
     movedEventSubscriptionIds: [],
     movedEventGroupSubscriptionIds: [],
     movedMajorEventSubscriptionIds: [],
+    movedSportsTeamRepresentativeIds: [],
+    revokedSportsTeamRepresentativeIds: [],
+    sportsTeamRepresentativeSnapshots: [],
+    movedSportsTournamentParticipantIds: [],
+    sportsTournamentParticipantSnapshots: [],
+    movedSportsOfficialAssignmentIds: [],
+    sportsOfficialAssignmentSnapshots: [],
   };
 }

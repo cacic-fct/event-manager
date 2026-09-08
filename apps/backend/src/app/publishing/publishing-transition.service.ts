@@ -125,6 +125,23 @@ export class PublicationTransitionService {
     return sync;
   }
 
+  async publishScheduledEventById(
+    eventId: string,
+    expectedScheduledPublishAt: Date,
+    user: AuthenticatedUser | null,
+    options: { skipSitemap?: boolean } = {},
+  ): Promise<TargetSync> {
+    const sync = await this.stateWriter.publishScheduledEvent(eventId, expectedScheduledPublishAt, user ?? undefined);
+    if (sync.eventIds.length === 0) {
+      return sync;
+    }
+    if (!options.skipSitemap) {
+      await this.refreshSitemapBestEffort();
+    }
+    await this.publishInvalidationsBestEffort(sync);
+    return sync;
+  }
+
   async publishMajorEventById(
     majorEventId: string,
     user: AuthenticatedUser | null,
@@ -136,6 +153,27 @@ export class PublicationTransitionService {
       null,
       user ?? undefined,
     );
+    if (!options.skipSitemap) {
+      await this.refreshSitemapBestEffort();
+    }
+    await this.publishInvalidationsBestEffort(sync);
+    return sync;
+  }
+
+  async publishScheduledMajorEventById(
+    majorEventId: string,
+    expectedScheduledPublishAt: Date,
+    user: AuthenticatedUser | null,
+    options: { skipSitemap?: boolean } = {},
+  ): Promise<TargetSync> {
+    const sync = await this.stateWriter.publishScheduledMajorEvent(
+      majorEventId,
+      expectedScheduledPublishAt,
+      user ?? undefined,
+    );
+    if (sync.majorEventIds.length === 0) {
+      return sync;
+    }
     if (!options.skipSitemap) {
       await this.refreshSitemapBestEffort();
     }

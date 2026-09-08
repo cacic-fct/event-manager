@@ -11,9 +11,11 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
-import { Observable, interval, map, startWith, switchMap } from 'rxjs';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { Observable, defer, interval, map, startWith, switchMap } from 'rxjs';
+import { authenticateHttpRequest, type AuthenticatedRequest } from '../../auth/authenticated-request';
+import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
+import { readAuthCookie } from '../../auth/auth-cookie-utils';
+import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
@@ -21,9 +23,7 @@ import { EventAttendancesScannerFeedSupport } from '../../events/attendances/sha
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { CurrentUserContextService } from '../context.service';
 
-type RequestWithUser = Request & {
-  user?: AuthenticatedUser;
-};
+type RequestWithUser = AuthenticatedRequest;
 
 class EventAttendanceScannerFeedItemDto {
   @ApiProperty({
@@ -140,6 +140,7 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
     private readonly currentUserContext: CurrentUserContextService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly replay: SseReplayService,
+    private readonly keycloakAuthService: KeycloakAuthService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -184,18 +185,19 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
       })),
     );
 
-    return this.replay.replay(
-      this.replay.scope(
-        'current-user-attendance-collection-feed',
-        eventId,
-        request.user?.sub ?? request.headers.cookie,
-      ),
-      lastEventId,
-      snapshots,
+    const scope = this.replay.scope(
+      'current-user-attendance-collection-feed',
+      eventId,
+      request.user?.sub ?? readAuthCookie(request, AUTH_SESSION_COOKIE_NAME) ?? request.headers.cookie,
+    );
+
+    return defer(() => this.requireCollector(eventId, request, true)).pipe(
+      switchMap(() => this.replay.replay(scope, lastEventId, snapshots)),
     );
   }
 
   private async requireCollector(eventId: string, request: RequestWithUser, enforceCollectionWindow: boolean) {
+    await authenticateHttpRequest(request, this.keycloakAuthService);
     const collectorPerson = await this.currentUserContext.requireCurrentPerson({
       req: request,
     });

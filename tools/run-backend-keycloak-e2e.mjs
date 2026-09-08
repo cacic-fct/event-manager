@@ -8,7 +8,12 @@ const keycloakUrl = `http://localhost:${keycloakPort}`;
 const backendPort = process.env.PORT || '3000';
 const backendHost = process.env.HOST || 'localhost';
 const keepContainer = process.env.KEYCLOAK_TEST_KEEPALIVE === 'true';
-const nxE2eArgs = process.argv.slice(2);
+let composeStarted = false;
+const requestedRealInfra =
+  process.env.BACKEND_E2E_REAL_INFRA === 'true' ||
+  process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'false' ||
+  process.argv.includes('--real-infra');
+const nxE2eArgs = process.argv.slice(2).filter((argument) => argument !== '--real-infra');
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -53,10 +58,29 @@ async function waitForUrl(url, label, timeoutMs = 120_000) {
   );
 }
 
-function buildTestEnv() {
+function buildTestEnv(realInfra) {
+  if (realInfra && !process.env.REDIS_URL) {
+    throw new Error(
+      'The real backend E2E lane requires REDIS_URL for a disposable, isolated Redis service or database.',
+    );
+  }
+  if (realInfra && !process.env.BACKEND_E2E_QUEUE_PREFIX) {
+    throw new Error('The real backend E2E lane requires a unique BACKEND_E2E_QUEUE_PREFIX.');
+  }
+
   return {
     ...process.env,
     NODE_ENV: 'test',
+    // The default Keycloak lane remains fast and in-memory. Pass --real-infra
+    // (or set BACKEND_E2E_REAL_INFRA=true) to require the disposable services.
+    BACKEND_E2E_IN_MEMORY_INFRA: process.env.BACKEND_E2E_IN_MEMORY_INFRA ?? (realInfra ? 'false' : 'true'),
+    BACKEND_E2E_REQUIRE_REAL_INFRA: realInfra ? 'true' : 'false',
+    ...(realInfra
+      ? {
+          BACKEND_E2E_QUEUE_PREFIX: process.env.BACKEND_E2E_QUEUE_PREFIX,
+          REDIS_URL: process.env.REDIS_URL,
+        }
+      : {}),
     HOST: backendHost,
     PORT: backendPort,
     KEYCLOAK_BACKED_E2E: 'true',
@@ -78,8 +102,9 @@ function buildTestEnv() {
 }
 
 async function main() {
-  const testEnv = buildTestEnv();
+  const testEnv = buildTestEnv(requestedRealInfra);
   dockerCompose(['down', '-v', '--remove-orphans']);
+  composeStarted = true;
   dockerCompose(['up', '-d']);
 
   await waitForUrl(`${keycloakUrl}/realms/cacic-sso/.well-known/openid-configuration`, 'test Keycloak');
@@ -91,7 +116,7 @@ async function main() {
 try {
   await main();
 } finally {
-  if (!keepContainer) {
+  if (composeStarted && !keepContainer) {
     dockerCompose(['down', '-v', '--remove-orphans']);
   }
 }

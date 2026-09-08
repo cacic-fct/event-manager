@@ -153,19 +153,25 @@ export class AttendanceOfflineQueueService {
     return this.sortOldestFirst(items).slice(0, limit);
   }
 
-  async listUploadable(uploaderUserId: string, limit = 80): Promise<OfflineAttendanceQueueItem[]> {
+  async listUploadable(
+    uploaderUserId: string,
+    limit = 80,
+    excludedClientIds: ReadonlySet<string> = new Set(),
+  ): Promise<OfflineAttendanceQueueItem[]> {
     await this.ensureStartupUploadableReset(uploaderUserId);
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return [];
     }
 
-    const items = await database.attendanceQueue
+    return database.attendanceQueue
+      .orderBy('queuedAt')
       .filter(
-        (item) => (item.status === 'PENDING' || item.status === 'FAILED') && this.isUploadableBy(item, uploaderUserId),
+        (item) => (item.status === 'PENDING' || item.status === 'FAILED') &&
+          !excludedClientIds.has(item.clientId) && this.isUploadableBy(item, uploaderUserId),
       )
+      .limit(limit)
       .toArray();
-    return this.sortOldestFirst(items).slice(0, limit);
   }
 
   async countPending(userId: string): Promise<number> {
@@ -191,7 +197,8 @@ export class AttendanceOfflineQueueService {
 
     return database.attendanceQueue
       .filter(
-        (item) => (item.status === 'PENDING' || item.status === 'FAILED') && this.isUploadableBy(item, uploaderUserId),
+        (item) => (item.status === 'PENDING' || item.status === 'FAILED') &&
+          this.isUploadableBy(item, uploaderUserId),
       )
       .count();
   }

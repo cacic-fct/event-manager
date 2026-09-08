@@ -2,11 +2,26 @@ import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { AuthSession } from './keycloak-auth.types';
 
+const SET_IF_CURRENT_SCRIPT = `
+-- auth-session-set-if-current
+local current = redis.call("get", KEYS[1])
+if current ~= ARGV[1] then
+  return 0
+end
+
+if tonumber(ARGV[3]) <= 0 then
+  return redis.call("del", KEYS[1])
+end
+
+redis.call("set", KEYS[1], ARGV[2], "EX", ARGV[3])
+return 1
+`;
+
 @Injectable()
 export class AuthSessionStoreService {
   private readonly logger = new Logger(AuthSessionStoreService.name);
   private readonly keyPrefix = process.env.KEYCLOAK_AUTH_SESSION_REDIS_PREFIX ?? 'auth:session:';
-  private readonly refreshLockTtlMs = this.parseDurationMs(process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS, 5000);
+  private readonly refreshLockTtlMs = this.parseDurationMs(process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS, 10_000);
   private readonly refreshLockWaitMs = this.parseDurationMs(process.env.KEYCLOAK_AUTH_REFRESH_LOCK_WAIT_MS, 2500);
   private readonly refreshLockPollMs = this.parseDurationMs(process.env.KEYCLOAK_AUTH_REFRESH_LOCK_POLL_MS, 50);
 
@@ -20,6 +35,20 @@ export class AuthSessionStoreService {
     }
 
     await this.redis.set(this.getKey(sessionId), JSON.stringify(session), 'EX', ttlSeconds);
+  }
+
+  async setIfCurrent(sessionId: string, expected: AuthSession, session: AuthSession): Promise<boolean> {
+    const ttlSeconds = this.resolveTtlSeconds(session.sessionExpiresAt);
+    const result = await this.redis.eval(
+      SET_IF_CURRENT_SCRIPT,
+      1,
+      this.getKey(sessionId),
+      JSON.stringify(expected),
+      JSON.stringify(session),
+      ttlSeconds,
+    );
+
+    return result === 1 || result === '1';
   }
 
   async get(sessionId: string): Promise<AuthSession | null> {

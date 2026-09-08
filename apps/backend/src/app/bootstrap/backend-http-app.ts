@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import { Logger, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -8,15 +8,26 @@ import { createDocsAuthGate } from '../auth/docs-auth.middleware';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AppModule } from '../app.module';
 import { requestContextMiddleware } from './request-context';
+import { RequestContextLogger } from './request-context-logger';
 
 const globalPrefix = 'api';
 
 export async function createBackendHttpApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
+    logger: new RequestContextLogger(),
   });
-  configureBackendHttpApp(app);
-  return app;
+  try {
+    configureBackendHttpApp(app);
+    return app;
+  } catch (error: unknown) {
+    try {
+      await app.close();
+    } catch (cleanupError: unknown) {
+      Logger.error('Backend configuration rollback failed.', cleanupError instanceof Error ? cleanupError.stack : String(cleanupError));
+    }
+    throw error;
+  }
 }
 
 export function configureBackendHttpApp(app: INestApplication): void {

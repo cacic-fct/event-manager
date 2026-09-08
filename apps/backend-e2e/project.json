@@ -18,6 +18,14 @@
         "command": "node tools/run-backend-keycloak-e2e.mjs",
         "forwardAllArgs": true
       }
+    },
+    "e2e-keycloak-real-infra": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/backend-e2e"],
+      "options": {
+        "command": "node tools/run-backend-keycloak-e2e.mjs --real-infra",
+        "forwardAllArgs": true
+      }
     }
   }
 }

@@ -1,12 +1,14 @@
 import { ForbiddenException } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA, SSE_METADATA } from '@nestjs/common/constants';
 import { firstValueFrom, take } from 'rxjs';
+import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
 import { CurrentUserAttendanceCollectionController } from './attendance-collection.controller';
 
 describe('CurrentUserAttendanceCollectionController streamFeed', () => {
   let currentUserContext: { requireCurrentPerson: jest.Mock };
   let authorizationPolicy: { assertAttendanceCollectorForEvent: jest.Mock };
   let replay: { scope: jest.Mock; replay: jest.Mock };
+  let keycloakAuthService: { authenticateAccessToken: jest.Mock; authenticateSession: jest.Mock };
   let controller: CurrentUserAttendanceCollectionController;
 
   beforeEach(() => {
@@ -22,12 +24,17 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
       ),
       replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: unknown) => source),
     };
+    keycloakAuthService = {
+      authenticateAccessToken: jest.fn().mockResolvedValue({ sub: 'collector-user' }),
+      authenticateSession: jest.fn().mockResolvedValue({ sub: 'collector-user' }),
+    };
     controller = new CurrentUserAttendanceCollectionController(
       {} as never,
       {} as never,
       currentUserContext as never,
       authorizationPolicy as never,
       replay as never,
+      keycloakAuthService as never,
     );
   });
 
@@ -45,7 +52,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
     (controller as unknown as { getScannerFeed: jest.Mock }).getScannerFeed = getScannerFeed;
     const request = {
       user: { sub: 'collector-user' },
-      headers: { cookie: 'session-cookie' },
+      headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
     };
 
     const message = await firstValueFrom(controller.streamFeed('event-1', 'cursor-1', request as never).pipe(take(1)));
@@ -55,6 +62,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
       enforceCollectionWindow: true,
       user: request.user,
     });
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session-cookie');
     expect(getScannerFeed).toHaveBeenCalledWith('event-1');
     expect(replay.scope).toHaveBeenCalledWith('current-user-attendance-collection-feed', 'event-1', 'collector-user');
     expect(replay.replay).toHaveBeenCalledWith(
@@ -72,7 +80,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
 
   it('uses the session cookie as a replay-scope fallback without inventing a subject', () => {
     controller.streamFeed('event-1', undefined, {
-      headers: { cookie: 'session-cookie' },
+      headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
     } as never);
 
     expect(replay.scope).toHaveBeenCalledWith('current-user-attendance-collection-feed', 'event-1', 'session-cookie');
@@ -89,7 +97,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
         controller
           .streamFeed('event-1', undefined, {
             user: { sub: 'collector-user' },
-            headers: { cookie: 'session-cookie' },
+            headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
           } as never)
           .pipe(take(1)),
       ),
@@ -110,7 +118,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
         controller
           .streamFeed('event-1', undefined, {
             user: { sub: 'collector-user' },
-            headers: { cookie: 'session-cookie' },
+            headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
           } as never)
           .pipe(take(1)),
       ),
@@ -118,4 +126,78 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
 
     expect(getScannerFeed).not.toHaveBeenCalled();
   });
+
+  it('terminates the current-user stream when its collector grant is revoked', async () => {
+    jest.useFakeTimers();
+    const getScannerFeed = jest.fn().mockResolvedValue([{ personId: 'person-1', eventId: 'event-1' }]);
+    (controller as unknown as { getScannerFeed: jest.Mock }).getScannerFeed = getScannerFeed;
+    const failure = new ForbiddenException('Collection is not allowed.');
+    authorizationPolicy.assertAttendanceCollectorForEvent
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(failure);
+    const errors: unknown[] = [];
+    const subscription = controller
+      .streamFeed('event-1', undefined, {
+        user: { sub: 'collector-user' },
+        headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
+      } as never)
+      .subscribe({ error: (error) => errors.push(error) });
+
+    await flushPromises();
+    expect(getScannerFeed).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(2_000);
+    expect(getScannerFeed).toHaveBeenCalledTimes(1);
+    expect(errors).toEqual([failure]);
+    expect(subscription.closed).toBe(true);
+    jest.useRealTimers();
+  });
+
+  it('does not deliver current-user replay data after session reauthentication fails', async () => {
+    const failure = new ForbiddenException('Session expired.');
+    keycloakAuthService.authenticateSession.mockRejectedValueOnce(failure);
+    const getScannerFeed = jest.fn();
+    (controller as unknown as { getScannerFeed: jest.Mock }).getScannerFeed = getScannerFeed;
+
+    await expect(
+      firstValueFrom(
+        controller
+          .streamFeed('event-1', 'cursor-1', {
+            user: { sub: 'collector-user' },
+            headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
+          } as never)
+          .pipe(take(1)),
+      ),
+    ).rejects.toBe(failure);
+
+    expect(replay.replay).not.toHaveBeenCalled();
+    expect(getScannerFeed).not.toHaveBeenCalled();
+  });
+
+  it('stops current-user polling after the client disconnects', async () => {
+    jest.useFakeTimers();
+    const getScannerFeed = jest.fn().mockResolvedValue([]);
+    (controller as unknown as { getScannerFeed: jest.Mock }).getScannerFeed = getScannerFeed;
+    const subscription = controller
+      .streamFeed('event-1', undefined, {
+        user: { sub: 'collector-user' },
+        headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-cookie` },
+      } as never)
+      .subscribe();
+
+    await flushPromises();
+    expect(getScannerFeed).toHaveBeenCalledTimes(1);
+    subscription.unsubscribe();
+
+    await jest.advanceTimersByTimeAsync(6_000);
+    expect(getScannerFeed).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
 });
+
+async function flushPromises(): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    await Promise.resolve();
+  }
+}

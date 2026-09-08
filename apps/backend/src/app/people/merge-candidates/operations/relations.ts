@@ -12,12 +12,21 @@ import {
   RoleAssignmentScopeSnapshot,
   RoleAssignmentSnapshot,
 } from './types';
+import { toAttendanceCreateData, toAttendanceSnapshot } from './attendance';
+import { moveSportsPersonRelations } from './sports-representatives';
 
 export async function moveRelations(
   tx: Prisma.TransactionClient,
   targetPersonId: string,
   sourcePersonId: string,
+  revokedRepresentativeById: string | null = null,
 ): Promise<MovedRelationsSnapshot> {
+  const sportsRelations = await moveSportsPersonRelations(
+    tx,
+    targetPersonId,
+    sourcePersonId,
+    revokedRepresentativeById,
+  );
   const sourceAttendances = await tx.eventAttendance.findMany({
     where: {
       personId: sourcePersonId,
@@ -40,18 +49,15 @@ export async function moveRelations(
     : [];
 
   const targetAttendanceSet = new Set(targetAttendances.map((attendance) => attendance.eventId));
+  // Preserve the existing target row for duplicate events; the source row is
+  // still captured completely in movedRelations for undo/audit purposes.
   const insertedAttendanceRows = sourceAttendances.filter((attendance) => !targetAttendanceSet.has(attendance.eventId));
 
   if (insertedAttendanceRows.length > 0) {
     await tx.eventAttendance.createMany({
-      data: insertedAttendanceRows.map((attendance) => ({
-        personId: targetPersonId,
-        eventId: attendance.eventId,
-        attendedAt: attendance.attendedAt,
-        createdAt: attendance.createdAt,
-        createdById: attendance.createdById,
-        committedById: attendance.committedById,
-      })),
+      data: insertedAttendanceRows.map((attendance) =>
+        toAttendanceCreateData(targetPersonId, toAttendanceSnapshot(attendance)),
+      ),
       skipDuplicates: true,
     });
   }
@@ -426,13 +432,7 @@ export async function moveRelations(
   }
 
   return {
-    sourceAttendances: sourceAttendances.map((attendance) => ({
-      eventId: attendance.eventId,
-      attendedAt: attendance.attendedAt.toISOString(),
-      createdAt: attendance.createdAt.toISOString(),
-      createdById: attendance.createdById,
-      committedById: attendance.committedById,
-    })),
+    sourceAttendances: sourceAttendances.map(toAttendanceSnapshot),
     sourceLectures: sourceLectures.map((lecture) => ({
       eventId: lecture.eventId,
       createdAt: lecture.createdAt.toISOString(),
@@ -450,6 +450,7 @@ export async function moveRelations(
     roleAssignmentSnapshots,
     roleAssignmentScopeSnapshots,
     permissionGroupMembershipSnapshots,
+    ...sportsRelations,
   };
 }
 

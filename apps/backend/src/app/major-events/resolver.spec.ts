@@ -3,6 +3,21 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
 
 describe('MajorEventsResolver', () => {
+  it.each([false, true, undefined])('preserves explicit sports entitlement updates: %s', (value) => {
+    const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
+    const [payload] = resolver['buildPriceTierPayloads']({
+      type: 'TIERED', tiers: [{ id: 'existing-tier', name: 'Aluno', value: 1000, includesSportsRegistration: value }],
+    } as never);
+    expect({ includesSportsRegistration: true, ...payload }.includesSportsRegistration).toBe(value ?? true);
+  });
+
+  it.each([['Aluno', ' aluno '], ['AÇÃO', 'ação']])('rejects normalized tier name collisions: %s / %s', (first, second) => {
+    const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
+    expect(() => resolver['buildPriceTierPayloads']({
+      type: 'TIERED', tiers: [{ name: first, value: 1000 }, { name: second, value: 2500 }],
+    } as never)).toThrow('Os nomes das faixas de preço devem ser únicos.');
+  });
+
   it('filters current major-event lookups by end date when requested', async () => {
     const endDateFrom = new Date('2026-07-05T12:00:00.000Z');
     const prisma = {
@@ -195,8 +210,8 @@ describe('MajorEventsResolver', () => {
               type: 'TIERED',
               tiers: {
                 create: [
-                  { name: 'Aluno', value: 4000, includesEventRegistration: true },
-                  { name: 'Professor', value: 6000, includesEventRegistration: true },
+                  { name: 'Aluno', value: 4000, includesEventRegistration: true, includesSportsRegistration: false },
+                  { name: 'Professor', value: 6000, includesEventRegistration: true, includesSportsRegistration: false },
                 ],
               },
             }),
@@ -650,7 +665,7 @@ describe('MajorEventsResolver', () => {
           price: {
             type: 'TIERED',
             tiers: [
-              { id: 'tier-student', name: 'Aluno', value: 4000 },
+              { id: 'tier-student', name: 'Aluno', value: 4000, includesSportsRegistration: false },
               { id: 'tier-professor', name: 'Professor', value: 6000 },
             ],
           },
@@ -688,7 +703,7 @@ describe('MajorEventsResolver', () => {
     expect(tx.priceTier.update).toHaveBeenCalledTimes(2);
     expect(tx.priceTier.update).toHaveBeenNthCalledWith(1, {
       where: { id: 'tier-student' },
-      data: { name: 'Aluno', value: 4000, includesEventRegistration: true },
+      data: { name: 'Aluno', value: 4000, includesEventRegistration: true, includesSportsRegistration: false },
     });
     expect(tx.priceTier.update).toHaveBeenNthCalledWith(2, {
       where: { id: 'tier-professor' },

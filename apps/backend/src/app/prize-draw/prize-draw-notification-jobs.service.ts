@@ -14,7 +14,7 @@ export const PRIZE_DRAW_NOTIFICATION_CLEANUP_JOB = 'cleanup-prize-draw-notificat
 export const PRIZE_DRAW_NOTIFICATION_RECONCILE_JOB = 'reconcile-prize-draw-notifications';
 const UNDO_NOTIFICATION_RETENTION_MS = 60_000;
 export const PRIZE_DRAW_PRESENTATION_GRACE_MS = 750;
-export const PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS = 60 * 60 * 1000;
+export const PRIZE_DRAW_RECONCILIATION_PAGE_SIZE = 100;
 
 export type PrizeDrawNotificationJob = {
   spinId: string;
@@ -210,18 +210,47 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   }
 
   async reconcilePending(): Promise<void> {
-    const [unpublished, pending, undone] = await Promise.all([
-      this.prisma.prizeDrawSpin.findMany({
+    await Promise.all([
+      this.reconcileUnpublishedPresentations(),
+      this.reconcilePendingWinnerNotifications(),
+      this.reconcileUndoneNotificationCleanup(),
+    ]);
+  }
+
+  private async reconcileUnpublishedPresentations(): Promise<void> {
+    let cursor: string | undefined;
+    do {
+      const unpublished = await this.prisma.prizeDrawSpin.findMany({
         where: {
           presentationAcknowledgedAt: null,
           undoneAt: null,
-          drawnAt: { gte: new Date(Date.now() - PRIZE_DRAW_PRESENTATION_RECONCILIATION_WINDOW_MS) },
         },
         select: { id: true, drawnAt: true, countdownSeconds: true, reelDurationMs: true, preRevealPauseMs: true },
-        orderBy: { drawnAt: 'asc' },
-        take: 100,
-      }),
-      this.prisma.prizeDrawSpin.findMany({
+        orderBy: [{ drawnAt: 'asc' }, { id: 'asc' }],
+        take: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      const results = await Promise.allSettled(
+        unpublished.map((spin) => {
+          const releaseAt =
+            spin.drawnAt.getTime() +
+            (spin.countdownSeconds ?? 0) * 1000 +
+            spin.reelDurationMs +
+            spin.preRevealPauseMs +
+            PRIZE_DRAW_PRESENTATION_GRACE_MS;
+          return this.enqueuePresentation(spin.id, { delayMs: Math.max(0, releaseAt - Date.now()) });
+        }),
+      );
+      this.reportReconciliationFailures('presentation', unpublished.map((spin) => spin.id), results);
+      cursor =
+        unpublished.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? unpublished.at(-1)?.id : undefined;
+    } while (cursor);
+  }
+
+  private async reconcilePendingWinnerNotifications(): Promise<void> {
+    let cursor: string | undefined;
+    do {
+      const pending = await this.prisma.prizeDrawSpin.findMany({
         where: {
           notificationStatus: 'PENDING',
           notificationTransactionId: { not: null },
@@ -229,10 +258,20 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
           undoneAt: null,
         },
         select: { id: true },
-        orderBy: { presentationAcknowledgedAt: 'asc' },
-        take: 100,
-      }),
-      this.prisma.prizeDrawSpin.findMany({
+        orderBy: [{ presentationAcknowledgedAt: 'asc' }, { id: 'asc' }],
+        take: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      const results = await Promise.allSettled(pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })));
+      this.reportReconciliationFailures('winner notification', pending.map((spin) => spin.id), results);
+      cursor = pending.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? pending.at(-1)?.id : undefined;
+    } while (cursor);
+  }
+
+  private async reconcileUndoneNotificationCleanup(): Promise<void> {
+    let cursor: string | undefined;
+    do {
+      const undone = await this.prisma.prizeDrawSpin.findMany({
         where: {
           undoneAt: { not: null },
           OR: [
@@ -241,23 +280,14 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
           ],
         },
         select: { id: true },
-        orderBy: { undoneAt: 'asc' },
-        take: 100,
-      }),
-    ]);
-    await Promise.all([
-      ...unpublished.map((spin) => {
-        const releaseAt =
-          spin.drawnAt.getTime() +
-          (spin.countdownSeconds ?? 0) * 1000 +
-          spin.reelDurationMs +
-          spin.preRevealPauseMs +
-          PRIZE_DRAW_PRESENTATION_GRACE_MS;
-        return this.enqueuePresentation(spin.id, { delayMs: Math.max(0, releaseAt - Date.now()) });
-      }),
-      ...pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })),
-      ...undone.map((spin) => this.enqueueCleanup(spin.id, 0)),
-    ]);
+        orderBy: [{ undoneAt: 'asc' }, { id: 'asc' }],
+        take: PRIZE_DRAW_RECONCILIATION_PAGE_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      const results = await Promise.allSettled(undone.map((spin) => this.enqueueCleanup(spin.id, 0)));
+      this.reportReconciliationFailures('undone notification cleanup', undone.map((spin) => spin.id), results);
+      cursor = undone.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? undone.at(-1)?.id : undefined;
+    } while (cursor);
   }
 
   private async removePendingWinnerJob(spinId: string): Promise<void> {
@@ -270,6 +300,21 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     } catch {
       // An active job cannot be removed; the undoneAt check in deliverWinner is the final guard.
     }
+  }
+
+  private reportReconciliationFailures(
+    kind: string,
+    spinIds: string[],
+    results: PromiseSettledResult<unknown>[],
+  ): void {
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') return;
+      this.logger.warn(
+        `Could not enqueue ${kind} for spin ${spinIds[index] ?? 'unknown'}: ${
+          result.reason instanceof Error ? result.reason.message : String(result.reason)
+        }`,
+      );
+    });
   }
 
   private winnerJobId(spinId: string): string {

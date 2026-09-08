@@ -417,6 +417,7 @@ export class CertificateIssuingService {
         data: { deletedAt: new Date() },
         select: CERTIFICATE_SELECT,
       });
+      await this.notificationJobs?.supersedeCertificateNotifications(normalizedCertificateId, tx);
       await this.recordCertificateAudit(certificate, deleted, AuditLogOperation.DELETE, deletedById, tx);
     });
 

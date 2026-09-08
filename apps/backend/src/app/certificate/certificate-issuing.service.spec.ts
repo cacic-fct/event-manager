@@ -816,6 +816,36 @@ describe('CertificateIssuingService', () => {
       'Certificate missing-certificate not found.',
     );
   });
+
+  it('supersedes pending availability notifications in the certificate deletion transaction', async () => {
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value.trim()),
+    };
+    const prisma = {
+      $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation(prisma)),
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue(mappedCertificateRecord),
+        update: jest.fn().mockResolvedValue({ ...mappedCertificateRecord, deletedAt: new Date() }),
+      },
+    };
+    const notificationJobs = {
+      supersedeCertificateNotifications: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateIssuingService(
+      prisma as never,
+      validation as never,
+      {} as never,
+      undefined,
+      undefined,
+      notificationJobs as never,
+    );
+
+    await expect(service.deleteCertificate(' certificate-1 ')).resolves.toEqual({
+      deleted: true,
+      id: 'certificate-1',
+    });
+    expect(notificationJobs.supersedeCertificateNotifications).toHaveBeenCalledWith('certificate-1', prisma);
+  });
   const mappedCertificateRecord = {
     id: 'certificate-1',
     personId: 'person-valid',

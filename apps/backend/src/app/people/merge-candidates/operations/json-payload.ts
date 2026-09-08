@@ -37,6 +37,25 @@ export function readNullableString(record: Record<string, Prisma.JsonValue>, key
   return value;
 }
 
+export function readNullableNumber(record: Record<string, Prisma.JsonValue>, key: string): number | null {
+  const value = record[key];
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new ConflictException(`Invalid ${key} payload value.`);
+  }
+  return value;
+}
+
+export function readRequiredNumber(record: Record<string, Prisma.JsonValue>, key: string): number {
+  const value = readNullableNumber(record, key);
+  if (value === null) {
+    throw new ConflictException(`Invalid ${key} payload value.`);
+  }
+  return value;
+}
+
 export function isRecord(value: Prisma.JsonValue): value is Record<string, Prisma.JsonValue> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

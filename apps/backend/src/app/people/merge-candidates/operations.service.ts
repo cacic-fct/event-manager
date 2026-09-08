@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { collectCpfMatches, collectEmailMatches, collectNameMatches } from './operations/matching';
 import { buildTargetMigrationData, normalizeMigrateFields } from './operations/migration';
+import { toAttendanceCreateData } from './operations/attendance';
 import { moveRelations } from './operations/relations';
 import { parseMovedRelations, parsePersonSnapshot, toPersonSnapshot, toPersonUpdateData } from './operations/snapshots';
 import { CandidateMatch } from './operations/types';
@@ -171,7 +172,7 @@ export class MergeCandidateOperationsService {
       const sourceSnapshot = toPersonSnapshot(sourcePerson);
       const targetMigrationData = buildTargetMigrationData(migrateFields, targetPerson, sourcePerson);
 
-      const movedRelations = await moveRelations(tx, targetPerson.id, sourcePerson.id);
+      const movedRelations = await moveRelations(tx, targetPerson.id, sourcePerson.id, actorId);
 
       await tx.people.update({
         where: {
@@ -349,14 +350,9 @@ export class MergeCandidateOperationsService {
 
       if (movedRelations.sourceAttendances.length > 0) {
         await tx.eventAttendance.createMany({
-          data: movedRelations.sourceAttendances.map((attendance) => ({
-            personId: sourcePerson.id,
-            eventId: attendance.eventId,
-            attendedAt: new Date(attendance.attendedAt),
-            createdAt: new Date(attendance.createdAt),
-            createdById: attendance.createdById,
-            committedById: attendance.committedById,
-          })),
+          data: movedRelations.sourceAttendances.map((attendance) =>
+            toAttendanceCreateData(sourcePerson.id, attendance),
+          ),
           skipDuplicates: true,
         });
       }
@@ -412,6 +408,107 @@ export class MergeCandidateOperationsService {
             where: { id: { in: movedRelations.archivedRoleAssignmentIds } },
             data: { archivedAt: null, archivedReason: null },
           });
+        }
+      }
+
+      if (movedRelations.sportsTeamRepresentativeSnapshots.length > 0) {
+        const snapshotsById = new Map(
+          movedRelations.sportsTeamRepresentativeSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+        );
+        for (const representativeId of movedRelations.movedSportsTeamRepresentativeIds) {
+          const snapshot = snapshotsById.get(representativeId);
+          if (!snapshot) {
+            throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
+          }
+          const restored = await tx.sportsTeamRepresentative.updateMany({
+            where: { id: representativeId, personId: targetPerson.id },
+            data: { personId: sourcePerson.id },
+          });
+          if (restored.count !== 1) {
+            throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
+          }
+        }
+        for (const representativeId of movedRelations.revokedSportsTeamRepresentativeIds) {
+          const snapshot = snapshotsById.get(representativeId);
+          if (!snapshot) {
+            throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
+          }
+          if (!snapshot.mergeRevokedAt) {
+            throw new ConflictException(`Sports representative ${representativeId} has no merge state guard.`);
+          }
+          if (!snapshot.mergeTargetRepresentativeId) {
+            throw new ConflictException(`Sports representative ${representativeId} has no coalesced target guard.`);
+          }
+          const targetRepresentative = await tx.sportsTeamRepresentative.findUnique({
+            where: { id: snapshot.mergeTargetRepresentativeId },
+            select: { personId: true, active: true, revokedAt: true },
+          });
+          if (
+            !targetRepresentative ||
+            targetRepresentative.personId !== targetPerson.id ||
+            !targetRepresentative.active ||
+            targetRepresentative.revokedAt !== null
+          ) {
+            throw new ConflictException(
+              `The target sports representative ${snapshot.mergeTargetRepresentativeId} changed after the merge.`,
+            );
+          }
+          const restored = await tx.sportsTeamRepresentative.updateMany({
+            where: {
+              id: representativeId,
+              personId: snapshot.personId,
+              active: false,
+              revokedAt: new Date(snapshot.mergeRevokedAt),
+              revokedById: snapshot.mergeRevokedById,
+            },
+            data: {
+              active: snapshot.active,
+              assignedAt: new Date(snapshot.assignedAt),
+              assignedById: snapshot.assignedById,
+              revokedAt: snapshot.revokedAt ? new Date(snapshot.revokedAt) : null,
+              revokedById: snapshot.revokedById,
+              createdAt: new Date(snapshot.createdAt),
+            },
+          });
+          if (restored.count !== 1) {
+            throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
+          }
+        }
+      }
+
+      if (movedRelations.sportsTournamentParticipantSnapshots.length > 0) {
+        const participantSnapshotsById = new Map(
+          movedRelations.sportsTournamentParticipantSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+        );
+        for (const participantId of movedRelations.movedSportsTournamentParticipantIds) {
+          if (!participantSnapshotsById.has(participantId)) {
+            throw new ConflictException(`Missing sports participant snapshot for ${participantId}.`);
+          }
+          const restored = await tx.sportsTournamentParticipant.updateMany({
+            where: { id: participantId, personId: targetPerson.id },
+            data: { personId: sourcePerson.id },
+          });
+          if (restored.count !== 1) {
+            throw new ConflictException(`Sports participant ${participantId} changed after the merge.`);
+          }
+        }
+      }
+
+      if (movedRelations.sportsOfficialAssignmentSnapshots.length > 0) {
+        const assignmentSnapshotsById = new Map(
+          movedRelations.sportsOfficialAssignmentSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+        );
+        for (const assignmentId of movedRelations.movedSportsOfficialAssignmentIds) {
+          if (!assignmentSnapshotsById.has(assignmentId)) {
+            throw new ConflictException(`Missing sports official assignment snapshot for ${assignmentId}.`);
+          }
+          const restored = await tx.sportsOfficialAssignment.updateMany({
+            where: { id: assignmentId, personId: targetPerson.id },
+            data: { personId: sourcePerson.id },
+          });
+          if (restored.count !== 1) {
+            throw new ConflictException(`Sports official assignment ${assignmentId} changed after the merge.`);
+          }
         }
       }
       if (movedRelations.permissionGroupMembershipSnapshots.length > 0) {

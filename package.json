@@ -8,6 +8,7 @@
     "data-import": "node tools/data-import/index.mts",
     "data-import:built": "node dist/tools/data-import/index.mjs",
     "e2e:backend:keycloak": "bunx nx run backend-e2e:e2e-keycloak",
+    "e2e:backend:keycloak:real-infra": "bunx nx run backend-e2e:e2e-keycloak-real-infra",
     "publish:event-manager-m2m-contracts": "bunx nx run event-manager-m2m-contracts:publish",
     "publish:event-manager-public-contracts": "bunx nx run event-manager-public-contracts:publish",
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts",

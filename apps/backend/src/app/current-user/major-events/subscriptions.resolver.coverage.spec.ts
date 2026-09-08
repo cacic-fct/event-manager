@@ -472,6 +472,35 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(harness.eventForms.submitSubscriptionFlowResponses).not.toHaveBeenCalled();
   });
 
+  it('returns canonical selections for a confirmed consent-only update while registration is open', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({ requiresImageLicenseAgreement: true });
+    const requestedEvent = eventRecord('requested-event');
+    const accepted = subscriptionRecord(majorEvent, {
+      subscriptionStatus: SubscriptionStatus.CONFIRMED, imageLicenseAgreementAccepted: true,
+      selectedEvents: [{ id: 'original-selection' }], sportsTournamentParticipants: [],
+    });
+    const tx = createUpsertTransaction(majorEvent, requestedEvent, accepted);
+    tx.majorEventSubscription.findFirst.mockReset().mockResolvedValue(accepted);
+    tx.majorEventSubscription.update.mockResolvedValue(accepted);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([requestedEvent]).mockResolvedValueOnce([]);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) => operation(tx));
+    const canonical = { selectedEvents: [{ id: 'original-event' }], notSubscribedEvents: [{ id: 'waitlisted-event' }] };
+    harness.majorEventSubscriptions.getMajorEventSubscriptionEvents.mockResolvedValue(canonical);
+
+    const result = await harness.resolver.upsertCurrentUserMajorEventSubscription({
+      majorEventId: 'major-1', selectedEventIds: ['requested-event'], imageLicenseAgreementAccepted: true,
+    }, { req: {} } as never);
+
+    expect(result).toEqual(expect.objectContaining(canonical));
+    expect(tx.majorEventSubscriptionEventSelection.createMany).not.toHaveBeenCalled();
+    expect(tx.majorEventSubscriptionEventSelection.updateMany).not.toHaveBeenCalled();
+    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { imageLicenseAgreementAccepted: true },
+    }));
+  });
+
   it('maps a successful self-service upsert, records the actor, and emits form deltas', async () => {
     const harness = createHarness();
     const majorEvent = majorEventRecord();

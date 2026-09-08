@@ -203,9 +203,9 @@ export class AuthService {
     } catch (error) {
       if (!this.isExpectedUnauthenticatedError(error)) {
         this.logUnexpectedAuthError('Silent token refresh failed', error);
+      } else {
+        this.clearSession();
       }
-
-      this.clearSession();
     }
   }
 
@@ -229,7 +229,10 @@ export class AuthService {
         ),
       ),
       catchError((error) => {
-        this.clearSession();
+        if (this.isExpectedUnauthenticatedError(error)) {
+          this.clearSession();
+        }
+
         return throwError(() => error);
       }),
       finalize(() => {
@@ -291,10 +294,10 @@ export class AuthService {
 
       return Boolean(user);
     } catch (error) {
-      this.user.set(null);
-
       if (this.isHttpError(error)) {
-        if (!this.isExpectedUnauthenticatedError(error)) {
+        if (this.isExpectedUnauthenticatedError(error)) {
+          this.user.set(null);
+        } else {
           this.logUnexpectedAuthError('Failed to load current user', error);
         }
 
@@ -331,9 +334,9 @@ export class AuthService {
       } catch (error) {
         if (!this.isExpectedUnauthenticatedError(error)) {
           this.logUnexpectedAuthError('Silent token refresh before onboarding failed', error);
+        } else {
+          this.clearSession();
         }
-
-        this.clearSession();
         return;
       }
 
@@ -372,9 +375,9 @@ export class AuthService {
         error: (error) => {
           if (!this.isExpectedUnauthenticatedError(error)) {
             this.logUnexpectedAuthError('Scheduled token refresh failed', error);
+          } else {
+            this.clearSession();
           }
-
-          this.clearSession();
         },
       });
     }, refreshDelayMs);

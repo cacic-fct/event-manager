@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } fr
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthRefreshResult, AuthService, authInterceptor } from '@cacic-fct/shared-angular';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 
 describe('authInterceptor', () => {
   const refreshResult: AuthRefreshResult = {
@@ -75,5 +75,51 @@ describe('authInterceptor', () => {
     await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(authService.refreshTokenSilently).not.toHaveBeenCalled();
     expect(authService.clearSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [403, 'Forbidden'],
+    [429, 'Too Many Requests'],
+    [500, 'Internal Server Error'],
+    [0, 'Unknown Error'],
+  ])('does not clear local auth state when the retried business request fails with %s', async (status, statusText) => {
+    const response = firstValueFrom(http.get('/api/private'));
+
+    httpTesting.expectOne('/api/private').flush({ message: 'expired' }, { status: 401, statusText: 'Unauthorized' });
+    httpTesting.expectOne('/api/private').flush({ message: 'business request failed' }, { status, statusText });
+
+    await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(authService.refreshTokenSilently).toHaveBeenCalledOnce();
+    expect(authService.clearSession).not.toHaveBeenCalled();
+  });
+
+  it('does not clear local auth state when refresh fails because the provider is temporarily unavailable', async () => {
+    const providerFailure = new HttpErrorResponse({
+      status: 503,
+      statusText: 'Service Unavailable',
+      url: '/api/auth/refresh',
+    });
+    authService.refreshTokenSilently.mockReturnValue(throwError(() => providerFailure));
+    const response = firstValueFrom(http.get('/api/private'));
+
+    httpTesting.expectOne('/api/private').flush({ message: 'expired' }, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(response).rejects.toBe(providerFailure);
+    expect(authService.clearSession).not.toHaveBeenCalled();
+  });
+
+  it('clears local auth state when the refresh endpoint confirms that the session is invalid', async () => {
+    const invalidSession = new HttpErrorResponse({
+      status: 401,
+      statusText: 'Unauthorized',
+      url: '/api/auth/refresh',
+    });
+    authService.refreshTokenSilently.mockReturnValue(throwError(() => invalidSession));
+    const response = firstValueFrom(http.get('/api/private'));
+
+    httpTesting.expectOne('/api/private').flush({ message: 'expired' }, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(response).rejects.toBe(invalidSession);
+    expect(authService.clearSession).toHaveBeenCalledOnce();
   });
 });

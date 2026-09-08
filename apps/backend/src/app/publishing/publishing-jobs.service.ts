@@ -94,12 +94,15 @@ export class PublicationJobsService {
           publicationState: PrismaPublicationState.SCHEDULED,
           scheduledPublishAt: { lte: now },
         },
-        select: { id: true },
+        select: { id: true, scheduledPublishAt: true },
       });
-      if (!event) {
+      if (!event || !event.scheduledPublishAt) {
         return;
       }
-      const sync = await this.transitions.publishEventById(event.id, null);
+      const sync = await this.transitions.publishScheduledEventById(event.id, event.scheduledPublishAt, null);
+      if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) {
+        return;
+      }
       await this.searchSync.syncSearch(sync);
       return;
     }
@@ -111,12 +114,15 @@ export class PublicationJobsService {
         publicationState: PrismaPublicationState.SCHEDULED,
         scheduledPublishAt: { lte: now },
       },
-      select: { id: true },
+      select: { id: true, scheduledPublishAt: true },
     });
-    if (!majorEvent) {
+    if (!majorEvent || !majorEvent.scheduledPublishAt) {
       return;
     }
-    const sync = await this.transitions.publishMajorEventById(majorEvent.id, null);
+    const sync = await this.transitions.publishScheduledMajorEventById(majorEvent.id, majorEvent.scheduledPublishAt, null);
+    if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) {
+      return;
+    }
     await this.searchSync.syncSearch(sync);
   }
 
@@ -124,7 +130,6 @@ export class PublicationJobsService {
     const allSyncs: TargetSync[] = [];
     const attemptedEventIds = new Set<string>();
     const attemptedMajorEventIds = new Set<string>();
-    let processedPage = 0;
     while (true) {
       const now = new Date();
       const [events, majorEvents] = await Promise.all([
@@ -135,7 +140,7 @@ export class PublicationJobsService {
             scheduledPublishAt: { lte: now },
             ...(attemptedEventIds.size > 0 ? { id: { notIn: [...attemptedEventIds] } } : {}),
           },
-          select: { id: true },
+          select: { id: true, scheduledPublishAt: true },
           take: RECONCILE_PAGE_SIZE,
         }),
         this.prisma.majorEvent.findMany({
@@ -145,7 +150,7 @@ export class PublicationJobsService {
             scheduledPublishAt: { lte: now },
             ...(attemptedMajorEventIds.size > 0 ? { id: { notIn: [...attemptedMajorEventIds] } } : {}),
           },
-          select: { id: true },
+          select: { id: true, scheduledPublishAt: true },
           take: RECONCILE_PAGE_SIZE,
         }),
       ]);
@@ -153,28 +158,37 @@ export class PublicationJobsService {
         break;
       }
 
-      processedPage += 1;
       events.forEach((event) => attemptedEventIds.add(event.id));
       majorEvents.forEach((majorEvent) => attemptedMajorEventIds.add(majorEvent.id));
       const eventResults = await mapWithConcurrency(events, RECONCILE_CONCURRENCY, (event) =>
-        this.transitions.publishEventById(event.id, null, { skipSitemap: true }),
+        event.scheduledPublishAt
+          ? this.transitions.publishScheduledEventById(event.id, event.scheduledPublishAt, null, {
+              skipSitemap: true,
+            })
+          : Promise.resolve({ eventIds: [], majorEventIds: [] }),
       );
       const majorResults = await mapWithConcurrency(majorEvents, RECONCILE_CONCURRENCY, (majorEvent) =>
-        this.transitions.publishMajorEventById(majorEvent.id, null, { skipSitemap: true }),
+        majorEvent.scheduledPublishAt
+          ? this.transitions.publishScheduledMajorEventById(majorEvent.id, majorEvent.scheduledPublishAt, null, {
+              skipSitemap: true,
+            })
+          : Promise.resolve({ eventIds: [], majorEventIds: [] }),
       );
       this.reportPublicationFailures('EVENT', events, eventResults);
       this.reportPublicationFailures('MAJOR_EVENT', majorEvents, majorResults);
       allSyncs.push(
         ...eventResults
           .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
-          .map((result) => result.value),
+          .map((result) => result.value)
+          .filter(hasPublicationChanges),
         ...majorResults
           .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
-          .map((result) => result.value),
+          .map((result) => result.value)
+          .filter(hasPublicationChanges),
       );
     }
 
-    if (processedPage > 0) {
+    if (allSyncs.length > 0) {
       await this.transitions.refreshSitemapBestEffort();
       try {
         await this.searchSync.syncSearch(this.transitions.mergeSync(allSyncs));
@@ -290,4 +304,8 @@ async function mapWithConcurrency<T, R>(
 
 function formatFailure(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function hasPublicationChanges(sync: TargetSync): boolean {
+  return sync.eventIds.length > 0 || sync.majorEventIds.length > 0;
 }

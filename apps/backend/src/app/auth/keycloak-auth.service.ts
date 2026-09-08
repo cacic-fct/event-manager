@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import axios from 'axios';
 import { Buffer } from 'node:buffer';
 import { createPublicKey, type JsonWebKey, type KeyObject, randomBytes, verify as verifySignature } from 'node:crypto';
@@ -67,6 +73,11 @@ export class KeycloakAuthService {
     process.env.KEYCLOAK_PRINCIPAL_CACHE_TTL_MS ?? process.env.KEYCLOAK_INTROSPECTION_CACHE_TTL_MS,
     10_000,
   );
+  private readonly principalCacheMaxEntries = this.parsePositiveIntegerEnv(
+    process.env.KEYCLOAK_PRINCIPAL_CACHE_MAX_ENTRIES,
+    10_000,
+  );
+  private readonly keycloakRequestTimeoutMs = this.resolveKeycloakRequestTimeoutMs();
   private readonly jwksCacheTtlMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_CACHE_TTL_MS, 600_000);
   private readonly jwksFetchTimeoutMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_FETCH_TIMEOUT_MS, 5_000);
   private readonly jwksUnknownKidCooldownMs = this.parsePositiveIntegerEnv(
@@ -160,22 +171,18 @@ export class KeycloakAuthService {
     this.addClientAuthentication(payload, headers);
 
     try {
-      const { data } = await axios.post<Record<string, unknown>>(
+      return await this.postKeycloakForm<Record<string, unknown>>(
         `${this.realmUrl}/protocol/openid-connect/token`,
         payload.toString(),
-        {
-          headers,
-        },
+        headers,
       );
-
-      return data;
     } catch (error) {
       this.logKeycloakFailure(
         'authorization code token exchange',
         error,
         this.getTokenExchangeFailureContext(exchangeRedirectUri),
       );
-      throw new UnauthorizedException('Could not exchange authorization code for tokens.');
+      throw this.toTokenExchangeException(error, 'Could not exchange authorization code for tokens.');
     }
   }
 
@@ -189,18 +196,14 @@ export class KeycloakAuthService {
     this.addClientAuthentication(payload, headers);
 
     try {
-      const { data } = await axios.post<Record<string, unknown>>(
+      return await this.postKeycloakForm<Record<string, unknown>>(
         `${this.realmUrl}/protocol/openid-connect/token`,
         payload.toString(),
-        {
-          headers,
-        },
+        headers,
       );
-
-      return data;
     } catch (error) {
       this.logKeycloakFailure('password token exchange', error);
-      throw new UnauthorizedException('Could not exchange password credentials for tokens.');
+      throw this.toTokenExchangeException(error, 'Could not exchange password credentials for tokens.');
     }
   }
 
@@ -212,18 +215,14 @@ export class KeycloakAuthService {
     this.addClientAuthentication(payload, headers);
 
     try {
-      const { data } = await axios.post<Record<string, unknown>>(
+      return await this.postKeycloakForm<Record<string, unknown>>(
         `${this.realmUrl}/protocol/openid-connect/token`,
         payload.toString(),
-        {
-          headers,
-        },
+        headers,
       );
-
-      return data;
     } catch (error) {
       this.logKeycloakFailure('refresh token exchange', error);
-      throw new UnauthorizedException('Could not refresh access token.');
+      throw this.toTokenExchangeException(error, 'Could not refresh access token.');
     }
   }
 
@@ -241,9 +240,7 @@ export class KeycloakAuthService {
       this.addClientAuthentication(payload, headers);
 
       try {
-        await axios.post(`${this.realmUrl}/protocol/openid-connect/revoke`, payload.toString(), {
-          headers,
-        });
+        await this.postKeycloakForm(`${this.realmUrl}/protocol/openid-connect/revoke`, payload.toString(), headers);
         refreshTokenRevoked = true;
       } catch (error) {
         this.logKeycloakFailure('refresh token revocation', error);
@@ -311,7 +308,10 @@ export class KeycloakAuthService {
       throw new UnauthorizedException('Missing refresh token in session.');
     }
 
-    const refreshedSession = await this.refreshStoredSession(sessionId, session.refreshToken);
+    const refreshedSession = await this.refreshStoredSession(sessionId, {
+      forceRefresh: true,
+      observedAccessToken: session.accessToken,
+    });
 
     return {
       expiresAt: refreshedSession.accessTokenExpiresAt,
@@ -328,23 +328,28 @@ export class KeycloakAuthService {
       throw new UnauthorizedException('Missing authenticated session.');
     }
 
+    const updatedSession = this.buildUpdatedSession(session, tokenResponse);
+    await this.sessions.set(sessionId, updatedSession);
+
+    return {
+      expiresAt: updatedSession.accessTokenExpiresAt,
+      sessionExpiresAt: updatedSession.sessionExpiresAt,
+    };
+  }
+
+  private buildUpdatedSession(session: AuthSession, tokenResponse: Record<string, unknown>): AuthSession {
     const tokens = tokenResponse as TokenResponse;
     if (!tokens.access_token || typeof tokens.access_token !== 'string') {
       throw new UnauthorizedException('Missing access token in auth response.');
     }
 
-    const accessTokenExpiresAt = this.resolveAccessTokenExpiration(tokens.access_token, tokens.expires_in);
-    const sessionExpiresAt = this.resolveRefreshTokenExpiration(tokens, session.sessionExpiresAt);
-
-    await this.sessions.set(sessionId, {
+    return {
       accessToken: tokens.access_token,
       refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : session.refreshToken,
       idTokenHint: typeof tokens.id_token === 'string' ? tokens.id_token : session.idTokenHint,
-      accessTokenExpiresAt,
-      sessionExpiresAt,
-    });
-
-    return { expiresAt: accessTokenExpiresAt, sessionExpiresAt };
+      accessTokenExpiresAt: this.resolveAccessTokenExpiration(tokens.access_token, tokens.expires_in),
+      sessionExpiresAt: this.resolveRefreshTokenExpiration(tokens, session.sessionExpiresAt),
+    };
   }
 
   async authenticateSession(
@@ -357,7 +362,7 @@ export class KeycloakAuthService {
     }
 
     if (this.shouldRefreshSessionAccessToken(session.accessTokenExpiresAt) && session.refreshToken) {
-      session = await this.refreshStoredSession(sessionId, session.refreshToken);
+      session = await this.refreshStoredSession(sessionId);
     }
 
     try {
@@ -367,7 +372,10 @@ export class KeycloakAuthService {
         throw error;
       }
 
-      const refreshedSession = await this.refreshStoredSession(sessionId, session.refreshToken);
+      const refreshedSession = await this.refreshStoredSession(sessionId, {
+        forceRefresh: true,
+        observedAccessToken: session.accessToken,
+      });
       return this.authenticateSessionAccessToken(refreshedSession, requirements);
     }
   }
@@ -426,7 +434,10 @@ export class KeycloakAuthService {
     };
   }
 
-  private async refreshStoredSession(sessionId: string, refreshToken: string): Promise<AuthSession> {
+  private async refreshStoredSession(
+    sessionId: string,
+    options: { forceRefresh?: boolean; observedAccessToken?: string } = {},
+  ): Promise<AuthSession> {
     const lockOwner = randomBytes(16).toString('base64url');
     const hasLock = await this.sessions.acquireRefreshLock(sessionId, lockOwner);
 
@@ -438,29 +449,20 @@ export class KeycloakAuthService {
         throw new UnauthorizedException('Missing authenticated session.');
       }
 
-      if (!this.shouldRefreshSessionAccessToken(session.accessTokenExpiresAt)) {
+      if (!this.shouldRefreshStoredSession(session, options)) {
         return session;
       }
 
-      return this.refreshStoredSessionAfterLockTimeout(sessionId, session.refreshToken ?? refreshToken);
+      return this.refreshStoredSessionAfterLockTimeout(sessionId, options);
     }
 
-    try {
-      const tokenResponse = await this.refreshAccessToken(refreshToken);
-      await this.updateStoredSessionFromTokenResponse(sessionId, tokenResponse);
-    } finally {
-      await this.sessions.releaseRefreshLock(sessionId, lockOwner);
-    }
-
-    const session = await this.sessions.get(sessionId);
-    if (!session) {
-      throw new UnauthorizedException('Missing authenticated session.');
-    }
-
-    return session;
+    return this.refreshSessionAfterLock(sessionId, lockOwner, options);
   }
 
-  private async refreshStoredSessionAfterLockTimeout(sessionId: string, refreshToken: string): Promise<AuthSession> {
+  private async refreshStoredSessionAfterLockTimeout(
+    sessionId: string,
+    options: { forceRefresh?: boolean; observedAccessToken?: string } = {},
+  ): Promise<AuthSession> {
     const lockOwner = randomBytes(16).toString('base64url');
     const hasLock = await this.sessions.acquireRefreshLock(sessionId, lockOwner);
 
@@ -475,19 +477,60 @@ export class KeycloakAuthService {
       return session;
     }
 
+    return this.refreshSessionAfterLock(sessionId, lockOwner, options);
+  }
+
+  private async refreshSessionAfterLock(
+    sessionId: string,
+    lockOwner: string,
+    options: { forceRefresh?: boolean; observedAccessToken?: string } = {},
+  ): Promise<AuthSession> {
     try {
-      const tokenResponse = await this.refreshAccessToken(refreshToken);
-      await this.updateStoredSessionFromTokenResponse(sessionId, tokenResponse);
+      const session = await this.sessions.get(sessionId);
+      if (!session) {
+        throw new UnauthorizedException('Missing authenticated session.');
+      }
+
+      if (!this.shouldRefreshStoredSession(session, options)) {
+        return session;
+      }
+
+      if (!session.refreshToken) {
+        throw new UnauthorizedException('Missing refresh token in session.');
+      }
+
+      const tokenResponse = await this.refreshAccessToken(session.refreshToken);
+      const refreshedSession = this.buildUpdatedSession(session, tokenResponse);
+      const persisted = await this.sessions.setIfCurrent(sessionId, session, refreshedSession);
+      if (!persisted) {
+        const currentSession = await this.sessions.get(sessionId);
+        if (!currentSession) {
+          throw new UnauthorizedException('Missing authenticated session.');
+        }
+
+        return currentSession;
+      }
+
+      const currentSession = await this.sessions.get(sessionId);
+      if (!currentSession) {
+        throw new UnauthorizedException('Missing authenticated session.');
+      }
+
+      return currentSession;
     } finally {
       await this.sessions.releaseRefreshLock(sessionId, lockOwner);
     }
+  }
 
-    const session = await this.sessions.get(sessionId);
-    if (!session) {
-      throw new UnauthorizedException('Missing authenticated session.');
+  private shouldRefreshStoredSession(
+    session: AuthSession,
+    options: { forceRefresh?: boolean; observedAccessToken?: string },
+  ): boolean {
+    if (this.shouldRefreshSessionAccessToken(session.accessTokenExpiresAt)) {
+      return true;
     }
 
-    return session;
+    return options.forceRefresh === true && options.observedAccessToken === session.accessToken;
   }
 
   getPostLoginRedirectUri(state?: AuthorizationState): string {
@@ -500,10 +543,12 @@ export class KeycloakAuthService {
 
   private async getOrCreatePrincipal(accessToken: string): Promise<AuthenticatedUser> {
     const now = Date.now();
+    this.pruneUserCache(now);
     const cachedUser = this.userCache.get(accessToken);
     if (cachedUser && cachedUser.expiresAt > now) {
       return cachedUser.user;
     }
+    this.userCache.delete(accessToken);
 
     const mergedClaims = await this.verifyAccessTokenClaims(accessToken);
 
@@ -539,8 +584,28 @@ export class KeycloakAuthService {
       user: principal,
       expiresAt: Math.min(expBasedCache, now + this.cacheTtlMs),
     });
+    this.evictOverflowingUserCache();
 
     return principal;
+  }
+
+  private pruneUserCache(now: number): void {
+    for (const [accessToken, cachedUser] of this.userCache) {
+      if (cachedUser.expiresAt <= now) {
+        this.userCache.delete(accessToken);
+      }
+    }
+  }
+
+  private evictOverflowingUserCache(): void {
+    while (this.userCache.size > this.principalCacheMaxEntries) {
+      const oldestAccessToken = this.userCache.keys().next().value as string | undefined;
+      if (!oldestAccessToken) {
+        return;
+      }
+
+      this.userCache.delete(oldestAccessToken);
+    }
   }
 
   private async syncLoginClaims(accessToken: string, idTokenHint?: string): Promise<void> {
@@ -856,6 +921,53 @@ export class KeycloakAuthService {
     }.`;
   }
 
+  private async postKeycloakForm<T>(
+    endpoint: string,
+    body: string,
+    headers: Record<string, string>,
+  ): Promise<T> {
+    const controller = new AbortController();
+    let rejectTimeout!: (reason?: unknown) => void;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      rejectTimeout = reject;
+    });
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      rejectTimeout(new Error(`Keycloak request timed out after ${this.keycloakRequestTimeoutMs}ms`));
+    }, this.keycloakRequestTimeoutMs);
+
+    try {
+      const response = await Promise.race([
+        axios.post<T>(endpoint, body, {
+          headers,
+          timeout: this.keycloakRequestTimeoutMs,
+          signal: controller.signal,
+        }),
+        timeoutPromise,
+      ]);
+      return response.data;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private toTokenExchangeException(error: unknown, unauthorizedMessage: string): Error {
+    if (this.isInvalidTokenExchange(error)) {
+      return new UnauthorizedException(unauthorizedMessage);
+    }
+
+    return new ServiceUnavailableException('Keycloak authentication is temporarily unavailable.');
+  }
+
+  private isInvalidTokenExchange(error: unknown): boolean {
+    if (!axios.isAxiosError(error)) {
+      return false;
+    }
+
+    const responseData = error.response?.data;
+    return isRecord(responseData) && readStringClaim(responseData, 'error') === 'invalid_grant';
+  }
+
   private createFormHeaders(extraHeaders?: Record<string, string>): Record<string, string> {
     return {
       'content-type': 'application/x-www-form-urlencoded',
@@ -949,6 +1061,12 @@ export class KeycloakAuthService {
     }
 
     return parsedTtl;
+  }
+
+  private resolveKeycloakRequestTimeoutMs(): number {
+    const configuredTimeout = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_AUTH_REQUEST_TIMEOUT_MS, 5_000);
+    const refreshLockTtl = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS, 10_000);
+    return Math.min(configuredTimeout, Math.max(refreshLockTtl - 500, 1));
   }
 
   private readEnv(key: string, fallback: string): string {

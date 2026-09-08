@@ -19,11 +19,14 @@ export const authInterceptor: HttpInterceptorFn = (
     catchError((error) => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
         return authService.refreshTokenSilently().pipe(
-          switchMap(() => next(req)),
           catchError((refreshError) => {
-            authService.clearSession();
+            if (isAuthenticationFailure(refreshError)) {
+              authService.clearSession();
+            }
+
             return throwError(() => refreshError);
           }),
+          switchMap(() => next(req)),
         );
       }
 
@@ -31,6 +34,10 @@ export const authInterceptor: HttpInterceptorFn = (
     }),
   );
 };
+
+function isAuthenticationFailure(error: unknown): boolean {
+  return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
+}
 
 function shouldSkipRefresh(req: HttpRequest<unknown>): boolean {
   const url = getRequestUrl(req.url);

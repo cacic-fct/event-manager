@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { resolveSportsSelfServicePayment } from './major-event-payment-selection';
+import { resolveMajorEventSelfServicePayment, resolveSportsSelfServicePayment } from './major-event-payment-selection';
 
 describe('resolveSportsSelfServicePayment', () => {
   it('accepts only tiers configured to include sports registration', () => {
@@ -35,5 +35,15 @@ describe('resolveSportsSelfServicePayment', () => {
         null,
       ),
     ).toThrow('Nenhuma faixa de pagamento inclui a inscrição no torneio.');
+  });
+});
+
+describe('ambiguous historical payment tiers', () => {
+  it.each([false, true])('rejects ambiguous selection regardless of row order (%s)', (reverse) => {
+    const tiers = [{ name: 'Aluno', value: 1000 }, { name: ' aluno ', value: 2500 }];
+    if (reverse) tiers.reverse();
+    expect(() => resolveMajorEventSelfServicePayment({
+      isPaymentRequired: true, majorEventPrices: [{ tiers }],
+    }, 'ALUNO')).toThrow('A configuração das faixas de pagamento é ambígua.');
   });
 });

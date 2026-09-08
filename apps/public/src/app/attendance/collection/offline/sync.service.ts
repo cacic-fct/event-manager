@@ -115,12 +115,23 @@ export class AttendanceOfflineSyncService {
   }
 
   private async runAttendanceQueue(userId: string, generation: number): Promise<void> {
-    const items = await this.queue.listUploadable(userId);
-    if (items.length === 0) {
-      return;
+    const attemptedClientIds = new Set<string>();
+    const successfulResults: OfflineAttendanceCommitResult[] = [];
+    const failedItems: Array<{ item: OfflineAttendanceQueueItem; message: string }> = [];
+    while (this.isCurrentRun(userId, generation) && this.network.isOnline()) {
+      const items = (await this.queue.listUploadable(userId, 80, attemptedClientIds))
+        .filter((item) => !attemptedClientIds.has(item.clientId));
+      if (!items.length || !this.isCurrentRun(userId, generation) || !this.network.isOnline()) {
+        break;
+      }
+      items.forEach((item) => attemptedClientIds.add(item.clientId));
+      const outcome = await this.syncWithRetries(userId, items, generation);
+      successfulResults.push(...outcome.successfulResults);
+      failedItems.push(...outcome.failedItems);
     }
-
-    await this.syncWithRetries(userId, items, generation);
+    if (this.isCurrentRun(userId, generation)) {
+      this.showSyncResultDialog(successfulResults, failedItems);
+    }
   }
 
   private syncOralQueue(userId: string, generation: number): Promise<void> {
@@ -272,12 +283,18 @@ export class AttendanceOfflineSyncService {
     userId: string,
     items: readonly OfflineAttendanceQueueItem[],
     generation: number,
-  ): Promise<void> {
+  ): Promise<{
+    successfulResults: OfflineAttendanceCommitResult[];
+    failedItems: Array<{ item: OfflineAttendanceQueueItem; message: string }>;
+  }> {
     let remaining = [...items];
     const successfulResults: OfflineAttendanceCommitResult[] = [];
     const finalFailures = new Map<string, { item: OfflineAttendanceQueueItem; message: string }>();
 
     for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS && remaining.length > 0; attempt++) {
+      if (!this.isCurrentRun(userId, generation) || !this.network.isOnline()) {
+        break;
+      }
       await this.forEachAttendanceOwner(remaining, (ownerUserId, ownerClientIds) =>
         this.queue.markSyncing(ownerUserId, ownerClientIds),
       );
@@ -368,9 +385,7 @@ export class AttendanceOfflineSyncService {
       }
     }
 
-    if (this.isCurrentRun(userId, generation)) {
-      this.showSyncResultDialog(successfulResults, [...finalFailures.values()]);
-    }
+    return { successfulResults, failedItems: [...finalFailures.values()] };
   }
 
   private isDurableResult(result: OfflineAttendanceCommitResult): boolean {

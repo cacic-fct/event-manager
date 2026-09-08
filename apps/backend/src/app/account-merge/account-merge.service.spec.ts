@@ -269,16 +269,36 @@ describe('AccountMergeService', () => {
     ]);
     tx.user.findUnique.mockResolvedValue({ id: 'new-user' });
     tx.people.findUnique.mockResolvedValue(null);
+    tx.sportsTeamRepresentative.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'representative-1',
+          teamId: 'team-1',
+          personId: 'source-person',
+          active: true,
+          assignedAt: new Date('2026-01-01T10:00:00.000Z'),
+          assignedById: 'admin-1',
+          revokedAt: null,
+          revokedById: null,
+          createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([]);
     tx.eventAttendance.findMany
       .mockResolvedValueOnce([
         {
           eventId: 'event-1',
+          status: 'ABSENT',
           attendedAt: new Date('2026-01-01T12:00:00.000Z'),
           createdAt: new Date('2026-01-01T12:10:00.000Z'),
           createdById: 'collector-1',
-          createdByMethod: 'MANUAL',
+          committedById: 'committer-1',
+          createdByMethod: 'MANUAL_INPUT',
           category: 'NON_REGULAR',
           currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+          collectedLatitude: -22.1,
+          collectedLongitude: -51.4,
+          collectedAccuracyMeters: 8,
         },
       ])
       .mockResolvedValueOnce([]);
@@ -352,13 +372,19 @@ describe('AccountMergeService', () => {
       expect.objectContaining({
         data: [expect.objectContaining({
           personId: 'target-person', eventId: 'event-1',
-          category: 'NON_REGULAR', currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+          status: 'ABSENT', category: 'NON_REGULAR', currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+          committedById: 'committer-1', createdByMethod: 'MANUAL_INPUT',
+          collectedLatitude: -22.1, collectedLongitude: -51.4, collectedAccuracyMeters: 8,
         })],
         skipDuplicates: true,
       }),
     );
     expect(tx.eventSubscription.update).toHaveBeenCalledWith({
       where: { id: 'event-subscription-1' },
+      data: { personId: 'target-person' },
+    });
+    expect(tx.sportsTeamRepresentative.update).toHaveBeenCalledWith({
+      where: { id: 'representative-1' },
       data: { personId: 'target-person' },
     });
     expect(tx.eventFormResponse.updateMany).toHaveBeenCalledWith({
@@ -376,6 +402,8 @@ describe('AccountMergeService', () => {
             movedMajorEventSubscriptionIds: ['major-subscription-1'],
             movedEventFormResponseIds: ['form-response-1'],
             coalescedEventFormResponseIds: [],
+            movedSportsTeamRepresentativeIds: ['representative-1'],
+            revokedSportsTeamRepresentativeIds: [],
           }),
         }),
       }),
@@ -542,6 +570,117 @@ describe('AccountMergeService', () => {
     });
   });
 
+  it('keeps the confirmed subscription financial tuple when the other registration is unpaid', async () => {
+    const tx = createTransactionMock();
+    const paymentDate = new Date('2026-01-01T00:00:00.000Z');
+    const source = {
+      id: 'source-major-subscription',
+      majorEventId: 'major-1',
+      deletedAt: null,
+      amountPaid: 1000,
+      paymentDate,
+      paymentTier: 'Basic',
+      receiptRejectionReason: null,
+      receiptValidatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      receiptValidatedBy: 'validator-1',
+      subscriptionStatus: 'CONFIRMED',
+    };
+    const target = {
+      id: 'target-major-subscription',
+      majorEventId: 'major-1',
+      deletedAt: null,
+      amountPaid: 2500,
+      paymentDate: null,
+      paymentTier: 'Premium',
+      receiptRejectionReason: 'old rejection',
+      receiptValidatedAt: null,
+      receiptValidatedBy: null,
+      subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+    };
+    tx.majorEventSubscription.findMany
+      .mockResolvedValueOnce([source])
+      .mockResolvedValueOnce([target]);
+
+    await service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person');
+
+    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith({
+      where: { id: target.id },
+      data: expect.objectContaining({
+        subscriptionStatus: 'CONFIRMED',
+        amountPaid: 1000,
+        paymentDate,
+        paymentTier: 'Basic',
+        receiptRejectionReason: null,
+        receiptValidatedAt: source.receiptValidatedAt,
+        receiptValidatedBy: 'validator-1',
+      }),
+    });
+  });
+
+  it('rejects conflicting confirmed payment tuples instead of combining their fields', async () => {
+    const tx = createTransactionMock();
+    tx.majorEventSubscription.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: 1000,
+          paymentDate: new Date('2026-01-01T00:00:00.000Z'),
+          paymentTier: 'Basic',
+          subscriptionStatus: 'CONFIRMED',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: 2500,
+          paymentDate: new Date('2026-01-02T00:00:00.000Z'),
+          paymentTier: 'Premium',
+          subscriptionStatus: 'CONFIRMED',
+        },
+      ]);
+
+    await expect(
+      service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.majorEventSubscription.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects same-status unpaid registrations with conflicting selected payment tuples', async () => {
+    const tx = createTransactionMock();
+    tx.majorEventSubscription.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: 1000,
+          paymentDate: null,
+          paymentTier: 'Basic',
+          subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: 2500,
+          paymentDate: null,
+          paymentTier: 'Premium',
+          subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        },
+      ]);
+
+    await expect(
+      service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.majorEventSubscription.update).not.toHaveBeenCalled();
+  });
+
   it('does not record form responses that changed ownership during account merge', async () => {
     const tx = createTransactionMock();
     tx.eventFormResponse.findMany.mockResolvedValue([
@@ -679,6 +818,8 @@ function createTransactionMock() {
     eventManagerRoleAssignment: delegate(),
     eventManagerRoleAssignmentScope: delegate(),
     eventManagerPermissionGroupMember: delegate(),
+    sportsOfficialAssignment: delegate(),
+    sportsTeamRepresentative: delegate(),
     peopleMergeOperation: {
       create: jest.fn(),
     },

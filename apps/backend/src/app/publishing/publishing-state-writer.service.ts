@@ -76,6 +76,79 @@ export class PublicationStateWriterService {
     return { eventIds: outcome.changed ? [outcome.event.id] : [], majorEventIds: [] };
   }
 
+  /**
+   * Publishes an event only when the scheduling decision observed by the
+   * worker is still current. The conditional update is the transition
+   * boundary: a cancellation, deletion, or reschedule that commits after a
+   * worker's eligibility read makes this a no-op.
+   */
+  async publishScheduledEvent(
+    eventId: string,
+    expectedScheduledPublishAt: Date,
+    user: AuthenticatedUser | undefined,
+  ): Promise<TargetSync> {
+    const now = new Date();
+    const data = this.buildPublicationUpdateData(PrismaPublicationState.PUBLISHED, null, user, now);
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.event.findFirst({
+        where: {
+          id: eventId,
+          deletedAt: null,
+          publicationState: PrismaPublicationState.SCHEDULED,
+          scheduledPublishAt: { equals: expectedScheduledPublishAt, lte: now },
+        },
+        select: PUBLICATION_EVENT_SELECT,
+      });
+      if (!previous) {
+        return null;
+      }
+
+      const updatedCount = await tx.event.updateMany({
+        where: {
+          id: eventId,
+          deletedAt: null,
+          publicationState: PrismaPublicationState.SCHEDULED,
+          scheduledPublishAt: { equals: expectedScheduledPublishAt, lte: now },
+        },
+        data,
+      });
+      if (updatedCount.count !== 1) {
+        return null;
+      }
+
+      const updated = await tx.event.findFirst({
+        where: { id: eventId, deletedAt: null },
+        select: PUBLICATION_EVENT_SELECT,
+      });
+      if (!updated) {
+        return null;
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: user,
+          before: previous,
+          after: updated,
+          scope: {
+            permission: Permission.Event.Update,
+            eventId: updated.id,
+            majorEventId: updated.majorEventId,
+            eventGroupId: updated.eventGroupId,
+          },
+          summary: publicationSummary(PrismaPublicationState.PUBLISHED),
+          squashWindowMs: 0,
+        },
+        tx,
+      );
+      return updated;
+    });
+
+    return { eventIds: outcome ? [outcome.id] : [], majorEventIds: [] };
+  }
+
   async updateTargetsPublicationState(input: {
     eventIds?: string[];
     majorEventIds?: string[];
@@ -218,6 +291,76 @@ export class PublicationStateWriterService {
     });
 
     return { eventIds: [], majorEventIds: outcome.changed ? [outcome.majorEvent.id] : [] };
+  }
+
+  /**
+   * Major-event counterpart to publishScheduledEvent. Keep this separate from
+   * the general manual publication path so an administrator's explicit
+   * publish remains unconditional while stale scheduled work is harmless.
+   */
+  async publishScheduledMajorEvent(
+    majorEventId: string,
+    expectedScheduledPublishAt: Date,
+    user: AuthenticatedUser | undefined,
+  ): Promise<TargetSync> {
+    const now = new Date();
+    const data = this.buildPublicationUpdateData(PrismaPublicationState.PUBLISHED, null, user, now);
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const previous = await tx.majorEvent.findFirst({
+        where: {
+          id: majorEventId,
+          deletedAt: null,
+          publicationState: PrismaPublicationState.SCHEDULED,
+          scheduledPublishAt: { equals: expectedScheduledPublishAt, lte: now },
+        },
+        select: PUBLICATION_MAJOR_EVENT_SELECT,
+      });
+      if (!previous) {
+        return null;
+      }
+
+      const updatedCount = await tx.majorEvent.updateMany({
+        where: {
+          id: majorEventId,
+          deletedAt: null,
+          publicationState: PrismaPublicationState.SCHEDULED,
+          scheduledPublishAt: { equals: expectedScheduledPublishAt, lte: now },
+        },
+        data,
+      });
+      if (updatedCount.count !== 1) {
+        return null;
+      }
+
+      const updated = await tx.majorEvent.findFirst({
+        where: { id: majorEventId, deletedAt: null },
+        select: PUBLICATION_MAJOR_EVENT_SELECT,
+      });
+      if (!updated) {
+        return null;
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MAJOR_EVENT,
+          entityId: updated.id,
+          entityLabel: updated.name,
+          operation: AuditLogOperation.UPDATE,
+          actor: user,
+          before: previous,
+          after: updated,
+          scope: {
+            permission: Permission.MajorEvent.Update,
+            majorEventId: updated.id,
+          },
+          summary: publicationSummary(PrismaPublicationState.PUBLISHED),
+          squashWindowMs: 0,
+        },
+        tx,
+      );
+      return updated;
+    });
+
+    return { eventIds: [], majorEventIds: outcome ? [outcome.id] : [] };
   }
 
   private hasRequestedPublicationState(

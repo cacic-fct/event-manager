@@ -100,6 +100,39 @@ export class CertificateNotificationJobsService implements OnModuleInit {
     });
   }
 
+  async supersedeCertificateNotifications(
+    certificateId: string,
+    client: Prisma.TransactionClient | PrismaService,
+  ): Promise<void> {
+    await client.certificateNotificationOutbox.updateMany({
+      where: {
+        certificateId,
+        status: { in: ['PENDING', 'PROCESSING'] },
+      },
+      data: {
+        status: 'SUPERSEDED',
+        lastError: 'Superseded because the certificate is no longer available.',
+      },
+    });
+  }
+
+  async supersedeCertificateNotificationsForConfigs(
+    configIds: string[],
+    client: Prisma.TransactionClient | PrismaService,
+  ): Promise<void> {
+    if (configIds.length === 0) return;
+    await client.certificateNotificationOutbox.updateMany({
+      where: {
+        certificate: { configId: { in: configIds } },
+        status: { in: ['PENDING', 'PROCESSING'] },
+      },
+      data: {
+        status: 'SUPERSEDED',
+        lastError: 'Superseded because the certificate configuration is no longer available.',
+      },
+    });
+  }
+
   async enqueue(certificate: CertificateRecord): Promise<void> {
     const input = createCertificateAvailableNotification(this.notifications, certificate);
     if (!input) {
@@ -142,9 +175,29 @@ export class CertificateNotificationJobsService implements OnModuleInit {
     if (this.prisma) {
       const outbox = await this.prisma.certificateNotificationOutbox.findUnique({
         where: { id: input.outboxId },
-        select: { status: true },
+        select: {
+          status: true,
+          certificate: {
+            select: {
+              id: true,
+              issuedAt: true,
+              deletedAt: true,
+              config: {
+                select: {
+                  id: true,
+                  deletedAt: true,
+                  isActive: true,
+                },
+              },
+            },
+          },
+        },
       });
       if (!outbox || outbox.status === 'SUPERSEDED' || outbox.status === 'DELIVERED') {
+        return;
+      }
+      if (!outbox.certificate || !isCertificateAvailableForNotification(outbox.certificate, input)) {
+        await this.supersedeOutbox(input.outboxId);
         return;
       }
     }
@@ -158,7 +211,20 @@ export class CertificateNotificationJobsService implements OnModuleInit {
       }
       if (this.prisma) {
         await this.prisma.certificateNotificationOutbox.updateMany({
-          where: { id: input.outboxId, status: { in: ['PROCESSING', 'PENDING'] } },
+          where: {
+            id: input.outboxId,
+            status: { in: ['PROCESSING', 'PENDING'] },
+            certificate: {
+              id: input.certificateId,
+              issuedAt: new Date(input.issuedAt),
+              deletedAt: null,
+              config: {
+                id: input.configId,
+                deletedAt: null,
+                isActive: true,
+              },
+            },
+          },
           data: { status: 'DELIVERED', deliveredAt: new Date(), lastError: null },
         });
       }
@@ -210,7 +276,10 @@ export class CertificateNotificationJobsService implements OnModuleInit {
           issuedAt: item.issuedAt,
         };
         const input = createCertificateAvailableNotification(this.notifications, certificate, item.issuedAt);
-        if (!input) return;
+        if (!input) {
+          await this.supersedeOutbox(claim.id);
+          return;
+        }
         try {
           await this.enqueueClaimed(claim.id, claim.attempts, input);
         } catch (error: unknown) {
@@ -279,6 +348,36 @@ export class CertificateNotificationJobsService implements OnModuleInit {
       },
     });
   }
+
+  private async supersedeOutbox(id: string): Promise<void> {
+    if (!this.prisma) return;
+    await this.prisma.certificateNotificationOutbox.updateMany({
+      where: { id, status: { in: ['PENDING', 'PROCESSING'] } },
+      data: {
+        status: 'SUPERSEDED',
+        lastError: 'Superseded because the certificate is no longer available.',
+      },
+    });
+  }
+}
+
+function isCertificateAvailableForNotification(
+  certificate: {
+    id: string;
+    issuedAt: Date;
+    deletedAt: Date | null;
+    config: { id: string; deletedAt: Date | null; isActive: boolean };
+  },
+  input: CertificateAvailableNotificationJob,
+): boolean {
+  return (
+    certificate.id === input.certificateId &&
+    certificate.issuedAt.getTime() === new Date(input.issuedAt).getTime() &&
+    certificate.deletedAt === null &&
+    certificate.config.id === input.configId &&
+    certificate.config.deletedAt === null &&
+    certificate.config.isActive
+  );
 }
 
 function createCertificateAvailableNotification(

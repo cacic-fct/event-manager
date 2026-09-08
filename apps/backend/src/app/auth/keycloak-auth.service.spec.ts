@@ -1,4 +1,4 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import axios from 'axios';
 import { generateKeyPairSync, type JsonWebKey, type KeyObject, sign as signToken } from 'node:crypto';
 import { AuthSessionStoreService } from './auth-session-store.service';
@@ -306,8 +306,261 @@ describe('KeycloakAuthService', () => {
     expect(loggerWarnSpy.mock.calls[0][0]).not.toContain('secret;');
 
     mockedAxios.post.mockRejectedValueOnce(new Error('refresh failed'));
-    await expect(service.refreshAccessToken('bad-refresh-token')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.refreshAccessToken('bad-refresh-token')).rejects.toBeInstanceOf(ServiceUnavailableException);
     expect(loggerWarnSpy).toHaveBeenCalledWith('Keycloak refresh token exchange failed. message=refresh failed.');
+  });
+
+  it('returns a current session after acquiring a lock when another reader already refreshed it', async () => {
+    const staleSession = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() - 1,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    const currentSession = {
+      ...staleSession,
+      accessToken: 'access-token-r1',
+      refreshToken: 'refresh-token-r1',
+      accessTokenExpiresAt: Date.now() + 120_000,
+    };
+    sessions.get.mockResolvedValueOnce(staleSession).mockResolvedValueOnce(currentSession);
+
+    await expect(service.refreshSession('session-1')).resolves.toEqual({
+      expiresAt: currentSession.accessTokenExpiresAt,
+      sessionExpiresAt: currentSession.sessionExpiresAt,
+    });
+
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(sessions.setIfCurrent).not.toHaveBeenCalled();
+  });
+
+  it('honors an explicit refresh request even when the current access token is still healthy', async () => {
+    const session = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() + 120_000,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    sessions.get.mockResolvedValueOnce(session).mockResolvedValueOnce(session).mockResolvedValueOnce({
+      ...session,
+      accessToken: 'access-token-r1',
+      refreshToken: 'refresh-token-r1',
+      accessTokenExpiresAt: Date.now() + 120_000,
+    });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: 'access-token-r1',
+        refresh_token: 'refresh-token-r1',
+      },
+    });
+
+    await expect(service.refreshSession('session-1')).resolves.toEqual({
+      expiresAt: expect.any(Number),
+      sessionExpiresAt: expect.any(Number),
+    });
+
+    const requestBody = new URLSearchParams(mockedAxios.post.mock.calls[0][1] as string);
+    expect(requestBody.get('refresh_token')).toBe('refresh-token-r0');
+  });
+
+  it('refreshes with the canonical token reread after lock acquisition', async () => {
+    const callerSession = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() - 1,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    const canonicalSession = {
+      ...callerSession,
+      accessToken: 'access-token-r1',
+      refreshToken: 'refresh-token-r1',
+    };
+    sessions.get.mockResolvedValueOnce(callerSession).mockResolvedValueOnce(canonicalSession).mockResolvedValueOnce({
+      ...canonicalSession,
+      accessToken: 'access-token-r2',
+      refreshToken: 'refresh-token-r2',
+      accessTokenExpiresAt: Date.now() + 120_000,
+    });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: 'access-token-r2',
+        refresh_token: 'refresh-token-r2',
+      },
+    });
+
+    await expect(service.refreshSession('session-1')).resolves.toEqual({
+      expiresAt: expect.any(Number),
+      sessionExpiresAt: expect.any(Number),
+    });
+
+    const requestBody = new URLSearchParams(mockedAxios.post.mock.calls[0][1] as string);
+    expect(requestBody.get('refresh_token')).toBe('refresh-token-r1');
+    expect(sessions.setIfCurrent).toHaveBeenCalledWith(
+      'session-1',
+      canonicalSession,
+      expect.objectContaining({ accessToken: 'access-token-r2' }),
+    );
+  });
+
+  it('keeps the lock-timeout fallback canonical and refuses a late stale write', async () => {
+    const callerSession = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() - 1,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    const canonicalSession = {
+      ...callerSession,
+      accessToken: 'access-token-r1',
+      refreshToken: 'refresh-token-r1',
+    };
+    const currentSession = {
+      ...canonicalSession,
+      accessToken: 'access-token-r2',
+      refreshToken: 'refresh-token-r2',
+      accessTokenExpiresAt: Date.now() + 120_000,
+    };
+    sessions.acquireRefreshLock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    sessions.get
+      .mockResolvedValueOnce(callerSession)
+      .mockResolvedValueOnce(canonicalSession)
+      .mockResolvedValueOnce(canonicalSession)
+      .mockResolvedValueOnce(currentSession);
+    sessions.setIfCurrent.mockResolvedValueOnce(false);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: 'access-token-r-stale-writer',
+        refresh_token: 'refresh-token-r-stale-writer',
+      },
+    });
+
+    await expect(service.refreshSession('session-1')).resolves.toEqual({
+      expiresAt: currentSession.accessTokenExpiresAt,
+      sessionExpiresAt: currentSession.sessionExpiresAt,
+    });
+
+    const requestBody = new URLSearchParams(mockedAxios.post.mock.calls[0][1] as string);
+    expect(requestBody.get('refresh_token')).toBe('refresh-token-r1');
+    expect(sessions.setIfCurrent).toHaveBeenCalledWith(
+      'session-1',
+      canonicalSession,
+      expect.objectContaining({ accessToken: 'access-token-r-stale-writer' }),
+    );
+  });
+
+  it('preserves the stored session and releases the lock when Keycloak is temporarily unavailable', async () => {
+    const session = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() - 1,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    const providerFailure = {
+      response: {
+        status: 503,
+        statusText: 'Service Unavailable',
+        data: { error: 'temporarily_unavailable' },
+      },
+    };
+    sessions.get.mockResolvedValueOnce(session).mockResolvedValueOnce(session);
+    mockedAxios.isAxiosError.mockReturnValue(true);
+    mockedAxios.post.mockRejectedValueOnce(providerFailure);
+
+    await expect(service.refreshSession('session-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(sessions.setIfCurrent).not.toHaveBeenCalled();
+    expect(sessions.releaseRefreshLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats provider client-configuration failures as unavailable instead of invalid user sessions', async () => {
+    const providerFailure = {
+      response: {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: { error: 'invalid_client' },
+      },
+    };
+    mockedAxios.isAxiosError.mockReturnValue(true);
+    mockedAxios.post.mockRejectedValueOnce(providerFailure);
+
+    await expect(service.refreshAccessToken('refresh-token')).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('does not resurrect a session when deletion wins while refresh is in flight', async () => {
+    const session = {
+      accessToken: 'access-token-r0',
+      refreshToken: 'refresh-token-r0',
+      accessTokenExpiresAt: Date.now() - 1,
+      sessionExpiresAt: Date.now() + 300_000,
+    };
+    let resolveRefresh!: (value: { data: Record<string, unknown> }) => void;
+    sessions.get.mockResolvedValueOnce(session).mockResolvedValueOnce(session).mockResolvedValueOnce(null);
+    sessions.setIfCurrent.mockResolvedValueOnce(false);
+    mockedAxios.post.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRefresh = resolve;
+      }) as never,
+    );
+
+    const refresh = service.refreshSession('session-1');
+    await Promise.resolve();
+    await Promise.resolve();
+    resolveRefresh({ data: { access_token: 'access-token-r1', refresh_token: 'refresh-token-r1' } });
+
+    await expect(refresh).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(sessions.set).not.toHaveBeenCalled();
+    expect(sessions.releaseRefreshLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('evicts expired and excess principals from the access-token cache', async () => {
+    process.env.KEYCLOAK_PRINCIPAL_CACHE_MAX_ENTRIES = '2';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+    const firstToken = jwt({ sub: 'cache-user-1' });
+    const secondToken = jwt({ sub: 'cache-user-2' });
+    const thirdToken = jwt({ sub: 'cache-user-3' });
+
+    await service.authenticateAccessToken(firstToken);
+    await service.authenticateAccessToken(secondToken);
+    await service.authenticateAccessToken(thirdToken);
+
+    const cache = service['userCache'];
+    expect(cache.size).toBe(2);
+    expect(cache.has(firstToken)).toBe(false);
+
+    jest.advanceTimersByTime(5_001);
+    await service.authenticateAccessToken(thirdToken);
+
+    expect(cache.size).toBe(1);
+    expect(cache.has(secondToken)).toBe(false);
+    expect(cache.has(thirdToken)).toBe(true);
+  });
+
+  it('bounds Keycloak token requests and cancels an incomplete request', async () => {
+    process.env.KEYCLOAK_AUTH_REQUEST_TIMEOUT_MS = '1000';
+    service = new KeycloakAuthService(
+      sessions as unknown as AuthSessionStoreService,
+      authorizationState as unknown as AuthorizationStateService,
+      userClaimSync as unknown as AuthenticatedUserSyncService,
+    );
+    mockedAxios.post.mockReturnValueOnce(new Promise(() => undefined) as never);
+
+    const refresh = service.refreshAccessToken('refresh-token');
+    const refreshFailure = expect(refresh).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await jest.advanceTimersByTimeAsync(1_000);
+
+    await refreshFailure;
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/protocol/openid-connect/token'),
+      expect.any(String),
+      expect.objectContaining({
+        timeout: 1_000,
+        signal: expect.objectContaining({ aborted: true }),
+      }),
+    );
   });
 
   it('suppresses repeated identical Keycloak failure logs within the suppression window', async () => {
@@ -765,6 +1018,7 @@ function createSessionStoreMock() {
   return {
     get: jest.fn(),
     set: jest.fn().mockResolvedValue(undefined),
+    setIfCurrent: jest.fn().mockResolvedValue(true),
     delete: jest.fn().mockResolvedValue(undefined),
     acquireRefreshLock: jest.fn().mockResolvedValue(true),
     waitForRefreshLockRelease: jest.fn().mockResolvedValue(undefined),

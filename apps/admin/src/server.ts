@@ -49,7 +49,7 @@ app.use((_req, res, next) => {
 app.get(['/admin/index.html', '/admin/index.csr.html'], async (req, res, next) => {
   try {
     const html = await readFile(join(browserDistFolder, basename(req.path)), 'utf8');
-    writeResponseToNodeResponse(
+    await writeResponseToNodeResponse(
       await applyCspToHtmlResponse(
         new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },

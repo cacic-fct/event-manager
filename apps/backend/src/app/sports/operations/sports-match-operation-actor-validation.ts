@@ -56,6 +56,21 @@ interface MatchProjectionContext {
 import { SportsMatchOperationSupport } from './sports-match-operation-support';
 
 export abstract class SportsMatchOperationActorValidation extends SportsMatchOperationSupport {
+  protected async validateActionRelations(
+    tx: Prisma.TransactionClient,
+    match: MatchProjectionContext,
+    type: SportsMatchActionType,
+    payload: Prisma.InputJsonValue,
+    scorerRosterEntryId?: string | null,
+  ): Promise<void> {
+    if (type === SportsMatchActionType.OCCURRENCE) {
+      await this.validateOccurrence(tx, match, this.requireRecord(payload));
+    }
+    if (scorerRosterEntryId) {
+      await this.validateScorer(tx, match, scorerRosterEntryId, payload);
+    }
+  }
+
   protected async validateScorer(
     tx: Prisma.TransactionClient,
     match: Pick<MatchProjectionContext, 'id' | 'homeRegistrationId' | 'awayRegistrationId'>,

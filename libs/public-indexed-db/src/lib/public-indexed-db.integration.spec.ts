@@ -421,6 +421,25 @@ describe('offline public data access integration', () => {
     ]);
   });
 
+  it('pages past failed attendance without dropping retained shared-device work', async () => {
+    const service = injectService(AttendanceOfflineQueueService);
+    await database.attendanceQueue.bulkPut(Array.from({ length: 181 }, (_, index) =>
+      queueItem(`page-${index}`, index < 80 ? 'FAILED' : 'PENDING', {
+        queuedAt: index, queuedByUserId: 'collector', collectorCredential: 'signed-proof',
+      })));
+    const attempted = new Set<string>();
+    const sizes: number[] = [];
+    for (;;) {
+      const page = await service.listUploadable('uploader', 80, attempted);
+      if (!page.length) break;
+      sizes.push(page.length);
+      page.forEach((item) => attempted.add(item.clientId));
+    }
+    expect(sizes).toEqual([80, 80, 21]);
+    expect(await service.countUploadable('uploader')).toBe(181);
+    expect(await database.attendanceQueue.count()).toBe(181);
+  });
+
   it('resets interrupted syncs once, lists retryable items oldest first, and counts unresolved items', async () => {
     const service = injectService(AttendanceOfflineQueueService);
     await database.attendanceQueue.bulkPut([

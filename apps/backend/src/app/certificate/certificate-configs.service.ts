@@ -11,7 +11,7 @@ import {
   CertificateTemplate,
   DeletionResult,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditPrismaClient } from '../audit-log/audit-log.types';
@@ -31,6 +31,7 @@ import {
 import { CertificateTargetsService } from './certificate-targets.service';
 import { sportsCertificateTypeLabel } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';
+import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
@@ -51,6 +52,7 @@ export class CertificateConfigsService {
       searchCertificateTemplates: async () => ({ available: false, ids: [] }),
     } as unknown as TypesenseSearchService,
     private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    @Optional() private readonly notificationJobs?: CertificateNotificationJobsService,
   ) {}
 
   async listFolders(query?: string, skip?: number, take?: number): Promise<CertificateFolder[]> {
@@ -213,6 +215,7 @@ export class CertificateConfigsService {
             deletedAt,
           },
         });
+        await this.notificationJobs?.supersedeCertificateNotificationsForConfigs(configIds, tx);
       }
       await this.recordFolderAudit(folder, deletedFolder, AuditLogOperation.DELETE, tx, {
         deletedConfigCount: configIds.length,
@@ -584,6 +587,9 @@ export class CertificateConfigsService {
 
         throw error;
       }
+      if (input.isActive === false) {
+        await this.notificationJobs?.supersedeCertificateNotificationsForConfigs([normalizedConfigId], tx);
+      }
       await this.recordConfigAudit(currentConfig, config, AuditLogOperation.UPDATE, tx);
       return config;
     });
@@ -742,6 +748,7 @@ export class CertificateConfigsService {
         where: { configId: normalizedConfigId, deletedAt: null },
         data: { deletedAt: new Date() },
       });
+      await this.notificationJobs?.supersedeCertificateNotificationsForConfigs([normalizedConfigId], tx);
       await this.recordConfigAudit(existing, deleted, AuditLogOperation.DELETE, tx);
     });
 

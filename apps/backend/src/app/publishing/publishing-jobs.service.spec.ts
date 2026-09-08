@@ -115,8 +115,9 @@ describe('PublicationJobsService', () => {
   it('publishes scheduled events and syncs search when the target is due', async () => {
     const { prisma, searchSync, service, transitions } = createService();
     const sync = { eventIds: ['event-1'], majorEventIds: [] };
-    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
-    transitions.publishEventById.mockResolvedValue(sync);
+    const scheduledPublishAt = new Date('2026-06-25T11:00:00.000Z');
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', scheduledPublishAt });
+    transitions.publishScheduledEventById.mockResolvedValue(sync);
 
     await service.processScheduledPublication({ targetType: 'EVENT', targetId: 'event-1' });
 
@@ -127,24 +128,38 @@ describe('PublicationJobsService', () => {
         publicationState: PublicationState.SCHEDULED,
         scheduledPublishAt: { lte: now },
       },
-      select: { id: true },
+      select: { id: true, scheduledPublishAt: true },
     });
-    expect(transitions.publishEventById).toHaveBeenCalledWith('event-1', null);
+    expect(transitions.publishScheduledEventById).toHaveBeenCalledWith('event-1', scheduledPublishAt, null);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
   });
 
   it('publishes scheduled major events and skips stale jobs that are no longer due', async () => {
     const { prisma, searchSync, service, transitions } = createService();
     const sync = { eventIds: ['event-1'], majorEventIds: ['major-1'] };
-    prisma.majorEvent.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'major-1' });
-    transitions.publishMajorEventById.mockResolvedValue(sync);
+    const scheduledPublishAt = new Date('2026-06-25T11:00:00.000Z');
+    prisma.majorEvent.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'major-1', scheduledPublishAt });
+    transitions.publishScheduledMajorEventById.mockResolvedValue(sync);
 
     await service.processScheduledPublication({ targetType: 'MAJOR_EVENT', targetId: 'stale-major' });
     await service.processScheduledPublication({ targetType: 'MAJOR_EVENT', targetId: 'major-1' });
 
-    expect(transitions.publishMajorEventById).toHaveBeenCalledTimes(1);
-    expect(transitions.publishMajorEventById).toHaveBeenCalledWith('major-1', null);
+    expect(transitions.publishScheduledMajorEventById).toHaveBeenCalledTimes(1);
+    expect(transitions.publishScheduledMajorEventById).toHaveBeenCalledWith('major-1', scheduledPublishAt, null);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
+  });
+
+  it('does not sync search when the conditional scheduled transition loses its claim', async () => {
+    const { prisma, searchSync, service, transitions } = createService();
+    const scheduledPublishAt = new Date('2026-06-25T11:00:00.000Z');
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', scheduledPublishAt });
+    transitions.publishScheduledEventById.mockResolvedValue({ eventIds: [], majorEventIds: [] });
+
+    await service.processScheduledPublication({ targetType: 'EVENT', targetId: 'event-1' });
+
+    expect(searchSync.syncSearch).not.toHaveBeenCalled();
   });
 
   it('reconciles due scheduled targets, logs failures, trims previews, and syncs successful publications', async () => {
@@ -154,17 +169,33 @@ describe('PublicationJobsService', () => {
     const majorEventSync = { eventIds: ['event-3'], majorEventIds: ['major-1'] };
     const mergedSync = { eventIds: ['event-1', 'event-3'], majorEventIds: ['major-1'] };
     const loggerError = jest.spyOn(service['logger'], 'error').mockImplementation();
-    prisma.event.findMany.mockResolvedValueOnce([{ id: 'event-1' }, { id: 'event-2' }]).mockResolvedValueOnce([]);
-    prisma.majorEvent.findMany.mockResolvedValueOnce([{ id: 'major-1' }]).mockResolvedValueOnce([]);
-    transitions.publishEventById.mockResolvedValueOnce(eventSync).mockRejectedValueOnce(failure);
-    transitions.publishMajorEventById.mockResolvedValue(majorEventSync);
+    const eventSchedule = new Date('2026-06-25T11:00:00.000Z');
+    const failedEventSchedule = new Date('2026-06-25T11:30:00.000Z');
+    const majorEventSchedule = new Date('2026-06-25T11:45:00.000Z');
+    prisma.event.findMany
+      .mockResolvedValueOnce([
+        { id: 'event-1', scheduledPublishAt: eventSchedule },
+        { id: 'event-2', scheduledPublishAt: failedEventSchedule },
+      ])
+      .mockResolvedValueOnce([]);
+    prisma.majorEvent.findMany
+      .mockResolvedValueOnce([{ id: 'major-1', scheduledPublishAt: majorEventSchedule }])
+      .mockResolvedValueOnce([]);
+    transitions.publishScheduledEventById.mockResolvedValueOnce(eventSync).mockRejectedValueOnce(failure);
+    transitions.publishScheduledMajorEventById.mockResolvedValue(majorEventSync);
     transitions.mergeSync.mockReturnValue(mergedSync);
 
     await service.reconcileScheduledPublications();
 
-    expect(transitions.publishEventById).toHaveBeenCalledWith('event-1', null, { skipSitemap: true });
-    expect(transitions.publishEventById).toHaveBeenCalledWith('event-2', null, { skipSitemap: true });
-    expect(transitions.publishMajorEventById).toHaveBeenCalledWith('major-1', null, { skipSitemap: true });
+    expect(transitions.publishScheduledEventById).toHaveBeenCalledWith('event-1', eventSchedule, null, {
+      skipSitemap: true,
+    });
+    expect(transitions.publishScheduledEventById).toHaveBeenCalledWith('event-2', failedEventSchedule, null, {
+      skipSitemap: true,
+    });
+    expect(transitions.publishScheduledMajorEventById).toHaveBeenCalledWith('major-1', majorEventSchedule, null, {
+      skipSitemap: true,
+    });
     expect(loggerError).toHaveBeenCalledWith('Failed to publish scheduled EVENT event-2.', failure.stack);
     expect(transitions.mergeSync).toHaveBeenCalledWith([eventSync, majorEventSync]);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(mergedSync);
@@ -186,12 +217,15 @@ describe('PublicationJobsService', () => {
 
   it('bounds reconciliation concurrency and coalesces derived refreshes', async () => {
     const { prisma, searchSync, service, transitions } = createService();
-    const events = Array.from({ length: 100 }, (_, index) => ({ id: `event-${index}` }));
+    const events = Array.from({ length: 100 }, (_, index) => ({
+      id: `event-${index}`,
+      scheduledPublishAt: now,
+    }));
     prisma.event.findMany.mockResolvedValueOnce(events).mockResolvedValueOnce([]);
     prisma.majorEvent.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     let active = 0;
     let maximum = 0;
-    transitions.publishEventById.mockImplementation(async (id: string) => {
+    transitions.publishScheduledEventById.mockImplementation(async (id: string) => {
       active += 1;
       maximum = Math.max(maximum, active);
       await Promise.resolve();
@@ -234,6 +268,8 @@ function createService() {
   const transitions = {
     publishEventById: jest.fn(),
     publishMajorEventById: jest.fn(),
+    publishScheduledEventById: jest.fn(),
+    publishScheduledMajorEventById: jest.fn(),
     mergeSync: jest.fn().mockReturnValue({ eventIds: [], majorEventIds: [] }),
     refreshSitemapBestEffort: jest.fn().mockResolvedValue(undefined),
   };

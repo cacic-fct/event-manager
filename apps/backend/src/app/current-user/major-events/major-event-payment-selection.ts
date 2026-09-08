@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { normalizeAttendancePriceTier } from '../../events/attendance-price-tier-policy';
 
 export interface MajorEventPaymentSelectionSource {
   isPaymentRequired: boolean;
@@ -58,9 +59,13 @@ export function resolveMajorEventSelfServicePayment(
     throw new BadRequestException('A faixa de pagamento é obrigatória para este grande evento.');
   }
 
-  const selectedTier = tiers.find(
-    (tier) => tier.name.trim().toLocaleLowerCase('pt-BR') === normalizedPaymentTier.toLocaleLowerCase('pt-BR'),
+  const matchingTiers = tiers.filter(
+    (tier) => normalizeAttendancePriceTier(tier.name) === normalizeAttendancePriceTier(normalizedPaymentTier),
   );
+  if (matchingTiers.length > 1) {
+    throw new BadRequestException('A configuração das faixas de pagamento é ambígua. Contate a organização.');
+  }
+  const [selectedTier] = matchingTiers;
   if (!selectedTier) {
     throw new BadRequestException('A faixa de pagamento não é válida para este grande evento.');
   }

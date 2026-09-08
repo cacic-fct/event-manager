@@ -1,3 +1,11 @@
+import {
+  AttendanceCategory,
+  AttendanceCreationMethod,
+  AttendanceCurrentAssessment,
+  EventAttendanceStatus,
+  SportsOfficialRole,
+} from '@prisma/client';
+
 export type MergeMatchMethod = 'CPF' | 'EMAIL' | 'NORMALIZED_NAME';
 
 export type CandidateMatch = {
@@ -30,10 +38,55 @@ export type PersonSnapshot = {
 
 export type AttendanceSnapshot = {
   eventId: string;
+  status: EventAttendanceStatus;
+  category: AttendanceCategory;
+  currentAssessment: AttendanceCurrentAssessment | null;
   attendedAt: string;
   createdAt: string;
   createdById: string | null;
   committedById: string | null;
+  createdByMethod: AttendanceCreationMethod;
+  collectedLatitude: number | null;
+  collectedLongitude: number | null;
+  collectedAccuracyMeters: number | null;
+};
+
+export type SportsTeamRepresentativeSnapshot = {
+  id: string;
+  teamId: string;
+  personId: string;
+  active: boolean;
+  assignedAt: string;
+  assignedById: string;
+  revokedAt: string | null;
+  revokedById: string | null;
+  createdAt: string;
+  mergeRevokedAt: string | null;
+  mergeRevokedById: string | null;
+  mergeTargetRepresentativeId: string | null;
+};
+
+export type SportsTournamentParticipantSnapshot = {
+  id: string;
+  tournamentId: string;
+  personId: string;
+  deletedAt: string | null;
+};
+
+export type SportsOfficialAssignmentSnapshot = {
+  id: string;
+  tournamentId: string;
+  categoryId: string | null;
+  matchId: string | null;
+  personId: string;
+  role: SportsOfficialRole;
+  active: boolean;
+  assignedAt: string;
+  assignedById: string;
+  revokedAt: string | null;
+  revokedById: string | null;
+  revision: number;
+  createdAt: string;
 };
 
 export type LectureSnapshot = {
@@ -87,4 +140,11 @@ export type MovedRelationsSnapshot = {
   roleAssignmentSnapshots: RoleAssignmentSnapshot[];
   roleAssignmentScopeSnapshots: RoleAssignmentScopeSnapshot[];
   permissionGroupMembershipSnapshots: PermissionGroupMembershipSnapshot[];
+  movedSportsTeamRepresentativeIds: string[];
+  revokedSportsTeamRepresentativeIds: string[];
+  sportsTeamRepresentativeSnapshots: SportsTeamRepresentativeSnapshot[];
+  movedSportsTournamentParticipantIds: string[];
+  sportsTournamentParticipantSnapshots: SportsTournamentParticipantSnapshot[];
+  movedSportsOfficialAssignmentIds: string[];
+  sportsOfficialAssignmentSnapshots: SportsOfficialAssignmentSnapshot[];
 };

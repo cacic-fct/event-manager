@@ -132,8 +132,7 @@ describe('SportsMatchOperationService offline command log', () => {
   it('rebases a commutative score delta from an older positive revision', async () => {
     tx.state.revision = 4;
     tx.state.operationSequence = 3;
-    tx.state.state = SportsMatchState.LIVE;
-    tx.state.canonicalState = SportsMatchState.LIVE;
+    tx.actions.push({ type: SportsMatchActionType.START, payload: {}, sequence: 0, reviewStatus: SportsReviewStatus.APPROVED, authoredAt: SPORTS_TEST_NOW });
     tx.actions.push({
       id: 'action-start',
       clientId: 'offline_start_0001',
@@ -386,6 +385,37 @@ describe('SportsMatchOperationService offline command log', () => {
         }),
       }),
     );
+  });
+
+  it.each([
+    { occurrenceId: 'occ-1', kind: 'GENERAL', registrationId: 'foreign-team' },
+    { occurrenceId: 'occ-1', kind: 'GENERAL', rosterEntryId: 'foreign-roster' },
+  ])('rejects corrected occurrences with foreign relations: %j', async (payload) => {
+    const action = { id: 'correction', type: SportsMatchActionType.OCCURRENCE,
+      matchId: tx.state.id, sequence: 1, payload: { occurrenceId: 'occ-1', kind: 'GENERAL' },
+      reviewStatus: SportsReviewStatus.APPROVED, match: tx.state, scorerRosterEntryId: null };
+    tx.actionById.set(action.id, action);
+    await expect(service.correctApprovedOccurrence(action.id, payload,
+      { sub: 'admin-1', permissionSet: new Set<string>() } as never)).rejects.toThrow();
+    expect(tx.sportsMatchAction.update).not.toHaveBeenCalled();
+    expect(tx.sportsMatch.update).not.toHaveBeenCalled();
+    expect(standings.reconcileAfterProjectionChange).not.toHaveBeenCalled();
+    expect(advancement.reconcileAfterProjectionChange).not.toHaveBeenCalled();
+  });
+
+  it('rejects changing a score side while retaining a scorer on the original team', async () => {
+    const action = { id: 'correction', type: SportsMatchActionType.SCORE_DELTA,
+      matchId: tx.state.id, sequence: 1, payload: { side: 'HOME', amount: 1 },
+      reviewStatus: SportsReviewStatus.PENDING, match: tx.state, scorerRosterEntryId: 'home-scorer' };
+    tx.actionById.set(action.id, action);
+    tx.actions.push({ type: SportsMatchActionType.START, payload: {}, sequence: 0, reviewStatus: SportsReviewStatus.APPROVED, authoredAt: SPORTS_TEST_NOW });
+    tx.sportsMatchRosterEntry.findFirst.mockImplementation(({ where }) =>
+      where.roster.registrationId === tx.state.homeRegistrationId ? { id: 'home-scorer' } : null);
+    await expect(service.review(action.id, SportsReviewStatus.APPROVED,
+      { sub: 'admin-1', permissionSet: new Set<string>() } as never,
+      { correctedPayload: { side: 'AWAY', amount: 1 } })).rejects.toThrow('O autor do ponto');
+    expect(tx.sportsMatchAction.update).not.toHaveBeenCalled();
+    expect(standings.reconcileAfterProjectionChange).not.toHaveBeenCalled();
   });
 
   it('allows an administrator to correct an approved occurrence while preserving its action identity', async () => {
