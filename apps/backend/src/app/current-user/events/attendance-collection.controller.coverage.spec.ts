@@ -105,6 +105,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
 
     expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
     expect(getScannerFeed).not.toHaveBeenCalled();
+    expect(replay.replay).not.toHaveBeenCalled();
   });
 
   it('propagates collection authorization failures before reading snapshots', async () => {
@@ -125,6 +126,7 @@ describe('CurrentUserAttendanceCollectionController streamFeed', () => {
     ).rejects.toBe(failure);
 
     expect(getScannerFeed).not.toHaveBeenCalled();
+    expect(replay.replay).not.toHaveBeenCalled();
   });
 
   it('terminates the current-user stream when its collector grant is revoked', async () => {

@@ -7,6 +7,8 @@ export const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
 
 const AUDIT_IDENTITY_FIELDS = new Set([
   'personId',
+  'personAId',
+  'personBId',
   'userId',
   'authorUserId',
   'submittedById',
@@ -26,6 +28,8 @@ const PERSONAL_AUDIT_FIELDS = new Set([
   'identityDocument',
   'academicId',
   'externalRef',
+  'pairKey',
+  'matchValue',
 ]);
 
 export function buildAuditLogSubjectWhere(
@@ -127,13 +131,15 @@ export async function anonymizeAuditEntries(
   const identityValues = new Set(identifiers);
 
   const auditEntryUpdates = entries.map((entry) => {
+    const personalDataRoot =
+      entry.entityType === AuditLogEntityType.PERSON || entry.entityType === AuditLogEntityType.MERGE_CANDIDATE;
     const actorMatches = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
     const entitySubjectMatches =
       (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
       isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
     const payloadMatches =
-      containsAuditIdentity(entry.before, identityValues, entry.entityType === 'PERSON') ||
-      containsAuditIdentity(entry.after, identityValues, entry.entityType === 'PERSON') ||
+      containsAuditIdentity(entry.before, identityValues, personalDataRoot) ||
+      containsAuditIdentity(entry.after, identityValues, personalDataRoot) ||
       containsAuditIdentity(entry.changes, identityValues, false) ||
       containsAuditIdentity(entry.metadata, identityValues, false);
     const shouldScrubPayload = actorMatches || entitySubjectMatches || payloadMatches;
@@ -154,7 +160,7 @@ export async function anonymizeAuditEntries(
               sensitiveValues,
               identityValues,
               anonymizedSubjectId,
-              entry.entityType === AuditLogEntityType.PERSON,
+              personalDataRoot,
             )
           : undefined,
         after: shouldScrubPayload
@@ -163,7 +169,7 @@ export async function anonymizeAuditEntries(
               sensitiveValues,
               identityValues,
               anonymizedSubjectId,
-              entry.entityType === AuditLogEntityType.PERSON,
+              personalDataRoot,
             )
           : undefined,
         changes: shouldScrubPayload
@@ -173,7 +179,7 @@ export async function anonymizeAuditEntries(
               identityValues,
               anonymizedSubjectId,
               [],
-              entry.entityType === AuditLogEntityType.PERSON,
+              personalDataRoot,
             )
           : undefined,
         metadata:
