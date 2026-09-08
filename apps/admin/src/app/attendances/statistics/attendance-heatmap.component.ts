@@ -1,6 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -30,7 +29,6 @@ import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 
 @Component({
   selector: 'app-attendance-heatmap',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (hasLocationData()) {
       <div
@@ -90,6 +88,8 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   private map: Map | null = null;
   private hasRendered = false;
   private mapRenderFrame?: number;
+  private mapResizeObserver?: ResizeObserver;
+  private observedMapTarget?: HTMLElement;
 
   constructor() {
     afterNextRender(() => {
@@ -110,6 +110,7 @@ export class AttendanceHeatmapComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     if (this.mapRenderFrame !== undefined) cancelAnimationFrame(this.mapRenderFrame);
+    this.stopObservingMapTarget();
     this.destroyMap();
   }
 
@@ -129,6 +130,7 @@ export class AttendanceHeatmapComponent implements OnDestroy {
     const eventLongitude = this.eventLongitude();
 
     if (!this.isBrowser || !target) {
+      this.stopObservingMapTarget();
       this.destroyMap();
       return;
     }
@@ -178,6 +180,7 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       view,
       controls: [],
     });
+    this.observeMapTarget(target);
 
     const visibleCoordinates = eventCenter ? [...projectedPoints, eventCenter] : projectedPoints;
     if (visibleCoordinates.length > 1) {
@@ -187,6 +190,24 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       });
     }
     requestAnimationFrame(() => this.map?.updateSize());
+  }
+
+  private observeMapTarget(target: HTMLElement): void {
+    if (!('ResizeObserver' in globalThis) || this.observedMapTarget === target) return;
+
+    this.stopObservingMapTarget();
+    this.observedMapTarget = target;
+    this.mapResizeObserver = new ResizeObserver(() => {
+      this.map?.updateSize();
+      this.map?.render();
+    });
+    this.mapResizeObserver.observe(target);
+  }
+
+  private stopObservingMapTarget(): void {
+    this.mapResizeObserver?.disconnect();
+    this.mapResizeObserver = undefined;
+    this.observedMapTarget = undefined;
   }
 
   private destroyMap(): void {

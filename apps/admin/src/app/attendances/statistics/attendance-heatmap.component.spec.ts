@@ -5,6 +5,7 @@ import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
 const openLayers = vi.hoisted(() => {
   const maps: Array<{
     options: Record<string, unknown>;
+    render: ReturnType<typeof vi.fn>;
     setTarget: ReturnType<typeof vi.fn>;
     updateSize: ReturnType<typeof vi.fn>;
   }> = [];
@@ -25,6 +26,7 @@ const openLayers = vi.hoisted(() => {
   }
 
   class Map {
+    readonly render = vi.fn();
     readonly setTarget = vi.fn();
     readonly updateSize = vi.fn();
 
@@ -56,16 +58,34 @@ vi.mock('ol/style', () => ({
 
 describe('AttendanceHeatmapComponent', () => {
   let animationFrameCallbacks: FrameRequestCallback[];
+  let resizeObserverCallback: ResizeObserverCallback | undefined;
+  const resizeObserver = {
+    disconnect: vi.fn(),
+    observe: vi.fn(),
+  };
 
   beforeEach(() => {
     openLayers.maps.length = 0;
     animationFrameCallbacks = [];
+    resizeObserverCallback = undefined;
+    vi.clearAllMocks();
     vi.stubGlobal(
       'requestAnimationFrame',
       vi.fn((callback: FrameRequestCallback) => {
         animationFrameCallbacks.push(callback);
         return animationFrameCallbacks.length;
       }),
+    );
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeObserverCallback = callback;
+        }
+
+        readonly disconnect = resizeObserver.disconnect;
+        readonly observe = resizeObserver.observe;
+      },
     );
   });
 
@@ -151,6 +171,26 @@ describe('AttendanceHeatmapComponent', () => {
       ],
       { maxZoom: 17, padding: [32, 32, 32, 32] },
     );
+  });
+
+  it('updates and rerenders the map when its host becomes measurable after the initial layout', async () => {
+    const fixture = createFixture('browser');
+    fixture.componentRef.setInput('points', [
+      { latitude: -20.76, longitude: -41.53, count: 4, averageAccuracyMeters: 12 },
+    ]);
+    fixture.detectChanges();
+
+    await vi.waitFor(() => expect(animationFrameCallbacks).not.toHaveLength(0));
+    flushAnimationFrames();
+    await vi.waitFor(() => expect(openLayers.maps).toHaveLength(1));
+    const map = openLayers.maps[0];
+    map.updateSize.mockClear();
+
+    resizeObserverCallback?.([], resizeObserver as unknown as ResizeObserver);
+
+    expect(map.updateSize).toHaveBeenCalledOnce();
+    expect(map.render).toHaveBeenCalledOnce();
+    expect(resizeObserver.observe).toHaveBeenCalledWith(fixture.nativeElement.querySelector('.attendance-heatmap'));
   });
 
   it('detaches the map when location data is removed', async () => {
