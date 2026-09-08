@@ -129,6 +129,7 @@ export const PUBLIC_LECTURER_PROFILE_FIELDS = `
   googleUserPicture
   email
   whatsapp
+  linkedin
 `;
 
 export const PUBLIC_CALENDAR_EVENT_FIELDS = `

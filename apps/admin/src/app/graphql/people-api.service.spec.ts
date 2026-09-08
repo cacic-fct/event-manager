@@ -59,7 +59,7 @@ describe('PeopleApiService', () => {
       hasLecturerProfile: true,
     };
     const input = { name: 'Ada Lovelace' } as never;
-    const lecturerInput = { biography: 'Matemática' } as never;
+    const lecturerInput = { displayName: 'Ada', biography: 'Matemática', linkedin: 'ada-lovelace' } as never;
 
     await expect(firstValueFrom(service.listPeople(filters))).resolves.toEqual([personFixture()]);
     await expect(firstValueFrom(service.listPeopleSummaries(filters))).resolves.toEqual([
@@ -122,6 +122,8 @@ describe('PeopleApiService', () => {
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(10, expect.stringContaining('mutation DeletePerson'), {
       id: 'person-1',
     });
+    expect(graphqlHttp.request.mock.calls[5]?.[0]).toContain('linkedin');
+    expect(graphqlHttp.request.mock.calls[6]?.[0]).toContain('linkedin');
   });
 
   it('preserves a missing lecturer profile as null', async () => {
@@ -151,6 +153,7 @@ function lecturerFixture(overrides: Record<string, unknown> = {}) {
     personId: 'person-1',
     displayName: 'Ada',
     biography: 'Matemática',
+    linkedin: 'ada-lovelace',
     ...overrides,
   };
 }

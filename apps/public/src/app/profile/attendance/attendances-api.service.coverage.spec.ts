@@ -154,10 +154,12 @@ describe('AttendancesApiService uncovered operations', () => {
       googleUserPicture: 'https://images.example.test/profile.png',
       email: 'prof@example.test',
       whatsapp: null,
+      linkedin: 'professora',
     };
     const read = firstValueFrom(service.getCurrentUserLecturerProfile());
     const readRequest = http.expectOne('/api/graphql');
     expect(readRequest.request.body.query).toContain('query CurrentUserLecturerProfile');
+    expect(readRequest.request.body.query).toContain('linkedin');
     expect(readRequest.request.body.variables).toBeUndefined();
     readRequest.flush({ data: { currentUserLecturerProfile: profile } });
     await expect(read).resolves.toEqual(profile);
@@ -168,11 +170,13 @@ describe('AttendancesApiService uncovered operations', () => {
       publishGoogleUserPicture: false,
       email: null,
       whatsapp: '+5511999999999',
+      linkedin: 'https://pt.linkedin.com/in/professora',
     };
     const before = structuredClone(input);
     const update = firstValueFrom(service.upsertCurrentUserLecturerProfile(input));
     const updateRequest = http.expectOne('/api/graphql');
     expect(updateRequest.request.body.query).toContain('mutation UpsertCurrentUserLecturerProfile');
+    expect(updateRequest.request.body.query).toContain('linkedin');
     expect(updateRequest.request.body.variables).toEqual({ input });
     updateRequest.flush({ data: { upsertCurrentUserLecturerProfile: profile } });
 

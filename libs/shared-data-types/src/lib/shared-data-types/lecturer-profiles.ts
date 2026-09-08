@@ -29,6 +29,9 @@ export class LecturerProfile {
   whatsapp?: string | null;
 
   @Field(() => String, { nullable: true })
+  linkedin?: string | null;
+
+  @Field(() => String, { nullable: true })
   googleUserPicture?: string | null;
 
   @Field(() => Date)

@@ -53,6 +53,7 @@ export abstract class PeopleState {
     publishGoogleUserPicture: [false],
     email: [''],
     whatsapp: [''],
+    linkedin: [''],
   });
 
   constructor() {

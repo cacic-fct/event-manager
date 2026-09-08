@@ -16,6 +16,7 @@ const profile: LecturerProfile = {
   googleUserPicture: 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c',
   email: 'grace@example.com',
   whatsapp: '+5518999999999',
+  linkedin: 'grace-hopper',
 };
 
 const updatedProfile: LecturerProfile = {
@@ -24,6 +25,7 @@ const updatedProfile: LecturerProfile = {
   biography: 'Criadora de linguagens e educadora.',
   email: 'hopper@example.com',
   whatsapp: '+5511888888888',
+  linkedin: 'grace-brewster-hopper',
 };
 
 describe('LecturerProfileComponent', () => {
@@ -93,6 +95,7 @@ describe('LecturerProfileComponent', () => {
       publishGoogleUserPicture: true,
       email: 'grace@example.com',
       whatsapp: '(18) 99999-9999',
+      linkedin: 'https://br.linkedin.com/in/grace-hopper/?trk=profile',
     });
 
     component.save();
@@ -100,6 +103,7 @@ describe('LecturerProfileComponent', () => {
     expect(upsertCurrentUserLecturerProfile).toHaveBeenCalledWith(
       expect.objectContaining({
         whatsapp: '+5518999999999',
+        linkedin: 'https://br.linkedin.com/in/grace-hopper/?trk=profile',
       }),
     );
   });
@@ -112,6 +116,7 @@ describe('LecturerProfileComponent', () => {
       publishGoogleUserPicture: true,
       email: 'grace@example.com',
       whatsapp: '',
+      linkedin: '',
     });
 
     component.save();
@@ -132,6 +137,15 @@ describe('LecturerProfileComponent', () => {
     );
   });
 
+  it('renders a canonical LinkedIn profile link from the stored username', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const link = element.querySelector<HTMLAnchorElement>('a[href="https://linkedin.com/in/grace-hopper"]');
+
+    expect(link).not.toBeNull();
+    expect(link?.textContent).toContain('https://linkedin.com/in/grace-hopper');
+    expect(link?.rel).toBe('noopener noreferrer');
+  });
+
   it('updates the read-only preview after saving edited data', async () => {
     component.edit();
     component.form.setValue({
@@ -140,6 +154,7 @@ describe('LecturerProfileComponent', () => {
       publishGoogleUserPicture: true,
       email: 'hopper@example.com',
       whatsapp: '+55 11 88888-8888',
+      linkedin: 'grace-brewster-hopper',
     });
 
     component.save();

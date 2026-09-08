@@ -711,6 +711,12 @@ export class PublicLecturerProfile {
     description: 'Optional public WhatsApp number in E.164 format.',
   })
   whatsapp?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional public LinkedIn profile username.',
+  })
+  linkedin?: string | null;
 }
 
 @ObjectType({

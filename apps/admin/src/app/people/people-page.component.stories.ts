@@ -523,6 +523,7 @@ function person(index: number): Person {
             googleUserPicture: null,
             email: null,
             whatsapp: null,
+            linkedin: 'ana-clara-silva',
             createdAt: isoDaysFromNow(-20),
             createdById: 'storybook-admin',
             updatedAt: isoDaysFromNow(-2),

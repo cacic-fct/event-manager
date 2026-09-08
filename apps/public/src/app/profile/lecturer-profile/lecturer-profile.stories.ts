@@ -112,6 +112,7 @@ export const MinimalPublicData: Story = {
     lecturerBiography: '',
     lecturerEmail: '',
     lecturerWhatsapp: '',
+    lecturerLinkedin: '',
     publishGoogleUserPicture: false,
   },
   play: async ({ canvasElement }) => {
@@ -178,9 +179,19 @@ function createAttendancesApiMock(
       return of({
         ...buildLecturerProfile(args),
         ...input,
+        linkedin: normalizeStoryLinkedin(input.linkedin),
       });
     },
   };
+}
+
+function normalizeStoryLinkedin(value: string | null | undefined): string | null {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  const raw = value.trim();
+  return /linkedin\.com\/in\/([a-z0-9-]+)/i.exec(raw)?.[1] ?? raw.replace(/^@/, '');
 }
 
 function buildLecturerProfile(args: LecturerProfileStoryArgs): LecturerProfile {
@@ -194,5 +205,6 @@ function buildLecturerProfile(args: LecturerProfileStoryArgs): LecturerProfile {
     googleUserPicture: profile.googleUserPicture,
     email: profile.email,
     whatsapp: profile.whatsapp,
+    linkedin: profile.linkedin,
   };
 }

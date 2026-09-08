@@ -90,6 +90,7 @@ export interface PublicLecturerProfile {
   googleUserPicture?: string | null;
   email?: string | null;
   whatsapp?: string | null;
+  linkedin?: string | null;
 }
 
 export interface PublicEvent {

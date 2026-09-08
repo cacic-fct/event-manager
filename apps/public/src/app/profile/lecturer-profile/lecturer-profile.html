@@ -56,6 +56,11 @@
           <mat-icon>chat</mat-icon>
           WhatsApp
         </a>
+        } @if (linkedinHref(profile.linkedin); as linkedinLink) {
+        <a class="linkedin-action" mat-stroked-button [href]="linkedinLink" target="_blank" rel="noopener noreferrer">
+          <mat-icon>link</mat-icon>
+          <span class="linkedin-link-label">{{ linkedinLink }}</span>
+        </a>
         }
       </div>
     </div>
@@ -90,6 +95,11 @@
     <mat-form-field>
       <mat-label>WhatsApp</mat-label>
       <input matInput formControlName="whatsapp" placeholder="+5518999999999" />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Usuário do LinkedIn</mat-label>
+      <input matInput formControlName="linkedin" placeholder="linkedin.com/in/seu-usuario" />
+      <mat-hint>Cole o nome de usuário ou a URL do perfil.</mat-hint>
     </mat-form-field>
     <div class="form-actions">
       <button mat-button type="button" (click)="cancel(profilePreview())" [disabled]="isSaving()">Cancelar</button>

@@ -57,6 +57,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
           displayName: ' Ada Lovelace ',
           email: ' ADA@EXAMPLE.COM ',
           whatsapp: '+55 11 99999-9999',
+          linkedin: 'https://br.linkedin.com/in/ada-lovelace/?trk=public_profile',
           publishGoogleUserPicture: false,
         },
         { request: { user: context.req.user } } as never,
@@ -74,6 +75,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
           displayName: 'Ada Lovelace',
           email: 'ada@example.com',
           whatsapp: '+5511999999999',
+          linkedin: 'ada-lovelace',
           updatedById: 'user-1',
         }),
       }),
@@ -114,6 +116,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
           biography: ' Palestrante ',
           email: ' MARIA@EXAMPLE.COM ',
           whatsapp: '(11) 99999-9999',
+          linkedin: 'maria-silva',
           publishGoogleUserPicture: true,
         },
         context as never,
@@ -129,6 +132,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
           biography: 'Palestrante',
           email: 'maria@example.com',
           whatsapp: '+5511999999999',
+          linkedin: 'maria-silva',
           googleUserPicture: 'https://images.example/user.jpg',
           createdById: 'user-1',
           updatedById: 'user-1',
@@ -152,6 +156,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
       biography: null,
       email: null,
       whatsapp: null,
+      linkedin: null,
       googleUserPicture: null,
     });
     lecturerProfile.findUnique.mockResolvedValueOnce(before);
@@ -174,6 +179,7 @@ describe('LecturerProfilesResolver current-user operations', () => {
           biography: null,
           email: null,
           whatsapp: null,
+          linkedin: null,
           googleUserPicture: null,
         }),
       }),
@@ -204,6 +210,51 @@ describe('LecturerProfilesResolver current-user operations', () => {
     expect(lecturerProfile.upsert).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['username', 'grace-hopper', 'grace-hopper'],
+    ['username with @', ' @grace-hopper ', 'grace-hopper'],
+    ['root URL', 'https://linkedin.com/in/grace-hopper', 'grace-hopper'],
+    ['HTTP URL', 'http://linkedin.com/in/grace-hopper', 'grace-hopper'],
+    ['www URL', 'https://www.linkedin.com/in/grace-hopper/', 'grace-hopper'],
+    ['country subdomain URL', 'https://pt.linkedin.com/in/grace-hopper?trk=public_profile', 'grace-hopper'],
+    ['schemeless country subdomain URL', 'br.linkedin.com/in/grace-hopper#about', 'grace-hopper'],
+    ['deep profile URL', 'https://www.linkedin.com/in/grace-hopper/recent-activity/all/', 'grace-hopper'],
+  ])('stores only the LinkedIn username from a %s', async (_label, linkedin, expected) => {
+    lecturerProfile.findUnique.mockResolvedValueOnce(null);
+    lecturerProfile.upsert.mockResolvedValueOnce(profileFixture({ linkedin: expected }));
+
+    await resolver().upsertCurrentUserLecturerProfile(
+      { displayName: 'Grace Hopper', linkedin, publishGoogleUserPicture: false },
+      context as never,
+    );
+
+    expect(lecturerProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ linkedin: expected }),
+        update: expect.objectContaining({ linkedin: expected }),
+      }),
+    );
+  });
+
+  it.each([
+    'https://linkedin.example/in/grace-hopper',
+    'https://linkedin.com.evil.example/in/grace-hopper',
+    'https://linkedin.com/company/openai',
+    'https://linkedin.com/in//grace-hopper',
+    'https://linkedin.com/in/grace%2Fhopper',
+    'https://linkedin.com/in/grace%20hopper',
+    'https://user@linkedin.com/in/grace-hopper',
+    'not a username',
+  ])('rejects an invalid LinkedIn value: %s', async (linkedin) => {
+    await expect(
+      resolver().upsertCurrentUserLecturerProfile(
+        { displayName: 'Grace Hopper', linkedin, publishGoogleUserPicture: false },
+        context as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(lecturerProfile.upsert).not.toHaveBeenCalled();
+  });
+
   function resolver(): LecturerProfilesResolver {
     return new LecturerProfilesResolver(prisma as never, currentUserContext as never, auditLog as never);
   }
@@ -220,6 +271,7 @@ function profileFixture(overrides: Record<string, unknown> = {}) {
     googleUserPicture: null,
     email: null,
     whatsapp: null,
+    linkedin: null,
     createdAt: new Date(publicFixtureDateFromNow(-1)),
     createdById: 'user-1',
     updatedAt: new Date(publicFixtureDateFromNow()),

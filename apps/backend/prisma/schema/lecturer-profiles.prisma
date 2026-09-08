@@ -8,6 +8,7 @@ model LecturerProfile {
   googleUserPicture        String?
   email                    String?
   whatsapp                 String?
+  linkedin                 String?
 
   createdAt   DateTime @default(now())
   createdById String?

@@ -251,6 +251,7 @@ const LECTURER_PROFILE_FIELDS = `
   googleUserPicture
   email
   whatsapp
+  linkedin
   createdAt
   createdById
   updatedAt

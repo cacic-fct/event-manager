@@ -412,6 +412,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
                 googleUserPicture: 'https://example.com/private.png',
                 email: 'ada@example.com',
                 whatsapp: '+5518999999999',
+                linkedin: 'ada-lovelace',
               },
             },
           },
@@ -429,6 +430,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
         googleUserPicture: null,
         email: 'ada@example.com',
         whatsapp: '+5518999999999',
+        linkedin: 'ada-lovelace',
       },
     ]);
 
@@ -509,6 +511,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
                 googleUserPicture: 'https://example.com/ada.png',
                 email: 'ada@example.com',
                 whatsapp: '+5518999999999',
+                linkedin: 'ada-lovelace',
               },
             },
           },
@@ -525,6 +528,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
                 googleUserPicture: 'https://example.com/grace.png',
                 email: 'grace@example.com',
                 whatsapp: '+5518888888888',
+                linkedin: 'grace-hopper',
               },
             },
           },
@@ -549,6 +553,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
           googleUserPicture: 'https://example.com/ada.png',
           email: 'ada@example.com',
           whatsapp: '+5518999999999',
+          linkedin: 'ada-lovelace',
         },
       ],
       [
@@ -560,6 +565,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
           googleUserPicture: null,
           email: 'grace@example.com',
           whatsapp: '+5518888888888',
+          linkedin: 'grace-hopper',
         },
       ],
     ]);

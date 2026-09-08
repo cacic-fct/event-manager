@@ -145,6 +145,7 @@ export abstract class PeopleRecords extends PeopleState {
       publishGoogleUserPicture: raw.publishGoogleUserPicture,
       email: raw.email.trim() || null,
       whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),
+      linkedin: raw.linkedin.trim() || null,
     };
 
     try {
@@ -278,6 +279,7 @@ export abstract class PeopleRecords extends PeopleState {
       publishGoogleUserPicture: person.lecturerProfile?.publishGoogleUserPicture ?? false,
       email: person.lecturerProfile?.email ?? '',
       whatsapp: person.lecturerProfile?.whatsapp ?? '',
+      linkedin: person.lecturerProfile?.linkedin ?? '',
     });
   }
 
@@ -288,6 +290,7 @@ export abstract class PeopleRecords extends PeopleState {
       publishGoogleUserPicture: false,
       email: '',
       whatsapp: '',
+      linkedin: '',
     });
   }
 

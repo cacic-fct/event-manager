@@ -386,7 +386,7 @@ const scenarioByEntityType: Record<AuditLogEntityType, AuditLogScenario> = {
         beforeValue: 'Palestrante convidado.',
         afterValue: 'Palestrante convidado com experiência em Angular.',
       },
-      { field: 'linkedin', label: 'LinkedIn', beforeValue: null, afterValue: 'https://linkedin.com/in/palestrante' },
+      { field: 'linkedin', label: 'LinkedIn', beforeValue: null, afterValue: 'palestrante' },
     ],
   },
   EVENT: {

@@ -116,6 +116,7 @@ export interface LecturerProfile {
   googleUserPicture?: string | null;
   email?: string | null;
   whatsapp?: string | null;
+  linkedin?: string | null;
 }
 
 export interface LecturerProfileInput {
@@ -124,6 +125,7 @@ export interface LecturerProfileInput {
   publishGoogleUserPicture?: boolean;
   email?: string | null;
   whatsapp?: string | null;
+  linkedin?: string | null;
 }
 
 const CERTIFICATE_FIELDS = `
@@ -155,6 +157,7 @@ const LECTURER_PROFILE_FIELDS = `
   googleUserPicture
   email
   whatsapp
+  linkedin
 `;
 
 @Service()

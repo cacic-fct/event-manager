@@ -115,6 +115,7 @@ export function createPublicLecturerProfile(overrides: Partial<PublicLecturerPro
     googleUserPicture: null,
     email: 'ada@example.com',
     whatsapp: '+5518999999999',
+    linkedin: 'ada-lovelace',
     ...overrides,
   };
 }
@@ -424,6 +425,7 @@ export function createStoryPublicLecturerProfile(index = 0): PublicLecturerProfi
     googleUserPicture: index % 2 === 0 ? 'https://lh3.googleusercontent.com/a/storybook-lecturer' : null,
     email: ['ana@example.com', 'bruno@example.com', 'carol@example.com', 'diego@example.com'][index % 4],
     whatsapp: '+5518999999999',
+    linkedin: ['ana-clara-silva', 'bruno-santos', 'carolina-pereira', 'diego-almeida'][index % 4],
   });
 }
 

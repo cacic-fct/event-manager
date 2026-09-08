@@ -225,6 +225,16 @@ h3 {
   margin-top: 12px;
 }
 
+.linkedin-action {
+  max-width: 100%;
+}
+
+.linkedin-link-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty-section {
   align-items: center;
   color: var(--mat-sys-on-surface-variant);

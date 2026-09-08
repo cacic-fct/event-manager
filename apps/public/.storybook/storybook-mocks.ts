@@ -22,6 +22,15 @@ function isoDaysFromNow(days: number, hour = 14): string {
   return date.toISOString();
 }
 
+function normalizeStoryLinkedin(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const raw = value.trim();
+  return /linkedin\.com\/in\/([a-z0-9-]+)/i.exec(raw)?.[1] ?? raw.replace(/^@/, '');
+}
+
 function publicMajorEvent(index = 0) {
   return createStoryPublicMajorEvent(index, {
     requiresPayment: index % 2 === 0,
@@ -599,6 +608,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
           : null,
         email: input['email'] ?? null,
         whatsapp: input['whatsapp'] ?? null,
+        linkedin: normalizeStoryLinkedin(input['linkedin']),
       },
     };
   }
@@ -615,6 +625,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
         googleUserPicture: 'https://lh3.googleusercontent.com/a/storybook-user',
         email: 'storybook@example.com',
         whatsapp: '+5518999999999',
+        linkedin: 'storybook-user',
       },
     };
   }

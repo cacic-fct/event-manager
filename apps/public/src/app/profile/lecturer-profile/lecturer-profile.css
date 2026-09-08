@@ -63,6 +63,16 @@
   gap: 8px;
 }
 
+.linkedin-action {
+  max-width: 100%;
+}
+
+.linkedin-link-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .form-actions {
   justify-content: flex-end;
 }

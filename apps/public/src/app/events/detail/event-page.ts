@@ -784,6 +784,14 @@ export class Event {
     return `https://wa.me/${lecturer.whatsapp.replace(/\D/g, '')}`;
   }
 
+  lecturerLinkedinUrl(lecturer: PublicLecturerProfile): string | null {
+    if (!lecturer.linkedin || !/^[a-z0-9-]{1,100}$/i.test(lecturer.linkedin)) {
+      return null;
+    }
+
+    return `https://linkedin.com/in/${encodeURIComponent(lecturer.linkedin)}`;
+  }
+
   googlePictureUrl(url: string | null | undefined): string {
     return (url ?? '').replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
   }

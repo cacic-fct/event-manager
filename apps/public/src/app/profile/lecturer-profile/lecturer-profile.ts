@@ -54,6 +54,7 @@ export class LecturerProfileComponent {
     publishGoogleUserPicture: [false],
     email: [''],
     whatsapp: [''],
+    linkedin: [''],
   });
 
   readonly state = toSignal(
@@ -108,6 +109,7 @@ export class LecturerProfileComponent {
       publishGoogleUserPicture: raw.publishGoogleUserPicture,
       email: raw.email.trim() || null,
       whatsapp: this.normalizeWhatsapp(raw.whatsapp.trim()),
+      linkedin: raw.linkedin.trim() || null,
     };
 
     this.isSaving.set(true);
@@ -136,6 +138,14 @@ export class LecturerProfileComponent {
     return `https://wa.me/${value.replace(/\D/g, '')}`;
   }
 
+  linkedinHref(username: string | null | undefined): string | null {
+    if (!username || !/^[a-z0-9-]{1,100}$/i.test(username)) {
+      return null;
+    }
+
+    return `https://linkedin.com/in/${encodeURIComponent(username)}`;
+  }
+
   googlePictureUrl(url: string | null | undefined): string {
     return (url ?? '').replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
   }
@@ -147,6 +157,7 @@ export class LecturerProfileComponent {
       publishGoogleUserPicture: profile?.publishGoogleUserPicture ?? false,
       email: profile?.email ?? '',
       whatsapp: profile?.whatsapp ?? '',
+      linkedin: profile?.linkedin ?? '',
     });
   }
 

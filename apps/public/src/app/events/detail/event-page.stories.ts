@@ -130,6 +130,7 @@ export const LecturerWithoutContact: Story = {
     lecturerCount: 1,
     lecturerEmail: '',
     lecturerWhatsapp: '',
+    lecturerLinkedin: '',
     publishGoogleUserPicture: false,
   },
   globals: { theme: 'light', network: 'online' },
@@ -138,6 +139,7 @@ export const LecturerWithoutContact: Story = {
     await expect(await canvas.findByText('Ministrantes')).toBeVisible();
     await expect(canvas.queryByRole('link', { name: /ana@example.com/i })).toBeNull();
     await expect(canvas.queryByRole('link', { name: /whatsapp/i })).toBeNull();
+    await expect(canvas.queryByRole('link', { name: /linkedin\.com/i })).toBeNull();
   },
 };
 

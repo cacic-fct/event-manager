@@ -429,6 +429,7 @@ export const PERSON_DETAIL_FIELDS = `
     googleUserPicture
     email
     whatsapp
+    linkedin
     createdAt
     createdById
     updatedAt

@@ -41,6 +41,7 @@ const PUBLIC_EVENT_LECTURER_PROFILE_SELECT = {
           googleUserPicture: true,
           email: true,
           whatsapp: true,
+          linkedin: true,
         },
       },
     },
@@ -166,6 +167,7 @@ function mapPublicLecturerProfiles(lecturers: PublicEventLecturerProfileRecord[]
       googleUserPicture: profile.publishGoogleUserPicture ? profile.googleUserPicture : null,
       email: profile.email,
       whatsapp: profile.whatsapp,
+      linkedin: profile.linkedin,
     };
   });
 }

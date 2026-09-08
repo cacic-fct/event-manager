@@ -151,6 +151,7 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
         googleUserPicture: null,
         email: 'ada@example.com',
         whatsapp: '+5518999999999',
+        linkedin: 'ada-lovelace',
       },
     ],
   };
@@ -559,6 +560,7 @@ describe('Event', () => {
     expect(compiled.textContent).toContain('Pioneira em computação.');
     expect(compiled.querySelector('a[href="mailto:ada@example.com"]')).toBeTruthy();
     expect(compiled.querySelector('a[href="https://wa.me/5518999999999"]')).toBeTruthy();
+    expect(compiled.querySelector('a[href="https://linkedin.com/in/ada-lovelace"]')).toBeTruthy();
   });
 
   it('requests higher quality Google lecturer pictures', () => {

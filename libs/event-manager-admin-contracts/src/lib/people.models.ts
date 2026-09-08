@@ -126,6 +126,7 @@ export interface LecturerProfile {
   googleUserPicture?: string | null;
   email?: string | null;
   whatsapp?: string | null;
+  linkedin?: string | null;
   createdAt: string;
   createdById?: string | null;
   updatedAt: string;
@@ -138,6 +139,7 @@ export interface LecturerProfileInput {
   publishGoogleUserPicture?: boolean;
   email?: string | null;
   whatsapp?: string | null;
+  linkedin?: string | null;
 }
 
 export interface MergeCandidate {

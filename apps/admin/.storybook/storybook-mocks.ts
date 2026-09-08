@@ -21,6 +21,15 @@ function isoDaysFromNow(days: number, hour = 14): string {
   return date.toISOString();
 }
 
+function normalizeStoryLinkedin(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const raw = value.trim();
+  return /linkedin\.com\/in\/([a-z0-9-]+)/i.exec(raw)?.[1] ?? raw.replace(/^@/, '');
+}
+
 function person(index = 0) {
   return {
     id: `person-${index + 1}`,
@@ -55,6 +64,7 @@ function person(index = 0) {
             googleUserPicture: null,
             email: 'ana.lecturer@example.com',
             whatsapp: '+5518999999999',
+            linkedin: 'ana-clara-silva',
             createdAt: isoDaysFromNow(-10),
             createdById: 'storybook-admin',
             updatedAt: isoDaysFromNow(-1),
@@ -645,6 +655,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
         googleUserPicture: null,
         email: input['email'] ?? null,
         whatsapp: input['whatsapp'] ?? null,
+        linkedin: normalizeStoryLinkedin(input['linkedin']),
         createdAt: isoDaysFromNow(-10),
         createdById: 'storybook-admin',
         updatedAt: now.toISOString(),

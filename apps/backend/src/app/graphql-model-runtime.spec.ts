@@ -314,6 +314,7 @@ describe('GraphQL model runtime metadata', () => {
         { field: 'majorEventPrices', model: 'PublicMajorEvent', nullable: undefined, type: '[PublicMajorEventPrice]' },
         { field: 'eventGroup', model: 'PublicEvent', nullable: true, type: 'PublicEventGroup' },
         { field: 'lecturers', model: 'PublicEvent', nullable: undefined, type: '[PublicLecturerProfile]' },
+        { field: 'linkedin', model: 'PublicLecturerProfile', nullable: true, type: 'String' },
         {
           field: 'subscriptionSummaries',
           model: 'PublicMajorEventSubscriptionPage',

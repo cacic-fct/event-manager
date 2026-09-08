@@ -31,6 +31,7 @@ const FIELD_LABELS: Record<string, string> = {
   isActive: 'Ativa',
   isPaymentRequired: 'Exigir pagamento',
   latitude: 'Latitude',
+  linkedin: 'LinkedIn',
   locationDescription: 'Local',
   longitude: 'Longitude',
   majorEventId: 'Grande evento',

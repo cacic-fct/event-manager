@@ -16,4 +16,7 @@ export class LecturerProfileUpsertInput {
 
   @Field(() => String, { nullable: true })
   whatsapp?: string | null;
+
+  @Field(() => String, { nullable: true })
+  linkedin?: string | null;
 }

@@ -24,6 +24,7 @@ const LECTURER_PROFILE_SELECT = {
   googleUserPicture: true,
   email: true,
   whatsapp: true,
+  linkedin: true,
   createdAt: true,
   createdById: true,
   updatedAt: true,
@@ -36,6 +37,7 @@ interface LecturerProfileData {
   publishGoogleUserPicture: boolean;
   email: string | null;
   whatsapp: string | null;
+  linkedin: string | null;
   googleUserPicture?: string | null;
   updatedById: string | undefined;
 }
@@ -50,6 +52,7 @@ type LecturerProfileAuditSnapshot = Pick<
   | 'googleUserPicture'
   | 'email'
   | 'whatsapp'
+  | 'linkedin'
   | 'createdAt'
   | 'createdById'
   | 'updatedAt'
@@ -199,6 +202,7 @@ export class LecturerProfilesResolver {
       googleUserPicture: profile.googleUserPicture,
       email: profile.email,
       whatsapp: profile.whatsapp,
+      linkedin: profile.linkedin,
       createdAt: profile.createdAt,
       createdById: profile.createdById,
       updatedAt: profile.updatedAt,
@@ -220,6 +224,7 @@ export class LecturerProfilesResolver {
       publishGoogleUserPicture: input.publishGoogleUserPicture ?? false,
       email: this.normalizeEmail(input.email),
       whatsapp: this.normalizeWhatsapp(input.whatsapp),
+      linkedin: this.normalizeLinkedin(input.linkedin),
       updatedById: actorId,
     };
   }
@@ -248,6 +253,55 @@ export class LecturerProfilesResolver {
     }
 
     return normalized;
+  }
+
+  private normalizeLinkedin(linkedin: string | null | undefined): string | null {
+    const raw = linkedin?.trim();
+    if (!raw) {
+      return null;
+    }
+
+    const withoutAt = raw.startsWith('@') ? raw.slice(1) : raw;
+    const isLinkedinUrl = /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*linkedin\.com(?:\/|$)/i.test(withoutAt);
+    let username = withoutAt;
+
+    if (isLinkedinUrl) {
+      let url: URL;
+      try {
+        url = new URL(/^https?:\/\//i.test(withoutAt) ? withoutAt : `https://${withoutAt}`);
+      } catch {
+        throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+      }
+
+      if (
+        !['http:', 'https:'].includes(url.protocol) ||
+        (url.hostname !== 'linkedin.com' && !url.hostname.endsWith('.linkedin.com')) ||
+        url.username ||
+        url.password ||
+        url.port
+      ) {
+        throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+      }
+
+      const profilePath = /^\/in\/([^/]+)(?:\/.*)?$/i.exec(url.pathname);
+      if (!profilePath) {
+        throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+      }
+
+      try {
+        username = decodeURIComponent(profilePath[1] ?? '');
+      } catch {
+        throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+      }
+    } else if (/[:/?#]/.test(withoutAt)) {
+      throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+    }
+
+    if (!/^[a-z0-9-]{1,100}$/i.test(username)) {
+      throw new BadRequestException('Informe um nome de usuário do LinkedIn ou uma URL de perfil válida.');
+    }
+
+    return username;
   }
 
   private getActorId(context: GraphqlContext): string | undefined {

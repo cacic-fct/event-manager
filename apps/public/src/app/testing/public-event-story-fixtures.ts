@@ -54,6 +54,7 @@ export interface PublicLecturerProfileStoryControls {
   lecturerBiography: string;
   lecturerEmail: string;
   lecturerWhatsapp: string;
+  lecturerLinkedin: string;
   publishGoogleUserPicture: boolean;
   googleUserPicture: string;
 }
@@ -107,6 +108,7 @@ export const publicLecturerProfileStoryDefaultControls: PublicLecturerProfileSto
     'Pesquisa e desenvolve projetos de tecnologia educacional, com foco em experiências acessíveis para eventos acadêmicos.',
   lecturerEmail: 'ana@example.com',
   lecturerWhatsapp: '+5518999999999',
+  lecturerLinkedin: 'ana-clara-silva',
   publishGoogleUserPicture: true,
   googleUserPicture: 'https://lh3.googleusercontent.com/a/storybook-lecturer=s96-c',
 };
@@ -145,6 +147,7 @@ export const publicLecturerProfileStoryControlArgTypes = {
   lecturerBiography: { control: 'text' },
   lecturerEmail: { control: 'text' },
   lecturerWhatsapp: { control: 'text' },
+  lecturerLinkedin: { control: 'text' },
   publishGoogleUserPicture: { control: 'boolean' },
   googleUserPicture: { control: 'text' },
 } as const;
@@ -302,6 +305,7 @@ export function createPublicStoryLecturerProfileFromControls(
   const biography = cleanStoryText(merged.lecturerBiography);
   const email = cleanStoryText(merged.lecturerEmail);
   const whatsapp = cleanStoryText(merged.lecturerWhatsapp);
+  const linkedin = cleanStoryText(merged.lecturerLinkedin);
   const googleUserPicture = cleanStoryText(merged.googleUserPicture);
 
   return {
@@ -317,6 +321,7 @@ export function createPublicStoryLecturerProfileFromControls(
       : null,
     email: index === 0 ? email : fallback.email,
     whatsapp: index === 0 ? whatsapp : fallback.whatsapp,
+    linkedin: index === 0 ? linkedin : fallback.linkedin,
     ...overrides,
   };
 }
