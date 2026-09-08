@@ -397,6 +397,14 @@ export async function refreshDerivedData(target, operations) {
   await target.query(
     `WITH assessments AS (
       SELECT attendance."personId", attendance."eventId", CASE
+      WHEN cardinality(event."regularAttendancePriceTierIds") > 0 AND NOT EXISTS (
+        SELECT 1 FROM major_event_subscriptions subscription
+        JOIN price_tiers tier ON tier.id=ANY(event."regularAttendancePriceTierIds")
+        JOIN major_event_prices price ON price.id=tier."priceId" AND price."majorEventId"=event."majorEventId"
+        WHERE subscription."majorEventId"=event."majorEventId"
+          AND subscription."personId"=attendance."personId" AND subscription."deletedAt" IS NULL
+          AND lower(btrim(subscription."paymentTier"))=lower(btrim(tier.name)))
+        THEN 'PRICE_TIER_NOT_ELIGIBLE'
       WHEN event."majorEventId" IS NOT NULL AND major_event."isPaymentRequired"=true
         AND NOT EXISTS (SELECT 1 FROM major_event_subscriptions item WHERE item."majorEventId"=event."majorEventId"
           AND item."personId"=attendance."personId" AND item."deletedAt" IS NULL AND item."subscriptionStatus"='CONFIRMED')

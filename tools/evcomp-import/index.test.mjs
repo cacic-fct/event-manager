@@ -138,7 +138,16 @@ test('refreshes attendance using current enum values and retains the assessment 
   assert.ok(refresh);
   assert.doesNotMatch(refresh.sql, /'NON_PAYING'|'NON_SUBSCRIBED'/);
   assert.match(refresh.sql, /'NON_REGULAR'/);
+  assert.match(refresh.sql, /cardinality\(event\."regularAttendancePriceTierIds"\) > 0/);
+  assert.match(refresh.sql, /tier\.id=ANY\(event\."regularAttendancePriceTierIds"\)/);
+  assert.match(refresh.sql, /price\."majorEventId"=event\."majorEventId"/);
+  assert.match(refresh.sql, /lower\(btrim\(subscription\."paymentTier"\)\)=lower\(btrim\(tier\.name\)\)/);
+  assert.match(refresh.sql, /'PRICE_TIER_NOT_ELIGIBLE'/);
   assert.match(refresh.sql, /'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'/);
+  assert.ok(
+    refresh.sql.indexOf("THEN 'PRICE_TIER_NOT_ELIGIBLE'") <
+      refresh.sql.indexOf("THEN 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'"),
+  );
   assert.match(refresh.sql, /'ACTIVITY_SUBSCRIPTION_MISSING'/);
   assert.match(refresh.sql, /"currentAssessment"=assessments.assessment::"AttendanceCurrentAssessment"/);
   assert.deepEqual(refresh.parameters, [['event-1']]);
