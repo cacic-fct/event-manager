@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import * as echarts from 'echarts';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
@@ -59,6 +60,8 @@ describe('AttendanceStatisticsPageComponent flow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // SVG chart tests use ECharts' fallback text metrics; jsdom has no canvas context.
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     TestBed.configureTestingModule({
       providers: [
         provideNoopAnimations(),
@@ -74,6 +77,8 @@ describe('AttendanceStatisticsPageComponent flow', () => {
     });
   });
 
+  afterEach(() => vi.restoreAllMocks());
+
   it('renders the live operational summary, collectors, and review queue', () => {
     const fixture = TestBed.createComponent(AttendanceStatisticsPageComponent);
     fixture.detectChanges();
@@ -82,20 +87,112 @@ describe('AttendanceStatisticsPageComponent flow', () => {
     expect(fixture.nativeElement.textContent).toContain('Semana da Computação');
     expect(fixture.nativeElement.textContent).toContain('84');
     expect(fixture.nativeElement.textContent).toContain('Revisão humana');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Marcar um aviso como revisado o remove desta fila sem alterar os registros de presença',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Marcar aviso como revisado');
+    expect(fixture.nativeElement.textContent).not.toContain('Descartar sinal');
     expect(fixture.nativeElement.textContent).toContain(snapshot.collectors[0]?.name);
   });
 
-  it('reviews a signal, refreshes the snapshot, and releases the busy state', async () => {
+  it('applies a chart drag and resets the live filter when non-empty HTML is forbidden', () => {
+    const fixture = TestBed.createComponent(AttendanceStatisticsPageComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const chart = echarts.init(element, undefined, { renderer: 'svg', width: 800, height: 300 });
+    chart.setOption({ ...component['throughputOption'](), animation: false });
+    component['configureThroughputSelection'](chart);
+    const htmlSetter = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML')?.set;
+    const htmlSpy = vi.spyOn(Element.prototype, 'innerHTML', 'set').mockImplementation(function (
+      this: Element,
+      value: string,
+    ) {
+      if (value !== '') throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+      htmlSetter?.call(this, value);
+    });
+
+    try {
+      for (const [type, x] of [['mousedown', 200], ['mousemove', 400], ['mouseup', 400]] as const) {
+        chart.getZr().handler.dispatch(type, Object.assign(new MouseEvent(type), { zrX: x, zrY: 100 }));
+      }
+      expect(component.selectedTimeWindow()).toEqual({ start: expect.any(String), end: expect.any(String) });
+      fixture.detectChanges();
+      expect(api.watchEventAttendanceAnalytics).toHaveBeenLastCalledWith(
+        snapshot.eventId,
+        component.selectedTimeWindow(),
+      );
+      expect(fixture.nativeElement.textContent).toContain('Mostrar tudo');
+
+      component.resetTimeWindow();
+      fixture.detectChanges();
+      expect(api.watchEventAttendanceAnalytics).toHaveBeenLastCalledWith(snapshot.eventId, null);
+      expect(component.selectedWindowLabel()).toBe('Todo o período');
+    } finally {
+      htmlSpy.mockRestore();
+      chart.dispose();
+      element.remove();
+    }
+  });
+
+  it.each(['hoursOption', 'collectorsOption', 'methodsOption'] as const)(
+    'renders %s tooltips without assigning non-empty HTML',
+    (option) => {
+      const component = TestBed.createComponent(AttendanceStatisticsPageComponent).componentInstance;
+      component.snapshot.set(snapshot);
+      const element = document.createElement('div');
+      document.body.appendChild(element);
+      const chart = echarts.init(element, undefined, { renderer: 'svg', width: 800, height: 300 });
+      chart.setOption({ ...component[option](), animation: false });
+      const htmlSetter = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML')?.set;
+      const htmlSpy = vi.spyOn(Element.prototype, 'innerHTML', 'set').mockImplementation(function (
+        this: Element,
+        value: string,
+      ) {
+        if (value !== '') throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+        htmlSetter?.call(this, value);
+      });
+
+      try {
+        expect(() => chart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: 0 })).not.toThrow();
+        expect(htmlSpy.mock.calls.every(([value]) => value === '')).toBe(true);
+      } finally {
+        htmlSpy.mockRestore();
+        chart.dispose();
+        element.remove();
+      }
+    },
+  );
+
+  it('marks a signal as reviewed, refreshes the snapshot, and releases the busy state', async () => {
     const component = TestBed.createComponent(AttendanceStatisticsPageComponent).componentInstance;
     const item = snapshot.reviewItems[0];
     if (!item) throw new Error('The shared fixture must contain a review item.');
 
-    await component.review(item, 'RESOLVED');
+    await component.review(item, 'DISMISSED');
 
-    expect(api.reviewAttendanceFlag).toHaveBeenCalledWith(item.id, snapshot.eventId, 'RESOLVED');
+    expect(api.reviewAttendanceFlag).toHaveBeenCalledWith(item.id, snapshot.eventId, 'DISMISSED');
     expect(api.getEventAttendanceAnalytics).toHaveBeenCalledWith(snapshot.eventId, null);
     expect(component.reviewingFlagId()).toBeNull();
     expect(component.actionError()).toBeNull();
+  });
+
+  it('offers one review action per pending signal and submits the neutral reviewed status', async () => {
+    const fixture = TestBed.createComponent(AttendanceStatisticsPageComponent);
+    fixture.detectChanges();
+    const item = snapshot.reviewItems[0];
+    if (!item) throw new Error('The shared fixture must contain a review item.');
+    const element = fixture.nativeElement as HTMLElement;
+    const reviewButtons = Array.from(element.querySelectorAll('button')).filter((button) =>
+      button.textContent?.includes('Marcar aviso como revisado'),
+    );
+
+    expect(reviewButtons).toHaveLength(snapshot.reviewItems.length);
+    reviewButtons[0]?.click();
+    await fixture.whenStable();
+
+    expect(api.reviewAttendanceFlag).toHaveBeenCalledWith(item.id, snapshot.eventId, 'DISMISSED');
   });
 
   it('keeps the current analytics visible and exposes an actionable reload error', async () => {

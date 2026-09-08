@@ -59,9 +59,9 @@
         <div class="section-heading">
           <div>
             <h2>Revisão humana</h2>
-            <p>
-              As presenças permanecem válidas enquanto estes sinais são analisados. Pendências off-line continuam na
-              fila de reconciliação.
+            <p id="review-action-explanation">
+              Marcar um aviso como revisado o remove desta fila sem alterar os registros de presença. Pendências
+              off-line continuam na fila de reconciliação.
             </p>
           </div>
           <mat-chip>{{ data.reviewItems.length }} pendência(s)</mat-chip>
@@ -87,23 +87,17 @@
                   <a mat-stroked-button [routerLink]="item.deepLink"><mat-icon>open_in_new</mat-icon>Revisar</a>
                 } @else if (permissions.has(Permission.EventAttendance.Update)) {
                   <button
-                    mat-button
-                    type="button"
-                    [disabled]="reviewingFlagId() === item.id"
-                    (click)="review(item, 'DISMISSED')">
-                    Descartar sinal
-                  </button>
-                  <button
                     mat-flat-button
                     type="button"
+                    aria-describedby="review-action-explanation"
                     [disabled]="reviewingFlagId() === item.id"
-                    (click)="review(item, 'RESOLVED')">
+                    (click)="review(item, 'DISMISSED')">
                     @if (reviewingFlagId() === item.id) {
                       <mat-spinner diameter="18" />
                     } @else {
                       <mat-icon>done</mat-icon>
                     }
-                    Concluir
+                    Marcar aviso como revisado
                   </button>
                 }
               </div>

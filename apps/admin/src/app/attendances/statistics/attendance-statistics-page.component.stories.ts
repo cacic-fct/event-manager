@@ -100,19 +100,19 @@ export const ReadOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Revisão humana')).toBeVisible();
-    await expect(canvas.queryByRole('button', { name: 'Concluir' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Marcar aviso como revisado' })).not.toBeInTheDocument();
   },
 };
 
 export const ReviewFailure: Story = {
-  name: 'Falha ao concluir revisão',
+  name: 'Falha ao marcar aviso como revisado',
   args: { actionFails: true, responseDelay: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const [button] = await canvas.findAllByRole('button', { name: 'Concluir' });
+    const [button] = await canvas.findAllByRole('button', { name: 'Marcar aviso como revisado' });
     if (!button) throw new Error('Expected at least one review action.');
     await userEvent.click(button);
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Não foi possível concluir a revisão.');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Não foi possível marcar o aviso como revisado.');
   },
 };
 
@@ -163,7 +163,7 @@ function createStoryProviders(args: AttendanceStatisticsStoryArgs) {
         getEventAttendanceAnalytics: () => response(snapshot),
         reviewAttendanceFlag: () =>
           args.actionFails
-            ? throwError(() => new Error('Não foi possível concluir a revisão.'))
+            ? throwError(() => new Error('Não foi possível marcar o aviso como revisado.'))
             : response(snapshot.reviewItems[0]),
       },
     },

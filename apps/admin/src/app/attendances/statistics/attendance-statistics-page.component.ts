@@ -159,7 +159,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       await firstValueFrom(this.api.reviewAttendanceFlag(item.id, item.eventId, status));
       await this.reload();
     } catch (error: unknown) {
-      this.actionError.set(error instanceof Error ? error.message : 'Não foi possível concluir a revisão.');
+      this.actionError.set(error instanceof Error ? error.message : 'Não foi possível marcar o aviso como revisado.');
     } finally {
       this.reviewingFlagId.set(null);
     }
@@ -281,7 +281,8 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     return {
       animationDuration: 260,
       aria: { enabled: true },
-      tooltip: { trigger: 'axis', valueFormatter: (value) => `${value} presença(s)` },
+      // HTML tooltips violate Trusted Types and interrupt the brush event before the filter updates.
+      tooltip: { renderMode: 'richText', trigger: 'axis', valueFormatter: (value) => `${value} presença(s)` },
       brush: {
         xAxisIndex: 0,
         brushType: 'lineX',
@@ -327,7 +328,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     const colors = this.chartColors(this.hoursChart?.nativeElement);
     const data = this.snapshot()?.scansByHour ?? [];
     return {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      tooltip: { renderMode: 'richText', trigger: 'axis', axisPointer: { type: 'shadow' } },
       grid: { left: 12, right: 16, top: 18, bottom: 8, containLabel: true },
       xAxis: {
         type: 'time',
@@ -355,7 +356,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     const colors = this.chartColors(this.collectorsChart?.nativeElement);
     const collectors = (this.snapshot()?.collectors ?? []).slice(0, 10).reverse();
     return {
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      tooltip: { renderMode: 'richText', trigger: 'axis', axisPointer: { type: 'shadow' } },
       grid: { left: 8, right: 18, top: 12, bottom: 8, containLabel: true },
       xAxis: {
         type: 'value',
@@ -384,7 +385,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     const colors = this.chartColors(this.methodsChart?.nativeElement);
     const methods = this.snapshot()?.methods ?? [];
     return {
-      tooltip: { trigger: 'item' },
+      tooltip: { renderMode: 'richText', trigger: 'item' },
       legend: { bottom: 0, textStyle: { color: colors.muted } },
       series: [
         {
