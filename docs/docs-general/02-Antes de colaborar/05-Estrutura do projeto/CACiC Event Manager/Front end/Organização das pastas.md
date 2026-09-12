@@ -61,8 +61,8 @@ Página inicial do aplicativo (index).
 
 ### modals
 
-Modals globais que interrompem a navegação do usuário.  
-Modals não-intrusivos devem ser armazenados na pasta `shared/modals`.
+Modais globais que interrompem a navegação do usuário.  
+Modais não intrusivos devem ser armazenados na pasta `shared/modals`.
 
 ### profile
 

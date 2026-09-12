@@ -31,7 +31,7 @@ Não use o Storybook para substituir testes de regras de negócio do backend.
 
 ## Mocks
 
-Prefira MSW para simular GraphQL, REST e erros de rede. Use as fixtures realistas compartilhadas e `fakerPT_BR` quando dados pessoais fictícios, para que o story fique mais parecido com a operação real.
+Prefira MSW para simular GraphQL, REST e erros de rede. Use as fixtures realistas compartilhadas e `fakerPT_BR` quando precisar de dados pessoais fictícios, para que o story fique mais parecido com a operação real.
 
 Evite stubs locais que pulam a camada de API quando o story precisa demonstrar estados de requisição.
 

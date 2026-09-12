@@ -8,7 +8,7 @@ O prefixo global (_base href_) é `/app/`.
 
 Rotas sempre em inglês, em minúsculas, sem caracteres especiais.
 
-Alguns redirecionamentos podem ser feitos para urls comuns, incluindo em português, por exemplo:
+Alguns redirecionamentos podem ser feitos para URLs comuns, incluindo em português, por exemplo:
 
 - `/docs` → `https://docs.eventos.cacic.com.br`
 - `/validar` → `/validate`

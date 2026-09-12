@@ -8,7 +8,7 @@ Verifique se a pessoa que está solicitando alguma credencial ou o acesso a toda
 
 Confirme por meio de um canal de comunicação alternativo, como o WhatsApp, o Telegram, o Discord, o e-mail institucional ou o telefone.
 
-Pode ser que a pessoa tenha esquecido a plataforma que ela entrou em contato com você logada em um dispositivo público ou ela pode ter sido vítima de uma invasão ou de um ataque de engenharia social.
+Pode ser que a pessoa tenha deixado a sessão aberta em um dispositivo público na plataforma pela qual entrou em contato com você, ou que tenha sido vítima de uma invasão ou de um ataque de engenharia social.
 
 ## Prevenção de vazamento de credenciais
 

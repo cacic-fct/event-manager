@@ -70,7 +70,7 @@ Essa medida busca evitar:
 
 1. **Relicenciamentos incompatíveis com os objetivos do projeto**
 
-   A obrigação do projeto principal ser mantido sob uma licença de código livre forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e da evolução a longo prazo.
+   A obrigação de o projeto principal ser mantido sob uma licença de código livre forte, como a AGPL-3.0-only, impede que o CACiC Event Manager seja convertido em software de código fechado ou distribuído sob termos menos compatíveis com a finalidade pública e comunitária e que prejudiquem a viabilidade da manutenção e da evolução a longo prazo.
 
 1. **Disputas de titularidade entre contribuidores**
 
@@ -78,11 +78,11 @@ Essa medida busca evitar:
 
 1. **Fragmentação do desenvolvimento**
 
-   Projetos paralelos enfraquecem o desenvolvimento do projeto principal, pois dispersam esforços de manutenção, fragmentam o conhecimento acumulado e resultam na criação de soluções que concorrem para resolver os mesmos problemas! Ao invés de ser promovida a reescrita integral do sistema, o código-fonte do CACiC Event Manager deve ser continuamente aprimorado e mantido em uma base de código já consolidada, de modo a beneficiar a comunidade acadêmica de forma mais eficiente e sustentável.
+   Projetos paralelos enfraquecem o desenvolvimento do projeto principal, pois dispersam esforços de manutenção, fragmentam o conhecimento acumulado e resultam na criação de soluções que concorrem para resolver os mesmos problemas! Em vez de ser promovida a reescrita integral do sistema, o código-fonte do CACiC Event Manager deve ser continuamente aprimorado e mantido em uma base de código já consolidada, de modo a beneficiar a comunidade acadêmica de forma mais eficiente e sustentável.
 
    O tempo e os recursos que seriam empregados na reconstrução completa do sistema podem ser direcionados à implementação de melhorias, correção de defeitos, aprimoramento da documentação e desenvolvimento de novas funcionalidades. Além disso, ao concentrar seus esforços na evolução do projeto existente, o desenvolvedor reduz a carga e a duplicidade de trabalho e pode dedicar maior atenção a outras atividades acadêmicas, como pesquisa, ensino e extensão.
 
-   Dessa forma, visando a otimização dos recursos disponíveis, a preservação do conhecimento institucional e o fortalecimento da colaboração entre estudantes, as contribuições devem sempre serem incorporadas ao CACiC Event Manager, em vez de serem desenvolvidas em projetos paralelos com objetivos equivalentes.
+   Dessa forma, visando a otimização dos recursos disponíveis, a preservação do conhecimento institucional e o fortalecimento da colaboração entre estudantes, as contribuições devem sempre ser incorporadas ao CACiC Event Manager, em vez de serem desenvolvidas em projetos paralelos com objetivos equivalentes.
 
    Leia também: [justificativa de escolha das tecnologias](./02-Antes%20de%20colaborar/02-Tecnologias.md).
 

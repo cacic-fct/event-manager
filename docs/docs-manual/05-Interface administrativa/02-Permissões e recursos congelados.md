@@ -91,12 +91,12 @@ Use esse acesso apenas para correções justificadas. Mudanças tardias podem af
 
 Confira a cadeia inteira:
 
-1. A conta está autenticada?;
-2. O Keycloak liberou a entrada administrativa?;
-3. O cargo ou grupo está ativo?;
-4. A validade já começou e não terminou?;
-5. O escopo cobre o recurso?;
-6. As dependências de leitura necessárias foram incluídas?;
+1. A conta está autenticada?
+2. O Keycloak liberou a entrada administrativa?
+3. O cargo ou grupo está ativo?
+4. A validade já começou e não terminou?
+5. O escopo cobre o recurso?
+6. As dependências de leitura necessárias foram incluídas?
 7. O recurso não está congelado para aquela ação?
 
 Para conceder acesso, leia [Concessão de permissões](../07-Procedimentos/Cargos/Concessão%20de%20permissões.md). Para o limite do Keycloak, leia [Permissões no Keycloak](../09-Keycloak/Permissões.md).

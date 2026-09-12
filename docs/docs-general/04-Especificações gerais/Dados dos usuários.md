@@ -21,8 +21,8 @@ Isso inclui:
 
 1. Informações mínimas para o cadastro de usuários.
 2. Informações que serão usadas para a geração dos certificados.
-3. Nos auxilia a entrar em contato com os usuários.
-4. Libera o acesso a funcionalidades específicas.
+3. Auxiliam-nos a entrar em contato com os usuários.
+4. Liberam o acesso a funcionalidades específicas.
 5. Coletamos para fins estatísticos.
 
 ## Coleta e tratamento de dados

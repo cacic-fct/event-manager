@@ -1,6 +1,6 @@
 # Introdução
 
-A seção de **Manual** contém informações para os administradores do CACiC Event Manager pertinentes ao funcionamento do sistema e detalhamento de procedimentos.
+A seção de **Manual** contém informações para os administradores do CACiC Event Manager pertinentes ao funcionamento do sistema e ao detalhamento de procedimentos.
 
 Ler esta documentação (manual) é fundamental para entender o funcionamento do CACiC Event Manager, para aprender a utilizá-lo de forma eficiente e para conhecer as melhores práticas de uso do aplicativo.
 

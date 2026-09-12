@@ -8,7 +8,7 @@ Nesse modo, selecionar um evento não garante automaticamente a vaga naquele eve
 
 :::warning[Aviso]
 
-O ministrante de um evento não deve se inscrever na própria atividade.
+O ministrante de um evento não se deve inscrever na própria atividade.
 
 :::
 

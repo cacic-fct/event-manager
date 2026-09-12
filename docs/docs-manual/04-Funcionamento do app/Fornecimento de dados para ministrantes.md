@@ -10,4 +10,4 @@ Organizadores podem solicitar o fornecimento de uma planilha (.csv) com os segui
   - RA.
 - Data da inscrição.
 
-Não serão fornecidos dados como uuid, CPF e número de celular.
+Não serão fornecidos dados como UUID, CPF e número de celular.

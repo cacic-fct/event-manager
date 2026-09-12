@@ -46,7 +46,7 @@ Um Standalone Event é um evento independente, sem relação estrutural com outr
 Ele não faz parte de um grupo e não pertence a um Major Event.
 
 Standalone Events também podem ser utilizados para exibir eventos que não se encaixam em nenhuma estrutura, mas que ainda assim devem ser divulgados.  
-Por exemplo, embora a Ingressada possua eventos relaciondos entre si, ela não requer inscrição para participar, logo, os eventos dela podem ser cadastrados como Standalone Events.
+Por exemplo, embora a Ingressada possua eventos relacionados entre si, ela não requer inscrição para participar, logo, os eventos dela podem ser cadastrados como Standalone Events.
 
 ### Uso correto
 
@@ -66,7 +66,7 @@ O Event Group agrupa Events que possuem forte dependência entre si e que devem 
 
 Normalmente, ele é utilizado quando um evento foi dividido em múltiplas partes, dias ou horários.
 
-A inscrição em um dos Events do grupo implica automaticamente na inscrição em todos os demais Events do grupo.
+A inscrição em um dos Events do grupo implica automaticamente a inscrição em todos os demais Events do grupo.
 
 Um Event Group:
 
@@ -110,9 +110,9 @@ Um Standalone Event Group é um grupo de eventos relacionados que não pertence 
 
 # Major Event
 
-O Major Event agrupa eventos relacionados entre si e podem ser pagos ou gratuitos.
+O Major Event agrupa eventos relacionados entre si e pode ser pago ou gratuito.
 
-Um Major Event implica na necessidade do usuário inscrever-se para participar dos eventos que fazem parte dele.
+Um Major Event implica a necessidade de o usuário se inscrever para participar dos eventos que fazem parte dele.
 
 Ele é utilizado para centralizar a organização de eventos que compartilham um contexto comum, mas que não possuem dependência entre si. Isto é, uma única inscrição em um Major Event pode incluir a participação em múltiplos eventos, mas os participantes não são obrigados a participar de todos os eventos do Major Event.
 

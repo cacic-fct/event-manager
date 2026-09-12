@@ -4,7 +4,7 @@ title: Criar um evento
 
 ## Antes de tudo
 
-Esteja seguro que você entendeu a [estruturação dos eventos no sistema](./00-Entenda%20a%20estruturação.md) para evitar erros e complicações futuras.
+Esteja seguro de que você entendeu a [estruturação dos eventos no sistema](./00-Entenda%20a%20estruturação.md) para evitar erros e complicações futuras.
 
 **O evento é parte de um grande evento?**
 
@@ -12,7 +12,7 @@ Se o evento faz parte de um grande evento, crie o grande evento _antes_ de criar
 
 **O evento é dividido em partes ou dias diferentes?**
 
-Se um evento está dividido em várias partes (ex: dias diferentes para um mesmo minicurso), crie um grupo de eventos para agrupá-los _antes_ de criar os eventos individualmente.
+Se um evento está dividido em várias partes (ex.: dias diferentes para um mesmo minicurso), crie um grupo de eventos para agrupá-los _antes_ de criar os eventos individualmente.
 
 ## Campos do formulário
 
@@ -31,7 +31,7 @@ Palestra, minicurso ou "outro".
 
 A descrição curta é exibida embaixo do nome do evento na lista de eventos do calendário.
 
-O campos pode ser usado para o subtítulo do evento ou para indicar o local, público-alvo, palestrante ou ministrante.
+O campo pode ser usado para o subtítulo do evento ou para indicar o local, público-alvo, palestrante ou ministrante.
 
 #### Descrição
 
@@ -50,7 +50,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
   - Horas
   - Minutos
 - **Créditos**
-  - Se deixado em branco, será calculado a partir da data de início e de fim do evento.
+  - Se o campo for deixado em branco, o valor será calculado a partir das datas de início e de fim do evento.
 
 ### Local e links
 
@@ -58,13 +58,13 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
   - Selecione para autopreencher os campos.
   - Ao inserir novas informações ou editar o autopreenchimento, um novo local com os dados editados será criado. Cuidado para não criar locais duplicados!
 - **Latitude e longitude**
-  - Se definidos, um mapa será exibido na página de detalhes do evento.
+  - Se definidas, um mapa será exibido na página de detalhes do evento.
 - **Nome e descrição exibidos aos usuários**
   - Prefira nomes descritivos, como "Laboratório 6B - Na Central de Laboratórios"
 - **Código do YouTube**
   - O código do YouTube é a sequência de letras e números que aparece no final da URL do vídeo. Ex: `https://www.youtube.com/watch?v=abc123` → código: `abc123`
 - **Texto e link do botão**
-  - Se definidos, um botão será exibido na página de detalhes do evento, com o texto e link configurados.
+  - Se definidos, um botão será exibido na página de detalhes do evento, com o texto e o link configurados.
 
 ### Inscrição e presença
 
@@ -86,7 +86,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 - **Coletar presença**
 
-  - Habilite sempre que presenças serão registradas para o evento, mesmo que não seja necessário emitir certificados.
+  - Habilite sempre que presenças forem registradas para o evento, mesmo que não seja necessário emitir certificados.
 
 - **Presença on-line**
 
@@ -94,7 +94,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 - **Disponibilizar lista de inscritos aos ministrantes**
 
-  - Se na página de "informações do organizador" será exibido um botão para download da lista de inscritos do evento em CSV. O arquivo baixado conterá o nome, email e CPF mascarado de cada inscrito.
+  - Define se, na página de "informações do organizador", será exibido um botão para download da lista de inscritos do evento em CSV. O arquivo baixado conterá o nome, o e-mail e o CPF mascarado de cada inscrito.
 
 - **Listar no site público**
 
@@ -129,7 +129,7 @@ As pessoas cadastradas nessa seção terão acesso à página "informações do 
 
 :::warning[Aviso]
 
-O ministrante de um evento não deve se inscrever na própria atividade.
+O ministrante de um evento não se deve inscrever na própria atividade.
 
 Oriente os ministrantes a não fazerem isso.
 

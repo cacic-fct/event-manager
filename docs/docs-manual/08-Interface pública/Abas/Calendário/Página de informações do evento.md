@@ -39,4 +39,4 @@ Os dados são obtidos da API [Open-Meteo](https://open-meteo.com/) a partir das 
 
 ## Funcionalidade oculta
 
-É possível clicar no emoji para copiar o ID do evento. Isso é útil para caso o usuário esteja em tela cheia no PWA e precise do ID do evento.
+É possível clicar no emoji para copiar o ID do evento. Isso é útil caso o usuário esteja em tela cheia no PWA e precise do ID do evento.

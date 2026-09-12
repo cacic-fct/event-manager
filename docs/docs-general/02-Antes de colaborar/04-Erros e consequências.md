@@ -22,7 +22,7 @@ A perda de dados pode ocorrer:
 
 A depender de como e onde o dado é perdido, as perdas podem ser irreversíveis:
 
-- Se as presenças não forem transmitidas e armazenadas corretamente, como se certificar das pessoas que realmente participaram de um evento?
+- Se as presenças não forem transmitidas e armazenadas corretamente, como confirmar quais pessoas realmente participaram de um evento?
 
   - Coletar as presenças novamente depende da honestidade e da boa vontade das pessoas.
   - Se a pessoa é da comunidade externa, o contato para confirmação é muito difícil.
@@ -39,7 +39,7 @@ A depender de como e onde o dado é perdido, as perdas podem ser irreversíveis:
 
 ### Vazamento de dados
 
-Podem ter consequências jurídicas para os encarregados de dados e para a universidade.  
+Vazamentos de dados podem ter consequências jurídicas para os encarregados de dados e para a universidade.  
 Além disso, há a aplicação de multa prevista pela Lei Geral de Proteção de Dados (LGPD).
 
 ### Uso de material protegido por direitos autorais
@@ -79,4 +79,4 @@ Caso algo dê errado, quando será a próxima vez que os professores habilitarã
 Quero trabalhar em um projeto que:
 
 - É muito difícil de manter, já que não segue boas práticas?
-- Precisa de reescrita de muitos erros antigos?
+- Precisa da correção de muitos erros antigos?

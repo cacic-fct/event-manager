@@ -12,11 +12,11 @@ A auditoria da infraestrutura de hospedagem pode ser feita apenas por:
 
 - Servidores da FCT da área de tecnologia;
 - Diretores autorizados pela diretoria executiva das entidades estudantis do curso de Ciência da Computação:
-  - Entende-se como diretoria executiva os cargos de presidente e vice-presidente;
-  - Entende-se como entidades estudantis do curso o CACiC e a EJComp;
+  - Entendem-se como diretoria executiva os cargos de presidente e vice-presidente;
+  - Entendem-se como entidades estudantis do curso o CACiC e a EJComp;
   - Apenas um diretor executivo é necessário para autorizar a auditoria. Não é necessário que diretores de ambas as entidades autorizem a auditoria;
 - Alunos desenvolvedores que contribuíram significativamente para o projeto.
-  - A interpretação de "contribuição significativa" neste caso específico fica a cargo da diretoria executiva de uma das entidades conforme critérios supracionados nesta lista.
+  - A interpretação de "contribuição significativa" neste caso específico fica a cargo da diretoria executiva de uma das entidades conforme critérios supracitados nesta lista.
 
 Servidores ou alunos que não se encaixam nos critérios acima só podem realizar a auditoria do que está disponível publicamente no repositório do CACiC Event Manager.
 
@@ -41,38 +41,13 @@ O acesso de um _lead developer_ perdura enquanto ele faz parte da lista.
 
 O acesso deve ser garantido pelo CACiC e pela EJComp e decisões tomadas pelos _lead developers_ devem ser respeitadas pelas entidades.
 
-#### _Founding lead developers_
-
-Os _founding lead developers_ são um _superset_ ("superconjunto") dos _lead developers_.
-
-Estes não podem ser depostos e não entram na contagem de metade mais um dos _lead developers_ para tomada de decisões.  
-Podem renunciar voluntariamente, mas o nome permanecerá na lista com uma averbação, pois, por terem estado presentes no início do desenvolvimento do projeto, são capazes de dar mais detalhes sobre determinadas escolhas do projeto. Não haverá renúncia automática.
-
-Possuirão acesso irrestrito e vitalício de leitura e escrita a todos códigos-fonte, ao servidor e ao banco de dados os _founding lead developers_ a seguir:
-
-- [@GuiBatalhoti](https://github.com/GuiBatalhoti)
-- [@karoldm](https://github.com/karoldm)
-- [@Salies](https://github.com/salies)
-- [@willshobwish](https://github.com/willshobwish)
-- [@Yudi](https://github.com/Yudi)\*
-
-> \*[Detém a propriedade do CACiC Event Manager](/Geral/Licenças).
-
-Essas pessoas foram escolhidas por serem ex-alunos do curso de Ciência da Computação da FCT e por terem contribuído significativamente para o projeto.
-
-_Founding lead developers_ podem embargar decisões ou reverter embargos de forma individual, mas preferencialmente tomam decisões em conjunto.
-
-_Founding lead developers_ podem incluir ou remover pessoas no grupo de _lead developers_ sem restrições, mesmo que haja unanimidade contrária do grupo de _lead developers_.
-
-_Founding lead developers_ podem alterar estes termos sem restrições.
-
 #### Adição e remoção de _lead developers_
 
 Poderá haver a inclusão de novos _lead developers_ por decisão de metade mais um dos _lead developers_ atuais.
 
 Poderá haver a renúncia voluntária de um _lead developer_ ou a deposição por decisão de metade mais um dos _lead developers_ atuais.
 
-Após exauridas todas as tentativas de contato a um _lead developer_, ele será considerado renunciado após um prazo de 3 meses.
+Após exauridas todas as tentativas de contato com um _lead developer_, ele será considerado renunciado após um prazo de 3 meses.
 
 #### Competências
 
@@ -93,15 +68,12 @@ Não compete aos _lead developers_:
 - A responsabilidade de manter o código do CACiC Event Manager, que é do CACiC;
 - A responsabilidade legal da segurança dos dados, que é dos encarregados de dados;
   - Isso não implica que os _lead developers_ não possam aplicar ou exigir correções de segurança, ou notificar entidades sobre problemas de segurança.
-- Alterar as características dos _founding lead developers_, que só podem ser alteradas por eles mesmos.
 
-Para alterar estas especificações de _lead developers_, é necessário a aprovação unânime dos _lead developers_.
+Para alterar estas especificações de _lead developers_, é necessária a aprovação unânime dos _lead developers_.
 
 Um _lead developer_ pode embargar decisões de outro _lead developer_ individualmente.
 
-Para a reversão de um embargo, é necessário a aprovação de metade mais um dos _lead developers_ excluindo o embargado.
-
-_Lead developers_ não podem embargar ou reverter embargos de _founding lead developers_ e isso não pode ser alterado.
+Para a reversão de um embargo, é necessária a aprovação de metade mais um dos _lead developers_ excluindo o embargado.
 
 ### Código
 

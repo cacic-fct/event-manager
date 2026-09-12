@@ -46,10 +46,10 @@ Se as atualizações ao vivo forem interrompidas, a fonte pode continuar mostran
 
 Confira, nesta ordem:
 
-1. A partida está publicada?;
-2. O link pertence à partida correta?;
-3. A página pública da partida abre e mostra dados?;
-4. O dispositivo operador está sincronizado?;
+1. A partida está publicada?
+2. O link pertence à partida correta?
+3. A página pública da partida abre e mostra dados?
+4. O dispositivo operador está sincronizado?
 5. A fonte de navegador foi atualizada?
 
 Leia [Operar uma partida](03-Operar%20uma%20partida.md).

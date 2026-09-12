@@ -42,7 +42,7 @@ O backend deve:
 - Tratar falhas de remoção com log claro;
 - Evitar apagar objetos antes de saber quais registros serão afetados.
 
-Fluxos de LGPD precisam manter a ordem consistente entre banco e armazenamento. Se o algum dos pontos falhar, a operação não deve presumir que a exclusão foi concluída.
+Fluxos de LGPD precisam manter a ordem consistente entre banco e armazenamento. Se algum dos pontos falhar, a operação não deve presumir que a exclusão foi concluída.
 
 ## Auditoria
 
@@ -68,4 +68,4 @@ Ao alterar privacidade ou LGPD:
 - Confira submissões off-line;
 - Confira logs de auditoria e reindexação;
 - Não confie em checks de frontend como barreira de privacidade;
-- Documente novos dados pessoais quando uma permissão ou endpoint passar a expor esse dado.
+- Documente novos dados pessoais quando uma permissão ou endpoint passar a expor esses dados.

@@ -8,7 +8,7 @@ As aplicações frontend não acessam o Typesense diretamente. Todas as buscas p
 
 Em desenvolvimento, o serviço local é definido em `docker/docker-compose.dev.yml`, na porta `8108`, com a chave padronizada `xyz`. Em produção, o backend deve usar `https://typesense.cacic.com.br` com uma chave real configurada no ambiente de implantação.
 
-Se o Typesense estiver desativado, indisponível ou retornar erro, o backend registra a falha e volta para a busca comum no PostgreSQL. Esse fallback existe para manter o sistema utilizável, mas a experiência esperada de busca textual completa depende do Typesense estar saudável.
+Se o Typesense estiver desativado, indisponível ou retornar erro, o backend registra a falha e volta para a busca comum no PostgreSQL. Esse fallback existe para manter o sistema utilizável, mas a experiência esperada de busca textual completa depende de o Typesense estar saudável.
 
 ## Configuração local
 

@@ -49,13 +49,13 @@ bunx nx build-storybook admin --configuration=ci
 bunx nx build-storybook public --configuration=ci
 ```
 
-Quando uma story depender de backend, prefira MSW e fixtures realistas.
+Quando um story depender de backend, prefira MSW e fixtures realistas.
 
 Para fixtures, use os arquivos compartilhados no repositório, para evitar código duplicado.
 
 ## Workbox
 
-Mudanças no service worker público ou nas regras de cache devem rodar:
+Após mudanças no service worker público ou nas regras de cache, rode:
 
 ```bash
 bunx nx run public:test-workbox

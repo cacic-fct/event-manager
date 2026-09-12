@@ -8,7 +8,7 @@ O representante não recebe acesso às demais equipes nem ao painel administrati
 
 ## Alterações entram em revisão
 
-Mudanças de nome, vínculo, escudo, integrantes e escalações são enviados para revisão da organização.
+Mudanças de nome, vínculo, escudo, integrantes e escalações são enviadas para revisão da organização.
 
 A organização compara o pedido com o estado atual e pode aprovar, rejeitar ou solicitar ajustes. Novas alterações podem ser combinadas com um pedido que já está na fila.
 
@@ -18,7 +18,7 @@ Não trate o conteúdo local como aplicado até que o estado da equipe confirme 
 
 A página mostra os integrantes ativos e as solicitações de entrada.
 
-Para adicionar uma pessoa, use um dos identificadores suportados. Não será possível ver as informações pessoais da pessoa até aprovação da organização. 
+Para adicionar uma pessoa, use um dos identificadores suportados. Não será possível ver as informações pessoais da pessoa até a aprovação da organização.
 
 A organização é a responsável por aprovar a composição e a participação nas modalidades.
 

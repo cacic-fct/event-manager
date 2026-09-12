@@ -16,7 +16,7 @@ O preset ajuda a manter consistência, mas o evento armazena os dados aplicados 
 
 Preencha latitude e longitude quando o evento deve exibir mapa.
 
-Depois de preencher as coordenadas, confira a prévia antes de salvar. Coordenadas incorretas podem levar participantes ao prédio ou sala errada.
+Depois de preencher as coordenadas, confira a prévia antes de salvar. Coordenadas incorretas podem levar participantes ao prédio errado ou à sala errada.
 
 ## Correções
 

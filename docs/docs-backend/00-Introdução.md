@@ -4,4 +4,4 @@ A seção de **Backend** contém informações sobre o desenvolvimento e sobre o
 
 Comece por [API](./API.md), [Autorização e permissões](./Autorização%20e%20permissões.md) e [Banco de dados](./Banco%20de%20dados/Convenções.md) antes de alterar regras de negócio.
 
-Leia também as páginas específicas quando as alterações tocarem elas.
+Leia também as páginas específicas quando as alterações afetarem os assuntos tratados nelas.

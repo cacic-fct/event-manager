@@ -5,7 +5,7 @@ Trabalhamos com dois tipos de API: GraphQL e REST.
 ## GraphQL
 
 O GraphQL é a base da API principal do sistema, utilizada para a maioria das operações.  
-Ele faz com que a API seja flexível e eficiente, permitindo que os clientes solicitem exatamente os dados que precisam, além de facilitar no desenvolvimento de novas funcionalidades sem quebrar a compatibilidade com versões anteriores. Isto é, não é necessário criar novos endpoints para cada nova funcionalidade ou editar já existentes, como acontece com o REST.
+Ele faz com que a API seja flexível e eficiente, permitindo que os clientes solicitem exatamente os dados de que precisam, além de facilitar o desenvolvimento de novas funcionalidades sem quebrar a compatibilidade com versões anteriores. Isto é, não é necessário criar novos endpoints para cada nova funcionalidade ou editar os já existentes, como acontece com o REST.
 
 Acesse o Apollo Sandbox em https://eventos.cacic.com.br/api/graphql para explorar a API GraphQL, testar consultas e visualizar a documentação automática gerada a partir do esquema GraphQL. 
 
@@ -58,7 +58,7 @@ Acesse a documentação em https://eventos.cacic.com.br/api/docs para obter deta
 
 Utilizamos Server-Sent Events (SSE) para enviar notificações em tempo real aos clientes, como atualizações de presença ou mudanças de estado das vagas.
 
-O SSE é uma tecnologia de comunicação unidirecional do servidor para o cliente, ideal para casos onde o cliente precisa receber atualizações contínuas sem a necessidade de enviar dados de volta ao servidor. Por conta disso, preferimos ele ao WebSocket.
+O SSE é uma tecnologia de comunicação unidirecional do servidor para o cliente, ideal para casos em que o cliente precisa receber atualizações contínuas sem a necessidade de enviar dados de volta ao servidor. Por conta disso, preferimos essa tecnologia ao WebSocket.
 
 Streams SSE devem ser opcionais para a experiência principal. A interface precisa continuar funcionando com atualização manual quando a transmissão de dados falhar.
 

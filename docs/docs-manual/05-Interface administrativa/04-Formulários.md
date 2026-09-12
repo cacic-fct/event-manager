@@ -87,7 +87,7 @@ Sem resultados ao vivo, os resultados públicos aparecem somente quando o formul
 
 ## Exclusão
 
-Excluir um formulário com respostas pode apagar contexto operacional importante. Dessa forma, prefira despublicar ou desativar o formulário ao invés de excluir.
+Excluir um formulário com respostas pode apagar contexto operacional importante. Dessa forma, prefira despublicar ou desativar o formulário em vez de excluir.
 
 Antes de excluir, confira:
 

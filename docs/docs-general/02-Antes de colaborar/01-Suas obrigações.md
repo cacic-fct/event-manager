@@ -2,11 +2,11 @@
 title: Suas obrigações
 ---
 
-Agradecemos pelo interesse em colaborar para o desenvolvimento do CACiC Event Manager ! 😃
+Agradecemos pelo interesse em colaborar para o desenvolvimento do CACiC Event Manager! 😃
 
 Antes de começar a desenvolver, é importante que você entenda o contexto do projeto e as decisões que foram tomadas até o momento. Para isso, é necessário que você leia:
 
-1. A [landing page do CACiC Event Manager ](https://eventos.cacic.com.br/app/) (necessário estar deslogado);
+1. A [landing page do CACiC Event Manager](https://eventos.cacic.com.br/app/) (necessário estar deslogado);
 1. O [README](https://github.com/cacic-fct/event-manager/blob/main/README.md) do repositório do projeto;
 1. O guia de [desenvolvimento local e validação](./06-Desenvolvimento%20local%20e%20validação.md);
 1. A seção de [convenções gerais do CACiC](https://cacic.com.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos);

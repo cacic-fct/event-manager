@@ -53,7 +53,7 @@ Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
 #### GitHub
 
 - Uso desnecessário da língua inglesa:
-  - Por quê escrever as instruções de desenvolvimento e descrições de issues em inglês se os desenvolvedores são brasileiros?
+  - Por que escrever as instruções de desenvolvimento e descrições de issues em inglês se os desenvolvedores são brasileiros?
 - Labels inadequadas:
   - Pouco explicativas;
   - Fixação de prazos por labels, o que deveria ser feito na aba de Projetos.
@@ -62,11 +62,11 @@ Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
   - Linguajar pouco direto;
   - PRs com muitas alterações não relacionadas;
 - Aplicativos não usados continuam instalados;
-- Desenvolvedores têm poderes na `main` do repositório ao invés do desenvolvimento acontecer em branches ou forks.
+- Desenvolvedores têm poderes na `main` do repositório em vez de o desenvolvimento acontecer em branches ou forks.
 
 ### Escolhas técnicas
 
-- Uso do `npm` ao invés de soluções mais rápidas;
+- Uso do `npm` em vez de soluções mais rápidas;
 - Falta de Continuous Integration (CI);
 - Técnicas de deploy estranhas e manuais:
   - Script dá `git pull && docker compose up --build` no servidor;
@@ -91,7 +91,7 @@ Nem todos os projetos analisados estão listados, pois foram perdidos. :-(
 - Código antigo não removido:
   - Em um dos projetos, o TailwindCSS é importado três vezes no frontend, ora por CDN, ora por pacote;
 - Falta de padronização:
-  - Sem execução do Eslint ou do Prettier;
+  - Sem execução do ESLint ou do Prettier;
   - Uso misto de JavaScript e TypeScript:
     - Componentes ora com tipagem, ora sem (`.js` ou `: any`);
   - Componentes:
@@ -116,7 +116,7 @@ A análise dos projetos permite identificar padrões de problemas recorrentes. E
 
 Entre os problemas mais frequentes destacam-se a falta de documentação adequada, a inexistência de testes automatizados, a ausência de integração contínua, a adoção de procedimentos manuais de implantação, falhas de segurança decorrentes da exposição indevida de informações sensíveis e a carência de padrões de organização e qualidade de código. Tais fatores aumentam a complexidade de manutenção dos sistemas, dificultam a entrada de novos colaboradores e elevam o risco de regressões, vulnerabilidades e interrupções de serviço.
 
-Nesse contexto, a adoção de Angular no frontend e NestJS no backend para o desenvolvimento do FCT App apresenta-se como uma alternativa tecnicamente adequada para mitigar diversos dos problemas identificados. Ambas as tecnologias fornecem estruturas arquiteturais bem definidas, fortemente baseadas em TypeScript, que favorecem a modularização, a padronização do código, a escalabilidade e a manutenção de longo prazo. Entretanto, a utilização dessas ferramentas não constitui, por si só, uma garantia de qualidade, embora colaborem para a construção de um sistema mais robusto e sustentável.
+Nesse contexto, a adoção de Angular no frontend e NestJS no backend para o desenvolvimento do FCT App apresenta-se como uma alternativa tecnicamente adequada para mitigar diversos dos problemas identificados. Ambas as tecnologias fornecem estruturas arquiteturais bem definidas, fortemente baseadas em TypeScript, que favorecem a modularização, a padronização do código, a escalabilidade e a manutenção de longo prazo. Entretanto, a utilização dessas ferramentas não constitui, por si só, uma garantia de qualidade, embora colabore para a construção de um sistema mais robusto e sustentável.
 
 Dessa forma, conclui-se que o sucesso da reescrita do sistema depende não apenas da escolha de tecnologias modernas, mas também da implementação de mecanismos institucionais que assegurem a qualidade, a segurança e a sustentabilidade do software ao longo de seu ciclo de vida. O FCT App deve ser concebido como um projeto de manutenção contínua, orientado por boas práticas de desenvolvimento e governança, visando garantir sua evolução e utilização pelas futuras gestões da entidade.
 
@@ -144,7 +144,7 @@ Dessa forma, embora o Next.js seja uma excelente opção para diversos tipos de 
 
 O Spring Boot é uma das principais plataformas para desenvolvimento de aplicações corporativas em Java, reconhecida por sua robustez, maturidade e amplo conjunto de recursos para aplicações de grande porte.
 
-Apesar dessas qualidades, sua adoção implicaria o uso de uma stack tecnológica distinta daquela empregada no frontend, exigindo conhecimento simultâneo de TypeScript e Java. Além disso, seria necessário a duplicação de código para lidar com a comunicação entre as camadas, como a definição de contratos de API, validação de dados e tratamento de erros, o que aumentaria a complexidade do projeto e dificultaria a manutenção ao longo do tempo. 
+Apesar dessas qualidades, sua adoção implicaria o uso de uma stack tecnológica distinta daquela empregada no frontend, exigindo conhecimento simultâneo de TypeScript e Java. Além disso, seria necessária a duplicação de código para lidar com a comunicação entre as camadas, como a definição de contratos de API, validação de dados e tratamento de erros, o que aumentaria a complexidade do projeto e dificultaria a manutenção ao longo do tempo.
 
 No contexto do FCT App, onde a equipe de desenvolvimento é frequentemente composta por estudantes em processo de aprendizado, a manutenção de uma linguagem única entre frontend e backend reduz a complexidade do projeto, facilita a colaboração entre os membros da equipe e diminui a curva de aprendizado para novos contribuidores.
 

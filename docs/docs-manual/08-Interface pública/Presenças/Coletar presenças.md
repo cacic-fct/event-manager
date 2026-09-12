@@ -36,7 +36,7 @@ A área de sincronização mostra itens guardados no dispositivo, tentativas que
 
 Percorra a lista preparada e marque a presença de cada pessoa.
 
-As marcações da lista podem continuar durante uma interrupção de rede. Buscar ou incluir alguém que não estava preparado pode exigir conexão.
+As marcações da lista podem continuar durante uma interrupção de rede. Buscar ou incluir alguém que não estava na lista preparada pode exigir conexão.
 
 Observe o estado no topo. **Tudo sincronizado** significa que não há alterações aguardando envio.
 

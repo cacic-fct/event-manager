@@ -2,11 +2,11 @@
 title: Landing (index)
 ---
 
-A página de _landing_ é necessária para receber aval do Google Cloud para utilização do oAuth.
+A página de _landing_ é necessária para receber aval do Google Cloud para utilização do OAuth.
 
 Ela deve conter informações sobre o projeto.
 
-Deve-se redirecionar automaticamente os usuários logados para a página do calendário.
+Devem-se redirecionar automaticamente os usuários logados para a página do calendário.
 
 ## Quirk
 

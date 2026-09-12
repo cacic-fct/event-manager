@@ -7,7 +7,7 @@ Para conhecer o hardware e os softwares utilizados na infraestrutura de hospedag
 
 As tecnologias adotadas não foram escolhidas apenas por familiaridade ou popularidade, mas com base nas necessidades reais do projeto e nos problemas observados em versões anteriores.
 
-Por representar, no mínimo, a quarta iteração desse tipo de solução, o projeto incorpora aprendizados acumulados ao longo do tempo, especialmente em relação a manutenção, escalabilidade, organização do código e evolução da plataforma. Também houve [análise de projetos similares de outras universidades](/blog/analise-projetos), com conclusões publicadas no blog da documentação.
+Por representar, no mínimo, a quarta iteração desse tipo de solução, o projeto incorpora aprendizados acumulados ao longo do tempo, especialmente em relação à manutenção, escalabilidade, organização do código e evolução da plataforma. Também houve [análise de projetos similares de outras universidades](/blog/analise-projetos), com conclusões publicadas no blog da documentação.
 
 Dessa forma, as decisões sobre as tecnologias buscam oferecer uma base mais sólida, sustentável e adequada para o crescimento futuro do sistema.
 

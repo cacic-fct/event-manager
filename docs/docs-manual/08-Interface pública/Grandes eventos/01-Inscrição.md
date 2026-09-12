@@ -9,7 +9,7 @@ Os eventos podem ter limite de vagas, limite por tipo de atividade, inscrição 
 
 :::warning[Aviso]
 
-O ministrante de um evento não deve se inscrever na própria atividade.
+O ministrante de um evento não se deve inscrever na própria atividade.
 
 :::
 

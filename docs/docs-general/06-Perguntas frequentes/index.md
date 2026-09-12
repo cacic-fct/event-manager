@@ -11,7 +11,7 @@ Como organizador de eventos, qualquer pessoa que possua vínculo acadêmico com 
 
 ## Onde usar o CACiC Event Manager?
 
-O projeto do CACiC Event Manager utiliza-se da infraestrutura, patrimônio e mão de obra voluntária da FCT, logo, deve ser utilizado apenas no ambiente da faculdade.
+O projeto do CACiC Event Manager utiliza-se da infraestrutura, do patrimônio e da mão de obra voluntária da FCT, logo, deve ser utilizado apenas no ambiente da faculdade.
 
 ### Posso usar o CACiC Event Manager para meu evento universitário?
 

@@ -13,7 +13,7 @@ Quanto mais dados uma página web transfere, mais recursos energéticos são nec
 
 ### CACiC Event Manager
 
-Toda vez que alguém acessa o CACiC Event Manager, cerca de 0,4g de CO2 são emitidos na atmosfera.  
+Toda vez que alguém acessa o CACiC Event Manager, cerca de 0,4 g de CO2 são emitidos na atmosfera.  
 Em um ano, um único usuário pode emitir uma quantidade de CO2 equivalente à emitida no aquecimento de 6 xícaras de café!
 
 ## Nossas práticas
@@ -24,7 +24,7 @@ Toda a nossa infraestrutura é alimentada por energia renovável.
 
 A energia do nosso servidor é proveniente de fontes como solar, biomassa e hidrelétrica durante a maior parte do ano.
 
-Os serviços que utilizamos são hospedados em servidores que usam 100% energia proveniente de fontes renováveis.
+Os serviços que utilizamos são hospedados em servidores que usam 100% de energia proveniente de fontes renováveis.
 
 ### Otimização de recursos
 

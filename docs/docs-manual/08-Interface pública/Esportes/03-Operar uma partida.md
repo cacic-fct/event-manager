@@ -14,7 +14,7 @@ Confira:
 
 - Equipes e lados;
 - Escalações;
-- Etletas e oficiais esperados;
+- Atletas e oficiais esperados;
 - Período inicial;
 - Placar e cronômetros;
 - Orientações da organização;
@@ -28,7 +28,7 @@ Confirme atletas e equipe de arbitragem antes do início.
 
 Depois que a partida começa, o check-in pode ficar protegido para evitar alterações acidentais.
 
-O scanner também pode ser usado para coletar presenças de atletas e de oficiais e de espectadores.
+O scanner também pode ser usado para coletar presenças de atletas, de oficiais e de espectadores.
 
 ## Placar, períodos e cronômetros
 
@@ -62,7 +62,7 @@ Revise vencedor, empate, motivo e placar em todas as etapas.
 
 Nada deve ser enviado antes da confirmação final. Depois do envio, o resultado pode aguardar revisão administrativa antes de afetar a projeção consolidada.
 
-Não use o fluxo de finalização para corrigir uma partida antiga, solicite correção administrativa.
+Não use o fluxo de finalização para corrigir uma partida antiga; solicite correção administrativa.
 
 ## Overlay
 

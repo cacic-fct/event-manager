@@ -19,7 +19,7 @@ Esta página é um adendo às [convenções do CACiC](https://cacic.com.br/docs/
 
 Os commits do repositório principal devem seguir a [convenção do Angular](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format).
 
-Os commits no demais repositórios devem seguir apenas as convenções de idioma.
+Os commits nos demais repositórios devem seguir apenas as convenções de idioma.
 
 ### Convenção
 
@@ -40,7 +40,7 @@ O `body` é opcional apenas para commits do tipo `docs`. Quando ele está presen
 O `footer` é opcional.
 
 Textos sempre no tempo verbal presente:  
-"fix" ao invés de "fixed" ou "fixes"
+"fix" em vez de "fixed" ou "fixes"
 
 #### Header
 
@@ -88,7 +88,7 @@ Você pode incluir uma comparação do comportamento anterior com o novo comport
 
 The footer can contain information about breaking changes and deprecations and is also the place to reference GitHub issues, Jira tickets, and other PRs that this commit closes or is related to. For example:
 
-O footer pode conter informações sobre breaking changes e também é o local para referenciar issues do GitHub e PRs que este commit fecha ou está relacionado. Por exemplo:
+O footer pode conter informações sobre breaking changes e também é o local para referenciar issues do GitHub e PRs que este commit fecha ou aos quais está relacionado. Por exemplo:
 
 ```
 BREAKING CHANGE: <breaking change summary>

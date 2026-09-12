@@ -106,7 +106,7 @@ Ao criar uma nova permissão:
 5. Inclua a permissão em `WORKSPACE_TAB_PERMISSIONS`, `WORKSPACE_PERMISSION_EVALUATION_SET` ou presets apenas quando a UI precisar.
 6. Marque como global-only se a permissão não puder ser avaliada com segurança em escopos de evento, grupo ou grande evento.
 7. Proteja handlers com `RequirePermissions(...)`.
-8. Garanta que a camada de autorização consegue resolver o alvo da operação.
+8. Garanta que a camada de autorização consiga resolver o alvo da operação.
 9. Adicione testes para o catálogo, o guard, a camada de autorização e os resolvers ou controllers alterados.
 10. Atualize stories quando a nova permissão afetar a UI de concessões ou permissões.
 

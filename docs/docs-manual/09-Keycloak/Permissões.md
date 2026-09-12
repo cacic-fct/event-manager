@@ -35,12 +35,12 @@ O catálogo técnico segue o formato `recurso#ação`, mas deve ser mantido no c
 
 Quando uma pessoa não consegue executar uma ação, separe as perguntas:
 
-1. Ela consegue autenticar?;
-2. Possui `access` para entrar?;
-3. A conta está vinculada à pessoa correta?;
-4. Recebeu um cargo ou grupo ativo?;
-5. O escopo cobre o recurso?;
-6. A validade está em vigor?;
+1. Ela consegue autenticar-se?
+2. Possui `access` para entrar?
+3. A conta está vinculada à pessoa correta?
+4. Recebeu um cargo ou grupo ativo?
+5. O escopo cobre o recurso?
+6. A validade está em vigor?
 7. O recurso exige autorização para dados congelados?
 
 Não conceda `super-admin` antes de localizar qual camada está faltando.

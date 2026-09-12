@@ -1,6 +1,6 @@
 # Off-line e service worker
 
-O app público possui suporte off-line para rconsulta de dados e para reduzir falhas durante eventos, especialmente em coleta de presença.
+O app público possui suporte off-line para consulta de dados e para reduzir falhas durante eventos, especialmente em coleta de presença.
 
 ## Banco local
 
@@ -64,6 +64,6 @@ Ao criar novos dados locais:
 
 ## Storybook
 
-Estados off-line devem aparecer nas stories quando forem parte importante do fluxo.
+Estados off-line devem aparecer nos stories quando forem parte importante do fluxo.
 
-Use globals como `network: 'offline'` e `serviceWorker: 'enabled'` quando a story precisar demonstrar comportamento de rede ou service worker.
+Use globals como `network: 'offline'` e `serviceWorker: 'enabled'` quando o story precisar demonstrar comportamento de rede ou service worker.

@@ -2,14 +2,14 @@
 title: CACiC Event Manager Assets
 ---
 
-O Git não é uma plataforma de versionamento de arquivos binários, da mesma forma que o Github não é uma plataforma de distribuição para estes arquivos.
+O Git não é uma plataforma de versionamento de arquivos binários, da mesma forma que o GitHub não é uma plataforma de distribuição para estes arquivos.
 
 Assim, torna-se necessário um repositório separado para que o histórico de commits não fique poluído com alterações ilegíveis realizadas em arquivos binários.
 
 ## O que faz parte desse repositório
 
 Arquivos binários que não são e não serão utilizados de forma _direta_ em qualquer outro repositório.  
-Exemplo: Arquivos de composição de image (Adobe Photoshop, Adobe Illustrator), composição de áudios (GarageBand, Ableton), vídeos (Adobe Premiere), etc.
+Exemplo: Arquivos de composição de imagens (Adobe Photoshop, Adobe Illustrator), composição de áudios (GarageBand, Ableton), vídeos (Adobe Premiere), etc.
 
 ## O que não faz parte desse repositório
 

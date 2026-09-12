@@ -41,7 +41,7 @@ Não compartilhe links temporários como se fossem links públicos permanentes.
 
 O horário indica a partir de quando o conteúdo deve ficar elegível para publicação, mas não será a hora exata em que ele aparecerá no app público. 
 
-Publicações agendadas são processadas pelo backend em um regime de "melhor esforço". O horário de publicação pode ser atrasado por filas de tarefa longas ou falhas, mas o sistema tentará aplicar a publicação assim que possível.
+Publicações agendadas são processadas pelo backend em um regime de "melhor esforço". O horário de publicação pode ser atrasado por filas de tarefas longas ou falhas, mas o sistema tentará aplicar a publicação assim que possível.
 
 Se um agendamento não aparecer no app público no horário esperado, atualize a tela e confira:
 
@@ -60,4 +60,4 @@ Use despublicação quando:
 - O conteúdo foi divulgado antes da hora;
 - Há erro grave em algum campo;
 - O evento foi cancelado;
-- A organização ainda precisa revisar dados antes de expor ao público.
+- A organização ainda precisa revisar dados antes de expô-los ao público.

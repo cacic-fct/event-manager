@@ -42,7 +42,7 @@ Comece por um preset como ponto de partida, não como regra definitiva.
 
 Para cada modalidade, revise:
 
-- quem pode se inscrever;
+- quem se pode inscrever;
 - limites e composição do elenco;
 - identificação usada em jogo;
 - formato de disputa e classificação;

@@ -15,9 +15,9 @@ Na criação do evento, você precisará indicar um grupo já existente.
 - **Emitir certificados para presentes não inscritos?**
   
 - **Um certificado por evento**
-  - Emitir 1 (um) certificado para _cada_ evento do grupo frequentado ao invés de um único.
+  - Emitir 1 (um) certificado para _cada_ evento do grupo frequentado em vez de um único.
 
 - **Permitir certificado parcial**
-  - Emitir certificados para participantes que não frequentaram o evento inteiro. No certificado constará apenas as partes que o participante frequentou.
+  - Emitir certificados para participantes que não frequentaram o evento inteiro. No certificado constarão apenas as partes que o participante frequentou.
   - Se essa opção estiver desabilitada, participantes que não frequentaram o evento inteiro não receberão certificado.
 

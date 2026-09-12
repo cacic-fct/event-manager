@@ -10,7 +10,7 @@ O QR Code deve apontar diretamente para a página de validação do certificado,
 
 ## Frente
 
-A frente existe apenas para fins estéticos. Na palavra de um dos professores "os certificados deveriam parecer certificados".  
+A frente existe apenas para fins estéticos. Nas palavras de um dos professores: "os certificados deveriam parecer certificados".  
 Todas as informações essenciais estão no verso.
 
 ## Verso

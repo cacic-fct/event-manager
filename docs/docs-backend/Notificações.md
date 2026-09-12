@@ -51,7 +51,7 @@ Os identificadores podem ser configurados por variável de ambiente. O valor pad
 
 ## Disparo
 
-Disparos devem ser idempotentes no serviço de domínio quando o evento de negócio puder repetir.
+Disparos devem ser idempotentes no serviço de domínio quando o evento de negócio puder repetir-se.
 
 Exemplo: formulários de evento usam `lastNotifiedAt` no vínculo para evitar avisos duplicados. Se o Novu falhar, o vínculo volta ao estado não notificado para permitir nova tentativa.
 

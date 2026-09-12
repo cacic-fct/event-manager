@@ -4,9 +4,9 @@ title: Código
 
 ## Interface
 
-A interface do CACiC Event Manager deve se comportar como a de um aplicativo nativo, não como um site.
+A interface do CACiC Event Manager deve comportar-se como a de um aplicativo nativo, não como um site.
 
-A única excessão é a página de _landing_.
+A única exceção é a página de _landing_.
 
 ## Gamificação
 
@@ -25,11 +25,11 @@ Isso inclui qualquer tipo de elemento de "jogo", incluindo:
 
 ### Consumo consciente
 
-Não é permitido o uso de elementos de gamificação que incentivem ou recompensem, de maneira direta ou indireta, a aquisição ou consumo de produtos ou serviços, nem mesmo por meio de APIs.
+Não é permitido o uso de elementos de gamificação que incentivem ou recompensem, de maneira direta ou indireta, a aquisição ou o consumo de produtos ou serviços, nem mesmo por meio de APIs.
 
 ## Easter Eggs
 
-Só são permitidos se estão integrados à experiência do usuário, mas de forma pouco perceptível.
+Só são permitidos se estiverem integrados à experiência do usuário, mas de forma pouco perceptível.
 
 **Exemplos permitidos:**
 
@@ -41,4 +41,4 @@ Só são permitidos se estão integrados à experiência do usuário, mas de for
 
 - Um texto escondido, que tem a mesma cor do fundo, ou que só é revelado com interações específicas;
 - Funções liberadas por uma sequência de cliques ou teclas;
-- Um botão escodindo que libera uma funcionalidade secreta.
+- Um botão escondido que libera uma funcionalidade secreta.
