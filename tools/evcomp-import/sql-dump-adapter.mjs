@@ -1,8 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { gunzip } from 'node:zlib';
-import { mergeSchema } from './source-adapter.mjs';
-import { defaultSourceSchema } from './source-adapter.mjs';
+import {
+  catalogRequirementsFor,
+  defaultSourceSchema,
+  mergeSchema,
+  normalizeActivityRow,
+  normalizeEventRow,
+  normalizeModalityRow,
+  schemaForModes,
+  validateRegistrationModalities,
+} from './source-adapter.mjs';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -17,31 +25,102 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
   const schema = mergeSchema(defaultSourceSchema, override);
   const includedTables = new Set(Object.values(schema).map((section) => section.table));
   const tables = parseMysqlDump(sql, includedTables);
-  validateDumpSchema(tables, schema);
+  const { catalogMode, modalityMode } = detectDumpModes(tables, schema);
+  const effectiveSchema = schemaForModes(schema, { catalogMode, modalityMode });
+  validateDumpSchema(tables, effectiveSchema);
 
-  const registrations = rowsFor(tables, schema.registrations.table).flatMap((registration) => {
-    const activities = rowsFor(tables, schema.registrationActivities.table).filter((item) =>
-      valuesEqual(item[schema.registrationActivities.registrationId], registration[schema.registrations.id]),
+  const events =
+    catalogMode === 'current'
+      ? rowsFor(tables, schema.events.table).map((item) =>
+          normalizeEventRow(
+            {
+              sourceId: item[schema.events.id],
+              name: item[schema.events.name],
+              description: item[schema.events.description],
+              startDate: item[schema.events.startDate],
+              endDate: item[schema.events.endDate],
+              subscriptionStartDate: item[schema.events.subscriptionStartDate],
+              subscriptionEndDate: item[schema.events.subscriptionEndDate],
+              link: item[schema.events.link],
+            },
+            timezoneOffset,
+          ),
+        )
+      : [];
+  const activities =
+    catalogMode === 'current'
+      ? rowsFor(tables, schema.activities.table).map((item) =>
+          normalizeActivityRow(
+            {
+              sourceId: item[schema.activities.id],
+              sourceEventId: item[schema.activities.eventId],
+              name: item[schema.activities.name],
+              description: item[schema.activities.description],
+              location: item[schema.activities.location],
+              startDate: item[schema.activities.startDate],
+              endDate: item[schema.activities.endDate],
+              startTime: item[schema.activities.startTime],
+              endTime: item[schema.activities.endTime],
+              slots: item[schema.activities.slots],
+              durationHours: item[schema.activities.durationHours],
+              lecturerDurationHours: item[schema.activities.lecturerDurationHours],
+            },
+            timezoneOffset,
+          ),
+        )
+      : [];
+  const modalities =
+    modalityMode === 'current'
+      ? rowsFor(tables, schema.modalities.table).map((item) =>
+          normalizeModalityRow({
+            sourceId: item[schema.modalities.id],
+            sourceEventId: item[schema.modalities.eventId],
+            name: item[schema.modalities.name],
+            amount: item[schema.modalities.amount],
+          }),
+        )
+      : [];
+  const modalityById = new Map(
+    rowsFor(tables, schema.modalities.table).map((modality) => [String(modality[schema.modalities.id]), modality]),
+  );
+
+  const registrations = rowsFor(tables, effectiveSchema.registrations.table).flatMap((registration) => {
+    const activities = rowsFor(tables, effectiveSchema.registrationActivities.table).filter((item) =>
+      valuesEqual(
+        item[effectiveSchema.registrationActivities.registrationId],
+        registration[effectiveSchema.registrations.id],
+      ),
     );
     const base = {
-      sourceId: registration[schema.registrations.id],
-      sourcePersonId: registration[schema.registrations.userId],
-      sourceEventId: registration[schema.registrations.eventId],
-      createdAt: parseDumpDate(registration[schema.registrations.createdAt], timezoneOffset),
-      active: registration[schema.registrations.active],
+      sourceId: registration[effectiveSchema.registrations.id],
+      sourcePersonId: registration[effectiveSchema.registrations.userId],
+      sourceEventId: registration[effectiveSchema.registrations.eventId],
+      createdAt: parseDumpDate(registration[effectiveSchema.registrations.createdAt], timezoneOffset),
+      active: registration[effectiveSchema.registrations.active],
     };
+    if (modalityMode === 'current') {
+      const sourceModalityId = registration[schema.registrations.modalityId];
+      const modality = modalityById.get(String(sourceModalityId));
+      Object.assign(base, {
+        sourceModalityId,
+        sourceModalityEventId: modality?.[schema.modalities.eventId] ?? null,
+        modalityName: modality?.[schema.modalities.name] ?? null,
+        appliedAmount: registration[schema.registrations.appliedAmount],
+      });
+    }
     return activities.length
       ? activities.map((item) => ({ ...base, sourceActivityId: item[schema.registrationActivities.activityId] }))
       : [{ ...base, sourceActivityId: null }];
   });
-  const attendances = rowsFor(tables, schema.attendances.table).map((item) => ({
+  if (modalityMode === 'current') validateRegistrationModalities(registrations);
+  const attendances = rowsFor(tables, effectiveSchema.attendances.table).map((item) => ({
     sourceId: item[schema.attendances.id],
     sourcePersonId: item[schema.attendances.userId],
     sourceActivityId: item[schema.attendances.activityId],
     recordedAt: parseDumpDate(item[schema.attendances.recordedAt], timezoneOffset),
     present: item[schema.attendances.present],
   }));
-  const lecturers = rowsFor(tables, schema.lecturers.table).map((item) => ({
+  const lecturers = rowsFor(tables, effectiveSchema.lecturers.table).map((item) => ({
     sourcePersonId: item[schema.lecturers.userId],
     sourceActivityId: item[schema.lecturers.activityId],
   }));
@@ -49,18 +128,19 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
     [...registrations, ...attendances, ...lecturers].map((item) => String(item.sourcePersonId)),
   );
   const includedTypes = new Set(schema.users.includedTypes.map(String));
-  const people = rowsFor(tables, schema.users.table)
+  const people = rowsFor(tables, effectiveSchema.users.table)
     .filter(
       (item) =>
-        referencedPersonIds.has(String(item[schema.users.id])) && includedTypes.has(String(item[schema.users.type])),
+        referencedPersonIds.has(String(item[effectiveSchema.users.id])) &&
+        includedTypes.has(String(item[effectiveSchema.users.type])),
     )
     .map((item) => ({
-      sourceId: item[schema.users.id],
-      name: item[schema.users.name],
-      email: item[schema.users.email],
-      academicId: item[schema.users.academicId],
+      sourceId: item[effectiveSchema.users.id],
+      name: item[effectiveSchema.users.name],
+      email: item[effectiveSchema.users.email],
+      academicId: item[effectiveSchema.users.academicId],
     }));
-  return { people, registrations, attendances, lecturers };
+  return { people, events, activities, modalities, registrations, attendances, lecturers };
 }
 
 function parseDumpDate(value, timezoneOffset) {
@@ -130,6 +210,45 @@ function validateDumpSchema(tables, schema) {
   if (missing.length) {
     throw new Error(`EvComp SQL dump schema drift detected; update sourceSchema for: ${missing.join(', ')}`);
   }
+}
+
+function detectDumpModes(tables, schema) {
+  return {
+    catalogMode: detectDumpFeatureMode(tables, catalogRequirementsFor(schema), [
+      schema.events?.table,
+      schema.activities?.table,
+    ]),
+    modalityMode: detectDumpFeatureMode(tables, modalityRequirementsFor(schema), [schema.modalities?.table]),
+  };
+}
+
+function detectDumpFeatureMode(tables, requirements, featureTables) {
+  if (!requirements.length) return 'legacy';
+  const present = requirements.filter((item) => tables.get(item.table)?.columns.includes(item.column));
+  const featurePresent =
+    present.length > 0 || featureTables.some((tableName) => tableName != null && tables.has(tableName));
+  if (!featurePresent) return 'legacy';
+  if (present.length === requirements.length) return 'current';
+  const missing = requirements
+    .filter((item) => !tables.get(item.table)?.columns.includes(item.column))
+    .map((item) => `${item.sectionName}.${item.column} (${item.table})`);
+  throw new Error(`EvComp SQL dump schema drift detected; update sourceSchema for: ${missing.join(', ')}`);
+}
+
+function modalityRequirementsFor(schema) {
+  const requirements = [];
+  const registrations = schema.registrations;
+  const modalities = schema.modalities;
+  if (!registrations || !modalities) return requirements;
+  requirements.push(
+    { sectionName: 'registrations', table: registrations.table, column: registrations.modalityId },
+    { sectionName: 'registrations', table: registrations.table, column: registrations.appliedAmount },
+    { sectionName: 'modalities', table: modalities.table, column: modalities.id },
+    { sectionName: 'modalities', table: modalities.table, column: modalities.eventId },
+    { sectionName: 'modalities', table: modalities.table, column: modalities.name },
+    { sectionName: 'modalities', table: modalities.table, column: modalities.amount },
+  );
+  return requirements;
 }
 
 function rowsFor(tables, tableName) {

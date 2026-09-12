@@ -37,6 +37,16 @@ export function toSourceBoolean(value) {
   throw new Error(`Unexpected EvComp boolean value: ${String(value)}`);
 }
 
+export function toAmountInCents(value) {
+  const match = String(value ?? '').match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  if (!match) throw new Error(`Invalid EvComp applied amount: ${String(value)}`);
+  const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  if (!Number.isSafeInteger(cents) || cents > 2147483647) {
+    throw new Error('EvComp applied amount exceeds the target integer range.');
+  }
+  return cents;
+}
+
 export function resolvePerson(sourcePerson, targetPeople) {
   const sourceAcademicId = normalizeAcademicId(sourcePerson.academicId);
   const sourceEmail = normalizeEmail(sourcePerson.email);
@@ -59,6 +69,10 @@ export function resolvePerson(sourcePerson, targetPeople) {
     return { status: 'conflict', candidates: identifierCandidates, matchedBy: 'identifier' };
   }
   if (emailMatches.length === 1) {
+    const targetAcademicId = normalizeAcademicId(emailMatches[0].academicId);
+    if (sourceAcademicId && targetAcademicId && sourceAcademicId !== targetAcademicId) {
+      return { status: 'conflict', candidates: identifierCandidates, matchedBy: 'identifier' };
+    }
     return {
       status: 'matched',
       person: emailMatches[0],
@@ -75,13 +89,22 @@ export function resolvePerson(sourcePerson, targetPeople) {
 }
 
 export function assertConfig(config) {
-  if (!config || typeof config !== 'object') throw new Error('Configuration must be a JSON object.');
-  if (!Array.isArray(config.eventMappings) || !Array.isArray(config.activityMappings)) {
-    throw new Error('Configuration must contain eventMappings and activityMappings arrays.');
+  if (!config || typeof config !== 'object' || Array.isArray(config))
+    throw new Error('Configuration must be a JSON object.');
+  for (const field of ['eventMappings', 'activityMappings', 'personMappings', 'modalityMappings']) {
+    if (config[field] !== undefined && !Array.isArray(config[field])) throw new Error(`${field} must be an array.`);
+  }
+  if (
+    config.sourceNamespace !== undefined &&
+    (typeof config.sourceNamespace !== 'string' ||
+      !config.sourceNamespace.trim() ||
+      config.sourceNamespace !== config.sourceNamespace.trim())
+  ) {
+    throw new Error('sourceNamespace must be a nonempty, trimmed string.');
   }
 
   const sourceEventIds = new Set();
-  for (const mapping of config.eventMappings) {
+  for (const mapping of config.eventMappings ?? []) {
     requireValue(mapping.sourceEventId, 'eventMappings[].sourceEventId');
     requireUuid(mapping.targetMajorEventId, 'eventMappings[].targetMajorEventId');
     const key = String(mapping.sourceEventId);
@@ -90,7 +113,7 @@ export function assertConfig(config) {
   }
 
   const sourceActivityIds = new Set();
-  for (const mapping of config.activityMappings) {
+  for (const mapping of config.activityMappings ?? []) {
     requireValue(mapping.sourceActivityId, 'activityMappings[].sourceActivityId');
     requireUuid(mapping.targetEventId, 'activityMappings[].targetEventId');
     const key = String(mapping.sourceActivityId);
@@ -105,6 +128,18 @@ export function assertConfig(config) {
     const key = String(mapping.sourcePersonId);
     if (sourcePersonIds.has(key)) throw new Error(`Duplicate source person mapping: ${key}`);
     sourcePersonIds.add(key);
+  }
+
+  if (config.modalityMappings !== undefined && !Array.isArray(config.modalityMappings)) {
+    throw new Error('modalityMappings must be an array.');
+  }
+  const sourceModalityIds = new Set();
+  for (const mapping of config.modalityMappings ?? []) {
+    requireValue(mapping.sourceModalityId, 'modalityMappings[].sourceModalityId');
+    requireUuid(mapping.targetPriceTierId, 'modalityMappings[].targetPriceTierId');
+    const key = String(mapping.sourceModalityId);
+    if (sourceModalityIds.has(key)) throw new Error(`Duplicate source modality mapping: ${key}`);
+    sourceModalityIds.add(key);
   }
 }
 

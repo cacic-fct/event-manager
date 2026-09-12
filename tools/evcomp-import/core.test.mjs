@@ -9,6 +9,7 @@ import {
   quoteMysqlIdentifier,
   resolvePerson,
   toSourceBoolean,
+  toAmountInCents,
 } from './core.mjs';
 
 const person = (overrides = {}) => ({
@@ -18,6 +19,41 @@ const person = (overrides = {}) => ({
   secondaryEmails: [],
   academicId: '123456789',
   ...overrides,
+});
+
+test('converts EvComp decimal reais to target cents without floating-point rounding', () => {
+  assert.equal(toAmountInCents('19.90'), 1990);
+  assert.equal(toAmountInCents(0.29), 29);
+  assert.equal(toAmountInCents('0.00'), 0);
+  for (const value of [null, undefined, '-1', '0.001', 'NaN', '21474836.48']) {
+    assert.throws(() => toAmountInCents(value), /amount/);
+  }
+});
+
+test('validates explicit modality mapping IDs and rejects duplicate source modalities', () => {
+  const config = {
+    eventMappings: [],
+    activityMappings: [],
+    modalityMappings: [{ sourceModalityId: 1, targetPriceTierId: '00000000-0000-7000-8000-000000000001' }],
+  };
+  assert.doesNotThrow(() => assertConfig(config));
+  assert.throws(() => assertConfig({ ...config, modalityMappings: {} }), /must be an array/);
+  assert.throws(
+    () => assertConfig({ ...config, modalityMappings: [...config.modalityMappings, ...config.modalityMappings] }),
+    /Duplicate source modality/,
+  );
+  assert.throws(
+    () => assertConfig({ ...config, modalityMappings: [{ sourceModalityId: 1, targetPriceTierId: 'invalid' }] }),
+    /must be a UUID/,
+  );
+});
+
+test('automatic import requires no mappings and keeps a stable nonblank source namespace', () => {
+  assert.doesNotThrow(() => assertConfig({}));
+  assert.doesNotThrow(() => assertConfig({ sourceNamespace: 'evcomp' }));
+  for (const sourceNamespace of ['', ' evcomp', 1, null]) {
+    assert.throws(() => assertConfig({ sourceNamespace }), /sourceNamespace/);
+  }
 });
 
 test('normalizes identifiers without making names an automatic identity key', () => {
@@ -59,6 +95,11 @@ test('reports conflicting email and academic ID instead of guessing', () => {
     result.candidates.map((candidate) => candidate.id),
     ['target-1', 'target-2'],
   );
+});
+
+test('does not merge a shared email when populated academic IDs disagree', () => {
+  const result = resolvePerson({ academicId: 'another-id', email: 'joao@unesp.br' }, [person()]);
+  assert.equal(result.status, 'conflict');
 });
 
 test('matches primary and secondary emails case-insensitively', () => {
