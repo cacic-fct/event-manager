@@ -98,12 +98,11 @@ export class CertificatesService {
   readonly issuableMajorEvents = signal<MajorEvent[]>([]);
   readonly certificateFolders = signal<CertificateFolder[]>([]);
   readonly availablePaymentTiers = signal<string[]>([]);
-  readonly paymentTierOptions = computed(() => [...new Set([
-    ...this.availablePaymentTiers(),
-    ...this.certificateConfigModel().paymentTiers,
-  ])]);
-  readonly showPaymentTiers = computed(() =>
-    this.certificateConfigModel().issuedTo === 'ATTENDEE' && this.paymentTierOptions().length > 0,
+  readonly paymentTierOptions = computed(() => [
+    ...new Set([...this.availablePaymentTiers(), ...this.certificateConfigModel().paymentTiers]),
+  ]);
+  readonly showPaymentTiers = computed(
+    () => this.certificateConfigModel().issuedTo === 'ATTENDEE' && this.paymentTierOptions().length > 0,
   );
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
@@ -325,8 +324,8 @@ export class CertificatesService {
   private async applyTargetSelection(target: IssuableTarget): Promise<void> {
     this.availablePaymentTiers.set([]);
     const scope = this.targetFiltersForm.controls.scope.value;
-    const majorEventId = scope === 'MAJOR_EVENT' ? target.id
-      : scope === 'EVENT' ? (target as Event).majorEventId : null;
+    const majorEventId =
+      scope === 'MAJOR_EVENT' ? target.id : scope === 'EVENT' ? (target as Event).majorEventId : null;
     this.selectedTarget.set({
       id: target.id,
       name: target.name,

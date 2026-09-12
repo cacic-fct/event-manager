@@ -715,9 +715,7 @@ export class FormsService {
 
   private reconcileSelectedFormResultCount(formId: string, responseCount: number): void {
     this.selectedForm.update((form) => (form?.id === formId ? { ...form, responseCount } : form));
-    this.forms.update((forms) =>
-      forms.map((form) => (form.id === formId ? { ...form, responseCount } : form)),
-    );
+    this.forms.update((forms) => forms.map((form) => (form.id === formId ? { ...form, responseCount } : form)));
   }
 
   private formsRoute(): string[] {

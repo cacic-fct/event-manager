@@ -178,10 +178,9 @@ describe('AuthService', () => {
       expiresAt: Date.now() + 300_000,
       sessionExpiresAt: Date.now() + 600_000,
     });
-    httpTesting.expectOne('/api/auth/me').flush(
-      { message: 'temporarily unavailable' },
-      { status: 503, statusText: 'Service Unavailable' },
-    );
+    httpTesting
+      .expectOne('/api/auth/me')
+      .flush({ message: 'temporarily unavailable' }, { status: 503, statusText: 'Service Unavailable' });
 
     await expect(refresh).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(auth.user()).toEqual(existingUser);
@@ -192,10 +191,9 @@ describe('AuthService', () => {
     auth.user.set(existingUser);
     const refresh = auth.refreshMe();
 
-    httpTesting.expectOne('/api/auth/me').flush(
-      { message: 'temporarily unavailable' },
-      { status: 503, statusText: 'Service Unavailable' },
-    );
+    httpTesting
+      .expectOne('/api/auth/me')
+      .flush({ message: 'temporarily unavailable' }, { status: 503, statusText: 'Service Unavailable' });
     (await waitForRequest('/api/auth/refresh')).flush(
       { message: 'temporarily unavailable' },
       { status: 503, statusText: 'Service Unavailable' },

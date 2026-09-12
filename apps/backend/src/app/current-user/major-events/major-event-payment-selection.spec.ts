@@ -40,10 +40,19 @@ describe('resolveSportsSelfServicePayment', () => {
 
 describe('ambiguous historical payment tiers', () => {
   it.each([false, true])('rejects ambiguous selection regardless of row order (%s)', (reverse) => {
-    const tiers = [{ name: 'Aluno', value: 1000 }, { name: ' aluno ', value: 2500 }];
+    const tiers = [
+      { name: 'Aluno', value: 1000 },
+      { name: ' aluno ', value: 2500 },
+    ];
     if (reverse) tiers.reverse();
-    expect(() => resolveMajorEventSelfServicePayment({
-      isPaymentRequired: true, majorEventPrices: [{ tiers }],
-    }, 'ALUNO')).toThrow('A configuração das faixas de pagamento é ambígua.');
+    expect(() =>
+      resolveMajorEventSelfServicePayment(
+        {
+          isPaymentRequired: true,
+          majorEventPrices: [{ tiers }],
+        },
+        'ALUNO',
+      ),
+    ).toThrow('A configuração das faixas de pagamento é ambígua.');
   });
 });

@@ -65,11 +65,27 @@ describe('SubscriptionReviewDialog', () => {
 
   it('explains a sports-only modality without displaying an empty event list', async () => {
     const data: SubscriptionReviewDialogData = {
-      majorEvent: createPublicMajorEvent({ sportsTournament: { id: 'tournament' }, majorEventPrices: [createPublicMajorEventPrice({ tiers: [{
-        id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true,
-      }] })] }),
-      events: [], forms: [], draft: createSubscriptionFlowDraft([], false),
-      paymentTier: 'Esportes', requireImageLicenseAgreement: false,
+      majorEvent: createPublicMajorEvent({
+        sportsTournament: { id: 'tournament' },
+        majorEventPrices: [
+          createPublicMajorEventPrice({
+            tiers: [
+              {
+                id: 'sports',
+                name: 'Esportes',
+                value: 2000,
+                includesEventRegistration: false,
+                includesSportsRegistration: true,
+              },
+            ],
+          }),
+        ],
+      }),
+      events: [],
+      forms: [],
+      draft: createSubscriptionFlowDraft([], false),
+      paymentTier: 'Esportes',
+      requireImageLicenseAgreement: false,
     };
     await TestBed.configureTestingModule({
       imports: [SubscriptionReviewDialog],

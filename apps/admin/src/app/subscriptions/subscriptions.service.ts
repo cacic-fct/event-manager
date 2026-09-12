@@ -381,7 +381,10 @@ export class SubscriptionsService {
         ? firstValueFrom(this.api.majorEventSportsWorkspace(majorEventId))
         : Promise.resolve(null),
     ]);
-    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+    if (
+      request !== this.majorEventSubscriptionsRequest ||
+      this.majorEventForm.controls.majorEventId.value !== majorEventId
+    ) {
       return;
     }
     const assignedTeams = Object.fromEntries(
@@ -405,7 +408,10 @@ export class SubscriptionsService {
         subscribed: false,
         isLecturerSubscription: false,
       }));
-    if (request !== this.majorEventSubscriptionsRequest || this.majorEventForm.controls.majorEventId.value !== majorEventId) {
+    if (
+      request !== this.majorEventSubscriptionsRequest ||
+      this.majorEventForm.controls.majorEventId.value !== majorEventId
+    ) {
       return;
     }
     this.majorEventSportsWorkspace.set(sportsWorkspace);

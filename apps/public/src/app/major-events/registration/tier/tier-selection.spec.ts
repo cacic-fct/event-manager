@@ -7,10 +7,15 @@ describe('tier benefits', () => {
     await TestBed.configureTestingModule({ imports: [SubscriptionTierSelection] }).compileComponents();
     const fixture = TestBed.createComponent(SubscriptionTierSelection);
     fixture.componentRef.setInput('majorEvent', createPublicMajorEvent({ sportsTournament: null }));
-    fixture.componentRef.setInput('tiers', [{
-      id: 'participant', name: 'Participante', value: 3000,
-      includesEventRegistration: true, includesSportsRegistration: false,
-    }]);
+    fixture.componentRef.setInput('tiers', [
+      {
+        id: 'participant',
+        name: 'Participante',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+    ]);
     fixture.detectChanges();
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('Inscrição em eventos');
@@ -21,10 +26,15 @@ describe('tier benefits', () => {
     await TestBed.configureTestingModule({ imports: [SubscriptionTierSelection] }).compileComponents();
     const fixture = TestBed.createComponent(SubscriptionTierSelection);
     fixture.componentRef.setInput('majorEvent', createPublicMajorEvent({ sportsTournament: { id: 'tournament' } }));
-    fixture.componentRef.setInput('tiers', [{
-      id: 'participant', name: 'Participante', value: 0,
-      includesEventRegistration: false, includesSportsRegistration: false,
-    }]);
+    fixture.componentRef.setInput('tiers', [
+      {
+        id: 'participant',
+        name: 'Participante',
+        value: 0,
+        includesEventRegistration: false,
+        includesSportsRegistration: false,
+      },
+    ]);
     fixture.componentRef.setInput('selectedName', 'Participante');
     fixture.detectChanges();
     const content = fixture.nativeElement.textContent;

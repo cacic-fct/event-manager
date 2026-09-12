@@ -403,7 +403,10 @@
             @if (workspace.showPaymentTiers()) {
               <mat-form-field>
                 <mat-label>Faixas de preço para emissão</mat-label>
-                <mat-select multiple [formField]="workspace.certificateConfigForm.paymentTiers" placeholder="Todas as faixas">
+                <mat-select
+                  multiple
+                  [formField]="workspace.certificateConfigForm.paymentTiers"
+                  placeholder="Todas as faixas">
                   @for (tier of workspace.paymentTierOptions(); track tier) {
                     <mat-option [value]="tier">{{ tier }}</mat-option>
                   }

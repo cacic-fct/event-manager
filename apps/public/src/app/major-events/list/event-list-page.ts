@@ -251,19 +251,14 @@ export class MajorEvent {
 
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {
     const majorEventIds = events.map((event) => event.id);
-    const invalidations = isPlatformBrowser(this.platformId) && majorEventIds.length > 0
-      ? this.realtime
-          .watchCatalog()
-          .pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
-      : EMPTY;
+    const invalidations =
+      isPlatformBrowser(this.platformId) && majorEventIds.length > 0
+        ? this.realtime.watchCatalog().pipe(auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS))
+        : EMPTY;
 
     merge(of(undefined), invalidations)
       .pipe(
-        switchMap(() =>
-          this.prizeDrawsApi.availability({ majorEventIds }).pipe(
-            catchError(() => EMPTY),
-          ),
-        ),
+        switchMap(() => this.prizeDrawsApi.availability({ majorEventIds }).pipe(catchError(() => EMPTY))),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((availability) => {

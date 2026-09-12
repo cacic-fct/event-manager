@@ -1,0 +1,13 @@
+// Import provenance survives renames and prevents recreating deleted source mappings.
+// Targets span multiple models and are validated by the importer before reuse.
+model ExternalImportRecord {
+  sourceNamespace String
+  entityType      String
+  sourceId        String
+  targetId        String
+  createdAt       DateTime @default(now())
+
+  @@id([sourceNamespace, entityType, sourceId])
+  @@index([entityType, targetId])
+  @@map("external_import_records")
+}

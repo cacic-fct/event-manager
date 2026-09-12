@@ -119,7 +119,11 @@ export class PublicationJobsService {
     if (!majorEvent || !majorEvent.scheduledPublishAt) {
       return;
     }
-    const sync = await this.transitions.publishScheduledMajorEventById(majorEvent.id, majorEvent.scheduledPublishAt, null);
+    const sync = await this.transitions.publishScheduledMajorEventById(
+      majorEvent.id,
+      majorEvent.scheduledPublishAt,
+      null,
+    );
     if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) {
       return;
     }

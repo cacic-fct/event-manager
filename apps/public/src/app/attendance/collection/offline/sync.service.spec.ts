@@ -222,17 +222,27 @@ describe('AttendanceOfflineSyncService', () => {
     const failFirstPage = mode === 'failed' || mode === 'missing';
     const stopAfterPage = mode === 'offline' || mode === 'handoff';
     const pending = Array.from({ length: 181 }, (_, index) => ({
-      clientId: `queued-${index}`, queuedByUserId: 'user-1', eventId: 'event-1',
-      eventName: 'Evento', createdByMethod: 'SCANNER', code: `user:person-${index}`,
-      collectedAt: new Date().toISOString(), authorUserId: 'user-1',
+      clientId: `queued-${index}`,
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      eventName: 'Evento',
+      createdByMethod: 'SCANNER',
+      code: `user:person-${index}`,
+      collectedAt: new Date().toISOString(),
+      authorUserId: 'user-1',
     }));
     const queue = {
       listUploadable: vi.fn(async (_userId: string, limit: number, excluded: ReadonlySet<string>) =>
-        pending.filter((item) => !excluded.has(item.clientId)).slice(0, limit)),
+        pending.filter((item) => !excluded.has(item.clientId)).slice(0, limit),
+      ),
       markSyncing: vi.fn().mockResolvedValue(undefined),
       applyCommitResults: vi.fn(async (_owner: string, results: { clientId: string; status: string }[]) => {
         for (const result of results) {
-          if (result.status === 'CREATED') pending.splice(pending.findIndex((item) => item.clientId === result.clientId), 1);
+          if (result.status === 'CREATED')
+            pending.splice(
+              pending.findIndex((item) => item.clientId === result.clientId),
+              1,
+            );
         }
       }),
       recordSyncFailure: vi.fn().mockResolvedValue(undefined),
@@ -240,30 +250,40 @@ describe('AttendanceOfflineSyncService', () => {
     const commitOfflineAttendances = vi.fn((items: { clientId: string }[]) => {
       if (mode === 'offline') online = false;
       if (mode === 'handoff') activeUserId = 'user-2';
-      return of(items.filter((item) => mode !== 'missing' || Number(item.clientId.split('-')[1]) >= 80).map((item) => ({
-        clientId: item.clientId, eventId: 'event-1',
-        status: mode === 'failed' && Number(item.clientId.split('-')[1]) < 80 ? 'FAILED' : 'CREATED',
-      })));
+      return of(
+        items
+          .filter((item) => mode !== 'missing' || Number(item.clientId.split('-')[1]) >= 80)
+          .map((item) => ({
+            clientId: item.clientId,
+            eventId: 'event-1',
+            status: mode === 'failed' && Number(item.clientId.split('-')[1]) < 80 ? 'FAILED' : 'CREATED',
+          })),
+      );
     });
     const open = vi.fn();
-    TestBed.configureTestingModule({ providers: [
-      AttendanceOfflineSyncService,
-      { provide: PLATFORM_ID, useValue: 'browser' },
-      { provide: AttendanceCollectionApiService, useValue: { commitOfflineAttendances } },
-      { provide: AuthService, useValue: { user: () => ({ sub: activeUserId }) } },
-      { provide: AttendanceOfflineQueueService, useValue: queue },
-      { provide: OralAttendanceOfflineService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
-      { provide: NetworkStatusService, useValue: { isOnline: () => online } },
-      { provide: AttendanceScannerCacheService, useValue: {} },
-      { provide: AttendanceIncognitoWarningService, useValue: {} },
-      { provide: MatDialog, useValue: { open } },
-      { provide: MatSnackBar, useValue: { open: vi.fn() } },
-    ] });
+    TestBed.configureTestingModule({
+      providers: [
+        AttendanceOfflineSyncService,
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AttendanceCollectionApiService, useValue: { commitOfflineAttendances } },
+        { provide: AuthService, useValue: { user: () => ({ sub: activeUserId }) } },
+        { provide: AttendanceOfflineQueueService, useValue: queue },
+        { provide: OralAttendanceOfflineService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
+        { provide: NetworkStatusService, useValue: { isOnline: () => online } },
+        { provide: AttendanceScannerCacheService, useValue: {} },
+        { provide: AttendanceIncognitoWarningService, useValue: {} },
+        { provide: MatDialog, useValue: { open } },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    });
     const service = TestBed.inject(AttendanceOfflineSyncService);
-    vi.spyOn(service as unknown as { waitBeforeRetry(): Promise<void> }, 'waitBeforeRetry').mockResolvedValue(undefined);
+    vi.spyOn(service as unknown as { waitBeforeRetry(): Promise<void> }, 'waitBeforeRetry').mockResolvedValue(
+      undefined,
+    );
     await service.syncPending();
-    expect(commitOfflineAttendances.mock.calls.map(([items]) => items.length))
-      .toEqual(stopAfterPage ? [80] : failFirstPage ? [80, 80, 80, 80, 21] : [80, 80, 21]);
+    expect(commitOfflineAttendances.mock.calls.map(([items]) => items.length)).toEqual(
+      stopAfterPage ? [80] : failFirstPage ? [80, 80, 80, 80, 21] : [80, 80, 21],
+    );
     expect(pending).toHaveLength(stopAfterPage ? 101 : failFirstPage ? 80 : 0);
     expect(queue.listUploadable).toHaveBeenCalledTimes(stopAfterPage ? 1 : 4);
     expect(open).toHaveBeenCalledTimes(mode === 'handoff' ? 0 : 1);

@@ -492,9 +492,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
   private watchWorkspaceIndex(): void {
     if (this.workspaceIndexSubscription) return;
-    this.workspaceIndexSubscription = this.realtime
-      .watchWorkspace()
-      .subscribe(() => void this.refreshWorkspaceIndex());
+    this.workspaceIndexSubscription = this.realtime.watchWorkspace().subscribe(() => void this.refreshWorkspaceIndex());
   }
 
   private async refreshWorkspaceIndex(): Promise<void> {

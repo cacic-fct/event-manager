@@ -1,13 +1,4 @@
-import {
-  Controller,
-  ForbiddenException,
-  Headers,
-  MessageEvent,
-  Param,
-  Req,
-  Sse,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, ForbiddenException, Headers, MessageEvent, Param, Req, Sse, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Permission } from '@cacic-fct/shared-permissions';
 import type { Request } from 'express';
@@ -84,7 +75,8 @@ export class RealtimeInvalidationController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Stream replayable administrative workspace invalidations',
-    description: 'Notifica usuários do workspace sobre dados administrativos alterados sem expor identificadores de outros escopos.',
+    description:
+      'Notifica usuários do workspace sobre dados administrativos alterados sem expor identificadores de outros escopos.',
   })
   @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
@@ -160,7 +152,11 @@ export class RealtimeInvalidationController {
     description: 'Atualiza métricas de organização somente após validar o acesso da pessoa autenticada ao destino.',
   })
   @ApiParam({ name: 'targetType', description: 'Tipo do destino', example: 'EVENT' })
-  @ApiParam({ name: 'targetId', description: 'Identificador do destino', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'targetId',
+    description: 'Identificador do destino',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
   @ApiOkResponse(REALTIME_SSE_RESPONSE)
@@ -195,7 +191,11 @@ export class RealtimeInvalidationController {
     summary: 'Stream replayable event-subscription revisions for administrators',
     description: 'Emite revisões de inscrições após validar a permissão de leitura no evento solicitado.',
   })
-  @ApiParam({ name: 'eventId', description: 'Identificador do evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'eventId',
+    description: 'Identificador do evento',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
   @ApiOkResponse(REALTIME_SSE_RESPONSE)
@@ -222,7 +222,11 @@ export class RealtimeInvalidationController {
     summary: 'Stream replayable major-event subscription revisions for administrators',
     description: 'Emite revisões de inscrições após validar a permissão de leitura no grande evento solicitado.',
   })
-  @ApiParam({ name: 'majorEventId', description: 'Identificador do grande evento', example: '019d2a25-5694-7f19-b954-8a98f7bb9a44' })
+  @ApiParam({
+    name: 'majorEventId',
+    description: 'Identificador do grande evento',
+    example: '019d2a25-5694-7f19-b954-8a98f7bb9a44',
+  })
   @ApiHeader(LAST_EVENT_ID_HEADER)
   @ApiProduces('text/event-stream')
   @ApiOkResponse(REALTIME_SSE_RESPONSE)
@@ -257,9 +261,7 @@ export class RealtimeInvalidationController {
         startWith(0),
         exhaustMap(() =>
           defer(load).pipe(
-            catchError((error: unknown) =>
-              error instanceof ForbiddenException ? throwError(() => error) : EMPTY,
-            ),
+            catchError((error: unknown) => (error instanceof ForbiddenException ? throwError(() => error) : EMPTY)),
           ),
         ),
         distinctUntilChanged((previous, current) => isDeepStrictEqual(previous, current)),

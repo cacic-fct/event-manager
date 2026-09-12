@@ -48,7 +48,12 @@ async function moveSportsTournamentParticipants(
   tx: Prisma.TransactionClient,
   targetPersonId: string,
   sourcePersonId: string,
-): Promise<Pick<SportsPersonRelationsMergeSnapshot, 'movedSportsTournamentParticipantIds' | 'sportsTournamentParticipantSnapshots'>> {
+): Promise<
+  Pick<
+    SportsPersonRelationsMergeSnapshot,
+    'movedSportsTournamentParticipantIds' | 'sportsTournamentParticipantSnapshots'
+  >
+> {
   const sourceParticipants = await tx.sportsTournamentParticipant.findMany({
     where: { personId: sourcePersonId },
   });
@@ -101,10 +106,7 @@ async function moveSportsOfficialAssignments(
   targetPersonId: string,
   sourcePersonId: string,
 ): Promise<
-  Pick<
-    SportsPersonRelationsMergeSnapshot,
-    'movedSportsOfficialAssignmentIds' | 'sportsOfficialAssignmentSnapshots'
-  >
+  Pick<SportsPersonRelationsMergeSnapshot, 'movedSportsOfficialAssignmentIds' | 'sportsOfficialAssignmentSnapshots'>
 > {
   const sourceAssignments = await tx.sportsOfficialAssignment.findMany({
     where: { personId: sourcePersonId },
@@ -193,7 +195,9 @@ export async function moveSportsTeamRepresentatives(
       teamId: { in: teamIds },
     },
   });
-  const targetByTeamId = new Map(targetRepresentatives.map((representative) => [representative.teamId, representative]));
+  const targetByTeamId = new Map(
+    targetRepresentatives.map((representative) => [representative.teamId, representative]),
+  );
 
   for (const sourceRepresentative of sourceRepresentatives) {
     const targetRepresentative = targetByTeamId.get(sourceRepresentative.teamId);
@@ -211,9 +215,7 @@ export async function moveSportsTeamRepresentatives(
   const movedSportsTeamRepresentativeIds: string[] = [];
   const revokedSportsTeamRepresentativeIds: string[] = [];
   const sportsTeamRepresentativeSnapshots = sourceRepresentatives.map(toSportsTeamRepresentativeSnapshot);
-  const snapshotsById = new Map(
-    sportsTeamRepresentativeSnapshots.map((snapshot) => [snapshot.id, snapshot]),
-  );
+  const snapshotsById = new Map(sportsTeamRepresentativeSnapshots.map((snapshot) => [snapshot.id, snapshot]));
 
   for (const sourceRepresentative of sourceRepresentatives) {
     const targetRepresentative = targetByTeamId.get(sourceRepresentative.teamId);
@@ -272,9 +274,7 @@ function toSportsTournamentParticipantSnapshot(
   };
 }
 
-function toSportsOfficialAssignmentSnapshot(
-  assignment: SportsOfficialAssignment,
-): SportsOfficialAssignmentSnapshot {
+function toSportsOfficialAssignmentSnapshot(assignment: SportsOfficialAssignment): SportsOfficialAssignmentSnapshot {
   return {
     id: assignment.id,
     tournamentId: assignment.tournamentId,

@@ -423,10 +423,15 @@ describe('offline public data access integration', () => {
 
   it('pages past failed attendance without dropping retained shared-device work', async () => {
     const service = injectService(AttendanceOfflineQueueService);
-    await database.attendanceQueue.bulkPut(Array.from({ length: 181 }, (_, index) =>
-      queueItem(`page-${index}`, index < 80 ? 'FAILED' : 'PENDING', {
-        queuedAt: index, queuedByUserId: 'collector', collectorCredential: 'signed-proof',
-      })));
+    await database.attendanceQueue.bulkPut(
+      Array.from({ length: 181 }, (_, index) =>
+        queueItem(`page-${index}`, index < 80 ? 'FAILED' : 'PENDING', {
+          queuedAt: index,
+          queuedByUserId: 'collector',
+          collectorCredential: 'signed-proof',
+        }),
+      ),
+    );
     const attempted = new Set<string>();
     const sizes: number[] = [];
     for (;;) {

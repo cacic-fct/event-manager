@@ -266,7 +266,12 @@ describe('PublicationStateWriterService', () => {
       publicationState: PublicationState.SCHEDULED,
       scheduledPublishAt,
     };
-    const updated = { ...previous, publicationState: PublicationState.PUBLISHED, scheduledPublishAt: null, publishedAt: now };
+    const updated = {
+      ...previous,
+      publicationState: PublicationState.PUBLISHED,
+      scheduledPublishAt: null,
+      publishedAt: now,
+    };
     tx.majorEvent.findFirst.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
     tx.majorEvent.updateMany.mockResolvedValue({ count: 1 });
 

@@ -237,7 +237,12 @@
               WhatsApp
             </a>
             } @if (lecturerLinkedinUrl(lecturer); as linkedinUrl) {
-            <a class="linkedin-action" mat-stroked-button [href]="linkedinUrl" target="_blank" rel="noopener noreferrer">
+            <a
+              class="linkedin-action"
+              mat-stroked-button
+              [href]="linkedinUrl"
+              target="_blank"
+              rel="noopener noreferrer">
               <mat-icon>link</mat-icon>
               <span class="linkedin-link-label">{{ linkedinUrl }}</span>
             </a>

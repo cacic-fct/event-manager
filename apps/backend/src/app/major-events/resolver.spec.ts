@@ -6,16 +6,26 @@ describe('MajorEventsResolver', () => {
   it.each([false, true, undefined])('preserves explicit sports entitlement updates: %s', (value) => {
     const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
     const [payload] = resolver['buildPriceTierPayloads']({
-      type: 'TIERED', tiers: [{ id: 'existing-tier', name: 'Aluno', value: 1000, includesSportsRegistration: value }],
+      type: 'TIERED',
+      tiers: [{ id: 'existing-tier', name: 'Aluno', value: 1000, includesSportsRegistration: value }],
     } as never);
     expect({ includesSportsRegistration: true, ...payload }.includesSportsRegistration).toBe(value ?? true);
   });
 
-  it.each([['Aluno', ' aluno '], ['AÇÃO', 'ação']])('rejects normalized tier name collisions: %s / %s', (first, second) => {
+  it.each([
+    ['Aluno', ' aluno '],
+    ['AÇÃO', 'ação'],
+  ])('rejects normalized tier name collisions: %s / %s', (first, second) => {
     const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
-    expect(() => resolver['buildPriceTierPayloads']({
-      type: 'TIERED', tiers: [{ name: first, value: 1000 }, { name: second, value: 2500 }],
-    } as never)).toThrow('Os nomes das faixas de preço devem ser únicos.');
+    expect(() =>
+      resolver['buildPriceTierPayloads']({
+        type: 'TIERED',
+        tiers: [
+          { name: first, value: 1000 },
+          { name: second, value: 2500 },
+        ],
+      } as never),
+    ).toThrow('Os nomes das faixas de preço devem ser únicos.');
   });
 
   it('filters current major-event lookups by end date when requested', async () => {
@@ -211,7 +221,12 @@ describe('MajorEventsResolver', () => {
               tiers: {
                 create: [
                   { name: 'Aluno', value: 4000, includesEventRegistration: true, includesSportsRegistration: false },
-                  { name: 'Professor', value: 6000, includesEventRegistration: true, includesSportsRegistration: false },
+                  {
+                    name: 'Professor',
+                    value: 6000,
+                    includesEventRegistration: true,
+                    includesSportsRegistration: false,
+                  },
                 ],
               },
             }),
@@ -841,8 +856,9 @@ describe('MajorEventsResolver', () => {
     tx.priceTier.findMany.mockResolvedValue([{ id: 'kit-tier' }]);
     tx.event.findFirst.mockResolvedValue({ id: 'deleted-kit-event' });
 
-    await expect(resolver.updateMajorEvent('major-1', { price: null } as never, context() as never))
-      .rejects.toThrow('Remova as faixas de preço das regras de presença');
+    await expect(resolver.updateMajorEvent('major-1', { price: null } as never, context() as never)).rejects.toThrow(
+      'Remova as faixas de preço das regras de presença',
+    );
     expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: { regularAttendancePriceTierIds: { hasSome: ['kit-tier'] } },
@@ -1039,10 +1055,12 @@ function context(sub = 'admin-1') {
   };
 }
 
-function createResolver(options: {
-  paymentInfoTableExists?: boolean;
-  realtime?: { scope: jest.Mock; publish: jest.Mock };
-} = {}) {
+function createResolver(
+  options: {
+    paymentInfoTableExists?: boolean;
+    realtime?: { scope: jest.Mock; publish: jest.Mock };
+  } = {},
+) {
   const tx = {
     event: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEvent: {

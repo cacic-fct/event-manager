@@ -6,7 +6,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import type { PublicEvent, PublicMajorEvent, PublicMajorEventPriceTier } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  PublicEvent,
+  PublicMajorEvent,
+  PublicMajorEventPriceTier,
+} from '@cacic-fct/event-manager-public-contracts';
 import { createPublicEventForm, createPublicEventFormLink } from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { BehaviorSubject, NEVER, of } from 'rxjs';
@@ -95,8 +99,20 @@ describe('RankedMajorEventSubscription', () => {
 
   it('shows the tier page before ranked selection and keeps the chosen modality summary', () => {
     const majorEvent = paidMajorEvent([
-      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
-      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
+      {
+        id: 'events',
+        name: 'Eventos',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'sports',
+        name: 'Esportes',
+        value: 2000,
+        includesEventRegistration: false,
+        includesSportsRegistration: true,
+      },
     ]);
     flushInitialRequests(http, majorEvent);
     fixture.detectChanges();
@@ -137,7 +153,13 @@ describe('RankedMajorEventSubscription', () => {
 
   it('returns to tier selection when the route changes to another major event', () => {
     const majorEvent = paidMajorEvent([
-      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
+      {
+        id: 'events',
+        name: 'Eventos',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
     ]);
     flushInitialRequests(http, majorEvent);
     fixture.detectChanges();
@@ -153,8 +175,20 @@ describe('RankedMajorEventSubscription', () => {
 
   it('resets ranked selections and drafts when the tier changes', () => {
     const majorEvent = paidMajorEvent([
-      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
-      { id: 'neither', name: 'Participação', value: 1000, includesEventRegistration: false, includesSportsRegistration: false },
+      {
+        id: 'events',
+        name: 'Eventos',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'neither',
+        name: 'Participação',
+        value: 1000,
+        includesEventRegistration: false,
+        includesSportsRegistration: false,
+      },
     ]);
     flushInitialRequests(http, majorEvent);
     fixture.detectChanges();
@@ -175,51 +209,66 @@ describe('RankedMajorEventSubscription', () => {
     expect(store.subscriptionFormFlow()).toBeNull();
   });
 
-  it.each([true, false])('submits an empty ranked selection with sports access %s', async (includesSportsRegistration) => {
-    const majorEvent = paidMajorEvent([
-      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration },
-    ]);
-    flushInitialRequests(http, majorEvent);
-    fixture.detectChanges();
-    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+  it.each([true, false])(
+    'submits an empty ranked selection with sports access %s',
+    async (includesSportsRegistration) => {
+      const majorEvent = paidMajorEvent([
+        { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration },
+      ]);
+      flushInitialRequests(http, majorEvent);
+      fixture.detectChanges();
+      const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
 
-    expect(store.selectedPriceTierName()).toBe('Esportes');
-    expect(store.effectiveSelectedEventIds().size).toBe(0);
-    expect(store.desiredCourses()).toBe(0);
-    component.continueFromTier();
-    const formRequest = http.expectOne(
-      (request) =>
-        request.url === '/api/graphql' &&
-        typeof request.body === 'object' &&
-        String(request.body?.query).includes('CurrentUserEventForms'),
-    );
-    expect(formRequest.request.body.variables).toEqual(
-      expect.objectContaining({ targetType: 'MAJOR_EVENT', majorEventId: 'major-1', selectedPriceTierId: 'sports' }),
-    );
-    formRequest.flush({ data: { currentUserEventForms: [] } });
-    await fixture.whenStable();
+      expect(store.selectedPriceTierName()).toBe('Esportes');
+      expect(store.effectiveSelectedEventIds().size).toBe(0);
+      expect(store.desiredCourses()).toBe(0);
+      component.continueFromTier();
+      const formRequest = http.expectOne(
+        (request) =>
+          request.url === '/api/graphql' &&
+          typeof request.body === 'object' &&
+          String(request.body?.query).includes('CurrentUserEventForms'),
+      );
+      expect(formRequest.request.body.variables).toEqual(
+        expect.objectContaining({ targetType: 'MAJOR_EVENT', majorEventId: 'major-1', selectedPriceTierId: 'sports' }),
+      );
+      formRequest.flush({ data: { currentUserEventForms: [] } });
+      await fixture.whenStable();
 
-    const mutation = http.expectOne(
-      (request) =>
-        request.url === '/api/graphql' &&
-        typeof request.body === 'object' &&
-        String(request.body?.query).includes('UpsertCurrentUserRankedMajorEventSubscription'),
-    );
-    expect(mutation.request.body.variables).toEqual(
-      expect.objectContaining({
-        selectedEventIds: [],
-        desiredCourses: 0,
-        desiredLectures: 0,
-        desiredUncategorized: 0,
-        paymentTier: 'Esportes',
-      }),
-    );
-  });
+      const mutation = http.expectOne(
+        (request) =>
+          request.url === '/api/graphql' &&
+          typeof request.body === 'object' &&
+          String(request.body?.query).includes('UpsertCurrentUserRankedMajorEventSubscription'),
+      );
+      expect(mutation.request.body.variables).toEqual(
+        expect.objectContaining({
+          selectedEventIds: [],
+          desiredCourses: 0,
+          desiredLectures: 0,
+          desiredUncategorized: 0,
+          paymentTier: 'Esportes',
+        }),
+      );
+    },
+  );
 
   it('hydrates an existing tier once and locks confirmed subscriptions to it', () => {
     const majorEvent = paidMajorEvent([
-      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
-      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
+      {
+        id: 'events',
+        name: 'Eventos',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'sports',
+        name: 'Esportes',
+        value: 2000,
+        includesEventRegistration: false,
+        includesSportsRegistration: true,
+      },
     ]);
     const subscription = {
       id: 'subscription-1',

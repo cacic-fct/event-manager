@@ -476,7 +476,9 @@ export class MajorEventsService {
       }))
       .filter((tier) => tier.name.length > 0 || tier.value !== null);
     const validPriceTiers = priceTiers.filter(
-      (tier): tier is {
+      (
+        tier,
+      ): tier is {
         name: string;
         value: number;
         includesEventRegistration?: false;

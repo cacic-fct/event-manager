@@ -244,9 +244,7 @@ describe('Home', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const initialInsights = component.insights();
-    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(
-      throwError(() => new Error('Falha temporária.')),
-    );
+    dashboardApi.getWorkspaceDashboardInsights.mockReturnValueOnce(throwError(() => new Error('Falha temporária.')));
 
     workspaceEvents.next();
     await fixture.whenStable();

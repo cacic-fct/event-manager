@@ -72,7 +72,10 @@ mat-chip-set {
   padding-bottom: 12px;
 }
 
-.selected-tier-summary p { margin: 0; overflow-wrap: anywhere; }
+.selected-tier-summary p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 
 .rate-limit-message {
   color: var(--mat-sys-error);

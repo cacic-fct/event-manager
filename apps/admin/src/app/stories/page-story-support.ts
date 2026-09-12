@@ -372,7 +372,9 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     shouldIssueCertificate: [false],
     shouldIssueCertificateForNonPayingAttendees: [false],
     shouldIssueCertificateForNonSubscribedAttendees: [false],
-    regularAttendancePriceTierIds: formBuilder.nonNullable.control<string[]>(args.restrictAttendancePriceTiers ? ['kit-tier'] : []),
+    regularAttendancePriceTierIds: formBuilder.nonNullable.control<string[]>(
+      args.restrictAttendancePriceTiers ? ['kit-tier'] : [],
+    ),
     shouldCollectAttendance: [false],
     shouldAllowOralAttendance: [false],
     isOnlineAttendanceAllowed: [false],
@@ -453,10 +455,14 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     eventLecturers: signal([{ personId: people[0].id, name: people[0].name }]),
     eventAttendanceCollectors: signal([{ personId: people[1].id, name: people[1].name }]),
     selectedMajorEventName: signal(selectedEvent?.majorEvent?.name ?? ''),
-    attendancePriceTiers: signal(args.restrictAttendancePriceTiers ? [
-      { id: 'kit-tier', name: 'Inscrição com kit', value: 5000, includesSportsRegistration: false },
-      { id: 'no-kit-tier', name: 'Inscrição sem kit', value: 3000, includesSportsRegistration: false },
-    ] : []),
+    attendancePriceTiers: signal(
+      args.restrictAttendancePriceTiers
+        ? [
+            { id: 'kit-tier', name: 'Inscrição com kit', value: 5000, includesSportsRegistration: false },
+            { id: 'no-kit-tier', name: 'Inscrição sem kit', value: 3000, includesSportsRegistration: false },
+          ]
+        : [],
+    ),
     majorEventSearchResults: signal(majorEvents),
     selectedEventGroupName: signal(selectedEvent?.eventGroup?.name ?? ''),
     selectedEventGroupAllowsCertificates: signal(true),

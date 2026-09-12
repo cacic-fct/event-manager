@@ -114,7 +114,11 @@ describe('AttendanceStatisticsPageComponent flow', () => {
     });
 
     try {
-      for (const [type, x] of [['mousedown', 200], ['mousemove', 400], ['mouseup', 400]] as const) {
+      for (const [type, x] of [
+        ['mousedown', 200],
+        ['mousemove', 400],
+        ['mouseup', 400],
+      ] as const) {
         chart.getZr().handler.dispatch(type, Object.assign(new MouseEvent(type), { zrX: x, zrY: 100 }));
       }
       expect(component.selectedTimeWindow()).toEqual({ start: expect.any(String), end: expect.any(String) });

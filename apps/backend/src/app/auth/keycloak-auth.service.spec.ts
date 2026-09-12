@@ -341,12 +341,15 @@ describe('KeycloakAuthService', () => {
       accessTokenExpiresAt: Date.now() + 120_000,
       sessionExpiresAt: Date.now() + 300_000,
     };
-    sessions.get.mockResolvedValueOnce(session).mockResolvedValueOnce(session).mockResolvedValueOnce({
-      ...session,
-      accessToken: 'access-token-r1',
-      refreshToken: 'refresh-token-r1',
-      accessTokenExpiresAt: Date.now() + 120_000,
-    });
+    sessions.get
+      .mockResolvedValueOnce(session)
+      .mockResolvedValueOnce(session)
+      .mockResolvedValueOnce({
+        ...session,
+        accessToken: 'access-token-r1',
+        refreshToken: 'refresh-token-r1',
+        accessTokenExpiresAt: Date.now() + 120_000,
+      });
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         access_token: 'access-token-r1',
@@ -375,12 +378,15 @@ describe('KeycloakAuthService', () => {
       accessToken: 'access-token-r1',
       refreshToken: 'refresh-token-r1',
     };
-    sessions.get.mockResolvedValueOnce(callerSession).mockResolvedValueOnce(canonicalSession).mockResolvedValueOnce({
-      ...canonicalSession,
-      accessToken: 'access-token-r2',
-      refreshToken: 'refresh-token-r2',
-      accessTokenExpiresAt: Date.now() + 120_000,
-    });
+    sessions.get
+      .mockResolvedValueOnce(callerSession)
+      .mockResolvedValueOnce(canonicalSession)
+      .mockResolvedValueOnce({
+        ...canonicalSession,
+        accessToken: 'access-token-r2',
+        refreshToken: 'refresh-token-r2',
+        accessTokenExpiresAt: Date.now() + 120_000,
+      });
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         access_token: 'access-token-r2',

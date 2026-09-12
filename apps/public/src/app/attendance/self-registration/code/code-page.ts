@@ -228,10 +228,12 @@ export class OnlineAttendanceCodeComponent {
       switchMap(({ preserveStateOnError }) => {
         const request = this.api.listPendingEvents().pipe(
           take(1),
-          map((items): AttendanceCodeStateEmission => ({
-            state: this.stateFor(items),
-            preserveStateOnError: false,
-          })),
+          map(
+            (items): AttendanceCodeStateEmission => ({
+              state: this.stateFor(items),
+              preserveStateOnError: false,
+            }),
+          ),
           catchError((error: unknown) =>
             of({
               state: {

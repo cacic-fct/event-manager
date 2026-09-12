@@ -222,70 +222,73 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it.each([true, false])('allows eventless registration with sports permission %s and skips automatic events', async (includesSportsRegistration) => {
-    const harness = createHarness();
-    const majorEvent = majorEventRecord({
-      isPaymentRequired: true,
-      majorEventPrices: [
-        {
-          id: 'price-1',
-          type: 'TIERED',
-          tiers: [
-            {
-              id: 'tier-sports',
-              name: 'Somente torneio',
-              value: 5000,
-              includesSportsRegistration,
-              includesEventRegistration: false,
-            },
-          ],
-        },
-      ],
-    });
-    const updatedSubscription = {
-      ...subscriptionRecord(majorEvent),
-      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
-      amountPaid: 5000,
-      paymentTier: 'Somente torneio',
-    };
-    const tx = createUpsertTransaction(majorEvent, eventRecord('auto-event'), updatedSubscription);
-    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
-    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
-    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
-    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
-      amountPaid: 5000,
-      paymentTier: 'Somente torneio',
-    });
-    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
-      operation(tx),
-    );
-    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
-
-    await expect(
-      harness.resolver.upsertCurrentUserMajorEventSubscription(
-        { majorEventId: 'major-1', selectedEventIds: [], paymentTier: 'Somente torneio' },
-        { req: {} } as never,
-      ),
-    ).resolves.toEqual(
-      expect.objectContaining({
+  it.each([true, false])(
+    'allows eventless registration with sports permission %s and skips automatic events',
+    async (includesSportsRegistration) => {
+      const harness = createHarness();
+      const majorEvent = majorEventRecord({
+        isPaymentRequired: true,
+        majorEventPrices: [
+          {
+            id: 'price-1',
+            type: 'TIERED',
+            tiers: [
+              {
+                id: 'tier-sports',
+                name: 'Somente torneio',
+                value: 5000,
+                includesSportsRegistration,
+                includesEventRegistration: false,
+              },
+            ],
+          },
+        ],
+      });
+      const updatedSubscription = {
+        ...subscriptionRecord(majorEvent),
+        subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+        amountPaid: 5000,
         paymentTier: 'Somente torneio',
-        selectedEvents: [],
-      }),
-    );
+      };
+      const tx = createUpsertTransaction(majorEvent, eventRecord('auto-event'), updatedSubscription);
+      harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+      harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+      harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+      harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+        amountPaid: 5000,
+        paymentTier: 'Somente torneio',
+      });
+      harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+        operation(tx),
+      );
+      harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
 
-    expect(harness.prisma.event.findMany).not.toHaveBeenCalled();
-    expect(tx.event.findMany).not.toHaveBeenCalled();
-    expect(harness.majorEventSubscriptions.ensureMajorEventEventLimits).not.toHaveBeenCalled();
-    expect(harness.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts).not.toHaveBeenCalled();
-    expect(harness.majorEventSubscriptions.ensureEventGroupsAreFullySelected).not.toHaveBeenCalled();
-    expect(harness.eventForms.submitSubscriptionFlowResponses).toHaveBeenCalledWith(
-      tx,
-      'person-1',
-      undefined,
-      expect.objectContaining({ selectedEventIds: new Set() }),
-      harness.user,
-    );
-  });
+      await expect(
+        harness.resolver.upsertCurrentUserMajorEventSubscription(
+          { majorEventId: 'major-1', selectedEventIds: [], paymentTier: 'Somente torneio' },
+          { req: {} } as never,
+        ),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          paymentTier: 'Somente torneio',
+          selectedEvents: [],
+        }),
+      );
+
+      expect(harness.prisma.event.findMany).not.toHaveBeenCalled();
+      expect(tx.event.findMany).not.toHaveBeenCalled();
+      expect(harness.majorEventSubscriptions.ensureMajorEventEventLimits).not.toHaveBeenCalled();
+      expect(harness.majorEventSubscriptions.ensureMajorEventScheduleHasNoConflicts).not.toHaveBeenCalled();
+      expect(harness.majorEventSubscriptions.ensureEventGroupsAreFullySelected).not.toHaveBeenCalled();
+      expect(harness.eventForms.submitSubscriptionFlowResponses).toHaveBeenCalledWith(
+        tx,
+        'person-1',
+        undefined,
+        expect.objectContaining({ selectedEventIds: new Set() }),
+        harness.user,
+      );
+    },
+  );
 
   it('confirms a zero-valued tier and passes its authoritative amount to status resolution', async () => {
     const harness = createHarness();
@@ -331,11 +334,13 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
         { majorEventId: 'major-1', selectedEventIds: [], paymentTier: 'Participação' },
         { req: {} } as never,
       ),
-    ).resolves.toEqual(expect.objectContaining({
-      subscriptionStatus: SubscriptionStatus.CONFIRMED,
-      amountPaid: 0,
-      paymentTier: 'Participação',
-    }));
+    ).resolves.toEqual(
+      expect.objectContaining({
+        subscriptionStatus: SubscriptionStatus.CONFIRMED,
+        amountPaid: 0,
+        paymentTier: 'Participação',
+      }),
+    );
 
     expect(harness.majorEventSubscriptions.resolveNextSubscriptionStatus).toHaveBeenCalledWith(true, 0, undefined);
     expect(tx.majorEventSubscription.create).toHaveBeenCalledWith({
@@ -477,28 +482,39 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     const majorEvent = majorEventRecord({ requiresImageLicenseAgreement: true });
     const requestedEvent = eventRecord('requested-event');
     const accepted = subscriptionRecord(majorEvent, {
-      subscriptionStatus: SubscriptionStatus.CONFIRMED, imageLicenseAgreementAccepted: true,
-      selectedEvents: [{ id: 'original-selection' }], sportsTournamentParticipants: [],
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      imageLicenseAgreementAccepted: true,
+      selectedEvents: [{ id: 'original-selection' }],
+      sportsTournamentParticipants: [],
     });
     const tx = createUpsertTransaction(majorEvent, requestedEvent, accepted);
     tx.majorEventSubscription.findFirst.mockReset().mockResolvedValue(accepted);
     tx.majorEventSubscription.update.mockResolvedValue(accepted);
     harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
     harness.prisma.event.findMany.mockResolvedValueOnce([requestedEvent]).mockResolvedValueOnce([]);
-    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) => operation(tx));
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
     const canonical = { selectedEvents: [{ id: 'original-event' }], notSubscribedEvents: [{ id: 'waitlisted-event' }] };
     harness.majorEventSubscriptions.getMajorEventSubscriptionEvents.mockResolvedValue(canonical);
 
-    const result = await harness.resolver.upsertCurrentUserMajorEventSubscription({
-      majorEventId: 'major-1', selectedEventIds: ['requested-event'], imageLicenseAgreementAccepted: true,
-    }, { req: {} } as never);
+    const result = await harness.resolver.upsertCurrentUserMajorEventSubscription(
+      {
+        majorEventId: 'major-1',
+        selectedEventIds: ['requested-event'],
+        imageLicenseAgreementAccepted: true,
+      },
+      { req: {} } as never,
+    );
 
     expect(result).toEqual(expect.objectContaining(canonical));
     expect(tx.majorEventSubscriptionEventSelection.createMany).not.toHaveBeenCalled();
     expect(tx.majorEventSubscriptionEventSelection.updateMany).not.toHaveBeenCalled();
-    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: { imageLicenseAgreementAccepted: true },
-    }));
+    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { imageLicenseAgreementAccepted: true },
+      }),
+    );
   });
 
   it('maps a successful self-service upsert, records the actor, and emits form deltas', async () => {

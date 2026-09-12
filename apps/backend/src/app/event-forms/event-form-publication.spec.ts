@@ -146,7 +146,9 @@ describe('event form publication and service support helpers', () => {
     const transactionState = { eventForm };
     const prisma = {
       eventForm,
-      $transaction: jest.fn(async (callback: (transaction: typeof transactionState) => unknown) => callback(transactionState)),
+      $transaction: jest.fn(async (callback: (transaction: typeof transactionState) => unknown) =>
+        callback(transactionState),
+      ),
     };
     const realtime = createRealtimeMock();
     const service = new EventFormPublicationWorkflowService(

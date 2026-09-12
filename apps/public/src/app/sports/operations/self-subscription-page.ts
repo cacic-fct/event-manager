@@ -25,14 +25,9 @@ import {
   tap,
 } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import type {
-  SportsOperationsApplicationInvalidation,
-} from './sports-operations-realtime.service';
+import type { SportsOperationsApplicationInvalidation } from './sports-operations-realtime.service';
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
-import {
-  CurrentUserSportsPlayerApplication,
-  CurrentUserTournamentOperations,
-} from './sports-operations.types';
+import { CurrentUserSportsPlayerApplication, CurrentUserTournamentOperations } from './sports-operations.types';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
@@ -205,7 +200,9 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
       : undefined;
     const nextIsReadOnly =
       isReadOnlyApplication(application) ||
-      Boolean(previousApplication && (!matchingPreviousApplication || !isEditableApplication(matchingPreviousApplication)));
+      Boolean(
+        previousApplication && (!matchingPreviousApplication || !isEditableApplication(matchingPreviousApplication)),
+      );
 
     this.previousApplication.set(
       applications.find((item) =>
@@ -293,9 +290,7 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
     imageLicenseAgreement.setValue(data.imageLicenseAgreementAccepted || imageLicenseAgreement.value, {
       emitEvent: false,
     });
-    imageLicenseAgreement.setValidators(
-      data.tournament.requiresImageLicenseAgreement ? Validators.requiredTrue : [],
-    );
+    imageLicenseAgreement.setValidators(data.tournament.requiresImageLicenseAgreement ? Validators.requiredTrue : []);
     imageLicenseAgreement.updateValueAndValidity();
     const availableCategoryIds = new Set(data.tournament.categories.map((category) => category.id));
     this.selectedCategories.update((current) => {
@@ -329,11 +324,9 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
             return;
           }
           this.realtimeRecoveryAttempted = true;
-          this.snackbar.open(
-            'A conexão em tempo real foi interrompida. Atualizando sua inscrição…',
-            'Fechar',
-            { duration: 5000 },
-          );
+          this.snackbar.open('A conexão em tempo real foi interrompida. Atualizando sua inscrição…', 'Fechar', {
+            duration: 5000,
+          });
           this.recoverAfterRealtimeFailure();
         },
       });
@@ -395,10 +388,7 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
         if (applicationRequestId === this.applicationRequestId) {
           this.applyApplications(applications, preserveDraft);
         }
-        if (
-          tournamentRequestId === this.tournamentRequestId &&
-          requestedTeamId === this.currentRequestedTeamId()
-        ) {
+        if (tournamentRequestId === this.tournamentRequestId && requestedTeamId === this.currentRequestedTeamId()) {
           this.applyTournamentData(tournament, preserveDraft);
         }
       }),
@@ -415,11 +405,9 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
   }
 
   private showRealtimeRefreshError(): void {
-    this.snackbar.open(
-      'Não foi possível atualizar sua inscrição. Os últimos dados continuam disponíveis.',
-      'Fechar',
-      { duration: 6000 },
-    );
+    this.snackbar.open('Não foi possível atualizar sua inscrição. Os últimos dados continuam disponíveis.', 'Fechar', {
+      duration: 6000,
+    });
   }
 
   private setLoadError(error: unknown): void {

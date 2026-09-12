@@ -136,9 +136,13 @@ describe('EventsService', () => {
   it('saves the selected regular attendance tiers and clears them when changing major events', async () => {
     const majorEvent = createAdminMajorEvent({
       id: 'major-event-1',
-      majorEventPrices: [{ id: 'price', type: 'TIERED', tiers: [
-        { id: 'kit-tier', name: 'Com kit', value: 5000, includesSportsRegistration: false },
-      ] }],
+      majorEventPrices: [
+        {
+          id: 'price',
+          type: 'TIERED',
+          tiers: [{ id: 'kit-tier', name: 'Com kit', value: 5000, includesSportsRegistration: false }],
+        },
+      ],
     });
     majorEventApi.getMajorEvent.mockReturnValue(of(majorEvent));
     service.assignMajorEventToEvent(majorEvent);

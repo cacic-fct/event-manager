@@ -280,7 +280,9 @@ describe('MoreInfo', () => {
     organizerRequest?.flush({ data: { currentUserOrganizerInfo: null } });
     publicEventRequest?.flush({ data: { publicEvent: null } });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const formsRequest = httpTesting.match((request) => String(request.body.query).includes('CurrentUserEventForms'))[0];
+    const formsRequest = httpTesting.match((request) =>
+      String(request.body.query).includes('CurrentUserEventForms'),
+    )[0];
     formsRequest?.flush({ data: { currentUserEventForms: [] } });
     await fixture.whenStable();
 

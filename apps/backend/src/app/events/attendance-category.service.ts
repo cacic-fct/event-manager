@@ -136,9 +136,10 @@ export class AttendanceCategoryService {
     }
 
     const currentAssessment = await this.assessAttendance(tx, attendance.personId, attendance.event);
-    const category = currentAssessment === AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
-      ? AttendanceCategory.REGULAR
-      : AttendanceCategory.NON_REGULAR;
+    const category =
+      currentAssessment === AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
+        ? AttendanceCategory.REGULAR
+        : AttendanceCategory.NON_REGULAR;
 
     await tx.eventAttendance.update({
       where: {
@@ -223,10 +224,7 @@ export class AttendanceCategoryService {
     await this.refreshAttendances(attendances, tx);
   }
 
-  private async refreshAttendances(
-    attendances: readonly AttendanceRefreshRow[],
-    tx: PrismaExecutor,
-  ): Promise<void> {
+  private async refreshAttendances(attendances: readonly AttendanceRefreshRow[], tx: PrismaExecutor): Promise<void> {
     if (attendances.length === 0) {
       return;
     }
@@ -300,9 +298,7 @@ export class AttendanceCategoryService {
       ),
     ];
     const tierIds = [
-      ...new Set(
-        attendances.flatMap((attendance) => attendance.event.regularAttendancePriceTierIds ?? []),
-      ),
+      ...new Set(attendances.flatMap((attendance) => attendance.event.regularAttendancePriceTierIds ?? [])),
     ];
     const majorEventIdFilter = majorEventIds.length === 1 ? majorEventIds[0] : { in: majorEventIds };
 

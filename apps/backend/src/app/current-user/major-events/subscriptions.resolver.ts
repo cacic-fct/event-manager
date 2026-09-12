@@ -942,12 +942,13 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     await this.eventForms.emitResultsDeltas(upsertResult.submittedFormIds);
     const subscription = upsertResult.subscription;
 
-    const persistedEvents = 'consentOnly' in upsertResult
-      ? await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(person.id, input.majorEventId)
-      : null;
-    const orderedEvents = persistedEvents?.selectedEvents ?? selectedEventIds.map((eventId) =>
-      this.mapper.mapPublicEvent(selectedEventsById.get(eventId) as EventRecord),
-    );
+    const persistedEvents =
+      'consentOnly' in upsertResult
+        ? await this.majorEventSubscriptions.getMajorEventSubscriptionEvents(person.id, input.majorEventId)
+        : null;
+    const orderedEvents =
+      persistedEvents?.selectedEvents ??
+      selectedEventIds.map((eventId) => this.mapper.mapPublicEvent(selectedEventsById.get(eventId) as EventRecord));
 
     return {
       id: subscription.id,

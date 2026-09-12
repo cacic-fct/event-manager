@@ -126,9 +126,7 @@ describe('MajorEvent', () => {
     const availability = vi
       .fn()
       .mockReturnValueOnce(of([]))
-      .mockReturnValueOnce(
-        of([{ targetType: 'MAJOR_EVENT', targetId: 'major-live', drawCount: 1 }]),
-      )
+      .mockReturnValueOnce(of([{ targetType: 'MAJOR_EVENT', targetId: 'major-live', drawCount: 1 }]))
       .mockReturnValueOnce(throwError(() => new Error('Falha transitória')))
       .mockReturnValueOnce(of([]));
     const { component, fixture } = await createMajorEventFixture({

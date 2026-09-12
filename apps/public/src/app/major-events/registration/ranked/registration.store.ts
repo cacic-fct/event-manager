@@ -84,9 +84,12 @@ export class RankedSubscriptionStore {
   readonly confirmedSportsOnlySubscription = computed(() => {
     const subscription = this.currentUserSubscription();
     const majorEvent = this.data()?.majorEvent;
-    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0
-      && Boolean(majorEvent?.sportsTournament)
-      && (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true);
+    return (
+      subscription?.subscriptionStatus === 'CONFIRMED' &&
+      subscription.selectedEvents?.length === 0 &&
+      Boolean(majorEvent?.sportsTournament) &&
+      (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true)
+    );
   });
   readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
   readonly rankingItems = signal<RankedItem[]>([]);
@@ -142,11 +145,10 @@ export class RankedSubscriptionStore {
         .map((event) => event.id),
     );
   });
-  readonly effectiveSelectedEventIds = computed(
-    () =>
-      this.decisions().includesEvents
-        ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
-        : new Set<string>(),
+  readonly effectiveSelectedEventIds = computed(() =>
+    this.decisions().includesEvents
+      ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
+      : new Set<string>(),
   );
   readonly selectedEvents = computed(() =>
     this.sortedEvents().filter((event) => this.effectiveSelectedEventIds().has(event.id)),

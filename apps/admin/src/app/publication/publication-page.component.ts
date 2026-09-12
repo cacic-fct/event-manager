@@ -450,9 +450,7 @@ export class PublicationPageComponent {
 
     const expanded = normalizedQuery ? new Set<string>() : new Set(this.expandedNodeKeys());
     const visit = (node: PublicationNode, ancestors: PublicationNode[]): void => {
-      const matchesQuery = normalizedQuery
-        ? node.label.toLocaleLowerCase('pt-BR').includes(normalizedQuery)
-        : false;
+      const matchesQuery = normalizedQuery ? node.label.toLocaleLowerCase('pt-BR').includes(normalizedQuery) : false;
       const matchesRequested = requested?.id === node.id && requested.targetType === node.targetType;
       if (matchesQuery || matchesRequested) {
         ancestors.forEach((ancestor) => expanded.add(this.nodeKey(ancestor)));

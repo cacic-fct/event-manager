@@ -147,9 +147,9 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   it('resolves the next subscription status from payment rules', () => {
     expect(service.resolveNextSubscriptionStatus(false, null)).toBe(SubscriptionStatus.CONFIRMED);
     expect(service.resolveNextSubscriptionStatus(true, 0)).toBe(SubscriptionStatus.CONFIRMED);
-    expect(
-      service.resolveNextSubscriptionStatus(true, 0, SubscriptionStatus.WAITING_RECEIPT_UPLOAD),
-    ).toBe(SubscriptionStatus.CONFIRMED);
+    expect(service.resolveNextSubscriptionStatus(true, 0, SubscriptionStatus.WAITING_RECEIPT_UPLOAD)).toBe(
+      SubscriptionStatus.CONFIRMED,
+    );
     expect(service.resolveNextSubscriptionStatus(true, 2500)).toBe(SubscriptionStatus.WAITING_RECEIPT_UPLOAD);
     expect(service.resolveNextSubscriptionStatus(true, 2500, SubscriptionStatus.CANCELED)).toBe(
       SubscriptionStatus.WAITING_RECEIPT_UPLOAD,

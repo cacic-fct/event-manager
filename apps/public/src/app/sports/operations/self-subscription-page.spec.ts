@@ -9,9 +9,7 @@ import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
-import type {
-  CurrentUserSportsPlayerApplication,
-} from './sports-operations.types';
+import type { CurrentUserSportsPlayerApplication } from './sports-operations.types';
 import type { SportsOperationsApplicationInvalidation } from './sports-operations-realtime.service';
 
 describe('SportsSelfSubscriptionPage', () => {
@@ -366,9 +364,9 @@ describe('SportsSelfSubscriptionPage', () => {
       reviewedAt: null,
       reviewMessage: null,
     };
-    currentUserApplications.mockReturnValueOnce(of([application])).mockReturnValueOnce(
-      of([{ ...application, paymentStatus: 'PAID' }]),
-    );
+    currentUserApplications
+      .mockReturnValueOnce(of([application]))
+      .mockReturnValueOnce(of([{ ...application, paymentStatus: 'PAID' }]));
     tournament.mockReturnValue(of(data));
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
@@ -525,9 +523,9 @@ describe('SportsSelfSubscriptionPage', () => {
       imageLicenseAgreementAccepted: true,
       reviewMessage: null,
     };
-    currentUserApplications.mockReturnValueOnce(of([application])).mockReturnValueOnce(
-      throwError(() => new Error('offline')),
-    );
+    currentUserApplications
+      .mockReturnValueOnce(of([application]))
+      .mockReturnValueOnce(throwError(() => new Error('offline')));
     tournament.mockReturnValue(of(data));
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();

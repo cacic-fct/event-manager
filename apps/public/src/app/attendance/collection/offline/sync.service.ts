@@ -119,8 +119,9 @@ export class AttendanceOfflineSyncService {
     const successfulResults: OfflineAttendanceCommitResult[] = [];
     const failedItems: Array<{ item: OfflineAttendanceQueueItem; message: string }> = [];
     while (this.isCurrentRun(userId, generation) && this.network.isOnline()) {
-      const items = (await this.queue.listUploadable(userId, 80, attemptedClientIds))
-        .filter((item) => !attemptedClientIds.has(item.clientId));
+      const items = (await this.queue.listUploadable(userId, 80, attemptedClientIds)).filter(
+        (item) => !attemptedClientIds.has(item.clientId),
+      );
       if (!items.length || !this.isCurrentRun(userId, generation) || !this.network.isOnline()) {
         break;
       }

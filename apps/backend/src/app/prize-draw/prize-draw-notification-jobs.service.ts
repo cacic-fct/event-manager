@@ -241,9 +241,12 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
           return this.enqueuePresentation(spin.id, { delayMs: Math.max(0, releaseAt - Date.now()) });
         }),
       );
-      this.reportReconciliationFailures('presentation', unpublished.map((spin) => spin.id), results);
-      cursor =
-        unpublished.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? unpublished.at(-1)?.id : undefined;
+      this.reportReconciliationFailures(
+        'presentation',
+        unpublished.map((spin) => spin.id),
+        results,
+      );
+      cursor = unpublished.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? unpublished.at(-1)?.id : undefined;
     } while (cursor);
   }
 
@@ -263,7 +266,11 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
       const results = await Promise.allSettled(pending.map((spin) => this.enqueueWinner(spin.id, { delayMs: 0 })));
-      this.reportReconciliationFailures('winner notification', pending.map((spin) => spin.id), results);
+      this.reportReconciliationFailures(
+        'winner notification',
+        pending.map((spin) => spin.id),
+        results,
+      );
       cursor = pending.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? pending.at(-1)?.id : undefined;
     } while (cursor);
   }
@@ -285,7 +292,11 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       });
       const results = await Promise.allSettled(undone.map((spin) => this.enqueueCleanup(spin.id, 0)));
-      this.reportReconciliationFailures('undone notification cleanup', undone.map((spin) => spin.id), results);
+      this.reportReconciliationFailures(
+        'undone notification cleanup',
+        undone.map((spin) => spin.id),
+        results,
+      );
       cursor = undone.length === PRIZE_DRAW_RECONCILIATION_PAGE_SIZE ? undone.at(-1)?.id : undefined;
     } while (cursor);
   }

@@ -125,7 +125,7 @@ describe('CertificatesService', () => {
         }),
       ),
     };
-    majorEventsApi = { getMajorEvent: vi.fn(() => throwError(() => new Error("Forbidden"))) };
+    majorEventsApi = { getMajorEvent: vi.fn(() => throwError(() => new Error('Forbidden'))) };
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
     };
@@ -212,7 +212,9 @@ describe('CertificatesService', () => {
   });
 
   it('restores tier selections and clears them when saving non-participant certificates', async () => {
-    service.selectCertificateConfig(createAdminCertificateConfig({ paymentTiers: ['Aluno', 'Professor'] }, certificateTemplate));
+    service.selectCertificateConfig(
+      createAdminCertificateConfig({ paymentTiers: ['Aluno', 'Professor'] }, certificateTemplate),
+    );
     expect(service.certificateConfigForm.paymentTiers().value()).toEqual(['Aluno', 'Professor']);
     expect(service.showPaymentTiers()).toBe(true);
     service.onCertificateIssuedToChanged('LECTURER_PALESTRA');

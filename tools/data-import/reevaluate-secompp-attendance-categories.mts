@@ -418,7 +418,11 @@ export async function selectChangedAttendances(
   return existing.filter((row) => {
     const currentCategory = currentCategoryByPair.get(`${row.personId}\u0000${row.eventId}`);
     const desired = attendanceState(row.category);
-    if (currentCategory?.category === desired.category && currentCategory.currentAssessment === desired.currentAssessment) return false;
+    if (
+      currentCategory?.category === desired.category &&
+      currentCategory.currentAssessment === desired.currentAssessment
+    )
+      return false;
     if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
     return true;
   });

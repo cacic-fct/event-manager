@@ -522,10 +522,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       [match.homeRegistrationId, match.awayRegistrationId].find((candidate): candidate is string =>
         Boolean(candidate && registrationIds.has(candidate)),
       ) ?? '';
-    this.lineupForm.patchValue(
-      { matchId: match.id, registrationId, expectedRevision: null },
-      { emitEvent: false },
-    );
+    this.lineupForm.patchValue({ matchId: match.id, registrationId, expectedRevision: null }, { emitEvent: false });
   }
 
   private watchSelectedMatch(matchId: string): void {
@@ -559,11 +556,9 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
           this.realtimeRecoveryAttempted = true;
           this.realtimeRecoveryInFlight = true;
           this.realtimeRecoveryMatchId = matchId;
-          this.snackbar.open(
-            'A conexão da partida foi interrompida. Atualizando os dados…',
-            'Fechar',
-            { duration: 5000 },
-          );
+          this.snackbar.open('A conexão da partida foi interrompida. Atualizando os dados…', 'Fechar', {
+            duration: 5000,
+          });
           this.load({ preserveDrafts: true });
         },
       });

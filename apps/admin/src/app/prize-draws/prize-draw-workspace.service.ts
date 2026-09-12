@@ -105,9 +105,7 @@ export class PrizeDrawWorkspaceService {
       query.addEventListener('change', listener);
       this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
     }
-    this.liveSubscription = this.realtime
-      .watchWorkspace()
-      .subscribe(() => void this.refreshFromRealtime());
+    this.liveSubscription = this.realtime.watchWorkspace().subscribe(() => void this.refreshFromRealtime());
     this.destroyRef.onDestroy(() => this.liveSubscription?.unsubscribe());
   }
 

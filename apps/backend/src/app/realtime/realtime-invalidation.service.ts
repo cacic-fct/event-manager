@@ -49,11 +49,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
     let subscriber: Redis | undefined;
     try {
       subscriber = connection.duplicate();
-      if (
-        !subscriber ||
-        typeof subscriber.on !== 'function' ||
-        typeof subscriber.subscribe !== 'function'
-      ) {
+      if (!subscriber || typeof subscriber.on !== 'function' || typeof subscriber.subscribe !== 'function') {
         this.logger.warn('Realtime invalidation Redis subscriber is unavailable; local delivery will be used.');
         if (subscriber) {
           await this.disconnectSubscriber(subscriber, false);

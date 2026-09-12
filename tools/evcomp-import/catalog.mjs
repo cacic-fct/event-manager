@@ -8,6 +8,13 @@ const entityTypes = [
   ['priceTiers', 'priceTier'],
 ];
 
+/**
+ * Prepare the EvComp event catalog for import into fct-app.
+ *
+ * The caller owns the transaction. In apply mode this function inserts rows and
+ * provenance records into the transaction already open on `target`; in dry-run
+ * mode it only reads provenance/target state and allocates provisional UUIDs.
+ */
 export async function prepareCatalog(
   target,
   snapshot,

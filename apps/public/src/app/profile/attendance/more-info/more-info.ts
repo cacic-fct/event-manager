@@ -26,7 +26,21 @@ import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
-import { EMPTY, Observable, auditTime, catchError, defer, forkJoin, from, map, of, retry, startWith, switchMap, timer } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  auditTime,
+  catchError,
+  defer,
+  forkJoin,
+  from,
+  map,
+  of,
+  retry,
+  startWith,
+  switchMap,
+  timer,
+} from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
@@ -103,8 +117,7 @@ export class MoreInfo {
     const liveAvailability = this.prizeDrawAvailability();
     return {
       ...state,
-      hasPrizeDraws:
-        liveAvailability?.snapshot === state ? liveAvailability.value : state.hasPrizeDraws,
+      hasPrizeDraws: liveAvailability?.snapshot === state ? liveAvailability.value : state.hasPrizeDraws,
     };
   });
   private readonly prizeDrawTargetType = computed<PrizeDrawTargetType | null>(() => {
@@ -133,26 +146,25 @@ export class MoreInfo {
 
     const target = { targetType, targetId };
     const invalidations = isPlatformBrowser(this.platformId)
-      ? defer(() => this.prizeDrawsApi.watch(target))
-          .pipe(
-            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
-            retry({
-              delay: (_, retryCount) =>
-                timer(
-                  Math.min(
-                    PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
-                    PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
-                  ),
+      ? defer(() => this.prizeDrawsApi.watch(target)).pipe(
+          auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+          retry({
+            delay: (_, retryCount) =>
+              timer(
+                Math.min(
+                  PRIZE_DRAW_RECONNECT_BASE_DELAY_MS * 2 ** Math.min(retryCount - 1, 5),
+                  PRIZE_DRAW_RECONNECT_MAX_DELAY_MS,
                 ),
-            }),
-          )
+              ),
+          }),
+        )
       : EMPTY;
     const subscription = invalidations
       .pipe(
         switchMap(() =>
-          this.prizeDrawsApi.availability(this.prizeDrawAvailabilityInput(target)).pipe(
-            catchError((): Observable<PublicPrizeDrawAvailability[]> => EMPTY),
-          ),
+          this.prizeDrawsApi
+            .availability(this.prizeDrawAvailabilityInput(target))
+            .pipe(catchError((): Observable<PublicPrizeDrawAvailability[]> => EMPTY)),
         ),
         takeUntilDestroyed(this.destroyRef),
       )

@@ -5,9 +5,7 @@ describe('sports representative merge relations', () => {
   it('moves a source-only representative to the target person without changing rights', async () => {
     const tx = createTransaction();
     const source = representative({ active: false, revokedAt: new Date(Date.now() - 1_000), revokedById: 'admin-1' });
-    tx.sportsTeamRepresentative.findMany
-      .mockResolvedValueOnce([source])
-      .mockResolvedValueOnce([]);
+    tx.sportsTeamRepresentative.findMany.mockResolvedValueOnce([source]).mockResolvedValueOnce([]);
 
     const result = await moveSportsTeamRepresentatives(tx as never, 'target-person', 'source-person');
 
@@ -34,9 +32,7 @@ describe('sports representative merge relations', () => {
     const tx = createTransaction();
     const source = representative();
     const target = representative({ id: 'target-representative', personId: 'target-person' });
-    tx.sportsTeamRepresentative.findMany
-      .mockResolvedValueOnce([source])
-      .mockResolvedValueOnce([target]);
+    tx.sportsTeamRepresentative.findMany.mockResolvedValueOnce([source]).mockResolvedValueOnce([target]);
 
     const result = await moveSportsTeamRepresentatives(tx as never, 'target-person', 'source-person', 'merge-actor');
 
@@ -62,17 +58,15 @@ describe('sports representative merge relations', () => {
 
   it('rejects an active source role when the target has a revoked role for the same team', async () => {
     const tx = createTransaction();
-    tx.sportsTeamRepresentative.findMany
-      .mockResolvedValueOnce([representative()])
-      .mockResolvedValueOnce([
-        representative({
-          id: 'target-representative',
-          personId: 'target-person',
-          active: false,
-          revokedAt: new Date(Date.now() - 1_000),
-          revokedById: 'admin-1',
-        }),
-      ]);
+    tx.sportsTeamRepresentative.findMany.mockResolvedValueOnce([representative()]).mockResolvedValueOnce([
+      representative({
+        id: 'target-representative',
+        personId: 'target-person',
+        active: false,
+        revokedAt: new Date(Date.now() - 1_000),
+        revokedById: 'admin-1',
+      }),
+    ]);
 
     await expect(moveSportsTeamRepresentatives(tx as never, 'target-person', 'source-person')).rejects.toBeInstanceOf(
       ConflictException,
@@ -89,12 +83,8 @@ describe('sports representative merge relations', () => {
       deletedAt: null,
     };
     const assignment = officialAssignment();
-    tx.sportsTournamentParticipant.findMany
-      .mockResolvedValueOnce([participant])
-      .mockResolvedValueOnce([]);
-    tx.sportsOfficialAssignment.findMany
-      .mockResolvedValueOnce([assignment])
-      .mockResolvedValueOnce([]);
+    tx.sportsTournamentParticipant.findMany.mockResolvedValueOnce([participant]).mockResolvedValueOnce([]);
+    tx.sportsOfficialAssignment.findMany.mockResolvedValueOnce([assignment]).mockResolvedValueOnce([]);
 
     const result = await moveSportsPersonRelations(tx as never, 'target-person', 'source-person');
 
@@ -113,7 +103,9 @@ describe('sports representative merge relations', () => {
   it('rejects a source participant that conflicts with an existing target participant', async () => {
     const tx = createTransaction();
     tx.sportsTournamentParticipant.findMany
-      .mockResolvedValueOnce([{ id: 'source-participant', tournamentId: 'tournament-1', personId: 'source-person', deletedAt: null }])
+      .mockResolvedValueOnce([
+        { id: 'source-participant', tournamentId: 'tournament-1', personId: 'source-person', deletedAt: null },
+      ])
       .mockResolvedValueOnce([{ tournamentId: 'tournament-1' }]);
 
     await expect(moveSportsPersonRelations(tx as never, 'target-person', 'source-person')).rejects.toBeInstanceOf(
@@ -124,17 +116,15 @@ describe('sports representative merge relations', () => {
 
   it('rejects an active source official assignment when the target scope is revoked', async () => {
     const tx = createTransaction();
-    tx.sportsOfficialAssignment.findMany
-      .mockResolvedValueOnce([officialAssignment()])
-      .mockResolvedValueOnce([
-        officialAssignment({
-          id: 'target-assignment',
-          personId: 'target-person',
-          active: false,
-          revokedAt: new Date(Date.now() - 1_000),
-          revokedById: 'admin-1',
-        }),
-      ]);
+    tx.sportsOfficialAssignment.findMany.mockResolvedValueOnce([officialAssignment()]).mockResolvedValueOnce([
+      officialAssignment({
+        id: 'target-assignment',
+        personId: 'target-person',
+        active: false,
+        revokedAt: new Date(Date.now() - 1_000),
+        revokedById: 'admin-1',
+      }),
+    ]);
 
     await expect(moveSportsPersonRelations(tx as never, 'target-person', 'source-person')).rejects.toBeInstanceOf(
       ConflictException,

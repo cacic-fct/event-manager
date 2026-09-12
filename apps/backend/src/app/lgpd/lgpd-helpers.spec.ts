@@ -100,37 +100,47 @@ describe('LGPD helper modules', () => {
     ];
     const prisma = {
       user: {
-        findMany: jest.fn(async ({ where }: { where: { id?: { in: string[] }; OR?: Array<{ email: { equals: string } }> } }) => {
-          if (where.id?.in) {
-            return users.filter((user) => where.id?.in.includes(user.id));
-          }
-          return users.filter((user) => where.OR?.some((condition) => user.email === condition.email.equals));
-        }),
+        findMany: jest.fn(
+          async ({ where }: { where: { id?: { in: string[] }; OR?: Array<{ email: { equals: string } }> } }) => {
+            if (where.id?.in) {
+              return users.filter((user) => where.id?.in.includes(user.id));
+            }
+            return users.filter((user) => where.OR?.some((condition) => user.email === condition.email.equals));
+          },
+        ),
       },
       accountUserMerge: { findMany: jest.fn().mockResolvedValue([]) },
       externalAccountMergeOperation: { findMany: jest.fn().mockResolvedValue([]) },
       people: {
-        findMany: jest.fn(async ({ where, include }: { where: { id?: { in: string[] }; OR?: Array<Record<string, unknown>> }; include?: unknown }) => {
-          if (include) {
-            return people
-              .filter((person) => where.id?.in.includes(person.id))
-              .map((person) => ({ ...person, user: null, mergedFrom: [], mergedInto: null }));
-          }
-          return people.filter((person) =>
-            where.OR?.some((condition) => {
-              const email = condition.email as { equals?: string } | undefined;
-              const secondaryEmails = condition.secondaryEmails as { has?: string } | undefined;
-              const userId = condition.userId as { in?: string[] } | undefined;
-              const externalRef = condition.externalRef as { in?: string[] } | undefined;
-              return (
-                (email?.equals && person.email === email.equals) ||
-                (secondaryEmails?.has && person.secondaryEmails.includes(secondaryEmails.has)) ||
-                (userId?.in && person.userId && userId.in.includes(person.userId)) ||
-                (externalRef?.in && person.externalRef && externalRef.in.includes(person.externalRef))
-              );
-            }),
-          );
-        }),
+        findMany: jest.fn(
+          async ({
+            where,
+            include,
+          }: {
+            where: { id?: { in: string[] }; OR?: Array<Record<string, unknown>> };
+            include?: unknown;
+          }) => {
+            if (include) {
+              return people
+                .filter((person) => where.id?.in.includes(person.id))
+                .map((person) => ({ ...person, user: null, mergedFrom: [], mergedInto: null }));
+            }
+            return people.filter((person) =>
+              where.OR?.some((condition) => {
+                const email = condition.email as { equals?: string } | undefined;
+                const secondaryEmails = condition.secondaryEmails as { has?: string } | undefined;
+                const userId = condition.userId as { in?: string[] } | undefined;
+                const externalRef = condition.externalRef as { in?: string[] } | undefined;
+                return (
+                  (email?.equals && person.email === email.equals) ||
+                  (secondaryEmails?.has && person.secondaryEmails.includes(secondaryEmails.has)) ||
+                  (userId?.in && person.userId && userId.in.includes(person.userId)) ||
+                  (externalRef?.in && person.externalRef && externalRef.in.includes(person.externalRef))
+                );
+              }),
+            );
+          },
+        ),
       },
     };
 

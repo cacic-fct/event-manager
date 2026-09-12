@@ -66,9 +66,12 @@ export class CertificateEligibilityService {
       return recipients;
     }
 
-    const majorEventId = config.scope === CertificateScope.MAJOR_EVENT
-      ? config.majorEventId
-      : config.scope === CertificateScope.EVENT ? config.event?.majorEventId : null;
+    const majorEventId =
+      config.scope === CertificateScope.MAJOR_EVENT
+        ? config.majorEventId
+        : config.scope === CertificateScope.EVENT
+          ? config.event?.majorEventId
+          : null;
     if (!majorEventId) return [];
 
     const subscriptions = await this.prisma.majorEventSubscription.findMany({

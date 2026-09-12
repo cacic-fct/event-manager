@@ -105,9 +105,7 @@ describe('RealtimeInvalidationController', () => {
     };
     const controller = createController({ workspaceEvent: event, hasWorkspaceAccess: true });
 
-    await expect(
-      firstValueFrom(controller.streamAdminWorkspace({ user: {} } as never, undefined)),
-    ).resolves.toEqual({
+    await expect(firstValueFrom(controller.streamAdminWorkspace({ user: {} } as never, undefined))).resolves.toEqual({
       id: 'cursor-1',
       data: { type: 'ADMIN_WORKSPACE_INVALIDATED', occurredAt: expect.any(String) },
     });
@@ -212,7 +210,13 @@ describe('RealtimeInvalidationController', () => {
 
   it.each([
     ['event', 'event-1', 'streamEventSubscriptions', 'eventSubscriptions', 'admin-event-subscriptions'],
-    ['major event', 'major-1', 'streamMajorEventSubscriptions', 'majorEventSubscriptions', 'admin-major-event-subscriptions'],
+    [
+      'major event',
+      'major-1',
+      'streamMajorEventSubscriptions',
+      'majorEventSubscriptions',
+      'admin-major-event-subscriptions',
+    ],
   ] as const)(
     'authorizes and scopes the %s subscription stream before polling',
     async (_label, id, method, fingerprintMethod, scopeType) => {
@@ -238,7 +242,9 @@ function createController(options: { workspaceEvent?: MessageEvent; hasWorkspace
   return createControllerWithDependencies(options).controller;
 }
 
-function createControllerWithDependencies(options: { workspaceEvent?: MessageEvent; hasWorkspaceAccess?: boolean } = {}) {
+function createControllerWithDependencies(
+  options: { workspaceEvent?: MessageEvent; hasWorkspaceAccess?: boolean } = {},
+) {
   const invalidations = {
     scope: jest.fn((channel: string, ...parts: string[]) => [channel, ...parts].join(':')),
     watch: jest.fn(() => of(options.workspaceEvent ?? { data: { type: 'heartbeat', timestamp: 1 } })),

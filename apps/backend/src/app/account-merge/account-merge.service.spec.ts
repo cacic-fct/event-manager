@@ -370,12 +370,20 @@ describe('AccountMergeService', () => {
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: [expect.objectContaining({
-          personId: 'target-person', eventId: 'event-1',
-          status: 'ABSENT', category: 'NON_REGULAR', currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
-          committedById: 'committer-1', createdByMethod: 'MANUAL_INPUT',
-          collectedLatitude: -22.1, collectedLongitude: -51.4, collectedAccuracyMeters: 8,
-        })],
+        data: [
+          expect.objectContaining({
+            personId: 'target-person',
+            eventId: 'event-1',
+            status: 'ABSENT',
+            category: 'NON_REGULAR',
+            currentAssessment: 'PRICE_TIER_NOT_ELIGIBLE',
+            committedById: 'committer-1',
+            createdByMethod: 'MANUAL_INPUT',
+            collectedLatitude: -22.1,
+            collectedLongitude: -51.4,
+            collectedAccuracyMeters: 8,
+          }),
+        ],
         skipDuplicates: true,
       }),
     );
@@ -597,9 +605,7 @@ describe('AccountMergeService', () => {
       receiptValidatedBy: null,
       subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
     };
-    tx.majorEventSubscription.findMany
-      .mockResolvedValueOnce([source])
-      .mockResolvedValueOnce([target]);
+    tx.majorEventSubscription.findMany.mockResolvedValueOnce([source]).mockResolvedValueOnce([target]);
 
     await service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person');
 

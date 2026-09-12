@@ -144,12 +144,17 @@ export const LongTemplateNamesMobile: Story = {
 };
 
 export const ParticipantPriceTiers: Story = {
-  decorators: [applicationConfig({
-    providers: [
-      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ targetType: 'major-event', targetId: 'major-1' })) } },
-      provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
-    ],
-  })],
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ targetType: 'major-event', targetId: 'major-1' })) },
+        },
+        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+      ],
+    }),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const tiers = await canvas.findByRole('combobox', { name: 'Faixas de preço para emissão' });

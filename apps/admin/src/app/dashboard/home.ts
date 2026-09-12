@@ -23,7 +23,19 @@ import type {
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import type { AttendanceReviewEventSummary } from '@cacic-fct/event-manager-admin-contracts';
-import { Subscription, catchError, finalize, forkJoin, interval, map, merge, of, startWith, switchMap, tap } from 'rxjs';
+import {
+  Subscription,
+  catchError,
+  finalize,
+  forkJoin,
+  interval,
+  map,
+  merge,
+  of,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
@@ -163,9 +175,7 @@ export class Home implements OnInit, OnDestroy {
     );
     const liveRefresh = this.realtime.watchWorkspace();
     this.insightsSubscription = merge(fallbackRefresh, liveRefresh)
-      .pipe(
-        switchMap(() => this.loadDashboard()),
-      )
+      .pipe(switchMap(() => this.loadDashboard()))
       .subscribe();
   }
 

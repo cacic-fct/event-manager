@@ -11,38 +11,58 @@ describe('AttendanceCategoryService', () => {
 
   it.each([
     ['Kit completo', 'CONFIRMED', AttendanceCategory.REGULAR, AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET],
-    ['  KIT COMPLETO  ', 'CONFIRMED', AttendanceCategory.REGULAR, AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET],
+    [
+      '  KIT COMPLETO  ',
+      'CONFIRMED',
+      AttendanceCategory.REGULAR,
+      AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET,
+    ],
     ['Sem kit', 'CONFIRMED', AttendanceCategory.NON_REGULAR, AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE],
     [undefined, 'CONFIRMED', AttendanceCategory.NON_REGULAR, AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE],
     [undefined, undefined, AttendanceCategory.NON_REGULAR, AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE],
-    ['Kit completo', 'WAITING_RECEIPT_UPLOAD', AttendanceCategory.NON_REGULAR, AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT],
-  ])('classifies tier %s with status %s as %s without removing attendance', async (paymentTier, status, category, currentAssessment) => {
-    const tx = createTx({
-      event: {
-        id: 'kit-event',
-        allowSubscription: false,
-        majorEventId: 'major-event',
-        majorEvent: { isPaymentRequired: true },
-        regularAttendancePriceTierIds: ['kit-tier'],
-      },
-      hasEventSubscription: false,
-      paymentTier,
-      majorEventSubscriptionStatus: status,
-    });
+    [
+      'Kit completo',
+      'WAITING_RECEIPT_UPLOAD',
+      AttendanceCategory.NON_REGULAR,
+      AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT,
+    ],
+  ])(
+    'classifies tier %s with status %s as %s without removing attendance',
+    async (paymentTier, status, category, currentAssessment) => {
+      const tx = createTx({
+        event: {
+          id: 'kit-event',
+          allowSubscription: false,
+          majorEventId: 'major-event',
+          majorEvent: { isPaymentRequired: true },
+          regularAttendancePriceTierIds: ['kit-tier'],
+        },
+        hasEventSubscription: false,
+        paymentTier,
+        majorEventSubscriptionStatus: status,
+      });
 
-    await service.refreshForAttendance('person-1', 'kit-event', tx as never);
+      await service.refreshForAttendance('person-1', 'kit-event', tx as never);
 
-    expect(tx.eventAttendance.update).toHaveBeenCalledWith(expect.objectContaining({ data: { category, currentAssessment } }));
-    expect(tx.priceTier.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: { in: ['kit-tier'] }, price: { majorEventId: 'major-event' } },
-    }));
-  });
+      expect(tx.eventAttendance.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { category, currentAssessment } }),
+      );
+      expect(tx.priceTier.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['kit-tier'] }, price: { majorEventId: 'major-event' } },
+        }),
+      );
+    },
+  );
 
   it('reclassifies existing attendance when an event policy changes', async () => {
     const tx = createTx({
       event: {
-        id: 'event-1', allowSubscription: false, majorEventId: 'major-event',
-        majorEvent: { isPaymentRequired: false }, regularAttendancePriceTierIds: ['kit-tier'],
+        id: 'event-1',
+        allowSubscription: false,
+        majorEventId: 'major-event',
+        majorEvent: { isPaymentRequired: false },
+        regularAttendancePriceTierIds: ['kit-tier'],
       },
       hasEventSubscription: false,
       majorEventSubscriptionStatus: 'CONFIRMED',
@@ -50,9 +70,14 @@ describe('AttendanceCategoryService', () => {
       attendances: [{ eventId: 'event-1', personId: 'person-1' }],
     });
     await service.refreshForEvent('event-1', tx as never);
-    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
-      data: { category: AttendanceCategory.NON_REGULAR, currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE },
-    }));
+    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: {
+          category: AttendanceCategory.NON_REGULAR,
+          currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
+        },
+      }),
+    );
     tx.eventAttendance.findMany.mockResolvedValue([
       {
         personId: 'person-1',
@@ -67,9 +92,14 @@ describe('AttendanceCategoryService', () => {
       },
     ]);
     await service.refreshForEvent('event-1', tx as never);
-    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
-      data: { category: AttendanceCategory.REGULAR, currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET },
-    }));
+    expect(tx.eventAttendance.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: {
+          category: AttendanceCategory.REGULAR,
+          currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET,
+        },
+      }),
+    );
   });
 
   it('classifies a subscribed standalone event attendance as regular', async () => {
@@ -421,20 +451,24 @@ describe('AttendanceCategoryService', () => {
     await service.refreshForEventPersons(['event-1', 'event-2'], ['person-1', 'person-2'], tx as never);
 
     expect(tx.eventAttendance.updateMany).toHaveBeenCalledTimes(2);
-    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: {
-        category: AttendanceCategory.REGULAR,
-        currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET,
-      },
-      where: { OR: [{ personId: 'person-1', eventId: 'event-1' }] },
-    }));
-    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: {
-        category: AttendanceCategory.NON_REGULAR,
-        currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
-      },
-      where: { OR: [{ personId: 'person-2', eventId: 'event-2' }] },
-    }));
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          category: AttendanceCategory.REGULAR,
+          currentAssessment: AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET,
+        },
+        where: { OR: [{ personId: 'person-1', eventId: 'event-1' }] },
+      }),
+    );
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          category: AttendanceCategory.NON_REGULAR,
+          currentAssessment: AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
+        },
+        where: { OR: [{ personId: 'person-2', eventId: 'event-2' }] },
+      }),
+    );
   });
 });
 
@@ -477,9 +511,9 @@ function createTx(input: {
       ),
     },
     eventSubscription: {
-      findMany: jest.fn().mockResolvedValue(
-        input.hasEventSubscription ? [{ eventId: input.event.id, personId: 'person-1' }] : [],
-      ),
+      findMany: jest
+        .fn()
+        .mockResolvedValue(input.hasEventSubscription ? [{ eventId: input.event.id, personId: 'person-1' }] : []),
       findFirst: jest.fn().mockResolvedValue(input.hasEventSubscription ? { id: 'subscription-1' } : null),
     },
     majorEventSubscription: {

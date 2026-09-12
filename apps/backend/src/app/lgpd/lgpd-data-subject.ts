@@ -86,11 +86,7 @@ async function expandAccountMerges(prisma: PrismaService, userIds: Set<string>):
   return changed;
 }
 
-async function expandPeople(
-  prisma: PrismaService,
-  userIds: Set<string>,
-  personIds: Set<string>,
-): Promise<boolean> {
+async function expandPeople(prisma: PrismaService, userIds: Set<string>, personIds: Set<string>): Promise<boolean> {
   const where = peopleResolutionWhere(userIds, personIds);
   if (!where) {
     return false;
@@ -120,7 +116,6 @@ async function expandPeople(
     if (externalUserId) {
       changed = add(userIds, externalUserId) || changed;
     }
-
   }
 
   return changed;

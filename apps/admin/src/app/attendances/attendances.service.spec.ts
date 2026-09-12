@@ -413,9 +413,7 @@ describe('AttendancesService', () => {
     stalePresentResponse.complete();
     await staleLoad;
 
-    expect(service.attendances()).toEqual([
-      expect.objectContaining({ eventId: nextEvent.id, personId: person.id }),
-    ]);
+    expect(service.attendances()).toEqual([expect.objectContaining({ eventId: nextEvent.id, personId: person.id })]);
   });
 
   it('reviews offline submissions with confirmation, cancellation, correction, and issue labels', async () => {

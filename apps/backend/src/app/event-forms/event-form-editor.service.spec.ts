@@ -86,9 +86,9 @@ describe('EventFormEditorService', () => {
     }).compile();
     const injected = moduleRef.get(EventFormEditorService);
 
-    await (
-      injected as unknown as { publishInvalidations(formId: string): Promise<void> }
-    ).publishInvalidations('form-1');
+    await (injected as unknown as { publishInvalidations(formId: string): Promise<void> }).publishInvalidations(
+      'form-1',
+    );
 
     expect(realtime.publish).toHaveBeenCalledTimes(2);
     expect(realtime.publish).toHaveBeenCalledWith(

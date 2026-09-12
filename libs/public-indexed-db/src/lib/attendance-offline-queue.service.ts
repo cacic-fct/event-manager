@@ -167,8 +167,10 @@ export class AttendanceOfflineQueueService {
     return database.attendanceQueue
       .orderBy('queuedAt')
       .filter(
-        (item) => (item.status === 'PENDING' || item.status === 'FAILED') &&
-          !excludedClientIds.has(item.clientId) && this.isUploadableBy(item, uploaderUserId),
+        (item) =>
+          (item.status === 'PENDING' || item.status === 'FAILED') &&
+          !excludedClientIds.has(item.clientId) &&
+          this.isUploadableBy(item, uploaderUserId),
       )
       .limit(limit)
       .toArray();
@@ -197,8 +199,7 @@ export class AttendanceOfflineQueueService {
 
     return database.attendanceQueue
       .filter(
-        (item) => (item.status === 'PENDING' || item.status === 'FAILED') &&
-          this.isUploadableBy(item, uploaderUserId),
+        (item) => (item.status === 'PENDING' || item.status === 'FAILED') && this.isUploadableBy(item, uploaderUserId),
       )
       .count();
   }

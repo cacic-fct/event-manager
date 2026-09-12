@@ -185,9 +185,7 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
 
     fixture.detectChanges();
 
-    expect(
-      (fixture.componentInstance as unknown as { receiptQueueStream: unknown }).receiptQueueStream,
-    ).toBeNull();
+    expect((fixture.componentInstance as unknown as { receiptQueueStream: unknown }).receiptQueueStream).toBeNull();
   });
 });
 

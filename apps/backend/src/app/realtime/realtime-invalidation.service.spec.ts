@@ -314,9 +314,7 @@ function createReplayMock(stored?: MessageEvent) {
   };
 }
 
-function createSubscriber(
-  onImplementation: (event: string, handler: unknown) => void = () => undefined,
-) {
+function createSubscriber(onImplementation: (event: string, handler: unknown) => void = () => undefined) {
   return {
     on: jest.fn(onImplementation),
     subscribe: jest.fn().mockResolvedValue(1),

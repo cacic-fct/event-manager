@@ -863,9 +863,7 @@ export class AccountMergeService {
 
     if (inserted.length > 0) {
       await tx.eventAttendance.createMany({
-        data: inserted.map((attendance) =>
-          toAttendanceCreateData(targetPersonId, toAttendanceSnapshot(attendance)),
-        ),
+        data: inserted.map((attendance) => toAttendanceCreateData(targetPersonId, toAttendanceSnapshot(attendance))),
         skipDuplicates: true,
       });
     }

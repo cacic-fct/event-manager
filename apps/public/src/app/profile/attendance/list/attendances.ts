@@ -21,7 +21,19 @@ import {
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { EMPTY, catchError, combineLatest, distinctUntilChanged, finalize, from, interval, map, of, startWith, switchMap } from 'rxjs';
+import {
+  EMPTY,
+  catchError,
+  combineLatest,
+  distinctUntilChanged,
+  finalize,
+  from,
+  interval,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -159,30 +171,25 @@ export class Attendances {
   private loadedFeedTarget: string | null = null;
 
   readonly feedState = toSignal(
-    combineLatest([
-      toObservable(this.feedUserId).pipe(distinctUntilChanged()),
-      toObservable(this.feedRefresh),
-    ]).pipe(
+    combineLatest([toObservable(this.feedUserId).pipe(distinctUntilChanged()), toObservable(this.feedRefresh)]).pipe(
       switchMap(([userId]) => {
         const target = userId ? `user:${userId}` : 'anonymous';
         const preserveReadyState = this.loadedFeedTarget === target;
         const load = this.loadFeed(userId).pipe(
-          map(
-            (feed): FeedState => {
-              this.loadedFeedTarget = target;
-              return {
-                status: 'ready',
-                data: this.normalizeFeed(feed),
-              };
-            },
-          ),
+          map((feed): FeedState => {
+            this.loadedFeedTarget = target;
+            return {
+              status: 'ready',
+              data: this.normalizeFeed(feed),
+            };
+          }),
           catchError((error: unknown) =>
             preserveReadyState
               ? EMPTY
               : of({
                   status: 'error',
                   message: error instanceof Error ? error.message : 'Não foi possível carregar suas inscrições.',
-              } satisfies FeedState),
+                } satisfies FeedState),
           ),
         );
         return preserveReadyState ? load : load.pipe(startWith({ status: 'loading' } satisfies FeedState));

@@ -8,18 +8,21 @@ describe('RequestContextLogger', () => {
     const logger = new RequestContextLogger();
     const release: Array<() => void> = [];
     try {
-      const requests = ['request-one', 'request-two'].map((requestId) => new Promise<void>((resolve) => {
-        requestContextMiddleware(
-          { header: () => requestId, body: { token: 'private' } } as never,
-          { setHeader: jest.fn() } as never,
-          () => {
-            void new Promise<void>((done) => release.push(done)).then(() => {
-              logger.error(`Failure for ${requestId}`);
-              resolve();
-            });
-          },
-        );
-      }));
+      const requests = ['request-one', 'request-two'].map(
+        (requestId) =>
+          new Promise<void>((resolve) => {
+            requestContextMiddleware(
+              { header: () => requestId, body: { token: 'private' } } as never,
+              { setHeader: jest.fn() } as never,
+              () => {
+                void new Promise<void>((done) => release.push(done)).then(() => {
+                  logger.error(`Failure for ${requestId}`);
+                  resolve();
+                });
+              },
+            );
+          }),
+      );
       release[1]();
       release[0]();
       await Promise.all(requests);

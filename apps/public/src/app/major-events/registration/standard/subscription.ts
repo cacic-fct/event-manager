@@ -97,9 +97,12 @@ export class MajorEventSubscription {
   readonly confirmedSportsOnlySubscription = computed(() => {
     const subscription = this.currentUserSubscription();
     const majorEvent = this.data()?.majorEvent;
-    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0
-      && Boolean(majorEvent?.sportsTournament)
-      && (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true);
+    return (
+      subscription?.subscriptionStatus === 'CONFIRMED' &&
+      subscription.selectedEvents?.length === 0 &&
+      Boolean(majorEvent?.sportsTournament) &&
+      (!majorEvent?.isPaymentRequired || this.selectedPriceTier()?.includesSportsRegistration === true)
+    );
   });
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly selectedPriceTierName = signal<string | null>(null);
@@ -186,8 +189,8 @@ export class MajorEventSubscription {
       ),
   );
 
-  readonly effectiveSelectedEventIds = computed(
-    () => this.decisions().includesEvents
+  readonly effectiveSelectedEventIds = computed(() =>
+    this.decisions().includesEvents
       ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
       : new Set<string>(),
   );
@@ -207,7 +210,9 @@ export class MajorEventSubscription {
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
   });
 
-  readonly decisions = computed(() => resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()));
+  readonly decisions = computed(() =>
+    resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()),
+  );
   readonly showingTierStep = computed(() => this.decisions().hasTierStep && this.flowPhase() === 'tier');
 
   statusLabel(status: string): string {
@@ -322,8 +327,9 @@ export class MajorEventSubscription {
           }
         }
         const tiers = untracked(() => this.priceTiers());
-        const initialTier = tiers.find((tier) => tier.name === currentUserSubscription?.paymentTier)
-          ?? (tiers.length === 1 ? tiers[0] : null);
+        const initialTier =
+          tiers.find((tier) => tier.name === currentUserSubscription?.paymentTier) ??
+          (tiers.length === 1 ? tiers[0] : null);
         this.selectedPriceTierName.set(initialTier?.name ?? null);
         this.flowPhase.set(data.majorEvent.isPaymentRequired && tiers.length > 0 ? 'tier' : 'selection');
         this.initializedMajorEventId.set(majorEventId);
@@ -424,8 +430,12 @@ export class MajorEventSubscription {
       return;
     }
 
-    if (this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
-      && !this.confirmedSportsOnlySubscription() && !this.needsImageLicenseAgreement()) return;
+    if (
+      this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
+      !this.confirmedSportsOnlySubscription() &&
+      !this.needsImageLicenseAgreement()
+    )
+      return;
 
     if (this.decisions().includesEvents && this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
@@ -505,7 +515,12 @@ export class MajorEventSubscription {
   }
 
   selectPriceTier(tierName: string): void {
-    if (!this.priceTiers().some((tier) => tier.name === tierName) || this.isSubmitting() || this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED') return;
+    if (
+      !this.priceTiers().some((tier) => tier.name === tierName) ||
+      this.isSubmitting() ||
+      this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
+    )
+      return;
     if (tierName !== this.selectedPriceTierName()) {
       this.selectedPriceTierName.set(tierName);
       this.selectedEventIds.set(new Set());
@@ -517,7 +532,8 @@ export class MajorEventSubscription {
 
   continueFromTier(): void {
     const data = this.data();
-    if (!data || !this.decisions().tierResolved || this.currentUserSubscription() === undefined || this.isSubmitting()) return;
+    if (!data || !this.decisions().tierResolved || this.currentUserSubscription() === undefined || this.isSubmitting())
+      return;
     this.flowPhase.set('selection');
     if (!this.decisions().includesEvents) {
       if (this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !this.needsImageLicenseAgreement()) {
@@ -538,7 +554,9 @@ export class MajorEventSubscription {
 
   private focusStep(): void {
     // Defer until Angular has rendered the new page-level step; no browser globals during SSR.
-    setTimeout(() => this.element.nativeElement.querySelector<HTMLElement>('[data-step-title], #tier-selection-title')?.focus());
+    setTimeout(() =>
+      this.element.nativeElement.querySelector<HTMLElement>('[data-step-title], #tier-selection-title')?.focus(),
+    );
   }
 
   private confirmSubscription(

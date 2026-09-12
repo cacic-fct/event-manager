@@ -19,12 +19,24 @@ const tiers = [
   { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
   { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
   { id: 'both', name: 'Completa', value: 4000, includesEventRegistration: true, includesSportsRegistration: true },
-  { id: 'neither', name: 'Participação', value: 0, includesEventRegistration: false, includesSportsRegistration: false },
+  {
+    id: 'neither',
+    name: 'Participação',
+    value: 0,
+    includesEventRegistration: false,
+    includesSportsRegistration: false,
+  },
 ];
 
-async function setup(existingTier: string | null = null, single = false, subscriptionStatus = 'WAITING_RECEIPT_UPLOAD') {
+async function setup(
+  existingTier: string | null = null,
+  single = false,
+  subscriptionStatus = 'WAITING_RECEIPT_UPLOAD',
+) {
   const majorEvent = createPublicMajorEvent({
-    id: 'major', isPaymentRequired: true, requiresImageLicenseAgreement: false,
+    id: 'major',
+    isPaymentRequired: true,
+    requiresImageLicenseAgreement: false,
     majorEventPrices: [{ id: 'price', type: 'TIERED', tiers: single ? [tiers[0]] : tiers }],
   });
   const event = createPublicEvent({ id: 'event', majorEventId: 'major', autoSubscribe: false });
@@ -36,22 +48,40 @@ async function setup(existingTier: string | null = null, single = false, subscri
     imports: [MajorEventSubscription],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: {
-        paramMap: of(convertToParamMap({ majorEventId: 'major' })), queryParamMap: of(convertToParamMap({})),
-        snapshot: { paramMap: convertToParamMap({ majorEventId: 'major' }) }, firstChild: null,
-      } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          paramMap: of(convertToParamMap({ majorEventId: 'major' })),
+          queryParamMap: of(convertToParamMap({})),
+          snapshot: { paramMap: convertToParamMap({ majorEventId: 'major' }) },
+          firstChild: null,
+        },
+      },
       { provide: AuthService, useValue: { isAuthenticated: signal(true), login: vi.fn() } },
-      { provide: MajorEventSubscriptionApiService, useValue: {
-        getSubscriptionPage: () => of({ majorEvent, events: [event, automatic], subscriptionSummaries: [] }),
-        getCurrentUserSubscription: () => of(existingTier ? {
-          paymentTier: existingTier, subscriptionStatus, selectedEvents: existingTier === 'Participação' ? [] : [event],
-        } : null), upsertSubscription: upsert,
-      } },
+      {
+        provide: MajorEventSubscriptionApiService,
+        useValue: {
+          getSubscriptionPage: () => of({ majorEvent, events: [event, automatic], subscriptionSummaries: [] }),
+          getCurrentUserSubscription: () =>
+            of(
+              existingTier
+                ? {
+                    paymentTier: existingTier,
+                    subscriptionStatus,
+                    selectedEvents: existingTier === 'Participação' ? [] : [event],
+                  }
+                : null,
+            ),
+          upsertSubscription: upsert,
+        },
+      },
       { provide: MajorEventSubscriptionRealtimeService, useValue: { watch: () => NEVER } },
       { provide: SubscriptionFormFlowService, useValue: { loadForms } },
       { provide: AnalyticsService, useValue: { trackMajorEventSubscription: vi.fn() } },
     ],
-  }).overrideProvider(MatDialog, { useValue: { open } }).compileComponents();
+  })
+    .overrideProvider(MatDialog, { useValue: { open } })
+    .compileComponents();
   const fixture = TestBed.createComponent(MajorEventSubscription);
   fixture.detectChanges();
   await fixture.whenStable();
@@ -78,16 +108,22 @@ describe('tier-first standard registration', () => {
     expect(component.subscriptionFlowDraft()).toBeNull();
   });
 
-  it.each(['Esportes', 'Participação'])('reviews and submits %s without explicit or automatic events', async (tierName) => {
-    const { component, upsert, loadForms, open } = await setup();
-    component.selectPriceTier(tierName);
-    component.continueFromTier();
-    expect(loadForms).toHaveBeenCalledWith(expect.any(Array), tiers.find((tier) => tier.name === tierName)?.id);
-    expect(open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      data: expect.objectContaining({ events: [], paymentTier: tierName }),
-    }));
-    expect(upsert).toHaveBeenCalledWith('major', [], tierName, [], false);
-  });
+  it.each(['Esportes', 'Participação'])(
+    'reviews and submits %s without explicit or automatic events',
+    async (tierName) => {
+      const { component, upsert, loadForms, open } = await setup();
+      component.selectPriceTier(tierName);
+      component.continueFromTier();
+      expect(loadForms).toHaveBeenCalledWith(expect.any(Array), tiers.find((tier) => tier.name === tierName)?.id);
+      expect(open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({ events: [], paymentTier: tierName }),
+        }),
+      );
+      expect(upsert).toHaveBeenCalledWith('major', [], tierName, [], false);
+    },
+  );
 
   it('keeps a single tier visible for explicit confirmation before events', async () => {
     const { component, fixture } = await setup(null, true);

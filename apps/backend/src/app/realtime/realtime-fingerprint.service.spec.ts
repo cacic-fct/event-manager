@@ -66,9 +66,7 @@ describe('RealtimeFingerprintService', () => {
         findMany: jest
           .fn()
           .mockResolvedValueOnce([{ id: 'subscription-1', eventGroupSubscriptionId: null }])
-          .mockResolvedValueOnce([
-            { id: 'subscription-1', eventGroupSubscriptionId: 'group-subscription-1' },
-          ]),
+          .mockResolvedValueOnce([{ id: 'subscription-1', eventGroupSubscriptionId: 'group-subscription-1' }]),
       },
       eventLecturer: { aggregate: jest.fn().mockResolvedValue({ _count: 1, _max: { createdAt: null } }) },
       majorEventSubscriptionEventSelection: { aggregate: jest.fn().mockResolvedValue(selections) },

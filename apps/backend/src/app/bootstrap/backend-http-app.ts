@@ -24,7 +24,10 @@ export async function createBackendHttpApp(): Promise<INestApplication> {
     try {
       await app.close();
     } catch (cleanupError: unknown) {
-      Logger.error('Backend configuration rollback failed.', cleanupError instanceof Error ? cleanupError.stack : String(cleanupError));
+      Logger.error(
+        'Backend configuration rollback failed.',
+        cleanupError instanceof Error ? cleanupError.stack : String(cleanupError),
+      );
     }
     throw error;
   }

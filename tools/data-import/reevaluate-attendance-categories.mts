@@ -322,14 +322,23 @@ export async function selectChangedAttendances(
       [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
     );
     for (const row of rowsOf(result)) {
-      if (Array.isArray(row)) currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), { category: row[2], currentAssessment: row[3] });
-      else if (isRecord(row)) currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), { category: row.category, currentAssessment: row.currentAssessment });
+      if (Array.isArray(row))
+        currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), { category: row[2], currentAssessment: row[3] });
+      else if (isRecord(row))
+        currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), {
+          category: row.category,
+          currentAssessment: row.currentAssessment,
+        });
     }
   }
   return existing.filter((row) => {
     const currentCategory = currentCategoryByPair.get(JSON.stringify([row.personId, row.eventId]));
     const desired = attendanceState(row.category);
-    if (currentCategory?.category === desired.category && currentCategory.currentAssessment === desired.currentAssessment) return false;
+    if (
+      currentCategory?.category === desired.category &&
+      currentCategory.currentAssessment === desired.currentAssessment
+    )
+      return false;
     if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
     return true;
   });

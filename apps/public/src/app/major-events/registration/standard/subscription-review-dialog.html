@@ -24,21 +24,16 @@
       </strong>
     </span>
   </section>
-  }
-
-  @if (selectedPaymentTier; as tier) {
+  } @if (selectedPaymentTier; as tier) {
   <section class="review-section" aria-label="O que a modalidade inclui">
     <p>Inscrição no grande evento.</p>
     @if (tier.includesEventRegistration !== false) {
     <p>Inscrição em eventos.</p>
-    }
-    @if (data.majorEvent?.sportsTournament && tier.includesSportsRegistration) {
+    } @if (data.majorEvent?.sportsTournament && tier.includesSportsRegistration) {
     <p>Inscrição em esportes, conforme as vagas e regras do torneio.</p>
     }
   </section>
-  }
-
-  @if (data.events.length > 0) {
+  } @if (data.events.length > 0) {
   <section class="review-section" aria-labelledby="selected-events-title">
     <h3 id="selected-events-title">Eventos selecionados</h3>
     <ul class="event-list">
@@ -54,9 +49,7 @@
     </ul>
   </section>
 
-  }
-
-  @if (data.forms.length > 0) {
+  } @if (data.forms.length > 0) {
   <section class="review-section" aria-labelledby="answers-title">
     <h3 id="answers-title">Respostas</h3>
     @for (formContext of data.forms; track formContext.form.id + ':' + formContext.linkId + ':' + formContext.targetId)

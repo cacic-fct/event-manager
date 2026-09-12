@@ -1055,7 +1055,9 @@ export class MajorEventsResolver {
         select: { id: true },
       });
       if (restrictedEvent) {
-        throw new BadRequestException('Remova as faixas de preço das regras de presença dos eventos antes de excluí-las.');
+        throw new BadRequestException(
+          'Remova as faixas de preço das regras de presença dos eventos antes de excluí-las.',
+        );
       }
     }
     const attachedTierCount = await tx.eventFormLinkPriceTier.count({
@@ -1078,10 +1080,7 @@ export class MajorEventsResolver {
     }
 
     const nextNameByNormalizedPreviousName = new Map(
-      renamedTiers.map(({ previousName, nextName }) => [
-        normalizeAttendancePriceTier(previousName),
-        nextName,
-      ]),
+      renamedTiers.map(({ previousName, nextName }) => [normalizeAttendancePriceTier(previousName), nextName]),
     );
     const subscriptions = await tx.majorEventSubscription.findMany({
       where: {
@@ -1100,9 +1099,7 @@ export class MajorEventsResolver {
         continue;
       }
 
-      const nextName = nextNameByNormalizedPreviousName.get(
-        normalizeAttendancePriceTier(subscription.paymentTier),
-      );
+      const nextName = nextNameByNormalizedPreviousName.get(normalizeAttendancePriceTier(subscription.paymentTier));
       if (!nextName || subscription.paymentTier === nextName) {
         continue;
       }
@@ -1130,18 +1127,11 @@ export class MajorEventsResolver {
     }
 
     const nextNameByNormalizedPreviousName = new Map(
-      renamedTiers.map(({ previousName, nextName }) => [
-        normalizeAttendancePriceTier(previousName),
-        nextName,
-      ]),
+      renamedTiers.map(({ previousName, nextName }) => [normalizeAttendancePriceTier(previousName), nextName]),
     );
     const configs = await tx.certificateConfig.findMany({
       where: {
-        OR: [
-          { majorEventId },
-          { event: { majorEventId } },
-          { eventGroup: { majorEventId } },
-        ],
+        OR: [{ majorEventId }, { event: { majorEventId } }, { eventGroup: { majorEventId } }],
       },
       select: {
         id: true,
@@ -1151,8 +1141,7 @@ export class MajorEventsResolver {
 
     for (const config of configs) {
       const paymentTiers = config.paymentTiers.map(
-        (paymentTier) =>
-          nextNameByNormalizedPreviousName.get(normalizeAttendancePriceTier(paymentTier)) ?? paymentTier,
+        (paymentTier) => nextNameByNormalizedPreviousName.get(normalizeAttendancePriceTier(paymentTier)) ?? paymentTier,
       );
       if (paymentTiers.every((paymentTier, index) => paymentTier === config.paymentTiers[index])) {
         continue;

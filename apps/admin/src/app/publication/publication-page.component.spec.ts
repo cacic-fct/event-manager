@@ -203,9 +203,7 @@ describe('PublicationPageComponent', () => {
       expect(api.getWorkspace).toHaveBeenCalledOnce();
       expect(component.workspace()).toBe(refreshed);
       expect(component.selectedNode()?.id).toBe('event-1');
-      expect(component.expandedNodeKeys()).toEqual(
-        new Set(['MAJOR_EVENT:major-1', 'EVENT_GROUP:group-1']),
-      );
+      expect(component.expandedNodeKeys()).toEqual(new Set(['MAJOR_EVENT:major-1', 'EVENT_GROUP:group-1']));
     } finally {
       fixture.destroy();
     }

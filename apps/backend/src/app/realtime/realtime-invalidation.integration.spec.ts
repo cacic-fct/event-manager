@@ -47,10 +47,16 @@ describe('realtime invalidation provider integration', () => {
         RealtimeInvalidationService,
         SseReplayService,
         { provide: Redis, useValue: redis },
-        { provide: RealtimeFingerprintService, useValue: { currentUser: jest.fn(), eventSubscriptions: jest.fn(), majorEventSubscriptions: jest.fn() } },
+        {
+          provide: RealtimeFingerprintService,
+          useValue: { currentUser: jest.fn(), eventSubscriptions: jest.fn(), majorEventSubscriptions: jest.fn() },
+        },
         { provide: CurrentUserContextService, useValue: { requireCurrentPerson: jest.fn() } },
         { provide: CurrentUserEventAttendanceResolver, useValue: { currentUserOrganizerInfo: jest.fn() } },
-        { provide: AuthorizationPolicyService, useValue: { hasEventManagerAccess: jest.fn(() => true), assertPermissions: jest.fn() } },
+        {
+          provide: AuthorizationPolicyService,
+          useValue: { hasEventManagerAccess: jest.fn(() => true), assertPermissions: jest.fn() },
+        },
         { provide: RateLimitService, useValue: { consume: jest.fn(), toHttpException: jest.fn() } },
       ],
     }).compile();
@@ -69,9 +75,7 @@ describe('realtime invalidation provider integration', () => {
         revision: 'revision-2',
       });
 
-      await expect(
-        firstValueFrom(controller.streamPublicCatalog(first.id).pipe(take(1))),
-      ).resolves.toEqual(second);
+      await expect(firstValueFrom(controller.streamPublicCatalog(first.id).pipe(take(1)))).resolves.toEqual(second);
     } finally {
       await moduleRef.close();
     }

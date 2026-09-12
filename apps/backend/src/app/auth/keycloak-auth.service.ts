@@ -921,11 +921,7 @@ export class KeycloakAuthService {
     }.`;
   }
 
-  private async postKeycloakForm<T>(
-    endpoint: string,
-    body: string,
-    headers: Record<string, string>,
-  ): Promise<T> {
+  private async postKeycloakForm<T>(endpoint: string, body: string, headers: Record<string, string>): Promise<T> {
     const controller = new AbortController();
     let rejectTimeout!: (reason?: unknown) => void;
     const timeoutPromise = new Promise<never>((_, reject) => {

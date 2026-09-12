@@ -105,9 +105,10 @@ describe('EventAttendancesController HTTP lifecycle', () => {
   });
 
   it('closes the HTTP SSE stream when canonical authorization is revoked', async () => {
-    authorize.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined).mockRejectedValueOnce(
-      new ForbiddenException('Permission revoked.'),
-    );
+    authorize
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new ForbiddenException('Permission revoked.'));
     const response = await axios.get('/event-attendances/events/event-1/scanner-feed/events', {
       headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-1` },
       responseType: 'stream',

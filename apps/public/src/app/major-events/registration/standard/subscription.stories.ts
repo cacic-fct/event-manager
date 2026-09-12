@@ -331,14 +331,48 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
     subscriptionEndDate: isoDaysFromNow(10, 23),
     rankedSubscriptionEnabled: false,
     isPaymentRequired: args.requiresPayment,
-    sportsTournament: args.requiresPayment ? { id: 'tournament', selfSubscriptionEnabled: true, registrationOpen: true } : null,
+    sportsTournament: args.requiresPayment
+      ? { id: 'tournament', selfSubscriptionEnabled: true, registrationOpen: true }
+      : null,
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
-    majorEventPrices: args.requiresPayment ? [{ id: 'price', type: 'TIERED', tiers: [
-      { id: 'events', name: 'Eventos', value: 3000, includesEventRegistration: true, includesSportsRegistration: false },
-      { id: 'sports', name: 'Esportes', value: 2000, includesEventRegistration: false, includesSportsRegistration: true },
-      { id: 'both', name: 'Eventos e esportes', value: 4500, includesEventRegistration: true, includesSportsRegistration: true },
-      { id: 'support', name: 'Participação no grande evento', value: 0, includesEventRegistration: false, includesSportsRegistration: false },
-    ] }] : [],
+    majorEventPrices: args.requiresPayment
+      ? [
+          {
+            id: 'price',
+            type: 'TIERED',
+            tiers: [
+              {
+                id: 'events',
+                name: 'Eventos',
+                value: 3000,
+                includesEventRegistration: true,
+                includesSportsRegistration: false,
+              },
+              {
+                id: 'sports',
+                name: 'Esportes',
+                value: 2000,
+                includesEventRegistration: false,
+                includesSportsRegistration: true,
+              },
+              {
+                id: 'both',
+                name: 'Eventos e esportes',
+                value: 4500,
+                includesEventRegistration: true,
+                includesSportsRegistration: true,
+              },
+              {
+                id: 'support',
+                name: 'Participação no grande evento',
+                value: 0,
+                includesEventRegistration: false,
+                includesSportsRegistration: false,
+              },
+            ],
+          },
+        ]
+      : [],
   });
   const count = Math.min(Math.max(Math.trunc(args.eventCount), 0), 30);
   const events = Array.from({ length: count }, (_, index) =>

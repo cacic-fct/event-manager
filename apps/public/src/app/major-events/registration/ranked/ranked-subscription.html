@@ -60,8 +60,8 @@
     [locked]="store.tierSelectionLocked()"
     (selectTier)="store.selectPriceTier($event)"
     (continue)="continueFromTier()" />
-  } @else {
-  @if (!store.isPreparingSubscriptionFlow() && !store.subscriptionFormFlow() && store.decisions().hasTierStep && store.selectedPriceTier(); as tier) {
+  } @else { @if (!store.isPreparingSubscriptionFlow() && !store.subscriptionFormFlow() && store.decisions().hasTierStep
+  && store.selectedPriceTier(); as tier) {
   <section class="selected-tier-summary" aria-label="Modalidade selecionada">
     <p><strong>{{ tier.name }}</strong> · {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
     <button matButton type="button" [disabled]="store.tierSelectionLocked()" (click)="returnToTier()">
@@ -87,7 +87,6 @@
   <app-ranked-subscription-select-step (continue)="showRankingStep()" />
   } @else {
   <app-ranked-subscription-rank-step (back)="showSelectionStep()" />
-  } }
-  }
+  } } }
 </main>
 }

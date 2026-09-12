@@ -1202,7 +1202,10 @@ export class EventsService {
       }
     } catch {
       if (this.eventForm.controls.majorEventId.value === majorEventId) {
-        this.snackbar.open('Não foi possível carregar as faixas de preço. Selecione o grande evento novamente para tentar de novo.', 'Fechar');
+        this.snackbar.open(
+          'Não foi possível carregar as faixas de preço. Selecione o grande evento novamente para tentar de novo.',
+          'Fechar',
+        );
       }
     }
   }

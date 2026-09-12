@@ -487,12 +487,14 @@ describe('PublicationTransitionService', () => {
     stateWriter.publishScheduledEvent.mockResolvedValue({ eventIds: [], majorEventIds: [] });
     stateWriter.publishScheduledMajorEvent.mockResolvedValue({ eventIds: [], majorEventIds: [] });
 
-    await expect(
-      service.publishScheduledEventById('event-1', scheduledPublishAt, null),
-    ).resolves.toEqual({ eventIds: [], majorEventIds: [] });
-    await expect(
-      service.publishScheduledMajorEventById('major-1', scheduledPublishAt, null),
-    ).resolves.toEqual({ eventIds: [], majorEventIds: [] });
+    await expect(service.publishScheduledEventById('event-1', scheduledPublishAt, null)).resolves.toEqual({
+      eventIds: [],
+      majorEventIds: [],
+    });
+    await expect(service.publishScheduledMajorEventById('major-1', scheduledPublishAt, null)).resolves.toEqual({
+      eventIds: [],
+      majorEventIds: [],
+    });
 
     expect(stateWriter.publishScheduledEvent).toHaveBeenCalledWith('event-1', scheduledPublishAt, undefined);
     expect(stateWriter.publishScheduledMajorEvent).toHaveBeenCalledWith('major-1', scheduledPublishAt, undefined);

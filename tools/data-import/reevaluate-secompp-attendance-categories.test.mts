@@ -71,14 +71,22 @@ test('writes replacement categories with assessments and skips an unchanged reru
       if (sql.startsWith('UPDATE')) {
         assert.match(sql, /"currentAssessment" = \$4::"AttendanceCurrentAssessment"/);
         assert.equal(parameters?.[0], 'NON_REGULAR');
-        saved.push({ category: parameters?.[0], personId: parameters?.[1], eventId: parameters?.[2], currentAssessment: parameters?.[3] });
+        saved.push({
+          category: parameters?.[0],
+          personId: parameters?.[1],
+          eventId: parameters?.[2],
+          currentAssessment: parameters?.[3],
+        });
         return { rows: [] as Row[] };
       }
       return { rows: saved as Row[] };
     },
   };
   await applyUpdates(db, rows);
-  assert.deepEqual(saved.map((row) => row.currentAssessment).sort(), ['ACTIVITY_SUBSCRIPTION_MISSING', 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED']);
+  assert.deepEqual(saved.map((row) => row.currentAssessment).sort(), [
+    'ACTIVITY_SUBSCRIPTION_MISSING',
+    'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
+  ]);
   assert.deepEqual(await selectChangedAttendances(db, rows, true), []);
   const firstSaved = saved[0];
   assert.ok(firstSaved);

@@ -250,7 +250,7 @@ describe('SportsWorkspaceService', () => {
       majorEvent: initialMajorEvent,
     };
     let currentMajorEvents = [initialMajorEvent];
-    let currentTournaments: typeof tournament[] = [];
+    let currentTournaments: (typeof tournament)[] = [];
     majorEventApi.listMajorEvents.mockImplementation(() => of(currentMajorEvents));
     sportsApi.tournaments.mockImplementation(() => of(currentTournaments));
 

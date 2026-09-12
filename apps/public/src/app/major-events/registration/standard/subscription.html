@@ -32,9 +32,11 @@
   </header>
 
   <mat-chip-set aria-label="Resumo da inscrição">
-    @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxCoursesPerAttendee !== null && majorEvent.maxCoursesPerAttendee !== undefined) {
+    @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxCoursesPerAttendee !== null &&
+    majorEvent.maxCoursesPerAttendee !== undefined) {
     <mat-chip> {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos </mat-chip>
-    } @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxLecturesPerAttendee !== null && majorEvent.maxLecturesPerAttendee !== undefined) {
+    } @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxLecturesPerAttendee !== null &&
+    majorEvent.maxLecturesPerAttendee !== undefined) {
     <mat-chip> {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras </mat-chip>
     } @if (!showingTierStep() && majorEvent.isPaymentRequired && selectedPriceTier()?.value !== 0) {
     <mat-chip>
@@ -52,17 +54,21 @@
   @if (majorEvent.description && flowPhase() === 'selection') {
   <lib-markdown class="description" [content]="majorEvent.description" />
   } @if (showingTierStep()) {
-  <app-subscription-tier-selection [majorEvent]="majorEvent" [tiers]="priceTiers()"
-    [selectedName]="selectedPriceTierName()" [locked]="currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'" [busy]="isSubmitting() || currentUserSubscription() === undefined"
-    (selectTier)="selectPriceTier($event)" (continue)="continueFromTier()" />
-  } @else if (flowPhase() === 'selection' || flowPhase() === 'tier') {
-  @if (decisions().hasTierStep && selectedPriceTier(); as tier) {
+  <app-subscription-tier-selection
+    [majorEvent]="majorEvent"
+    [tiers]="priceTiers()"
+    [selectedName]="selectedPriceTierName()"
+    [locked]="currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'"
+    [busy]="isSubmitting() || currentUserSubscription() === undefined"
+    (selectTier)="selectPriceTier($event)"
+    (continue)="continueFromTier()" />
+  } @else if (flowPhase() === 'selection' || flowPhase() === 'tier') { @if (decisions().hasTierStep &&
+  selectedPriceTier(); as tier) {
   <section class="selected-tier-summary" aria-label="Modalidade selecionada">
     <p><strong>{{ tier.name }}</strong> · {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
     <button matButton type="button" (click)="returnToTier()">Alterar modalidade</button>
   </section>
-  }
-  @if (decisions().includesEvents) {
+  } @if (decisions().includesEvents) {
   <h2 data-step-title tabindex="-1">Escolha seus eventos</h2>
   <app-subscription-event-list
     [events]="sortedEvents()"
@@ -75,17 +81,14 @@
   } @else {
   <h2 data-step-title tabindex="-1">Continue sua inscrição</h2>
   <p>Revise os dados da sua participação no grande evento.</p>
-  }
-
-  @if (subscriptionCooldownSeconds() > 0) {
+  } @if (subscriptionCooldownSeconds() > 0) {
   <p class="rate-limit-message">Aguarde {{ subscriptionCooldownSeconds() }}s para alterar a inscrição novamente.</p>
   }
 
   <mat-toolbar class="selection-actions" aria-label="Ações da seleção de eventos">
     <span class="selection-summary">
-      @if (decisions().includesEvents) {
-      {{ selectedEvents().length }} {{ selectedEvents().length === 1 ? 'evento selecionado' : 'eventos selecionados' }}
-      }
+      @if (decisions().includesEvents) { {{ selectedEvents().length }} {{ selectedEvents().length === 1 ? 'evento
+      selecionado' : 'eventos selecionados' }} }
     </span>
     <span class="action-spacer"></span>
     <button

@@ -34,13 +34,10 @@ describe('subscription flow models', () => {
   });
 
   it('builds major-event sources before selected events', () => {
-    const sources = createMajorEventSubscriptionFlowSources(
-      { id: 'major-1', name: 'SECOMPP' },
-      [
-        { id: 'event-2', name: 'GraphQL' },
-        { id: 'event-1', name: 'Angular' },
-      ],
-    );
+    const sources = createMajorEventSubscriptionFlowSources({ id: 'major-1', name: 'SECOMPP' }, [
+      { id: 'event-2', name: 'GraphQL' },
+      { id: 'event-1', name: 'Angular' },
+    ]);
 
     expect(sources.map((source) => source.key)).toEqual(['major-event:major-1', 'event:event-2', 'event:event-1']);
   });

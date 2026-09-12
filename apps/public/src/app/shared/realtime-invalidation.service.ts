@@ -23,20 +23,15 @@ export class RealtimeInvalidationService {
     return this.currentUserId.pipe(
       switchMap((userId) =>
         userId
-          ? this.watch(
-              '/api/realtime/current-user/data/events',
-              'Não foi possível atualizar seus dados ao vivo.',
-              () => this.auth.refreshMe(),
+          ? this.watch('/api/realtime/current-user/data/events', 'Não foi possível atualizar seus dados ao vivo.', () =>
+              this.auth.refreshMe(),
             )
           : EMPTY,
       ),
     );
   }
 
-  watchOrganizer(
-    targetType: string,
-    targetId: string,
-  ): Observable<void> {
+  watchOrganizer(targetType: string, targetId: string): Observable<void> {
     return this.currentUserId.pipe(
       switchMap((userId) =>
         userId

@@ -20,55 +20,88 @@ describe('CertificateConfigsService', () => {
         new CertificateValidationService(),
         { assertIssuableTarget: jest.fn() } as never,
       );
-      const input = { name: 'Participação', scope: CertificateScope.MAJOR_EVENT, majorEventId: 'major-1', certificateTemplateId: 'template-1' };
+      const input = {
+        name: 'Participação',
+        scope: CertificateScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+        certificateTemplateId: 'template-1',
+      };
       return { prisma, priceTier, service, input };
     }
 
     it('defaults new configurations to all tiers', async () => {
       const { prisma, priceTier, service, input } = setup();
       await service.createConfig(input);
-      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ paymentTiers: [] }) }));
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ paymentTiers: [] }) }),
+      );
       expect(priceTier.findMany).not.toHaveBeenCalled();
     });
 
     it('persists multiple tiers and removes duplicate selections', async () => {
       const { prisma, priceTier, service, input } = setup();
       await service.createConfig({ ...input, paymentTiers: ['Aluno', 'Professor', 'Aluno'] });
-      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ paymentTiers: ['Aluno', 'Professor'] }) }));
-      expect(priceTier.findMany).toHaveBeenCalledWith({ where: { price: { majorEventId: 'major-1' } }, select: { name: true } });
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ paymentTiers: ['Aluno', 'Professor'] }) }),
+      );
+      expect(priceTier.findMany).toHaveBeenCalledWith({
+        where: { price: { majorEventId: 'major-1' } },
+        select: { name: true },
+      });
     });
 
-    it.each([[undefined], [[]]])('preserves omitted tiers and clears an explicit empty selection: %j', async (paymentTiers) => {
-      const { prisma, service } = setup();
-      const existing = { ...createConfigRecord(), scope: CertificateScope.MAJOR_EVENT, majorEventId: 'major-1', folderId: null, paymentTiers: ['Aluno'] };
-      prisma.certificateConfig.findFirst.mockImplementation(({ where }: { where: { id?: string } }) =>
-        Promise.resolve(typeof where.id === 'string' ? existing : null),
-      );
-      prisma.certificateConfig.update.mockResolvedValue(existing);
-      await service.updateConfig(existing.id, { name: 'Novo nome', paymentTiers });
-      const data = prisma.certificateConfig.update.mock.calls[0][0].data;
-      if (paymentTiers === undefined) {
-        expect(data).not.toHaveProperty('paymentTiers');
-      } else {
-        expect(data.paymentTiers).toEqual([]);
-      }
-    });
+    it.each([[undefined], [[]]])(
+      'preserves omitted tiers and clears an explicit empty selection: %j',
+      async (paymentTiers) => {
+        const { prisma, service } = setup();
+        const existing = {
+          ...createConfigRecord(),
+          scope: CertificateScope.MAJOR_EVENT,
+          majorEventId: 'major-1',
+          folderId: null,
+          paymentTiers: ['Aluno'],
+        };
+        prisma.certificateConfig.findFirst.mockImplementation(({ where }: { where: { id?: string } }) =>
+          Promise.resolve(typeof where.id === 'string' ? existing : null),
+        );
+        prisma.certificateConfig.update.mockResolvedValue(existing);
+        await service.updateConfig(existing.id, { name: 'Novo nome', paymentTiers });
+        const data = prisma.certificateConfig.update.mock.calls[0][0].data;
+        if (paymentTiers === undefined) {
+          expect(data).not.toHaveProperty('paymentTiers');
+        } else {
+          expect(data.paymentTiers).toEqual([]);
+        }
+      },
+    );
 
     it.each([false, true])('copies tier restrictions only when cloning to the same target: %s', async (sameTarget) => {
       const { prisma, service } = setup();
-      const source = { ...createConfigRecord(), scope: CertificateScope.MAJOR_EVENT, majorEventId: 'major-1', folderId: null, paymentTiers: ['Aluno'] };
+      const source = {
+        ...createConfigRecord(),
+        scope: CertificateScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+        folderId: null,
+        paymentTiers: ['Aluno'],
+      };
       prisma.certificateConfig.findFirst.mockResolvedValueOnce(source).mockResolvedValue(null);
       await service.cloneConfig(source.id, {
-        name: 'Cópia', majorEventId: sameTarget ? 'major-1' : 'major-2', parts: { recipientData: true },
+        name: 'Cópia',
+        majorEventId: sameTarget ? 'major-1' : 'major-2',
+        parts: { recipientData: true },
       });
-      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ paymentTiers: sameTarget ? ['Aluno'] : [] }),
-      }));
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ paymentTiers: sameTarget ? ['Aluno'] : [] }),
+        }),
+      );
     });
 
     it('rejects tiers outside the target major event', async () => {
       const { prisma, service, input } = setup();
-      await expect(service.createConfig({ ...input, paymentTiers: ['Outra faixa'] })).rejects.toThrow('belonging to the target');
+      await expect(service.createConfig({ ...input, paymentTiers: ['Outra faixa'] })).rejects.toThrow(
+        'belonging to the target',
+      );
       expect(prisma.certificateConfig.create).not.toHaveBeenCalled();
     });
   });
