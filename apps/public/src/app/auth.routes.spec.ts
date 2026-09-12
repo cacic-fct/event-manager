@@ -33,6 +33,16 @@ describe('public auth route wiring', () => {
     expect(drawRoutes).toHaveLength(3);
     expect(drawRoutes.every((route) => route.renderMode === RenderMode.Client)).toBe(true);
   });
+
+  it('keeps development-only routes out of production prerendering', () => {
+    for (const path of ['dev-tools', 'dev-tools/**']) {
+      const routeIndex = serverRoutes.findIndex((route) => route.path === path);
+
+      expect(routeIndex).toBeGreaterThanOrEqual(0);
+      expect(routeIndex).toBeLessThan(serverRoutes.findIndex((route) => route.path === '**'));
+      expect(serverRoutes[routeIndex].renderMode).toBe(RenderMode.Client);
+    }
+  });
 });
 
 function hasRoutePath(routes: typeof appRoutes, path: string): boolean {

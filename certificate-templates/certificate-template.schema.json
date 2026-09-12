@@ -54,7 +54,7 @@
             "type": "boolean"
           },
           "default": {
-            "anyOf": [{ "type": "string" }, { "type": "number" }]
+            "type": ["string", "number"]
           }
         },
         "required": ["label", "type", "required"],

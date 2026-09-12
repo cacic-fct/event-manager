@@ -2,6 +2,14 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
   {
+    path: 'dev-tools',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'dev-tools/**',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'map',
     renderMode: RenderMode.Client,
   },
