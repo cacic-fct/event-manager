@@ -61,6 +61,9 @@ message UserProfile {
   optional string enrollment_number = 2;
   string name = 3;
   optional string email = 4;
+  repeated string secondary_emails = 5;
+  optional string unesp_role = 6;
+  optional bool unesp_role_verified = 7;
 }
 
 message UserLookupResponse {
@@ -83,6 +86,9 @@ message IdentifierLookupMatch {
   optional string enrollment_number = 3;
   string name = 4;
   optional string email = 5;
+  repeated string secondary_emails = 6;
+  optional string unesp_role = 7;
+  optional bool unesp_role_verified = 8;
 }
 
 message IdentifierLookupResponse {
