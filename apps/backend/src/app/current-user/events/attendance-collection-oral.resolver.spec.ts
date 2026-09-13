@@ -1,10 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { EventAttendanceStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import {
-  findAttendanceOralRosterPersonIds,
   getAttendanceOralRoster,
-  isOnAttendanceOralRoster,
 } from './attendance-collection-feed';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 import {
@@ -13,10 +11,8 @@ import {
 } from '../../sports/operations/sports-match-attendance';
 
 jest.mock('./attendance-collection-feed', () => ({
-  findAttendanceOralRosterPersonIds: jest.fn(),
   getAttendanceOralRoster: jest.fn(),
   getAttendanceScannerFeed: jest.fn(),
-  isOnAttendanceOralRoster: jest.fn(),
 }));
 
 jest.mock('../../sports/operations/sports-match-attendance', () => ({
@@ -56,8 +52,6 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
     frozenResources.assertEventMutable.mockResolvedValue(undefined);
     auditLog.record.mockResolvedValue(undefined);
     dashboardInsights.invalidateCachedInsights.mockResolvedValue(undefined);
-    jest.mocked(isOnAttendanceOralRoster).mockResolvedValue(true);
-    jest.mocked(findAttendanceOralRosterPersonIds).mockResolvedValue(new Set(['person-1', 'person-2']));
     jest.mocked(startSportsMatchCheckInFromAthleteAttendance).mockResolvedValue(false);
     jest.mocked(notifySportsMatchAttendanceMutation).mockResolvedValue(undefined);
   });
@@ -134,16 +128,10 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects disabled oral attendance, non-roster people, and forged collector identity before writes', async () => {
+  it('rejects disabled oral attendance and forged collector identity before writes', async () => {
     prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: false });
     await expect(resolver().collectCurrentUserOralAttendance(input(), context as never)).rejects.toBeInstanceOf(
       BadRequestException,
-    );
-
-    prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: true });
-    jest.mocked(isOnAttendanceOralRoster).mockResolvedValueOnce(false);
-    await expect(resolver().collectCurrentUserOralAttendance(input(), context as never)).rejects.toBeInstanceOf(
-      NotFoundException,
     );
 
     prisma.event.findUnique.mockResolvedValueOnce({ shouldAllowOralAttendance: true });
@@ -184,7 +172,6 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
       results,
     );
 
-    expect(findAttendanceOralRosterPersonIds).toHaveBeenCalledWith(prisma, 'event-1', ['person-1', 'person-2']);
     expect(eventAttendance.upsert).toHaveBeenCalledTimes(2);
     expect(attendanceCategories.refreshForAttendance).toHaveBeenNthCalledWith(
       1,
@@ -201,13 +188,14 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a batch containing a non-roster person or forged collector without partial writes', async () => {
-    jest.mocked(findAttendanceOralRosterPersonIds).mockResolvedValueOnce(new Set(['person-1']));
+  it('accepts a batch containing a person outside the oral roster and rejects forged provenance', async () => {
+    eventAttendance.findUnique.mockResolvedValue(null);
+    eventAttendance.upsert.mockResolvedValue({});
     await expect(
       resolver().collectCurrentUserOralAttendances([input(), input({ personId: 'person-2' })], context as never),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    ).resolves.toHaveLength(2);
 
-    jest.mocked(findAttendanceOralRosterPersonIds).mockResolvedValueOnce(new Set(['person-1', 'person-2']));
+    prisma.$transaction.mockClear();
     await expect(
       resolver().collectCurrentUserOralAttendances(
         [input(), input({ personId: 'person-2', collectedByUserId: 'forged-user' })],

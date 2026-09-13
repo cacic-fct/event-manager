@@ -1,8 +1,9 @@
+import type { EventFormAudience } from './participation';
+export { EventFormAudience } from './participation';
 import type { DateTimeString, GraphqlVariables } from './common';
 import type { FormImage } from '@cacic-fct/form-contracts';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
-export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';
 export type EventFormResponseSource = 'PUBLIC_FORM' | 'SUBSCRIPTION_FLOW' | 'LECTURER_PUBLISH';
 export type EventFormResponseMode = 'ONE_PER_TARGET' | 'MULTIPLE_PER_TARGET' | 'SINGLE_PER_FORM';
@@ -23,7 +24,7 @@ export interface PublicEventFormLink {
   majorEventId?: string | null;
   priceTierIds: string[];
   target?: PublicEventFormTargetSummary | null;
-  audience: EventFormAudience;
+  audiences: EventFormAudience[];
   insertInSubscriptionFlow: boolean;
   requiredInSubscriptionFlow: boolean;
   displayOrder: number;

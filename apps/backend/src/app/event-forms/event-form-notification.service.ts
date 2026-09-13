@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventFormAudience, EventFormResponseMode, EventFormTargetType, Prisma } from '@prisma/client';
+import { EventFormResponseMode, EventFormTargetType, Prisma, SubscriptionStatus } from '@prisma/client';
+import { EventFormAudience, matchesEventFormAudience } from '@cacic-fct/shared-event-participation';
 import { isPast } from 'date-fns';
+import { ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES } from '../events/attendance-eligibility';
 import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,7 +14,7 @@ type EventFormNotificationLink = {
   targetType: EventFormTargetType;
   eventId: string | null;
   majorEventId: string | null;
-  audience: EventFormAudience;
+  audiences: readonly EventFormAudience[];
   insertInSubscriptionFlow: boolean;
   requiredInSubscriptionFlow: boolean;
   notifyOnPublish: boolean;
@@ -93,6 +95,9 @@ export class EventFormNotificationService {
           targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
           recipients,
           requiredSubscriptionForm: requiresExistingSubscriberResponse,
+          ...(link.audiences?.includes(EventFormAudience.INTERESTED)
+            ? { audienceVersion: [...link.audiences].sort().join(',') }
+            : {}),
         });
       } catch (error: unknown) {
         this.logger.warn(
@@ -126,70 +131,107 @@ export class EventFormNotificationService {
 
   private async findNotificationRecipients(link: EventFormNotificationLink) {
     const people = new Map<string, EventFormNotificationPerson>();
+    const audiences = link.audiences ?? [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES];
 
     if (link.eventId) {
-      if (link.audience !== EventFormAudience.ATTENDEES) {
-        const subscriptions = await this.prisma.eventSubscription.findMany({
-          where: {
-            eventId: link.eventId,
-            deletedAt: null,
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const subscription of subscriptions) {
-          people.set(subscription.person.id, subscription.person);
+      const subscribedPeople = await this.findEventSubscriberPeople(link.eventId);
+      const subscribedIds = new Set(subscribedPeople.map(({ person }) => person.id));
+      if (audiences.includes(EventFormAudience.SUBSCRIBERS)) {
+        for (const subscription of subscribedPeople) {
+          if (matchesEventFormAudience(audiences, { interested: false, subscribed: true, attended: false })) {
+            people.set(subscription.person.id, subscription.person);
+          }
         }
       }
-      if (link.audience !== EventFormAudience.SUBSCRIBERS) {
-        const attendances = await this.prisma.eventAttendance.findMany({
+      if (audiences.includes(EventFormAudience.INTERESTED)) {
+        const event = await this.prisma.event.findUnique({ where: { id: link.eventId }, select: { eventGroupId: true } });
+        const interests = await this.prisma.eventInterest.findMany({
           where: {
-            eventId: link.eventId,
-            status: 'PRESENT',
+            deletedAt: null,
+            OR: [
+              { eventId: link.eventId },
+              ...(event?.eventGroupId ? [{ eventGroupId: event.eventGroupId }] : []),
+            ],
           },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
+          select: { person: this.notificationPersonSelect() },
+        });
+        for (const interest of interests) {
+          if (
+            matchesEventFormAudience(audiences, {
+              interested: true,
+              subscribed: subscribedIds.has(interest.person.id),
+              attended: false,
+            })
+          ) {
+            people.set(interest.person.id, interest.person);
+          }
+        }
+      }
+      if (audiences.includes(EventFormAudience.ATTENDEES)) {
+        const attendances = await this.prisma.eventAttendance.findMany({
+          where: { eventId: link.eventId, status: 'PRESENT' },
+          select: { person: this.notificationPersonSelect() },
         });
         for (const attendance of attendances) {
-          people.set(attendance.person.id, attendance.person);
+          if (matchesEventFormAudience(audiences, { interested: false, subscribed: false, attended: true })) {
+            people.set(attendance.person.id, attendance.person);
+          }
         }
       }
     }
 
     if (link.majorEventId) {
-      if (link.audience !== EventFormAudience.ATTENDEES) {
-        const subscriptions = await this.prisma.majorEventSubscription.findMany({
-          where: {
-            majorEventId: link.majorEventId,
-            deletedAt: null,
-            ...((link.priceTiers?.length ?? 0) > 0
-              ? { paymentTier: { in: link.priceTiers?.map(({ priceTier }) => priceTier.name) } }
-              : {}),
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        });
-        for (const subscription of subscriptions) {
-          people.set(subscription.person.id, subscription.person);
+      const subscribedPeople = await this.prisma.majorEventSubscription.findMany({
+        where: {
+          majorEventId: link.majorEventId,
+          deletedAt: null,
+          subscriptionStatus: { notIn: this.inactiveMajorSubscriptionStatuses() },
+        },
+        select: { paymentTier: true, person: this.notificationPersonSelect() },
+      });
+      const subscribedIds = new Set(subscribedPeople.map(({ person }) => person.id));
+      const allowedPaymentTiers = new Set(
+        (link.priceTiers ?? []).map(({ priceTier }) => priceTier.name.trim().toLocaleLowerCase('pt-BR')),
+      );
+      const eligibleSubscribedPeople =
+        allowedPaymentTiers.size > 0
+          ? subscribedPeople.filter(({ paymentTier }) =>
+              paymentTier ? allowedPaymentTiers.has(paymentTier.trim().toLocaleLowerCase('pt-BR')) : false,
+            )
+          : subscribedPeople;
+      if (audiences.includes(EventFormAudience.SUBSCRIBERS)) {
+        for (const subscription of eligibleSubscribedPeople) {
+          if (matchesEventFormAudience(audiences, { interested: false, subscribed: true, attended: false })) {
+            people.set(subscription.person.id, subscription.person);
+          }
         }
       }
-      if (link.audience !== EventFormAudience.SUBSCRIBERS) {
+      if (audiences.includes(EventFormAudience.INTERESTED)) {
+        const interests = await this.prisma.eventInterest.findMany({
+          where: { majorEventId: link.majorEventId, deletedAt: null },
+          select: { person: this.notificationPersonSelect() },
+        });
+        for (const interest of interests) {
+          if (
+            matchesEventFormAudience(audiences, {
+              interested: true,
+              subscribed: subscribedIds.has(interest.person.id),
+              attended: false,
+            })
+          ) {
+            people.set(interest.person.id, interest.person);
+          }
+        }
+      }
+      if (audiences.includes(EventFormAudience.ATTENDEES)) {
         const attendances = await this.prisma.eventAttendance.findMany({
-          where: {
-            status: 'PRESENT',
-            event: {
-              majorEventId: link.majorEventId,
-            },
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
+          where: { status: 'PRESENT', event: { majorEventId: link.majorEventId } },
+          select: { person: this.notificationPersonSelect() },
         });
         for (const attendance of attendances) {
-          people.set(attendance.person.id, attendance.person);
+          if (matchesEventFormAudience(audiences, { interested: false, subscribed: false, attended: true })) {
+            people.set(attendance.person.id, attendance.person);
+          }
         }
       }
     }
@@ -199,20 +241,13 @@ export class EventFormNotificationService {
 
   private async findRequiredSubscriptionRecipients(form: EventFormNotificationRecord, link: EventFormNotificationLink) {
     const subscriptions = link.eventId
-      ? await this.prisma.eventSubscription.findMany({
-          where: {
-            eventId: link.eventId,
-            deletedAt: null,
-          },
-          select: {
-            person: this.notificationPersonSelect(),
-          },
-        })
+      ? await this.findEventSubscriberPeople(link.eventId)
       : link.majorEventId
         ? await this.prisma.majorEventSubscription.findMany({
             where: {
               majorEventId: link.majorEventId,
               deletedAt: null,
+              subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
               ...((link.priceTiers?.length ?? 0) > 0
                 ? { paymentTier: { in: link.priceTiers?.map(({ priceTier }) => priceTier.name) } }
                 : {}),
@@ -222,9 +257,7 @@ export class EventFormNotificationService {
             },
           })
         : [];
-    const people = [
-      ...new Map(subscriptions.map((subscription) => [subscription.person.id, subscription.person])).values(),
-    ];
+    const people = [...new Map(subscriptions.map((subscription) => [subscription.person.id, subscription.person])).values()];
     if (people.length === 0) {
       return [];
     }
@@ -265,9 +298,66 @@ export class EventFormNotificationService {
     };
   }
 
+  private async findEventSubscriberPeople(eventId: string) {
+    const directSubscriptions = await this.prisma.eventSubscription.findMany({
+      where: { eventId, deletedAt: null },
+      select: { person: this.notificationPersonSelect() },
+    });
+    const people = new Map(directSubscriptions.map(({ person }) => [person.id, person]));
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { majorEventId: true, autoSubscribe: true },
+    });
+    if (!event?.majorEventId) {
+      return [...people.values()].map((person) => ({ person }));
+    }
+
+    const selections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
+      where: {
+        eventId,
+        deletedAt: null,
+        subscription: {
+          majorEventId: event.majorEventId,
+          deletedAt: null,
+          subscriptionStatus: { notIn: this.inactiveMajorSubscriptionStatuses() },
+        },
+      },
+      select: { subscription: { select: { person: this.notificationPersonSelect() } } },
+    });
+    for (const { subscription } of selections) {
+      people.set(subscription.person.id, subscription.person);
+    }
+
+    if (event.autoSubscribe) {
+      const autoSubscriptions = await this.prisma.majorEventSubscription.findMany({
+        where: {
+          majorEventId: event.majorEventId,
+          deletedAt: null,
+          subscriptionStatus: { notIn: this.inactiveMajorSubscriptionStatuses() },
+        },
+        select: { person: this.notificationPersonSelect() },
+      });
+      for (const { person } of autoSubscriptions) {
+        people.set(person.id, person);
+      }
+    }
+
+    return [...people.values()].map((person) => ({ person }));
+  }
+
   private isRequiredSubscriptionForm(link: EventFormNotificationLink): boolean {
+    const audiences = link.audiences ?? [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES];
     return (
-      link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow && link.audience !== EventFormAudience.ATTENDEES
+      link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow && audiences.includes(EventFormAudience.SUBSCRIBERS)
+    );
+  }
+
+  private inactiveMajorSubscriptionStatuses(): SubscriptionStatus[] {
+    return Object.values(SubscriptionStatus).filter(
+      (status) =>
+        !ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES.includes(
+          status as (typeof ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES)[number],
+        ),
     );
   }
 

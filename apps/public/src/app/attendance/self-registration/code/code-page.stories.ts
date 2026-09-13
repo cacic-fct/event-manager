@@ -56,6 +56,15 @@ export const Playground: Story = {
   },
 };
 
+export const UnregisteredWalkIn: Story = {
+  args: { unregisteredWalkIn: true },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ args, canvasElement }) => {
+    const { confirmButton } = await enterCode(canvasElement, args.expectedCode);
+    await expect(confirmButton).toBeEnabled();
+  },
+};
+
 export const InvalidCode: Story = {
   args: { confirmationOutcome: 'invalid-code' },
   play: async ({ canvasElement }) => {

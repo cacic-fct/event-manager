@@ -11,11 +11,12 @@ import { SubscriptionsService } from './subscriptions.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
+import { EventInterestsComponent } from './event-interests.component';
 
 @Component({
   selector: 'app-workspace-subscriptions-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTabsModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent],
+  imports: [MatTabsModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
   templateUrl: './subscriptions-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -59,6 +60,12 @@ export class SubscriptionsPageComponent implements OnDestroy {
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
       const majorEventSubscriptionId = params.get('subscriptionId');
+      const interestsRoute = this.route.snapshot.url.some((segment) => segment.path === 'interests');
+
+      if (interestsRoute) {
+        this.selectedTabIndex.set(2);
+        return;
+      }
 
       if (eventId) {
         this.selectedTabIndex.set(0);
@@ -232,6 +239,10 @@ export class SubscriptionsPageComponent implements OnDestroy {
     }
 
     const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
+    if (index === 2) {
+      void this.router.navigate(['/subscriptions/interests']);
+      return;
+    }
     void this.router.navigate(majorEventId ? ['/subscriptions/major-event', majorEventId] : ['/subscriptions']);
   }
 }

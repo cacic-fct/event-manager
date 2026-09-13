@@ -1,7 +1,39 @@
+import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphql';
+import { Test } from '@nestjs/testing';
+import { graphql } from 'graphql';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventsResolver } from './resolver';
 
 describe('EventsResolver', () => {
+  it('serves the admin grouped-event fields through the generated GraphQL schema', async () => {
+    const module = await Test.createTestingModule({ imports: [GraphQLSchemaBuilderModule] }).compile();
+    try {
+      const schema = await module.get(GraphQLSchemaFactory).create([EventsResolver]);
+      const group = { id: 'group-1', majorEventId: 'major-1', interestEnabled: true, attendanceEligibility: 'ANYONE' };
+      const prisma = {
+        event: {
+          findFirst: jest.fn(async ({ select }: { select: { eventGroup: { select: Record<string, boolean> } } }) => ({
+            id: 'event-1',
+            eventGroup: Object.fromEntries(Object.entries(group).filter(([key]) => select.eventGroup.select[key])),
+          })),
+        },
+      };
+      const resolver = new EventsResolver(prisma as never, {} as never, {} as never, {} as never, {} as never);
+      const eventField = schema.getQueryType()?.getFields()['event'];
+      if (!eventField) throw new Error('Event query is missing');
+      eventField.resolve = () => resolver.event('event-1');
+
+      const result = await graphql({
+        schema,
+        source: '{ event(id: "event-1") { id eventGroup { id majorEventId interestEnabled attendanceEligibility } } }',
+      });
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ event: { id: 'event-1', eventGroup: group } });
+    } finally {
+      await module.close();
+    }
+  });
+
   it('records event creation inside the event transaction', async () => {
     const event = {
       id: 'event-1',
@@ -248,17 +280,23 @@ describe('EventsResolver', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const attendanceCategories = {
+      refreshForEvent: jest.fn().mockResolvedValue(undefined),
+    };
+    const attendanceRealtime = {
+      notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined),
+    };
     const sportsMutationEvents = {
       publishForBackingEvent: jest.fn(),
     };
     const resolver = new EventsResolver(
       prisma as never,
       typesenseSearch as never,
-      {} as never,
+      attendanceRealtime as never,
       frozenResources as never,
       authorizationPolicy as never,
       auditLog as never,
-      undefined,
+      attendanceCategories as never,
       undefined,
       undefined,
       undefined,
@@ -311,6 +349,8 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
     expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 
   it('clones selected reusable event settings without copying the online attendance code', async () => {
@@ -370,6 +410,7 @@ describe('EventsResolver', () => {
           isActive: true,
           issuedTo: 'ATTENDEE',
           certificateFields: { workload: '2h' },
+          attendeeEligibility: 'REGISTERED_ONLY',
         },
       ],
     };
@@ -487,6 +528,7 @@ describe('EventsResolver', () => {
         scope: 'EVENT',
         eventId: 'event-clone',
         certificateTemplateId: 'template-1',
+        attendeeEligibility: 'REGISTERED_ONLY',
       }),
     });
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({

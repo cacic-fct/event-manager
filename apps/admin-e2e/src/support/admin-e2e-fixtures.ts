@@ -409,6 +409,8 @@ export function createAdminE2EMajorEvent(overrides: Record<string, unknown> = {}
     id: 'major-event-1',
     name: 'Semana da Computação',
     emoji: 'festival',
+    interestEnabled: true,
+    attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
     startDate: relativeIsoDate(-2, 12),
     endDate: relativeIsoDate(2, 21),
     description: 'Grande evento de tecnologia.',
@@ -453,6 +455,8 @@ export function createAdminE2EEventGroup(overrides: Record<string, unknown> = {}
     id: 'event-group-1',
     name: 'Trilha de Minicursos',
     emoji: 'school',
+    interestEnabled: true,
+    attendanceEligibility: null,
     requiresImageLicenseAgreement: false,
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
@@ -490,6 +494,8 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     eventGroupId: eventGroup.id,
     eventGroup,
     allowSubscription: true,
+    interestEnabled: true,
+    attendanceEligibility: null,
     requiresImageLicenseAgreement: false,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
@@ -797,7 +803,7 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
           name: event.name,
           emoji: event['emoji'],
         },
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
         displayOrder: 0,
@@ -817,6 +823,27 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
     createdById: 'admin-1',
     updatedAt: '2026-05-20T12:00:00.000Z',
     updatedById: 'admin-1',
+    ...overrides,
+  };
+}
+
+export function createAdminE2EEventInterest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const event = createAdminE2EEvent();
+  const person = createAdminE2EPerson();
+
+  return {
+    id: 'interest-1',
+    personId: person.id,
+    person,
+    targetType: 'EVENT',
+    targetId: event.id,
+    eventId: event.id,
+    eventGroupId: null,
+    majorEventId: null,
+    isSubscribed: false,
+    createdAt: '2026-05-20T12:00:00.000Z',
+    updatedAt: '2026-05-20T12:00:00.000Z',
+    createdById: person.id,
     ...overrides,
   };
 }
@@ -1031,6 +1058,24 @@ function graphqlData(
 
   if (query.includes('query WorkspaceEventSubscriptions')) {
     return { workspaceEventSubscriptions: [createAdminE2EEventSubscription()] };
+  }
+
+  if (query.includes('query AdminEventInterests')) {
+    return { eventInterests: [createAdminE2EEventInterest()] };
+  }
+
+  if (query.includes('mutation ConvertEventInterestToSubscription')) {
+    return {
+      convertEventInterestToSubscription: {
+        interest: createAdminE2EEventInterest({ isSubscribed: true }),
+        personId: 'person-1',
+        subscriptionId: 'event-subscription-1',
+        eventSubscriptionId: 'event-subscription-1',
+        eventGroupSubscriptionId: null,
+        majorEventSubscriptionId: null,
+        subscriptionStatus: 'CONFIRMED',
+      },
+    };
   }
 
   if (query.includes('query EventForms')) {

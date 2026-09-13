@@ -1,6 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   PLATFORM_ID,
   Component,
   DestroyRef,
@@ -78,6 +77,7 @@ import {
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { InterestToggle } from '../../interests/interest-toggle';
 
 type EventPageState =
   | { status: 'loading' }
@@ -153,10 +153,10 @@ type EventStructuredData = {
     MatTooltipModule,
     RouterLink,
     SubscriptionFormFlow,
+    InterestToggle,
   ],
   templateUrl: './event-page.html',
   styleUrl: './event-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Event {
   private readonly api = inject(EventApiService);
@@ -178,6 +178,7 @@ export class Event {
   private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly currentTime = toSignal(this.isBrowser ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()), { initialValue: Date.now() });
   private readonly isRegistrationEventDetail = [
     'major-event/:majorEventId/subscription',
     'major-event/:majorEventId/ranked-subscription',
@@ -193,6 +194,7 @@ export class Event {
   readonly standaloneSubscriptionCooldownSeconds = this.standaloneSubscriptionCooldown.seconds;
 
   private readonly reloadCounter = signal(0);
+  readonly interestRevision = signal(0);
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
   private readonly cooldownEventId = signal<string | null>(null);
   private readonly imageLicenseAgreementQueryRequested = toSignal(
@@ -218,10 +220,14 @@ export class Event {
   readonly eventState = toSignal(this.createEventState(), {
     initialValue: { status: 'loading' } satisfies EventPageState,
   });
-  readonly attendeeFormLinks = toSignal(this.createAttendeeFormLinks(), {
+  readonly availableFormLinks = toSignal(this.createAvailableFormLinks(), {
     initialValue: [] satisfies EventFormPageLink[],
   });
   readonly isPreview = computed(() => Boolean(this.previewToken()));
+  readonly isEventFinished = computed(() => {
+    const state = this.eventState();
+    return state.status === 'ready' && parseISO(state.data.event.endDate).getTime() <= this.currentTime();
+  });
   readonly hasPrizeDraws = signal(false);
   private readonly prizeDrawTargetId = computed(() => {
     const currentState = this.eventState();
@@ -607,6 +613,10 @@ export class Event {
     return ['/profile', 'forms', link.formId];
   }
 
+  refreshInterestForms(): void {
+    this.interestRevision.update((value) => value + 1);
+  }
+
   formQueryParams(link: EventFormPageLink): { targetType: EventFormTargetType; targetId: string; linkId?: string } {
     return {
       targetType: link.targetType,
@@ -853,22 +863,19 @@ export class Event {
     );
   }
 
-  private createAttendeeFormLinks(): Observable<EventFormPageLink[]> {
+  private createAvailableFormLinks(): Observable<EventFormPageLink[]> {
     return combineLatest([
       toObservable(this.eventState),
       toObservable(this.isAuthenticated),
       toObservable(this.isOnline),
+      toObservable(this.interestRevision),
     ]).pipe(
       switchMap(([currentState, authenticated, online]) => {
         if (currentState.status !== 'ready' || !authenticated || !online || currentState.data.preview) {
           return of([]);
         }
 
-        if (!currentState.data.currentUserAttendance) {
-          return of([]);
-        }
-
-        return this.loadAttendeeFormLinks(currentState.data);
+        return this.loadAvailableFormLinks(currentState.data);
       }),
     );
   }
@@ -1032,7 +1039,7 @@ export class Event {
     return Boolean(event.allowSubscription) && !event.majorEventId;
   }
 
-  private loadAttendeeFormLinks(data: EventPageData): Observable<EventFormPageLink[]> {
+  private loadAvailableFormLinks(data: EventPageData): Observable<EventFormPageLink[]> {
     const target = {
       targetType: 'EVENT' as const,
       targetId: data.event.id,

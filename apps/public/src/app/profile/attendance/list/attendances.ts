@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -49,7 +49,7 @@ import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 
 type ParticipationTypeFilter = 'majorEvent' | 'eventGroup' | 'event';
-type AttendanceStatusFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
+type AttendanceStatusFilter = 'interested' | 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
 
 type FeedState =
   | { status: 'loading' }
@@ -101,7 +101,6 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
   selector: 'app-attendances',
   templateUrl: './attendances.html',
   styleUrl: './attendances.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconModule,
     MatProgressBarModule,
@@ -161,6 +160,7 @@ export class Attendances {
   ];
   readonly statusFilterOptions: AttendanceFilterOption<AttendanceStatusFilter>[] = [
     { value: 'subscribed', label: 'Inscrito', icon: 'event_available' },
+    { value: 'interested', label: 'Quero ir', icon: 'favorite_border' },
     { value: 'present', label: 'Presença registrada', icon: 'how_to_reg' },
     { value: 'certificate', label: 'Certificado emitido', icon: 'workspace_premium' },
     { value: 'lecturer', label: 'Palestrante', icon: 'record_voice_over' },
@@ -451,6 +451,7 @@ export class Attendances {
       events: [...eventsById.values()].sort((first, second) => first.startDate.localeCompare(second.startDate)),
       participation: {
         isSubscribed: left.participation.isSubscribed || right.participation.isSubscribed,
+        isInterested: left.participation.isInterested || right.participation.isInterested,
         isLecturer: left.participation.isLecturer || right.participation.isLecturer,
         hasIssuedCertificate: left.participation.hasIssuedCertificate || right.participation.hasIssuedCertificate,
       },
@@ -536,6 +537,7 @@ export class Attendances {
   ): AttendanceStatusFilter[] {
     return [
       participation.isSubscribed ? 'subscribed' : undefined,
+      !participation.isSubscribed && participation.isInterested ? 'interested' : undefined,
       isPresent ? 'present' : undefined,
       participation.hasIssuedCertificate ? 'certificate' : undefined,
       participation.isLecturer ? 'lecturer' : undefined,

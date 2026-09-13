@@ -1,5 +1,7 @@
+import { registerLocaleData } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
-import { inject, provideAppInitializer } from '@angular/core';
+import localePt from '@angular/common/locales/pt';
+import { LOCALE_ID, inject, provideAppInitializer } from '@angular/core';
 import { MAT_DATE_LOCALE } from '@angular/material/core';
 import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -15,6 +17,8 @@ import { cacicEventosHandlers } from './storybook-mocks';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { NEVER } from 'rxjs';
 import { RealtimeApiService } from '../src/app/graphql/realtime-api.service';
+
+registerLocaleData(localePt);
 
 const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
 
@@ -183,6 +187,7 @@ const preview: Preview = {
   decorators: [
     applicationConfig({
       providers: [
+        { provide: LOCALE_ID, useValue: 'pt-BR' },
         { provide: MAT_DATE_LOCALE, useValue: ptBR },
         provideDateFnsAdapter(),
         provideHttpClient(),

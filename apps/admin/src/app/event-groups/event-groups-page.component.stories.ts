@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { expect, within } from 'storybook/test';
 import { EventGroupsPageComponent } from './event-groups-page.component';
 import {
   defaultPageStoryArgs,
@@ -35,7 +36,12 @@ export const CertificateRules: Story = {
     selectedIndex: 2,
     publicationState: 'PUBLISHED',
   },
-  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await exercisePageStory(canvasElement);
+    await expect(canvas.getByText('Emitir para presentes não pagantes')).toBeVisible();
+    await expect(canvas.getByText('Emitir para presentes não inscritos')).toBeVisible();
+  },
 };
 
 export const DenseCertificateMatrix: Story = {
@@ -69,4 +75,13 @@ export const EmptyReadonly: Story = {
     publicationState: 'DRAFT',
   },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const InterestAndEligibility: Story = {
+  args: { selectedIndex: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Permitir manifestação de interesse')).toBeVisible();
+    await expect(canvas.getByText('Qualquer participante')).toBeVisible();
+  },
 };

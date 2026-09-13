@@ -140,10 +140,13 @@ export class MajorEventSubscriptionApiService {
     ).pipe(map((data) => data.currentUserMajorEventSubscriptions));
   }
 
-  getSubscriptionPage(majorEventId: string): Observable<PublicMajorEventSubscriptionPage> {
+  getSubscriptionPage(majorEventId: string, includeInterests = false): Observable<PublicMajorEventSubscriptionPage> {
     return this.query<PublicMajorEventSubscriptionPageQuery>(PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY, {
       majorEventId,
-    }).pipe(map((data) => data.publicMajorEventSubscriptionPage));
+      ...(includeInterests ? { includeInterests: true } : {}),
+    }).pipe(map((data) => includeInterests
+      ? { ...data.publicMajorEventSubscriptionPage, interests: data.currentUserInterests ?? [] }
+      : data.publicMajorEventSubscriptionPage));
   }
 
   getCurrentUserSubscription(majorEventId: string): Observable<CurrentUserMajorEventSubscription | null> {

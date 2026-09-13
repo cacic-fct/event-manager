@@ -324,6 +324,13 @@ export class MergeCandidateOperationsService {
         });
       }
 
+      if (movedRelations.movedEventInterestIds?.length) {
+        await tx.eventInterest.updateMany({
+          where: { id: { in: movedRelations.movedEventInterestIds }, personId: targetPerson.id },
+          data: { personId: sourcePerson.id },
+        });
+      }
+
       if (movedRelations.movedEventGroupSubscriptionIds.length > 0) {
         await tx.eventGroupSubscription.updateMany({
           where: {

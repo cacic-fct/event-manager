@@ -8,6 +8,7 @@ describe('RealtimeFingerprintService', () => {
       eventAttendance: aggregate(),
       eventSubscription: { ...aggregate(), findMany: jest.fn().mockResolvedValue([]) },
       eventGroupSubscription: aggregate(),
+      eventInterest: aggregate(),
       majorEventSubscription: aggregate(),
       certificate: aggregate(),
       sportsPlayerApplication: aggregate(),
@@ -68,6 +69,7 @@ describe('RealtimeFingerprintService', () => {
           .mockResolvedValueOnce([{ id: 'subscription-1', eventGroupSubscriptionId: null }])
           .mockResolvedValueOnce([{ id: 'subscription-1', eventGroupSubscriptionId: 'group-subscription-1' }]),
       },
+      eventInterest: { aggregate: jest.fn().mockResolvedValue({ _count: 0, _max: {} }) },
       eventLecturer: { aggregate: jest.fn().mockResolvedValue({ _count: 1, _max: { createdAt: null } }) },
       majorEventSubscriptionEventSelection: { aggregate: jest.fn().mockResolvedValue(selections) },
       majorEventSubscription: { aggregate: jest.fn().mockResolvedValue(rankedSubscriptions) },
@@ -80,6 +82,7 @@ describe('RealtimeFingerprintService', () => {
     expect(standalone).toEqual({
       type: 'EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions: directSubscriptions,
+      interests: { _count: 0, _max: {} },
       subscriptionGroups: expect.any(String),
       lecturers: { _count: 1, _max: { createdAt: null } },
       selections,
@@ -111,6 +114,7 @@ describe('RealtimeFingerprintService', () => {
   it('builds a major-event subscription revision across payments and sports membership', async () => {
     const prisma = {
       majorEventSubscription: { aggregate: jest.fn().mockResolvedValue({ _count: 1, _max: { updatedAt: null } }) },
+      eventInterest: { aggregate: jest.fn().mockResolvedValue({ _count: 0, _max: {} }) },
       majorEventSubscriptionEventSelection: {
         aggregate: jest.fn().mockResolvedValue({ _count: 2, _max: { createdAt: null } }),
       },
@@ -132,6 +136,7 @@ describe('RealtimeFingerprintService', () => {
     await expect(service.majorEventSubscriptions('major-1')).resolves.toEqual({
       type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions: { _count: 1, _max: { updatedAt: null } },
+      interests: { _count: 0, _max: {} },
       selections: { _count: 2, _max: { createdAt: null } },
       receipts: { _count: 3, _max: { updatedAt: null } },
       applications: { _count: 4, _max: { updatedAt: null } },

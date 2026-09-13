@@ -1,0 +1,146 @@
+<section class="subtab-layout interest-layout">
+  <aside class="panel interest-target-browser">
+    <div class="panel-heading">
+      <div>
+        <h3>Quero ir</h3>
+        <p>Escolha um evento, grupo ou grande evento para consultar os interessados.</p>
+      </div>
+    </div>
+
+    <mat-form-field class="interest-target-search">
+      <mat-label>Buscar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        aria-label="Buscar eventos, grupos e grandes eventos com interesse"
+        [formControl]="targetSearchForm.controls.query" />
+    </mat-form-field>
+
+    @if (loadingTargets()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos, grupos e grandes eventos com interesse" />
+    }
+
+    <mat-list class="interest-target-list">
+      @for (target of filteredTargets(); track target.targetType + ':' + target.targetId) {
+        <mat-list-item
+          role="button"
+          tabindex="0"
+          [attr.aria-current]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId ? 'true' : null"
+          [class.selected-list-item]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId"
+          (click)="selectTarget(target)"
+          (keydown.enter)="selectTarget(target)"
+          (keydown.space)="$event.preventDefault(); selectTarget(target)">
+          <span matListItemTitle class="list-title">
+            <lib-twemoji [emoji]="target.emoji" />
+            <span>{{ target.name }}</span>
+          </span>
+          <span matListItemLine>{{ target.kindLabel }}{{ target.interestEnabled ? '' : ' · Novos interesses desativados' }}</span>
+          @if (target.startDate) {
+            <span matListItemLine>{{ target.startDate | date: 'short' }}</span>
+          }
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhum evento, grupo ou grande evento encontrado</span>
+          <span matListItemLine>Revise a busca para consultar o histórico de interesses.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel interest-workbench">
+    @if (selectedTarget(); as target) {
+      <div class="panel-heading">
+        <div>
+          <h3><lib-twemoji [emoji]="target.emoji" /> {{ target.name }}</h3>
+          <p>{{ targetTypeLabel(target.targetType) }}</p>
+        </div>
+      </div>
+
+      <section class="surface">
+        <div class="surface-heading">
+          <div>
+            <h4>Interessados</h4>
+            <span>{{ interestCountLabel() }}</span>
+          </div>
+          @if (interestsPagination.hasNextPage()) {
+            <span>Há mais interesses</span>
+          }
+        </div>
+
+        @if (loadingInterests()) {
+          <mat-progress-bar mode="indeterminate" aria-label="Carregando interessados" />
+        }
+
+        <mat-list class="subscription-list interest-list">
+          @for (interest of interests(); track interest.id) {
+            <mat-list-item>
+              <span matListItemTitle>{{ interest.person?.name ?? interest.personId }}</span>
+              <span matListItemLine>
+                {{ interest.person?.email ?? 'E-mail não informado' }} ·
+                Interesse registrado em {{ interest.createdAt | date: 'short' }}
+              </span>
+              <div matListItemMeta class="item-actions">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="!canConvertInterest(interest) || convertingInterestId() === interest.id"
+                  [matTooltip]="
+                    interest.isSubscribed === true
+                      ? 'Esta pessoa já possui uma inscrição ativa para esta atividade.'
+                      : 'Criar uma inscrição usando a manifestação de interesse.'
+                  "
+                  (click)="convertInterest(interest)">
+                  <mat-icon>how_to_reg</mat-icon>
+                  @if (convertingInterestId() === interest.id) {
+                    Convertendo…
+                  } @else if (interest.isSubscribed === true) {
+                    Inscrito
+                  } @else {
+                    Converter em inscrição
+                  }
+                </button>
+              </div>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhuma manifestação encontrada</span>
+              <span matListItemLine>As novas manifestações aparecerão aqui.</span>
+            </mat-list-item>
+          }
+        </mat-list>
+
+        <nav class="list-pager" aria-label="Paginação de interessados">
+          <span>{{ interestPaginationLabel() }}</span>
+          <div class="list-pager-actions">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Página anterior de interessados"
+              matTooltip="Anterior"
+              [disabled]="!interestsPagination.hasPreviousPage()"
+              (click)="previousInterestsPage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Próxima página de interessados"
+              matTooltip="Próxima"
+              [disabled]="!interestsPagination.hasNextPage()"
+              (click)="nextInterestsPage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </nav>
+      </section>
+
+    } @else {
+      <div class="empty-state">
+        <mat-icon>bookmark_add</mat-icon>
+        <h3>Selecione um evento, grupo ou grande evento</h3>
+        <p>Consulte o histórico mesmo quando novos interesses estiverem desativados.</p>
+      </div>
+    }
+  </section>
+</section>

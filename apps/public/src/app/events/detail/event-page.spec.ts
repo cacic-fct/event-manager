@@ -206,7 +206,7 @@ function subscriptionFormFixture(): PublicEventForm {
           name: 'Evento teste',
           emoji: '🎓',
         },
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
         displayOrder: 0,
@@ -738,7 +738,7 @@ describe('Event', () => {
     });
     expect(compiled.textContent).toContain('Formulários');
     expect(compiled.textContent).toContain('Pesquisa de camiseta');
-    const [formLink] = newFixture.componentInstance.attendeeFormLinks();
+    const [formLink] = newFixture.componentInstance.availableFormLinks();
     expect(newFixture.componentInstance.formRoute(formLink)).toEqual(['/profile', 'forms', 'form-1']);
     expect(newFixture.componentInstance.formQueryParams(formLink)).toEqual({
       targetType: 'EVENT',
@@ -747,9 +747,9 @@ describe('Event', () => {
     });
   });
 
-  it('does not request event page forms for authenticated users without attendance', async () => {
+  it('asks the backend for authorized forms even without attendance or an enabled interest toggle', async () => {
     TestBed.resetTestingModule();
-    const listCurrentUserForms = vi.fn(() => of([subscriptionFormFixture()]));
+    const listCurrentUserForms = vi.fn(() => of([]));
     const newFixture = await createEventComponentFixture(
       {},
       {
@@ -764,7 +764,7 @@ describe('Event', () => {
     await newFixture.whenStable();
     newFixture.detectChanges();
 
-    expect(listCurrentUserForms).not.toHaveBeenCalled();
+    expect(listCurrentUserForms).toHaveBeenCalledWith({ targetType: 'EVENT', eventId: 'event-1', majorEventId: null });
     expect((newFixture.nativeElement as HTMLElement).textContent).not.toContain('Formulários');
   });
 
@@ -867,10 +867,9 @@ describe('Event', () => {
       ],
     };
     const listPublicEventGroupEvents = vi.fn(() => of([eventPageData.event, groupEvent]));
-    const listCurrentUserForms = vi
-      .fn()
-      .mockReturnValueOnce(of([]))
-      .mockReturnValueOnce(of([siblingForm]));
+    const listCurrentUserForms = vi.fn((input: { eventId?: string | null; subscriptionFlowOnly?: boolean }) =>
+      of(input.subscriptionFlowOnly && input.eventId === 'event-2' ? [siblingForm] : []),
+    );
     const getCurrentUserResponse = vi.fn(() => of(null));
     const subscribeToEvent = vi.fn(() => of(eventPageData.event));
     const open = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));

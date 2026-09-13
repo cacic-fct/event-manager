@@ -48,6 +48,7 @@ export type EventFormAvailableNotification = {
   targetName: string;
   recipients: NotificationRecipient[];
   requiredSubscriptionForm?: boolean;
+  audienceVersion?: string;
 };
 
 export type OnlineAttendanceAvailableNotification = {

@@ -1,3 +1,4 @@
+import { AttendanceEligibility } from './enums';
 import { Field, InputType, Int } from '@nestjs/graphql';
 
 import { ContactType, PriceType } from './enums';
@@ -55,6 +56,12 @@ export class MajorEventPriceInput {
 
 @InputType()
 export class MajorEventCreateInput {
+  @Field(() => Boolean, { nullable: true })
+  interestEnabled?: boolean;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
   @Field(() => String, { nullable: true })
   id?: string;
 
@@ -127,6 +134,12 @@ export class MajorEventCreateInput {
 
 @InputType()
 export class MajorEventUpdateInput {
+  @Field(() => Boolean, { nullable: true })
+  interestEnabled?: boolean;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
   @Field(() => Boolean, { nullable: true })
   publishAfterUpdate?: boolean;
 

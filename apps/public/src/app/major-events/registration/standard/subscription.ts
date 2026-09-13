@@ -24,6 +24,7 @@ import { SubscriptionTierSelection } from '../tier/tier-selection';
 import { resolveRegistrationDecisions } from '../tier/registration-decisions';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
+import { interestedEventIds } from '@cacic-fct/shared-event-participation';
 import { SubscriptionFormFlow } from './subscription-form-flow';
 import { SubscriptionFormFlowService } from './subscription-form-flow.service';
 import {
@@ -105,6 +106,7 @@ export class MajorEventSubscription {
     );
   });
   readonly selectedEventIds = signal<Set<string>>(new Set());
+  readonly interestedEventIds = computed(() => interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []));
   readonly selectedPriceTierName = signal<string | null>(null);
   readonly flowPhase = signal<'tier' | 'selection' | 'loading-forms' | 'forms'>('tier');
   readonly subscriptionForms = signal<SubscriptionFormContext[]>([]);
@@ -242,7 +244,7 @@ export class MajorEventSubscription {
       this.subscriptionCooldown.clear();
 
       const initialSubscription = this.api
-        .getSubscriptionPage(majorEventId)
+        .getSubscriptionPage(majorEventId, this.isAuthenticated())
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (data) => {

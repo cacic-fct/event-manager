@@ -8,6 +8,19 @@ import type {
   PublicMajorEventPrice,
   PublicPaymentInfo,
 } from '@cacic-fct/event-manager-public-contracts/types';
+import type { EventInterest } from '@cacic-fct/event-manager-public-contracts/types';
+
+export function createPublicEventInterest(overrides: Partial<EventInterest> = {}): EventInterest {
+  return {
+    id: 'interest-1',
+    personId: 'person-1',
+    eventId: overrides.eventGroupId || overrides.majorEventId ? null : 'event-1',
+    eventGroupId: null,
+    majorEventId: null,
+    createdAt: publicFixtureDateFromNow(-1),
+    ...overrides,
+  };
+}
 
 export const publicFixtureDate = publicFixtureDateFromNow();
 export const publicStoryFixtureDate = publicFixtureDateFromNow();
@@ -182,7 +195,7 @@ export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink
       name: targetType === 'EVENT' ? 'Arquitetura Angular com Signals' : 'CACiC Storybook',
       emoji: 'event',
     },
-    audience: 'SUBSCRIBERS_OR_ATTENDEES',
+    audiences: ['SUBSCRIBERS', 'ATTENDEES'],
     insertInSubscriptionFlow: true,
     requiredInSubscriptionFlow: true,
     displayOrder: 0,

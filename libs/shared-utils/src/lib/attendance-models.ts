@@ -27,6 +27,7 @@ export interface CurrentUserMajorEventSubscription {
 }
 
 export interface CurrentUserEventParticipation {
+  isInterested?: boolean;
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;

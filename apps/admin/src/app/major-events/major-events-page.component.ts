@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -16,14 +16,21 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MarkdownPreviewDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  attendanceEligibilityOptionsFor,
+  displayAttendanceEligibility,
+  attendanceEligibilityHint,
+  attendanceEligibilityLabel,
+  type AttendanceEligibilityOption,
+} from '../shared/event-participation-policy';
 
 @Component({
   selector: 'app-workspace-major-events-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -94,6 +101,37 @@ export class MajorEventsPageComponent {
 
   protected canCloneMajorEvent(): boolean {
     return this.permissions.hasAll([Permission.MajorEvent.Read, Permission.MajorEvent.Create]);
+  }
+
+  protected attendanceEligibilityLabel(policy: AttendanceEligibility | null | undefined): string {
+    return attendanceEligibilityLabel(policy);
+  }
+
+  protected attendanceEligibilityOptions(): AttendanceEligibilityOption[] {
+    return attendanceEligibilityOptionsFor(
+      'MAJOR_EVENT',
+      'NONE',
+      this.workspace.majorEventForm.controls.attendanceEligibility.value,
+    );
+  }
+
+  protected attendanceEligibilityDisplayValue(): AttendanceEligibility | null {
+    return displayAttendanceEligibility(
+      this.workspace.majorEventForm.controls.attendanceEligibility.value,
+      'MAJOR_EVENT',
+      'NONE',
+    );
+  }
+
+  protected attendanceEligibilityCompareWith = (
+    option: AttendanceEligibility | null,
+    value: AttendanceEligibility | null,
+  ): boolean => {
+    return option === displayAttendanceEligibility(value, 'MAJOR_EVENT', 'NONE');
+  };
+
+  protected attendanceEligibilityHint(): string {
+    return attendanceEligibilityHint();
   }
 
   protected draftMajorEventActionLabel(): string {

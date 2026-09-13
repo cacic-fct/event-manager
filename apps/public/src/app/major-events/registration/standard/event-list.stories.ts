@@ -12,6 +12,7 @@ interface SubscriptionEventListStoryArgs extends PublicEventCollectionStoryContr
   selectedFirstEvent: boolean;
   autoSelectSecondEvent: boolean;
   disableSoldOutEvents: boolean;
+  interestedFirstEvent: boolean;
 }
 
 const defaultArgs: SubscriptionEventListStoryArgs = {
@@ -19,6 +20,7 @@ const defaultArgs: SubscriptionEventListStoryArgs = {
   selectedFirstEvent: true,
   autoSelectSecondEvent: false,
   disableSoldOutEvents: false,
+  interestedFirstEvent: false,
 };
 
 const meta: Meta<SubscriptionEventListStoryArgs> = {
@@ -31,6 +33,7 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
     selectedFirstEvent: { control: 'boolean' },
     autoSelectSecondEvent: { control: 'boolean' },
     disableSoldOutEvents: { control: 'boolean' },
+    interestedFirstEvent: { control: 'boolean' },
   },
   render: (args) => {
     const events = createPublicStoryEvents(args);
@@ -50,6 +53,7 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
         events,
         summariesByEventId: buildSummaries(events),
         selectedEventIds,
+        interestedEventIds: new Set(args.interestedFirstEvent && firstEventId ? [firstEventId] : []),
         autoSelectedEventIds,
         disabledReasons: args.disableSoldOutEvents ? buildDisabledReasons(events) : new Map(),
       },
@@ -64,6 +68,16 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
 export default meta;
 
 type Story = StoryObj<SubscriptionEventListStoryArgs>;
+
+export const PreviouslyInterested: Story = {
+  args: { selectedFirstEvent: false, interestedFirstEvent: true },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Você marcou Quero ir')).toBeVisible();
+    await expect(canvas.getAllByRole('checkbox')[0]).not.toBeChecked();
+  },
+};
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);

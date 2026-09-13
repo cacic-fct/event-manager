@@ -2,6 +2,7 @@ import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import {
   getMajorEventStatusLine,
+  getParticipationStatusLabels,
   getSubscribedItemDateLine,
   getSubscribedItemEmoji,
   getSubscribedItemStatusLine,
@@ -15,6 +16,12 @@ import type {
 } from './attendance-models';
 
 describe('feed view model', () => {
+  it('labels explicit interest separately and suppresses it once subscribed', () => {
+    const participation = { isSubscribed: false, isInterested: true, isLecturer: false, hasIssuedCertificate: false };
+    expect(getParticipationStatusLabels(participation)).toEqual(['Quero ir']);
+    expect(getParticipationStatusLabels({ ...participation, isSubscribed: true })).toEqual(['Inscrito']);
+  });
+
   it('sorts major event and standalone feed items newest first without mutating the source feed', () => {
     const feed = {
       majorEventItems: [

@@ -218,6 +218,47 @@ describe('EventsService', () => {
     });
   });
 
+  it('persists independent interest and attendance eligibility settings', async () => {
+    service.eventForm.patchValue({
+      interestEnabled: true,
+      attendanceEligibility: 'ANYONE',
+    });
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      interestEnabled: true,
+      attendanceEligibility: 'ANYONE',
+    });
+  });
+
+  it('persists both certificate exception flags when event certificates are enabled', async () => {
+    service.eventForm.patchValue({
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+    });
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+    });
+  });
+
+  it('disables event certificate exceptions denied by the selected group', () => {
+    service.selectedEventGroupAllowsNonPayingCertificates.set(false);
+    service.selectedEventGroupAllowsNonSubscribedCertificates.set(false);
+    service.eventForm.controls.shouldIssueCertificate.setValue(true);
+
+    expect(service.eventForm.controls.shouldIssueCertificateForNonPayingAttendees.disabled).toBe(true);
+    expect(service.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees.disabled).toBe(true);
+    expect(service.eventForm.controls.shouldIssueCertificateForNonPayingAttendees.value).toBe(false);
+    expect(service.eventForm.controls.shouldIssueCertificateForNonSubscribedAttendees.value).toBe(false);
+  });
+
   it('publishes newly created events through the publication API', async () => {
     await service.saveEvent('PUBLISH');
 

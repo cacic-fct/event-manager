@@ -10,6 +10,12 @@ describe('CurrentUserSubscriptionFeedService', () => {
       eventGroupSubscription: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      eventInterest: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([]),
+      },
       eventLecturer: {
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -86,6 +92,25 @@ describe('CurrentUserSubscriptionFeedService', () => {
     );
   });
 
+  it('keeps a direct event interest visible when the event belongs to a standalone group', async () => {
+    const interestedEvent = event('group-child-interest', 'Atividade de interesse', 'group-interest');
+    const prisma = createPrisma({ eventInterests: [{ event: interestedEvent }] });
+    const mapper = createMapper();
+    const service = new CurrentUserSubscriptionFeedService(prisma as never, mapper as never);
+
+    const feed = await service.getCurrentUserSubscriptionFeed('person-1');
+
+    expect(feed.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'SINGLE_EVENT',
+          eventId: 'group-child-interest',
+          participation: expect.objectContaining({ isInterested: true, isSubscribed: false }),
+        }),
+      ]),
+    );
+  });
+
   it('does not add non-standalone lecturer or certificate events as standalone feed rows', async () => {
     const prisma = {
       eventSubscription: {
@@ -93,6 +118,12 @@ describe('CurrentUserSubscriptionFeedService', () => {
       },
       eventGroupSubscription: {
         findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventInterest: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([]),
       },
       eventLecturer: {
         findMany: jest
@@ -506,6 +537,8 @@ function createPrisma(
     certificateEvents?: unknown[];
     certificateEventGroups?: unknown[];
     attendanceEvents?: unknown[];
+    eventInterests?: unknown[];
+    eventGroupInterests?: unknown[];
   } = {},
 ) {
   const eventSubscriptionResults = options.eventSubscriptions ?? [[]];
@@ -515,6 +548,12 @@ function createPrisma(
     },
     eventGroupSubscription: {
       findMany: jest.fn().mockResolvedValue(options.eventGroupSubscriptions ?? []),
+    },
+    eventInterest: {
+      findMany: jest
+        .fn()
+        .mockResolvedValueOnce(options.eventInterests ?? [])
+        .mockResolvedValueOnce(options.eventGroupInterests ?? []),
     },
     eventLecturer: {
       findMany: jest

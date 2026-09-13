@@ -107,6 +107,8 @@ describe('EventGroupsService', () => {
     expect(lastPayload).toMatchObject({
       name: 'Trilha de Minicursos',
       shouldIssueCertificate: true,
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
       shouldIssuePartialCertificate: true,
     });
   });
@@ -117,6 +119,20 @@ describe('EventGroupsService', () => {
     expect(api.createEventGroup).toHaveBeenCalledWith(expect.objectContaining({ name: 'Trilha de Minicursos' }));
     expect(publicationApi.setPublicationState).not.toHaveBeenCalled();
     expect(service.selectedEventGroup()).toBeNull();
+  });
+
+  it('persists independent interest and inherited attendance eligibility settings', async () => {
+    service.eventGroupForm.patchValue({
+      interestEnabled: true,
+      attendanceEligibility: null,
+    });
+
+    await service.saveEventGroup('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      interestEnabled: true,
+      attendanceEligibility: null,
+    });
   });
 
   it('moves linked events back to draft when saving an existing group as draft', async () => {
@@ -141,14 +157,10 @@ describe('EventGroupsService', () => {
     const group = createAdminEventGroup({
       id: 'event-group-1',
       shouldIssueCertificate: false,
-      shouldIssueCertificateForNonPayingAttendees: false,
-      shouldIssueCertificateForNonSubscribedAttendees: false,
     });
     const event = createAdminEvent({
       id: 'event-1',
       shouldIssueCertificate: true,
-      shouldIssueCertificateForNonPayingAttendees: true,
-      shouldIssueCertificateForNonSubscribedAttendees: true,
     });
     service.selectedEventGroup.set(group);
     eventApi.listEventsSummary.mockReturnValue(of([createAdminEventSummary({ id: event.id, eventGroupId: group.id })]));
@@ -158,8 +170,6 @@ describe('EventGroupsService', () => {
     expect(eventApi.updateEvent).toHaveBeenCalledWith('event-1', {
       eventGroupId: 'event-group-1',
       shouldIssueCertificate: false,
-      shouldIssueCertificateForNonPayingAttendees: false,
-      shouldIssueCertificateForNonSubscribedAttendees: false,
     });
     expect(eventsService.loadEvents).toHaveBeenCalled();
   });

@@ -225,18 +225,42 @@
           </mat-form-field>
         </div>
         <div class="checkbox-grid">
+          <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
+        </div>
+        <div class="field-grid">
+          <mat-form-field class="span-2" subscriptSizing="dynamic">
+            <mat-label>Quem pode confirmar presença on-line</mat-label>
+            <mat-select
+              formControlName="attendanceEligibility"
+              [compareWith]="attendanceEligibilityCompareWith">
+              <mat-select-trigger>
+                {{ attendanceEligibilityLabel(attendanceEligibilityDisplayValue()) }}
+              </mat-select-trigger>
+              @for (policy of attendanceEligibilityOptions(); track policy.label) {
+                <mat-option [value]="policy.value" [disabled]="policy.disabled">
+                  {{ policy.label }}
+                </mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
+          </mat-form-field>
+        </div>
+        <div class="checkbox-grid">
           <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
+            Emitir para presentes não pagantes
+          </mat-checkbox>
+          <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
+            Emitir para presentes não inscritos
+          </mat-checkbox>
           <mat-checkbox formControlName="requiresImageLicenseAgreement">
             Exigir concordância com o contrato de licença de uso de imagem do CACiC
           </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
-            Emitir certificados para presentes não pagantes?
-          </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
-            Emitir certificados para presentes não inscritos?
-          </mat-checkbox>
           <mat-checkbox formControlName="shouldIssueCertificateForEachEvent"> Um certificado por evento </mat-checkbox>
           <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
+          <mat-hint class="span-2">
+            A emissão exige o grupo e cada evento habilitados; a coleta de presença é independente do certificado.
+          </mat-hint>
         </div>
       </form>
 

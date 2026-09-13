@@ -13,7 +13,7 @@ import {
   NormalizedTarget,
   TargetInput,
 } from './event-form-records';
-import { isLinkAvailable, normalizeTarget, toDbAudience } from './event-form-targets';
+import { isLinkAvailable, normalizeAudiences, normalizeTarget } from './event-form-targets';
 
 export async function requireEventForm(prisma: PrismaService, formId: string): Promise<EventFormRecord> {
   const form = await prisma.eventForm.findFirst({
@@ -134,6 +134,10 @@ export async function replaceEventFormLinks(
   for (const link of links) {
     const target = normalizeTarget(link);
     const previous = link.id ? previousLinksById.get(link.id) : undefined;
+    const audiences = normalizeAudiences(link.audiences);
+    if (link.insertInSubscriptionFlow && !audiences.includes(ContractAudience.SUBSCRIBERS)) {
+      throw new BadRequestException('Formulários inseridos no fluxo de inscrição devem incluir pessoas inscritas.');
+    }
     const priceTierIds = [...new Set((link.priceTierIds ?? []).map((id) => id.trim()).filter(Boolean))];
     if (
       priceTierIds.length > 0 &&
@@ -166,12 +170,13 @@ export async function replaceEventFormLinks(
       previous.targetType !== target.targetType ||
       previous.eventId !== target.eventId ||
       previous.majorEventId !== target.majorEventId ||
+      !sameStringSet(previous.audiences ?? [], audiences) ||
       !sameStringSet(previous.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [], priceTierIds);
     const data = {
       targetType: target.targetType,
       eventId: target.eventId,
       majorEventId: target.majorEventId,
-      audience: toDbAudience(link.audience ?? ContractAudience.SUBSCRIBERS_OR_ATTENDEES),
+      audiences,
       insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
       requiredInSubscriptionFlow: link.insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
       displayOrder: link.displayOrder ?? 0,

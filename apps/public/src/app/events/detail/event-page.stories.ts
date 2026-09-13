@@ -1,11 +1,11 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { createPublicEventInterest, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import {
   createPublicStoryEventFromControls,
   createPublicStoryLecturerProfilesFromControls,
@@ -31,6 +31,8 @@ interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryCo
   hasAttendance: boolean;
   hasSubscriptionForm: boolean;
   requiresLicenseAgreement: boolean;
+  interestEnabled: boolean;
+  isInterested: boolean;
 }
 
 const defaultArgs: EventStoryArgs = {
@@ -45,6 +47,8 @@ const defaultArgs: EventStoryArgs = {
   hasAttendance: false,
   hasSubscriptionForm: false,
   requiresLicenseAgreement: false,
+  interestEnabled: false,
+  isInterested: false,
 };
 
 type EventStoryContext = MutableStoryContext<EventStoryArgs>;
@@ -77,6 +81,8 @@ const meta: Meta<EventStoryArgs> = {
     hasAttendance: { control: 'boolean' },
     hasSubscriptionForm: { control: 'boolean' },
     requiresLicenseAgreement: { control: 'boolean' },
+    interestEnabled: { control: 'boolean' },
+    isInterested: { control: 'boolean' },
   },
   parameters: {
     layout: 'fullscreen',
@@ -112,6 +118,22 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const InterestWithoutRegistration: Story = {
+  args: { interestEnabled: true, allowSubscription: false, isInterested: true, isSubscribed: false, dayOffset: 1 },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByRole('button', { name: /^Quero ir:/ });
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-pressed', 'true'));
+    await expect(canvas.queryByRole('button', { name: 'Cancelar inscrição' })).toBeNull();
+  },
+};
+
+export const InterestedAndRegistered: Story = {
+  args: { interestEnabled: true, isInterested: true, isSubscribed: true, dayOffset: 1 },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
 };
 
 export const WithoutLecturers: Story = {
@@ -303,15 +325,32 @@ function buildEvent(args: EventStoryArgs) {
   return {
     ...createPublicStoryEventFromControls(args, {
       id: 'event-1',
-      allowSubscription: args.allowSubscription,
-      lecturers: createPublicStoryLecturerProfilesFromControls(args),
     }),
+    allowSubscription: args.allowSubscription,
+    lecturers: createPublicStoryLecturerProfilesFromControls(args),
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
+    interestEnabled: args.interestEnabled,
   };
 }
 
 function eventGraphqlData(query: string, variables: Record<string, unknown>, args: EventStoryArgs) {
   const event = buildEvent(args);
+  if (query.includes('PublicPrizeDrawAvailability')) {
+    return { publicPrizeDrawAvailability: [] };
+  }
+  if (query.includes('SetCurrentUserInterest')) {
+    args.isInterested = variables['interested'] === true;
+    return { setCurrentUserInterest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null };
+  }
+  if (query.includes('CurrentUserInterestState')) {
+    return { currentUserInterestState: {
+      interest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null,
+      subscribed: args.isSubscribed, endsAt: event.endDate, enabled: args.interestEnabled,
+    } };
+  }
+  if (query.includes('CurrentUserInterest')) {
+    return { currentUserInterest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null };
+  }
   if (query.includes('publicEvent(')) {
     return {
       publicEvent: event,
@@ -401,7 +440,7 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
           name: event.name,
           emoji: event.emoji,
         },
-        audience: 'ATTENDEES',
+        audiences: ['ATTENDEES'],
         insertInSubscriptionFlow: false,
         requiredInSubscriptionFlow: false,
         displayOrder: 0,
@@ -442,7 +481,7 @@ function publicSubscriptionEventForm(event: PublicEvent): PublicEventForm {
     ]),
     links: form.links.map((link) => ({
       ...link,
-      audience: 'SUBSCRIBERS_OR_ATTENDEES',
+      audiences: ['SUBSCRIBERS', 'ATTENDEES'],
       insertInSubscriptionFlow: true,
       requiredInSubscriptionFlow: true,
     })),

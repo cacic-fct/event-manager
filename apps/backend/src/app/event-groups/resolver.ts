@@ -21,6 +21,8 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
+import { AttendanceCategoryService } from '../events/attendance-category.service';
+import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -34,9 +36,11 @@ const EVENT_GROUP_CLONE_SOURCE_SELECT = {
   name: true,
   emoji: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  attendanceEligibility: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   certificateConfigs: {
@@ -53,6 +57,7 @@ const EVENT_GROUP_CLONE_SOURCE_SELECT = {
       issuedTo: true,
       certificateTypeLabel: true,
       certificateFields: true,
+      attendeeEligibility: true,
     },
   },
 } satisfies Prisma.EventGroupSelect;
@@ -78,6 +83,12 @@ export class EventGroupsResolver {
     private readonly sportsMutationEvents: SportsMutationEventsService = {
       publishForBackingEventGroup: async () => undefined,
     } as unknown as SportsMutationEventsService,
+    private readonly attendanceCategories: AttendanceCategoryService = {
+      refreshForEvent: async () => undefined,
+    } as unknown as AttendanceCategoryService,
+    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
+      notifyAllConnectedPeople: async () => undefined,
+    } as unknown as CurrentUserOnlineAttendanceRealtimeService,
   ) {}
 
   @ResolveField(() => Boolean)
@@ -234,6 +245,16 @@ export class EventGroupsResolver {
       await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(tx, id, normalizedInput);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
+      if (normalizedInput.attendanceEligibility !== undefined) {
+        const events = await tx.event.findMany({
+          where: { eventGroupId: id, deletedAt: null },
+          select: { id: true },
+        });
+        for (const event of events) {
+          await this.attendanceCategories.refreshForEvent(event.id, tx);
+        }
+      }
+
       if (normalizedInput.shouldIssueCertificate === false) {
         await tx.event.updateMany({
           where: { eventGroupId: id, deletedAt: null },
@@ -283,6 +304,9 @@ export class EventGroupsResolver {
         name: eventGroup.name,
       });
       await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
+      if (normalizedInput.attendanceEligibility !== undefined) {
+        await this.attendanceRealtime.notifyAllConnectedPeople();
+      }
     }
     return eventGroup;
   }
@@ -319,6 +343,7 @@ export class EventGroupsResolver {
       name: this.buildCloneName(input?.name, source.name),
       emoji: source.emoji,
       requiresImageLicenseAgreement: source.requiresImageLicenseAgreement,
+      attendanceEligibility: source.attendanceEligibility,
       ...(shouldCopyCertificateConfig
         ? {
             shouldIssueCertificate: source.shouldIssueCertificate,
@@ -416,6 +441,7 @@ export class EventGroupsResolver {
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
       certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
+      attendeeEligibility: Prisma.CertificateConfigCreateInput['attendeeEligibility'];
     }>,
     eventGroupId: string,
   ): Promise<void> {
@@ -432,6 +458,7 @@ export class EventGroupsResolver {
           isActive: config.isActive,
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
+          attendeeEligibility: config.attendeeEligibility,
           certificateFields:
             config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },

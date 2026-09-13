@@ -57,6 +57,8 @@ model Event {
   subscriptionStartDate         DateTime?
   subscriptionEndDate           DateTime?
   subscriptions                 EventSubscription[]
+  interestEnabled               Boolean @default(false)
+  interests                     EventInterest[]
   slots                         Int?
   slotsAvailable                Int?
   queueCount                    Int                                    @default(0)
@@ -72,6 +74,9 @@ model Event {
   certificateConfigs                              CertificateConfig[]
 
   regularAttendancePriceTierIds String[] @default([])
+
+  // Null inherits the group/major event policy, or REGISTERED_ONLY when standalone.
+  attendanceEligibility AttendanceEligibility?
 
   shouldCollectAttendance   Boolean   @default(false)
   shouldAllowOralAttendance Boolean   @default(false)

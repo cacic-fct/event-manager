@@ -1,5 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -13,12 +13,14 @@ import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { EMPTY, auditTime, catchError, forkJoin, map, merge, of, switchMap } from 'rxjs';
+import { EMPTY, auditTime, catchError, forkJoin, map, merge, of, switchMap, timer } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { InterestToggle } from '../../interests/interest-toggle';
+import { TargetFormLinks } from '../../forms/target-form-links';
 
 type MajorEventPageState =
   | { status: 'loading' }
@@ -52,10 +54,11 @@ const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
     MatToolbarModule,
     MarkdownComponent,
     RouterLink,
+    InterestToggle,
+    TargetFormLinks,
   ],
   templateUrl: './event-list-page.html',
   styleUrl: './event-list-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MajorEvent {
   private readonly api = inject(MajorEventSubscriptionApiService);
@@ -63,6 +66,7 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly currentTime = toSignal(isPlatformBrowser(this.platformId) ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()), { initialValue: Date.now() });
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
@@ -104,6 +108,10 @@ export class MajorEvent {
 
   dateLine(majorEvent: PublicMajorEvent): string {
     return formatDateRange(majorEvent.startDate, majorEvent.endDate);
+  }
+
+  isEventFinished(majorEvent: PublicMajorEvent): boolean {
+    return parseISO(majorEvent.endDate).getTime() <= this.currentTime();
   }
 
   subscriptionFor(majorEventId: string): CurrentUserMajorEventSubscription | null {

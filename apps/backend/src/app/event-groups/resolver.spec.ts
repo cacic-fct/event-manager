@@ -187,6 +187,7 @@ describe('EventGroupsResolver authorization', () => {
           isActive: true,
           issuedTo: 'ATTENDEE',
           certificateFields: null,
+          attendeeEligibility: 'REGISTERED_ONLY',
         },
       ],
     };
@@ -257,6 +258,7 @@ describe('EventGroupsResolver authorization', () => {
         scope: 'EVENT_GROUP',
         eventGroupId: 'group-clone',
         certificateTemplateId: 'template-1',
+        attendeeEligibility: 'REGISTERED_ONLY',
       }),
     });
     expect(auditLog.record).toHaveBeenCalledWith(
@@ -429,5 +431,50 @@ describe('EventGroupsResolver authorization', () => {
       tx,
     );
     expect(typesenseSearch.deleteEventGroup).toHaveBeenCalledWith('group-1');
+  });
+
+  it('refreshes stored attendance categories when the group eligibility policy changes', async () => {
+    const previous = {
+      id: 'group-1',
+      name: 'Grupo',
+      attendanceEligibility: 'REGISTERED_ONLY',
+      deletedAt: null,
+    };
+    const updated = { ...previous, attendanceEligibility: 'ANYONE' };
+    const tx = {
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue(previous),
+        update: jest.fn(),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+      },
+    };
+    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+    const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
+    const resolver = new EventGroupsResolver(
+      { $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)) } as never,
+      { upsertEventGroup: jest.fn() } as never,
+      { assertEventGroupMutable: jest.fn() } as never,
+      {} as never,
+      { record: jest.fn() } as never,
+      undefined,
+      undefined,
+      undefined,
+      attendanceCategories as never,
+      attendanceRealtime as never,
+    );
+
+    await expect(
+      resolver.updateEventGroup(
+        'group-1',
+        { attendanceEligibility: 'ANYONE' } as never,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toBe(updated);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 });

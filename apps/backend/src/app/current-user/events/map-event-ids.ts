@@ -36,6 +36,34 @@ export function currentUserAssociatedEventWhere(
         },
       },
       {
+        interests: {
+          some: {
+            personId,
+            deletedAt: null,
+          },
+        },
+      },
+      {
+        eventGroup: {
+          interests: {
+            some: {
+              personId,
+              deletedAt: null,
+            },
+          },
+        },
+      },
+      {
+        majorEvent: {
+          interests: {
+            some: {
+              personId,
+              deletedAt: null,
+            },
+          },
+        },
+      },
+      {
         majorEventSelections: {
           some: {
             deletedAt: null,

@@ -18,7 +18,7 @@ const EVENT_FORM_LINK_FIELDS = `
     name
     emoji
   }
-  audience
+  audiences
   insertInSubscriptionFlow
   requiredInSubscriptionFlow
   displayOrder

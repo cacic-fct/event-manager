@@ -204,6 +204,9 @@ export class CurrentUserEventParticipation {
   @Field(() => Boolean)
   isSubscribed!: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  isInterested?: boolean;
+
   @Field(() => Boolean)
   isLecturer!: boolean;
 

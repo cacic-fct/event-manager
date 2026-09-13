@@ -47,7 +47,7 @@ export async function getAttendanceScannerFeed(
   const standaloneEventIds = [
     ...new Set(
       attendances
-        .filter((attendance) => attendance.event.allowSubscription && !attendance.event.majorEventId)
+        .filter((attendance) => !attendance.event.majorEventId)
         .map((attendance) => attendance.eventId),
     ),
   ];

@@ -17,6 +17,7 @@ export interface AttendancesStoryControls {
   lecturerEvery: number;
   sportsManagerEvery: number;
   issuedCertificateEvery: number;
+  interestedOnly: boolean;
   longNames: boolean;
   certificateArchiveCooldownSeconds: number;
 }
@@ -30,6 +31,7 @@ export const attendancesStoryDefaultControls: AttendancesStoryControls = {
   lecturerEvery: 5,
   sportsManagerEvery: 7,
   issuedCertificateEvery: 3,
+  interestedOnly: false,
   longNames: false,
   certificateArchiveCooldownSeconds: 0,
 };
@@ -43,6 +45,7 @@ export const attendancesStoryControlArgTypes = {
   lecturerEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   sportsManagerEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   issuedCertificateEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+  interestedOnly: { control: 'boolean' },
   longNames: { control: 'boolean' },
   certificateArchiveCooldownSeconds: { control: { type: 'range', min: 0, max: 900, step: 60 } },
 } as const;
@@ -132,6 +135,9 @@ export function createAttendancesStoryFeed(controls: AttendancesStoryControls): 
 }
 
 function participation(controls: AttendancesStoryControls, index: number) {
+  if (controls.interestedOnly) {
+    return { isSubscribed: false, isInterested: true, isLecturer: false, hasIssuedCertificate: false, isSportsManager: false };
+  }
   return {
     isSubscribed: index % 4 !== 1,
     isLecturer: matchesEvery(index, controls.lecturerEvery),

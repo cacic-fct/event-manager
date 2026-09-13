@@ -68,6 +68,8 @@ import { AttendanceCategoryService } from './events/attendance-category.service'
 import { EventSubscriptionSyncService } from './events/event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './events/subscription-counters.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
+import { EventInterestsResolver } from './interests/interest.resolver';
+import { EventInterestsService } from './interests/interest.service';
 import { SubscriptionBadgeExportController } from './events/subscription-badge-export.controller';
 import { SubscriptionBadgeExportService } from './events/subscription-badge-export.service';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
@@ -502,6 +504,8 @@ const schedulerProviders = useInMemoryTestInfra
     EventAttendancesQueriesResolver,
     MajorEventSubscriptionCsvImportResolver,
     EventSubscriptionsResolver,
+    EventInterestsResolver,
+    EventInterestsService,
     SubscriptionBadgeExportService,
     EventFormsResolver,
     EventFormEditorService,

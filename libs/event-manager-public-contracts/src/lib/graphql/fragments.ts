@@ -23,6 +23,8 @@ export const PUBLIC_MAJOR_EVENT_PRICE_FIELDS = `
 `;
 
 export const PUBLIC_MAJOR_EVENT_SUMMARY_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   subscriptionStartDate
@@ -31,6 +33,8 @@ export const PUBLIC_MAJOR_EVENT_SUMMARY_FIELDS = `
 `;
 
 export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   emoji
@@ -54,6 +58,8 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
 `;
 
 export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   emoji
@@ -83,6 +89,8 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
 `;
 
 export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   emoji
@@ -112,6 +120,8 @@ export const PUBLIC_NAMED_ENTITY_FIELDS = `
 `;
 
 export const PUBLIC_EVENT_GROUP_DETAIL_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   emoji
@@ -168,6 +178,8 @@ export const PUBLIC_MAP_EVENT_FIELDS = `
 `;
 
 export const PUBLIC_EVENT_PAGE_FIELDS = `
+  interestEnabled
+  attendanceEligibility
   id
   name
   creditMinutes
@@ -203,6 +215,8 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
     requiresImageLicenseAgreement
+    interestEnabled
+    attendanceEligibility
   }
   sportsMatch {
     id

@@ -42,7 +42,7 @@ function createLinkRecord(overrides: Partial<EventFormRecord['links'][number]> =
     targetType: EventFormTargetType.EVENT,
     eventId: null,
     majorEventId: null,
-    audience: 'ATTENDEES',
+    audiences: ['ATTENDEES'],
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
     displayOrder: 0,

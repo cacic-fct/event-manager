@@ -6,9 +6,9 @@ enum EventFormSigilo {
 }
 
 enum EventFormAudience {
+  INTERESTED
   SUBSCRIBERS
   ATTENDEES
-  SUBSCRIBERS_OR_ATTENDEES
 }
 
 enum EventFormTargetType {
@@ -112,7 +112,7 @@ model EventFormLink {
   majorEvent   MajorEvent? @relation("EventFormLinkMajorEvent", fields: [majorEventId], references: [id], onDelete: Restrict)
   majorEventId String?
 
-  audience EventFormAudience @default(SUBSCRIBERS_OR_ATTENDEES)
+  audiences EventFormAudience[] @default([SUBSCRIBERS, ATTENDEES])
 
   insertInSubscriptionFlow   Boolean @default(false)
   requiredInSubscriptionFlow Boolean @default(false)

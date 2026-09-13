@@ -1,5 +1,16 @@
 import { Prisma } from '@prisma/client';
 
+export const LGPD_EVENT_INTEREST_SELECT = {
+  id: true,
+  personId: true,
+  eventId: true,
+  eventGroupId: true,
+  majorEventId: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+} satisfies Prisma.EventInterestSelect;
+
 export const LGPD_ACCOUNT_USER_SELECT = {
   id: true,
   email: true,

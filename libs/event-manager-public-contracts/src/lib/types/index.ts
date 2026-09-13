@@ -5,3 +5,4 @@ export * from './forms';
 export * from './platform-stats';
 export * from './my-day';
 export * from './prize-draws';
+export * from './participation';

@@ -63,6 +63,9 @@ type EventAnalyticsRecord = Prisma.EventGetPayload<{
     allowSubscription: true;
     majorEventId: true;
     autoSubscribe: true;
+    attendanceEligibility: true;
+    eventGroup: { select: { attendanceEligibility: true } };
+    majorEvent: { select: { attendanceEligibility: true; isPaymentRequired: true } };
     sportsMatch: {
       select: {
         id: true;
@@ -260,6 +263,9 @@ export class AttendanceAnalyticsService {
         allowSubscription: true,
         majorEventId: true,
         autoSubscribe: true,
+        attendanceEligibility: true,
+        eventGroup: { select: { attendanceEligibility: true } },
+        majorEvent: { select: { attendanceEligibility: true, isPaymentRequired: true } },
         sportsMatch: { select: { id: true, category: { select: { tournamentId: true } } } },
       },
     });
@@ -282,7 +288,7 @@ export class AttendanceAnalyticsService {
   }
 
   private async subscribedPersonIds(event: EventAnalyticsRecord): Promise<Set<string>> {
-    const standalone = event.allowSubscription
+    const standalone = !event.majorEventId
       ? await this.prisma.eventSubscription.findMany({
           where: { eventId: event.id, deletedAt: null },
           select: { personId: true },

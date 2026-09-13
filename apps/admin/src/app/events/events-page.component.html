@@ -538,15 +538,16 @@
           }
           <div class="checkbox-grid">
             <mat-checkbox formControlName="allowSubscription"> Permitir inscrição </mat-checkbox>
+            <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
             <mat-checkbox formControlName="requiresImageLicenseAgreement">
               Exigir concordância com o contrato de licença de uso de imagem do CACiC
             </mat-checkbox>
             <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>
             <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
-              Emitir certificados para presentes não pagantes?
+              Emitir para presentes não pagantes
             </mat-checkbox>
             <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
-              Emitir certificados para presentes não inscritos?
+              Emitir para presentes não inscritos
             </mat-checkbox>
             <mat-checkbox formControlName="shouldCollectAttendance"> Coletar presença </mat-checkbox>
             <mat-checkbox formControlName="isOnlineAttendanceAllowed"> Presença on-line </mat-checkbox>
@@ -554,7 +555,28 @@
               Disponibilizar lista de inscritos aos ministrantes
             </mat-checkbox>
             <mat-checkbox formControlName="isPubliclyListed"> Listar no site público </mat-checkbox>
+            <mat-hint class="span-2">
+              A emissão exige este evento e, se houver, o grupo de eventos habilitado; a coleta de presença é
+              independente do certificado.
+            </mat-hint>
           </div>
+
+          <mat-form-field class="span-2" subscriptSizing="dynamic">
+            <mat-label>Quem pode confirmar presença on-line</mat-label>
+            <mat-select
+              formControlName="attendanceEligibility"
+              [compareWith]="attendanceEligibilityCompareWith">
+              <mat-select-trigger>
+                {{ attendanceEligibilityLabel(attendanceEligibilityDisplayValue()) }}
+              </mat-select-trigger>
+              @for (policy of attendanceEligibilityOptions(); track policy.label) {
+                <mat-option [value]="policy.value" [disabled]="policy.disabled">
+                  {{ policy.label }}
+                </mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
+          </mat-form-field>
 
           <div class="field-grid">
             <mat-form-field>

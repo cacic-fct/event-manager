@@ -15,6 +15,9 @@ model MajorEvent {
   formResponses                EventFormResponse[]           @relation("EventFormResponseMajorEvent")
 
   subscriptions                 MajorEventSubscription[]
+  interestEnabled               Boolean @default(false)
+  interests                     EventInterest[]
+  attendanceEligibility         AttendanceEligibility @default(APPROVED_REGISTRATIONS_ONLY)
   sportsTournament              SportsTournament?
   prizeDraws                    PrizeDraw[]
   requiresImageLicenseAgreement Boolean                  @default(true)

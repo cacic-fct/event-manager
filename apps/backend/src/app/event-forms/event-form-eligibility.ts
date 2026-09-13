@@ -1,9 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
-  EventFormAudience as ContractAudience,
   EventFormLink as EventFormLinkModel,
 } from '@cacic-fct/shared-data-types';
-import { EventFormAudience } from '@prisma/client';
+import { matchesEventFormAudience } from '@cacic-fct/shared-event-participation';
+import { SubscriptionStatus } from '@prisma/client';
+import {
+  ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES,
+  isActiveMajorEventRegistration,
+} from '../events/attendance-eligibility';
 import { PrismaService } from '../prisma/prisma.service';
 import { toLinkModel } from './event-form-model.mapper';
 import { EventFormLinkRecord } from './event-form-records';
@@ -11,28 +15,25 @@ import { EventFormLinkRecord } from './event-form-records';
 export async function canPersonAnswerLink(
   prisma: PrismaService,
   personId: string,
-  link: Pick<EventFormLinkModel, 'audience' | 'eventId' | 'majorEventId'> & { priceTierIds?: readonly string[] },
+  link: Pick<EventFormLinkModel, 'audiences' | 'eventId' | 'majorEventId'> & { priceTierIds?: readonly string[] },
   options: { allowFutureSubscriber?: boolean } = {},
 ): Promise<boolean> {
+  const audiences = link.audiences;
   if (!options.allowFutureSubscriber && !(await canPersonAccessLinkPriceTier(prisma, personId, link))) {
     return false;
   }
 
-  const [isSubscriber, isAttendee] = await Promise.all([
+  const [isSubscriber, isAttendee, isInterested] = await Promise.all([
     isPersonSubscriber(prisma, personId, link, options),
     isPersonAttendee(prisma, personId, link),
+    audiences.includes('INTERESTED') ? isPersonInterested(prisma, personId, link) : Promise.resolve(false),
   ]);
 
-  switch (link.audience) {
-    case ContractAudience.SUBSCRIBERS:
-    case EventFormAudience.SUBSCRIBERS:
-      return isSubscriber;
-    case ContractAudience.ATTENDEES:
-    case EventFormAudience.ATTENDEES:
-      return isAttendee;
-    default:
-      return isSubscriber || isAttendee;
-  }
+  return matchesEventFormAudience(audiences, {
+    interested: isInterested,
+    subscribed: isSubscriber,
+    attended: isAttendee,
+  });
 }
 
 export async function canPersonAccessLinkPriceTier(
@@ -57,6 +58,7 @@ export async function canPersonAccessLinkPriceTier(
         majorEventId: link.majorEventId,
         personId,
         deletedAt: null,
+        subscriptionStatus: { notIn: inactiveMajorSubscriptionStatuses() },
       },
       select: { paymentTier: true },
     }),
@@ -95,15 +97,18 @@ export async function assertPersonCanViewPublicResults(
 export async function canPersonViewPublicResults(
   prisma: PrismaService,
   personId: string,
-  link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId'>,
+  link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId' | 'audiences'> & { priceTierIds?: readonly string[] },
 ): Promise<boolean> {
-  const [isSubscriber, isAttendee, isLecturer] = await Promise.all([
+  const [isSubscriber, isAttendee, isLecturer, isInterested, hasPriceTierAccess] = await Promise.all([
     isPersonSubscriber(prisma, personId, link, {}),
     isPersonAttendee(prisma, personId, link),
     isPersonLecturerForLink(prisma, personId, link),
+    isPersonInterested(prisma, personId, link),
+    canPersonAccessLinkPriceTier(prisma, personId, link),
   ]);
 
-  return isSubscriber || isAttendee || isLecturer;
+  const interestedAudience = link.audiences?.includes('INTERESTED') === true;
+  return isSubscriber || isAttendee || isLecturer || (interestedAudience && isInterested && hasPriceTierAccess);
 }
 
 export async function assertPersonIsEventLecturer(
@@ -138,16 +143,46 @@ async function isPersonSubscriber(
   }
 
   if (link.eventId) {
-    return Boolean(
-      await prisma.eventSubscription.findFirst({
+    const [eventSubscription, event] = await Promise.all([
+      prisma.eventSubscription.findFirst({
+        where: { eventId: link.eventId, personId, deletedAt: null },
+        select: { id: true },
+      }),
+      prisma.event.findUnique({ where: { id: link.eventId }, select: { majorEventId: true, autoSubscribe: true } }),
+    ]);
+    if (eventSubscription) {
+      return true;
+    }
+    if (!event?.majorEventId) {
+      return false;
+    }
+    const [selection, majorSubscription] = await Promise.all([
+      prisma.majorEventSubscriptionEventSelection.findFirst({
         where: {
           eventId: link.eventId,
-          personId,
           deletedAt: null,
+          subscription: {
+            majorEventId: event.majorEventId,
+            personId,
+            deletedAt: null,
+            subscriptionStatus: { notIn: inactiveMajorSubscriptionStatuses() },
+          },
         },
         select: { id: true },
       }),
-    );
+      event.autoSubscribe
+        ? prisma.majorEventSubscription.findFirst({
+            where: {
+              majorEventId: event.majorEventId,
+              personId,
+              deletedAt: null,
+              subscriptionStatus: { notIn: inactiveMajorSubscriptionStatuses() },
+            },
+            select: { subscriptionStatus: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    return Boolean(selection || (majorSubscription && isActiveMajorEventRegistration(majorSubscription.subscriptionStatus)));
   }
 
   if (link.majorEventId) {
@@ -157,6 +192,7 @@ async function isPersonSubscriber(
           majorEventId: link.majorEventId,
           personId,
           deletedAt: null,
+          subscriptionStatus: { notIn: inactiveMajorSubscriptionStatuses() },
         },
         select: { id: true },
       }),
@@ -200,6 +236,53 @@ async function isPersonAttendee(
   }
 
   return false;
+}
+
+async function isPersonInterested(
+  prisma: PrismaService,
+  personId: string,
+  link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId'>,
+): Promise<boolean> {
+  if (link.eventId) {
+    const event = await prisma.event.findUnique({ where: { id: link.eventId }, select: { eventGroupId: true } });
+    return Boolean(
+      await prisma.eventInterest.findFirst({
+        where: {
+          personId,
+          deletedAt: null,
+          OR: [
+            { eventId: link.eventId },
+            ...(event?.eventGroupId ? [{ eventGroupId: event.eventGroupId }] : []),
+          ],
+        },
+        select: { id: true },
+      }),
+    );
+  }
+
+  if (link.majorEventId) {
+    return Boolean(
+      await prisma.eventInterest.findFirst({
+        where: {
+          majorEventId: link.majorEventId,
+          personId,
+          deletedAt: null,
+        },
+        select: { id: true },
+      }),
+    );
+  }
+
+  return false;
+}
+
+function inactiveMajorSubscriptionStatuses(): SubscriptionStatus[] {
+  return Object.values(SubscriptionStatus).filter(
+    (status) =>
+      !ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES.includes(
+        status as (typeof ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES)[number],
+      ),
+  );
 }
 
 async function isPersonLecturerForLink(

@@ -71,6 +71,15 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
     majorEventId: nullableStringValue(payload.majorEventId, eventItem.majorEventId ?? null),
     eventGroupId: nullableStringValue(payload.eventGroupId, eventItem.eventGroupId ?? null),
     allowSubscription: booleanValue(payload.allowSubscription, eventItem.allowSubscription),
+    interestEnabled: booleanValue(payload.interestEnabled, eventItem.interestEnabled ?? false),
+    attendanceEligibility:
+      payload.attendanceEligibility === null ||
+      payload.attendanceEligibility === 'ANYONE' ||
+      payload.attendanceEligibility === 'REGISTERED_ONLY' ||
+      payload.attendanceEligibility === 'APPROVED_REGISTRATIONS_ONLY' ||
+      payload.attendanceEligibility === 'INVITED_ONLY'
+        ? payload.attendanceEligibility
+        : (eventItem.attendanceEligibility ?? null),
     subscriptionStartDate: nullableStringValue(payload.subscriptionStartDate, eventItem.subscriptionStartDate ?? null),
     subscriptionEndDate: nullableStringValue(payload.subscriptionEndDate, eventItem.subscriptionEndDate ?? null),
     slots: numberOrNullValue(payload.slots, eventItem.slots ?? null),

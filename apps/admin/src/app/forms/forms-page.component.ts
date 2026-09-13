@@ -151,14 +151,22 @@ export class FormsPageComponent implements OnDestroy {
     }
   }
 
-  audienceLabel(audience: EventFormAudience | null | undefined): string {
+  audienceLabel(audiences: readonly EventFormAudience[] | null | undefined): string {
+    if (!audiences?.length) {
+      return 'Nenhum público selecionado';
+    }
+
+    return audiences.map((audience) => this.audienceOptionLabel(audience)).join(', ');
+  }
+
+  audienceOptionLabel(audience: EventFormAudience): string {
     switch (audience) {
+      case 'INTERESTED':
+        return 'Interessados ainda não inscritos';
       case 'SUBSCRIBERS':
         return 'Inscritos';
       case 'ATTENDEES':
         return 'Participantes com presença';
-      default:
-        return 'Inscritos ou presentes';
     }
   }
 

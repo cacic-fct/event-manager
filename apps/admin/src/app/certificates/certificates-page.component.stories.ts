@@ -168,3 +168,20 @@ export const ParticipantPriceTiers: Story = {
     await expect(tiers).toHaveTextContent('Comunidade');
   },
 };
+
+export const AttendeeCertificateEligibility: Story = {
+  ...ParticipantPriceTiers,
+  name: 'Elegibilidade para certificado de participantes',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('combobox', { name: 'Critério adicional de inscrição' }),
+    ).toBeVisible();
+    await expect(await canvas.findByText('Usar regras dos eventos')).toBeVisible();
+    await expect(
+      await canvas.findByText(
+        'As regras do alvo continuam valendo; a coleta de presença é independente do certificado.',
+      ),
+    ).toBeVisible();
+  },
+};

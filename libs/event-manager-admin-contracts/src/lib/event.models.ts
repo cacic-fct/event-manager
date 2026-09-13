@@ -1,3 +1,4 @@
+import type { AttendanceEligibility } from '@cacic-fct/event-manager-public-contracts';
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type PublicationState = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED';
 export type PublicationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
@@ -16,6 +17,8 @@ export interface EventSummary {
 }
 
 export interface MajorEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -78,6 +81,9 @@ export interface MajorEventPrice {
 }
 
 export interface EventGroup {
+  majorEventId?: string | null;
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   isSportsCategory?: boolean;
   id: string;
   name: string;
@@ -96,6 +102,8 @@ export interface EventGroup {
 }
 
 export interface Event {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   isSportsMatch?: boolean;
   id: string;
   name: string;
@@ -176,6 +184,8 @@ export interface PlacePreset {
 }
 
 export interface MajorEventInput {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   publishAfterUpdate?: boolean;
   id?: string;
   name?: string;
@@ -237,6 +247,8 @@ export interface MajorEventPriceInput {
 }
 
 export interface EventGroupInput {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id?: string;
   name?: string;
   emoji?: string;
@@ -258,6 +270,8 @@ export interface EventGroupCloneInput {
 }
 
 export interface EventInput {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   publishAfterUpdate?: boolean;
   id?: string;
   name?: string;

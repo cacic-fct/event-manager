@@ -139,15 +139,24 @@ describe('EventAttendancesQueriesResolver', () => {
           }),
         ],
       }),
+      expect.objectContaining({
+        personId: 'person-2',
+        subscriptionId: undefined,
+        subscriptionStatus: 'UNKNOWN',
+        attendances: expect.arrayContaining([
+          expect.objectContaining({
+            eventId: 'event-2',
+            attended: true,
+            category: AttendanceCategory.NON_REGULAR,
+          }),
+        ]),
+      }),
     ]);
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           eventId: {
             in: ['event-1', 'event-2'],
-          },
-          personId: {
-            in: ['person-1'],
           },
           status: 'PRESENT',
         },

@@ -4,6 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -61,6 +62,8 @@ export class MajorEventsService {
       description: [''],
       subscriptionStartDate: [''],
       subscriptionEndDate: [''],
+      interestEnabled: [false],
+      attendanceEligibility: this.formBuilder.nonNullable.control<AttendanceEligibility>('APPROVED_REGISTRATIONS_ONLY'),
       requiresImageLicenseAgreement: [true],
       maxCoursesPerAttendee: [''],
       maxLecturesPerAttendee: [''],
@@ -261,6 +264,8 @@ export class MajorEventsService {
       description: '',
       subscriptionStartDate: '',
       subscriptionEndDate: '',
+      interestEnabled: false,
+      attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
       requiresImageLicenseAgreement: true,
       maxCoursesPerAttendee: '',
       maxLecturesPerAttendee: '',
@@ -284,7 +289,6 @@ export class MajorEventsService {
       priceType: 'SINGLE',
     });
     this.resetPriceTiers([this.createPriceTierGroup(null, 'Preço único', '', false)]);
-    this.syncCertificateExceptionControls();
   }
 
   async pickMajorEvent(majorEvent: MajorEvent): Promise<void> {
@@ -325,6 +329,8 @@ export class MajorEventsService {
         majorEvent.subscriptionStartDate != null ? this.fromIsoToLocalInput(majorEvent.subscriptionStartDate) : '',
       subscriptionEndDate:
         majorEvent.subscriptionEndDate != null ? this.fromIsoToLocalInput(majorEvent.subscriptionEndDate) : '',
+      interestEnabled: majorEvent.interestEnabled ?? false,
+      attendanceEligibility: majorEvent.attendanceEligibility ?? 'APPROVED_REGISTRATIONS_ONLY',
       requiresImageLicenseAgreement: majorEvent.requiresImageLicenseAgreement ?? true,
       maxCoursesPerAttendee: majorEvent.maxCoursesPerAttendee?.toString() ?? '',
       maxLecturesPerAttendee: majorEvent.maxLecturesPerAttendee?.toString() ?? '',
@@ -494,6 +500,8 @@ export class MajorEventsService {
       description: raw.description.trim() || null,
       subscriptionStartDate: this.toOptionalIsoDateTime(raw.subscriptionStartDate),
       subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
+      interestEnabled: raw.interestEnabled,
+      attendanceEligibility: raw.attendanceEligibility,
       requiresImageLicenseAgreement: raw.requiresImageLicenseAgreement,
       maxCoursesPerAttendee: this.toOptionalNumber(raw.maxCoursesPerAttendee),
       maxLecturesPerAttendee: this.toOptionalNumber(raw.maxLecturesPerAttendee),
@@ -679,16 +687,14 @@ export class MajorEventsService {
 
   private syncCertificateExceptionControls(): void {
     const nonPayingControl = this.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedControl = this.majorEventForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
     if (this.majorEventForm.controls.isPaymentRequired.value) {
       nonPayingControl.setValue(false, { emitEvent: false });
       nonPayingControl.disable({ emitEvent: false });
-      nonSubscribedControl.enable({ emitEvent: false });
-      return;
+    } else {
+      nonPayingControl.enable({ emitEvent: false });
     }
 
-    nonPayingControl.enable({ emitEvent: false });
-    nonSubscribedControl.enable({ emitEvent: false });
+    this.majorEventForm.controls.shouldIssueCertificateForNonSubscribedAttendees.enable({ emitEvent: false });
   }
 
   private async openCloneDialog(majorEvent: MajorEvent): Promise<CloneAssetDialogResult | null | undefined> {

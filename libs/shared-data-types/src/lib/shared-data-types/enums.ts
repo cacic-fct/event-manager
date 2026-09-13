@@ -1,3 +1,5 @@
+import { AttendanceEligibility, EventFormAudience, InterestTargetType } from '@cacic-fct/shared-event-participation';
+export { AttendanceEligibility, EventFormAudience, InterestTargetType } from '@cacic-fct/shared-event-participation';
 import { registerEnumType } from '@nestjs/graphql';
 
 export const UserRole = {
@@ -53,12 +55,9 @@ registerEnumType(EventFormSigilo, {
   name: 'EventFormSigilo',
 });
 
-export const EventFormAudience = {
-  SUBSCRIBERS: 'SUBSCRIBERS',
-  ATTENDEES: 'ATTENDEES',
-  SUBSCRIBERS_OR_ATTENDEES: 'SUBSCRIBERS_OR_ATTENDEES',
-} as const;
-export type EventFormAudience = (typeof EventFormAudience)[keyof typeof EventFormAudience];
+registerEnumType(AttendanceEligibility, { name: 'AttendanceEligibility' });
+registerEnumType(InterestTargetType, { name: 'InterestTargetType' });
+
 registerEnumType(EventFormAudience, {
   name: 'EventFormAudience',
 });
@@ -297,6 +296,7 @@ registerEnumType(AttendanceCategory, {
 });
 
 export const AttendanceCurrentAssessment = {
+  INVITATION_REQUIRED: 'INVITATION_REQUIRED',
   PRICE_TIER_NOT_ELIGIBLE: 'PRICE_TIER_NOT_ELIGIBLE',
   ACTIVITY_SUBSCRIPTION_MISSING: 'ACTIVITY_SUBSCRIPTION_MISSING',
   MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT',

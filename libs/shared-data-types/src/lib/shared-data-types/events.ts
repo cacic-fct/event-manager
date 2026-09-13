@@ -1,3 +1,4 @@
+import { AttendanceEligibility } from './enums';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
 import { EventType, PublicationState } from './enums';
@@ -8,6 +9,12 @@ import { MajorEvent } from './major-events';
 
 @ObjectType()
 export class Event {
+  @Field(() => Boolean)
+  interestEnabled = false;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
   @Field(() => Boolean)
   isSportsMatch?: boolean;
 

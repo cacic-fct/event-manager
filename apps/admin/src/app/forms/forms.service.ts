@@ -32,13 +32,25 @@ import { isDateAfter } from '../shared/date-range-validator';
 
 type FormOwnerType = EventFormTargetType;
 
+const EVENT_FORM_AUDIENCE_OPTIONS: readonly EventFormAudience[] = ['INTERESTED', 'SUBSCRIBERS', 'ATTENDEES'];
+
+function normalizeAudiences(audiences: readonly EventFormAudience[] | null | undefined): EventFormAudience[] {
+  if (audiences == null) {
+    return ['SUBSCRIBERS', 'ATTENDEES'];
+  }
+
+  return [...new Set(audiences)].filter((audience): audience is EventFormAudience =>
+    EVENT_FORM_AUDIENCE_OPTIONS.includes(audience),
+  );
+}
+
 export interface EventFormLinkDraft {
   localId: string;
   id?: string | null;
   targetType: EventFormTargetType;
   eventId?: string | null;
   majorEventId?: string | null;
-  audience?: EventFormAudience | null;
+  audiences?: EventFormAudience[] | null;
   insertInSubscriptionFlow?: boolean | null;
   requiredInSubscriptionFlow?: boolean | null;
   displayOrder?: number | null;
@@ -78,6 +90,7 @@ export class FormsService {
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
   readonly selectedFormPublished = computed(() => this.selectedForm()?.publicationState === 'PUBLISHED');
   readonly selectedFormScheduled = computed(() => this.selectedForm()?.publicationState === 'SCHEDULED');
+  readonly hasInvalidLinkAudiences = computed(() => this.links().some((link) => !link.audiences?.length));
   readonly hasUntitledQuestions = computed(() =>
     this.elements().some((element) => this.isQuestion(element) && !element.title.trim()),
   );
@@ -153,7 +166,7 @@ export class FormsService {
   private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
   readonly canSave = computed(() => {
     this.formStatus();
-    return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasUntitledQuestions();
+    return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasInvalidLinkAudiences() && !this.hasUntitledQuestions();
   });
 
   constructor() {
@@ -765,6 +778,10 @@ export class FormsService {
       this.form.markAllAsTouched();
       return false;
     }
+    if (this.hasInvalidLinkAudiences()) {
+      this.snackbar.open('Selecione ao menos um público para cada vínculo.', 'Fechar', { duration: 4000 });
+      return false;
+    }
     if (this.hasUntitledQuestions()) {
       this.snackbar.open('Informe o título de todas as perguntas antes de salvar.', 'Fechar', { duration: 4000 });
       return false;
@@ -778,6 +795,7 @@ export class FormsService {
 
   private normalizeLinkDraft(link: EventFormLinkDraft, previous?: EventFormLinkDraft): EventFormLinkDraft {
     const targetType = link.targetType;
+    const audiences = normalizeAudiences(link.audiences);
     const insertInSubscriptionFlow =
       link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
     const notifyPreviousSubscribers =
@@ -799,6 +817,7 @@ export class FormsService {
 
     const base = {
       ...link,
+      audiences,
       insertInSubscriptionFlow,
       requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
       notifyOnPublish: insertInSubscriptionFlow ? notifyPreviousSubscribers : (link.notifyOnPublish ?? true),
@@ -826,7 +845,7 @@ export class FormsService {
   private createLinkDraft(targetType: EventFormTargetType, displayOrder: number): EventFormLinkDraft {
     const base = {
       localId: crypto.randomUUID(),
-      audience: 'SUBSCRIBERS_OR_ATTENDEES' as const,
+      audiences: ['SUBSCRIBERS', 'ATTENDEES'] as EventFormAudience[],
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
       displayOrder,
@@ -859,7 +878,7 @@ export class FormsService {
       targetType: link.targetType,
       eventId: link.eventId,
       majorEventId: link.majorEventId,
-      audience: link.audience,
+      audiences: normalizeAudiences(link.audiences),
       insertInSubscriptionFlow: link.insertInSubscriptionFlow,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
       displayOrder: link.displayOrder,
@@ -874,7 +893,7 @@ export class FormsService {
   private toLinkInput(link: EventFormLinkDraft, index: number): EventFormLinkInput {
     const base = {
       id: link.id ?? null,
-      audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
+      audiences: normalizeAudiences(link.audiences),
       insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
       displayOrder: link.displayOrder ?? index,

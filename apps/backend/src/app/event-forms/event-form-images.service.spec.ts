@@ -1,6 +1,50 @@
 import { EventFormImagesService } from './event-form-images.service';
+import { ForbiddenException } from '@nestjs/common';
+import { Readable } from 'node:stream';
+import { formRecord, linkRecord } from './event-form.spec-support';
 
 describe('EventFormImagesService references and cleanup', () => {
+  it.each([
+    { interested: true, subscribed: false, allowed: true },
+    { interested: false, subscribed: false, allowed: false },
+    { interested: true, subscribed: true, allowed: false },
+  ])('checks real participation for interest-only images: %j', async ({ interested, subscribed, allowed }) => {
+    const { service, prisma, s3, authorization } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventInterest.findFirst.mockResolvedValue(interested ? { id: 'interest-1' } : null);
+    prisma.eventSubscription.findFirst.mockResolvedValue(subscribed ? { id: 'subscription-1' } : null);
+    prisma.eventFormImage.findUnique.mockResolvedValue({
+      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      form: formRecord({ resultsPublic: false, links: [linkRecord({ audiences: ['INTERESTED'] })] }),
+    });
+
+    const download = service.downloadById('image-1', { sub: 'user-1' } as never);
+
+    if (allowed) {
+      await expect(download).resolves.toEqual(expect.objectContaining({ contentType: 'image/avif' }));
+      expect(s3.downloadFile).toHaveBeenCalledWith('image-1.avif');
+    } else {
+      await expect(download).rejects.toBeInstanceOf(ForbiddenException);
+      expect(s3.downloadFile).not.toHaveBeenCalled();
+    }
+  });
+
+  it('keeps subscription-flow images available before registration', async () => {
+    const { service, prisma, authorization } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventFormImage.findUnique.mockResolvedValue({
+      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      form: formRecord({
+        resultsPublic: false,
+        links: [linkRecord({ audiences: ['SUBSCRIBERS'], insertInSubscriptionFlow: true })],
+      }),
+    });
+
+    await expect(service.downloadById('image-1', { sub: 'user-1' } as never)).resolves.toEqual(
+      expect.objectContaining({ contentType: 'image/avif' }),
+    );
+  });
+
   it('allows one stored asset to be referenced by the form and multiple questions', async () => {
     const { service, prisma } = createHarness();
     prisma.eventFormImage.findMany.mockResolvedValue([
@@ -154,19 +198,29 @@ describe('EventFormImagesService references and cleanup', () => {
 function createHarness() {
   const prisma = {
     eventFormImage: {
+      findUnique: jest.fn(),
       findMany: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn(),
     },
     eventForm: { findMany: jest.fn() },
     eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
+    event: { findUnique: jest.fn().mockResolvedValue({ majorEventId: null, eventGroupId: null }) },
+    eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventInterest: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventAttendance: { findFirst: jest.fn().mockResolvedValue(null) },
   };
-  const s3 = { deleteFile: jest.fn().mockResolvedValue(undefined) };
+  const s3 = {
+    deleteFile: jest.fn().mockResolvedValue(undefined),
+    downloadFile: jest.fn().mockResolvedValue({ stream: Readable.from([]), contentType: 'image/avif' }),
+  };
   const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+  const currentUser = { resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' } }) };
   return {
     prisma,
     s3,
-    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, {} as never),
+    authorization,
+    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, currentUser as never),
   };
 }
 

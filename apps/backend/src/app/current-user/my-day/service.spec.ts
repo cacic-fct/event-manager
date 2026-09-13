@@ -1,7 +1,20 @@
 import type { EventRecord } from '../selects';
+import { currentUserAssociatedEventWhere } from '../events/map-event-ids';
 import { buildConflictAlerts, dayBounds, formatSaoPauloDate, resolveMyDayTimeline } from './service';
 
 describe('CurrentUserMyDayService helpers', () => {
+  it('includes an interested-only event in My Day without requiring a subscription', () => {
+    const association = currentUserAssociatedEventWhere('person-1', 'user-1', new Date('2026-08-16T15:00:00.000Z'));
+
+    expect(association).toEqual(
+      expect.objectContaining({
+        OR: expect.arrayContaining([
+          { interests: { some: { personId: 'person-1', deletedAt: null } } },
+        ]),
+      }),
+    );
+  });
+
   it('uses stable São Paulo calendar-day bounds', () => {
     const bounds = dayBounds('2026-08-16');
 

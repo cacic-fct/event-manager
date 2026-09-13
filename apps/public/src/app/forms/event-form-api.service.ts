@@ -45,7 +45,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
       name
       emoji
     }
-    audience
+    audiences
     insertInSubscriptionFlow
     requiredInSubscriptionFlow
     displayOrder

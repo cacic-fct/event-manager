@@ -5,6 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareIsoDateAsc, compareIsoDateDesc } from '@cacic-fct/shared-utils';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
@@ -81,6 +82,8 @@ export class EventGroupsService {
     id: [''],
     name: ['', [Validators.required]],
     emoji: [DEFAULT_EVENT_GROUP_EMOJI],
+    interestEnabled: [false],
+    attendanceEligibility: this.formBuilder.control<AttendanceEligibility | null>(null),
     requiresImageLicenseAgreement: [false],
     shouldIssueCertificate: [false],
     shouldIssueCertificateForNonPayingAttendees: [false],
@@ -206,6 +209,8 @@ export class EventGroupsService {
         id: '',
         name: '',
         emoji: DEFAULT_EVENT_GROUP_EMOJI,
+        interestEnabled: false,
+        attendanceEligibility: null,
         requiresImageLicenseAgreement: false,
         shouldIssueCertificate: false,
         shouldIssueCertificateForNonPayingAttendees: false,
@@ -217,7 +222,6 @@ export class EventGroupsService {
         this.selectedEventGroup.set(null);
         this.eventGroupEvents.set([]);
       }
-      this.syncCertificateRuleControls();
       await this.loadEventGroups();
       if (action === 'SCHEDULE') {
         void this.router.navigate(this.eventGroupPublicationRoute(savedGroup.id));
@@ -252,6 +256,8 @@ export class EventGroupsService {
       id: '',
       name: '',
       emoji: DEFAULT_EVENT_GROUP_EMOJI,
+      interestEnabled: false,
+      attendanceEligibility: null,
       requiresImageLicenseAgreement: false,
       shouldIssueCertificate: false,
       shouldIssueCertificateForNonPayingAttendees: false,
@@ -259,7 +265,6 @@ export class EventGroupsService {
       shouldIssueCertificateForEachEvent: false,
       shouldIssuePartialCertificate: false,
     });
-    this.syncCertificateRuleControls();
     this.eventGroupEventSearchForm.reset(
       {
         query: '',
@@ -288,6 +293,8 @@ export class EventGroupsService {
       id: group.id,
       name: group.name,
       emoji: group.emoji || DEFAULT_EVENT_GROUP_EMOJI,
+      interestEnabled: group.interestEnabled ?? false,
+      attendanceEligibility: group.attendanceEligibility ?? null,
       requiresImageLicenseAgreement: group.requiresImageLicenseAgreement ?? false,
       shouldIssueCertificate: group.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees: group.shouldIssueCertificateForNonPayingAttendees,
@@ -295,7 +302,6 @@ export class EventGroupsService {
       shouldIssueCertificateForEachEvent: group.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
-    this.syncCertificateRuleControls();
     this.eventGroupEventSearchForm.reset(
       {
         query: '',
@@ -303,6 +309,7 @@ export class EventGroupsService {
       { emitEvent: false },
     );
     this.eventGroupEventSearchResults.set([]);
+    this.syncCertificateRuleControls();
     this.eventsService.eventGroupLookupForm.reset(
       {
         query: group.name,
@@ -372,16 +379,8 @@ export class EventGroupsService {
 
     await firstValueFrom(
       this.eventsApi.updateEvent(eventItem.id, {
-        eventGroupId: selectedGroup.id,
-        shouldIssueCertificate: selectedGroup.shouldIssueCertificate ? eventItem.shouldIssueCertificate : false,
-        shouldIssueCertificateForNonPayingAttendees:
-          selectedGroup.shouldIssueCertificate && selectedGroup.shouldIssueCertificateForNonPayingAttendees
-            ? eventItem.shouldIssueCertificateForNonPayingAttendees
-            : false,
-        shouldIssueCertificateForNonSubscribedAttendees:
-          selectedGroup.shouldIssueCertificate && selectedGroup.shouldIssueCertificateForNonSubscribedAttendees
-            ? eventItem.shouldIssueCertificateForNonSubscribedAttendees
-            : false,
+      eventGroupId: selectedGroup.id,
+      shouldIssueCertificate: selectedGroup.shouldIssueCertificate ? eventItem.shouldIssueCertificate : false,
       }),
     );
     await Promise.all([
@@ -418,7 +417,6 @@ export class EventGroupsService {
         }),
       ),
     );
-    this.syncCertificateRuleControls();
   }
 
   getFirstEventForGroupDisplay(groupId: string): EventSummary | undefined {
@@ -437,6 +435,8 @@ export class EventGroupsService {
     return {
       name: raw.name.trim() || (allowIncompleteDraft ? DEFAULT_DRAFT_EVENT_GROUP_NAME : ''),
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
+      interestEnabled: raw.interestEnabled,
+      attendanceEligibility: raw.attendanceEligibility,
       requiresImageLicenseAgreement: raw.requiresImageLicenseAgreement,
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:
@@ -454,28 +454,21 @@ export class EventGroupsService {
 
   private syncCertificateRuleControls(): void {
     const shouldIssueCertificate = this.eventGroupForm.controls.shouldIssueCertificate.value;
-    const forEachControl = this.eventGroupForm.controls.shouldIssueCertificateForEachEvent;
-    const partialControl = this.eventGroupForm.controls.shouldIssuePartialCertificate;
-    const nonPayingControl = this.eventGroupForm.controls.shouldIssueCertificateForNonPayingAttendees;
-    const nonSubscribedControl = this.eventGroupForm.controls.shouldIssueCertificateForNonSubscribedAttendees;
+    const controls = [
+      this.eventGroupForm.controls.shouldIssueCertificateForNonPayingAttendees,
+      this.eventGroupForm.controls.shouldIssueCertificateForNonSubscribedAttendees,
+      this.eventGroupForm.controls.shouldIssueCertificateForEachEvent,
+      this.eventGroupForm.controls.shouldIssuePartialCertificate,
+    ];
 
-    if (!shouldIssueCertificate) {
-      nonPayingControl.setValue(false, { emitEvent: false });
-      nonSubscribedControl.setValue(false, { emitEvent: false });
-      forEachControl.setValue(false, { emitEvent: false });
-      partialControl.setValue(false, { emitEvent: false });
-      nonPayingControl.disable({ emitEvent: false });
-      nonSubscribedControl.disable({ emitEvent: false });
-      forEachControl.disable({ emitEvent: false });
-      partialControl.disable({ emitEvent: false });
-      return;
+    for (const control of controls) {
+      if (shouldIssueCertificate) {
+        control.enable({ emitEvent: false });
+      } else {
+        control.setValue(false, { emitEvent: false });
+        control.disable({ emitEvent: false });
+      }
     }
-
-    nonPayingControl.enable({ emitEvent: false });
-    nonSubscribedControl.enable({ emitEvent: false });
-    partialControl.enable({ emitEvent: false });
-
-    forEachControl.enable({ emitEvent: false });
   }
 
   private async openCloneDialog(group: EventGroup): Promise<CloneAssetDialogResult | null | undefined> {

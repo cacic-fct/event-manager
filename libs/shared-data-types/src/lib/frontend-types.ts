@@ -1,3 +1,4 @@
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 export * from './dashboard.types';
 export * from './frontend-current-user.types';
 export * from './frontend-public-event.types';
@@ -40,6 +41,7 @@ export type SubscriptionStatus =
   | 'CANCELED';
 export type AttendanceCategory = 'NON_REGULAR' | 'REGULAR' | 'UNKNOWN';
 export type AttendanceCurrentAssessment =
+  | 'INVITATION_REQUIRED'
   | 'ACTIVITY_SUBSCRIPTION_MISSING'
   | 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT'
   | 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'
@@ -58,6 +60,8 @@ export interface PaymentInfo {
 }
 
 export interface MajorEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -87,6 +91,8 @@ export interface MajorEvent {
 }
 
 export interface EventGroup {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -164,6 +170,8 @@ export interface CertificateDownload {
 }
 
 export interface Event {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   creditMinutes?: number | null;

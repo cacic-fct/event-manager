@@ -407,7 +407,7 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     const model = toEventFormModel(form);
     for (const link of model.links) {
       if (!isLinkAvailable(link as never)) continue;
-      if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber: true })) {
+      if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber: link.insertInSubscriptionFlow })) {
         return;
       }
       if (!(await canPersonAccessLinkPriceTier(this.prisma, person.id, link))) continue;

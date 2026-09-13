@@ -322,6 +322,9 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
       majorEventSubscription: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      eventInterest: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       eventLecturer: {
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -386,6 +389,9 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
     };
     const prisma = {
       majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventInterest: {
         findMany: jest.fn().mockResolvedValue([]),
       },
       eventLecturer: {

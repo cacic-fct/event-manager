@@ -1,0 +1,37 @@
+enum AttendanceEligibility {
+  ANYONE
+  REGISTERED_ONLY
+  APPROVED_REGISTRATIONS_ONLY
+  INVITED_ONLY
+}
+
+// Interest is independent of registration, capacity, payment and attendance.
+// A database check requires exactly one target for each interest.
+model EventInterest {
+  id String @id @default(uuid(7))
+
+  personId String
+  person People @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  eventId String?
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  eventGroupId String?
+  eventGroup EventGroup? @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
+
+  majorEventId String?
+  majorEvent MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  createdById String?
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  lgpdDeletionRequestId String?
+
+  @@unique([eventId, personId], map: "event_interest_event_active_key", where: raw("\"deletedAt\" IS NULL AND \"eventId\" IS NOT NULL"))
+  @@unique([eventGroupId, personId], map: "event_interest_group_active_key", where: raw("\"deletedAt\" IS NULL AND \"eventGroupId\" IS NOT NULL"))
+  @@unique([majorEventId, personId], map: "event_interest_major_active_key", where: raw("\"deletedAt\" IS NULL AND \"majorEventId\" IS NOT NULL"))
+  @@index([personId, deletedAt])
+  @@index([lgpdDeletionRequestId])
+  @@map("event_interests")
+}

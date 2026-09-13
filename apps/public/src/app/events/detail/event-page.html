@@ -64,7 +64,7 @@
     </div>
   </header>
 
-  <mat-chip-set aria-label="Resumo do evento">
+  <mat-chip-set role="group" aria-label="Resumo do evento">
     @if (event.majorEvent) {
     <mat-chip>{{ event.majorEvent.name }}</mat-chip>
     } @if (data.currentUserSubscription) {
@@ -80,13 +80,29 @@
     }
   </mat-chip-set>
 
+  @if (!data.preview && !isEventFinished() && event.interestEnabled && !data.currentUserSubscription) {
+  <section class="interest-actions" aria-label="Interesse no evento">
+    <app-interest-toggle targetType="EVENT" [targetId]="event.id" [targetName]="event.name"
+      [subscribed]="!!data.currentUserSubscription" [endsAt]="event.endDate"
+      (changed)="refreshInterestForms()" />
+  </section>
+  } @if (!data.preview && !isEventFinished() && event.eventGroup?.interestEnabled && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
+  <section class="interest-actions" aria-label="Interesse no grupo de eventos">
+    <p>{{ event.eventGroup.name }}</p>
+    <app-interest-toggle targetType="EVENT_GROUP" [targetId]="event.eventGroupId"
+      [targetName]="event.eventGroup.name"
+      [subscribed]="!!data.currentUserSubscription?.eventGroupSubscriptionId"
+      (changed)="refreshInterestForms()" />
+  </section>
+  }
+
   <section class="actions" aria-label="Ações do evento">
     @if (event.buttonLink) {
     <a mat-stroked-button [href]="event.buttonLink" target="_blank" rel="noopener noreferrer">
       <mat-icon>open_in_new</mat-icon>
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
-    } @if (hasStandaloneSubscription(event) && !isAuthenticated() && !data.currentUserSubscription) {
+    } @if (!isEventFinished()) { @if (hasStandaloneSubscription(event) && !isAuthenticated() && !data.currentUserSubscription) {
     <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
       <mat-icon>login</mat-icon>
       Entrar para inscrever-se
@@ -127,7 +143,7 @@
       <mat-icon>event_available</mat-icon>
       Inscrever-se
     </button>
-    } @if (canConfirmAttendance(event)) {
+    } } @if (canConfirmAttendance(event)) {
     <button
       mat-stroked-button
       type="button"
@@ -146,11 +162,11 @@
 
   @if (event.allowSubscription) {
   <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
-  } @if (attendeeFormLinks().length > 0) {
+  } @if (availableFormLinks().length > 0) {
   <section class="form-actions" aria-label="Formulários disponíveis">
     <h2>Formulários</h2>
     <div class="actions">
-      @for (formLink of attendeeFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId +
+      @for (formLink of availableFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId +
       formLink.linkId) {
       <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
         <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>

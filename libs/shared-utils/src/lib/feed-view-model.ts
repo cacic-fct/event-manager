@@ -130,6 +130,7 @@ export function getEventDateLine(event: PublicEvent): string {
 export function getParticipationStatusLabels(participation: CurrentUserEventParticipation): string[] {
   return [
     participation.isSubscribed ? 'Inscrito' : undefined,
+    !participation.isSubscribed && participation.isInterested ? 'Quero ir' : undefined,
     participation.isLecturer ? 'Palestrante' : undefined,
     participation.isSportsManager ? 'Gestão esportiva' : undefined,
     participation.hasIssuedCertificate ? 'Certificado emitido' : undefined,
@@ -159,5 +160,5 @@ function getFeedParticipationStatusLabels(
     return [];
   }
 
-  return ['Sem inscrição'];
+  return [participation.isInterested ? 'Quero ir' : 'Sem inscrição'];
 }

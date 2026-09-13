@@ -195,6 +195,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       select: {
         id: true,
         isPaymentRequired: true,
+        attendanceEligibility: true,
       },
     });
 
@@ -212,7 +213,22 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         name: true,
         emoji: true,
         startDate: true,
+        majorEventId: true,
         allowSubscription: true,
+        autoSubscribe: true,
+        attendanceEligibility: true,
+        regularAttendancePriceTierIds: true,
+        eventGroup: {
+          select: {
+            attendanceEligibility: true,
+          },
+        },
+        majorEvent: {
+          select: {
+            attendanceEligibility: true,
+            isPaymentRequired: true,
+          },
+        },
       },
       orderBy: {
         startDate: 'asc',
@@ -240,14 +256,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       orderBy: {
         createdAt: 'desc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
     });
-
-    const personIds = subscriptions.map((subscription) => subscription.personId);
-    if (personIds.length === 0) {
-      return [];
-    }
 
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
@@ -255,9 +264,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         eventId: {
           in: eventIds,
         },
-        personId: {
-          in: personIds,
-        },
+        ...(personId ? { personId } : {}),
       },
       select: {
         personId: true,
@@ -273,18 +280,31 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       },
     });
 
+    const personIds = [
+      ...new Set([
+        ...subscriptions.map((subscription) => subscription.personId),
+        ...attendances.map((attendance) => attendance.personId),
+      ]),
+    ];
+    if (personIds.length === 0) {
+      return [];
+    }
+
+    const pagePersonIds = personIds.slice(pagination.skip, pagination.skip + pagination.take);
+    if (pagePersonIds.length === 0) {
+      return [];
+    }
+
     const attendanceByKey = new Map(
-      attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
+      attendances
+        .filter((attendance) => pagePersonIds.includes(attendance.personId))
+        .map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
     const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(
-      attendances.map((attendance) => ({
-        ...attendance,
-        event: {
-          allowSubscription: events.find((event) => event.id === attendance.eventId)?.allowSubscription ?? false,
-          majorEventId,
-          majorEvent,
-        },
-      })),
+      attendances.flatMap((attendance) => {
+        const event = events.find((candidate) => candidate.id === attendance.eventId);
+        return event ? [{ ...attendance, event }] : [];
+      }),
     );
 
     const majorSubscriptionByPerson = new Map<string, (typeof subscriptions)[number]>();
@@ -294,7 +314,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       }
     }
 
-    return personIds.map((resolvedPersonId) => {
+    return pagePersonIds.map((resolvedPersonId) => {
       const subscription = majorSubscriptionByPerson.get(resolvedPersonId);
       const person =
         subscription?.person ?? attendances.find((attendance) => attendance.personId === resolvedPersonId)?.person;

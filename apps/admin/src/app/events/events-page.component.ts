@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ViewChild, inject } from '@angular/core';
+import { Component, ViewChild, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MarkdownPreviewDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { EventsService } from './events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
@@ -26,10 +27,17 @@ import {
   LocationCoordinatePickerDialogComponent,
   type LocationCoordinates,
 } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
+import {
+  attendanceEligibilityOptionsFor,
+  displayAttendanceEligibility,
+  attendanceEligibilityHint,
+  attendanceEligibilityLabel,
+  type AttendanceEligibilityOption,
+  type AttendanceEligibilityParent,
+} from '../shared/event-participation-policy';
 
 @Component({
   selector: 'app-workspace-events-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -181,6 +189,64 @@ export class EventsPageComponent {
       this.workspace.selectedEvent()?.eventGroup?.emoji ??
       null
     );
+  }
+
+  protected attendanceEligibilityLabel(policy: AttendanceEligibility | null | undefined): string {
+    return attendanceEligibilityLabel(policy);
+  }
+
+  protected attendanceEligibilityParent(): AttendanceEligibilityParent {
+    if (this.workspace.eventForm.controls.eventGroupId.value) {
+      return 'GROUP';
+    }
+
+    if (this.workspace.eventForm.controls.majorEventId.value) {
+      return 'MAJOR';
+    }
+
+    return 'NONE';
+  }
+
+  protected attendanceEligibilityOptions(): AttendanceEligibilityOption[] {
+    return attendanceEligibilityOptionsFor(
+      'EVENT',
+      this.attendanceEligibilityParent(),
+      this.workspace.eventForm.controls.attendanceEligibility.value,
+      this.attendanceEligibilityHasMajorContext(),
+    );
+  }
+
+  protected attendanceEligibilityHasMajorContext(): boolean {
+    if (this.workspace.eventForm.controls.majorEventId.value) {
+      return true;
+    }
+
+    const groupId = this.workspace.eventForm.controls.eventGroupId.value;
+    return Boolean(
+      this.workspace.selectedEvent()?.eventGroup?.majorEventId ??
+        this.workspace.eventGroupSearchResults().find((group) => group.id === groupId)?.majorEventId,
+    );
+  }
+
+  protected attendanceEligibilityDisplayValue(): AttendanceEligibility | null {
+    return displayAttendanceEligibility(
+      this.workspace.eventForm.controls.attendanceEligibility.value,
+      'EVENT',
+      this.attendanceEligibilityParent(),
+      this.attendanceEligibilityHasMajorContext(),
+    );
+  }
+
+  protected attendanceEligibilityCompareWith = (
+    option: AttendanceEligibility | null,
+    value: AttendanceEligibility | null,
+  ): boolean => {
+    return option ===
+      displayAttendanceEligibility(value, 'EVENT', this.attendanceEligibilityParent(), this.attendanceEligibilityHasMajorContext());
+  };
+
+  protected attendanceEligibilityHint(): string {
+    return attendanceEligibilityHint();
   }
 
   protected draftEventActionLabel(): string {

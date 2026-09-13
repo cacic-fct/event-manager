@@ -62,6 +62,7 @@ const MAJOR_EVENT_SELECT = {
   isPaymentRequired: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  attendanceEligibility: true,
   additionalPaymentInfo: true,
   deletedAt: true,
   createdAt: true,
@@ -72,12 +73,15 @@ const MAJOR_EVENT_SELECT = {
 
 const EVENT_GROUP_SELECT = {
   id: true,
+  majorEventId: true,
+  interestEnabled: true,
   name: true,
   emoji: true,
   requiresImageLicenseAgreement: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  attendanceEligibility: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
   deletedAt: true,
@@ -110,6 +114,7 @@ const EVENT_BASE_SELECT = {
   },
   sportsMatch: { select: { id: true } },
   allowSubscription: true,
+  interestEnabled: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
@@ -119,6 +124,7 @@ const EVENT_BASE_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   regularAttendancePriceTierIds: true,
+  attendanceEligibility: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -158,6 +164,7 @@ const EVENT_AUDIT_SELECT = {
   majorEventId: true,
   eventGroupId: true,
   allowSubscription: true,
+  interestEnabled: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
@@ -167,6 +174,7 @@ const EVENT_AUDIT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   regularAttendancePriceTierIds: true,
+  attendanceEligibility: true,
   shouldCollectAttendance: true,
   shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
@@ -217,6 +225,7 @@ const EVENT_CLONE_SOURCE_SELECT = {
       issuedTo: true,
       certificateTypeLabel: true,
       certificateFields: true,
+      attendeeEligibility: true,
     },
   },
 } satisfies Prisma.EventSelect;
@@ -507,7 +516,17 @@ export class EventsResolver {
       if (updatedCount.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
-      if (attendancePriceTierPolicyChanged(normalizedInput, previousEvent)) {
+      const attendanceEligibilityChanged =
+        normalizedInput.attendanceEligibility !== undefined &&
+        normalizedInput.attendanceEligibility !== previousEvent.attendanceEligibility;
+      const attendanceTargetChanged =
+        (normalizedInput.eventGroupId !== undefined && normalizedInput.eventGroupId !== previousEvent.eventGroupId) ||
+        (normalizedInput.majorEventId !== undefined && normalizedInput.majorEventId !== previousEvent.majorEventId);
+      if (
+        attendancePriceTierPolicyChanged(normalizedInput, previousEvent) ||
+        attendanceEligibilityChanged ||
+        attendanceTargetChanged
+      ) {
         await this.attendanceCategories.refreshForEvent(id, tx);
       }
       const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
@@ -637,6 +656,7 @@ export class EventsResolver {
       ...(parts?.attendanceSettings
         ? {
             regularAttendancePriceTierIds: source.regularAttendancePriceTierIds,
+            attendanceEligibility: source.attendanceEligibility,
             shouldCollectAttendance: source.shouldCollectAttendance,
             shouldAllowOralAttendance: source.shouldAllowOralAttendance,
             isOnlineAttendanceAllowed: source.isOnlineAttendanceAllowed,
@@ -1001,7 +1021,10 @@ export class EventsResolver {
       input.isOnlineAttendanceAllowed !== undefined ||
       input.onlineAttendanceCode !== undefined ||
       input.onlineAttendanceStartDate !== undefined ||
-      input.onlineAttendanceEndDate !== undefined
+      input.onlineAttendanceEndDate !== undefined ||
+      input.attendanceEligibility !== undefined ||
+      input.eventGroupId !== undefined ||
+      input.majorEventId !== undefined
     );
   }
 
@@ -1017,6 +1040,7 @@ export class EventsResolver {
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
       certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
+      attendeeEligibility: Prisma.CertificateConfigCreateInput['attendeeEligibility'];
     }>,
     eventId: string,
   ): Promise<void> {
@@ -1033,6 +1057,7 @@ export class EventsResolver {
           isActive: config.isActive,
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
+          attendeeEligibility: config.attendeeEligibility,
           certificateFields:
             config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },

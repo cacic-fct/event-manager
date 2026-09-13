@@ -153,7 +153,7 @@
         }
       </mat-list>
 
-      <div class="list-pager" aria-label="Paginação de alvos de certificado">
+      <div class="list-pager" role="group" aria-label="Paginação de alvos de certificado">
         <span>Itens {{ workspace.targetsPagination.label() }}</span>
         <div class="list-pager-actions">
           <button
@@ -238,7 +238,7 @@
             }
           </mat-list>
 
-          <div class="list-pager" aria-label="Paginação de configurações de certificado">
+          <div class="list-pager" role="group" aria-label="Paginação de configurações de certificado">
             <span>Itens {{ workspace.certificateConfigsPagination.label() }}</span>
             <div class="list-pager-actions">
               <button
@@ -400,8 +400,29 @@
               </mat-form-field>
             }
 
+            @if (workspace.showAttendeeEligibility()) {
+              <mat-form-field class="span-2" subscriptSizing="dynamic">
+                <mat-label>Critério adicional de inscrição</mat-label>
+                <mat-select
+                  [formField]="workspace.certificateConfigForm.attendeeEligibility"
+                  [canSelectNullableOptions]="true">
+                  <mat-select-trigger>
+                    {{
+                      workspace.attendeeEligibilityLabel(workspace.certificateConfigForm.attendeeEligibility().value())
+                    }}
+                  </mat-select-trigger>
+                  @for (policy of workspace.attendeeEligibilityOptions(); track policy.label) {
+                    <mat-option [value]="policy.value" [disabled]="policy.disabled">
+                      {{ policy.label }}
+                    </mat-option>
+                  }
+                </mat-select>
+                <mat-hint>{{ workspace.attendeeEligibilityHint() }}</mat-hint>
+              </mat-form-field>
+            }
+
             @if (workspace.showPaymentTiers()) {
-              <mat-form-field>
+              <mat-form-field subscriptSizing="dynamic">
                 <mat-label>Faixas de preço para emissão</mat-label>
                 <mat-select
                   multiple
@@ -553,7 +574,7 @@
             }
           </mat-list>
 
-          <div class="list-pager" aria-label="Paginação de certificados emitidos">
+          <div class="list-pager" role="group" aria-label="Paginação de certificados emitidos">
             <span>Itens {{ workspace.certificatesPagination.label() }}</span>
             <div class="list-pager-actions">
               <button

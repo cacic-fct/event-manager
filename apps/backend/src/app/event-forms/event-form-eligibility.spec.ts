@@ -17,7 +17,7 @@ describe('event form eligibility helpers', () => {
 
     await expect(
       canPersonAnswerLink(prisma as never, 'person-1', {
-        audience: ContractAudience.SUBSCRIBERS,
+        audiences: [ContractAudience.SUBSCRIBERS],
         eventId: 'event-1',
         majorEventId: null,
         priceTierIds: [],
@@ -40,7 +40,7 @@ describe('event form eligibility helpers', () => {
 
     await expect(
       canPersonAnswerLink(prisma as never, 'person-1', {
-        audience: EventFormAudience.ATTENDEES,
+        audiences: [EventFormAudience.ATTENDEES],
         eventId: null,
         majorEventId: 'major-1',
       }),
@@ -66,7 +66,7 @@ describe('event form eligibility helpers', () => {
         prisma as never,
         'person-1',
         {
-          audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+          audiences: [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
           eventId: null,
           majorEventId: null,
           priceTierIds: [],
@@ -79,12 +79,68 @@ describe('event form eligibility helpers', () => {
     expect(prisma.majorEventSubscription.findFirst).not.toHaveBeenCalled();
   });
 
+  it('matches interested people and excludes them from interest-only links after subscription', async () => {
+    const prisma = createPrismaMock();
+    prisma.eventInterest.findFirst.mockResolvedValue({ id: 'interest-1' });
+
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audiences: [ContractAudience.INTERESTED],
+        eventId: 'event-1',
+        majorEventId: null,
+        priceTierIds: [],
+      }),
+    ).resolves.toBe(true);
+
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audiences: [ContractAudience.INTERESTED],
+        eventId: 'event-1',
+        majorEventId: null,
+        priceTierIds: [],
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audiences: [ContractAudience.INTERESTED, ContractAudience.SUBSCRIBERS],
+        eventId: 'event-1',
+        majorEventId: null,
+        priceTierIds: [],
+      }),
+    ).resolves.toBe(true);
+  });
+
+  it('treats a pending selected major activity as subscribed for form audience checks', async () => {
+    const prisma = createPrismaMock();
+    prisma.eventInterest.findFirst.mockResolvedValue({ id: 'interest-1' });
+    prisma.event.findUnique.mockResolvedValue({ majorEventId: 'major-1', autoSubscribe: false });
+    prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValue({ id: 'selection-1' });
+
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audiences: [ContractAudience.INTERESTED],
+        eventId: 'event-1',
+        majorEventId: null,
+        priceTierIds: [],
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      canPersonAnswerLink(prisma as never, 'person-1', {
+        audiences: [ContractAudience.SUBSCRIBERS],
+        eventId: 'event-1',
+        majorEventId: null,
+        priceTierIds: [],
+      }),
+    ).resolves.toBe(true);
+  });
+
   it('rejects answer eligibility when the link has no target and future subscribers are not allowed', async () => {
     const prisma = createPrismaMock();
 
     await expect(
       canPersonAnswerLink(prisma as never, 'person-1', {
-        audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+        audiences: [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
         eventId: null,
         majorEventId: null,
         priceTierIds: [],
@@ -99,7 +155,7 @@ describe('event form eligibility helpers', () => {
 
     await expect(
       canPersonAnswerLink(prisma as never, 'person-1', {
-        audience: EventFormAudience.SUBSCRIBERS,
+        audiences: [EventFormAudience.SUBSCRIBERS],
         eventId: null,
         majorEventId: 'major-1',
         priceTierIds: ['tier-student'],
@@ -114,7 +170,7 @@ describe('event form eligibility helpers', () => {
 
     await expect(
       canPersonAnswerLink(prisma as never, 'person-1', {
-        audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+        audiences: [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
         eventId: null,
         majorEventId: 'major-1',
         priceTierIds: ['tier-student'],
@@ -127,7 +183,7 @@ describe('event form eligibility helpers', () => {
   it('asserts answer eligibility from link records', async () => {
     const prisma = createPrismaMock();
     const link = createLinkRecord({
-      audience: EventFormAudience.SUBSCRIBERS,
+      audiences: [EventFormAudience.SUBSCRIBERS],
       eventId: 'event-1',
     });
 
@@ -228,6 +284,15 @@ function createPrismaMock() {
     eventSubscription: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
+    eventInterest: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    event: {
+      findUnique: jest.fn().mockResolvedValue({ eventGroupId: null }),
+    },
+    majorEventSubscriptionEventSelection: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     majorEventSubscription: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
@@ -248,7 +313,7 @@ function createLinkRecord(overrides: Partial<EventFormLinkRecord> = {}): EventFo
     majorEventId: null,
     event: null,
     majorEvent: null,
-    audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+    audiences: [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
     displayOrder: 0,

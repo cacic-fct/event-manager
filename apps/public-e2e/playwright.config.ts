@@ -52,6 +52,7 @@ export default defineConfig({
     ignoreHTTPSErrors: baseURL.startsWith('https://localhost'),
     serviceWorkers: 'block',
     timezoneId: 'America/Sao_Paulo',
+    ...(process.env['E2E_BROWSER_CHANNEL'] === 'chrome' ? { channel: 'chrome' } : {}),
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },

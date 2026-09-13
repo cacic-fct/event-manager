@@ -125,6 +125,7 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
     insertedAttendanceEventIds: readStringArray(value, 'insertedAttendanceEventIds'),
     insertedLectureEventIds: readStringArray(value, 'insertedLectureEventIds'),
     movedEventSubscriptionIds: readStringArray(value, 'movedEventSubscriptionIds'),
+    ...(value.movedEventInterestIds === undefined ? {} : { movedEventInterestIds: readStringArray(value, 'movedEventInterestIds') }),
     movedEventGroupSubscriptionIds:
       value.movedEventGroupSubscriptionIds === undefined
         ? []

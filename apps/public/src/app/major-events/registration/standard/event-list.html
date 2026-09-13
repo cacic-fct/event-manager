@@ -19,6 +19,9 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
     </div>
     <div matListItemTitle>{{ event.name }}</div>
+    @if (interestedEventIds().has(event.id)) {
+    <div matListItemLine class="interest-label">Você marcou Quero ir</div>
+    }
     <div matListItemLine>{{ event.shortDescription || eventTypeLabel(event) }}</div>
     <div matListItemLine>{{ event.startDate | date: 'HH:mm' }} às {{ event.endDate | date: 'HH:mm' }}</div>
     @if (event.locationDescription) {
@@ -36,7 +39,7 @@
       <mat-checkbox
         [checked]="isSelected(event)"
         [disabled]="isDisabled(event) || isAutoSelected(event)"
-        [attr.aria-label]="'Selecionar ' + event.name"
+        [aria-label]="'Selecionar ' + event.name"
         (click)="$event.stopPropagation()"
         (change)="toggleEvent.emit(event)" />
     </div>

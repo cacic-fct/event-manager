@@ -1,9 +1,11 @@
-import { ContactType, EventType } from '@cacic-fct/shared-data-types';
+import { AttendanceEligibility, ContactType, EventType } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
 import { PUBLIC_SPORTS_MATCH_RELATIONS_WHERE } from '../sports/security/sports-public-visibility';
 
 export const PUBLIC_MAJOR_EVENT_SELECT = {
+  interestEnabled: true,
+  attendanceEligibility: true,
   id: true,
   name: true,
   emoji: true,
@@ -69,6 +71,9 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
 } as const satisfies Prisma.MajorEventSelect;
 
 export const PUBLIC_EVENT_GROUP_SELECT = {
+  interestEnabled: true,
+  attendanceEligibility: true,
+  majorEventId: true,
   id: true,
   name: true,
   emoji: true,
@@ -79,6 +84,8 @@ export const PUBLIC_EVENT_GROUP_SELECT = {
 } satisfies Prisma.EventGroupSelect;
 
 export const PUBLIC_EVENT_SELECT = {
+  interestEnabled: true,
+  attendanceEligibility: true,
   id: true,
   name: true,
   creditMinutes: true,
@@ -281,6 +288,8 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
 
   return {
     id: majorEvent.id,
+    interestEnabled: majorEvent.interestEnabled ?? false,
+    attendanceEligibility: majorEvent.attendanceEligibility,
     name: majorEvent.name,
     emoji: majorEvent.emoji,
     startDate: majorEvent.startDate,
@@ -471,6 +480,12 @@ function isRegistrationWindowOpen(startDate: Date | null, endDate: Date | null, 
     'Public major-event data needed to render the event landing/subscription flow without exposing administrative fields.',
 })
 export class PublicMajorEvent {
+  @Field(() => Boolean)
+  interestEnabled = false;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
   @Field(() => String, {
     description:
       'Major event identifier used to scope public event lists, subscriptions, payment, and certificate validation flows.',
@@ -628,6 +643,15 @@ export class PublicMajorEvent {
   description: 'Public event group metadata used to explain grouped activities and group-level certificate behavior.',
 })
 export class PublicEventGroup {
+  @Field(() => Boolean)
+  interestEnabled = false;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
+
   @Field(() => String, {
     description: 'Event group identifier used to relate public events that share selection or certificate rules.',
   })
@@ -770,6 +794,12 @@ export class PublicMapEvent {
     'Public event data used by the Angular event catalog, subscription flow, attendance prompts, and certificate-related UI.',
 })
 export class PublicEvent {
+  @Field(() => Boolean)
+  interestEnabled = false;
+
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendanceEligibility?: AttendanceEligibility | null;
+
   @Field(() => String, {
     description: 'Event identifier used by subscriptions, attendance, realtime availability, and event detail routes.',
   })

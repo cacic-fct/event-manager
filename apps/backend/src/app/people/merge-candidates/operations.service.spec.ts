@@ -561,6 +561,7 @@ function createTransaction() {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    eventInterest: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     eventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),

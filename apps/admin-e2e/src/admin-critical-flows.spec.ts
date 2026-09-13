@@ -69,6 +69,25 @@ test('subscription management loads event and major event subscriptions', async 
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
 });
 
+test('Quero ir lists interests separately and converts one to a subscription', async ({ page }) => {
+  await page.goto('/admin/subscriptions');
+  await page.getByRole('tab', { name: 'Quero ir', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Quero ir', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'Interessados' })).toBeVisible();
+  await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await expect(page.getByText('1 interesse nesta página')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Converter em inscrição' }).click();
+  const selection = page.getByRole('dialog');
+  await expect(selection.getByRole('heading', { name: 'Escolher atividades para inscrição' })).toBeVisible();
+  await selection.getByRole('option', { name: /Oficina de Angular/ }).click();
+  await selection.getByRole('button', { name: 'Continuar' }).click();
+  const confirmation = page.getByRole('dialog');
+  await expect(confirmation.getByRole('heading', { name: 'Converter interesse em inscrição?' })).toBeVisible();
+  await confirmation.getByRole('button', { name: 'Converter em inscrição' }).click();
+  await expect(page.getByRole('button', { name: 'Inscrito' })).toBeVisible();
+});
+
 test('forms workspace loads linked form preview and aggregated results', async ({ page }) => {
   await page.goto('/admin/forms/event/event-1');
 

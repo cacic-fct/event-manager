@@ -257,6 +257,9 @@ export class NovuNotificationsService {
     if (input.linkId) {
       transactionIdParts.push(input.linkId);
     }
+    if (input.audienceVersion) {
+      transactionIdParts.push(input.audienceVersion);
+    }
 
     return this.transport.trigger(secretKey, {
       name: this.eventFormAvailableWorkflowIdentifier,

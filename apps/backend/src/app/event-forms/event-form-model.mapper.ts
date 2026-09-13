@@ -103,7 +103,7 @@ export function toLinkModel(link: EventFormLinkRecord): EventFormLinkModel {
       : link.majorEvent
         ? toTargetSummary(EventFormTargetType.MAJOR_EVENT, link.majorEvent)
         : null,
-    audience: link.audience,
+    audiences: link.audiences,
     insertInSubscriptionFlow: link.insertInSubscriptionFlow,
     requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
     displayOrder: link.displayOrder,

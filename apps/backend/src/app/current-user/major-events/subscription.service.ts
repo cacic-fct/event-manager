@@ -452,7 +452,7 @@ export class CurrentUserMajorEventSubscriptionService {
     personId: string,
     paymentInfoTableExists: boolean,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents] =
+    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents, interests] =
       await Promise.all([
         this.prisma.majorEventSubscription.findMany({
           where: {
@@ -618,9 +618,53 @@ export class CurrentUserMajorEventSubscriptionService {
             },
           },
         }),
+        this.prisma.eventInterest.findMany({
+          where: {
+            personId,
+            deletedAt: null,
+            OR: [
+              { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } },
+              { event: { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } } },
+              { eventGroup: { majorEvent: { ...PUBLIC_MAJOR_EVENT_WHERE } } },
+            ],
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            majorEvent: {
+              select: MAJOR_EVENT_BASE_SELECT,
+            },
+            event: {
+              select: {
+                majorEventId: true,
+                majorEvent: { select: MAJOR_EVENT_BASE_SELECT },
+              },
+            },
+            eventGroup: {
+              select: {
+                majorEventId: true,
+                majorEvent: { select: MAJOR_EVENT_BASE_SELECT },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
       ]);
 
     const subscribedMajorEventIds = new Set(subscriptions.map((subscription) => subscription.majorEventId));
+    const interestedMajorEvents = interests.flatMap((interest) => {
+      if (interest.majorEvent) {
+        return [interest.majorEvent];
+      }
+      if (interest.event?.majorEvent) {
+        return [interest.event.majorEvent];
+      }
+      if (interest.eventGroup?.majorEvent) {
+        return [interest.eventGroup.majorEvent];
+      }
+      return [];
+    });
+    const interestedMajorEventIds = new Set(interestedMajorEvents.map((majorEvent) => majorEvent.id));
     const lecturerMajorEventIds = new Set(
       lecturerMajorEvents
         .map(({ event }) => event.majorEventId)
@@ -658,6 +702,7 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: true,
           isLecturer: lecturerMajorEventIds.has(subscription.majorEventId),
           hasIssuedCertificate: certificateMajorEventIds.has(subscription.majorEventId),
+          ...(interestedMajorEventIds.has(subscription.majorEventId) ? { isInterested: true } : {}),
           ...(sportsMajorEventIds.has(subscription.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
@@ -679,6 +724,7 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: false,
           isLecturer: true,
           hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
+          ...(interestedMajorEventIds.has(event.majorEventId) ? { isInterested: true } : {}),
           ...(sportsMajorEventIds.has(event.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
@@ -700,6 +746,7 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(config.majorEventId),
           hasIssuedCertificate: true,
+          ...(interestedMajorEventIds.has(config.majorEventId) ? { isInterested: true } : {}),
           ...(sportsMajorEventIds.has(config.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
@@ -721,6 +768,7 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(event.majorEventId),
           hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
+          ...(interestedMajorEventIds.has(event.majorEventId) ? { isInterested: true } : {}),
           ...(sportsMajorEventIds.has(event.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
@@ -742,7 +790,30 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(majorEventId),
           hasIssuedCertificate: certificateMajorEventIds.has(majorEventId),
+          ...(interestedMajorEventIds.has(majorEventId) ? { isInterested: true } : {}),
           isSportsManager: true,
+        },
+      });
+    }
+
+    for (const majorEvent of interestedMajorEvents) {
+      const majorEventId = majorEvent.id;
+      if (itemsByMajorEventId.has(majorEventId)) {
+        continue;
+      }
+      itemsByMajorEventId.set(majorEventId, {
+        id: majorEventId,
+        majorEventId,
+        majorEvent: this.mapper.mapPublicMajorEvent(majorEvent),
+        selectedEvents: [],
+        notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(majorEventId) ?? [],
+        participation: {
+          isSubscribed: false,
+          isInterested: true,
+          isLecturer: lecturerMajorEventIds.has(majorEventId),
+          hasIssuedCertificate: certificateMajorEventIds.has(majorEventId),
+          ...(sportsMajorEventIds.has(majorEventId) ? { isSportsManager: true } : {}),
         },
       });
     }

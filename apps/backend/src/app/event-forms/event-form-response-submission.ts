@@ -134,9 +134,7 @@ export async function assertRequiredSubscriptionFlowResponses(
       deletedAt: null,
       insertInSubscriptionFlow: true,
       requiredInSubscriptionFlow: true,
-      audience: {
-        not: EventFormAudience.ATTENDEES,
-      },
+      audiences: { has: EventFormAudience.SUBSCRIBERS },
       OR: [
         {
           targetType: EventFormTargetType.MAJOR_EVENT,

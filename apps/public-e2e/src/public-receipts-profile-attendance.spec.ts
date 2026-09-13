@@ -613,7 +613,7 @@ function publicEventFormFixture(): Record<string, unknown> {
           name: 'Oficina pública',
           emoji: '💻',
         },
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: false,
         requiredInSubscriptionFlow: false,
         displayOrder: 0,

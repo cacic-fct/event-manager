@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import type {
@@ -181,6 +182,8 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     description: [''],
     subscriptionStartDate: [''],
     subscriptionEndDate: [''],
+    interestEnabled: [false],
+    attendanceEligibility: formBuilder.control<AttendanceEligibility>('APPROVED_REGISTRATIONS_ONLY'),
     maxCoursesPerAttendee: [''],
     maxLecturesPerAttendee: [''],
     maxUncategorizedPerAttendee: [''],
@@ -228,12 +231,16 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
       description: selectedMajorEvent.description ?? '',
       subscriptionStartDate: localDateTime(selectedMajorEvent.subscriptionStartDate),
       subscriptionEndDate: localDateTime(selectedMajorEvent.subscriptionEndDate),
+      interestEnabled: Boolean(selectedMajorEvent.interestEnabled),
+      attendanceEligibility: selectedMajorEvent.attendanceEligibility ?? 'APPROVED_REGISTRATIONS_ONLY',
       rankedSubscriptionEnabled: Boolean(selectedMajorEvent.rankedSubscriptionEnabled),
       requiresImageLicenseAgreement: Boolean(selectedMajorEvent.requiresImageLicenseAgreement),
       isPaymentRequired: selectedMajorEvent.isPaymentRequired,
       contactInfo: selectedMajorEvent.contactInfo ?? '',
       contactType: selectedMajorEvent.contactType ?? '',
       additionalPaymentInfo: selectedMajorEvent.additionalPaymentInfo ?? '',
+      shouldIssueCertificateForNonPayingAttendees: selectedMajorEvent.shouldIssueCertificateForNonPayingAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees: selectedMajorEvent.shouldIssueCertificateForNonSubscribedAttendees,
     });
   }
 
@@ -281,10 +288,12 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     id: [''],
     name: ['', [Validators.required]],
     emoji: ['❔'],
+    interestEnabled: [false],
+    attendanceEligibility: formBuilder.control<AttendanceEligibility | null>(null),
     shouldIssueCertificate: [false],
-    requiresImageLicenseAgreement: [false],
     shouldIssueCertificateForNonPayingAttendees: [false],
     shouldIssueCertificateForNonSubscribedAttendees: [false],
+    requiresImageLicenseAgreement: [false],
     shouldIssueCertificateForEachEvent: [false],
     shouldIssuePartialCertificate: [false],
   });
@@ -364,6 +373,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     majorEventId: [''],
     eventGroupId: [''],
     allowSubscription: [false],
+    interestEnabled: [false],
+    attendanceEligibility: formBuilder.control<AttendanceEligibility | null>(null),
     requiresImageLicenseAgreement: [false],
     subscriptionStartDate: [''],
     subscriptionEndDate: [''],
@@ -407,6 +418,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
       majorEventId: selectedEvent.majorEventId ?? '',
       eventGroupId: selectedEvent.eventGroupId ?? '',
       allowSubscription: selectedEvent.allowSubscription,
+      interestEnabled: Boolean(selectedEvent.interestEnabled),
+      attendanceEligibility: selectedEvent.attendanceEligibility ?? null,
       requiresImageLicenseAgreement: Boolean(selectedEvent.requiresImageLicenseAgreement),
       subscriptionStartDate: localDateTime(selectedEvent.subscriptionStartDate),
       subscriptionEndDate: localDateTime(selectedEvent.subscriptionEndDate),
@@ -540,6 +553,8 @@ function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
     const adapted = adaptMajorEvent(majorEvent, args.publicationState);
     return {
       ...adapted,
+      interestEnabled: index === 0,
+      attendanceEligibility: index === 0 ? 'ANYONE' : 'APPROVED_REGISTRATIONS_ONLY',
       name: args.longContent
         ? `Grande evento interdisciplinar de tecnologia, ciência, cultura e extensão ${index + 1}`
         : adapted.name,
@@ -564,6 +579,8 @@ function buildEventGroups(args: PageStoryArgs): EventGroup[] {
       args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
     return {
       ...adapted,
+      interestEnabled: index === 0,
+      attendanceEligibility: index === 0 ? 'ANYONE' : null,
       name: args.longContent
         ? `Grupo interdisciplinar de atividades acadêmicas e comunitárias ${index + 1}`
         : adapted.name,
@@ -588,6 +605,8 @@ function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups
       args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
     return {
       ...adapted,
+      interestEnabled: index === 0,
+      attendanceEligibility: index === 0 ? 'ANYONE' : null,
       name: args.longContent
         ? `Atividade interdisciplinar de tecnologia, ciência, extensão e acessibilidade ${offset + index + 1}`
         : adapted.name,
