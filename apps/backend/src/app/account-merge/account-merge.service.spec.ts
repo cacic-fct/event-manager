@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { EventFormResponseMode, EventFormTargetType } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, EventFormResponseMode, EventFormTargetType } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccountMergeService } from './account-merge.service';
@@ -8,11 +9,17 @@ import { AccountMergeScoreRequestDto } from './dto';
 describe('AccountMergeService', () => {
   let prisma: ReturnType<typeof createPrismaMock>;
   let service: AccountMergeService;
+  let auditLog: { record: jest.Mock };
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     prisma = createPrismaMock();
-    service = new AccountMergeService(prisma as unknown as PrismaService, {} as unknown as CertificateIssuingService);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    service = new AccountMergeService(
+      prisma as unknown as PrismaService,
+      {} as unknown as CertificateIssuingService,
+      auditLog as unknown as AuditLogService,
+    );
   });
 
   afterEach(() => {
@@ -183,6 +190,7 @@ describe('AccountMergeService', () => {
     });
 
     expect(tx.accountUserMerge.create).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 
   it('rejects an already applied event with different merge data and records the failure', async () => {
@@ -240,6 +248,32 @@ describe('AccountMergeService', () => {
           result: 'PERSON_REASSIGNED',
         }),
       }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      {
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: 'event-1',
+        entityLabel: 'Unificação de contas',
+        operation: AuditLogOperation.MERGE,
+        actor: {
+          id: 'actor-1',
+          name: 'actor-1',
+          type: 'SERVICE',
+        },
+        summary: 'Unificação de contas aplicada no gerenciador de eventos.',
+        scope: { permission: 'account-merge:write' },
+        metadata: {
+          eventId: 'event-1',
+          oldUserId: 'old-user',
+          newUserId: 'new-user',
+          sourcePersonId: 'source-person',
+          targetPersonId: null,
+          result: 'PERSON_REASSIGNED',
+          peopleMergeOperationId: null,
+        },
+        force: true,
+      },
+      tx,
     );
   });
 
@@ -423,6 +457,19 @@ describe('AccountMergeService', () => {
           peopleMergeOperationId: 'merge-operation-1',
         }),
       }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: 'event-1',
+        operation: AuditLogOperation.MERGE,
+        metadata: expect.objectContaining({
+          result: 'PEOPLE_MERGED',
+          sourcePersonId: 'source-person',
+          targetPersonId: 'target-person',
+        }),
+      }),
+      tx,
     );
   });
 

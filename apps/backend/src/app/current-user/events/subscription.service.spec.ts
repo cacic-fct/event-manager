@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
@@ -188,7 +188,7 @@ describe('CurrentUserEventSubscriptionService', () => {
         event: { findFirst: jest.fn().mockResolvedValue(event) },
         eventSubscription: {
           findFirst: jest.fn().mockResolvedValue(existingSubscription),
-          update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
       };
       const prisma = {
@@ -199,12 +199,15 @@ describe('CurrentUserEventSubscriptionService', () => {
         submitSubscriptionFlowResponses: jest.fn().mockResolvedValue([]),
         emitResultsDeltas: jest.fn(),
       };
+      const auditLog = {
+        record: jest.fn().mockResolvedValue(undefined),
+      };
       const service = new CurrentUserEventSubscriptionService(
         prisma as never,
         mapper as never,
         {} as never,
         {} as never,
-        {} as never,
+        auditLog as never,
         eventForms as never,
       );
 
@@ -212,10 +215,34 @@ describe('CurrentUserEventSubscriptionService', () => {
         service.subscribeCurrentUserEvent('person-1', 'event-1', undefined, undefined, true),
       ).resolves.toEqual({ id: 'event-1' });
 
-      expect(tx.eventSubscription.update).toHaveBeenCalledWith({
-        where: { id: 'subscription-1' },
+      expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
+        where: { id: 'subscription-1', imageLicenseAgreementAccepted: false },
         data: { imageLicenseAgreementAccepted: true },
       });
+      expect(auditLog.record).toHaveBeenCalledWith(
+        {
+          entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
+          entityId: 'subscription-1',
+          entityLabel: 'person-1',
+          operation: AuditLogOperation.UPDATE,
+          actor: undefined,
+          before: {
+            id: 'subscription-1',
+            eventId: 'event-1',
+            personId: 'person-1',
+            imageLicenseAgreementAccepted: false,
+          },
+          after: {
+            id: 'subscription-1',
+            eventId: 'event-1',
+            personId: 'person-1',
+            imageLicenseAgreementAccepted: true,
+          },
+          scope: { permission: 'subscription#update', eventId: 'event-1' },
+          summary: 'Aceite do termo de uso de imagem registrado pelo usuário.',
+        },
+        tx,
+      );
       expect(tx.eventSubscription.findFirst).toHaveBeenCalled();
       expect(eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
     } finally {

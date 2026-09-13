@@ -1,6 +1,9 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DEFAULT_SPORTS_STANDINGS_RULES } from '@cacic-fct/shared-data-types';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
+  AuditLogEntityType,
+  AuditLogOperation,
   Prisma,
   PublicationState,
   SportsFormat,
@@ -186,6 +189,30 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
         include: { event: true },
         orderBy: { bracketPosition: 'asc' },
       });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_CATEGORY,
+          entityId: category.id,
+          entityLabel: category.name,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          after: {
+            format: SportsFormat.SWISS,
+            stageId: stage.id,
+            roundNumber: round.roundNumber,
+            matchIds: matches.map((match) => match.id),
+          },
+          summary: 'Rodada suíça gerada.',
+          scope: {
+            permission: Permission.SportsMatch.Create,
+            majorEventId: category.tournament.majorEventId,
+            eventGroupId: category.eventGroupId,
+          },
+          force: true,
+          squashWindowMs: 0,
+        },
+        tx,
+      );
       return {
         matches,
         invalidations: [

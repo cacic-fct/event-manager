@@ -6,7 +6,8 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, AttendanceCreationMethod } from '@prisma/client';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -30,6 +31,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
     sportsMutationEvents: SportsMutationEventsService = {
       publishAttendanceMutation: async () => undefined,
     } as unknown as SportsMutationEventsService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {
     super(prisma, attendanceCategories, sportsMutationEvents);
   }
@@ -140,7 +142,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
     const createResult =
       createdPersonIds.length > 0
         ? await this.prisma.$transaction(async (tx) => {
-            const result = await tx.eventAttendance.createMany({
+            const created = await tx.eventAttendance.createMany({
               data: createdPersonIds
                 .filter((personId) => !absentPersonIds.has(personId))
                 .map((personId) => ({
@@ -152,7 +154,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
                 })),
               skipDuplicates: true,
             });
-            await tx.eventAttendance.updateMany({
+            const updated = await tx.eventAttendance.updateMany({
               where: {
                 eventId: input.eventId,
                 personId: { in: createdPersonIds.filter((personId) => absentPersonIds.has(personId)) },
@@ -176,7 +178,35 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
                   updatedById: createdById,
                 })) || checkInStarted;
             }
-            return { count: createdPersonIds.length || result.count };
+            const importedCount = created.count + updated.count;
+            if (importedCount > 0) {
+              await this.auditLog.record(
+                {
+                  entityType: AuditLogEntityType.SYSTEM,
+                  entityId: `event-attendance-import:${input.eventId}`,
+                  entityLabel: 'Importação de presenças',
+                  operation: AuditLogOperation.IMPORT,
+                  actor: context.req?.user ?? context.request?.user,
+                  summary: 'Presenças importadas por CSV.',
+                  scope: {
+                    permission: Permission.EventAttendance.Import,
+                    eventId: input.eventId,
+                  },
+                  metadata: {
+                    resourceType: 'EVENT_ATTENDANCE_CSV_IMPORT',
+                    importedRows: rawValues.length,
+                    createdCount: created.count,
+                    updatedCount: updated.count,
+                    duplicateCount,
+                    failedCount: failedValues.length,
+                  },
+                  force: true,
+                  squashWindowMs: 0,
+                },
+                tx,
+              );
+            }
+            return { count: importedCount };
           })
         : { count: 0 };
 

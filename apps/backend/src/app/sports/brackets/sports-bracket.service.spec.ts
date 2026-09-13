@@ -1,4 +1,11 @@
-import { PublicationState, SportsFormat, SportsMatchState } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  PublicationState,
+  SportsFormat,
+  SportsMatchState,
+  SportsReviewStatus,
+} from '@prisma/client';
 
 jest.mock('../../audit-log/audit-log.service', () => ({
   AuditLogService: class AuditLogService {},
@@ -124,6 +131,101 @@ describe('SportsBracketService generation lifecycle', () => {
     await expect(service.generate(input, { sub: 'admin-1' } as never)).resolves.toEqual([
       { id: 'stage-existing', matches: [] },
     ]);
+  });
+
+  it('audits a newly generated Swiss round with its created matches', async () => {
+    const category = {
+      ...categoryRecord(),
+      format: SportsFormat.SWISS,
+      stages: [
+        {
+          id: 'stage-swiss',
+          settings: { maximumRounds: 2 },
+          standings: [
+            {
+              registrationId: 'registration-1',
+              points: 1,
+              scoreFor: 3,
+              scoreAgainst: 1,
+              tiebreakData: { byeCount: 0, seed: 1 },
+              registration: { team: { name: 'Equipe 1' } },
+            },
+            {
+              registrationId: 'registration-2',
+              points: 0,
+              scoreFor: 1,
+              scoreAgainst: 3,
+              tiebreakData: { byeCount: 0, seed: 2 },
+              registration: { team: { name: 'Equipe 2' } },
+            },
+          ],
+          matches: [
+            {
+              id: 'match-round-1',
+              roundNumber: 1,
+              reviewStatus: SportsReviewStatus.APPROVED,
+              canonicalState: SportsMatchState.FINISHED,
+              drawWillReschedule: false,
+              homeRegistrationId: 'registration-1',
+              awayRegistrationId: 'registration-2',
+            },
+          ],
+        },
+      ],
+    };
+    const createdMatches = [
+      {
+        id: 'match-round-2',
+        eventId: 'event-round-2',
+        event: {
+          deletedAt: null,
+          isPubliclyListed: false,
+          publicationState: PublicationState.DRAFT,
+        },
+      },
+    ];
+    const tx = {
+      sportsCategory: { findFirst: jest.fn().mockResolvedValue(category) },
+      sportsStage: { update: jest.fn().mockResolvedValue(undefined) },
+      sportsMatch: { findMany: jest.fn().mockResolvedValue(createdMatches) },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const service = new SportsBracketService(
+      prisma as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
+    const persistence = service as unknown as {
+      persistSwissRound: jest.Mock;
+      runBestEffortPostCommitEffects: jest.Mock;
+    };
+    persistence.persistSwissRound = jest.fn().mockResolvedValue(undefined);
+    persistence.runBestEffortPostCommitEffects = jest.fn().mockResolvedValue(undefined);
+
+    await expect(service.generateNextSwissRound('category-1', { sub: 'admin-1' } as never)).resolves.toEqual(
+      createdMatches,
+    );
+
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.SPORTS_CATEGORY,
+        entityId: 'category-1',
+        operation: AuditLogOperation.UPDATE,
+        summary: 'Rodada suíça gerada.',
+        after: {
+          format: SportsFormat.SWISS,
+          stageId: 'stage-swiss',
+          roundNumber: 2,
+          matchIds: ['match-round-2'],
+        },
+      }),
+      tx,
+    );
   });
 
   it('reconciles both soft-deleted and newly created backing Events after bracket replacement commits', async () => {

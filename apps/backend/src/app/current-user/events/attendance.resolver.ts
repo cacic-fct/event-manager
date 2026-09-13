@@ -26,8 +26,24 @@ import {
   startSportsMatchCheckInFromAthleteAttendance,
 } from '../../sports/operations/sports-match-attendance';
 import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { recordAttendanceSet } from './attendance-collection-audit';
 
 const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
+
+const CURRENT_USER_ONLINE_ATTENDANCE_SELECT = {
+  ...CURRENT_USER_EVENT_ATTENDANCE_SELECT,
+  personId: true,
+  status: true,
+  category: true,
+  currentAssessment: true,
+  createdById: true,
+  committedById: true,
+  createdByMethod: true,
+  collectedLatitude: true,
+  collectedLongitude: true,
+  collectedAccuracyMeters: true,
+} satisfies Prisma.EventAttendanceSelect;
 
 @Resolver()
 export class CurrentUserEventAttendanceResolver {
@@ -42,6 +58,10 @@ export class CurrentUserEventAttendanceResolver {
     private readonly sportsMutationEvents: SportsMutationEventsService = {
       publishAttendanceMutation: async () => undefined,
     } as unknown as SportsMutationEventsService,
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+      buildCompositeEntityId: (parts: readonly string[]) => parts.join(':'),
+    } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -177,6 +197,15 @@ export class CurrentUserEventAttendanceResolver {
     const createdAttendance = await (async () => {
       try {
         return await this.prisma.$transaction(async (tx) => {
+          const before = await tx.eventAttendance.findUnique({
+            where: {
+              personId_eventId: {
+                personId: person.id,
+                eventId: event.id,
+              },
+            },
+            select: CURRENT_USER_ONLINE_ATTENDANCE_SELECT,
+          });
           const transitioned = await tx.eventAttendance.updateMany({
             where: {
               personId: person.id,
@@ -211,15 +240,26 @@ export class CurrentUserEventAttendanceResolver {
             personId: person.id,
             updatedById: authenticatedUser.sub,
           });
-          return tx.eventAttendance.findUniqueOrThrow({
+          const persistedAttendance = await tx.eventAttendance.findUniqueOrThrow({
             where: {
               personId_eventId: {
                 personId: person.id,
                 eventId: event.id,
               },
             },
-            select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,
+            select: CURRENT_USER_ONLINE_ATTENDANCE_SELECT,
           });
+          await recordAttendanceSet({
+            auditLog: this.auditLog,
+            currentUserContext: this.currentUserContext,
+            context,
+            attendance: persistedAttendance,
+            before,
+            prisma: tx,
+            summary: 'Presença confirmada pelo usuário via código online.',
+            createOperation: 'USER_CREATE',
+          });
+          return persistedAttendance;
         });
       } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

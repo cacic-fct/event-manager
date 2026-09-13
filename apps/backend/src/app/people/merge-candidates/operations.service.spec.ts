@@ -1,11 +1,13 @@
 import { ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import type { People } from '@prisma/client';
+import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, type People } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { MergeCandidateOperationsService } from './operations.service';
 
 describe('MergeCandidateOperationsService', () => {
   let prisma: ReturnType<typeof createPrisma>;
   let certificates: { refreshIssuedCertificatesAfterPeopleMerge: jest.Mock };
   let service: MergeCandidateOperationsService;
+  let auditLog: { record: jest.Mock };
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
@@ -13,7 +15,8 @@ describe('MergeCandidateOperationsService', () => {
     certificates = {
       refreshIssuedCertificatesAfterPeopleMerge: jest.fn().mockResolvedValue(undefined),
     };
-    service = new MergeCandidateOperationsService(prisma as never, certificates as never);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    service = new MergeCandidateOperationsService(prisma as never, certificates as never, auditLog as never);
   });
 
   afterEach(() => {
@@ -128,6 +131,23 @@ describe('MergeCandidateOperationsService', () => {
       ),
     ).resolves.toBe(updatedCandidate);
 
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: AuditLogEntityType.MERGE_CANDIDATE,
+      entityId: 'candidate-1',
+      operation: AuditLogOperation.MERGE,
+      actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
+      before: { status: 'PENDING' },
+      after: { status: 'MERGED' },
+      metadata: {
+        mergeOperationId: 'merge-operation-1',
+        sourcePersonId: source.id,
+        targetPersonId: target.id,
+        migratedFields: ['NAME', 'EMAIL'],
+      },
+      scope: { permission: Permission.MergeCandidate.Merge },
+    }), tx);
+
     expect(tx.people.update).toHaveBeenCalledWith({
       where: { id: source.id },
       data: {
@@ -172,6 +192,21 @@ describe('MergeCandidateOperationsService', () => {
     );
   });
 
+  it('fails the merge transaction when its audit entry cannot be persisted', async () => {
+    const tx = createTransaction();
+    tx.mergeCandidate.findUnique.mockResolvedValue(candidate({ status: 'PENDING' }));
+    tx.people.findUnique.mockResolvedValueOnce(person({ id: 'person-a' })).mockResolvedValueOnce(person({ id: 'person-b' }));
+    tx.mergeCandidate.update.mockResolvedValue(candidate({ status: 'MERGED' }));
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    auditLog.record.mockRejectedValue(new Error('Audit unavailable'));
+
+    await expect(service.mergeCandidatePeople({
+      candidateId: 'candidate-1', targetPersonId: 'person-a', migrateFields: [],
+    }, null)).rejects.toThrow('Audit unavailable');
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ actor: undefined }), tx);
+    expect(certificates.refreshIssuedCertificatesAfterPeopleMerge).not.toHaveBeenCalled();
+  });
+
   it('validates merge candidate state and selected target', async () => {
     const tx = createTransaction();
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
@@ -180,6 +215,7 @@ describe('MergeCandidateOperationsService', () => {
     await expect(
       service.mergeCandidatePeople({ candidateId: 'missing', targetPersonId: 'person-a', migrateFields: [] }, null),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(auditLog.record).not.toHaveBeenCalled();
 
     tx.mergeCandidate.findUnique.mockResolvedValue(candidate({ status: 'MERGED' }));
     await expect(
@@ -323,6 +359,22 @@ describe('MergeCandidateOperationsService', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(service.undoMergeCandidatePeople('candidate-1', 'actor-1')).resolves.toBe(updatedCandidate);
+
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: AuditLogEntityType.MERGE_CANDIDATE,
+      entityId: 'candidate-1',
+      operation: AuditLogOperation.UNDO,
+      actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
+      before: { status: 'MERGED' },
+      after: { status: 'PENDING' },
+      metadata: {
+        mergeOperationId: operation.id,
+        sourcePersonId: source.id,
+        targetPersonId: target.id,
+      },
+      scope: { permission: Permission.MergeCandidate.Undo },
+    }), tx);
 
     expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
       where: {
@@ -485,6 +537,7 @@ function createPrisma() {
 
 function createTransaction() {
   return {
+    user: { findUnique: jest.fn().mockResolvedValue({ name: 'Operator', email: 'operator@example.com' }) },
     mergeCandidate: {
       findUnique: jest.fn(),
       update: jest.fn(),
@@ -494,7 +547,7 @@ function createTransaction() {
       update: jest.fn(),
     },
     peopleMergeOperation: {
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'merge-operation-1' }),
       findFirst: jest.fn(),
       update: jest.fn(),
     },

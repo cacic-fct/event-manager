@@ -9,11 +9,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, MajorEventReceipt, SubscriptionStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { addYears } from 'date-fns';
 import { Readable } from 'stream';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../../current-user/context.service';
@@ -65,6 +67,7 @@ export class ReceiptUploadService {
     > = {
       publishPaymentChanged: async () => undefined,
     },
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async getCurrentReceipt(
@@ -187,6 +190,22 @@ export class ReceiptUploadService {
         }
         await refreshSportsParticipantForSubscription(tx, subscription.id);
         await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
+        await this.auditLog.record({
+          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+          entityId: subscription.id,
+          entityLabel: 'Comprovante de pagamento',
+          operation: AuditLogOperation.SUBMIT,
+          actor: authenticatedUser,
+          after: {
+            receiptId: createdReceipt.id,
+            personId: person.id,
+            majorEventId,
+            uploadedAt,
+          },
+          summary: 'Comprovante de pagamento enviado para análise.',
+          scope: { permission: Permission.Subscription.Update, majorEventId },
+          metadata: { action: 'receipt-upload' },
+        }, tx);
 
         return createdReceipt;
       });

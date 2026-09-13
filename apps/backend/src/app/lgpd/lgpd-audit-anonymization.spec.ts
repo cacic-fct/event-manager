@@ -62,6 +62,17 @@ describe('merge candidate audit anonymization', () => {
     );
   });
 
+  it('selects people merge audit metadata linked through source or target person fields', () => {
+    const where = buildAuditLogSubjectWhere(dataSubject);
+
+    expect(where.OR).toEqual(
+      expect.arrayContaining([
+        { metadata: { path: ['sourcePersonId'], equals: 'person-1' } },
+        { metadata: { path: ['targetPersonId'], equals: 'person-1' } },
+      ]),
+    );
+  });
+
   it('anonymizes merge candidate identifiers and matching values', async () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const tx = {
@@ -102,6 +113,92 @@ describe('merge candidate audit anonymization', () => {
           personBId: 'person-2',
           pairKey: ANONYMIZED_AUDIT_VALUE,
           matchValue: ANONYMIZED_AUDIT_VALUE,
+        },
+      }),
+    });
+  });
+
+  it('anonymizes people merge source and target identifiers in audit metadata', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const tx = {
+      auditLogEntry: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'audit-merge',
+            entityType: AuditLogEntityType.PERSON,
+            entityId: 'target-person',
+            entityLabel: 'Target Person',
+            operation: AuditLogOperation.MERGE,
+            actorId: null,
+            actorName: 'Admin',
+            actorEmail: null,
+            before: null,
+            after: null,
+            changes: {},
+            metadata: {
+              sourcePersonId: 'person-1',
+              targetPersonId: 'person-2',
+            },
+          },
+        ]),
+        update,
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    await anonymizeAuditEntries(tx, dataSubject, 'anonymized:request-1');
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'audit-merge' },
+      data: expect.objectContaining({
+        entityLabel: 'Dados anonimizados',
+        metadata: {
+          sourcePersonId: 'anonymized:request-1',
+          targetPersonId: 'person-2',
+        },
+      }),
+    });
+  });
+
+  it('anonymizes account merge user identifiers in audit metadata', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const tx = {
+      auditLogEntry: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'audit-account-merge',
+            entityType: AuditLogEntityType.SYSTEM,
+            entityId: 'merge-event-1',
+            entityLabel: 'Unificação de contas',
+            operation: AuditLogOperation.MERGE,
+            actorId: null,
+            actorName: 'Serviço de unificação de contas',
+            actorEmail: null,
+            before: null,
+            after: null,
+            changes: {},
+            metadata: {
+              oldUserId: 'old-user',
+              newUserId: 'new-user',
+            },
+          },
+        ]),
+        update,
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    await anonymizeAuditEntries(
+      tx,
+      { people: [], personIds: [], userIds: ['old-user'], emails: [] },
+      'anonymized:request-1',
+    );
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'audit-account-merge' },
+      data: expect.objectContaining({
+        entityLabel: 'Dados anonimizados',
+        metadata: {
+          oldUserId: 'anonymized:request-1',
+          newUserId: 'new-user',
         },
       }),
     });

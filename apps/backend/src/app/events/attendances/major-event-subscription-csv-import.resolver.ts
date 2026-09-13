@@ -6,6 +6,8 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -20,6 +22,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
     private readonly frozenResources: FrozenResourceService = {
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -83,12 +86,15 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
 
     let createdSubscriptionCount = 0;
     let updatedSubscriptionCount = 0;
+    let changedSubscriptionCount = 0;
     let duplicateCount = 0;
     const now = new Date();
 
     const createdPeople = await this.prisma.$transaction(async (tx) => {
       const transactionCreatedPeople: PersonMatch[] = [];
       const personEventIds = new Map<string, Set<string>>();
+      let archivedEventSubscriptionCount = 0;
+      let createdEventSubscriptionCount = 0;
 
       for (const parsedRow of parsedRows) {
         if (!this.hasAnySubscriptionImportPersonData(parsedRow.personData)) {
@@ -138,14 +144,18 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
         });
 
         if (existingSubscription) {
-          await tx.majorEventSubscription.update({
+          const updated = await tx.majorEventSubscription.updateMany({
             where: {
               id: existingSubscription.id,
+              subscriptionStatus: { not: importStatus },
             },
             data: {
               subscriptionStatus: importStatus,
             },
           });
+          if (updated.count > 0) {
+            changedSubscriptionCount += updated.count;
+          }
           updatedSubscriptionCount += 1;
         } else {
           await tx.majorEventSubscription.create({
@@ -180,7 +190,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
         duplicateCount += selectedEventIds.length - eventIdsToCreate.length;
 
         if (eventIdsToArchive.length > 0) {
-          await tx.eventSubscription.updateMany({
+          const archived = await tx.eventSubscription.updateMany({
             where: {
               personId,
               eventId: {
@@ -192,10 +202,11 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
               deletedAt: now,
             },
           });
+          archivedEventSubscriptionCount += archived.count;
         }
 
         if (eventIdsToCreate.length > 0) {
-          await tx.eventSubscription.createMany({
+          const created = await tx.eventSubscription.createMany({
             data: eventIdsToCreate.map((eventId) => ({
               eventId,
               personId,
@@ -203,9 +214,48 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
               createdByMethod: 'ADMIN_DASHBOARD',
             })),
           });
+          createdEventSubscriptionCount += created.count;
         }
 
         await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, personId, tx);
+      }
+
+      const mutationCount =
+        transactionCreatedPeople.length +
+        createdSubscriptionCount +
+        changedSubscriptionCount +
+        archivedEventSubscriptionCount +
+        createdEventSubscriptionCount;
+      if (mutationCount > 0) {
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.SYSTEM,
+            entityId: `major-event-subscription-import:${input.majorEventId}`,
+            entityLabel: 'Importação de inscrições',
+            operation: AuditLogOperation.IMPORT,
+            actor: context.req?.user ?? context.request?.user,
+            summary: 'Inscrições importadas por CSV.',
+            scope: {
+              permission: Permission.Subscription.Import,
+              majorEventId: input.majorEventId,
+            },
+            metadata: {
+              resourceType: 'MAJOR_EVENT_SUBSCRIPTION_CSV_IMPORT',
+              importedRows: parsedRows.length,
+              createdPeopleCount: transactionCreatedPeople.length,
+              createdSubscriptionCount,
+              updatedSubscriptionCount,
+              changedSubscriptionCount,
+              createdEventSubscriptionCount,
+              archivedEventSubscriptionCount,
+              duplicateCount,
+              failedCount: failedRows.length,
+            },
+            force: true,
+            squashWindowMs: 0,
+          },
+          tx,
+        );
       }
 
       return transactionCreatedPeople;

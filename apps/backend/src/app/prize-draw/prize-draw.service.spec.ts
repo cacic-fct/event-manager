@@ -6,6 +6,7 @@ import {
   SavePrizeDrawInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PrizeDrawService } from './prize-draw.service';
 
 describe('PrizeDrawService', () => {
@@ -160,6 +161,57 @@ describe('PrizeDrawService', () => {
       expect(result.id).toBe('draw-1');
     });
 
+    it('audits a created draw in the same transaction with its target scope', async () => {
+      const context = createContext();
+      context.prisma.people.count.mockResolvedValue(0);
+      context.prisma.prizeDraw.findFirst.mockResolvedValue(drawRecord());
+      context.tx.prizeDraw.create.mockResolvedValue(drawRecord());
+
+      await context.service.save(input(), actor());
+
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.CREATE,
+          actor: actor(),
+          scope: expect.objectContaining({
+            permission: Permission.PrizeDraw.Create,
+            eventId: 'event-1',
+          }),
+          metadata: expect.objectContaining({
+            resourceType: 'PRIZE_DRAW',
+            action: 'save',
+          }),
+        }),
+        context.tx,
+      );
+    });
+
+    it('audits a persisted configuration update once, including changed target scope', async () => {
+      const context = createContext();
+      const previous = drawRecord({ title: 'Antes', revision: 4 });
+      const updated = drawRecord({ title: 'Depois', revision: 5 });
+      context.prisma.prizeDraw.findFirst.mockResolvedValue(previous);
+      context.tx.prizeDraw.findFirst.mockResolvedValue(previous);
+      context.tx.prizeDraw.update.mockResolvedValue(updated);
+
+      await context.service.save(input({ id: 'draw-1', title: 'Depois' }), actor());
+
+      expect(context.auditLog.record).toHaveBeenCalledTimes(1);
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.UPDATE,
+          before: expect.objectContaining({ title: 'Antes' }),
+          after: expect.objectContaining({ title: 'Depois' }),
+          metadata: expect.objectContaining({ resourceType: 'PRIZE_DRAW', action: 'save' }),
+        }),
+        context.tx,
+      );
+    });
+
     it('refuses person references outside the selected target scope', async () => {
       const context = createContext();
       context.prisma.people.count.mockResolvedValue(0);
@@ -223,6 +275,16 @@ describe('PrizeDrawService', () => {
       );
       expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'ELIGIBILITY_FROZEN', 2);
       expect(result.frozenAt).toBeInstanceOf(Date);
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.UPDATE,
+          metadata: expect.objectContaining({ resourceType: 'PRIZE_DRAW', action: 'freeze' }),
+          scope: expect.objectContaining({ permission: Permission.PrizeDraw.Update, eventId: 'event-1' }),
+        }),
+        context.tx,
+      );
     });
 
     it('does not freeze an empty or already frozen roster', async () => {
@@ -254,6 +316,16 @@ describe('PrizeDrawService', () => {
         }),
       });
       expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'ELIGIBILITY_UNFROZEN', 3);
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.UPDATE,
+          metadata: expect.objectContaining({ resourceType: 'PRIZE_DRAW', action: 'unfreeze' }),
+          scope: expect.objectContaining({ permission: Permission.PrizeDraw.Update, eventId: 'event-1' }),
+        }),
+        context.tx,
+      );
 
       context.tx.prizeDraw.findFirst.mockResolvedValue(drawRecord());
       await expect(context.service.unfreeze('draw-1', actor())).rejects.toThrow('não está congelada');
@@ -313,6 +385,21 @@ describe('PrizeDrawService', () => {
           hasMoreSpins: false,
         }),
       );
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.UPDATE,
+          metadata: expect.objectContaining({
+            resourceType: 'PRIZE_DRAW',
+            action: 'spin',
+            spinId: 'spin-2',
+            personId: 'person-2',
+          }),
+          scope: expect.objectContaining({ permission: Permission.PrizeDraw.Operate, eventId: 'event-1' }),
+        }),
+        context.tx,
+      );
     });
 
     it('keeps demo spins side-effect free and enforces roster and configured limits', async () => {
@@ -342,13 +429,47 @@ describe('PrizeDrawService', () => {
       const context = createContext();
       context.tx.prizeDrawSpin.findFirst.mockResolvedValue(spinRecord());
       context.tx.prizeDrawSpin.update.mockResolvedValue(spinRecord({ undoneAt: new Date() }));
-      context.tx.prizeDraw.update.mockResolvedValue({ revision: 9 });
+      context.tx.prizeDraw.update.mockResolvedValue({
+        id: 'draw-1',
+        title: 'Sorteio',
+        eventId: 'event-1',
+        majorEventId: null,
+        revision: 9,
+      });
       context.notificationJobs.undoSpin.mockRejectedValue(new Error('queue unavailable'));
       context.prisma.prizeDraw.findFirst.mockResolvedValue(drawRecord({ revision: 9 }));
 
       await context.service.undoLast('draw-1', actor());
 
       expect(context.realtime.publishDraw).toHaveBeenCalledWith('draw-1', 'SPIN_UNDONE', 9, 'spin-1');
+      expect(context.auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: AuditLogEntityType.SYSTEM,
+          entityId: 'prize-draw:draw-1',
+          operation: AuditLogOperation.UNDO,
+          metadata: expect.objectContaining({
+            resourceType: 'PRIZE_DRAW',
+            action: 'undo-spin',
+            spinId: 'spin-1',
+            personId: 'person-1',
+          }),
+          scope: expect.objectContaining({ permission: Permission.PrizeDraw.Undo, eventId: 'event-1' }),
+        }),
+        context.tx,
+      );
+    });
+
+    it('does not audit demo spins or failed replayed undo requests', async () => {
+      const context = createContext();
+      context.prisma.prizeDraw.findFirst.mockResolvedValue(drawRecord());
+      context.eligibility.resolve.mockResolvedValue([eligible('person-1', 'Ada Lovelace')]);
+
+      await context.service.spin({ drawId: 'draw-1', demo: true, reducedMotion: false }, actor());
+      expect(context.auditLog.record).not.toHaveBeenCalled();
+
+      context.tx.prizeDrawSpin.findFirst.mockResolvedValue(null);
+      await expect(context.service.undoLast('draw-1', actor())).rejects.toThrow('Não há giro');
+      expect(context.auditLog.record).not.toHaveBeenCalled();
     });
 
     it('returns canonical merged contact details and rejects missing or undone spins', async () => {
@@ -610,12 +731,16 @@ function createContext() {
     enqueuePresentation: jest.fn().mockResolvedValue(undefined),
     undoSpin: jest.fn().mockResolvedValue(undefined),
   };
+  const auditLog = {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new PrizeDrawService(
     prisma as never,
     eligibility as never,
     policy as never,
     realtime as never,
     notificationJobs as never,
+    auditLog as never,
   );
-  return { eligibility, notificationJobs, policy, prisma, realtime, service, tx };
+  return { auditLog, eligibility, notificationJobs, policy, prisma, realtime, service, tx };
 }

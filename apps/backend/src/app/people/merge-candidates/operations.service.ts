@@ -1,6 +1,9 @@
 import { MergeCandidateMergeInput } from '@cacic-fct/shared-data-types';
 import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { EventManagerPermissionArchiveReason } from '@prisma/client';
+import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, EventManagerPermissionArchiveReason, Prisma } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { AuditActor } from '../../audit-log/audit-log.types';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
@@ -18,6 +21,7 @@ export class MergeCandidateOperationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly certificateIssuingService: CertificateIssuingService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async scanMergeCandidates(actorId: string | null): Promise<number> {
@@ -197,7 +201,7 @@ export class MergeCandidateOperationsService {
         });
       }
 
-      await tx.peopleMergeOperation.create({
+      const operation = await tx.peopleMergeOperation.create({
         data: {
           targetPersonId: targetPerson.id,
           sourcePersonId: sourcePerson.id,
@@ -224,6 +228,28 @@ export class MergeCandidateOperationsService {
           personB: true,
         },
       });
+
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MERGE_CANDIDATE,
+          entityId: candidate.id,
+          entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
+          operation: AuditLogOperation.MERGE,
+          force: true,
+          actor: await this.resolveAuditActor(actorId, tx),
+          before: { status: candidate.status },
+          after: { status: updatedCandidate.status },
+          metadata: {
+            mergeOperationId: operation.id,
+            sourcePersonId: sourcePerson.id,
+            targetPersonId: targetPerson.id,
+            migratedFields: migrateFields,
+          },
+          scope: { permission: Permission.MergeCandidate.Merge },
+          summary: 'Pessoas unificadas e vínculos transferidos.',
+        },
+        tx,
+      );
 
       this.logger.log(
         `Merged people for candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, fields=${migrateFields.join(',') || '(none)'}, actor=${actorId ?? 'system'}.`,
@@ -586,12 +612,47 @@ export class MergeCandidateOperationsService {
         },
       });
 
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MERGE_CANDIDATE,
+          entityId: candidate.id,
+          entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
+          operation: AuditLogOperation.UNDO,
+          force: true,
+          actor: await this.resolveAuditActor(actorId, tx),
+          before: { status: candidate.status },
+          after: { status: updatedCandidate.status },
+          metadata: {
+            mergeOperationId: operation.id,
+            sourcePersonId: sourcePerson.id,
+            targetPersonId: targetPerson.id,
+          },
+          scope: { permission: Permission.MergeCandidate.Undo },
+          summary: 'Unificação de pessoas desfeita e vínculos restaurados.',
+        },
+        tx,
+      );
+
       this.logger.warn(
         `Rolled back merge operation=${operation.id}, candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, actor=${actorId ?? 'system'}.`,
       );
 
       return updatedCandidate;
     });
+  }
+
+  private async resolveAuditActor(actorId: string | null, tx: Prisma.TransactionClient): Promise<AuditActor | undefined> {
+    if (!actorId) return undefined;
+    const user = await tx.user.findUnique({
+      where: { id: actorId },
+      select: { name: true, email: true },
+    });
+    return {
+      id: actorId,
+      name: user?.name ?? actorId,
+      email: user?.email ?? null,
+      type: AuditLogActorType.USER,
+    };
   }
 
   private async refreshCertificatesAfterMerge(

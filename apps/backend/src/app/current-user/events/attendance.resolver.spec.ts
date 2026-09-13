@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { CurrentUserEventAttendanceResolver } from './attendance.resolver';
 
@@ -265,6 +265,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
             clientVersion: 'test',
           }),
         ),
+        findUnique: jest.fn().mockResolvedValue(null),
         findUniqueOrThrow: jest.fn(),
       },
     };
@@ -300,12 +301,13 @@ describe('CurrentUserEventAttendanceResolver', () => {
   });
 
   it('creates online attendance inside a transaction and notifies realtime listeners', async () => {
-    const createdAttendance = { personId: 'person-1', eventId: 'event-1' };
+    const createdAttendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' };
     const mappedAttendance = { eventId: 'event-1', attendedAt: new Date('2026-01-01T00:00:00.000Z') };
     const tx = {
       eventAttendance: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest.fn().mockResolvedValue(undefined),
+        findUnique: jest.fn().mockResolvedValue(null),
         findUniqueOrThrow: jest.fn().mockResolvedValue(createdAttendance),
       },
     };
@@ -330,11 +332,14 @@ describe('CurrentUserEventAttendanceResolver', () => {
       },
       $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const { resolver, attendanceCategories, attendanceRealtime, mapper } = createResolverWithDependencies(prisma, {
-      mapper: {
-        mapCurrentUserEventAttendance: jest.fn().mockReturnValue(mappedAttendance),
+    const { resolver, attendanceCategories, attendanceRealtime, mapper, auditLog } = createResolverWithDependencies(
+      prisma,
+      {
+        mapper: {
+          mapCurrentUserEventAttendance: jest.fn().mockReturnValue(mappedAttendance),
+        },
       },
-    });
+    );
 
     await expect(
       resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: ' 123456 ' }, {} as never),
@@ -377,6 +382,18 @@ describe('CurrentUserEventAttendanceResolver', () => {
     });
     expect(attendanceRealtime.notifyPerson).toHaveBeenCalledWith('person-1');
     expect(mapper.mapCurrentUserEventAttendance).toHaveBeenCalledWith(createdAttendance);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+        entityId: 'person-1:event-1',
+        operation: AuditLogOperation.USER_CREATE,
+        actor: { sub: 'user-1' },
+        before: null,
+        after: createdAttendance,
+        summary: 'Presença confirmada pelo usuário via código online.',
+      }),
+      tx,
+    );
   });
 
   it('allows only one of two competing online confirmations to create the attendance', async () => {
@@ -393,6 +410,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
               clientVersion: 'test',
             }),
           ),
+        findUnique: jest.fn().mockResolvedValue(null),
         findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
       },
     };
@@ -730,6 +748,7 @@ function createResolverWithDependencies(
     attendanceRealtime?: Record<string, unknown>;
     frozenResources?: Record<string, unknown>;
     authorizationPolicy?: Record<string, unknown>;
+    auditLog?: Record<string, unknown>;
   } = {},
 ) {
   const currentUserContext = {
@@ -761,6 +780,11 @@ function createResolverWithDependencies(
     canLecturerViewSubscriberList: jest.fn().mockReturnValue(false),
     ...overrides.authorizationPolicy,
   };
+  const auditLog = {
+    record: jest.fn().mockResolvedValue(undefined),
+    buildCompositeEntityId: jest.fn((parts: readonly string[]) => parts.join(':')),
+    ...overrides.auditLog,
+  };
 
   const resolver = new CurrentUserEventAttendanceResolver(
     prisma as never,
@@ -770,6 +794,8 @@ function createResolverWithDependencies(
     attendanceRealtime as never,
     frozenResources as never,
     authorizationPolicy as never,
+    undefined,
+    auditLog as never,
   );
 
   return {
@@ -780,6 +806,7 @@ function createResolverWithDependencies(
     attendanceRealtime,
     frozenResources,
     authorizationPolicy,
+    auditLog,
   };
 }
 

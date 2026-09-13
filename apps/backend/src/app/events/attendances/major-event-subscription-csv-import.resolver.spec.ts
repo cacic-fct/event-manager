@@ -1,17 +1,25 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MajorEventSubscriptionCsvImportInput } from '@cacic-fct/shared-data-types';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { MajorEventSubscriptionCsvImportResolver } from './major-event-subscription-csv-import.resolver';
 
 describe('MajorEventSubscriptionCsvImportResolver', () => {
   let prisma: ReturnType<typeof createPrisma>;
   let attendanceCategories: { refreshForMajorEventPerson: jest.Mock };
+  let auditLog: { record: jest.Mock };
   let resolver: MajorEventSubscriptionCsvImportResolver;
 
   beforeEach(() => {
     prisma = createPrisma();
     attendanceCategories = { refreshForMajorEventPerson: jest.fn().mockResolvedValue(undefined) };
-    resolver = new MajorEventSubscriptionCsvImportResolver(prisma as never, attendanceCategories as never);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    resolver = new MajorEventSubscriptionCsvImportResolver(
+      prisma as never,
+      attendanceCategories as never,
+      undefined,
+      auditLog as never,
+    );
   });
 
   it('requires subscription import permission for CSV subscription imports', () => {
@@ -30,6 +38,7 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
     const tx = createTx();
     tx.people.findFirst.mockResolvedValue(null);
     tx.people.create.mockResolvedValue(personMatch('person-1'));
+    tx.eventSubscription.createMany.mockResolvedValue({ count: 2 });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
@@ -83,6 +92,81 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
       ],
     });
     expect(attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith('major-1', 'person-1', tx);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: 'major-event-subscription-import:major-1',
+        operation: AuditLogOperation.IMPORT,
+        metadata: expect.objectContaining({
+          resourceType: 'MAJOR_EVENT_SUBSCRIPTION_CSV_IMPORT',
+          importedRows: 1,
+          createdPeopleCount: 1,
+          createdSubscriptionCount: 1,
+          updatedSubscriptionCount: 0,
+          changedSubscriptionCount: 0,
+          createdEventSubscriptionCount: 2,
+          archivedEventSubscriptionCount: 0,
+          duplicateCount: 0,
+          failedCount: 0,
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('does not audit an import when every row is rejected before persistence', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    const tx = createTx();
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          csvContent: 'email,events\n,event-1',
+          columnMapping: {
+            emailHeader: 'email',
+            subscribedEventIdsHeader: 'events',
+          },
+        },
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ failedCount: 1 }));
+
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('does not audit a no-op import when subscriptions and event links already match', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValue(personMatch('person-1'));
+    tx.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1', subscriptionStatus: 'CONFIRMED' });
+    tx.eventSubscription.findMany.mockResolvedValue([{ eventId: 'event-1' }]);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          csvContent: 'email,events\nada@example.com,event-1',
+          columnMapping: {
+            emailHeader: 'email',
+            subscribedEventIdsHeader: 'events',
+          },
+        },
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ updatedSubscriptionCount: 1, duplicateCount: 1 }));
+
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { id: 'subscription-1', subscriptionStatus: { not: 'CONFIRMED' } },
+      data: { subscriptionStatus: 'CONFIRMED' },
+    });
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 
   it('reports invalid rows and validates major event and mapping inputs', async () => {
@@ -152,11 +236,12 @@ function createTx() {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     eventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
-      updateMany: jest.fn(),
-      createMany: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };
 }

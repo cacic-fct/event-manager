@@ -128,14 +128,16 @@ function createContext(input: {
   };
   const realtime = { publishDraw: jest.fn() };
   const notifications = { enqueueWinner: jest.fn() };
+  const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
   const service = new PrizeDrawService(
     prisma as never,
     {} as never,
     policy as never,
     realtime as never,
     notifications as never,
+    auditLog as never,
   );
-  return { policy, prisma, realtime, service };
+  return { auditLog, policy, prisma, realtime, service };
 }
 
 function drawRecord() {

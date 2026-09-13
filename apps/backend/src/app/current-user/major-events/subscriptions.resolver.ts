@@ -306,11 +306,50 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           return null;
         }
 
-        return tx.majorEventSubscription.update({
-          where: { id: existingSubscription.id },
+        const acceptedResult = await tx.majorEventSubscription.updateMany({
+          where: {
+            id: existingSubscription.id,
+            imageLicenseAgreementAccepted: false,
+          },
           data: { imageLicenseAgreementAccepted: true },
+        });
+        const acceptedSubscription = await tx.majorEventSubscription.findFirst({
+          where: { id: existingSubscription.id, deletedAt: null },
           select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
         });
+        if (!acceptedSubscription) {
+          return null;
+        }
+        if (acceptedResult.count > 0) {
+          await this.auditLog.record(
+            {
+              entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+              entityId: acceptedSubscription.id,
+              entityLabel: person.id,
+              operation: AuditLogOperation.UPDATE,
+              actor: authenticatedUser,
+              before: {
+                id: existingSubscription.id,
+                majorEventId: input.majorEventId,
+                personId: person.id,
+                imageLicenseAgreementAccepted: false,
+              },
+              after: {
+                id: acceptedSubscription.id,
+                majorEventId: acceptedSubscription.majorEventId,
+                personId: person.id,
+                imageLicenseAgreementAccepted: true,
+              },
+              scope: {
+                permission: Permission.Subscription.Update,
+                majorEventId: input.majorEventId,
+              },
+              summary: 'Aceite do termo de uso de imagem registrado pelo usuário.',
+            },
+            tx,
+          );
+        }
+        return acceptedSubscription;
       });
 
       if (acceptedSubscription) {
@@ -599,11 +638,49 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         !isConfirmedSportsOnlySubscription(existingSubscription)
       ) {
         if (majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true) {
-          const acceptedSubscription = await tx.majorEventSubscription.update({
-            where: { id: existingSubscription.id },
+          const acceptedResult = await tx.majorEventSubscription.updateMany({
+            where: {
+              id: existingSubscription.id,
+              imageLicenseAgreementAccepted: false,
+            },
             data: { imageLicenseAgreementAccepted: true },
+          });
+          const acceptedSubscription = await tx.majorEventSubscription.findFirst({
+            where: { id: existingSubscription.id, deletedAt: null },
             select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
           });
+          if (!acceptedSubscription) {
+            throw new NotFoundException(`Subscription for major event ${input.majorEventId} was not found.`);
+          }
+          if (acceptedResult.count > 0) {
+            await this.auditLog.record(
+              {
+                entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+                entityId: acceptedSubscription.id,
+                entityLabel: person.id,
+                operation: AuditLogOperation.UPDATE,
+                actor: authenticatedUser,
+                before: {
+                  id: existingSubscription.id,
+                  majorEventId: input.majorEventId,
+                  personId: person.id,
+                  imageLicenseAgreementAccepted: false,
+                },
+                after: {
+                  id: acceptedSubscription.id,
+                  majorEventId: acceptedSubscription.majorEventId,
+                  personId: person.id,
+                  imageLicenseAgreementAccepted: true,
+                },
+                scope: {
+                  permission: Permission.Subscription.Update,
+                  majorEventId: input.majorEventId,
+                },
+                summary: 'Aceite do termo de uso de imagem registrado pelo usuário.',
+              },
+              tx,
+            );
+          }
           return {
             subscription: acceptedSubscription,
             consentOnly: true,

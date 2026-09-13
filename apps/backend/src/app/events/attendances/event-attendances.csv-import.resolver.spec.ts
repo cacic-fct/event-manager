@@ -1,16 +1,25 @@
 import { AttendanceImportMatchType } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { EventAttendanceCsvImportResolver } from './event-attendances.csv-import.resolver';
 
 describe('EventAttendanceCsvImportResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;
   let attendanceCategories: { refreshForEventPersons: jest.Mock };
+  let auditLog: { record: jest.Mock };
   let resolver: EventAttendanceCsvImportResolver;
 
   beforeEach(() => {
     prisma = createFullPrisma();
     attendanceCategories = { refreshForEventPersons: jest.fn().mockResolvedValue(undefined) };
-    resolver = new EventAttendanceCsvImportResolver(prisma as never, attendanceCategories as never);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    resolver = new EventAttendanceCsvImportResolver(
+      prisma as never,
+      attendanceCategories as never,
+      undefined,
+      undefined,
+      auditLog as never,
+    );
   });
 
   it('imports CSV attendances by inferred email match type', async () => {
@@ -46,6 +55,22 @@ describe('EventAttendanceCsvImportResolver', () => {
     expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(
       ['event-1'],
       ['person-1'],
+      expect.any(Object),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: 'event-attendance-import:event-1',
+        operation: AuditLogOperation.IMPORT,
+        metadata: expect.objectContaining({
+          resourceType: 'EVENT_ATTENDANCE_CSV_IMPORT',
+          importedRows: 4,
+          createdCount: 1,
+          updatedCount: 0,
+          duplicateCount: 2,
+          failedCount: 1,
+        }),
+      }),
       expect.any(Object),
     );
 
@@ -185,6 +210,32 @@ describe('EventAttendanceCsvImportResolver', () => {
         data: [expect.objectContaining({ personId: 'phone-person' })],
       }),
     );
+  });
+
+  it('does not audit an import when persistence reports no changed rows', async () => {
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
+    prisma.people.findMany.mockResolvedValue([personMatch({ id: 'person-1', name: 'Ada' })]);
+    prisma.eventAttendance.findMany.mockResolvedValue([]);
+    const tx = {
+      eventAttendance: {
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.importEventAttendancesFromCsv(
+        {
+          eventId: 'event-1',
+          selectedHeader: 'email',
+          csvContent: 'email\nada@example.com',
+        },
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ createdCount: 0 }));
+
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 });
 

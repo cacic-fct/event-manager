@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import {
   CurrentUserMajorEventSubscriptionsResolver,
@@ -429,8 +429,8 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     const tx = {
       majorEvent: { findFirst: jest.fn().mockResolvedValue(majorEvent) },
       majorEventSubscription: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'subscription-1' }),
-        update: jest.fn().mockResolvedValue(acceptedSubscription),
+        findFirst: jest.fn().mockResolvedValueOnce({ id: 'subscription-1' }).mockResolvedValueOnce(acceptedSubscription),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const selectedEvents = [eventRecord('original-event')];
@@ -467,10 +467,9 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
       }),
     );
 
-    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith({
-      where: { id: 'subscription-1' },
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { id: 'subscription-1', imageLicenseAgreementAccepted: false },
       data: { imageLicenseAgreementAccepted: true },
-      select: 'subscription-select',
     });
     expect(harness.prisma.event.findMany).not.toHaveBeenCalled();
     expect(harness.majorEventSubscriptions.resolveSelfServicePayment).not.toHaveBeenCalled();
@@ -487,9 +486,13 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
       selectedEvents: [{ id: 'original-selection' }],
       sportsTournamentParticipants: [],
     });
+    const existingConsentSubscription = { ...accepted, imageLicenseAgreementAccepted: false };
     const tx = createUpsertTransaction(majorEvent, requestedEvent, accepted);
-    tx.majorEventSubscription.findFirst.mockReset().mockResolvedValue(accepted);
-    tx.majorEventSubscription.update.mockResolvedValue(accepted);
+    tx.majorEventSubscription.findFirst
+      .mockReset()
+      .mockResolvedValueOnce(existingConsentSubscription)
+      .mockResolvedValueOnce(accepted);
+    tx.majorEventSubscription.updateMany.mockResolvedValue({ count: 1 });
     harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
     harness.prisma.event.findMany.mockResolvedValueOnce([requestedEvent]).mockResolvedValueOnce([]);
     harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
@@ -510,8 +513,9 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(result).toEqual(expect.objectContaining(canonical));
     expect(tx.majorEventSubscriptionEventSelection.createMany).not.toHaveBeenCalled();
     expect(tx.majorEventSubscriptionEventSelection.updateMany).not.toHaveBeenCalled();
-    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith(
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { id: 'subscription-1', imageLicenseAgreementAccepted: false },
         data: { imageLicenseAgreementAccepted: true },
       }),
     );
@@ -572,6 +576,146 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     );
     expect(harness.eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
     expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith('major-1', 'person-1', tx);
+  });
+
+  it('audits image consent accepted after the major-event subscription window closes', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({
+      requiresImageLicenseAgreement: true,
+      subscriptionStartDate: new Date(publicFixtureDateFromNow(-3)),
+      subscriptionEndDate: new Date(publicFixtureDateFromNow(-2)),
+      endDate: new Date(publicFixtureDateFromNow(1)),
+    });
+    const acceptedSubscription = subscriptionRecord(majorEvent, {
+      imageLicenseAgreementAccepted: true,
+    });
+    const tx = {
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(majorEvent),
+      },
+      majorEventSubscription: {
+        findFirst: jest.fn().mockResolvedValueOnce({ id: 'subscription-1' }).mockResolvedValueOnce(acceptedSubscription),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.publicEvents.getMajorEventSubscriptionSelect.mockReturnValue('subscription-select');
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+    harness.majorEventSubscriptions.getMajorEventSubscriptionEvents.mockResolvedValue({
+      selectedEvents: [],
+      notSubscribedEvents: [],
+    });
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1' });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: [], imageLicenseAgreementAccepted: true },
+        { req: {} } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'subscription-1', imageLicenseAgreementAccepted: true }));
+
+    expect(harness.auditLog.record).toHaveBeenCalledWith(
+      {
+        entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+        entityId: 'subscription-1',
+        entityLabel: 'person-1',
+        operation: AuditLogOperation.UPDATE,
+        actor: harness.user,
+        before: {
+          id: 'subscription-1',
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          imageLicenseAgreementAccepted: false,
+        },
+        after: {
+          id: 'subscription-1',
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          imageLicenseAgreementAccepted: true,
+        },
+        scope: {
+          permission: 'subscription#update',
+          majorEventId: 'major-1',
+        },
+        summary: 'Aceite do termo de uso de imagem registrado pelo usuário.',
+      },
+      tx,
+    );
+  });
+
+  it('audits image consent accepted on an already confirmed subscription', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({ requiresImageLicenseAgreement: true });
+    const existingSubscription = {
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      imageLicenseAgreementAccepted: false,
+      amountPaid: null,
+      paymentTier: null,
+      selectedEvents: [],
+      sportsTournamentParticipants: [],
+    };
+    const acceptedSubscription = subscriptionRecord(majorEvent, {
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      imageLicenseAgreementAccepted: true,
+    });
+    const selectedEvent = eventRecord('event-1');
+    const tx = {
+      majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(majorEvent),
+      },
+      majorEventSubscription: {
+        findFirst: jest.fn().mockResolvedValueOnce(existingSubscription).mockResolvedValueOnce(acceptedSubscription),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([selectedEvent]),
+      },
+    };
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValue([selectedEvent]);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+    harness.majorEventSubscriptions.getMajorEventSubscriptionEvents.mockResolvedValue({
+      selectedEvents: [],
+      notSubscribedEvents: [],
+    });
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1' });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'], imageLicenseAgreementAccepted: true },
+        { req: {} } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'subscription-1', imageLicenseAgreementAccepted: true }));
+
+    expect(harness.auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+        entityId: 'subscription-1',
+        operation: AuditLogOperation.UPDATE,
+        before: {
+          id: 'subscription-1',
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          imageLicenseAgreementAccepted: false,
+        },
+        after: {
+          id: 'subscription-1',
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          imageLicenseAgreementAccepted: true,
+        },
+      }),
+      tx,
+    );
   });
 
   it('returns the active winner when the major-subscription unique index rejects a concurrent create', async () => {
@@ -795,6 +939,7 @@ function createUpsertTransaction(
         .mockResolvedValueOnce(updatedSubscription),
       create: jest.fn().mockResolvedValue({}),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     majorEventSubscriptionEventSelection: {
       findMany: jest.fn().mockResolvedValue([]),

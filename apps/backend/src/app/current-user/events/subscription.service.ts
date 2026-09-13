@@ -366,10 +366,39 @@ export class CurrentUserEventSubscriptionService {
       }
 
       if (imageLicenseAgreementAccepted === true && !existingSubscription.imageLicenseAgreementAccepted) {
-        await tx.eventSubscription.update({
-          where: { id: existingSubscription.id },
+        const acceptedResult = await tx.eventSubscription.updateMany({
+          where: {
+            id: existingSubscription.id,
+            imageLicenseAgreementAccepted: false,
+          },
           data: { imageLicenseAgreementAccepted: true },
         });
+        if (acceptedResult.count > 0) {
+          await this.auditLog.record(
+            {
+              entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
+              entityId: existingSubscription.id,
+              entityLabel: personId,
+              operation: AuditLogOperation.UPDATE,
+              actor,
+              before: {
+                id: existingSubscription.id,
+                eventId: targetEvent.id,
+                personId,
+                imageLicenseAgreementAccepted: false,
+              },
+              after: {
+                id: existingSubscription.id,
+                eventId: targetEvent.id,
+                personId,
+                imageLicenseAgreementAccepted: true,
+              },
+              scope: { permission: Permission.Subscription.Update, eventId: targetEvent.id },
+              summary: 'Aceite do termo de uso de imagem registrado pelo usuário.',
+            },
+            tx,
+          );
+        }
       }
 
       submittedFormIds.push(

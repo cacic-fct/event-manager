@@ -7,7 +7,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AuditLogEntityType,
+  AuditLogOperation,
   Prisma,
+  PrizeDraw as PrismaPrizeDraw,
   PrizeDrawChanceMode as PrismaPrizeDrawChanceMode,
   PrizeDrawSpeed as PrismaPrizeDrawSpeed,
   PrizeDrawTargetType as PrismaPrizeDrawTargetType,
@@ -23,6 +26,7 @@ import {
   SpinPrizeDrawInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -77,6 +81,7 @@ export class PrizeDrawService {
     private readonly policy: AuthorizationPolicyService,
     private readonly realtime: PrizeDrawRealtimeService,
     private readonly notificationJobs: PrizeDrawNotificationJobsService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async listAdmin(user: AuthenticatedUser | undefined): Promise<PrizeDraw[]> {
@@ -141,6 +146,7 @@ export class PrizeDrawService {
     if (existing) this.assertMutableConfiguration(existing, input);
 
     const drawId = await this.prisma.$transaction(async (tx) => {
+      let before: Record<string, unknown> | null = null;
       if (existing) {
         await this.lockDraw(tx, existing.id);
         const current = await tx.prizeDraw.findFirst({
@@ -149,6 +155,13 @@ export class PrizeDrawService {
         });
         if (!current) throw new NotFoundException('Sorteio não encontrado.');
         this.assertMutableConfiguration(current, input);
+        before = {
+          ...this.drawAuditConfiguration(current),
+          plannedSpinCount: current.plannedSpins.length,
+          manualEntryCount: current.manualEntries.length,
+          weightOverrideCount: current.weightOverrides.length,
+          excludedPersonCount: current.excludedPeople.length,
+        };
       }
       const saved = existing
         ? await tx.prizeDraw.update({
@@ -171,6 +184,20 @@ export class PrizeDrawService {
       await this.syncManualEntries(tx, saved.id, input, actorId);
       await this.syncWeightOverrides(tx, saved.id, input);
       await this.syncExcludedPeople(tx, saved.id, input);
+      await this.recordDrawAction(tx, saved, actor, {
+        action: 'save',
+        operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+        permission: existing ? Permission.PrizeDraw.Update : Permission.PrizeDraw.Create,
+        summary: existing ? 'Configuração do sorteio atualizada.' : 'Sorteio criado.',
+        before,
+        after: {
+          ...this.drawAuditConfiguration(saved),
+          plannedSpinCount: input.plannedSpins.length,
+          manualEntryCount: input.manualEntries.length,
+          weightOverrideCount: input.weightOverrides.length,
+          excludedPersonCount: input.excludedPersonIds.length,
+        },
+      });
       return saved.id;
     });
 
@@ -189,7 +216,16 @@ export class PrizeDrawService {
         if (draw.frozenAt) throw new ConflictException('A lista de participantes já está congelada.');
         const entries = await this.eligibility.resolve(draw, { client: tx });
         if (entries.length === 0) throw new BadRequestException('Não há participantes elegíveis para congelar.');
-        await this.eligibility.freeze(draw, new Date(), actorId, tx);
+        const frozenAt = new Date();
+        await this.eligibility.freeze(draw, frozenAt, actorId, tx);
+        await this.recordDrawAction(tx, draw, actor, {
+          action: 'freeze',
+          operation: AuditLogOperation.UPDATE,
+          permission: Permission.PrizeDraw.Update,
+          summary: 'Lista de participantes do sorteio congelada.',
+          before: { frozenAt: draw.frozenAt },
+          after: { frozenAt },
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -216,6 +252,14 @@ export class PrizeDrawService {
             updatedById: actorId,
             revision: { increment: 1 },
           },
+        });
+        await this.recordDrawAction(tx, draw, actor, {
+          action: 'unfreeze',
+          operation: AuditLogOperation.UPDATE,
+          permission: Permission.PrizeDraw.Update,
+          summary: 'Lista de participantes do sorteio descongelada.',
+          before: { frozenAt: draw.frozenAt },
+          after: { frozenAt: null },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -309,6 +353,15 @@ export class PrizeDrawService {
           data: { revision: { increment: 1 }, updatedById: actorId },
           select: { revision: true },
         });
+        await this.recordDrawAction(tx, draw, actor, {
+          action: 'spin',
+          operation: AuditLogOperation.UPDATE,
+          permission: Permission.PrizeDraw.Operate,
+          summary: 'Giro do sorteio realizado.',
+          before: { activeSpinCount: activeSpins.length },
+          after: { activeSpinCount: activeSpins.length + 1 },
+          metadata: { spinId: spin.id, personId: winner.personId, sequence, entrantCount: entries.length, winnerWeight: winner.weight },
+        });
         return { draw, spin, winner, entries, animation, activeCount: activeSpins.length, revision: updated.revision };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -350,7 +403,16 @@ export class PrizeDrawService {
         const draw = await tx.prizeDraw.update({
           where: { id: drawId },
           data: { revision: { increment: 1 }, updatedById: actorId },
-          select: { revision: true },
+          select: { id: true, title: true, eventId: true, majorEventId: true, revision: true },
+        });
+        await this.recordDrawAction(tx, draw, actor, {
+          action: 'undo-spin',
+          operation: AuditLogOperation.UNDO,
+          permission: Permission.PrizeDraw.Undo,
+          summary: 'Último giro do sorteio desfeito.',
+          before: { undoneAt: spin.undoneAt },
+          after: { undoneAt: now },
+          metadata: { spinId: spin.id, personId: spin.winnerPersonId, sequence: spin.sequence },
         });
         return { spin: updatedSpin, revision: draw.revision };
       },
@@ -777,6 +839,56 @@ export class PrizeDrawService {
     if (eligibilityChanged) {
       throw new ConflictException('Descongele a lista antes de alterar elegibilidade, entradas ou pesos.');
     }
+  }
+
+  private drawAuditConfiguration(draw: PrismaPrizeDraw): Record<string, unknown> {
+    return {
+      title: draw.title,
+      description: draw.description,
+      targetType: draw.targetType,
+      eventId: draw.eventId,
+      majorEventId: draw.majorEventId,
+      includePresent: draw.includePresent,
+      includeSubscribers: draw.includeSubscribers,
+      includeManualEntries: draw.includeManualEntries,
+      chanceMode: draw.chanceMode,
+      spinLimit: draw.spinLimit,
+      removeWinnerAfterDraw: draw.removeWinnerAfterDraw,
+      defaultSpeed: draw.defaultSpeed,
+      dramaticCountdownSeconds: draw.dramaticCountdownSeconds,
+      notifyWinner: draw.notifyWinner,
+    };
+  }
+
+  private recordDrawAction(
+    tx: Prisma.TransactionClient,
+    draw: Pick<PrismaPrizeDraw, 'id' | 'title' | 'eventId' | 'majorEventId'>,
+    actor: AuthenticatedUser | undefined,
+    options: {
+      action: 'save' | 'freeze' | 'unfreeze' | 'spin' | 'undo-spin';
+      operation: AuditLogOperation;
+      permission: Permission;
+      summary: string;
+      before: Record<string, unknown> | null;
+      after: Record<string, unknown>;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    return this.auditLog.record({
+      entityType: AuditLogEntityType.SYSTEM,
+      entityId: `prize-draw:${draw.id}`,
+      entityLabel: draw.title,
+      operation: options.operation,
+      actor,
+      before: options.before,
+      after: options.after,
+      summary: options.summary,
+      scope: { permission: options.permission, eventId: draw.eventId, majorEventId: draw.majorEventId },
+      metadata: { resourceType: 'PRIZE_DRAW', action: options.action, drawId: draw.id, ...options.metadata },
+      // Each entry represents one explicit operator action, including edits to participant weights.
+      force: true,
+      squashWindowMs: 0,
+    }, tx);
   }
 
   private drawData(input: SavePrizeDrawInput): Prisma.PrizeDrawUncheckedCreateInput {

@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
-import { SportsParticipantStatus, SportsPaymentStatus, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, SportsParticipantStatus, SportsPaymentStatus, SubscriptionStatus } from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
@@ -41,6 +41,7 @@ describe('ReceiptUploadService', () => {
   const receiptQueue = {
     add: jest.fn(),
   };
+  const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
   let service: ReceiptUploadService;
 
   beforeAll(async () => {
@@ -67,6 +68,9 @@ describe('ReceiptUploadService', () => {
       dashboardInsights as never,
       authorizationPolicy as never,
       receiptQueue as never,
+      undefined,
+      undefined,
+      auditLog as never,
     );
   });
 
@@ -87,6 +91,7 @@ describe('ReceiptUploadService', () => {
     prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
 
     await expect(service.uploadReceipt('major-1', createValidFile(), user)).rejects.toThrow(NotFoundException);
+    expect(auditLog.record).not.toHaveBeenCalled();
 
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
       id: 'subscription-1',
@@ -113,6 +118,8 @@ describe('ReceiptUploadService', () => {
       authorizationPolicy as never,
       receiptQueue as never,
       frozenResources as never,
+      undefined,
+      auditLog as never,
     );
 
     await expect(service.uploadReceipt('major-1', createInvalidFile(), user)).rejects.toThrow(BadRequestException);
@@ -136,6 +143,8 @@ describe('ReceiptUploadService', () => {
       authorizationPolicy as never,
       receiptQueue as never,
       frozenResources as never,
+      undefined,
+      auditLog as never,
     );
     currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
@@ -154,6 +163,29 @@ describe('ReceiptUploadService', () => {
     );
 
     expect(s3.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('removes the stored receipt when its audit write fails before commit', async () => {
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      majorEvent: { isPaymentRequired: true },
+    });
+    s3.uploadFile.mockResolvedValue({ key: 'receipt-object', size: 123 });
+    const tx = {
+      majorEventReceipt: { create: jest.fn().mockResolvedValue(createReceipt()) },
+      majorEventSubscription: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+    };
+    prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx));
+    auditLog.record.mockRejectedValueOnce(new Error('Audit unavailable'));
+
+    await expect(service.uploadReceipt('major-1', createValidFile(), user)).rejects.toThrow('Audit unavailable');
+    expect(s3.deleteFile).toHaveBeenCalledWith('receipt-object');
+    expect(receiptQueue.add).not.toHaveBeenCalled();
   });
 
   it('uploads, records, queues, and maps a receipt after the subscription window closes', async () => {
@@ -206,6 +238,17 @@ describe('ReceiptUploadService', () => {
         id: 'receipt-1',
       }),
     );
+
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+      entityId: 'subscription-1',
+      operation: AuditLogOperation.SUBMIT,
+      actor: user,
+      after: { receiptId: 'receipt-1', personId: 'person-1', majorEventId: 'major-1', uploadedAt: expect.any(Date) },
+      scope: expect.objectContaining({ majorEventId: 'major-1' }),
+    }), tx);
+    expect(JSON.stringify(auditLog.record.mock.calls[0][0])).not.toContain('object-key');
 
     expect(s3.uploadFile).toHaveBeenCalledWith(
       expect.stringContaining('major-events/major-1/subscriptions/subscription-1/receipts/'),

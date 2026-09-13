@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -10,12 +12,16 @@ import {
   EventFormTargetType,
   EventManagerPermissionArchiveReason,
   ExternalAccountMergeResult,
+  AuditLogActorType,
+  AuditLogEntityType,
+  AuditLogOperation,
   People,
   Prisma,
   SubscriptionStatus,
 } from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   intersectPermissionRelationValidity,
@@ -100,6 +106,10 @@ export class AccountMergeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly certificateIssuingService: CertificateIssuingService,
+    @Inject(forwardRef(() => AuditLogService))
+    private readonly auditLog: AuditLogService = {
+      record: async () => undefined,
+    } as unknown as AuditLogService,
   ) {}
 
   async scoreAccountMergeCandidates(body: AccountMergeScoreRequestDto): Promise<AccountMergeScoreResponseDto> {
@@ -153,24 +163,46 @@ export class AccountMergeService {
               updatedById: actorId ?? undefined,
             },
           });
-          return;
+        } else {
+          await tx.externalAccountMergeOperation.create({
+            data: {
+              eventId: input.eventId,
+              type: input.type,
+              oldUserId: input.oldUserId,
+              newUserId: input.newUserId,
+              occurredAt: input.occurredAt,
+              status: 'APPLIED',
+              result: applied.result,
+              peopleMergeOperationId: applied.peopleMergeOperationId,
+              requestPayload: input.requestPayload,
+              createdById: actorId ?? undefined,
+              updatedById: actorId ?? undefined,
+            },
+          });
         }
 
-        await tx.externalAccountMergeOperation.create({
-          data: {
-            eventId: input.eventId,
-            type: input.type,
-            oldUserId: input.oldUserId,
-            newUserId: input.newUserId,
-            occurredAt: input.occurredAt,
-            status: 'APPLIED',
-            result: applied.result,
-            peopleMergeOperationId: applied.peopleMergeOperationId,
-            requestPayload: input.requestPayload,
-            createdById: actorId ?? undefined,
-            updatedById: actorId ?? undefined,
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.SYSTEM,
+            entityId: input.eventId,
+            entityLabel: 'Unificação de contas',
+            operation: AuditLogOperation.MERGE,
+            actor: this.accountMergeAuditActor(actorId),
+            summary: 'Unificação de contas aplicada no gerenciador de eventos.',
+            scope: { permission: 'account-merge:write' },
+            metadata: {
+              eventId: input.eventId,
+              oldUserId: input.oldUserId,
+              newUserId: input.newUserId,
+              sourcePersonId: applied.sourcePersonId ?? null,
+              targetPersonId: applied.targetPersonId ?? null,
+              result: applied.result,
+              peopleMergeOperationId: applied.peopleMergeOperationId ?? null,
+            },
+            force: true,
           },
-        });
+          tx,
+        );
       });
 
       return this.toAcknowledgement(input);
@@ -334,6 +366,8 @@ export class AccountMergeService {
   ): Promise<{
     result: ExternalAccountMergeResult;
     peopleMergeOperationId?: string;
+    sourcePersonId?: string;
+    targetPersonId?: string;
   }> {
     const [sourcePerson, targetPerson, newUser] = await Promise.all([
       this.findSingleActivePersonForUser(tx, input.oldUserId),
@@ -344,6 +378,7 @@ export class AccountMergeService {
     if (!sourcePerson) {
       return {
         result: targetPerson ? 'ALREADY_APPLIED' : 'NO_LOCAL_PERSON',
+        targetPersonId: targetPerson?.id,
       };
     }
 
@@ -360,6 +395,7 @@ export class AccountMergeService {
 
       return {
         result: 'PERSON_REASSIGNED',
+        sourcePersonId: sourcePerson.id,
       };
     }
 
@@ -400,6 +436,8 @@ export class AccountMergeService {
     return {
       result: 'PEOPLE_MERGED',
       peopleMergeOperationId: peopleMergeOperation.id,
+      sourcePersonId: sourcePerson.id,
+      targetPersonId: targetPerson.id,
     };
   }
 
@@ -1163,6 +1201,14 @@ export class AccountMergeService {
         updatedById: actorId ?? undefined,
       },
     });
+  }
+
+  private accountMergeAuditActor(actorId: string | null) {
+    return {
+      id: actorId,
+      name: actorId ?? 'Serviço de unificação de contas',
+      type: AuditLogActorType.SERVICE,
+    };
   }
 
   private ensureSameEvent(

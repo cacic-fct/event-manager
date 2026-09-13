@@ -86,6 +86,7 @@ class TestSportsBracketPersistence extends SportsBracketBasicPersistence {
 
 describe('sports bracket persistence', () => {
   const advancement = { advanceBye: jest.fn().mockResolvedValue([]) };
+  const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
   const frozen = { assertEventGroupMutable: jest.fn() };
   const realtime = { publishStructuralInvalidations: jest.fn() };
   const eventEffects = { syncEvents: jest.fn() };
@@ -98,7 +99,7 @@ describe('sports bracket persistence', () => {
     service = new TestSportsBracketPersistence(
       { $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)) } as never,
       advancement as never,
-      {} as never,
+      auditLog as never,
       realtime as never,
       frozen as never,
       eventEffects as never,
