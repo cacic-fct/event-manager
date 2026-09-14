@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { EventType, Prisma, PublicationState } from '@prisma/client';
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
@@ -85,9 +86,11 @@ export class EventPostCommitEffectsService {
 
   async upsertEvent(event: EventPostCommitRecord): Promise<void> {
     try {
-      await this.sitemap.refresh();
-      await this.upsertEventSearchDocument(event);
-      await this.onlineAttendanceNotifications.scheduleEvent(event);
+      await this.runAsSystem(async () => {
+        await this.sitemap.refresh();
+        await this.upsertEventSearchDocument(event);
+        await this.onlineAttendanceNotifications.scheduleEvent(event);
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event');
     }
@@ -95,8 +98,10 @@ export class EventPostCommitEffectsService {
 
   async deleteEvent(eventId: string): Promise<void> {
     try {
-      await this.sitemap.refresh();
-      await this.typesenseSearch.deleteEvent(eventId);
+      await this.runAsSystem(async () => {
+        await this.sitemap.refresh();
+        await this.typesenseSearch.deleteEvent(eventId);
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event');
     }
@@ -110,25 +115,27 @@ export class EventPostCommitEffectsService {
     const uniqueIds = [...new Set(eventIds.filter(Boolean))];
     if (uniqueIds.length === 0) return;
 
-    const events = await this.prisma.event.findMany({
-      where: { id: { in: uniqueIds } },
-      select: EVENT_EFFECTS_SELECT,
-    });
-    const eventsById = new Map(events.map((event) => [event.id, event]));
-
     try {
-      await this.sitemap.refresh();
-      await Promise.all(
-        uniqueIds.map(async (eventId) => {
-          const event = eventsById.get(eventId);
-          if (!event || event.deletedAt) {
-            await this.typesenseSearch.deleteEvent(eventId);
-            return;
-          }
-          await this.upsertEventSearchDocument(event);
-          await this.onlineAttendanceNotifications.scheduleEvent(event);
-        }),
-      );
+      await this.runAsSystem(async () => {
+        const events = await this.prisma.event.findMany({
+          where: { id: { in: uniqueIds } },
+          select: EVENT_EFFECTS_SELECT,
+        });
+        const eventsById = new Map(events.map((event) => [event.id, event]));
+
+        await this.sitemap.refresh();
+        await Promise.all(
+          uniqueIds.map(async (eventId) => {
+            const event = eventsById.get(eventId);
+            if (!event || event.deletedAt) {
+              await this.typesenseSearch.deleteEvent(eventId);
+              return;
+            }
+            await this.upsertEventSearchDocument(event);
+            await this.onlineAttendanceNotifications.scheduleEvent(event);
+          }),
+        );
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event');
     }
@@ -136,7 +143,10 @@ export class EventPostCommitEffectsService {
 
   async upsertEventGroup(eventGroup: EventGroupPostCommitRecord): Promise<void> {
     try {
-      await this.typesenseSearch.upsertEventGroup(eventGroup);
+      await this.runAsSystem(async () => {
+        await this.sitemap.refresh();
+        await this.typesenseSearch.upsertEventGroup(eventGroup);
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event-group');
     }
@@ -144,7 +154,10 @@ export class EventPostCommitEffectsService {
 
   async deleteEventGroup(eventGroupId: string): Promise<void> {
     try {
-      await this.typesenseSearch.deleteEventGroup(eventGroupId);
+      await this.runAsSystem(async () => {
+        await this.sitemap.refresh();
+        await this.typesenseSearch.deleteEventGroup(eventGroupId);
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event-group');
     }
@@ -158,21 +171,23 @@ export class EventPostCommitEffectsService {
     const uniqueIds = [...new Set(eventGroupIds.filter(Boolean))];
     if (uniqueIds.length === 0) return;
 
-    const eventGroups = await this.prisma.eventGroup.findMany({
-      where: { id: { in: uniqueIds } },
-      select: EVENT_GROUP_EFFECTS_SELECT,
-    });
-    const eventGroupsById = new Map(eventGroups.map((eventGroup) => [eventGroup.id, eventGroup]));
-
     try {
-      await Promise.all(
-        uniqueIds.map((eventGroupId) => {
-          const eventGroup = eventGroupsById.get(eventGroupId);
-          return !eventGroup || eventGroup.deletedAt
-            ? this.typesenseSearch.deleteEventGroup(eventGroupId)
-            : this.typesenseSearch.upsertEventGroup({ id: eventGroup.id, name: eventGroup.name });
-        }),
-      );
+      await this.runAsSystem(async () => {
+        const eventGroups = await this.prisma.eventGroup.findMany({
+          where: { id: { in: uniqueIds } },
+          select: EVENT_GROUP_EFFECTS_SELECT,
+        });
+        const eventGroupsById = new Map(eventGroups.map((eventGroup) => [eventGroup.id, eventGroup]));
+
+        await Promise.all(
+          uniqueIds.map((eventGroupId) => {
+            const eventGroup = eventGroupsById.get(eventGroupId);
+            return !eventGroup || eventGroup.deletedAt
+              ? this.typesenseSearch.deleteEventGroup(eventGroupId)
+              : this.typesenseSearch.upsertEventGroup({ id: eventGroup.id, name: eventGroup.name });
+          }),
+        );
+      });
     } finally {
       await this.publishInvalidationsBestEffort('event-group');
     }
@@ -220,5 +235,9 @@ export class EventPostCommitEffectsService {
       startDate: event.startDate,
       endDate: event.endDate,
     });
+  }
+
+  private runAsSystem<T>(operation: () => Promise<T>): Promise<T> {
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, operation);
   }
 }

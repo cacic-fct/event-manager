@@ -1,9 +1,11 @@
+import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { startOfDay, subMonths } from 'date-fns';
 import { Prisma } from '@prisma/client';
 import { EventType } from '@cacic-fct/shared-data-types';
 import { Public } from '../auth/decorators/public.decorator';
+import { audienceContext } from '../audiences/audience-context';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
@@ -323,7 +325,7 @@ export class PublicEventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
           filterBy: buildPublicEventsTypesenseFilter({
             eventGroupId,
@@ -429,7 +431,7 @@ export class PublicEventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
           filterBy: buildPublicEventsTypesenseFilter({
             eventType,
@@ -484,6 +486,7 @@ export class PublicEventsResolver {
     description:
       'Returns a single public, non-deleted event for the detail page. Hidden, deleted, or unknown events resolve as not found.',
   })
+  @IncludePastParticipation()
   async publicEvent(
     @Args('id', {
       type: () => String,
@@ -510,6 +513,7 @@ export class PublicEventsResolver {
     description:
       'Returns the current public slot availability snapshot for one visible event. Unlimited-capacity events are considered available.',
   })
+  @IncludePastParticipation()
   async publicEventSubscriptionSummary(
     @Args('eventId', {
       type: () => String,
@@ -589,6 +593,7 @@ export class PublicEventsResolver {
     name: 'lecturers',
     description: 'Public lecturer profiles associated with this event.',
   })
+  @IncludePastParticipation()
   async lecturers(
     @Parent() event: PublicEvent,
     @Context() context?: PublicEventsGraphqlContext,
@@ -664,5 +669,10 @@ export class PublicEventsResolver {
     });
 
     return new Map(counts.map((count) => [count.eventId, count._count.personId]));
+  }
+
+  private canUseAudienceUnscopedSearch(): boolean {
+    const principal = audienceContext.getStore();
+    return principal === undefined || principal.bypass;
   }
 }

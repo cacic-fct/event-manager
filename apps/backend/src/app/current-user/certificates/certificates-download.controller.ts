@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { Controller, Get, Header, NotFoundException, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { CertificateScope } from '@cacic-fct/shared-data-types';
@@ -36,6 +37,7 @@ export class CurrentUserCertificatesDownloadController {
     description: 'A streamed ZIP archive containing the current user certificates and events manifest.',
   })
   @ApiNotFoundResponse({ description: 'Returned when the current user has no certificates.' })
+  @IncludePastParticipation()
   async downloadArchive(@Req() request: RequestWithUser): Promise<StreamableFile> {
     const person = await this.currentUserContext.requireCurrentPerson({ req: request });
     const certificates = await this.prisma.certificate.findMany({

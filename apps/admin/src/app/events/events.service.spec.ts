@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -14,6 +14,7 @@ import { PublicationApiService } from '../graphql/publishing-api.service';
 import {
   createAdminEvent,
   createAdminEventDraft,
+  createAdminEventGroup,
   createAdminMajorEvent,
   createAdminPerson,
 } from '../testing/admin-entity-fixtures';
@@ -46,6 +47,10 @@ describe('EventsService', () => {
   };
   let router: {
     navigate: ReturnType<typeof vi.fn>;
+  };
+  let peopleApi: {
+    listPeopleSummaries: ReturnType<typeof vi.fn>;
+    getPerson: ReturnType<typeof vi.fn>;
   };
   let grantedPermissions: Set<Permission>;
 
@@ -82,6 +87,10 @@ describe('EventsService', () => {
     router = {
       navigate: vi.fn(),
     };
+    peopleApi = {
+      listPeopleSummaries: vi.fn(() => of([])),
+      getPerson: vi.fn((id: string) => of(createAdminPerson({ id, name: 'Pessoa do rascunho', email: null }))),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
@@ -91,7 +100,7 @@ describe('EventsService', () => {
         { provide: PublicationApiService, useValue: publicationApi },
         { provide: MajorEventApiService, useValue: majorEventApi },
         { provide: EventGroupApiService, useValue: { getEventGroup: vi.fn() } },
-        { provide: PeopleApiService, useValue: { listPeopleSummaries: vi.fn(() => of([])) } },
+        { provide: PeopleApiService, useValue: peopleApi },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
@@ -230,6 +239,141 @@ describe('EventsService', () => {
       interestEnabled: true,
       attendanceEligibility: 'ANYONE',
     });
+  });
+
+  it('serializes the selected audience people and course restriction at save time', async () => {
+    service.eventForm.patchValue({ audience: 'PUBLIC', audienceCourseCodes: ['12'] });
+    service.setEventAudienceInvitations([{ id: 'person-1', name: 'Ana', email: 'ana@example.com' }]);
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      audience: 'PUBLIC',
+      audienceCourseCodes: [],
+      invitationPersonIds: ['person-1'],
+    });
+
+    service.eventForm.patchValue({ audience: 'COURSE_ONLY', audienceCourseCodes: ['12'] });
+    service.setEventAudienceInvitations([{ id: 'person-1', name: 'Ana', email: 'ana@example.com' }]);
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      audience: 'COURSE_ONLY',
+      audienceCourseCodes: ['12'],
+      invitationPersonIds: ['person-1'],
+    });
+  });
+
+  it('repairs a malformed course-only form before saving', async () => {
+    service.eventForm.patchValue({ audience: 'COURSE_ONLY', audienceCourseCodes: [] });
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({ audience: 'COURSE_ONLY', audienceCourseCodes: ['12'] });
+  });
+
+  it('keeps invitation-only attendance independent of access audience and publication readiness', async () => {
+    service.eventForm.patchValue({
+      audience: 'PUBLIC',
+      attendanceEligibility: 'INVITED_ONLY',
+    });
+
+    expect(service.shouldManageAttendanceInvitations()).toBe(true);
+    expect(service.audiencePublicationBlocked()).toBe(true);
+    await service.saveEvent('PUBLISH');
+    expect(api.createEvent).not.toHaveBeenCalled();
+
+    await service.saveEvent('DRAFT');
+    expect(api.createEvent).toHaveBeenCalled();
+  });
+
+  it('hydrates every recipient when reopening a draft', async () => {
+    grantedPermissions.add(Permission.Person.Read);
+    const draft = createAdminEventDraft(
+      { id: 'event-draft-1' },
+      { audience: 'PUBLIC', invitationPersonIds: ['person-new'], name: 'Rascunho com convite' },
+    );
+    api.getEvent.mockReturnValueOnce(of(createAdminEvent({ audienceInvitations: [] })));
+    api.listEventDrafts.mockReturnValueOnce(of([draft]));
+
+    await service.selectEventById('event-1', { draftId: draft.id });
+
+    expect(peopleApi.getPerson).toHaveBeenCalledWith('person-new');
+    expect(service.eventAudienceInvitations()).toEqual([
+      { id: 'person-new', name: 'Pessoa do rascunho', email: null },
+    ]);
+  });
+
+  it('preserves recipients when draft metadata lookup is forbidden', async () => {
+    grantedPermissions.add(Permission.Person.Read);
+    peopleApi.getPerson.mockReturnValueOnce(throwError(() => new Error('Forbidden')));
+    const draft = createAdminEventDraft(
+      { id: 'event-draft-1' },
+      { audience: 'PUBLIC', invitationPersonIds: ['person-forbidden'], name: 'Rascunho protegido' },
+    );
+    api.getEvent.mockReturnValueOnce(of(createAdminEvent({ audienceInvitations: [] })));
+    api.listEventDrafts.mockReturnValueOnce(of([draft]));
+
+    await service.selectEventById('event-1', { draftId: draft.id });
+
+    expect(service.eventAudienceInvitations()).toEqual([
+      {
+        id: 'person-forbidden',
+        name: 'Pessoa convidada (dados indisponíveis)',
+        email: null,
+        unresolved: true,
+      },
+    ]);
+    await service.saveEvent('DRAFT');
+    expect(lastPayload?.invitationPersonIds).toEqual(['person-forbidden']);
+  });
+
+  it('keeps an invitation list when an event group is reassigned', () => {
+    const group = createAdminEventGroup({ id: 'event-group-2', name: 'Grupo novo', audience: 'UNESP_ONLY' });
+
+    service.assignEventGroupToEvent(group);
+
+    expect(service.audienceParentRestrictions()).toEqual([
+      expect.objectContaining({ label: 'Grupo “Grupo novo”', audience: 'UNESP_ONLY' }),
+    ]);
+  });
+
+  it('allows private drafts without invitations but blocks publication readiness', async () => {
+    service.eventForm.patchValue({ audience: 'INVITATION_ONLY' });
+
+    expect(service.audiencePublicationBlocked()).toBe(true);
+    await service.saveEvent('PUBLISH');
+    expect(api.createEvent).not.toHaveBeenCalled();
+
+    await service.saveEvent('DRAFT');
+    expect(api.createEvent).toHaveBeenCalled();
+  });
+
+  it('describes major-event and group audience restrictions for a nested event', () => {
+    const majorEvent = createAdminMajorEvent({
+      id: 'major-event-1',
+      audience: 'UNESP_ONLY',
+    });
+    const eventGroup = createAdminEventGroup({
+      id: 'event-group-1',
+      name: 'Grupo Unesp',
+      audience: 'COURSE_ONLY',
+      audienceCourseCodes: ['12'],
+    });
+    service.selectedEvent.set(
+      createAdminEvent({
+        majorEventId: majorEvent.id,
+        majorEvent,
+        eventGroupId: eventGroup.id,
+        eventGroup,
+      }),
+    );
+    service.eventForm.patchValue({ majorEventId: majorEvent.id, eventGroupId: eventGroup.id });
+
+    expect(service.audienceParentRestrictions()).toEqual([
+      expect.objectContaining({ audience: 'UNESP_ONLY' }),
+      expect.objectContaining({ audience: 'COURSE_ONLY', audienceCourseCodes: ['12'] }),
+    ]);
   });
 
   it('persists both certificate exception flags when event certificates are enabled', async () => {

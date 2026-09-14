@@ -1,7 +1,9 @@
+import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { Args, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator';
+import { audienceContext } from '../audiences/audience-context';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
@@ -80,7 +82,7 @@ export class PublicMajorEventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const filters = ['publicationState:=PUBLISHED'];
         if (startDateFrom) {
           filters.push(`startDate:>=${toTypesenseTimestamp(startDateFrom)}`);
@@ -134,6 +136,7 @@ export class PublicMajorEventsResolver {
     description:
       'Returns one non-deleted public-facing major event with subscription, payment, price, contact, and certificate capability metadata.',
   })
+  @IncludePastParticipation()
   async publicMajorEvent(
     @Args('id', {
       type: () => String,
@@ -154,6 +157,11 @@ export class PublicMajorEventsResolver {
     }
 
     return mapPublicMajorEvent(majorEvent);
+  }
+
+  private canUseAudienceUnscopedSearch(): boolean {
+    const principal = audienceContext.getStore();
+    return principal === undefined || principal.bypass;
   }
 }
 

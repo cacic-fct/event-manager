@@ -1,0 +1,54 @@
+enum EventAudience {
+  PUBLIC
+  UNESP_ONLY
+  COURSE_ONLY
+  INVITATION_ONLY
+}
+
+model EventAudienceInvitation {
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personId String
+  person People @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdById String?
+  notifiedAt DateTime?
+  notificationAttemptedAt DateTime?
+
+  @@id([eventId, personId])
+  @@index([notifiedAt, notificationAttemptedAt], map: "event_audience_invitation_pending_idx")
+  @@index([personId])
+  @@map("event_audience_invitations")
+}
+
+model EventGroupAudienceInvitation {
+  eventGroupId String
+  eventGroup EventGroup @relation(fields: [eventGroupId], references: [id], onDelete: Cascade)
+  personId String
+  person People @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdById String?
+  notifiedAt DateTime?
+  notificationAttemptedAt DateTime?
+
+  @@id([eventGroupId, personId])
+  @@index([notifiedAt, notificationAttemptedAt], map: "event_group_audience_invitation_pending_idx")
+  @@index([personId])
+  @@map("event_group_audience_invitations")
+}
+
+model MajorEventAudienceInvitation {
+  majorEventId String
+  majorEvent MajorEvent @relation(fields: [majorEventId], references: [id], onDelete: Cascade)
+  personId String
+  person People @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  createdById String?
+  notifiedAt DateTime?
+  notificationAttemptedAt DateTime?
+
+  @@id([majorEventId, personId])
+  @@index([notifiedAt, notificationAttemptedAt], map: "major_event_audience_invitation_pending_idx")
+  @@index([personId])
+  @@map("major_event_audience_invitations")
+}

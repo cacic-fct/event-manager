@@ -20,6 +20,7 @@ import {
   SportsTeamRepresentativeSnapshot,
   SportsTournamentParticipantSnapshot,
 } from './types';
+import type { AudienceInvitationSnapshot } from './audience-invitations';
 
 export function toPersonSnapshot(person: People): PersonSnapshot {
   return {
@@ -131,6 +132,10 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
         ? []
         : readStringArray(value, 'movedEventGroupSubscriptionIds'),
     movedMajorEventSubscriptionIds: readStringArray(value, 'movedMajorEventSubscriptionIds'),
+    movedAudienceInvitationSnapshots:
+      value.movedAudienceInvitationSnapshots === undefined
+        ? []
+        : readAudienceInvitationSnapshots(value.movedAudienceInvitationSnapshots),
     movedRoleAssignmentIds:
       value.movedRoleAssignmentIds === undefined ? [] : readStringArray(value, 'movedRoleAssignmentIds'),
     archivedRoleAssignmentIds:
@@ -182,6 +187,18 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
         ? []
         : readSportsOfficialAssignmentSnapshots(value.sportsOfficialAssignmentSnapshots),
   };
+}
+
+function readAudienceInvitationSnapshots(value: Prisma.JsonValue): AudienceInvitationSnapshot[] {
+  return readArrayValue(value, 'movedAudienceInvitationSnapshots').map((entry) => ({
+    targetType: readRequiredString(entry, 'targetType') as AudienceInvitationSnapshot['targetType'],
+    targetId: readRequiredString(entry, 'targetId'),
+    personId: readRequiredString(entry, 'personId'),
+    createdAt: readRequiredString(entry, 'createdAt'),
+    createdById: readNullableString(entry, 'createdById'),
+    notifiedAt: readNullableString(entry, 'notifiedAt'),
+    notificationAttemptedAt: readNullableString(entry, 'notificationAttemptedAt'),
+  }));
 }
 
 function readSportsTournamentParticipantSnapshots(value: Prisma.JsonValue): SportsTournamentParticipantSnapshot[] {

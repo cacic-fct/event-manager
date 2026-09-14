@@ -2,7 +2,7 @@ import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType({
   description:
-    'Cached all-time aggregate counts for CACiC Eventos. Counts include non-public records but exclude soft-deleted rows.',
+    'Cached all-time aggregate counts for CACiC Eventos. Event, major-event, and certificate counts follow anonymous public visibility; people counts exclude soft-deleted rows.',
 })
 export class PublicPlatformStats {
   @Field(() => Int)

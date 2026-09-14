@@ -32,6 +32,12 @@ describe('Calendar', () => {
   let currentUserEvents: Subject<void>;
   let liveEvents: PublicEvent[];
   let subscribedEventIds: Set<string>;
+  let isOnline: ReturnType<typeof signal<boolean>>;
+  let offlineData: {
+    getCalendarEvents: ReturnType<typeof vi.fn>;
+    getLastRefresh: ReturnType<typeof vi.fn>;
+    upsertCalendarEvents: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     calendarPreferences = {
@@ -50,6 +56,12 @@ describe('Calendar', () => {
     currentUserEvents = new Subject<void>();
     liveEvents = [calendarEvent('event-1', 'Evento inicial')];
     subscribedEventIds = new Set(['event-1']);
+    isOnline = signal(true);
+    offlineData = {
+      getCalendarEvents: vi.fn(() => Promise.resolve([])),
+      getLastRefresh: vi.fn(() => Promise.resolve(null)),
+      upsertCalendarEvents: vi.fn(() => Promise.resolve()),
+    };
 
     await TestBed.configureTestingModule({
       imports: [Calendar],
@@ -62,15 +74,11 @@ describe('Calendar', () => {
         { provide: CalendarApiService, useValue: calendarApi },
         {
           provide: NetworkStatusService,
-          useValue: { isOnline: signal(true), watchStatusChanges: () => EMPTY },
+          useValue: { isOnline, watchStatusChanges: () => EMPTY },
         },
         {
           provide: PublicDataAccessService,
-          useValue: {
-            getCalendarEvents: vi.fn(() => Promise.resolve([])),
-            getLastRefresh: vi.fn(() => Promise.resolve(null)),
-            upsertCalendarEvents: vi.fn(() => Promise.resolve()),
-          },
+          useValue: offlineData,
         },
         {
           provide: RealtimeInvalidationService,
@@ -183,6 +191,34 @@ describe('Calendar', () => {
         expect.objectContaining({ status: 'ready', subscribedEventIds: new Set(['event-2']) }),
       ),
     );
+  });
+
+  it('does not persist audience-scoped calendar results in the shared offline cache', async () => {
+    await vi.waitFor(() => expect(component.calendarState()).toMatchObject({ status: 'ready' }));
+
+    expect(offlineData.upsertCalendarEvents).not.toHaveBeenCalled();
+    expect(calendarApi.getCalendarEvents).toHaveBeenCalledWith(expect.any(Object), false);
+  });
+
+  it('marks anonymous calendar loads for an anonymous-only backend audience', async () => {
+    isAuthenticated.set(false);
+    await vi.waitFor(() => expect(component.calendarState()).toMatchObject({ status: 'ready' }));
+
+    expect(calendarApi.getCalendarEvents).toHaveBeenLastCalledWith(expect.any(Object), true);
+  });
+
+  it('does not read shared anonymous calendar data while authenticated and offline', async () => {
+    isOnline.set(false);
+    currentUserEvents.next();
+
+    await vi.waitFor(() =>
+      expect(component.calendarState()).toEqual({
+        status: 'ready',
+        events: [],
+        subscribedEventIds: new Set(),
+      }),
+    );
+    expect(offlineData.getCalendarEvents).not.toHaveBeenCalled();
   });
 });
 

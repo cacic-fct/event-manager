@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { BadRequestException, NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
@@ -163,6 +164,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     description:
       'Get current-user major events where the person is subscribed, a lecturer, has an issued major-event certificate, attended an event, or has a sports management role.',
   })
+  @IncludePastParticipation()
   async currentUserMajorEventFeed(@Context() context: GraphqlContext): Promise<CurrentUserMajorEventFeedItem[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
@@ -179,6 +181,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     name: 'currentUserMajorEventSubscription',
     nullable: true,
   })
+  @IncludePastParticipation()
   async currentUserMajorEventSubscription(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Context() context: GraphqlContext,

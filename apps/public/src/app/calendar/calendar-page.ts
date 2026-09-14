@@ -26,6 +26,7 @@ import {
   map,
   of,
   switchMap,
+  throwError,
 } from 'rxjs';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
@@ -258,31 +259,43 @@ export class Calendar {
       );
     }
 
-    const calendarEvents = this.api.getCalendarEvents({
-      query,
-      eventType: filters.eventType,
-      startDateFrom,
-    });
+    const calendarEvents = this.api.getCalendarEvents(
+      {
+        query,
+        eventType: filters.eventType,
+        startDateFrom,
+      },
+      !isAuthenticated,
+    );
     const subscribedEventIds = isAuthenticated ? this.api.getCurrentUserSubscribedEventIds() : of(new Set<string>());
 
     return forkJoin({ calendarEvents, subscribedEventIds }).pipe(
-      switchMap(({ calendarEvents, subscribedEventIds }) =>
-        from(this.offlineData.upsertCalendarEvents(calendarEvents)).pipe(
+      switchMap(({ calendarEvents, subscribedEventIds }) => {
+        const persistAnonymousEvents = isAuthenticated
+          ? of(undefined)
+          : from(this.offlineData.upsertCalendarEvents(calendarEvents));
+        return persistAnonymousEvents.pipe(
           map(() => ({
             events: this.filterSubscribedEvents(calendarEvents, filters.subscription, subscribedEventIds),
             subscribedEventIds,
           })),
-        ),
-      ),
-      catchError(() =>
-        from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
-          map((events) => ({ events, subscribedEventIds: new Set<string>() })),
-        ),
+        );
+      }),
+      catchError((error: unknown) =>
+        isAuthenticated
+          ? throwError(() => error)
+          : from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
+              map((events) => ({ events, subscribedEventIds: new Set<string>() })),
+            ),
       ),
     );
   }
 
   private async getCachedCalendarEvents(filters: CalendarFilterValue, startDateFrom: string): Promise<PublicEvent[]> {
+    if (this.auth.isAuthenticated()) {
+      return [];
+    }
+
     const events = await this.offlineData.getCalendarEvents(startDateFrom);
     const query = filters.query.trim().toLocaleLowerCase('pt-BR');
 

@@ -7,7 +7,8 @@ import {
   parsePermission,
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { audienceContext, eventAudienceWhere, groupAudienceWhere, majorEventAudienceWhere, type EventAudiencePrincipal } from '../audiences/audience-context';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -113,6 +114,32 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
 
     if (missing.length > 0) {
       throw new ForbiddenException(`Missing Event Manager permission grants: ${missing.join(', ')}.`);
+    }
+    await this.assertAudienceForPermissions(requirements, context);
+  }
+
+  async assertAudienceForPermissions(
+    permissions: readonly string[],
+    context: AuthorizationResourceContext,
+    principal: EventAudiencePrincipal | undefined = audienceContext.getStore(),
+  ): Promise<void> {
+    if (!principal || principal.bypass) return;
+    const eventIds = new Set<string>();
+    const eventGroupIds = new Set<string>();
+    const majorEventIds = new Set<string>();
+    for (const permission of this.normalizePermissionRequirements(permissions)) {
+      const targets = await this.resolveGrantTarget(permission, context);
+      targets.eventIds.forEach((id) => eventIds.add(id));
+      targets.eventGroupIds.forEach((id) => eventGroupIds.add(id));
+      targets.majorEventIds.forEach((id) => majorEventIds.add(id));
+    }
+    const [events, groups, majors] = await Promise.all([
+      eventIds.size ? this.prisma.event.count({ where: { AND: [{ id: { in: [...eventIds] } }, eventAudienceWhere(principal)] } }) : 0,
+      eventGroupIds.size ? this.prisma.eventGroup.count({ where: { AND: [{ id: { in: [...eventGroupIds] } }, groupAudienceWhere(principal)] } }) : 0,
+      majorEventIds.size ? this.prisma.majorEvent.count({ where: { AND: [{ id: { in: [...majorEventIds] } }, majorEventAudienceWhere(principal)] } }) : 0,
+    ]);
+    if (events !== eventIds.size || groups !== eventGroupIds.size || majors !== majorEventIds.size) {
+      throw new NotFoundException('Event resource was not found.');
     }
   }
 

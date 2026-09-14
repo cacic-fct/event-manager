@@ -149,7 +149,7 @@
                 type="button"
                 matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
                 (click)="workspace.saveMajorEvent('SCHEDULE')"
-                [disabled]="workspace.loading()">
+                [disabled]="workspace.loading() || workspace.audiencePublicationBlocked()">
                 <mat-icon>schedule</mat-icon>
                 Salvar e agendar
               </button>
@@ -167,7 +167,7 @@
                 type="button"
                 [matTooltip]="publishMajorEventActionTooltip()"
                 (click)="workspace.saveMajorEvent('PUBLISH')"
-                [disabled]="workspace.loading()">
+                [disabled]="workspace.loading() || workspace.audiencePublicationBlocked()">
                 <mat-icon>{{ publishMajorEventActionIcon() }}</mat-icon>
                 {{ publishMajorEventActionLabel() }}
               </button>
@@ -177,6 +177,20 @@
       </div>
 
       <form [formGroup]="workspace.majorEventForm" class="panel-stack">
+        <section class="surface field-group">
+          <app-audience-editor
+            [audience]="workspace.majorEventForm.controls.audience.value"
+            [courseCodes]="workspace.majorEventForm.controls.audienceCourseCodes.value"
+            [invitedPeople]="workspace.majorEventAudienceInvitations()"
+            [parentRestrictions]="workspace.audienceParentRestrictions()"
+            [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
+            [publicationError]="workspace.audiencePublicationError()"
+            [readOnly]="!canEditMajorEvent(workspace.selectedMajorEvent())"
+            (audienceChange)="workspace.majorEventForm.controls.audience.setValue($event)"
+            (courseCodesChange)="workspace.majorEventForm.controls.audienceCourseCodes.setValue($event)"
+            (invitedPeopleChange)="workspace.setMajorEventAudienceInvitations($event)" />
+        </section>
+
         <section class="surface field-group">
           <h4>Identidade</h4>
           <div class="field-grid">

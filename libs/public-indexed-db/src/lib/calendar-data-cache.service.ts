@@ -52,6 +52,18 @@ export class CalendarDataCacheService {
     });
   }
 
+  async clear(): Promise<void> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return;
+    }
+
+    await database.transaction('rw', database.calendarEvents, database.syncMetadata, async () => {
+      await database.calendarEvents.clear();
+      await database.syncMetadata.delete('calendarEvents');
+    });
+  }
+
   async getLastRefresh(datasetKey: string): Promise<number | null> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {

@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { EventAudienceService } from './audiences/event-audience.service';
+import { EventAudienceInterceptor } from './audiences/event-audience.interceptor';
+import { EventAudienceFieldsResolver, EventGroupAudienceFieldsResolver, MajorEventAudienceFieldsResolver } from './audiences/audience-fields.resolver';
+import { AudienceInvitationService } from './audiences/audience-invitation.service';
+import { CurrentUserParticipationEventsResolver } from './current-user/participation-events.resolver';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
@@ -336,6 +341,7 @@ const schedulerProviders = useInMemoryTestInfra
       inject: [KeycloakAuthService],
       useFactory: (keycloakAuthService: KeycloakAuthService) => ({
         autoSchemaFile: true,
+        fieldResolverEnhancers: ['interceptors'],
         sortSchema: true,
         path: '/graphql',
         useGlobalPrefix: true,
@@ -397,6 +403,12 @@ const schedulerProviders = useInMemoryTestInfra
     HealthService,
     NovuNotificationsService,
     BackendFeatureFlagService,
+    EventAudienceService,
+    CurrentUserParticipationEventsResolver,
+    AudienceInvitationService,
+    EventAudienceFieldsResolver,
+    EventGroupAudienceFieldsResolver,
+    MajorEventAudienceFieldsResolver,
     OnlineAttendanceNotificationJobsService,
     AccountMergeService,
     LgpdService,
@@ -564,6 +576,7 @@ const schedulerProviders = useInMemoryTestInfra
       provide: APP_GUARD,
       useClass: KeycloakScopeGuard,
     },
+    { provide: APP_INTERCEPTOR, useClass: EventAudienceInterceptor },
   ],
 })
 export class AppModule {}

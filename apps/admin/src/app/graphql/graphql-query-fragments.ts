@@ -8,6 +8,8 @@ export const EVENT_LIST_FIELDS = `
   type
   majorEventId
   eventGroupId
+  audience
+  audienceCourseCodes
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
@@ -21,6 +23,9 @@ export const EVENT_LIST_FIELDS = `
   majorEvent {
     id
     name
+    audience
+    audienceCourseCodes
+    attendanceEligibility
   }
 `;
 
@@ -40,6 +45,16 @@ export const EVENT_DETAIL_FIELDS = `
   locationDescription
   majorEventId
   eventGroupId
+  audience
+  audienceCourseCodes
+  audienceInvitations {
+    personId
+    person {
+      id
+      name
+      email
+    }
+  }
   allowSubscription
   interestEnabled
   attendanceEligibility
@@ -78,12 +93,25 @@ export const EVENT_DETAIL_FIELDS = `
     name
     startDate
     endDate
+    audience
+    audienceCourseCodes
+    attendanceEligibility
   }
   eventGroup {
     id
     name
     emoji
     majorEventId
+    audience
+    audienceCourseCodes
+    audienceInvitations {
+      personId
+      person {
+        id
+        name
+        email
+      }
+    }
     interestEnabled
     attendanceEligibility
     requiresImageLicenseAgreement
@@ -135,6 +163,8 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   id
   name
   emoji
+  audience
+  audienceCourseCodes
   startDate
   endDate
   subscriptionStartDate
@@ -167,6 +197,16 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   id
   name
   emoji
+  audience
+  audienceCourseCodes
+  audienceInvitations {
+    personId
+    person {
+      id
+      name
+      email
+    }
+  }
   startDate
   endDate
   description
@@ -238,6 +278,16 @@ export const EVENT_GROUP_FIELDS = `
   isSportsCategory
   name
   emoji
+  audience
+  audienceCourseCodes
+  audienceInvitations {
+    personId
+    person {
+      id
+      name
+      email
+    }
+  }
   interestEnabled
   attendanceEligibility
   requiresImageLicenseAgreement

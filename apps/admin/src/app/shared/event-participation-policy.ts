@@ -31,13 +31,10 @@ export function attendanceEligibilityOptionsFor(
       });
     }
 
-    if (current === AttendanceEligibility.INVITED_ONLY) {
-      options.push({
-        value: AttendanceEligibility.INVITED_ONLY,
-        label: ATTENDANCE_ELIGIBILITY_LABELS.INVITED_ONLY,
-        disabled: true,
-      });
-    }
+    options.push({
+      value: AttendanceEligibility.INVITED_ONLY,
+      label: ATTENDANCE_ELIGIBILITY_LABELS.INVITED_ONLY,
+    });
 
     return options;
   }
@@ -60,13 +57,10 @@ export function attendanceEligibilityOptionsFor(
     });
   }
 
-  if (current === AttendanceEligibility.INVITED_ONLY) {
-    options.push({
-      value: AttendanceEligibility.INVITED_ONLY,
-      label: ATTENDANCE_ELIGIBILITY_LABELS.INVITED_ONLY,
-      disabled: true,
-    });
-  }
+  options.push({
+    value: AttendanceEligibility.INVITED_ONLY,
+    label: ATTENDANCE_ELIGIBILITY_LABELS.INVITED_ONLY,
+  });
 
   return options;
 }
@@ -107,5 +101,5 @@ export function attendanceEligibilityLabel(policy: AttendanceEligibility | null 
 }
 
 export function attendanceEligibilityHint(): string {
-  return 'Define quem pode confirmar a própria presença on-line. A coleta pela equipe continua disponível para todos; os certificados seguem critérios próprios.';
+  return 'Define quem pode confirmar a própria presença on-line; o público de acesso é configurado separadamente. A coleta pela equipe continua disponível para todos; os certificados seguem critérios próprios.';
 }

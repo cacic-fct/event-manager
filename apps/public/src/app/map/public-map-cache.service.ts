@@ -89,5 +89,7 @@ export class PublicMapCacheService {
     } catch {
       // The map remains usable without browser storage.
     }
+
+    void this.offlineData.clearPublicCaches().catch(() => undefined);
   }
 }

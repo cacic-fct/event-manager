@@ -15,6 +15,7 @@ import {
 import { toAttendanceCreateData, toAttendanceSnapshot } from './attendance';
 import { moveSportsPersonRelations } from './sports-representatives';
 import { moveEventInterests } from './interests';
+import { moveAudienceInvitations } from './audience-invitations';
 
 export async function moveRelations(
   tx: Prisma.TransactionClient,
@@ -23,6 +24,7 @@ export async function moveRelations(
   revokedRepresentativeById: string | null = null,
 ): Promise<MovedRelationsSnapshot> {
   const movedEventInterestIds = await moveEventInterests(tx, sourcePersonId, targetPersonId);
+  const movedAudienceInvitationSnapshots = await moveAudienceInvitations(tx, sourcePersonId, targetPersonId);
   const sportsRelations = await moveSportsPersonRelations(
     tx,
     targetPersonId,
@@ -446,6 +448,7 @@ export async function moveRelations(
     ...(movedEventInterestIds.length ? { movedEventInterestIds } : {}),
     movedEventGroupSubscriptionIds,
     movedMajorEventSubscriptionIds,
+    movedAudienceInvitationSnapshots,
     movedRoleAssignmentIds,
     archivedRoleAssignmentIds,
     movedPermissionGroupMembershipIds,

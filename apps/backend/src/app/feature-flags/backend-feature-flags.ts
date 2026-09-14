@@ -11,6 +11,7 @@ type BackendUnleashClient = {
 export const BACKEND_FEATURE_FLAGS = {
   onlineAttendanceNotificationsEnabled: 'events-online-attendance-notifications-enabled',
   requiredSubscriptionFormNotificationsEnabled: 'events-required-subscription-form-notifications-enabled',
+  undergraduateUnespRoleVerificationDisabled: 'cacic-undergraduate-unesp-role-verification-disabled',
 } as const;
 
 export type BackendFeatureFlagKey = keyof typeof BACKEND_FEATURE_FLAGS;
@@ -18,6 +19,7 @@ export type BackendFeatureFlagKey = keyof typeof BACKEND_FEATURE_FLAGS;
 const BACKEND_FEATURE_FLAG_DEFAULTS: Record<BackendFeatureFlagKey, boolean> = {
   onlineAttendanceNotificationsEnabled: false,
   requiredSubscriptionFormNotificationsEnabled: false,
+  undergraduateUnespRoleVerificationDisabled: false,
 };
 
 @Injectable()

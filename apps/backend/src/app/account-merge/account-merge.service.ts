@@ -33,6 +33,11 @@ import {
 import { toAttendanceCreateData, toAttendanceSnapshot } from '../people/merge-candidates/operations/attendance';
 import { moveSportsPersonRelations } from '../people/merge-candidates/operations/sports-representatives';
 import {
+  moveAudienceInvitations,
+  type AudienceInvitationSnapshot,
+} from '../people/merge-candidates/operations/audience-invitations';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import {
   AttendanceSnapshot,
   SportsOfficialAssignmentSnapshot,
   SportsTeamRepresentativeSnapshot,
@@ -80,6 +85,7 @@ type MovedRelationsSnapshot = {
   movedEventSubscriptionIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
+  movedAudienceInvitationSnapshots: AudienceInvitationSnapshot[];
   movedEventFormResponseIds: string[];
   coalescedEventFormResponseIds: string[];
   movedRoleAssignmentIds: string[];
@@ -137,7 +143,8 @@ export class AccountMergeService {
     const input = this.normalizeNotification(body);
 
     try {
-      await this.prisma.$transaction(async (tx) => {
+      await this.runAsSystem(() =>
+        this.prisma.$transaction(async (tx) => {
         const existing = await tx.externalAccountMergeOperation.findUnique({
           where: { eventId: input.eventId },
         });
@@ -203,7 +210,8 @@ export class AccountMergeService {
           },
           tx,
         );
-      });
+        }),
+      );
 
       return this.toAcknowledgement(input);
     } catch (error) {
@@ -512,6 +520,10 @@ export class AccountMergeService {
     };
   }
 
+  private runAsSystem<T>(operation: () => Promise<T>): Promise<T> {
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, operation);
+  }
+
   private async moveRelations(
     tx: Prisma.TransactionClient,
     targetPersonId: string,
@@ -542,11 +554,12 @@ export class AccountMergeService {
       sourcePersonId,
     );
     const movedEventSubscriptionIds = await this.coalesceEventSubscriptions(tx, targetPersonId, sourcePersonId);
-    const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
+  const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
       tx,
       targetPersonId,
       sourcePersonId,
     );
+    const movedAudienceInvitationSnapshots = await moveAudienceInvitations(tx, sourcePersonId, targetPersonId);
     const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
     const permissionRelations = await this.movePermissionRelations(tx, targetPersonId, sourcePersonId);
 
@@ -562,6 +575,7 @@ export class AccountMergeService {
       movedEventSubscriptionIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
+      movedAudienceInvitationSnapshots,
       movedEventFormResponseIds: movedEventFormResponses.movedIds,
       coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
       ...permissionRelations,

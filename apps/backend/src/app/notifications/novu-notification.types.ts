@@ -58,6 +58,15 @@ export type OnlineAttendanceAvailableNotification = {
   recipients: NotificationRecipient[];
 };
 
+export type AudienceInvitationNotification = {
+  targetType: 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
+  targetId: string;
+  targetName: string;
+  actionUrl: string;
+  invitationCreatedAt?: Date;
+  recipient: NotificationRecipient;
+};
+
 export type PrizeDrawNotification = {
   transactionId: string;
   drawId: string;

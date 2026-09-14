@@ -264,6 +264,9 @@ export function createAdminMajorEvent(overrides: Partial<MajorEvent> = {}): Majo
 
   return {
     id,
+    audience: 'PUBLIC',
+    audienceCourseCodes: [],
+    audienceInvitations: [],
     interestEnabled: false,
     attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
     name: 'Grande evento',
@@ -306,6 +309,12 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
 
   return createAdminMajorEvent({
     id,
+    audience: input.audience ?? 'PUBLIC',
+    audienceCourseCodes: input.audienceCourseCodes ?? [],
+    audienceInvitations: (input.invitationPersonIds ?? []).map((personId) => ({
+      personId,
+      person: { id: personId, name: personId, email: null },
+    })),
     name: input.name ?? 'Grande evento',
     emoji: input.emoji ?? 'event',
     startDate: input.startDate ?? adminFixtureDateFromNow(-1),
@@ -357,6 +366,9 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
 export function createAdminEventGroup(overrides: Partial<EventGroup> = {}): EventGroup {
   return {
     id: 'event-group-1',
+    audience: 'PUBLIC',
+    audienceCourseCodes: [],
+    audienceInvitations: [],
     interestEnabled: false,
     attendanceEligibility: null,
     name: 'Grupo de eventos',
@@ -379,6 +391,9 @@ export function createAdminEventGroup(overrides: Partial<EventGroup> = {}): Even
 export function createAdminEvent(overrides: Partial<Event> = {}): Event {
   return {
     id: 'event-1',
+    audience: 'PUBLIC',
+    audienceCourseCodes: [],
+    audienceInvitations: [],
     interestEnabled: false,
     attendanceEligibility: null,
     name: 'Evento',
@@ -449,6 +464,12 @@ export function createAdminEventSummary(overrides: Partial<EventSummary> = {}): 
 export function createAdminEventFromInput(input: EventInput = {}): Event {
   return createAdminEvent({
     id: input.id ?? 'event-1',
+    audience: input.audience ?? 'PUBLIC',
+    audienceCourseCodes: input.audienceCourseCodes ?? [],
+    audienceInvitations: (input.invitationPersonIds ?? []).map((personId) => ({
+      personId,
+      person: { id: personId, name: personId, email: null },
+    })),
     name: input.name ?? 'Evento',
     creditMinutes: input.creditMinutes,
     startDate: input.startDate ?? adminFixtureDateFromNow(0, 17),

@@ -70,6 +70,9 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
     locationDescription: nullableStringValue(payload.locationDescription, eventItem.locationDescription ?? null),
     majorEventId: nullableStringValue(payload.majorEventId, eventItem.majorEventId ?? null),
     eventGroupId: nullableStringValue(payload.eventGroupId, eventItem.eventGroupId ?? null),
+    audience: isEventAudience(payload.audience) ? payload.audience : (eventItem.audience ?? 'PUBLIC'),
+    audienceCourseCodes: stringArrayValue(payload.audienceCourseCodes, eventItem.audienceCourseCodes ?? []),
+    audienceInvitations: eventItem.audienceInvitations ?? [],
     allowSubscription: booleanValue(payload.allowSubscription, eventItem.allowSubscription),
     interestEnabled: booleanValue(payload.interestEnabled, eventItem.interestEnabled ?? false),
     attendanceEligibility:
@@ -208,6 +211,14 @@ function numberOrNullValue(value: unknown, fallback: number | null): number | nu
 
 function booleanValue(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function isEventAudience(value: unknown): value is NonNullable<Event['audience']> {
+  return value === 'PUBLIC' || value === 'UNESP_ONLY' || value === 'COURSE_ONLY' || value === 'INVITATION_ONLY';
+}
+
+function stringArrayValue(value: unknown, fallback: string[]): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback;
 }
 
 function getRandomIndex(maxExclusive: number): number {

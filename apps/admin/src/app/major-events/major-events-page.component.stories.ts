@@ -87,3 +87,21 @@ export const InterestAndEligibility: Story = {
     await expect(canvas.getByText('Emitir para presentes não inscritos')).toBeVisible();
   },
 };
+
+export const CourseAudience: Story = {
+  args: { selectedIndex: 2 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Curso permitido')).toBeVisible();
+    await expect(canvas.getAllByText(/matrícula confirmada no Account Manager/i)[0]).toBeVisible();
+  },
+};
+
+export const InvitationAudience: Story = {
+  args: { selectedIndex: 3 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Pessoas convidadas')).toBeVisible();
+    await expect(canvas.getByText('Pessoa convidada 4')).toBeVisible();
+  },
+};

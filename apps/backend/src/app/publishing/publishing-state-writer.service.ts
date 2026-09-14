@@ -14,6 +14,7 @@ import { resolvePublicationActorId } from './publishing-auth';
 import { publicationSummary } from './publishing-labels';
 import { PUBLICATION_EVENT_SELECT, PUBLICATION_MAJOR_EVENT_SELECT } from './publishing.selects';
 import { TargetSync } from './publishing.types';
+import { assertAudiencePublicationReady, type AudiencePublicationTarget } from '../audiences/audience-publication';
 
 @Injectable()
 export class PublicationStateWriterService {
@@ -102,6 +103,7 @@ export class PublicationStateWriterService {
       if (!previous) {
         return null;
       }
+      assertAudiencePublicationReady(previous);
 
       const updatedCount = await tx.event.updateMany({
         where: {
@@ -318,6 +320,7 @@ export class PublicationStateWriterService {
       if (!previous) {
         return null;
       }
+      assertAudiencePublicationReady(previous);
 
       const updatedCount = await tx.majorEvent.updateMany({
         where: {
@@ -364,11 +367,14 @@ export class PublicationStateWriterService {
   }
 
   private hasRequestedPublicationState(
-    target: { publicationState: PublicationState; scheduledPublishAt: Date | null; isPubliclyListed?: boolean },
+    target: AudiencePublicationTarget & { publicationState: PublicationState; scheduledPublishAt: Date | null; isPubliclyListed?: boolean },
     state: PublicationState,
     scheduledPublishAt: Date | null,
     isPubliclyListed?: boolean,
   ): boolean {
+    if (state === PrismaPublicationState.PUBLISHED || state === PrismaPublicationState.SCHEDULED) {
+      assertAudiencePublicationReady(target);
+    }
     if (target.publicationState !== state) {
       return false;
     }

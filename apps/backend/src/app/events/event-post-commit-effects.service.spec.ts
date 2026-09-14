@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { EventPostCommitEffectsService, EventPostCommitRecord } from './event-post-commit-effects.service';
 
 const eventRecord = (overrides: Partial<EventPostCommitRecord> = {}): EventPostCommitRecord => ({
@@ -166,6 +167,31 @@ describe('EventPostCommitEffectsService', () => {
       'admin-workspace',
       expect.objectContaining({ type: 'CATALOG_INVALIDATED', domain: 'event' }),
     );
+  });
+
+  it('does not inherit a request audience when rebuilding shared catalog effects', async () => {
+    let observedPrincipal: unknown;
+    const prisma = {
+      event: {
+        findMany: jest.fn(async () => {
+          observedPrincipal = audienceContext.getStore();
+          return [];
+        }),
+      },
+    };
+    const service = new EventPostCommitEffectsService(
+      prisma as never,
+      { deleteEvent: jest.fn() } as never,
+      { refresh: jest.fn().mockResolvedValue([]) } as never,
+      { scheduleEvent: jest.fn() } as never,
+    );
+
+    await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, userId: 'request-user', isUnesp: true, verifiedCourseCode: '12' },
+      () => service.syncEvents(['event-1']),
+    );
+
+    expect(observedPrincipal).toEqual({ ...ANONYMOUS_AUDIENCE, bypass: true });
   });
 
   it('reconciles active and deleted event groups for sports categories', async () => {

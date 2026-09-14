@@ -5,6 +5,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../public-events/models';
+import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../audiences/audience-context';
 import { PublicEventWeather } from './models';
 import { addDays, differenceInCalendarDays, isFuture } from 'date-fns';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
@@ -39,23 +40,35 @@ export class WeatherService {
   ) {}
 
   async getPublicEventWeather(eventId: string): Promise<PublicEventWeather | null> {
-    const running = this.publicRequestFlights.get(eventId);
+    const principal = audienceContext.getStore() ?? ANONYMOUS_AUDIENCE;
+    return audienceContext.run(principal, () => this.getPublicEventWeatherForPrincipal(eventId, principal));
+  }
+
+  private async getPublicEventWeatherForPrincipal(
+    eventId: string,
+    principal: EventAudiencePrincipal,
+  ): Promise<PublicEventWeather | null> {
+    // Visibility must be checked for every request before joining a shared
+    // in-flight fetch. Otherwise an authorized request could lend its result
+    // to a concurrent caller whose audience cannot see the event.
+    if (!(await this.publicWeatherEventExists(eventId))) {
+      throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
+
+    const requestKey = this.publicRequestKey(eventId, principal);
+    const running = this.publicRequestFlights.get(requestKey);
     if (running) {
       return running;
     }
 
     const request = this.getPublicEventWeatherUncached(eventId).finally(() => {
-      this.publicRequestFlights.delete(eventId);
+      this.publicRequestFlights.delete(requestKey);
     });
-    this.publicRequestFlights.set(eventId, request);
+    this.publicRequestFlights.set(requestKey, request);
     return request;
   }
 
   private async getPublicEventWeatherUncached(eventId: string): Promise<PublicEventWeather | null> {
-    if (!(await this.publicWeatherEventExists(eventId))) {
-      throw new NotFoundException(`Event ${eventId} was not found.`);
-    }
-
     const cached = await this.getCachedWeather(eventId);
     if (cached) {
       return cached;
@@ -173,6 +186,16 @@ export class WeatherService {
       select: { id: true },
     });
     return Boolean(event);
+  }
+
+  private publicRequestKey(eventId: string, principal: EventAudiencePrincipal): string {
+    return `${eventId}:${JSON.stringify({
+      userId: principal.userId ?? null,
+      personIds: [...principal.personIds].sort(),
+      isUnesp: principal.isUnesp,
+      verifiedCourseCode: principal.verifiedCourseCode,
+      bypass: principal.bypass,
+    })}`;
   }
 
   private async refreshEventWeather(event: WeatherEvent): Promise<PublicEventWeather | null> {

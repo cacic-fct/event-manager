@@ -5,6 +5,11 @@ import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
+import {
+  AttendanceEligibility,
+  EventAudience,
+  resolveAttendanceEligibility,
+} from '@cacic-fct/shared-event-participation';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -36,6 +41,7 @@ import {
   createOnlineAttendanceCode,
   eventFromDraft,
   fromIsoToLocalInput,
+  parseEventDraftPayload,
   resolveEventDates,
   toOptionalIsoDateTime,
   toOptionalNumber,
@@ -50,6 +56,7 @@ import {
 } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
 import { EventPeopleService } from '../attendances/event-people.service';
+import { PeopleApiService } from '../graphql/people-api.service';
 import { EventFormStateService } from './event-form-state.service';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -67,10 +74,16 @@ import {
   uniquePlacePresets,
 } from './event-selection.helpers';
 import { createEventCloneDialogData } from './event-clone-dialog-data';
+import {
+  normalizeAudienceCourseCodes,
+  type AudienceInvitationPerson,
+  type AudienceParentRestriction,
+} from '../shared/audience-editor/audience-editor.models';
 
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 type DraftSelectionResult = EventDraft | null | undefined;
+const AUDIENCE_PERSON_LOOKUP_BATCH_SIZE = 50;
 @Service()
 export class EventsService {
   private readonly api = inject(EventApiService);
@@ -78,6 +91,7 @@ export class EventsService {
   private readonly eventGroupsApi = inject(EventGroupApiService);
   private readonly majorEventsApi = inject(MajorEventApiService);
   private readonly eventPeople = inject(EventPeopleService);
+  private readonly peopleApi = inject(PeopleApiService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
   private readonly formState = inject(EventFormStateService);
@@ -97,8 +111,11 @@ export class EventsService {
   readonly eventsPagination = createWorkspaceListPagination();
   readonly selectedEvent = signal<Event | null>(null);
   readonly selectedEventDraft = signal<EventDraft | null>(null);
+  readonly selectedMajorEvent = signal<MajorEvent | null>(null);
+  readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventLecturers = signal<{ personId: string; name: string }[]>([]);
   readonly eventAttendanceCollectors = signal<{ personId: string; name: string }[]>([]);
+  readonly eventAudienceInvitations = signal<AudienceInvitationPerson[]>([]);
   readonly selectedEventGroupName = signal('');
   readonly selectedEventGroupAllowsCertificates = signal<boolean | null>(true);
   readonly selectedEventGroupAllowsNonPayingCertificates = signal<boolean | null>(true);
@@ -161,6 +178,77 @@ export class EventsService {
     this.eventForm.controls.latitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.longitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.locationDescription.valueChanges.subscribe(() => this.syncLocationPresetControl());
+  }
+
+  setEventAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
+    this.eventAudienceInvitations.set([...people]);
+  }
+
+  shouldManageAttendanceInvitations(): boolean {
+    return (
+      this.eventForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      this.resolveEffectiveAttendanceEligibility() === AttendanceEligibility.INVITED_ONLY
+    );
+  }
+
+  audiencePublicationError(): string | null {
+    return this.shouldManageAttendanceInvitations() && this.eventAudienceInvitations().length === 0
+      ? 'Para publicar ou agendar, adicione ao menos uma pessoa convidada. O rascunho privado pode ser salvo sem convites.'
+      : null;
+  }
+
+  audiencePublicationBlocked(): boolean {
+    return this.audiencePublicationError() !== null;
+  }
+
+  audienceParentRestrictions(): AudienceParentRestriction[] {
+    const restrictions: AudienceParentRestriction[] = [];
+    const event = this.selectedEvent();
+    const eventGroupId = this.eventForm.controls.eventGroupId.value;
+    const eventGroup =
+      this.selectedEventGroup() ??
+      (event?.eventGroup?.id === eventGroupId ? event.eventGroup : null) ??
+      this.eventGroupSearchResults().find((item) => item.id === eventGroupId);
+    const majorEventId = this.eventForm.controls.majorEventId.value || eventGroup?.majorEventId || '';
+    const majorEvent =
+      (this.selectedMajorEvent()?.id === majorEventId ? this.selectedMajorEvent() : null) ??
+      (event?.majorEvent?.id === majorEventId ? event.majorEvent : null) ??
+      this.majorEventSearchResults().find((item) => item.id === majorEventId) ??
+      this.majorEvents().find((item) => item.id === majorEventId);
+
+    if (majorEvent) {
+      restrictions.push({
+        label: `Grande evento “${majorEvent.name}”`,
+        audience: majorEvent.audience,
+        audienceCourseCodes: majorEvent.audienceCourseCodes,
+        attendanceEligibility: majorEvent.attendanceEligibility,
+      });
+    }
+    if (eventGroup) {
+      restrictions.push({
+        label: `Grupo “${eventGroup.name}”`,
+        audience: eventGroup.audience,
+        audienceCourseCodes: eventGroup.audienceCourseCodes,
+        attendanceEligibility: eventGroup.attendanceEligibility,
+      });
+    }
+
+    return restrictions;
+  }
+
+  private resolveEffectiveAttendanceEligibility(): AttendanceEligibility {
+    const eventGroup = this.selectedEventGroup();
+    const majorEventId = this.eventForm.controls.majorEventId.value || eventGroup?.majorEventId || null;
+    const majorEvent =
+      (this.selectedMajorEvent()?.id === majorEventId ? this.selectedMajorEvent() : null) ??
+      this.majorEvents().find((item) => item.id === majorEventId) ??
+      null;
+    return resolveAttendanceEligibility({
+      attendanceEligibility: this.eventForm.controls.attendanceEligibility.value,
+      eventGroup: eventGroup ? { attendanceEligibility: eventGroup.attendanceEligibility } : null,
+      majorEventId,
+      majorEvent: majorEvent ? { attendanceEligibility: majorEvent.attendanceEligibility } : null,
+    });
   }
 
   async loadEvents(): Promise<void> {
@@ -232,7 +320,10 @@ export class EventsService {
 
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
-    await this.populateEventForm(selectedDraft ? eventFromDraft(eventDetails, selectedDraft) : eventDetails);
+    await this.populateEventForm(
+      selectedDraft ? eventFromDraft(eventDetails, selectedDraft) : eventDetails,
+      selectedDraft ? this.draftInvitationPersonIds(selectedDraft) : undefined,
+    );
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
     await this.loadGroupLecturerSuggestions();
@@ -243,8 +334,11 @@ export class EventsService {
     void this.router.navigate(['/events']);
     this.selectedEvent.set(null);
     this.selectedEventDraft.set(null);
+    this.selectedMajorEvent.set(null);
+    this.selectedEventGroup.set(null);
     this.eventLecturers.set([]);
     this.eventAttendanceCollectors.set([]);
+    this.eventAudienceInvitations.set([]);
     this.selectedMajorEventName.set('');
     this.attendancePriceTiers.set([]);
     this.eventGroupSearchResults.set([]);
@@ -285,6 +379,8 @@ export class EventsService {
       locationPresetId: CUSTOM_PLACE_PRESET_ID,
       majorEventId: '',
       eventGroupId: '',
+      audience: EventAudience.PUBLIC,
+      audienceCourseCodes: [],
       allowSubscription: false,
       interestEnabled: false,
       attendanceEligibility: null,
@@ -321,6 +417,10 @@ export class EventsService {
   async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
     if (this.hasInvalidDateRange()) {
       this.eventForm.markAllAsTouched();
+      return;
+    }
+
+    if ((action === 'PUBLISH' || action === 'SCHEDULE') && this.audiencePublicationBlocked()) {
       return;
     }
 
@@ -462,6 +562,7 @@ export class EventsService {
     this.selectedEventDraft.set(selection.kind === 'draft' ? selection.draft : null);
     await this.populateEventForm(
       selection.kind === 'draft' ? eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
+      selection.kind === 'draft' ? this.draftInvitationPersonIds(selection.draft) : undefined,
     );
   }
 
@@ -576,6 +677,7 @@ export class EventsService {
 
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
+    this.selectedEventGroup.set(group);
     this.applySelectedEventGroup(group, { hasEventGroup: true });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
@@ -584,6 +686,7 @@ export class EventsService {
 
   clearEventGroupFromEvent(): void {
     this.eventForm.controls.eventGroupId.setValue('');
+    this.selectedEventGroup.set(null);
     this.applySelectedEventGroup(null, { hasEventGroup: false });
     this.syncCertificateControl();
     this.eventGroupSearchResults.set([]);
@@ -966,6 +1069,9 @@ export class EventsService {
       locationDescription: raw.locationDescription.trim() || null,
       majorEventId: raw.majorEventId || null,
       eventGroupId: raw.eventGroupId || null,
+      audience: raw.audience,
+      audienceCourseCodes: normalizeAudienceCourseCodes(raw.audience),
+      invitationPersonIds: this.eventAudienceInvitations().map((person) => person.id),
       allowSubscription: raw.allowSubscription,
       interestEnabled: raw.interestEnabled,
       attendanceEligibility: raw.attendanceEligibility,
@@ -1067,11 +1173,12 @@ export class EventsService {
     );
   }
 
-  private async populateEventForm(eventItem: Event): Promise<void> {
+  private async populateEventForm(eventItem: Event, invitationPersonIds?: readonly string[]): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
     const selectedMajorEvent = this.resolveSelectedMajorEvent(eventItem);
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
     const selectedPlacePreset = await this.resolvePlacePresetForEvent(eventItem);
+    const audienceInvitations = await this.resolveAudienceInvitationPeople(eventItem, invitationPersonIds);
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1089,6 +1196,8 @@ export class EventsService {
       locationPresetId: selectedPlacePreset?.id ?? CUSTOM_PLACE_PRESET_ID,
       majorEventId: eventItem.majorEventId ?? '',
       eventGroupId: eventItem.eventGroupId ?? '',
+      audience: eventItem.audience ?? EventAudience.PUBLIC,
+      audienceCourseCodes: normalizeAudienceCourseCodes(eventItem.audience),
       allowSubscription: eventItem.allowSubscription,
       interestEnabled: eventItem.interestEnabled ?? false,
       attendanceEligibility: eventItem.attendanceEligibility ?? null,
@@ -1118,6 +1227,7 @@ export class EventsService {
       buttonText: eventItem.buttonText ?? '',
       buttonLink: eventItem.buttonLink ?? '',
     });
+    this.eventAudienceInvitations.set(audienceInvitations);
     this.syncOnlineAttendanceControls();
     this.majorEventLookupForm.controls.query.setValue(
       selectedMajorEvent.status === 'found' ? selectedMajorEvent.majorEvent.name : '',
@@ -1132,6 +1242,63 @@ export class EventsService {
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
     this.syncLocationPresetControl();
+  }
+
+  private draftInvitationPersonIds(draft: EventDraft): string[] | undefined {
+    const value = parseEventDraftPayload(draft).invitationPersonIds;
+    return Array.isArray(value)
+      ? [...new Set(value.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))]
+      : undefined;
+  }
+
+  private async resolveAudienceInvitationPeople(
+    eventItem: Event,
+    invitationPersonIds?: readonly string[],
+  ): Promise<AudienceInvitationPerson[]> {
+    const existingPeople = new Map(
+      (eventItem.audienceInvitations ?? []).map((invitation) => [invitation.personId, invitation.person]),
+    );
+    const ids = invitationPersonIds ?? [...existingPeople.keys()];
+    const uniqueIds = [...new Set(ids.filter((id) => id.trim()))];
+    const canReadPeople = this.permissions.has(Permission.Person.Read);
+    const resolvedPeople: AudienceInvitationPerson[] = [];
+    for (let index = 0; index < uniqueIds.length; index += AUDIENCE_PERSON_LOOKUP_BATCH_SIZE) {
+      const batch = uniqueIds.slice(index, index + AUDIENCE_PERSON_LOOKUP_BATCH_SIZE);
+      resolvedPeople.push(
+        ...(await Promise.all(
+          batch.map(async (personId) => {
+            const existingPerson = existingPeople.get(personId);
+            if (existingPerson?.id === personId) {
+              return { id: existingPerson.id, name: existingPerson.name, email: existingPerson.email };
+            }
+            if (!canReadPeople) {
+              return this.unresolvedInvitationPerson(personId);
+            }
+
+            try {
+              const person = await firstValueFrom(this.peopleApi.getPerson(personId));
+              if (person.id !== personId) {
+                return this.unresolvedInvitationPerson(personId);
+              }
+              return { id: person.id, name: person.name, email: person.email } satisfies AudienceInvitationPerson;
+            } catch {
+              return this.unresolvedInvitationPerson(personId);
+            }
+          }),
+        )),
+      );
+    }
+
+    return resolvedPeople;
+  }
+
+  private unresolvedInvitationPerson(personId: string): AudienceInvitationPerson {
+    return {
+      id: personId,
+      name: 'Pessoa convidada (dados indisponíveis)',
+      email: null,
+      unresolved: true,
+    };
   }
 
   private syncLocationPresetControl(): void {
@@ -1193,6 +1360,7 @@ export class EventsService {
         ? resolveMajorEventSelectionInput(value as MajorEvent | null, options.hasMajorEvent)
         : (value as MajorEventResolution);
 
+    this.selectedMajorEvent.set(resolution.status === 'found' ? resolution.majorEvent : null);
     this.selectedMajorEventName.set(resolution.status === 'found' ? resolution.majorEvent.name : '');
     this.attendancePriceTiers.set([]);
     if (resolution.status === 'found') {
@@ -1246,6 +1414,7 @@ export class EventsService {
         ? resolveEventGroupSelectionInput(value as EventGroup | null, options.hasEventGroup)
         : (value as EventGroupResolution);
     const permissions = getEventGroupCertificatePermissions(resolution);
+    this.selectedEventGroup.set(resolution.status === 'found' ? resolution.group : null);
     this.selectedEventGroupName.set(resolution.status === 'found' ? resolution.group.name : '');
     this.selectedEventGroupAllowsCertificates.set(permissions.allowsCertificates);
     this.selectedEventGroupAllowsNonPayingCertificates.set(permissions.allowsNonPayingCertificates);

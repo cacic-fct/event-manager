@@ -45,6 +45,7 @@ import {
 import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 import { SseReplayService } from '../../realtime/sse-replay.service';
+import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../../audiences/audience-context';
 import {
   eventAttendanceEligibility,
   isApprovedAttendance,
@@ -77,6 +78,7 @@ const PENDING_ONLINE_ATTENDANCE_EVENT_SELECT = {
 
 interface RealtimeClient {
   connectionIdentity: string;
+  audiencePrincipal: EventAudiencePrincipal;
   personId?: string;
   events: Subject<RealtimeServerMessage>;
   majorEventSubscriptionIds: Set<string>;
@@ -184,6 +186,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     const events = new Subject<RealtimeServerMessage>();
     const client: RealtimeClient = {
       connectionIdentity,
+      audiencePrincipal: audienceContext.getStore() ?? ANONYMOUS_AUDIENCE,
       events,
       majorEventSubscriptionIds: new Set(majorEventSubscriptionIds),
       eventSubscriptionIds: new Set(eventSubscriptionIds),
@@ -199,7 +202,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         client.personId = personId ?? undefined;
 
         if (personId) {
-          void this.notifyPerson(personId).catch((error: unknown) => {
+          void this.notifyClient(client, personId).catch((error: unknown) => {
             this.logger.warn(error instanceof Error ? error.message : 'Could not publish current-user attendance.');
           });
         }
@@ -262,16 +265,24 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   private cleanupSnapshots(): void {
-    const majorIds = new Set([...this.clients].flatMap((client) => [...client.majorEventSubscriptionIds]));
-    const eventIds = new Set([...this.clients].flatMap((client) => [...client.eventSubscriptionIds]));
-    for (const id of this.majorEventSubscriptionSnapshots.keys()) {
-      if (!majorIds.has(id)) {
-        this.majorEventSubscriptionSnapshots.delete(id);
+    const activeMajorSnapshotKeys = new Set(
+      [...this.clients].flatMap((client) =>
+        [...client.majorEventSubscriptionIds].map((id) => this.snapshotKey('major', id, client.audiencePrincipal)),
+      ),
+    );
+    const activeEventSnapshotKeys = new Set(
+      [...this.clients].flatMap((client) =>
+        [...client.eventSubscriptionIds].map((id) => this.snapshotKey('event', id, client.audiencePrincipal)),
+      ),
+    );
+    for (const key of this.majorEventSubscriptionSnapshots.keys()) {
+      if (!activeMajorSnapshotKeys.has(key)) {
+        this.majorEventSubscriptionSnapshots.delete(key);
       }
     }
-    for (const id of this.eventSubscriptionSnapshots.keys()) {
-      if (!eventIds.has(id)) {
-        this.eventSubscriptionSnapshots.delete(id);
+    for (const key of this.eventSubscriptionSnapshots.keys()) {
+      if (!activeEventSnapshotKeys.has(key)) {
+        this.eventSubscriptionSnapshots.delete(key);
       }
     }
   }
@@ -313,6 +324,13 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   async listPendingOnlineAttendanceEvents(personId: string): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
+    const principal = audienceContext.getStore() ?? ANONYMOUS_AUDIENCE;
+    return audienceContext.run(principal, () => this.listPendingOnlineAttendanceEventsScoped(personId));
+  }
+
+  private async listPendingOnlineAttendanceEventsScoped(
+    personId: string,
+  ): Promise<CurrentUserPendingOnlineAttendanceEvent[]> {
     const now = new Date();
     const events = await this.prisma.event.findMany({
       where: {
@@ -423,9 +441,32 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   async notifyPerson(personId: string): Promise<void> {
-    const eventIds = (await this.listPendingOnlineAttendanceEvents(personId)).map((item) => item.eventId);
+    const clients = [...this.clients].filter((client) => client.personId === personId);
+    const groups = this.groupClientsByAudience(clients);
+    const results = await Promise.all(
+      groups.map(async ({ clients: groupedClients, principal }) => ({
+        clients: groupedClients,
+        eventIds: (
+          await audienceContext.run(principal, () => this.listPendingOnlineAttendanceEventsScoped(personId))
+        ).map((item) => item.eventId),
+      })),
+    );
 
-    const message: PendingOnlineAttendanceMessage = {
+    for (const { clients: groupedClients, eventIds } of results) {
+      const message = this.pendingAttendanceMessage(eventIds);
+      groupedClients.forEach((client) => client.events.next(message));
+    }
+  }
+
+  private async notifyClient(client: RealtimeClient, personId: string): Promise<void> {
+    const eventIds = (
+      await audienceContext.run(client.audiencePrincipal, () => this.listPendingOnlineAttendanceEventsScoped(personId))
+    ).map((item) => item.eventId);
+    client.events.next(this.pendingAttendanceMessage(eventIds));
+  }
+
+  private pendingAttendanceMessage(eventIds: string[]): PendingOnlineAttendanceMessage {
+    return {
       type: 'event',
       channel: ONLINE_ATTENDANCE_CHANNEL,
       event: 'pendingOnlineAttendancesChanged',
@@ -433,12 +474,6 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         eventIds,
       },
     };
-
-    for (const client of this.clients) {
-      if (client.personId === personId) {
-        client.events.next(message);
-      }
-    }
   }
 
   private async notifySubscribedMajorEvents(): Promise<void> {
@@ -462,43 +497,39 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   private async notifyMajorEventSubscribers(majorEventId: string) {
-    let payload: MajorEventSubscriptionChangedMessage['payload'];
-
-    try {
-      payload = await this.getMajorEventSubscriptionDeltaPayload(majorEventId);
-    } catch (error) {
-      this.logger.warn(error instanceof Error ? error.message : 'Could not publish major-event subscription update.');
-      return;
-    }
-
-    const message: MajorEventSubscriptionChangedMessage = {
-      type: 'event',
-      channel: MAJOR_EVENT_SUBSCRIPTION_CHANNEL,
-      event: 'majorEventSubscriptionChanged',
-      majorEventId,
-      payload,
-    };
-
-    const serializedMessage = JSON.stringify(message);
-    const previousSnapshot = this.majorEventSubscriptionSnapshots.get(majorEventId);
-
-    if (previousSnapshot === serializedMessage) {
-      return;
-    }
-
-    this.majorEventSubscriptionSnapshots.set(majorEventId, serializedMessage);
-
-    for (const client of this.clients) {
-      if (client.majorEventSubscriptionIds.has(majorEventId)) {
-        client.events.next(message);
-      }
-    }
+    const clients = [...this.clients].filter((client) => client.majorEventSubscriptionIds.has(majorEventId));
+    await Promise.all(
+      this.groupClientsByAudience(clients).map(({ clients: groupedClients, principal }) =>
+        this.publishMajorEventUpdate(majorEventId, principal, groupedClients, false),
+      ),
+    );
   }
 
   private async notifyMajorEvent(client: RealtimeClient, majorEventId: string): Promise<void> {
-    try {
-      const payload = await this.getMajorEventSubscriptionDeltaPayload(majorEventId);
+    await this.publishMajorEventUpdate(majorEventId, client.audiencePrincipal, [client], true);
+  }
 
+  private async notifyEventSubscriptionSubscribers(eventId: string): Promise<void> {
+    const clients = [...this.clients].filter((client) => client.eventSubscriptionIds.has(eventId));
+    await Promise.all(
+      this.groupClientsByAudience(clients).map(({ clients: groupedClients, principal }) =>
+        this.publishEventSubscriptionUpdate(eventId, principal, groupedClients, false),
+      ),
+    );
+  }
+
+  private async notifyEventSubscription(client: RealtimeClient, eventId: string): Promise<void> {
+    await this.publishEventSubscriptionUpdate(eventId, client.audiencePrincipal, [client], true);
+  }
+
+  private async publishMajorEventUpdate(
+    majorEventId: string,
+    principal: EventAudiencePrincipal,
+    clients: readonly RealtimeClient[],
+    force: boolean,
+  ): Promise<void> {
+    try {
+      const payload = await audienceContext.run(principal, () => this.getMajorEventSubscriptionDeltaPayload(majorEventId));
       const message = {
         type: 'event',
         channel: MAJOR_EVENT_SUBSCRIPTION_CHANNEL,
@@ -506,53 +537,28 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         majorEventId,
         payload,
       } satisfies MajorEventSubscriptionChangedMessage;
-
       const serializedMessage = JSON.stringify(message);
-      this.majorEventSubscriptionSnapshots.set(majorEventId, serializedMessage);
-      client.events.next(message);
+      const snapshotKey = this.snapshotKey('major', majorEventId, principal);
+
+      if (!force && this.majorEventSubscriptionSnapshots.get(snapshotKey) === serializedMessage) {
+        return;
+      }
+
+      this.majorEventSubscriptionSnapshots.set(snapshotKey, serializedMessage);
+      clients.forEach((client) => client.events.next(message));
     } catch (error) {
       this.logger.warn(error instanceof Error ? error.message : 'Could not publish major-event subscription update.');
     }
   }
 
-  private async notifyEventSubscriptionSubscribers(eventId: string): Promise<void> {
-    let payload: EventSubscriptionChangedMessage['payload'];
-
+  private async publishEventSubscriptionUpdate(
+    eventId: string,
+    principal: EventAudiencePrincipal,
+    clients: readonly RealtimeClient[],
+    force: boolean,
+  ): Promise<void> {
     try {
-      payload = await this.getEventSubscriptionDeltaPayload(eventId);
-    } catch (error) {
-      this.logger.warn(error instanceof Error ? error.message : 'Could not publish event subscription update.');
-      return;
-    }
-
-    const message: EventSubscriptionChangedMessage = {
-      type: 'event',
-      channel: EVENT_SUBSCRIPTION_CHANNEL,
-      event: 'eventSubscriptionAvailabilityChanged',
-      eventId,
-      payload,
-    };
-
-    const serializedMessage = JSON.stringify(message);
-    const previousSnapshot = this.eventSubscriptionSnapshots.get(eventId);
-
-    if (previousSnapshot === serializedMessage) {
-      return;
-    }
-
-    this.eventSubscriptionSnapshots.set(eventId, serializedMessage);
-
-    for (const client of this.clients) {
-      if (client.eventSubscriptionIds.has(eventId)) {
-        client.events.next(message);
-      }
-    }
-  }
-
-  private async notifyEventSubscription(client: RealtimeClient, eventId: string): Promise<void> {
-    try {
-      const payload = await this.getEventSubscriptionDeltaPayload(eventId);
-
+      const payload = await audienceContext.run(principal, () => this.getEventSubscriptionDeltaPayload(eventId));
       const message = {
         type: 'event',
         channel: EVENT_SUBSCRIPTION_CHANNEL,
@@ -560,13 +566,52 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         eventId,
         payload,
       } satisfies EventSubscriptionChangedMessage;
-
       const serializedMessage = JSON.stringify(message);
-      this.eventSubscriptionSnapshots.set(eventId, serializedMessage);
-      client.events.next(message);
+      const snapshotKey = this.snapshotKey('event', eventId, principal);
+
+      if (!force && this.eventSubscriptionSnapshots.get(snapshotKey) === serializedMessage) {
+        return;
+      }
+
+      this.eventSubscriptionSnapshots.set(snapshotKey, serializedMessage);
+      clients.forEach((client) => client.events.next(message));
     } catch (error) {
       this.logger.warn(error instanceof Error ? error.message : 'Could not publish event subscription update.');
     }
+  }
+
+  private groupClientsByAudience(
+    clients: readonly RealtimeClient[],
+  ): Array<{ principal: EventAudiencePrincipal; clients: RealtimeClient[] }> {
+    const groups = new Map<string, { principal: EventAudiencePrincipal; clients: RealtimeClient[] }>();
+    for (const client of clients) {
+      const key = this.audiencePrincipalKey(client.audiencePrincipal);
+      const group = groups.get(key);
+      if (group) {
+        group.clients.push(client);
+        continue;
+      }
+      groups.set(key, { principal: client.audiencePrincipal, clients: [client] });
+    }
+    return [...groups.values()];
+  }
+
+  private snapshotKey(
+    kind: 'major' | 'event',
+    id: string,
+    principal: EventAudiencePrincipal,
+  ): string {
+    return `${kind}:${id}:${this.audiencePrincipalKey(principal)}`;
+  }
+
+  private audiencePrincipalKey(principal: EventAudiencePrincipal): string {
+    return JSON.stringify({
+      userId: principal.userId ?? null,
+      personIds: [...principal.personIds].sort(),
+      isUnesp: principal.isUnesp,
+      verifiedCourseCode: principal.verifiedCourseCode,
+      bypass: principal.bypass,
+    });
   }
 
   private toMessageEvent(message: RealtimeServerMessage): MessageEvent {

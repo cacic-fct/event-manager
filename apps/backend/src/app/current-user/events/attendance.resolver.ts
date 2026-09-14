@@ -1,5 +1,6 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { isValidCPF } from '@cacic-fct/shared-utils';
-import { BadRequestException, ConflictException, NotFoundException, UseGuards } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, Optional, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
 import {
@@ -37,6 +38,7 @@ import {
   isApprovedAttendance,
   isRegisteredAttendanceEvidence,
 } from '../../events/attendance-eligibility';
+import { AudienceInvitationService } from '../../audiences/audience-invitation.service';
 
 const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
 
@@ -71,11 +73,13 @@ export class CurrentUserEventAttendanceResolver {
       record: async () => undefined,
       buildCompositeEntityId: (parts: readonly string[]) => parts.join(':'),
     } as unknown as AuditLogService,
+    @Optional() private readonly audienceInvitations?: AudienceInvitationService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
     name: 'currentUserEventAttendances',
   })
+  @IncludePastParticipation()
   async currentUserEventAttendances(@Context() context: GraphqlContext): Promise<CurrentUserEventAttendance[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
@@ -104,6 +108,7 @@ export class CurrentUserEventAttendanceResolver {
     name: 'currentUserEventAttendance',
     nullable: true,
   })
+  @IncludePastParticipation()
   async currentUserEventAttendance(
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
@@ -306,9 +311,13 @@ export class CurrentUserEventAttendanceResolver {
       autoSubscribe: boolean;
       attendanceEligibility?: AttendanceEligibility | null;
       eventGroupId?: string | null;
-      eventGroup?: { attendanceEligibility?: AttendanceEligibility | null } | null;
+      eventGroup?: { attendanceEligibility?: AttendanceEligibility | null; deletedAt?: Date | null } | null;
       majorEventId: string | null;
-      majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: AttendanceEligibility | null } | null;
+      majorEvent: {
+        isPaymentRequired: boolean;
+        attendanceEligibility?: AttendanceEligibility | null;
+        deletedAt?: Date | null;
+      } | null;
     },
   ): Promise<void> {
     const policy = eventAttendanceEligibility(event);
@@ -351,9 +360,12 @@ export class CurrentUserEventAttendanceResolver {
       hasSelectedEvent: majorEventSubscription?.selectedEvents.some((selected) => selected.eventId === event.id),
       autoSubscribe: event.autoSubscribe,
     };
+    const invited = this.audienceInvitations
+      ? await this.audienceInvitations.isInvitedForAttendance(event, personId)
+      : undefined;
     const registered = isRegisteredAttendanceEvidence(event, registrationEvidence);
     const approved = isApprovedAttendance(event, registrationEvidence);
-    if (!isAttendanceEligible(policy, { registered, approved })) {
+    if (!isAttendanceEligible(policy, { registered, approved, invited })) {
       if (policy === AttendanceEligibility.INVITED_ONLY) {
         throw new BadRequestException(`You must be invited to confirm online attendance for event ${event.id}.`);
       }
@@ -397,6 +409,7 @@ export class CurrentUserEventAttendanceResolver {
     name: 'currentUserOrganizerInfo',
     nullable: true,
   })
+  @IncludePastParticipation()
   async currentUserOrganizerInfo(
     @Args('targetType', { type: () => String }) targetType: string,
     @Args('targetId', { type: () => String }) targetId: string,

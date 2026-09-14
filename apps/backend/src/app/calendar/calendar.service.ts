@@ -1,8 +1,12 @@
 import { ICalEventClass, ICalEventTransparency } from 'ical-generator';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { subHours, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import { EventAudienceService } from '../audiences/event-audience.service';
+import { findActiveRolePermissionScopes } from '../authorization/effective-role-scopes';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS,
   ADMIN_FEED_ITEM_TAKE,
@@ -53,7 +57,10 @@ import {
 export class CalendarService {
   private readonly calendarFeedKeyPepper = readCalendarFeedKeyPepper();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly audiences?: EventAudienceService,
+  ) {}
 
   async getCurrentUserCalendarFeedSettings(userId: string): Promise<CurrentUserCalendarFeedSettings> {
     const settings = await this.prisma.userCalendarFeedSettings.findUnique({
@@ -388,7 +395,7 @@ export class CalendarService {
     }
 
     const personIds = settings.user.people.map((person) => person.id);
-    const events = await getPrivateFeedEvents(this.prisma, personIds);
+    const events = await this.withStoredAudience(settings.userId, () => getPrivateFeedEvents(this.prisma, personIds));
 
     await this.sampleLastFetchedAt(settings.userId, settings.feedKeyHash, settings.lastFetchedAt, now);
 
@@ -435,12 +442,15 @@ export class CalendarService {
       throw new NotFoundException('Calendar feed was not found.');
     }
 
-    const entries = await getAdminCalendarEntriesForUser(
-      this.prisma,
-      settings.userId,
-      now,
-      publicAppOrigin,
-      ADMIN_FEED_ITEM_TAKE,
+    const entries = await this.withStoredAudience(settings.userId, () =>
+      getAdminCalendarEntriesForUser(
+        this.prisma,
+        settings.userId,
+        now,
+        publicAppOrigin,
+        ADMIN_FEED_ITEM_TAKE,
+      ),
+      true,
     );
     if (entries.length === 0) {
       await this.disableAdminCalendarFeedWithoutTargets(settings.userId, now);
@@ -481,7 +491,10 @@ export class CalendarService {
     }
 
     const now = new Date();
-    const entries = await getSuperAdminCalendarEntries(this.prisma, publicAppOrigin, ADMIN_FEED_ITEM_TAKE);
+    const entries = await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, bypass: true },
+      () => getSuperAdminCalendarEntries(this.prisma, publicAppOrigin, ADMIN_FEED_ITEM_TAKE),
+    );
     await this.sampleSuperAdminLastFetchedAt(settings.feedKeyHash, settings.lastFetchedAt, now);
 
     return {
@@ -499,6 +512,16 @@ export class CalendarService {
 
   async runAdminCalendarFeedMaintenance(): Promise<number> {
     return this.disableStaleAdminCalendarFeeds(new Date());
+  }
+
+  private async withStoredAudience<T>(userId: string, operation: () => Promise<T>, administrative = false): Promise<T> {
+    if (!this.audiences) {
+      return operation();
+    }
+
+    const principal = await this.audiences.principalForStoredUser(userId);
+    const grants = administrative ? await findActiveRolePermissionScopes(this.prisma, userId, [Permission.EventAudience.Bypass]) : [];
+    return audienceContext.run({ ...principal, bypass: grants.some((grant) => grant.scope === 'GLOBAL') }, operation);
   }
 
   private async enableCurrentUserCalendarFeed(

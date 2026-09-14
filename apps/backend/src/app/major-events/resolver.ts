@@ -39,6 +39,10 @@ import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.s
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
+import { AUDIENCE_ADMIN_SELECT, applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import { audienceContext } from '../audiences/audience-context';
+import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -70,6 +74,7 @@ const MAJOR_EVENT_PRICE_SELECT = {
 } satisfies Prisma.MajorEventPriceSelect;
 
 const MAJOR_EVENT_SELECT = {
+  ...AUDIENCE_ADMIN_SELECT,
   id: true,
   name: true,
   emoji: true,
@@ -178,6 +183,7 @@ export class MajorEventsResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
       notifyAllConnectedPeople: async () => undefined,
     } as unknown as CurrentUserOnlineAttendanceRealtimeService,
+    private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -230,7 +236,7 @@ export class MajorEventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchMajorEvents(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -305,13 +311,16 @@ export class MajorEventsResolver {
     @Context() context: GraphqlContext,
   ) {
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
-    const data = this.buildMajorEventCreateData(input, paymentInfoTableExists);
+    const data = this.buildMajorEventCreateData(withoutAudienceInput(input), paymentInfoTableExists);
+    let audienceChange: AudienceChange | undefined;
 
     const majorEvent = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.majorEvent.create({
+      let created = await tx.majorEvent.create({
         data,
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'MAJOR_EVENT', targetId: created.id }, input, undefined, this.getUser(context)?.sub);
+      if (audienceChange) created = await tx.majorEvent.findUniqueOrThrow({ where: { id: created.id }, select: this.getMajorEventSelect(paymentInfoTableExists) });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT,
@@ -319,7 +328,7 @@ export class MajorEventsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: created,
+          after: withAudienceAudit(created, audienceChange),
           scope: { permission: Permission.MajorEvent.Create, majorEventId: created.id },
           summary: 'Grande evento criado.',
         },
@@ -327,6 +336,7 @@ export class MajorEventsResolver {
       );
       return created;
     });
+    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'MAJOR_EVENT', id: majorEvent.id, name: majorEvent.name }, audienceChange.personIds);
     await this.runPostCommitEffects(async () => {
       await this.sitemap.refresh();
       await this.typesenseSearch.upsertMajorEvent({
@@ -366,7 +376,8 @@ export class MajorEventsResolver {
     const hasExistingPaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
-    const { publishAfterUpdate = false, ...majorEventInput } = input;
+    const { publishAfterUpdate = false, ...majorEventInput } = withoutAudienceInput(input);
+    let audienceChange: AudienceChange | undefined;
     const data = {
       ...this.buildMajorEventUpdateData(
         majorEventInput,
@@ -378,6 +389,7 @@ export class MajorEventsResolver {
     };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'MAJOR_EVENT', targetId: id }, input, majorEvent, this.getUser(context)?.sub);
       await this.sportsBackingLifecycle.assertMajorEventUpdateAllowed(tx, id, input);
       const persisted = await tx.majorEvent.update({
         where: {
@@ -414,6 +426,7 @@ export class MajorEventsResolver {
         },
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
+      if (publishAfterUpdate) assertAudiencePublicationReady(updated);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT,
@@ -421,8 +434,8 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: omitPublicationAuditFields(majorEvent),
-          after: omitPublicationAuditFields(updated),
+          before: withAudienceAudit(omitPublicationAuditFields(majorEvent), audienceChange, true),
+          after: withAudienceAudit(omitPublicationAuditFields(updated), audienceChange),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
         },
@@ -430,6 +443,7 @@ export class MajorEventsResolver {
       );
       return updated;
     });
+    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'MAJOR_EVENT', id: updatedMajorEvent.id, name: updatedMajorEvent.name }, audienceChange.personIds);
     await this.runPostCommitEffects(async () => {
       await this.sitemap.refresh();
       await this.typesenseSearch.upsertMajorEvent({
@@ -466,6 +480,7 @@ export class MajorEventsResolver {
     if (!source) {
       throw new NotFoundException(`Major event ${id} was not found.`);
     }
+    assertAudienceCloneAllowed(source.audience);
 
     await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.MajorEvent.Create]);
     const parts = input?.parts;
@@ -481,6 +496,8 @@ export class MajorEventsResolver {
     const sourcePaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in source ? (source.paymentInfo as PaymentInfoCloneRecord | null) : null;
     const cloneInput: MajorEventCreateInput = {
+      audience: source.audience,
+      audienceCourseCodes: source.audienceCourseCodes,
       name: this.buildCloneName(input?.name, source.name),
       emoji: source.emoji,
       startDate: source.startDate,
@@ -657,6 +674,8 @@ export class MajorEventsResolver {
     const startDate = input.startDate ?? this.defaultMajorEventStartDate(input.endDate);
     const endDate = input.endDate ?? addDays(startDate, DEFAULT_MAJOR_EVENT_DURATION_DAYS);
     const data: Prisma.MajorEventCreateInput = {
+      audience: input.audience,
+      audienceCourseCodes: input.audienceCourseCodes,
       name: input.name?.trim() || DEFAULT_DRAFT_MAJOR_EVENT_NAME,
       emoji: input.emoji?.trim() || '📌',
       startDate,
@@ -1218,6 +1237,11 @@ export class MajorEventsResolver {
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
+  }
+
+  private canUseAudienceUnscopedSearch(): boolean {
+    const principal = audienceContext.getStore();
+    return principal === undefined || principal.bypass;
   }
 
   private async cloneCertificateConfigsForMajorEvent(

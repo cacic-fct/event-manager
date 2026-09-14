@@ -75,8 +75,12 @@ function person(index = 0) {
 }
 
 function eventGroup(index = 0) {
+  const audience = storyAudience(index);
   return {
     id: `group-${index + 1}`,
+    audience,
+    audienceCourseCodes: audience === 'COURSE_ONLY' ? ['12'] : [],
+    audienceInvitations: audience === 'INVITATION_ONLY' ? [storyAudienceInvitation(index)] : [],
     name: faker.helpers.arrayElement(['Trilha Web', 'Trilha Dados', 'Trilha Extensao']),
     emoji: faker.helpers.arrayElement(['🌐', '📊', '🎓']),
     requiresImageLicenseAgreement: false,
@@ -94,8 +98,12 @@ function eventGroup(index = 0) {
 }
 
 function majorEvent(index = 0) {
+  const audience = storyAudience(index);
   return {
     id: `major-${index + 1}`,
+    audience,
+    audienceCourseCodes: audience === 'COURSE_ONLY' ? ['12'] : [],
+    audienceInvitations: audience === 'INVITATION_ONLY' ? [storyAudienceInvitation(index)] : [],
     name: faker.helpers.arrayElement(['CACiC', 'SECOMPP']),
     emoji: faker.helpers.arrayElement(['💻', '🚀', '🎓']),
     startDate: isoDaysFromNow(index + 7, 9),
@@ -155,9 +163,13 @@ function majorEvent(index = 0) {
 
 function event(index = 0) {
   const group = eventGroups[index % eventGroups.length];
+  const audience = storyAudience(index);
 
   return {
     id: `event-${index + 1}`,
+    audience,
+    audienceCourseCodes: audience === 'COURSE_ONLY' ? ['12'] : [],
+    audienceInvitations: audience === 'INVITATION_ONLY' ? [storyAudienceInvitation(index)] : [],
     isSportsMatch: index === 1,
     name: faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
@@ -179,6 +191,8 @@ function event(index = 0) {
     majorEvent: {
       id: 'major-1',
       name: 'CACiC',
+      audience: majorEventsAudience(0),
+      audienceCourseCodes: majorEventsAudience(0) === 'COURSE_ONLY' ? ['12'] : [],
       startDate: isoDaysFromNow(7, 9),
       endDate: isoDaysFromNow(10, 18),
     },
@@ -207,6 +221,30 @@ function event(index = 0) {
     createdById: 'storybook-admin',
     updatedAt: isoDaysFromNow(-1),
     updatedById: 'storybook-admin',
+  };
+}
+
+function storyAudience(index: number): 'PUBLIC' | 'UNESP_ONLY' | 'COURSE_ONLY' | 'INVITATION_ONLY' {
+  return ['PUBLIC', 'UNESP_ONLY', 'COURSE_ONLY', 'INVITATION_ONLY'][index % 4] as
+    | 'PUBLIC'
+    | 'UNESP_ONLY'
+    | 'COURSE_ONLY'
+    | 'INVITATION_ONLY';
+}
+
+function majorEventsAudience(index: number): 'PUBLIC' | 'UNESP_ONLY' | 'COURSE_ONLY' | 'INVITATION_ONLY' {
+  return storyAudience(index);
+}
+
+function storyAudienceInvitation(index: number) {
+  const personId = `person-${(index % 8) + 1}`;
+  return {
+    personId,
+    person: {
+      id: personId,
+      name: `Pessoa convidada ${index + 1}`,
+      email: `convidado${index + 1}@example.com`,
+    },
   };
 }
 

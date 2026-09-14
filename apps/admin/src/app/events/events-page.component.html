@@ -212,7 +212,7 @@
                   type="button"
                   matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar vínculos."
                   (click)="workspace.saveEvent('SCHEDULE')"
-                  [disabled]="workspace.loading()">
+                  [disabled]="workspace.loading() || workspace.audiencePublicationBlocked()">
                   <mat-icon>schedule</mat-icon>
                   Salvar e agendar
                 </button>
@@ -231,7 +231,7 @@
                 type="button"
                 [matTooltip]="publishEventActionTooltip()"
                 (click)="workspace.saveEvent('PUBLISH')"
-                [disabled]="workspace.loading() || workspace.eventForm.invalid">
+                [disabled]="workspace.loading() || workspace.eventForm.invalid || workspace.audiencePublicationBlocked()">
                 <mat-icon>{{ publishEventActionIcon() }}</mat-icon>
                 {{ publishEventActionLabel() }}
               </button>
@@ -516,6 +516,20 @@
               <input matInput formControlName="buttonLink" />
             </mat-form-field>
           </div>
+        </section>
+
+        <section class="surface field-group">
+          <app-audience-editor
+            [audience]="workspace.eventForm.controls.audience.value"
+            [courseCodes]="workspace.eventForm.controls.audienceCourseCodes.value"
+            [invitedPeople]="workspace.eventAudienceInvitations()"
+            [parentRestrictions]="workspace.audienceParentRestrictions()"
+            [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
+            [publicationError]="workspace.audiencePublicationError()"
+            [readOnly]="!canEditEvent(workspace.selectedEvent())"
+            (audienceChange)="workspace.eventForm.controls.audience.setValue($event)"
+            (courseCodesChange)="workspace.eventForm.controls.audienceCourseCodes.setValue($event)"
+            (invitedPeopleChange)="workspace.setEventAudienceInvitations($event)" />
         </section>
 
         <section class="surface field-group">

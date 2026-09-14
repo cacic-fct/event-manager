@@ -37,4 +37,28 @@ describe('CalendarApiService', () => {
 
     await expect(responsePromise).resolves.toEqual(new Set(['standalone-event', 'group-event', 'major-event']));
   });
+
+  it('marks anonymous calendar catalog requests explicitly', async () => {
+    const responsePromise = firstValueFrom(
+      service.getCalendarEvents({ query: '', eventType: 'ALL', startDateFrom: '2026-07-17T00:00:00.000Z' }, true),
+    );
+    const request = httpTesting.expectOne('/api/graphql');
+
+    expect(request.request.headers.get('X-Event-Audience')).toBe('public');
+    request.flush({ data: { publicCalendarEvents: [] } });
+
+    await expect(responsePromise).resolves.toEqual([]);
+  });
+
+  it('leaves audience context enabled for authenticated calendar catalog requests', async () => {
+    const responsePromise = firstValueFrom(
+      service.getCalendarEvents({ query: '', eventType: 'ALL', startDateFrom: '2026-07-17T00:00:00.000Z' }),
+    );
+    const request = httpTesting.expectOne('/api/graphql');
+
+    expect(request.request.headers.has('X-Event-Audience')).toBe(false);
+    request.flush({ data: { publicCalendarEvents: [] } });
+
+    await expect(responsePromise).resolves.toEqual([]);
+  });
 });

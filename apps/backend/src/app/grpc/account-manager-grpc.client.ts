@@ -2,6 +2,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { Injectable, Logger, OnModuleDestroy, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
+  M2MUserIdentifierLookupMatch,
   M2MPrivacySettingResponse,
   M2MTotpSeedRelayResponse,
   PrivacySettingTypeValue,
@@ -12,6 +13,10 @@ import { GrpcUnaryClient, grpcUnavailable, loadGrpcServiceDefinition, resolveGrp
 
 type PrivacySettingsGrpcResponse = {
   settings?: unknown;
+};
+
+type IdentifierLookupGrpcResponse = {
+  users?: unknown;
 };
 
 @Injectable()
@@ -55,6 +60,32 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
 
   relayTotpSeed(userId: string): Promise<M2MTotpSeedRelayResponse> {
     return this.call<M2MTotpSeedRelayResponse>('EnsureTotpSeed', { userId }, true);
+  }
+
+  async lookupUsersByEmail(email: string): Promise<M2MUserIdentifierLookupMatch[]> {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      return [];
+    }
+
+    const response = await this.call<IdentifierLookupGrpcResponse>(
+      'LookupUsersByIdentifier',
+      {
+        identifiers: [
+          {
+            requestId: 'event-manager-audience-email',
+            identifierType: 'email',
+            identifierValue: normalizedEmail,
+          },
+        ],
+      },
+      true,
+    );
+    if (!Array.isArray(response.users)) {
+      throw new ServiceUnavailableException('Account Manager returned an invalid user lookup response.');
+    }
+
+    return response.users.map((user) => this.parseUserLookupMatch(user));
   }
 
   onModuleDestroy(): void {
@@ -109,6 +140,32 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
       lastUpdated,
     };
   }
+
+  private parseUserLookupMatch(value: unknown): M2MUserIdentifierLookupMatch {
+    if (!isRecord(value)) {
+      throw new ServiceUnavailableException('Account Manager returned an invalid user lookup match.');
+    }
+
+    const requestId = readRequiredString(value, 'requestId');
+    const userId = readRequiredString(value, 'userId');
+    const name = readRequiredString(value, 'name');
+    const enrollmentNumber = readOptionalString(value, 'enrollmentNumber');
+    const email = readOptionalString(value, 'email');
+    const unespRole = readOptionalString(value, 'unespRole');
+    const unespRoleVerified = readOptionalBoolean(value, 'unespRoleVerified');
+    const secondaryEmails = readStringArray(value, 'secondaryEmails');
+
+    return {
+      requestId,
+      userId,
+      name,
+      ...(enrollmentNumber === undefined ? {} : { enrollmentNumber }),
+      ...(email === undefined ? {} : { email }),
+      ...(unespRole == null ? {} : { unespRole }),
+      ...(unespRoleVerified === undefined ? {} : { unespRoleVerified }),
+      ...(secondaryEmails.length === 0 ? {} : { secondaryEmails }),
+    };
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -117,4 +174,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPrivacySettingType(value: string): value is PrivacySettingTypeValue {
   return PRIVACY_SETTING_TYPE_VALUES.includes(value as PrivacySettingTypeValue);
+}
+
+function readRequiredString(value: Record<string, unknown>, key: string): string {
+  const candidate = value[key];
+  if (typeof candidate !== 'string' || !candidate.trim()) {
+    throw new ServiceUnavailableException(`Account Manager returned an invalid ${key} in a user lookup match.`);
+  }
+  return candidate.trim();
+}
+
+function readOptionalString(value: Record<string, unknown>, key: string): string | null | undefined {
+  const candidate = value[key];
+  if (candidate === undefined || candidate === null || candidate === '') {
+    return candidate === null ? null : undefined;
+  }
+  if (typeof candidate !== 'string') {
+    throw new ServiceUnavailableException(`Account Manager returned an invalid ${key} in a user lookup match.`);
+  }
+  return candidate.trim() || undefined;
+}
+
+function readOptionalBoolean(value: Record<string, unknown>, key: string): boolean | undefined {
+  const candidate = value[key];
+  if (candidate === undefined || candidate === null) {
+    return undefined;
+  }
+  if (typeof candidate !== 'boolean') {
+    throw new ServiceUnavailableException(`Account Manager returned an invalid ${key} in a user lookup match.`);
+  }
+  return candidate;
+}
+
+function readStringArray(value: Record<string, unknown>, key: string): string[] {
+  const candidate = value[key];
+  if (candidate === undefined || candidate === null) {
+    return [];
+  }
+  if (!Array.isArray(candidate) || candidate.some((item) => typeof item !== 'string')) {
+    throw new ServiceUnavailableException(`Account Manager returned an invalid ${key} in a user lookup match.`);
+  }
+  return candidate.map((item) => item.trim()).filter(Boolean);
 }

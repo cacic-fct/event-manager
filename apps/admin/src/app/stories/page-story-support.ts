@@ -8,6 +8,7 @@ import {
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import { EventAudience } from '@cacic-fct/shared-event-participation';
 import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
@@ -184,6 +185,8 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     subscriptionEndDate: [''],
     interestEnabled: [false],
     attendanceEligibility: formBuilder.control<AttendanceEligibility>('APPROVED_REGISTRATIONS_ONLY'),
+    audience: formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+    audienceCourseCodes: formBuilder.nonNullable.control<string[]>([]),
     maxCoursesPerAttendee: [''],
     maxLecturesPerAttendee: [''],
     maxUncategorizedPerAttendee: [''],
@@ -233,6 +236,8 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
       subscriptionEndDate: localDateTime(selectedMajorEvent.subscriptionEndDate),
       interestEnabled: Boolean(selectedMajorEvent.interestEnabled),
       attendanceEligibility: selectedMajorEvent.attendanceEligibility ?? 'APPROVED_REGISTRATIONS_ONLY',
+      audience: selectedMajorEvent.audience ?? EventAudience.PUBLIC,
+      audienceCourseCodes: selectedMajorEvent.audienceCourseCodes ?? [],
       rankedSubscriptionEnabled: Boolean(selectedMajorEvent.rankedSubscriptionEnabled),
       requiresImageLicenseAgreement: Boolean(selectedMajorEvent.requiresImageLicenseAgreement),
       isPaymentRequired: selectedMajorEvent.isPaymentRequired,
@@ -251,6 +256,9 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     selectedMajorEvent: signal(selectedMajorEvent),
     majorEventEvents: signal(linkedEvents),
     majorEventEventSearchResults: signal(searchResults),
+    majorEventAudienceInvitations: signal(
+      selectedMajorEvent?.audienceInvitations?.map((invitation) => invitation.person) ?? [],
+    ),
     majorEventForm,
     majorEventEventSearchForm: formBuilder.nonNullable.group({ query: ['Angular', [Validators.required]] }),
     get priceTiers() {
@@ -270,6 +278,13 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     searchEventsForSelectedMajorEvent: async () => undefined,
     addEventToSelectedMajorEvent: async () => undefined,
     removeEventFromSelectedMajorEvent: async () => undefined,
+    setMajorEventAudienceInvitations: () => undefined,
+    audienceParentRestrictions: () => [],
+    shouldManageAttendanceInvitations: () =>
+      majorEventForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      majorEventForm.controls.attendanceEligibility.value === 'INVITED_ONLY',
+    audiencePublicationError: () => null,
+    audiencePublicationBlocked: () => false,
   };
 }
 
@@ -290,6 +305,8 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     emoji: ['❔'],
     interestEnabled: [false],
     attendanceEligibility: formBuilder.control<AttendanceEligibility | null>(null),
+    audience: formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+    audienceCourseCodes: formBuilder.nonNullable.control<string[]>([]),
     shouldIssueCertificate: [false],
     shouldIssueCertificateForNonPayingAttendees: [false],
     shouldIssueCertificateForNonSubscribedAttendees: [false],
@@ -324,6 +341,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     selectedEventGroup: signal(selectedGroup),
     eventGroupEvents: signal(linkedEvents),
     eventGroupEventSearchResults: signal(eventSummaries.slice(0, 2)),
+    eventGroupAudienceInvitations: signal(selectedGroup?.audienceInvitations?.map((invitation) => invitation.person) ?? []),
     savingEventGroup: signal(args.mode === 'loading'),
     selectedEventGroupHasMajorEventEvents: computed(() =>
       linkedEvents.some((eventItem) => Boolean(eventItem.majorEvent)),
@@ -346,6 +364,13 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     searchEventsForSelectedGroup: async () => undefined,
     addEventToSelectedGroup: async () => undefined,
     removeEventFromSelectedGroup: async () => undefined,
+    setEventGroupAudienceInvitations: () => undefined,
+    audienceParentRestrictions: () => [],
+    shouldManageAttendanceInvitations: () =>
+      eventGroupForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      eventGroupForm.controls.attendanceEligibility.value === 'INVITED_ONLY',
+    audiencePublicationError: () => null,
+    audiencePublicationBlocked: () => false,
   };
 }
 
@@ -375,6 +400,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     allowSubscription: [false],
     interestEnabled: [false],
     attendanceEligibility: formBuilder.control<AttendanceEligibility | null>(null),
+    audience: formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+    audienceCourseCodes: formBuilder.nonNullable.control<string[]>([]),
     requiresImageLicenseAgreement: [false],
     subscriptionStartDate: [''],
     subscriptionEndDate: [''],
@@ -420,6 +447,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
       allowSubscription: selectedEvent.allowSubscription,
       interestEnabled: Boolean(selectedEvent.interestEnabled),
       attendanceEligibility: selectedEvent.attendanceEligibility ?? null,
+      audience: selectedEvent.audience ?? EventAudience.PUBLIC,
+      audienceCourseCodes: selectedEvent.audienceCourseCodes ?? [],
       requiresImageLicenseAgreement: Boolean(selectedEvent.requiresImageLicenseAgreement),
       subscriptionStartDate: localDateTime(selectedEvent.subscriptionStartDate),
       subscriptionEndDate: localDateTime(selectedEvent.subscriptionEndDate),
@@ -465,6 +494,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     eventsPagination: createWorkspaceListPagination(),
     selectedEvent: signal(selectedEvent),
     selectedEventDraft: signal(draft),
+    eventAudienceInvitations: signal(selectedEvent?.audienceInvitations?.map((invitation) => invitation.person) ?? []),
     eventLecturers: signal([{ personId: people[0].id, name: people[0].name }]),
     eventAttendanceCollectors: signal([{ personId: people[1].id, name: people[1].name }]),
     selectedMajorEventName: signal(selectedEvent?.majorEvent?.name ?? ''),
@@ -545,14 +575,25 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     searchAttendanceCollectorCandidates: async () => undefined,
     addAttendanceCollector: async () => undefined,
     removeAttendanceCollector: async () => undefined,
+    setEventAudienceInvitations: () => undefined,
+    audienceParentRestrictions: () => [],
+    shouldManageAttendanceInvitations: () =>
+      eventForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      eventForm.controls.attendanceEligibility.value === 'INVITED_ONLY',
+    audiencePublicationError: () => null,
+    audiencePublicationBlocked: () => false,
   };
 }
 
 function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
   return createStoryPublicMajorEvents({ count: args.itemCount }).map((majorEvent, index) => {
     const adapted = adaptMajorEvent(majorEvent, args.publicationState);
+    const audience = audienceForStoryIndex(index);
     return {
       ...adapted,
+      audience,
+      audienceCourseCodes: audience === EventAudience.COURSE_ONLY ? ['12'] : [],
+      audienceInvitations: audience === EventAudience.INVITATION_ONLY ? [storyAudienceInvitation(index)] : [],
       interestEnabled: index === 0,
       attendanceEligibility: index === 0 ? 'ANYONE' : 'APPROVED_REGISTRATIONS_ONLY',
       name: args.longContent
@@ -575,10 +616,14 @@ function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
 function buildEventGroups(args: PageStoryArgs): EventGroup[] {
   return createStoryPublicEventGroups({ count: args.itemCount }).map((group, index) => {
     const adapted = adaptEventGroup(group);
+    const audience = audienceForStoryIndex(index);
     const shouldIssueCertificate =
       args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
     return {
       ...adapted,
+      audience,
+      audienceCourseCodes: audience === EventAudience.COURSE_ONLY ? ['12'] : [],
+      audienceInvitations: audience === EventAudience.INVITATION_ONLY ? [storyAudienceInvitation(index)] : [],
       interestEnabled: index === 0,
       attendanceEligibility: index === 0 ? 'ANYONE' : null,
       name: args.longContent
@@ -603,8 +648,12 @@ function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups
     );
     const shouldIssueCertificate =
       args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
+    const audience = audienceForStoryIndex(index);
     return {
       ...adapted,
+      audience,
+      audienceCourseCodes: audience === EventAudience.COURSE_ONLY ? ['12'] : [],
+      audienceInvitations: audience === EventAudience.INVITATION_ONLY ? [storyAudienceInvitation(index)] : [],
       interestEnabled: index === 0,
       attendanceEligibility: index === 0 ? 'ANYONE' : null,
       name: args.longContent
@@ -623,6 +672,24 @@ function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups
         args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
     };
   });
+}
+
+function audienceForStoryIndex(index: number): EventAudience {
+  return [EventAudience.PUBLIC, EventAudience.UNESP_ONLY, EventAudience.COURSE_ONLY, EventAudience.INVITATION_ONLY][
+    index % 4
+  ];
+}
+
+function storyAudienceInvitation(index: number) {
+  const personId = `audience-person-${index + 1}`;
+  return {
+    personId,
+    person: {
+      id: personId,
+      name: `Pessoa convidada ${index + 1}`,
+      email: `convidado${index + 1}@example.com`,
+    },
+  };
 }
 
 function adaptMajorEvent(majorEvent: PublicMajorEvent, publicationState: Event['publicationState']): MajorEvent {

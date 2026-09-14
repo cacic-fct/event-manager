@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { Context, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../context.service';
 import { CurrentUserSubscriptionFeed } from '../models';
@@ -16,6 +17,7 @@ export class CurrentUserSubscriptionFeedResolver {
     description:
       'Get the current user subscription feed grouped by single events and event groups, excluding major-event content.',
   })
+  @IncludePastParticipation()
   async currentUserSubscriptionFeed(@Context() context: GraphqlContext): Promise<CurrentUserSubscriptionFeed> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);

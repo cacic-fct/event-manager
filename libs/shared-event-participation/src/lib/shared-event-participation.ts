@@ -3,6 +3,16 @@ import type { EventInterest } from '@cacic-fct/event-manager-public-contracts/ty
 export { AttendanceEligibility, EventFormAudience, InterestTargetType } from '@cacic-fct/event-manager-public-contracts/types';
 export type { EventInterest } from '@cacic-fct/event-manager-public-contracts/types';
 
+/** Access restrictions are evaluated cumulatively from the major event to the activity. */
+export const EventAudience = {
+  PUBLIC: 'PUBLIC',
+  UNESP_ONLY: 'UNESP_ONLY',
+  COURSE_ONLY: 'COURSE_ONLY',
+  INVITATION_ONLY: 'INVITATION_ONLY',
+} as const;
+
+export type EventAudience = (typeof EventAudience)[keyof typeof EventAudience];
+
 /** Interest history is retained, but interest-only forms target people still considering registration. */
 export function matchesEventFormAudience(
   audiences: readonly EventFormAudience[],
@@ -73,4 +83,3 @@ export const ATTENDANCE_ELIGIBILITY_LABELS: Record<AttendanceEligibility, string
   APPROVED_REGISTRATIONS_ONLY: 'Pessoas com inscrição aprovada',
   INVITED_ONLY: 'Pessoas convidadas',
 };
-

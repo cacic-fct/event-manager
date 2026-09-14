@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { AttendanceCategory, Prisma, PrismaClient } from '@prisma/client';
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import { normalizeAttendancePriceTier } from './attendance-price-tier-policy';
@@ -9,6 +9,10 @@ import {
   eventAttendanceEligibility,
 } from './attendance-eligibility';
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import {
+  AudienceInvitationService,
+  invitationFactForAttendance,
+} from '../audiences/audience-invitation.service';
 
 type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 
@@ -72,7 +76,10 @@ export function attendanceAssessmentKey(personId: string, eventId: string): stri
 
 @Injectable()
 export class AttendanceCategoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly audienceInvitations?: AudienceInvitationService,
+  ) {}
 
   async resolveCurrentAssessments(
     attendances: readonly AttendanceAssessmentSubject[],
@@ -309,6 +316,13 @@ export class AttendanceCategoryService {
       ...new Set(attendances.flatMap((attendance) => attendance.event.regularAttendancePriceTierIds ?? [])),
     ];
     const majorEventIdFilter = majorEventIds.length === 1 ? majorEventIds[0] : { in: majorEventIds };
+    const invitationFacts = this.audienceInvitations
+      ? await this.audienceInvitations.getEventInvitationFacts(
+          attendances.map((attendance) => attendance.event),
+          personIds,
+          tx,
+        )
+      : new Map();
 
     const [eventSubscriptions, majorEventSubscriptions, priceTiers] = await Promise.all([
       tx.eventSubscription.findMany({
@@ -405,6 +419,10 @@ export class AttendanceCategoryService {
                   (selectedEvent) => selectedEvent.eventId === event.id,
                 ),
                 autoSubscribe: event.autoSubscribe,
+                invited: invitationFactForAttendance(
+                  event,
+                  invitationFacts.get(`${attendance.personId}:${event.id}`),
+                ),
               })
             : AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
         ];
@@ -485,14 +503,19 @@ export class AttendanceCategoryService {
               },
             },
           })
-        : Promise.resolve(null),
+      : Promise.resolve(null),
     ]);
+
+    const invited = this.audienceInvitations
+      ? await this.audienceInvitations.isInvitedForAttendance(event, personId, tx)
+      : undefined;
 
     return currentAssessmentForAttendance(event, {
       hasEventSubscription: Boolean(eventSubscription),
       majorEventSubscriptionStatus: majorEventSubscription?.subscriptionStatus,
       hasSelectedEvent: majorEventSubscription?.selectedEvents?.some((selected) => selected.eventId === event.id),
       autoSubscribe: event.autoSubscribe,
+      invited,
     });
   }
 }

@@ -102,6 +102,7 @@ describe('merge candidate relation movement', () => {
       movedEventSubscriptionIds: ['event-subscription-1'],
       movedEventGroupSubscriptionIds: ['group-subscription-1'],
       movedMajorEventSubscriptionIds: ['major-subscription-1'],
+      movedAudienceInvitationSnapshots: [],
       movedRoleAssignmentIds: [],
       archivedRoleAssignmentIds: [],
       movedPermissionGroupMembershipIds: [],
@@ -169,6 +170,7 @@ describe('merge candidate relation movement', () => {
       movedEventSubscriptionIds: [],
       movedEventGroupSubscriptionIds: [],
       movedMajorEventSubscriptionIds: [],
+      movedAudienceInvitationSnapshots: [],
       movedRoleAssignmentIds: [],
       archivedRoleAssignmentIds: [],
       movedPermissionGroupMembershipIds: [],
@@ -285,6 +287,18 @@ function createTransaction() {
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
+    },
+    eventAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+    },
+    eventGroupAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+    },
+    majorEventAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
     },
     eventManagerRoleAssignment: {
       findMany: jest.fn().mockResolvedValue([]),

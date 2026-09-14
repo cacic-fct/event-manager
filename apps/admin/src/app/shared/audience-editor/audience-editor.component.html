@@ -1,0 +1,111 @@
+<section class="audience-editor" [attr.aria-labelledby]="editorTitleId">
+  <div class="audience-editor-heading">
+    <div>
+      <h4 [id]="editorTitleId">Quem pode acessar</h4>
+      <p>Escolha a regra de acesso deste nível.</p>
+    </div>
+  </div>
+
+  <mat-radio-group
+    class="audience-options"
+    aria-label="Regra de acesso"
+    [value]="audience()"
+    [disabled]="readOnly()"
+    (change)="selectAudience($event.value)">
+    @for (option of audienceOptions; track option.value) {
+      <mat-radio-button class="audience-option" [value]="option.value">
+        <span class="audience-option-copy">
+          <strong>{{ option.label }}</strong>
+          <small>{{ option.description }}</small>
+        </span>
+      </mat-radio-button>
+    }
+  </mat-radio-group>
+
+  <p class="audience-parent-hint">{{ parentRestrictionCopy() }}</p>
+  <p class="audience-selected-hint" aria-live="polite">{{ selectedAudienceHint() }}</p>
+
+  @if (publicationError(); as error) {
+    <p class="audience-error" role="alert">{{ error }}</p>
+  }
+
+  @if (audience() === EventAudience.COURSE_ONLY) {
+    <mat-form-field class="audience-course-field" subscriptSizing="dynamic">
+      <mat-label>Curso permitido</mat-label>
+      @if (courseOptions.length === 1) {
+        <input matInput readonly [value]="courseOptions[0].label" />
+      } @else {
+        <mat-select
+          multiple
+          [value]="courseCodes()"
+          [disabled]="readOnly()"
+          aria-label="Cursos permitidos"
+          (valueChange)="setCourseCodes($event)">
+          @for (course of courseOptions; track course.value) {
+            <mat-option [value]="course.value">{{ course.label }}</mat-option>
+          }
+        </mat-select>
+      }
+    </mat-form-field>
+  }
+
+  @if (showInvitationManagement()) {
+    <div class="audience-invitations" role="group" [attr.aria-labelledby]="invitationsTitleId">
+      <div>
+        <h5 [id]="invitationsTitleId">{{ invitationSectionTitle() }}</h5>
+        <p class="audience-section-copy">{{ invitationSectionCopy() }}</p>
+      </div>
+
+      <app-person-search
+        label="Buscar pessoa para convidar"
+        [query]="searchQuery()"
+        [results]="availableSearchResults()"
+        [loading]="searchLoading()"
+        [disabled]="readOnly() || !canSearchPeople()"
+        [disabledReason]="searchDisabledReason()"
+        resultActionIcon="person_add"
+        resultActionLabel="Convidar"
+        (queryChange)="onSearchQueryChange($event)"
+        (searchRequested)="searchPeople($event)"
+        (personSelected)="addInvitedPerson($event)" />
+
+      @if (searchError(); as error) {
+        <p class="audience-error" role="alert">{{ error }}</p>
+      }
+
+      @if (invitationDataWarning(); as warning) {
+        <p class="audience-warning" role="status">{{ warning }}</p>
+        @if (!readOnly() && canSearchPeople()) {
+          <button mat-stroked-button type="button" (click)="retryUnresolvedInvitations()">
+            <mat-icon aria-hidden="true">refresh</mat-icon>
+            Tentar carregar novamente
+          </button>
+        }
+      }
+
+      @if (invitedPeople().length) {
+        <ul class="invited-people" aria-label="Pessoas convidadas selecionadas">
+          @for (person of invitedPeople(); track person.id) {
+            <li class="invited-person">
+              <span>
+                <strong>{{ person.name }}</strong>
+                <small>{{ person.email || 'Sem e-mail principal' }}</small>
+              </span>
+              @if (!readOnly()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  [attr.aria-label]="'Remover convite para ' + person.name"
+                  (click)="removeInvitedPerson(person.id)">
+                  <mat-icon aria-hidden="true">person_remove</mat-icon>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="audience-empty">Nenhuma pessoa convidada ainda.</p>
+      }
+    </div>
+  }
+</section>

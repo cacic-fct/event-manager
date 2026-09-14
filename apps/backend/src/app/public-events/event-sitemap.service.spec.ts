@@ -1,7 +1,10 @@
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_EVENT_WHERE } from './models';
-import { EVENT_SITEMAP_URL_LIMIT, EventSitemapService } from './event-sitemap.service';
+import {
+  EVENT_SITEMAP_URL_LIMIT,
+  EventSitemapService,
+  PUBLIC_SITEMAP_EVENT_WHERE,
+} from './event-sitemap.service';
 
 describe('EventSitemapService', () => {
   const createContext = () => {
@@ -38,7 +41,7 @@ describe('EventSitemapService', () => {
     });
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
-      where: PUBLIC_EVENT_WHERE,
+      where: PUBLIC_SITEMAP_EVENT_WHERE,
       select: { id: true, updatedAt: true },
       orderBy: { id: 'asc' },
     });

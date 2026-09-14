@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from './models';
 import { PublicEventSitemapEntry, PublicEventSitemapPage } from './event-sitemap.models';
@@ -12,6 +13,55 @@ type CachedSitemapEntry = {
   id: string;
   updatedAt: string;
 };
+
+// The sitemap is a shared anonymous cache. Keep its boundary independent from
+// the request audience so an authenticated refresh can never publish a
+// restricted event into the global sitemap.
+export const PUBLIC_SITEMAP_EVENT_WHERE = {
+  AND: [
+    PUBLIC_EVENT_WHERE,
+    { audience: 'PUBLIC' },
+    {
+      OR: [
+        { majorEventId: null },
+        {
+          majorEvent: {
+            is: {
+              deletedAt: null,
+              audience: 'PUBLIC',
+              publicationState: 'PUBLISHED',
+            },
+          },
+        },
+      ],
+    },
+    {
+      OR: [
+        { eventGroupId: null },
+        {
+          eventGroup: {
+            is: {
+              deletedAt: null,
+              audience: 'PUBLIC',
+              OR: [
+                { majorEventId: null },
+                {
+                  majorEvent: {
+                    is: {
+                      deletedAt: null,
+                      audience: 'PUBLIC',
+                      publicationState: 'PUBLISHED',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    },
+  ],
+} satisfies Prisma.EventWhereInput;
 
 @Injectable()
 export class EventSitemapService {
@@ -74,7 +124,7 @@ export class EventSitemapService {
 
   private async generateAndCacheEntries(): Promise<PublicEventSitemapEntry[]> {
     const entries = await this.prisma.event.findMany({
-      where: PUBLIC_EVENT_WHERE,
+      where: PUBLIC_SITEMAP_EVENT_WHERE,
       select: {
         id: true,
         updatedAt: true,

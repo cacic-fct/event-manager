@@ -1,4 +1,5 @@
 export * from './shared-data-types/enums';
+export * from './shared-data-types/event-audience';
 export * from './shared-data-types/auth';
 export * from './shared-data-types/major-events';
 export * from './shared-data-types/event-groups';

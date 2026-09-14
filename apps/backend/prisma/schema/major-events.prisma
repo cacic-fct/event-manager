@@ -1,4 +1,7 @@
 model MajorEvent {
+  audience EventAudience @default(PUBLIC)
+  audienceCourseCodes String[] @default([])
+  audienceInvitations MajorEventAudienceInvitation[]
   id        String   @id @default(uuid(7))
   name      String
   startDate DateTime

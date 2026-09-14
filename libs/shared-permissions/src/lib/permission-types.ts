@@ -1,4 +1,7 @@
 export const Permission = {
+  EventAudience: {
+    Bypass: 'event-audience#bypass',
+  },
   Certificate: {
     Read: 'certificate#read',
     Issue: 'certificate#issue',

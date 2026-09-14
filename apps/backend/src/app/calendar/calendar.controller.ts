@@ -39,7 +39,10 @@ export class CalendarController {
   })
   async downloadPublicEventCalendar(@Param('eventId') eventId: string, @Res() response: Response): Promise<void> {
     const download = await this.calendars.buildPublicEventCalendar(eventId, this.publicAppOrigin);
-    this.sendCalendar(response, download, 'public, max-age=3600');
+    // Public routes may still carry an authenticated audience cookie. Keep
+    // this response private so a shared cache cannot replay a restricted
+    // event calendar to another caller.
+    this.sendCalendar(response, download, 'private, max-age=3600');
   }
 
   @Get('feeds/:feedKey.ics')

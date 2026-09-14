@@ -46,7 +46,7 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: of(convertToParamMap({})) },
+          useValue: { paramMap: of(convertToParamMap({})), snapshot: { url: [] } },
         },
         { provide: SubscriptionsService, useValue: workspace },
         { provide: PermissionsService, useValue: permissions },

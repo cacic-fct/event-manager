@@ -98,6 +98,10 @@ describe('CurrentUserEventMapperService', () => {
         }),
         eventGroupId: 'group-1',
         eventGroup: {
+          attendanceEligibility: undefined,
+          interestEnabled: false,
+          majorEventId: undefined,
+          requiresImageLicenseAgreement: undefined,
           id: 'group-1',
           name: 'Minicursos',
           emoji: '🧪',

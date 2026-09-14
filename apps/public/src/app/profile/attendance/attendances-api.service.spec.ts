@@ -21,6 +21,25 @@ describe('AttendancesApiService', () => {
     httpTesting.verify();
   });
 
+  it('keeps historical attendance details when the event is no longer available in the public catalog', async () => {
+    const result = firstValueFrom(service.getEventDetails('past-event'));
+    const event = eventFixture('past-event', 'Participação anterior à formatura');
+    const requests = httpTesting.match('/api/graphql');
+    for (const request of requests) {
+      const query = String(request.request.body.query);
+      if (query.includes('query CurrentUserEventDetails')) {
+        request.flush({ data: { currentUserEventSubscription: null, currentUserEventAttendance: { eventId: 'past-event', attendedAt: event.endDate, event } } });
+      } else if (query.includes('currentUserCertificates')) {
+        request.flush({ data: { currentUserCertificates: [] } });
+      } else if (query.includes('currentUserOrganizerInfo')) {
+        request.flush({ data: { currentUserOrganizerInfo: null } });
+      } else {
+        request.flush({ errors: [{ message: 'Event was not found.' }] });
+      }
+    }
+    await expect(result).resolves.toEqual(expect.objectContaining({ event, attendance: expect.objectContaining({ eventId: 'past-event' }) }));
+  });
+
   it('maps the mixed subscription feed into the public profile model', async () => {
     const responsePromise = firstValueFrom(service.getSubscriptionsFeed());
 

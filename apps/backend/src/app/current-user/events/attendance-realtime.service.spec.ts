@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { firstValueFrom, take } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from '../../auth/auth.constants';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
@@ -376,6 +377,67 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     service.onModuleDestroy();
   });
 
+  it('evaluates subscription updates under each connected audience principal', async () => {
+    const { publicEvents, service } = createService();
+    let pollPhase = false;
+    publicEvents.getPublicEventSubscriptionPagePayload.mockImplementation(async () => {
+      const principal = audienceContext.getStore();
+      return {
+        subscriptionSummaries: [
+          {
+            eventId: principal?.isUnesp
+              ? pollPhase
+                ? 'unesp-visible-event-updated'
+                : 'unesp-visible-event'
+              : pollPhase
+                ? 'public-visible-event-updated'
+                : 'public-visible-event',
+            hasAvailableSlots: true,
+            availableSlots: 1,
+            projectedQueuePosition: null,
+          },
+        ],
+      };
+    });
+
+    const publicMessages = collectMessages(
+      audienceContext.run(ANONYMOUS_AUDIENCE, () => service.stream({ headers: {} } as Request, ['major-1'], [])),
+    );
+    const unespMessages = collectMessages(
+      audienceContext.run(
+        { ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true },
+        () => service.stream({ headers: { cookie: 'session=unesp' } } as Request, ['major-1'], []),
+      ),
+    );
+    await waitForMessages(publicMessages.messages, 1);
+    await waitForMessages(unespMessages.messages, 1);
+    publicMessages.messages.length = 0;
+    unespMessages.messages.length = 0;
+    pollPhase = true;
+
+    await notifyMajorEventSubscribers(service, 'major-1');
+
+    expect(publicEvents.getPublicEventSubscriptionPagePayload).toHaveBeenCalledTimes(4);
+    expect(publicMessages.messages[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { subscriptionSummaries: [expect.objectContaining({ eventId: 'public-visible-event-updated' })] },
+        }),
+      }),
+    );
+    expect(unespMessages.messages[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { subscriptionSummaries: [expect.objectContaining({ eventId: 'unesp-visible-event-updated' })] },
+        }),
+      }),
+    );
+
+    publicMessages.subscription.unsubscribe();
+    unespMessages.subscription.unsubscribe();
+    service.onModuleDestroy();
+  });
+
   it('notifies each connected person once when broadcasting pending attendances', async () => {
     const { auth, currentUserContext, mapper, prisma, service } = createService();
     auth.authenticateSession.mockResolvedValue({ sub: 'user-1' });
@@ -393,8 +455,8 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     const second = collectMessages(
       service.stream({ cookies: { [AUTH_SESSION_COOKIE_NAME]: 'session-2' }, headers: {} } as Request, [], []),
     );
-    await waitForMessages(first.messages, 2);
-    await waitForMessages(second.messages, 2);
+    await waitForMessages(first.messages, 1);
+    await waitForMessages(second.messages, 1);
     first.messages.length = 0;
     second.messages.length = 0;
     prisma.event.findMany.mockClear();

@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
@@ -112,6 +113,7 @@ export class CurrentUserEventSubscriptionsResolver {
     name: 'currentUserEventSubscription',
     nullable: true,
   })
+  @IncludePastParticipation()
   async currentUserEventSubscription(
     @Args('eventId', { type: () => String }) eventId: string,
     @Context() context: GraphqlContext,
@@ -144,6 +146,7 @@ export class CurrentUserEventSubscriptionsResolver {
   @Query(() => [CurrentUserEventSubscription], {
     name: 'currentUserMajorEventEventSubscriptions',
   })
+  @IncludePastParticipation()
   async currentUserMajorEventEventSubscriptions(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
     @Context() context: GraphqlContext,
@@ -301,6 +304,7 @@ export class CurrentUserEventSubscriptionsResolver {
     name: 'currentUserEventGroupSubscription',
     nullable: true,
   })
+  @IncludePastParticipation()
   async currentUserEventGroupSubscription(
     @Args('eventGroupId', { type: () => String }) eventGroupId: string,
     @Context() context: GraphqlContext,

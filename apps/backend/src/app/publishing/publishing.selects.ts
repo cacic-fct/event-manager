@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { PUBLIC_EVENT_GROUP_SELECT } from '../public-events/models';
+import { AUDIENCE_PUBLICATION_SELECT } from '../audiences/audience-publication';
 
 export const PUBLICATION_EVENT_SELECT = {
+  ...AUDIENCE_PUBLICATION_SELECT,
   id: true,
   name: true,
   emoji: true,
@@ -14,6 +16,7 @@ export const PUBLICATION_EVENT_SELECT = {
   majorEventId: true,
   majorEvent: {
     select: {
+      ...AUDIENCE_PUBLICATION_SELECT,
       id: true,
       name: true,
       deletedAt: true,
@@ -23,6 +26,7 @@ export const PUBLICATION_EVENT_SELECT = {
   eventGroupId: true,
   eventGroup: {
     select: {
+      ...AUDIENCE_PUBLICATION_SELECT,
       id: true,
       name: true,
       emoji: true,
@@ -42,6 +46,7 @@ export const PUBLICATION_EVENT_SELECT = {
 } satisfies Prisma.EventSelect;
 
 export const PUBLICATION_MAJOR_EVENT_SELECT = {
+  ...AUDIENCE_PUBLICATION_SELECT,
   id: true,
   name: true,
   emoji: true,
@@ -61,6 +66,7 @@ export const PUBLICATION_MAJOR_EVENT_SELECT = {
 } satisfies Prisma.MajorEventSelect;
 
 export const PUBLICATION_EVENT_GROUP_WITH_EVENTS_SELECT = {
+  ...AUDIENCE_PUBLICATION_SELECT,
   ...PUBLIC_EVENT_GROUP_SELECT,
   events: {
     where: {

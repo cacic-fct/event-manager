@@ -1,4 +1,7 @@
 model People {
+  eventAudienceInvitations EventAudienceInvitation[]
+  eventGroupAudienceInvitations EventGroupAudienceInvitation[]
+  majorEventAudienceInvitations MajorEventAudienceInvitation[]
   id               String   @id @default(uuid(7))
   name             String
   email            String?

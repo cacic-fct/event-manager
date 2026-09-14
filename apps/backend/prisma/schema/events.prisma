@@ -18,6 +18,9 @@ enum PublicationPreviewTargetType {
 }
 
 model Event {
+  audience EventAudience @default(PUBLIC)
+  audienceCourseCodes String[] @default([])
+  audienceInvitations EventAudienceInvitation[]
   id            String    @id @default(uuid(7))
   name          String
   creditMinutes Int?
