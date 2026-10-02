@@ -16,7 +16,7 @@ interface LoginStoryArgs {
 const defaultArgs: LoginStoryArgs = {
   email: 'admin@cacic.dev',
   password: 'storybook-password',
-  returnTo: '/events',
+  returnTo: '/event-workspace',
   authenticated: false,
   passwordOutcome: 'success',
   ssoOutcome: 'success',
@@ -111,7 +111,7 @@ async function fillCredentials(canvasElement: HTMLElement, args: LoginStoryArgs)
 }
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement, args }) => {
     const canvas = await fillCredentials(canvasElement, args);
     await userEvent.click(canvas.getByRole('button', { name: /^Entrar$/ }));
@@ -157,7 +157,7 @@ export const LongCredentialsMobile: Story = {
   args: {
     email: 'administracao.interdisciplinar.de.eventos.universitarios@instituicao.example.br',
     password: 'senha-de-demonstracao-muito-longa-para-validar-o-campo',
-    returnTo: '/major-events/gestao-interdisciplinar-de-eventos',
+    returnTo: '/event-workspace/major-event/gestao-interdisciplinar-de-eventos',
   },
   parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },

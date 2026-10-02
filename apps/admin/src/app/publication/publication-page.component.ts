@@ -136,8 +136,18 @@ export class PublicationPageComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const targetType = params.get('targetType');
       const targetId = params.get('targetId');
-      this.requestedNode.set(this.parseRequestedNode(targetType, targetId));
-      this.selectRequestedNode();
+      const requestedNode = this.parseRequestedNode(targetType, targetId);
+      const previousNode = this.requestedNode();
+      this.requestedNode.set(requestedNode);
+      if (
+        this.workspace() &&
+        (previousNode?.targetType !== requestedNode?.targetType || previousNode?.id !== requestedNode?.id)
+      ) {
+        this.pageIndex.set(0);
+        void this.refresh();
+      } else {
+        this.selectRequestedNode();
+      }
     });
     void this.refresh();
     this.realtime
@@ -316,16 +326,16 @@ export class PublicationPageComponent {
     }
 
     if (selected.targetType === 'MAJOR_EVENT') {
-      void this.router.navigate(['/major-events', selected.id]);
+      void this.router.navigate(['/event-workspace', 'major-event', selected.id, 'settings']);
       return;
     }
 
     if (selected.targetType === 'EVENT_GROUP') {
-      void this.router.navigate(['/groups', selected.id]);
+      void this.router.navigate(['/event-workspace', 'group', selected.id, 'settings']);
       return;
     }
 
-    void this.router.navigate(['/events', selected.id]);
+    void this.router.navigate(['/event-workspace', 'event', selected.id, 'settings']);
   }
 
   targetIcon(targetType: PublicationTargetType): string {

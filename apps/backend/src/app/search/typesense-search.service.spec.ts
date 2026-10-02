@@ -191,6 +191,39 @@ describe('TypesenseSearchService', () => {
     });
   });
 
+  it('uses contextual field weights and stable secondary sorts for ranked context search', async () => {
+    const { client, service } = createEnabledService();
+    client.documents.search.mockResolvedValue({ found: 1, hits: [{
+      document: { id: 'context-1' },
+      text_match_info: { score: '99' },
+    }] });
+
+    await expect(service.searchEventsRanked('semana laboratorio', { offset: 2, limit: 3 })).resolves.toEqual({
+      available: true,
+      found: 1,
+      hits: [{ id: 'context-1', score: '99' }],
+    });
+    await service.searchEventGroupsRanked('semana', { limit: 3 });
+    await service.searchMajorEventsRanked('semana', { limit: 3 });
+
+    expect(client.documents.search).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      query_by: 'name,majorEventName,eventGroupName,shortDescription,description,locationDescription,type,emoji',
+      query_by_weights: '10,6,6,5,3,2,1,1',
+      sort_by: '_text_match:desc,startDate:desc',
+      offset: 2,
+    }));
+    expect(client.documents.search).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      query_by: 'name,majorEventName,emoji',
+      query_by_weights: '10,6,1',
+      sort_by: '_text_match:desc',
+    }));
+    expect(client.documents.search).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      query_by: 'name,description',
+      query_by_weights: '10,3',
+      sort_by: '_text_match:desc,startDate:desc',
+    }));
+  });
+
   it('searches audit logs with match-all queries, filters, sorting, and totals', async () => {
     const { client, service } = createEnabledService();
     client.documents.search.mockResolvedValueOnce({

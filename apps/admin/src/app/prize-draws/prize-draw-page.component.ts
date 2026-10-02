@@ -4,11 +4,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PrizeDraw, PrizeDrawEligibleEntry, PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { publicPrizeDrawUrl } from '@cacic-fct/shared-utils';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, of } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -27,8 +29,11 @@ export class PrizeDrawPageComponent {
   private readonly feedback = inject(AdminFeedbackService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly destroyRef = inject(DestroyRef);
   private requestGeneration = 0;
+  private loadGeneration = 0;
   private readonly reel = viewChild(PrizeDrawReelComponent);
 
   protected readonly Permission = Permission;
@@ -40,10 +45,12 @@ export class PrizeDrawPageComponent {
   readonly reelNames = computed(() => this.shortNames(this.entries()));
   readonly lastResult = signal<PrizeDrawSpinResult | null>(null);
   readonly reducedMotion = signal(false);
-  readonly demoMode = this.route.snapshot.queryParamMap.get('demo') === 'true';
+  private readonly queryParams = toSignal(this.route.queryParamMap ?? of(this.route.snapshot.queryParamMap), { initialValue: this.route.snapshot.queryParamMap });
+  readonly demoMode = computed(() => this.queryParams().get('demo') === 'true');
 
   constructor() {
     if (!isPlatformBrowser(this.platformId)) return;
+    this.destroyRef.onDestroy(() => { this.requestGeneration++; this.loadGeneration++; });
     if (typeof matchMedia === 'function') {
       const query = matchMedia('(prefers-reduced-motion: reduce)');
       this.reducedMotion.set(query.matches);
@@ -54,7 +61,14 @@ export class PrizeDrawPageComponent {
       query.addEventListener('change', listener);
       this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
     }
-    void this.load();
+    (this.route.paramMap ?? of(this.route.snapshot.paramMap)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.requestGeneration++;
+      this.requesting.set(false);
+      this.draw.set(null);
+      this.entries.set([]);
+      this.lastResult.set(null);
+      void this.load();
+    });
   }
 
   async run(demo: boolean): Promise<void> {
@@ -121,6 +135,7 @@ export class PrizeDrawPageComponent {
   }
 
   private async load(showLoading = true): Promise<void> {
+    const generation = ++this.loadGeneration;
     const drawId = this.route.snapshot.paramMap.get('drawId');
     if (!drawId) {
       this.loading.set(false);
@@ -132,15 +147,23 @@ export class PrizeDrawPageComponent {
         firstValueFrom(this.api.get(drawId)),
         firstValueFrom(this.api.eligibleEntries(drawId)),
       ]);
+      if (this.destroyRef.destroyed || generation !== this.loadGeneration) return;
+      if (this.inWorkspaceShell && !this.route.snapshot.queryParamMap.has('eventId') && !this.route.snapshot.queryParamMap.has('majorEventId')) {
+        void this.router.navigate([], { relativeTo: this.route, queryParams: this.scopeQuery(draw), queryParamsHandling: 'merge', replaceUrl: true });
+      }
       this.draw.set(draw);
       this.entries.set(entries);
       this.lastResult.set(null);
       queueMicrotask(() => this.reel()?.reset(this.shortNames(entries)));
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível preparar o sorteio.');
+      if (!this.destroyRef.destroyed && generation === this.loadGeneration) this.feedback.error(error, 'Não foi possível preparar o sorteio.');
     } finally {
-      this.loading.set(false);
+      if (generation === this.loadGeneration) this.loading.set(false);
     }
+  }
+
+  protected scopeQuery(draw: PrizeDraw): Record<string, string> {
+    return { [draw.target.type === 'EVENT' ? 'eventId' : 'majorEventId']: draw.target.id };
   }
 
   private shortNames(entries: PrizeDrawEligibleEntry[]): string[] {

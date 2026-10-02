@@ -13,15 +13,16 @@ import { PERSON_MERGE_FIELDS } from './graphql-query-fragments';
 export class MergeCandidateApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listMergeCandidates(filters?: { status?: MergeCandidateStatus; skip?: number; take?: number }) {
+  listMergeCandidates(filters?: { status?: MergeCandidateStatus; query?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ mergeCandidates: MergeCandidate[] }>(
         `query ListMergeCandidates(
           $status: MergeCandidateStatus
+          $query: String
           $skip: Int
           $take: Int
         ) {
-          mergeCandidates(status: $status, skip: $skip, take: $take) {
+          mergeCandidates(status: $status, query: $query, skip: $skip, take: $take) {
             id
             personAId
             personBId
@@ -44,6 +45,17 @@ export class MergeCandidateApiService {
         filters,
       )
       .pipe(map((data) => data.mergeCandidates));
+  }
+
+  countMergeCandidates(status?: MergeCandidateStatus, query?: string) {
+    return this.graphqlHttp
+      .request<{ mergeCandidateCount: number }>(
+        `query MergeCandidateCount($status: MergeCandidateStatus, $query: String) {
+          mergeCandidateCount(status: $status, query: $query)
+        }`,
+        { status, query },
+      )
+      .pipe(map((data) => data.mergeCandidateCount));
   }
 
   updateMergeCandidate(id: string, input: { status: MergeCandidateStatus }) {

@@ -80,7 +80,7 @@ export default meta;
 type Story = StoryObj<CsvColumnDialogStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(defaultArgs.fileName)).toBeVisible();

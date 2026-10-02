@@ -17,9 +17,15 @@
     <section class="panel panel-stack sports-major-event-browser">
       <div class="panel-heading">
         <div>
-          <h3>Lista de grandes eventos</h3>
-          <p>Pesquise e filtre para abrir um torneio existente ou ativar o modo esportivo.</p>
+          @if (scopedMajorEventItem(); as scopedItem) {
+            <h3>{{ scopedItem.majorEvent.name }}</h3>
+            <p>Abra a gestão esportiva deste grande evento ou ative o torneio.</p>
+          } @else {
+            <h3>Lista de grandes eventos</h3>
+            <p>Pesquise e filtre para abrir um torneio existente ou ativar o modo esportivo.</p>
+          }
         </div>
+        @if (!workspace.majorEventRouteScopeId()) {
         <div class="panel-actions">
           <button mat-flat-button type="button" (click)="workspace.applyMajorEventWorkspaceFilters()">
             <mat-icon>tune</mat-icon>
@@ -27,8 +33,10 @@
           </button>
           <button mat-button type="button" (click)="workspace.resetMajorEventWorkspaceFilters()">Limpar</button>
         </div>
+        }
       </div>
 
+      @if (!workspace.majorEventRouteScopeId()) {
       <form
         class="sports-major-event-filters"
         [formGroup]="workspace.majorEventWorkspaceFilterForm"
@@ -59,9 +67,10 @@
           </mat-select>
         </mat-form-field>
       </form>
+      }
 
       <mat-list class="result-list sports-major-event-list">
-        @for (item of workspace.visibleMajorEventWorkspaceItems(); track item.majorEvent.id) {
+        @for (item of workspace.majorEventRouteScopeId() ? workspace.scopedMajorEventWorkspaceItems() : workspace.visibleMajorEventWorkspaceItems(); track item.majorEvent.id) {
           <mat-list-item (click)="openMajorEvent(item)">
             <span matListItemTitle class="list-title">
               <lib-twemoji [emoji]="item.majorEvent.emoji" />
@@ -105,22 +114,29 @@
           </mat-list-item>
         } @empty {
           <mat-list-item>
-            @if (workspace.majorEventWorkspaceItems().length) {
+            @if (workspace.majorEventRouteScopeId()) {
+              <span matListItemTitle>Grande evento indisponível</span>
+            }
+            @if (workspace.majorEventRouteScopeId()) {
+              <span matListItemLine>Confira seu acesso e tente novamente.</span>
+            }
+            @if (!workspace.majorEventRouteScopeId() && workspace.majorEventWorkspaceItems().length) {
               <span matListItemTitle>Nenhum grande evento encontrado</span>
             }
-            @if (workspace.majorEventWorkspaceItems().length) {
+            @if (!workspace.majorEventRouteScopeId() && workspace.majorEventWorkspaceItems().length) {
               <span matListItemLine>Revise a busca ou os filtros e tente novamente.</span>
             }
-            @if (!workspace.majorEventWorkspaceItems().length) {
+            @if (!workspace.majorEventRouteScopeId() && !workspace.majorEventWorkspaceItems().length) {
               <span matListItemTitle>Nenhum grande evento disponível</span>
             }
-            @if (!workspace.majorEventWorkspaceItems().length) {
+            @if (!workspace.majorEventRouteScopeId() && !workspace.majorEventWorkspaceItems().length) {
               <span matListItemLine>Crie um grande evento antes de ativar o modo esportivo.</span>
             }
           </mat-list-item>
         }
       </mat-list>
 
+      @if (!workspace.majorEventRouteScopeId()) {
       <div class="list-pager" aria-label="Paginação de grandes eventos esportivos">
         <span>Itens {{ workspace.majorEventWorkspacePaginationLabel() }}</span>
         <div class="list-pager-actions">
@@ -144,6 +160,7 @@
           </button>
         </div>
       </div>
+      }
     </section>
   } @else {
     <mat-tab-group

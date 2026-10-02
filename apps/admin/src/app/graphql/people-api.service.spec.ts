@@ -182,7 +182,7 @@ function linkedResourcesFixture() {
         id: 'event-1',
         label: 'Evento',
         description: 'Descrição',
-        route: '/admin/events/event-1',
+        route: '/admin/event-workspace/event/event-1',
         status: 'PUBLISHED',
         occurredAt: adminFixtureDateFromNow(1, 9),
       },

@@ -1,5 +1,6 @@
 .management-shell {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   padding-block: 1rem 5.5rem;
 }
@@ -118,6 +119,7 @@
 }
 .role-editor {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 .role-title {
@@ -151,7 +153,7 @@
 }
 .parent-role-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: 0.5rem;
 }
 .permission-matrix {
@@ -379,3 +381,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+.role-search { width: 100%; margin-top: 1rem; }
+.management-heading { flex-wrap: wrap; }
+.role-title, .role-title > div { min-width: 0; overflow-wrap: anywhere; }
+.privacy-note { white-space: normal; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .panel-heading { flex-flow: column nowrap; }
+  .panel-heading > div:first-child { flex-basis: auto; width: 100%; }
+  .assignment { min-width: 0; }
+  .validity-row { grid-template-columns: minmax(0, 1fr); }
+  .scope-row mat-form-field { min-width: 0; }
+}
+
+.role-editor, .editor-section, .permission-matrix, .permission-category, .permission-category > div { min-width: 0; }
+.role-editor mat-form-field { min-width: 0; width: 100%; }

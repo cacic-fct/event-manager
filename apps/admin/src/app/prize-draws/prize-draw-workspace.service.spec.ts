@@ -1,3 +1,4 @@
+import { createAdminEvent } from '../testing/admin-entity-fixtures';
 import '@angular/compiler';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -24,9 +25,9 @@ const FIXTURE_TIMESTAMP = new Date().toISOString();
 
 describe('PrizeDrawWorkspaceService', () => {
   let api: ReturnType<typeof apiMock>;
-  let eventApi: { listEvents: ReturnType<typeof vi.fn> };
+  let eventApi: { listEvents: ReturnType<typeof vi.fn>; getEvent: ReturnType<typeof vi.fn> };
   let feedback: { error: ReturnType<typeof vi.fn> };
-  let majorEventApi: { listMajorEvents: ReturnType<typeof vi.fn> };
+  let majorEventApi: { listMajorEvents: ReturnType<typeof vi.fn>; getMajorEvent: ReturnType<typeof vi.fn> };
   let peopleApi: { listRelatedPeople: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
   let snackbar: { open: ReturnType<typeof vi.fn> };
@@ -35,9 +36,9 @@ describe('PrizeDrawWorkspaceService', () => {
 
   beforeEach(() => {
     api = apiMock();
-    eventApi = { listEvents: vi.fn(() => of([{ id: 'event-1', name: 'Evento' }])) };
+    eventApi = { listEvents: vi.fn(() => of([{ id: 'event-1', name: 'Evento' }])), getEvent: vi.fn((id: string) => of(createAdminEvent({ id }))) };
     feedback = { error: vi.fn() };
-    majorEventApi = { listMajorEvents: vi.fn(() => of([{ id: 'major-1', name: 'Grande evento' }])) };
+    majorEventApi = { listMajorEvents: vi.fn(() => of([{ id: 'major-1', name: 'Grande evento' }])), getMajorEvent: vi.fn((id: string) => of({ id, name: 'Grande evento selecionado', emoji: '🎓' })) };
     peopleApi = { listRelatedPeople: vi.fn(() => of([])) };
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
     snackbar = { open: vi.fn() };
@@ -60,6 +61,86 @@ describe('PrizeDrawWorkspaceService', () => {
     service = TestBed.inject(PrizeDrawWorkspaceService);
   });
 
+  it('keeps edits typed while the initial target catalog is still loading', async () => {
+    const targets = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    eventApi.listEvents.mockReturnValueOnce(targets);
+    const loading = service.initialize();
+    service.form.controls.title.setValue('Digitado durante o carregamento');
+    targets.next([createAdminEvent()]);
+    targets.complete();
+    await loading;
+    expect(service.form.controls.title.value).toBe('Digitado durante o carregamento');
+    expect(service.unsavedChanges()).toBe(true);
+  });
+
+  it('clears the retained draw when history returns to the collection URL', async () => {
+    await service.initialize('draw-1');
+    expect(service.selected()?.id).toBe('draw-1');
+    await service.initialize();
+    expect(service.selected()).toBeNull();
+    expect(service.form.controls.title.value).toBe('');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not reopen an obsolete draw when a newer route finishes first', async () => {
+    const targets = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    eventApi.listEvents.mockReturnValueOnce(targets);
+    const oldRoute = service.initialize('draw-1');
+    await service.initialize();
+    targets.next([createAdminEvent()]); targets.complete();
+    await oldRoute;
+    expect(service.selected()).toBeNull();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it('hydrates a new draw scope outside the first twenty event targets', async () => {
+    await service.setScopeFromRoute({ eventId: 'event-49' });
+    await service.initialize();
+    expect(eventApi.getEvent).toHaveBeenCalledWith('event-49');
+    expect(service.form.controls.eventId.value).toBe('event-49');
+    expect(service.targetSummary()?.id).toBe('event-49');
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('hydrates a new draw scope outside the first twenty major-event targets', async () => {
+    await service.setScopeFromRoute({ majorEventId: 'major-49' });
+    await service.initialize();
+    expect(majorEventApi.getMajorEvent).toHaveBeenCalledWith('major-49');
+    expect(service.targetSummary()?.name).toBe('Grande evento selecionado');
+    expect(service.form.controls.majorEventId.value).toBe('major-49');
+  });
+
+  it('keeps a searched target visible independently of the global scope catalog', async () => {
+    service.selectTarget({ id: 'event-49', name: 'Evento encontrado', emoji: '📚' });
+    service.events.set([]);
+    expect(service.form.controls.eventId.value).toBe('event-49');
+    expect(service.targetSummary()?.name).toBe('Evento encontrado');
+    expect(service.unsavedChanges()).toBe(true);
+  });
+
+  it('discards only the editable changes and keeps the selected draw scope', async () => {
+    service.scopeFilter.set({ eventId: 'event-1' });
+    await service.selectById('draw-1', false);
+    const savedTitle = service.form.controls.title.value;
+    service.form.controls.title.setValue('Título não salvo');
+    expect(service.unsavedChanges()).toBe(true);
+    service.discardChanges();
+    expect(service.form.controls.title.value).toBe(savedTitle);
+    expect(service.scopeFilter()).toEqual({ eventId: 'event-1' });
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('preserves scope in draw detail navigation and refuses a scope change with unsaved edits', async () => {
+    service.scopeFilter.set({ eventId: 'event-1' });
+    await service.selectById('draw-1', true);
+    expect(router.navigate).toHaveBeenCalledWith(['/draws', 'draw-1'], { queryParams: { eventId: 'event-1' } });
+    service.unsavedChanges.set(true);
+    const selected = service.selected();
+    expect(await service.setScopeFromRoute({ eventId: 'other-event' })).toBe(false);
+    expect(service.scopeFilter()).toEqual({ eventId: 'event-1' });
+    expect(service.selected()).toBe(selected);
+  });
+
   it('loads all workspace reference data and creates a clean draft when no draw is selected', async () => {
     await service.initialize();
 
@@ -70,6 +151,45 @@ describe('PrizeDrawWorkspaceService', () => {
     expect(service.unsavedChanges()).toBe(false);
     expect(service.loading()).toBe(false);
     expect(router.navigate).not.toHaveBeenCalled();
+    expect(api.list).toHaveBeenCalledWith({
+      query: undefined,
+      eventId: undefined,
+      majorEventId: undefined,
+      skip: 0,
+      take: 51,
+    });
+    expect(eventApi.listEvents).toHaveBeenCalledWith({ query: undefined, take: 20 });
+    expect(majorEventApi.listMajorEvents).toHaveBeenCalledWith({ query: undefined, take: 20 });
+  });
+
+  it('scopes the inventory on the server and prepares a draft for that context', async () => {
+    await service.initialize();
+    api.list.mockClear();
+
+    await service.selectEventScope({ id: 'event-1', name: 'Evento' } as never);
+
+    expect(api.list).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: 'event-1', majorEventId: undefined, skip: 0, take: 51 }),
+    );
+    expect(service.scopeFilter()).toEqual({ eventId: 'event-1' });
+    expect(service.form.controls.eventId.value).toBe('event-1');
+  });
+
+  it('keeps an unsaved editor intact when a context switch is requested', async () => {
+    await service.initialize();
+    service.form.controls.title.setValue('Alteração pendente');
+    api.list.mockClear();
+
+    await service.selectEventScope({ id: 'event-1', name: 'Evento' } as never);
+
+    expect(service.scopeFilter()).toBeNull();
+    expect(service.form.controls.title.value).toBe('Alteração pendente');
+    expect(api.list).not.toHaveBeenCalled();
+    expect(snackbar.open).toHaveBeenCalledWith(
+      'Salve ou descarte as alterações antes de trocar o contexto.',
+      'Fechar',
+      { duration: 3500 },
+    );
   });
 
   it('selects a draw, patches every editable collection, loads eligibility, and locks frozen controls', async () => {

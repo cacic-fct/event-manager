@@ -2,13 +2,15 @@
   <span>{{ title() }}</span>
   <span class="toolbar-spacer"></span>
 
-  <button matIconButton type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações">
-    <mat-icon>more_vert</mat-icon>
-  </button>
+  @if (notifications.isConfigured() && selectedTab() !== 'preferences') {
+    <button matIconButton type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações" [disabled]="loading() || busy()">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+  }
 </mat-toolbar>
 
 <section class="novu-inbox">
-  @if (notifications.loadingConfig() || loading()) {
+  @if (notifications.loadingConfig() || (loading() && notificationList().length === 0 && preferences().length === 0)) {
     <div class="loading-state">
       <mat-spinner diameter="36"></mat-spinner>
     </div>
@@ -55,6 +57,11 @@
           </span>
         </ng-template>
       </mat-tab>
+      @if (showUnreadFilter()) {
+        <mat-tab>
+          <ng-template mat-tab-label><span class="tab-label"><mat-icon>mark_email_unread</mat-icon><span>Não lidas</span></span></ng-template>
+        </mat-tab>
+      }
       <mat-tab>
         <ng-template mat-tab-label>
           <span class="tab-label">
@@ -74,7 +81,7 @@
     </mat-tab-group>
 
     @if (error()) {
-      <p class="error-state">{{ error() }}</p>
+      <p class="error-state" role="alert">{{ error() }}</p>
     }
 
     @if (selectedTab() === 'preferences') {
@@ -86,14 +93,16 @@
             <span matListItemLine>{{ channelsLabel(preference) }}</span>
             <div matListItemMeta class="preference-actions">
               <mat-slide-toggle
+                [disabled]="busy()"
                 [checked]="preference.channels.in_app !== false"
                 (change)="updatePreferenceChannel(preference, 'in_app', $event.checked)">
-                In-app
+                No aplicativo
               </mat-slide-toggle>
               <mat-slide-toggle
+                [disabled]="busy()"
                 [checked]="preference.channels.push !== false"
                 (change)="updatePreferenceChannel(preference, 'push', $event.checked)">
-                Push
+                No navegador
               </mat-slide-toggle>
             </div>
           </mat-list-item>
@@ -129,51 +138,51 @@
 
             <div matListItemMeta class="notification-actions">
               @if (notification.primaryAction) {
-                <button mat-button type="button" (click)="runPrimaryAction(notification)">
+                <button mat-button type="button" [disabled]="busy()" (click)="runPrimaryAction(notification)">
                   {{ notification.primaryAction.label }}
                 </button>
               } @else if (notification.redirect?.url) {
-                <button mat-button type="button" (click)="openRedirect(notification)">Abrir</button>
+                <button mat-button type="button" [disabled]="busy()" (click)="openRedirect(notification)">Abrir</button>
               }
 
-              <button matIconButton type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações">
+              <button matIconButton type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações" [disabled]="busy()">
                 <mat-icon>more_vert</mat-icon>
               </button>
             </div>
 
             <mat-menu #notificationMenu="matMenu">
               @if (notification.isRead) {
-                <button mat-menu-item type="button" (click)="markAsUnread(notification)">
+                <button mat-menu-item type="button" [disabled]="busy()" (click)="markAsUnread(notification)">
                   <mat-icon>mark_email_unread</mat-icon>
                   <span>Marcar como não lida</span>
                 </button>
               } @else {
-                <button mat-menu-item type="button" (click)="markAsRead(notification)">
+                <button mat-menu-item type="button" [disabled]="busy()" (click)="markAsRead(notification)">
                   <mat-icon>drafts</mat-icon>
                   <span>Marcar como lida</span>
                 </button>
               }
 
               @if (notification.isArchived) {
-                <button mat-menu-item type="button" (click)="unarchive(notification)">
+                <button mat-menu-item type="button" [disabled]="busy()" (click)="unarchive(notification)">
                   <mat-icon>unarchive</mat-icon>
                   <span>Desarquivar</span>
                 </button>
               } @else {
-                <button mat-menu-item type="button" (click)="archive(notification)">
+                <button mat-menu-item type="button" [disabled]="busy()" (click)="archive(notification)">
                   <mat-icon>archive</mat-icon>
                   <span>Arquivar</span>
                 </button>
               }
 
               @if (notification.secondaryAction) {
-                <button mat-menu-item type="button" (click)="runSecondaryAction(notification)">
+                <button mat-menu-item type="button" [disabled]="busy()" (click)="runSecondaryAction(notification)">
                   <mat-icon>task_alt</mat-icon>
                   <span>{{ notification.secondaryAction.label }}</span>
                 </button>
               }
 
-              <button mat-menu-item type="button" (click)="delete(notification)">
+              <button mat-menu-item type="button" [disabled]="busy()" (click)="delete(notification)">
                 <mat-icon>delete</mat-icon>
                 <span>Excluir</span>
               </button>
@@ -190,18 +199,21 @@
 
       @if (hasMore()) {
         <div class="load-more">
-          <button mat-button type="button" (click)="loadMore()">Carregar mais</button>
+          <button mat-button type="button" [disabled]="loading() || busy()" (click)="loadMore()">Carregar mais</button>
         </div>
       }
     }
   }
 
   <mat-menu #bulkMenu="matMenu">
-    <button mat-menu-item type="button" (click)="archiveAllRead()">
+    @if (!markReadOnOpen()) {
+      <button mat-menu-item type="button" [disabled]="busy()" (click)="markAllAsRead()"><mat-icon>done_all</mat-icon><span>Marcar todas como lidas</span></button>
+    }
+    <button mat-menu-item type="button" [disabled]="busy()" (click)="archiveAllRead()">
       <mat-icon>inventory_2</mat-icon>
       <span>Arquivar lidas</span>
     </button>
-    <button mat-menu-item type="button" (click)="reload()">
+    <button mat-menu-item type="button" [disabled]="loading() || busy()" (click)="reload()">
       <mat-icon>refresh</mat-icon>
       <span>Atualizar</span>
     </button>

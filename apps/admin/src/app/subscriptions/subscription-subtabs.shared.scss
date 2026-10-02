@@ -6,7 +6,7 @@
 
 .subtab-layout {
   display: grid;
-  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   padding-block: 1rem;
 }
@@ -16,29 +16,20 @@
   --major-selector-width: clamp(18rem, 22vw, 24rem);
   --subscriber-rail-width: clamp(18rem, 20vw, 22rem);
 
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: flex-start;
-  transition: gap var(--major-subscription-transition);
 }
 
 .major-selector {
-  flex: 0 0 var(--major-selector-width);
-  max-height: 80rem;
-  overflow: hidden;
-  transition:
-    flex-basis var(--major-subscription-transition),
-    max-height var(--major-subscription-transition),
-    opacity var(--major-subscription-transition),
-    padding var(--major-subscription-transition),
-    border-width var(--major-subscription-transition),
-    transform var(--major-subscription-transition);
+  min-width: 0;
+  transition: opacity var(--major-subscription-transition);
 }
 
 .major-subscription-workspace {
   position: relative;
   flex: 1 1 0;
   min-width: 0;
-  transition: padding-left var(--major-subscription-transition);
 }
 
 .major-subscription-placeholder,
@@ -51,7 +42,6 @@
   min-width: 0;
   width: 100%;
   transform-origin: left top;
-  transition: width var(--major-subscription-transition);
 }
 
 .major-subscription-layout.detail-active {
@@ -59,23 +49,20 @@
 }
 
 .major-subscription-layout.detail-active .major-selector {
-  flex-basis: 0;
-  padding-inline: 0;
-  border-inline-width: 0;
-  opacity: 0;
-  transform: translateX(-1rem);
-  pointer-events: none;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .major-subscription-layout.detail-active .major-subscription-workspace {
   display: grid;
-  grid-template-columns: var(--subscriber-rail-width) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
-  padding-left: 1rem;
+  padding-left: 0;
 }
 
 .major-subscription-layout.detail-active .subscription-browser {
-  width: var(--subscriber-rail-width);
+  width: 100%;
 }
 
 .major-subscription-layout.detail-active .subscription-detail {

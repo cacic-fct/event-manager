@@ -1,123 +1,19 @@
+@if (contextLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando configuração do contexto" />
+} @else if (contextError()) {
+  <div class="notice" role="alert"><span>{{ contextError() }}</span><button mat-button type="button" (click)="retryContext()">Tentar novamente</button></div>
+} @else if (contextReady()) {
+  @if (creationParents().length) {
+    <div class="creation-context" aria-label="Criar dentro do contexto">
+      <span>Dentro de</span>
+      @for (parent of creationParents(); track parent.id) {
+        <a mat-button [routerLink]="['/event-workspace', parent.kind, parent.id]"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</a>
+      }
+    </div>
+  }
 <section class="section workspace-tab-shell">
-  <div class="tab-grid">
-    <aside class="panel">
-      <div class="panel-heading">
-        <div></div>
+  <div class="tab-grid context-editor">
 
-        <button mat-stroked-button type="button" (click)="workspace.resetEventForm()">
-          <mat-icon>add</mat-icon>
-          Novo
-        </button>
-      </div>
-
-      <app-event-filter-panel
-        [form]="workspace.eventFiltersForm"
-        applyLabel="Filtrar"
-        resetLabel="Limpar"
-        (applyFilters)="workspace.applyEventFilters()"
-        (resetFilters)="workspace.resetEventFilters()" />
-
-      <mat-list class="result-list">
-        @for (eventItem of workspace.events(); track eventItem.id) {
-          <mat-list-item
-            (click)="workspace.selectEvent(eventItem)"
-            [class.selected-list-item]="
-              workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()
-            ">
-            <span matListItemTitle class="list-title">
-              <lib-twemoji [emoji]="eventItem.emoji" />
-              <span>{{ eventItem.name }}</span>
-              @if (eventItem.isSportsMatch) {
-                <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo"
-                  >sports</mat-icon
-                >
-              }
-            </span>
-            <span matListItemLine>
-              {{ eventItem.startDate | date: 'short' }} · {{ describeEventType(eventItem.type) }} ·
-              {{ eventItem.majorEvent?.name }}
-            </span>
-            @if (canEditEvent(eventItem)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Editar evento"
-                matTooltip="Editar"
-                (click)="$event.stopPropagation(); workspace.selectEvent(eventItem)">
-                <mat-icon>edit</mat-icon>
-              </button>
-            }
-            @if (canCloneEvent()) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Duplicar evento"
-                matTooltip="Duplicar"
-                (click)="$event.stopPropagation(); workspace.cloneEvent(eventItem)">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            }
-            @if (canDeleteEvent(eventItem)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Excluir evento"
-                matTooltip="Excluir"
-                (click)="$event.stopPropagation(); workspace.deleteEventFromList(eventItem)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            }
-          </mat-list-item>
-          @for (draft of workspace.draftsForEvent(eventItem.id); track draft.id) {
-            <mat-list-item
-              class="draft-list-item"
-              (click)="workspace.selectEventDraft(eventItem, draft)"
-              [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="eventItem.emoji" />
-                <span>{{ draft.name }}</span>
-              </span>
-              <span matListItemLine>
-                Original: {{ eventItem.name }} · Editado em {{ draft.updatedAt | date: 'short' }}
-              </span>
-              <span matListItemLine class="draft-line">
-                <span class="draft-label">Rascunho</span>
-                <span>{{ draft.updatedByName || draft.createdByName || 'Usuário não identificado' }}</span>
-              </span>
-            </mat-list-item>
-          }
-        } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum evento encontrado</span>
-            <span matListItemLine>Revise os filtros e tente novamente.</span>
-          </mat-list-item>
-        }
-      </mat-list>
-
-      <div class="list-pager" aria-label="Paginação de eventos">
-        <span>Itens {{ workspace.eventsPagination.label() }}</span>
-        <div class="list-pager-actions">
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Página anterior de eventos"
-            matTooltip="Anterior"
-            [disabled]="!workspace.eventsPagination.hasPreviousPage()"
-            (click)="workspace.previousEventsPage()">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Próxima página de eventos"
-            matTooltip="Próxima"
-            [disabled]="!workspace.eventsPagination.hasNextPage()"
-            (click)="workspace.nextEventsPage()">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-        </div>
-      </div>
-    </aside>
 
     <section class="panel panel-stack">
       <div class="panel-heading">
@@ -148,7 +44,21 @@
 
         <div class="panel-actions editor-action-row">
           <div class="editor-action-group">
+
+              @if (workspace.selectedEvent(); as selectedForActions) {
+                @if (canCloneEvent() || canDeleteEvent(selectedForActions)) {
+                <button mat-stroked-button type="button" [matMenuTriggerFor]="resourceActions"><mat-icon>more_horiz</mat-icon>Mais ações</button>
+                <mat-menu #resourceActions="matMenu">
+                  @if (canCloneEvent()) { <button mat-menu-item type="button" (click)="workspace.cloneEvent(selectedForActions)"><mat-icon>content_copy</mat-icon>Duplicar</button> }
+                  @if (canDeleteEvent(selectedForActions)) { <button mat-menu-item type="button" (click)="workspace.deleteEventFromList(selectedForActions)"><mat-icon>delete</mat-icon>Excluir</button> }
+                </mat-menu>
+                }
+              }
+
+
             @if (workspace.selectedEvent(); as selectedEvent) {
+
+
               <button
                 mat-stroked-button
                 type="button"
@@ -156,28 +66,8 @@
                 <mat-icon>history</mat-icon>
                 Histórico
               </button>
-              @if (canCloneEvent()) {
-                <button mat-stroked-button type="button" (click)="workspace.cloneEvent(selectedEvent)">
-                  <mat-icon>content_copy</mat-icon>
-                  Duplicar
-                </button>
-              }
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar este evento."
-                (click)="workspace.openEventPublication()">
-                <mat-icon>campaign</mat-icon>
-                Gerenciar publicação
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Abrir os formulários vinculados a este evento."
-                (click)="workspace.openEventForms()">
-                <mat-icon>list_alt</mat-icon>
-                Formulários
-              </button>
+
+
               @if (workspace.draftsForEvent(selectedEvent.id).length > 0) {
                 <button
                   mat-stroked-button
@@ -201,10 +91,6 @@
           </div>
 
           <div class="editor-action-group editor-action-group--publication">
-            <button mat-button type="button" (click)="workspace.resetEventForm()">
-              <mat-icon>restart_alt</mat-icon>
-              Limpar
-            </button>
             @if (canEditEvent(workspace.selectedEvent())) {
               @if (!workspace.selectedEventDraft()) {
                 <button
@@ -287,9 +173,13 @@
         </section>
 
         <section class="surface field-group" [formGroup]="workspace.majorEventLookupForm">
+<app-workspace-scope [emoji]="associationEmoji('major-event')" [scopeId]="workspace.eventForm.controls.majorEventId.value || null"
+          [title]="workspace.eventForm.controls.majorEventId.value ? workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) : ''"
+          emptyLabel="Vincular a um grande evento" changeLabel="Alterar vínculo">
+
           <div class="surface-heading">
             <h4>Grande evento</h4>
-            @if (canEditEvent(workspace.selectedEvent())) {
+            @if (workspace.eventForm.controls.majorEventId.value && canEditEvent(workspace.selectedEvent())) {
               <button mat-button type="button" (click)="workspace.clearMajorEventFromEvent()">
                 <mat-icon>link_off</mat-icon>
                 Remover vínculo
@@ -300,17 +190,10 @@
           <div class="compact-form">
             <mat-form-field>
               <mat-label>Buscar grande evento</mat-label>
-              <input matInput formControlName="query" />
+              <input matInput formControlName="query" (keydown.enter)="$event.preventDefault(); workspace.searchMajorEventsForEvent()" />
               <mat-hint>Sem busca, lista grandes eventos atuais e futuros.</mat-hint>
             </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.has(Permission.MajorEvent.Read)"
-              (click)="workspace.searchMajorEventsForEvent()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
+
           </div>
 
           <div class="inline-list">
@@ -340,21 +223,19 @@
             }
           </div>
 
-          <div class="surface-heading">
-            <h4>Grande evento selecionado</h4>
-            <span class="selected-entity">
-              @if (majorEventEmojiById(workspace.eventForm.controls.majorEventId.value); as majorEventEmoji) {
-                <lib-twemoji [emoji]="majorEventEmoji" />
-              }
-              {{ workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) }}
-            </span>
-          </div>
-        </section>
+
+
+</app-workspace-scope>
+</section>
 
         <section class="surface field-group" [formGroup]="workspace.eventGroupLookupForm">
+<app-workspace-scope [emoji]="associationEmoji('group')" [scopeId]="workspace.eventForm.controls.eventGroupId.value || null"
+          [title]="workspace.eventForm.controls.eventGroupId.value ? workspace.eventGroupNameById(workspace.eventForm.controls.eventGroupId.value) : ''"
+          emptyLabel="Vincular a um grupo de eventos" changeLabel="Alterar vínculo">
+
           <div class="surface-heading">
             <h4>Grupo do evento</h4>
-            @if (canEditEvent(workspace.selectedEvent())) {
+            @if (workspace.eventForm.controls.eventGroupId.value && canEditEvent(workspace.selectedEvent())) {
               <button mat-button type="button" (click)="workspace.clearEventGroupFromEvent()">
                 <mat-icon>link_off</mat-icon>
                 Remover vínculo
@@ -365,12 +246,9 @@
           <div class="compact-form">
             <mat-form-field>
               <mat-label>Buscar grupo</mat-label>
-              <input matInput formControlName="query" />
+              <input matInput formControlName="query" (keydown.enter)="$event.preventDefault(); workspace.searchEventGroupsForEvent()" />
             </mat-form-field>
-            <button mat-stroked-button type="button" (click)="workspace.searchEventGroupsForEvent()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
+
           </div>
 
           <div class="inline-list">
@@ -396,16 +274,10 @@
             }
           </div>
 
-          <div class="surface-heading">
-            <h4>Grupo selecionado</h4>
-            <span class="selected-entity">
-              @if (eventGroupEmojiById(workspace.eventForm.controls.eventGroupId.value); as eventGroupEmoji) {
-                <lib-twemoji [emoji]="eventGroupEmoji" />
-              }
-              {{ workspace.eventGroupNameById(workspace.eventForm.controls.eventGroupId.value) }}
-            </span>
-          </div>
-        </section>
+
+
+</app-workspace-scope>
+</section>
 
         <section class="surface field-group">
           <h4>Datas e créditos</h4>
@@ -446,9 +318,9 @@
         </section>
 
         <section class="surface field-group">
-          <h4>Local e links</h4>
-          <div class="field-grid">
-            <mat-form-field class="span-2">
+<h4>Local</h4>
+<div class="field-grid">
+<mat-form-field class="span-2">
               <mat-label>Local</mat-label>
               <mat-select
                 formControlName="locationPresetId"
@@ -461,29 +333,7 @@
                 }
               </mat-select>
             </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Latitude</mat-label>
-              <input matInput formControlName="latitude" />
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Longitude</mat-label>
-              <input matInput formControlName="longitude" />
-            </mat-form-field>
-
-            <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
-              <mat-icon>map</mat-icon>
-              Selecionar no mapa
-            </button>
-            @if (
-              workspace.eventForm.hasError('latitudeRequireslongitude') ||
-              workspace.eventForm.hasError('buttonTextRequiresbuttonLink')
-            ) {
-              <mat-error class="span-2"> Preencha os campos dependentes em pares. </mat-error>
-            }
-
-            <mat-form-field class="span-2">
+<mat-form-field class="span-2">
               <mat-label>Nome e descrição exibidos aos usuários</mat-label>
               <input matInput formControlName="locationDescription" [matAutocomplete]="placePresetAutocomplete" />
               <mat-autocomplete
@@ -500,23 +350,43 @@
                 }
               </mat-autocomplete>
             </mat-form-field>
-
-            <mat-form-field class="span-2">
+</div><button mat-stroked-button type="button" (click)="openLocationPicker()">
+              <mat-icon>map</mat-icon>
+              Selecionar no mapa
+            </button><mat-expansion-panel [expanded]="workspace.eventForm.hasError('latitudeRequireslongitude')">
+<mat-expansion-panel-header><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header>
+<div class="field-grid">
+<mat-form-field>
+              <mat-label>Latitude</mat-label>
+              <input matInput formControlName="latitude" />
+            </mat-form-field>
+<mat-form-field>
+              <mat-label>Longitude</mat-label>
+              <input matInput formControlName="longitude" />
+            </mat-form-field>
+</div>@if (workspace.eventForm.hasError('latitudeRequireslongitude')) {
+<mat-error>Preencha latitude e longitude juntas.</mat-error>
+}
+</mat-expansion-panel>
+</section><mat-expansion-panel [expanded]="workspace.eventForm.hasError('buttonTextRequiresbuttonLink')">
+<mat-expansion-panel-header><mat-panel-title>Vídeo e botão do evento</mat-panel-title></mat-expansion-panel-header>
+<div class="field-grid">
+<mat-form-field class="span-2">
               <mat-label>Código do YouTube</mat-label>
               <input matInput formControlName="youtubeCode" />
             </mat-form-field>
-
-            <mat-form-field>
+<mat-form-field>
               <mat-label>Texto do botão</mat-label>
               <input matInput formControlName="buttonText" />
             </mat-form-field>
-
-            <mat-form-field>
+<mat-form-field>
               <mat-label>Link do botão</mat-label>
               <input matInput formControlName="buttonLink" />
             </mat-form-field>
-          </div>
-        </section>
+</div>@if (workspace.eventForm.hasError('buttonTextRequiresbuttonLink')) {
+<mat-error>Texto e link do botão devem ser preenchidos juntos.</mat-error>
+}
+</mat-expansion-panel>
 
         <section class="surface field-group">
           <app-audience-editor
@@ -532,50 +402,50 @@
             (invitedPeopleChange)="workspace.setEventAudienceInvitations($event)" />
         </section>
 
-        <section class="surface field-group">
-          <h4>Inscrição e presença</h4>
-          @if (workspace.attendancePriceTiers().length) {
-            <div class="field-grid">
-              <mat-form-field class="span-2" subscriptSizing="dynamic">
-                <mat-label>Faixas de preço com presença regular</mat-label>
-                <mat-select formControlName="regularAttendancePriceTierIds" multiple>
-                  @for (tier of workspace.attendancePriceTiers(); track tier.id) {
-                    <mat-option [value]="tier.id">{{ tier.name }}</mat-option>
-                  }
-                </mat-select>
-                <mat-hint>
-                  Sem seleção, não há restrição por faixa. Fora das faixas selecionadas, a presença é registrada como
-                  não regular. As regras de inscrição e pagamento continuam valendo.
-                </mat-hint>
-              </mat-form-field>
-            </div>
-          }
-          <div class="checkbox-grid">
-            <mat-checkbox formControlName="allowSubscription"> Permitir inscrição </mat-checkbox>
-            <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
-            <mat-checkbox formControlName="requiresImageLicenseAgreement">
+        <section class="surface field-group" id="inscricao">
+<h4>Inscrições</h4>
+<div class="checkbox-grid">
+<mat-checkbox formControlName="allowSubscription"> Permitir inscrição </mat-checkbox>
+<mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
+<mat-checkbox formControlName="requiresImageLicenseAgreement">
               Exigir concordância com o contrato de licença de uso de imagem do CACiC
             </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
-              Emitir para presentes não pagantes
+</div>@if (workspace.eventForm.controls.allowSubscription.value || workspace.eventForm.controls.subscriptionStartDate.value || workspace.eventForm.controls.subscriptionEndDate.value || workspace.eventForm.controls.slots.value) {<div class="field-grid">
+<mat-form-field>
+              <mat-label>Início das inscrições</mat-label>
+              <input matInput type="datetime-local" formControlName="subscriptionStartDate" />
+            </mat-form-field>
+<mat-form-field>
+              <mat-label>Fim das inscrições</mat-label>
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="subscriptionEndDate"
+                aria-describedby="event-subscription-date-range-error" />
+            </mat-form-field>
+<mat-form-field>
+              <mat-label>Vagas</mat-label>
+              <input matInput type="number" formControlName="slots" />
+            </mat-form-field>
+</div>@if (workspace.eventForm.hasError('subscriptionDateRange')) {
+<mat-error id="event-subscription-date-range-error" aria-live="polite">O fim das inscrições deve ser igual ou posterior ao início.</mat-error>
+}
+}
+@if (attendanceEligibilityHasMajorContext() || workspace.eventForm.controls.autoSubscribe.value) {<mat-checkbox formControlName="autoSubscribe">
+              Inscrição automática e obrigatória pelo grande evento
             </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
-              Emitir para presentes não inscritos
-            </mat-checkbox>
-            <mat-checkbox formControlName="shouldCollectAttendance"> Coletar presença </mat-checkbox>
-            <mat-checkbox formControlName="isOnlineAttendanceAllowed"> Presença on-line </mat-checkbox>
-            <mat-checkbox formControlName="shouldProvideSubscriberListToLecturer">
-              Disponibilizar lista de inscritos aos ministrantes
-            </mat-checkbox>
-            <mat-checkbox formControlName="isPubliclyListed"> Listar no site público </mat-checkbox>
-            <mat-hint class="span-2">
-              A emissão exige este evento e, se houver, o grupo de eventos habilitado; a coleta de presença é
-              independente do certificado.
-            </mat-hint>
-          </div>
-
-          <mat-form-field class="span-2" subscriptSizing="dynamic">
+<p class="empty-note">A inscrição no grande evento pode incluir esta atividade automaticamente. O período de inscrição do grande evento também se aplica.</p>
+}
+</section><section class="surface field-group" id="presenca">
+<h4>Presença</h4>
+<div class="checkbox-grid">
+<mat-checkbox formControlName="shouldCollectAttendance"> Coletar presença </mat-checkbox>
+<mat-checkbox formControlName="isOnlineAttendanceAllowed"> Presença on-line </mat-checkbox>
+</div><p class="empty-note">A coleta de presença é independente da inscrição e da emissão de certificados.</p>
+@if (workspace.eventForm.controls.shouldCollectAttendance.value) {<mat-checkbox formControlName="shouldAllowOralAttendance">
+              Permitir chamada oral na coleta pública
+            </mat-checkbox>}
+<mat-form-field subscriptSizing="dynamic">
             <mat-label>Quem pode confirmar presença on-line</mat-label>
             <mat-select
               formControlName="attendanceEligibility"
@@ -590,42 +460,20 @@
               }
             </mat-select>
             <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
-          </mat-form-field>
-
-          <div class="field-grid">
-            <mat-form-field>
-              <mat-label>Início das inscrições</mat-label>
-              <input matInput type="datetime-local" formControlName="subscriptionStartDate" />
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Fim das inscrições</mat-label>
-              <input
-                matInput
-                type="datetime-local"
-                formControlName="subscriptionEndDate"
-                aria-describedby="event-subscription-date-range-error" />
-            </mat-form-field>
-            @if (workspace.eventForm.hasError('subscriptionDateRange')) {
-              <mat-error class="span-2" id="event-subscription-date-range-error" aria-live="polite">
-                O fim das inscrições deve ser igual ou posterior ao início.
-              </mat-error>
-            }
-
-            <mat-form-field>
-              <mat-label>Vagas</mat-label>
-              <input matInput type="number" formControlName="slots" />
-            </mat-form-field>
-
-            <mat-checkbox formControlName="autoSubscribe">
-              Inscrição automática e obrigatória pelo grande evento
-            </mat-checkbox>
-
-            <mat-checkbox formControlName="shouldAllowOralAttendance">
-              Permitir chamada oral na coleta pública
-            </mat-checkbox>
-
-            <mat-form-field>
+          </mat-form-field>@if (workspace.attendancePriceTiers().length) {<mat-form-field subscriptSizing="dynamic">
+                <mat-label>Faixas de preço com presença regular</mat-label>
+                <mat-select formControlName="regularAttendancePriceTierIds" multiple>
+                  @for (tier of workspace.attendancePriceTiers(); track tier.id) {
+                    <mat-option [value]="tier.id">{{ tier.name }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>
+                  Sem seleção, não há restrição por faixa. Fora das faixas selecionadas, a presença é registrada como
+                  não regular. As regras de inscrição e pagamento continuam valendo.
+                </mat-hint>
+              </mat-form-field>}
+@if (workspace.eventForm.controls.isOnlineAttendanceAllowed.value) {<div class="field-grid">
+<mat-form-field>
               <mat-label>Código da presença on-line</mat-label>
               <input matInput formControlName="onlineAttendanceCode" />
               @if (canEditEvent(workspace.selectedEvent())) {
@@ -641,13 +489,11 @@
                 </button>
               }
             </mat-form-field>
-
-            <mat-form-field>
+<mat-form-field>
               <mat-label>Início da presença on-line</mat-label>
               <input matInput type="datetime-local" formControlName="onlineAttendanceStartDate" />
             </mat-form-field>
-
-            <mat-form-field>
+<mat-form-field>
               <mat-label>Fim da presença on-line</mat-label>
               <input
                 matInput
@@ -655,19 +501,29 @@
                 formControlName="onlineAttendanceEndDate"
                 aria-describedby="online-attendance-date-range-error" />
             </mat-form-field>
-            @if (workspace.eventForm.hasError('onlineAttendanceDateRange')) {
-              <mat-error class="span-2" id="online-attendance-date-range-error" aria-live="polite">
-                O fim da presença on-line deve ser igual ou posterior ao início.
-              </mat-error>
-            }
-          </div>
-
-          <p>É possível coletar presenças mesmo que "Permitir inscrição" esteja desmarcado.</p>
-          <p>
-            Não é necessário definir datas de início e de fim das inscrições para Eventos que fazem parte de um Grande
-            Evento
-          </p>
-        </section>
+</div>@if (workspace.eventForm.hasError('onlineAttendanceDateRange')) {
+<mat-error id="online-attendance-date-range-error" aria-live="polite">O fim da presença on-line deve ser igual ou posterior ao início.</mat-error>
+}
+}
+</section><section class="surface field-group" id="certificados">
+<h4>Certificados</h4>
+<mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>@if (workspace.eventForm.controls.shouldIssueCertificate.disabled) {
+<p class="empty-note">O grupo de eventos não permite a emissão. Altere as regras do grupo para habilitar certificados neste evento.</p>
+}
+@if (workspace.eventForm.controls.shouldIssueCertificate.value) {<div class="checkbox-grid">
+<mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
+              Emitir para presentes não pagantes
+            </mat-checkbox>
+<mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
+              Emitir para presentes não inscritos
+            </mat-checkbox>
+</div>
+<p class="empty-note">As regras do evento, do grupo e do grande evento se aplicam em conjunto. Opções desabilitadas são restritas pelo grupo.</p>
+}
+</section><section class="surface field-group">
+<h4>Exibição no site</h4>
+<mat-checkbox formControlName="isPubliclyListed"> Listar no site público </mat-checkbox>
+</section>
       </form>
 
       <section class="surface field-group">
@@ -678,6 +534,9 @@
 
         <div class="checkbox-grid" [formGroup]="workspace.eventForm">
           <mat-checkbox formControlName="displayLecturerProfile"> Exibir perfil de ministrante </mat-checkbox>
+<mat-checkbox formControlName="shouldProvideSubscriberListToLecturer">
+              Disponibilizar lista de inscritos aos ministrantes
+            </mat-checkbox>
         </div>
 
         <form [formGroup]="workspace.lecturerLookupForm" class="compact-form">
@@ -734,6 +593,8 @@
                 <mat-icon>close</mat-icon>
                 {{ lecturer.name }}
               </button>
+            } @else {
+              <span class="linked-person">{{ lecturer.name }}</span>
             }
           } @empty {
             <span class="empty-note">Nenhum ministrante vinculado.</span>
@@ -792,3 +653,5 @@
     </section>
   </div>
 </section>
+
+}

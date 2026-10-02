@@ -58,6 +58,10 @@ describe('getAuditLogRevertConfig', () => {
       mutableFields: [],
       select: {},
     });
+
+    const eventGroupConfig = getAuditLogRevertConfig(AuditLogEntityType.EVENT_GROUP);
+    expect(eventGroupConfig.select).toEqual(expect.objectContaining({ majorEventId: true }));
+    expect(eventGroupConfig.mutableFields).not.toContain('majorEventId');
   });
 
   it('throws for unsupported entity types', () => {

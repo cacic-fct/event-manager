@@ -1,23 +1,25 @@
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MajorEventUserAttendance } from '@cacic-fct/event-manager-admin-contracts';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AttendancesService } from './attendances.service';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 
 @Component({
   selector: 'app-workspace-major-event-attendances-subtab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TwemojiComponent,
     DatePipe,
     ReactiveFormsModule,
     RouterLink,
@@ -25,9 +27,10 @@ import { AttendancesService } from './attendances.service';
     MatFormFieldModule,
     MatIconModule,
     MatListModule,
-    MatSelectModule,
+    MatInputModule,
     MatTooltipModule,
-    TwemojiComponent,
+    ParticipantSummaryComponent,
+    WorkspaceRecordComponent,
   ],
   templateUrl: './major-event-attendances.component.html',
   styleUrls: [
@@ -44,4 +47,5 @@ export class MajorEventAttendancesComponent {
   protected attendedEventCount(attendance: MajorEventUserAttendance): number {
     return attendance.attendances.filter((eventAttendance) => eventAttendance.attended).length;
   }
+
 }

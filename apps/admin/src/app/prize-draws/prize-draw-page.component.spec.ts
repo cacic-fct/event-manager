@@ -2,12 +2,14 @@ import '@angular/compiler';
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PrizeDrawPageComponent } from './prize-draw-page.component';
+import { flushAsync } from '../testing/async-test-helpers';
 
 describe('PrizeDrawPageComponent', () => {
   let api: {
@@ -18,8 +20,14 @@ describe('PrizeDrawPageComponent', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
   let feedback: { error: ReturnType<typeof vi.fn> };
   let fixture: ComponentFixture<PrizeDrawPageComponent>;
+  const navigate = vi.fn();
+  let routeParams: BehaviorSubject<ParamMap>;
+  let routeQuery: BehaviorSubject<ParamMap>;
 
   beforeEach(async () => {
+    navigate.mockClear();
+    routeParams = new BehaviorSubject(convertToParamMap({ drawId: 'draw-1' }));
+    routeQuery = new BehaviorSubject(convertToParamMap({}));
     api = {
       get: vi.fn(() => of(drawFixture())),
       eligibleEntries: vi.fn(() => of(entriesFixture())),
@@ -31,6 +39,8 @@ describe('PrizeDrawPageComponent', () => {
       imports: [PrizeDrawPageComponent],
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: Router, useValue: { navigate } },
+        { provide: ADMIN_SHELL_CONTEXT, useValue: true },
         { provide: PrizeDrawApiService, useValue: api },
         { provide: MatDialog, useValue: dialog },
         { provide: AdminFeedbackService, useValue: feedback },
@@ -38,9 +48,10 @@ describe('PrizeDrawPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: {
-              paramMap: { get: (name: string) => (name === 'drawId' ? 'draw-1' : null) },
-              queryParamMap: { get: () => null },
+            paramMap: routeParams,
+            queryParamMap: routeQuery,
+            get snapshot() {
+              return { paramMap: routeParams.value, queryParamMap: routeQuery.value };
             },
           },
         },
@@ -53,6 +64,10 @@ describe('PrizeDrawPageComponent', () => {
     await fixture.whenStable();
   });
 
+  it('keeps a legacy draw-stage bookmark inside its target context', () => {
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { eventId: 'event-1' }, replaceUrl: true }));
+  });
+
   it('loads the draw and roster, computes the next planned label, and shortens reel names', () => {
     const component = fixture.componentInstance;
     expect(component.draw()?.id).toBe('draw-1');
@@ -61,6 +76,19 @@ describe('PrizeDrawPageComponent', () => {
     expect(component.canDraw()).toBe(true);
     expect(component.nextSpinLabel()).toBe('Primeiro prêmio');
     expect(component.loading()).toBe(false);
+  });
+
+  it('updates draw identity and demonstration mode when the router reuses the screen', async () => {
+    api.get.mockReturnValueOnce(of(drawFixture({ id: 'draw-2' })));
+    routeParams.next(convertToParamMap({ drawId: 'draw-2' }));
+    await flushAsync();
+    await fixture.whenStable();
+    expect(api.get).toHaveBeenLastCalledWith('draw-2');
+    expect(fixture.componentInstance.draw()?.id).toBe('draw-2');
+    routeQuery.next(convertToParamMap({ demo: 'true' }));
+    expect(fixture.componentInstance.demoMode()).toBe(true);
+    routeQuery.next(convertToParamMap({}));
+    expect(fixture.componentInstance.demoMode()).toBe(false);
   });
 
   it('submits reduced-motion intent, presents the result, and reloads a real committed spin', async () => {

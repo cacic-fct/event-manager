@@ -84,7 +84,16 @@ export class PrizeDrawService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  async listAdmin(user: AuthenticatedUser | undefined): Promise<PrizeDraw[]> {
+  async listAdmin(
+    user: AuthenticatedUser | undefined,
+    filters: {
+      query?: string | null;
+      eventId?: string | null;
+      majorEventId?: string | null;
+      skip?: number | null;
+      take?: number | null;
+    } = {},
+  ): Promise<PrizeDraw[]> {
     const targets = await this.policy.accessibleEventTargets(user, Permission.PrizeDraw.Read);
     if (
       targets &&
@@ -94,13 +103,20 @@ export class PrizeDrawService {
     ) {
       return [];
     }
+    const filtersAnd: Prisma.PrizeDrawWhereInput[] = [];
+    if (targets) filtersAnd.push({ OR: this.scopedTargetWhere(targets) });
+    const normalizedQuery = filters.query?.trim();
+    if (normalizedQuery) filtersAnd.push({ title: { contains: normalizedQuery, mode: 'insensitive' } });
+    if (filters.eventId) filtersAnd.push({ eventId: filters.eventId });
+    if (filters.majorEventId) {
+      filtersAnd.push({ OR: [{ majorEventId: filters.majorEventId }, { event: { majorEventId: filters.majorEventId } }] });
+    }
     const records = await this.prisma.prizeDraw.findMany({
-      where: {
-        deletedAt: null,
-        ...(targets ? { OR: this.scopedTargetWhere(targets) } : {}),
-      },
+      where: { deletedAt: null, ...(filtersAnd.length ? { AND: filtersAnd } : {}) },
       include: DRAW_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      skip: filters.skip ?? undefined,
+      take: filters.take ?? undefined,
     });
     const weightBreakdowns = await this.loadWeightBreakdowns(records);
     return Promise.all(records.map((record) => this.mapDraw(record, false, false, weightBreakdowns)));

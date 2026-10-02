@@ -90,6 +90,7 @@ describe('EventAttendancesQueriesResolver', () => {
       { id: 'event-1', name: 'Opening', emoji: '🎉', startDate: new Date('2026-05-21T12:00:00.000Z') },
       { id: 'event-2', name: 'Workshop', emoji: '🛠️', startDate: new Date('2026-05-22T12:00:00.000Z') },
     ]);
+    prisma.people.findMany.mockResolvedValue([{ id: 'person-1' }, { id: 'person-2' }]);
     prisma.majorEventSubscription.findMany.mockResolvedValue([
       {
         id: 'subscription-1',
@@ -158,6 +159,7 @@ describe('EventAttendancesQueriesResolver', () => {
           eventId: {
             in: ['event-1', 'event-2'],
           },
+          personId: { in: ['person-1', 'person-2'] },
           status: 'PRESENT',
         },
       }),
@@ -169,6 +171,17 @@ describe('EventAttendancesQueriesResolver', () => {
     prisma.majorEvent.findFirst.mockResolvedValueOnce({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValueOnce([]);
     await expect(resolver.majorEventUserAttendances('major-1')).resolves.toEqual([]);
+  });
+
+  it('keeps major-event attendance count aligned with the list empty-state', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.count.mockResolvedValue(0);
+
+    await expect(resolver.majorEventUserAttendanceCount('major-1', 'Ada')).resolves.toBe(0);
+    expect(prisma.people.count).not.toHaveBeenCalled();
+
+    prisma.majorEvent.findFirst.mockResolvedValueOnce(null);
+    await expect(resolver.majorEventUserAttendanceCount('missing-major')).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('returns one attendance or throws when it is missing', async () => {
@@ -201,6 +214,7 @@ function createFullPrisma() {
     event: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
+      count: jest.fn(),
     },
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -211,6 +225,7 @@ function createFullPrisma() {
     people: {
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn(),
       create: jest.fn(),
     },
   };

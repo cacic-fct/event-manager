@@ -45,6 +45,9 @@ export function createTypesenseCollectionSchemas(): CollectionCreateSchema[] {
     createTypesenseCollectionSchema(TYPESENSE_COLLECTIONS.eventGroups, [
       { name: 'id', type: 'string' },
       { name: 'name', type: 'string' },
+      { name: 'emoji', type: 'string', optional: true },
+      { name: 'majorEventId', type: 'string', optional: true, facet: true },
+      { name: 'majorEventName', type: 'string', optional: true },
     ]),
     createTypesenseCollectionSchema(TYPESENSE_COLLECTIONS.people, [
       { name: 'id', type: 'string' },

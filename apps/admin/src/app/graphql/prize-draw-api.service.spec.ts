@@ -30,8 +30,18 @@ describe('PrizeDrawApiService', () => {
     expect(listQuery).toContain('prizeDraws');
     expect(listQuery).toContain('weightBreakdown');
     expect(listQuery).toContain('notificationStatus');
+    expect(graphql.request.mock.calls[0][1]).toBeUndefined();
     expect(graphql.request.mock.calls[1][1]).toEqual({ drawId: 'draw-1' });
     expect(graphql.request.mock.calls[2][1]).toEqual({ drawId: 'draw-1' });
+  });
+
+  it('passes optional server-side scope, search, and pagination filters', async () => {
+    graphql.request.mockReturnValue(of({ prizeDraws: [] }));
+    const filters = { query: 'camiseta', eventId: 'event-1', skip: 50, take: 51 };
+
+    await expect(firstValueFrom(service.list(filters))).resolves.toEqual([]);
+
+    expect(graphql.request).toHaveBeenCalledWith(expect.stringContaining('$skip: Int'), filters);
   });
 
   it('passes the complete save input as a typed GraphQL variable', async () => {

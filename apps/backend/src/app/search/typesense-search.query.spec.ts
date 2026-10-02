@@ -1,4 +1,8 @@
-import { searchTypesenseDocumentIds, searchTypesensePagedDocumentIds } from './typesense-search.query';
+import {
+  searchTypesenseDocumentIds,
+  searchTypesensePagedDocumentIds,
+  searchTypesenseRankedDocumentIds,
+} from './typesense-search.query';
 
 describe('typesense query helpers', () => {
   it('returns unavailable when the client is missing or the query is blank without match-all', async () => {
@@ -95,6 +99,47 @@ describe('typesense query helpers', () => {
       }),
     ).resolves.toEqual({ available: false, ids: [] });
     expect(logger.error).toHaveBeenCalledWith('Typesense search failed for collection events.', expect.any(Error));
+  });
+
+  it('preserves ranked hit order and exposes precision-safe text-match scores', async () => {
+    const client = createClientMock();
+    client.documents.search.mockResolvedValueOnce({
+      found: 2,
+      hits: [
+        { document: { id: 'event-2' }, text_match_info: { score: '9223372036854775807' } },
+        { document: { id: 'event-1' }, text_match: 42 },
+      ],
+    });
+
+    await expect(searchTypesenseRankedDocumentIds({
+      client: client.instance as never,
+      logger: { error: jest.fn() } as never,
+      collectionName: 'events',
+      query: 'semana laboratorio',
+      queryBy: 'name,locationDescription',
+      options: {
+        limit: 2,
+        offset: 3,
+        queryByWeights: '10,2',
+        sortBy: '_text_match:desc,startDate:desc',
+      },
+    })).resolves.toEqual({
+      available: true,
+      found: 2,
+      hits: [
+        { id: 'event-2', score: '9223372036854775807' },
+        { id: 'event-1', score: '42' },
+      ],
+    });
+    expect(client.documents.search).toHaveBeenCalledWith({
+      q: 'semana laboratorio',
+      query_by: 'name,locationDescription',
+      query_by_weights: '10,2',
+      per_page: 2,
+      limit_hits: 10_000,
+      offset: 3,
+      sort_by: '_text_match:desc,startDate:desc',
+    });
   });
 
   it('falls back when the requested offset exhausts the Typesense result window', async () => {

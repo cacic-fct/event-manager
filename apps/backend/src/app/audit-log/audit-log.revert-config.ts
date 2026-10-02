@@ -178,6 +178,7 @@ export function getAuditLogRevertConfig(entityType: AuditLogEntityType): RevertE
           id: true,
           name: true,
           emoji: true,
+          majorEventId: true,
           requiresImageLicenseAgreement: true,
           shouldIssueCertificate: true,
           shouldIssueCertificateForNonPayingAttendees: true,

@@ -31,11 +31,25 @@
 
 .page {
   padding: 0;
+  min-width: 0;
 }
+
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 20;
+  transform: translateY(-200%);
+  background: var(--mat-sys-surface);
+}
+
+.skip-link:focus-visible { transform: translateY(0); }
+.logo-link { display: flex; align-items: center; }
 
 .content-shell {
   min-height: calc(100dvh - 64px);
   background: var(--mat-sys-surface);
+  min-width: 0;
 }
 
 .page-header {
@@ -59,8 +73,12 @@
   }
 }
 
+.page-header > div { min-width: 0; overflow-wrap: anywhere; }
+.page-header > a { flex-shrink: 0; }
+
 .content {
   padding: 1rem;
+  min-width: 0;
 }
 
 .spacer {
@@ -97,3 +115,11 @@ lib-cacic-logo {
   margin-right: 0.5rem;
   margin-top: 7px;
 }
+
+.workspace-selector { flex: 0 0 auto; padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.workspace-selector .context-selector { height: auto; min-height: 56px; border-radius: 8px; }
+.context-avatar { flex: 0 0 1.5rem; display: inline-flex; align-items: center; justify-content: center; }
+.context-name { white-space: normal; text-overflow: clip; overflow-wrap: anywhere; font: var(--mat-sys-title-small); }
+.context-edit-note { padding: 0.5rem; margin: 0; color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-small); overflow-wrap: anywhere; }
+.mobile-context { display: none; }
+@media (max-width: 768px) { .mobile-context { display: flex; gap: 0.5rem; align-items: baseline; } }

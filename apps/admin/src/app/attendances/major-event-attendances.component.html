@@ -1,5 +1,5 @@
 <section class="subtab-layout major-attendance-layout">
-  <aside class="panel major-selector">
+  <aside class="major-selector">
     <div class="panel-heading">
       <div>
         <h3>Presenças no grande evento</h3>
@@ -7,26 +7,23 @@
       </div>
     </div>
 
-    <form [formGroup]="workspace.majorEventAttendanceForm" class="major-event-form">
-      <mat-form-field>
-        <mat-label>Grande evento</mat-label>
-        <mat-select formControlName="majorEventId">
-          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-            <mat-option [value]="majorEvent.id">
-              <span class="item-title">
-                <lib-twemoji [emoji]="majorEvent.emoji" />
-                <span>{{ majorEvent.name }}</span>
-              </span>
-            </mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
 
-      <button mat-flat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">
-        <mat-icon>groups</mat-icon>
-        Carregar pessoas
-      </button>
-    </form>
+    <button mat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">Atualizar presenças</button>
+
+
+    <section class="panel">
+    @if (workspace.majorEventAttendanceForm.controls.majorEventId.value; as majorEventId) {
+      <p class="empty-note">
+        {{ workspace.majorEventUserAttendanceCount() }} participantes ·
+        <a [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']">Editar política de presença</a>
+      </p>
+      <mat-form-field class="query-field">
+        <mat-label>Buscar participante</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [formControl]="workspace.majorEventAttendanceSearchForm.controls.query" />
+        <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+      </mat-form-field>
+    }
 
     <mat-list class="subscription-list categorized-list">
       @for (group of workspace.majorEventUserAttendanceGroups(); track group.category) {
@@ -36,29 +33,31 @@
         </div>
 
         @for (attendance of group.attendances; track attendance.subscriptionId ?? attendance.personId) {
-          <mat-list-item
-            (click)="workspace.selectMajorEventUserAttendance(attendance)"
-            [class.selected-list-item]="workspace.selectedMajorEventUserAttendance()?.personId === attendance.personId">
-            <span matListItemTitle class="attendance-item-title">
-              {{ attendance.person?.name ?? attendance.personId }}
-            </span>
-            <span matListItemLine class="attendance-item-line">
+          <app-workspace-record
+            [title]="attendance.person?.name ?? attendance.personId"
+            [label]="'Consultar presenças de ' + (attendance.person?.name ?? attendance.personId)"
+            [selected]="workspace.selectedMajorEventUserAttendance()?.personId === attendance.personId"
+            [link]="['/attendances', 'major-event', workspace.majorEventAttendanceForm.controls.majorEventId.value, 'person', attendance.personId]">
+            @if (attendance.person) {
+              <app-participant-summary recordDescription [person]="attendance.person" [showName]="false" />
+            }
+            <span recordDescription class="attendance-item-line">
               {{ attendedEventCount(attendance) }}
               {{ attendedEventCount(attendance) === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
             </span>
             @if (workspace.getAttendanceCategoryHistoricalExplanation(group.category); as historicalExplanation) {
-              <span matListItemLine class="attendance-item-line">
+              <span recordDescription class="attendance-item-line">
                 Classificação histórica: {{ historicalExplanation }}
               </span>
             }
             @if (workspace.getMajorEventCurrentAssessmentLabel(attendance); as currentAssessment) {
-              <span matListItemLine class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
+              <span recordDescription class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
             } @else if (group.category === 'UNKNOWN') {
-              <span matListItemLine class="attendance-item-line">
+              <span recordDescription class="attendance-item-line">
                 Situação atual: varia entre as atividades frequentadas.
               </span>
             }
-          </mat-list-item>
+          </app-workspace-record>
         }
       } @empty {
         <mat-list-item>
@@ -69,7 +68,7 @@
     </mat-list>
 
     <div class="list-pager" aria-label="Paginação de presenças do grande evento">
-      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }}</span>
+      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }} · {{ workspace.majorEventUserAttendanceCount() }} no total</span>
       <div class="list-pager-actions">
         <button
           mat-icon-button
@@ -91,6 +90,7 @@
         </button>
       </div>
     </div>
+    </section>
   </aside>
 
   <section class="panel attendance-detail">

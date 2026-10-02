@@ -75,7 +75,7 @@ export default meta;
 type Story = StoryObj<MajorEventSubscriptionsStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: /selecione um grande evento/i })).toBeVisible());

@@ -330,6 +330,9 @@ export const PERSON_SEARCH_FIELDS = `
   identityDocument
   academicId
   userId
+  user {
+    unespRole
+  }
 `;
 
 export const PERSON_EXPORT_FIELDS = `
@@ -341,6 +344,7 @@ export const PERSON_EXPORT_FIELDS = `
   academicId
   user {
     role
+    unespRole
   }
 `;
 
@@ -489,6 +493,7 @@ export const PERSON_DETAIL_FIELDS = `
     name
     email
     role
+    unespRole
   }
   lecturerProfile {
     id

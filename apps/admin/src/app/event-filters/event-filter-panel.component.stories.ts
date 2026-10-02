@@ -20,8 +20,8 @@ const meta: Meta<EventFilterPanelStoryArgs> = {
   tags: ['autodocs'],
   args: {
     query: 'angular',
-    startDateFrom: '2026-05-01',
-    startDateUntil: '2026-05-31',
+    startDateFrom: new Date().toISOString().slice(0, 10),
+    startDateUntil: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
     isInGroup: 'ALL',
     isInMajorEvent: 'ALL',
     applyLabel: 'Buscar eventos',
@@ -45,7 +45,7 @@ const meta: Meta<EventFilterPanelStoryArgs> = {
   }),
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -53,17 +53,15 @@ export default meta;
 
 type Story = StoryObj<EventFilterPanelStoryArgs>;
 
-const normalizeDateControlValue = (value: string | number): string => {
-  if (typeof value === 'number') {
-    return new Date(value).toISOString().slice(0, 10);
-  }
-  return value;
+const normalizeDateControlValue = (value: string | number): Date | null => {
+  if (value === '') return null;
+  return new Date(typeof value === 'number' ? value : `${value}T12:00:00`);
 };
 
 const createFilterForm = (args: EventFilterPanelStoryArgs) =>
   new FormGroup({
-    startDateFrom: new FormControl(normalizeDateControlValue(args.startDateFrom), { nonNullable: true }),
-    startDateUntil: new FormControl(normalizeDateControlValue(args.startDateUntil), { nonNullable: true }),
+    startDateFrom: new FormControl<Date | null>(normalizeDateControlValue(args.startDateFrom)),
+    startDateUntil: new FormControl<Date | null>(normalizeDateControlValue(args.startDateUntil)),
     isInGroup: new FormControl(args.isInGroup, { nonNullable: true }),
     isInMajorEvent: new FormControl(args.isInMajorEvent, { nonNullable: true }),
     query: new FormControl(args.query, { nonNullable: true }),
@@ -71,23 +69,18 @@ const createFilterForm = (args: EventFilterPanelStoryArgs) =>
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+  await expect(canvas.getByRole('searchbox', { name: 'Buscar eventos' })).toBeVisible();
+  const filters = canvas.getByRole('button', { name: /Filtros/ });
+  await expect(filters).toHaveAttribute('aria-expanded', 'false');
+  await userEvent.click(filters);
+  await expect(canvas.getByRole('combobox', { name: 'Vínculo com grupo' })).toBeVisible();
+  await expect(canvas.getByRole('combobox', { name: 'Vínculo com grande evento' })).toBeVisible();
+  await userEvent.click(filters);
+  await expect(filters).toHaveAttribute('aria-expanded', 'false');
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

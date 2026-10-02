@@ -76,7 +76,7 @@ describe('ShellService', () => {
     await service.loadInitialData();
 
     expect(permissions.evaluateWorkspacePermissions).toHaveBeenCalledTimes(1);
-    expect(eventsService.loadEvents).toHaveBeenCalledTimes(1);
+    expect(eventsService.loadEvents).not.toHaveBeenCalled();
     expect(eventsService.loadMajorEventsForEvent).not.toHaveBeenCalled();
     expect(placePresetsService.loadPlacePresets).toHaveBeenCalledTimes(1);
     expect(certificatesService.loadInitialData).toHaveBeenCalledTimes(1);
@@ -93,14 +93,14 @@ describe('ShellService', () => {
 
     await service.loadInitialData();
 
-    expect(eventsService.loadEvents).toHaveBeenCalledTimes(1);
+    expect(eventsService.loadEvents).not.toHaveBeenCalled();
     expect(eventsService.loadMajorEventsForEvent).toHaveBeenCalledTimes(1);
     expect(majorEventsService.loadMajorEvents).not.toHaveBeenCalled();
   });
 
   it('clears the shell loading state when a preload fails', async () => {
-    readableTabs = new Set([WorkspacePermissionTab.Events]);
-    eventsService.loadEvents.mockRejectedValueOnce(new Error('Falha ao carregar eventos.'));
+    readableTabs = new Set([WorkspacePermissionTab.Places]);
+    placePresetsService.loadPlacePresets.mockRejectedValueOnce(new Error('Falha ao carregar eventos.'));
 
     await expect(service.loadInitialData()).rejects.toThrow('Falha ao carregar eventos.');
 

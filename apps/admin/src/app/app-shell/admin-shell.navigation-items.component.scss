@@ -140,3 +140,39 @@
   gap: 0.75rem;
   padding: 0 1rem;
 }
+
+.sidenav.nav-mode-icons .workspace-selector,
+.sidenav.nav-mode-auto .workspace-selector {
+  padding-block: 0;
+}
+
+.sidenav.nav-mode-icons .workspace-selector .nav-item.context-selector,
+.sidenav.nav-mode-auto .workspace-selector .nav-item.context-selector {
+  height: var(--workspace-nav-item-size);
+  min-height: var(--workspace-nav-item-size);
+  padding-block: 0;
+  flex-shrink: 0;
+}
+
+.sidenav.nav-mode-auto:hover .workspace-selector .nav-item.context-selector,
+.sidenav.nav-mode-auto:has(:focus-visible) .workspace-selector .nav-item.context-selector {
+  padding-inline: 0.75rem;
+}
+
+.sidenav .nav-item.context-parent {
+  height: auto;
+  min-height: var(--workspace-nav-item-size);
+  padding-block: 0.5rem;
+  flex-shrink: 0;
+}
+
+.sidenav.nav-mode-auto .nav-item .context-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-parent .nav-label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

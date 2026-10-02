@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,18 +12,18 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { adminEventWorkspaceRoute, adminSportsWorkspaceRoute, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { WorkspaceMajorEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 
 @Component({
   selector: 'app-workspace-major-event-subscriptions-subtab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CurrencyPipe,
     DatePipe,
@@ -38,8 +38,9 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     MatSelectModule,
     MatTooltipModule,
     RouterLink,
-    TwemojiComponent,
     PersonSearchComponent,
+    ParticipantSummaryComponent,
+    WorkspaceRecordComponent,
   ],
   templateUrl: './major-event-subscriptions.component.html',
   styleUrls: [
@@ -56,6 +57,18 @@ export class MajorEventSubscriptionsComponent {
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
+
+  protected sportsWorkspaceRoute(majorEventId: string): string[] {
+    return majorEventId
+      ? adminSportsWorkspaceRoute({ majorEventId, area: 'reviews' })
+      : ['/sports'];
+  }
+
+  protected eventSettingsRoute(majorEventId: string): string[] {
+    return majorEventId
+      ? adminEventWorkspaceRoute({ kind: 'major-event', id: majorEventId, section: 'settings' })
+      : ['/event-workspace'];
+  }
 
   protected readonly statuses = [
     'WAITING_RECEIPT_UPLOAD',
@@ -131,9 +144,7 @@ export class MajorEventSubscriptionsComponent {
   }
 
   protected canEditSelectedMajorEventSubscriptions(): boolean {
-    const majorEvent = this.workspace
-      .majorEvents()
-      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    const majorEvent = this.workspace.selectedMajorEvent();
     return (
       this.permissions.hasAny([
         Permission.Subscription.Create,
@@ -146,9 +157,7 @@ export class MajorEventSubscriptionsComponent {
   }
 
   protected canValidateSelectedMajorEventReceipts(): boolean {
-    const majorEvent = this.workspace
-      .majorEvents()
-      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    const majorEvent = this.workspace.selectedMajorEvent();
     return (
       this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]) &&
       Boolean(majorEvent) &&

@@ -14,6 +14,7 @@ describe('MergeCandidatesService', () => {
   let service: MergeCandidatesService;
   let api: {
     listMergeCandidates: ReturnType<typeof vi.fn>;
+    countMergeCandidates: ReturnType<typeof vi.fn>;
     scanMergeCandidates: ReturnType<typeof vi.fn>;
     updateMergeCandidate: ReturnType<typeof vi.fn>;
     deleteMergeCandidate: ReturnType<typeof vi.fn>;
@@ -28,6 +29,7 @@ describe('MergeCandidatesService', () => {
   beforeEach(() => {
     api = {
       listMergeCandidates: vi.fn(() => of([candidateFixture()])),
+      countMergeCandidates: vi.fn(() => of(1)),
       scanMergeCandidates: vi.fn(() => of(4)),
       updateMergeCandidate: vi.fn(() => of(candidateFixture({ status: 'REJECTED' }))),
       deleteMergeCandidate: vi.fn(() => of({ deleted: true, id: 'candidate-1' })),

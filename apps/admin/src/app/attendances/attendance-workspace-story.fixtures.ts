@@ -4,7 +4,6 @@ import type {
   AttendanceCurrentAssessment,
   Event,
   EventAttendanceScannerFeedItem,
-  MajorEvent,
   MajorEventUserAttendance,
   Person,
 } from '@cacic-fct/event-manager-admin-contracts';
@@ -94,16 +93,6 @@ function createAttendanceWorkspaceMock(
   const majorEventAttendanceForm = formBuilder.nonNullable.group({ majorEventId: ['major-event-story'] });
 
   const mock = {
-    majorEvents: () => [createMajorEvent()],
-    attendanceEventFiltersForm: formBuilder.group({
-      startDateFrom: formBuilder.control<Date | null>(null),
-      startDateUntil: formBuilder.control<Date | null>(null),
-      isInGroup: formBuilder.nonNullable.control('ALL'),
-      isInMajorEvent: formBuilder.nonNullable.control('ALL'),
-      query: formBuilder.nonNullable.control(''),
-    }),
-    attendanceEventResults: events,
-    attendanceEventResultsPagination: createPagination(() => events().length),
     selectedAttendanceEvent: selectedEvent,
     attendancePersonMatches: () => createPeople(3),
     attendances,
@@ -116,6 +105,7 @@ function createAttendanceWorkspaceMock(
         subscriptionStatus: index % 2 === 0 ? 'CONFIRMED' : 'WAITING_RECEIPT_UPLOAD',
       })),
     attendanceTotalCount: () => attendances().length + explicitAbsences().length,
+    attendanceSearchForm: formBuilder.nonNullable.group({ query: [''] }),
     attendancesPagination: createPagination(() => attendances().length),
     offlineAttendanceSubmissions: () => createOfflineSubmissions(getControls(), selectedEvent()),
     attendanceGroups: () =>
@@ -128,6 +118,8 @@ function createAttendanceWorkspaceMock(
         }))
         .filter((group) => group.attendances.length > 0),
     majorEventUserAttendances: majorAttendances,
+    majorEventUserAttendanceCount: () => majorAttendances().length,
+    majorEventAttendanceSearchForm: formBuilder.nonNullable.group({ query: [''] }),
     majorEventUserAttendancesPagination: createPagination(() => majorAttendances().length),
     majorEventUserAttendanceGroups: () =>
       categories
@@ -146,10 +138,6 @@ function createAttendanceWorkspaceMock(
     isImportingCsv: () => false,
     attendanceForm,
     majorEventAttendanceForm,
-    searchAttendanceEvents: fn(async () => undefined),
-    resetAttendanceEventFilters: fn(async () => undefined),
-    previousAttendanceEventResultsPage: fn(async () => undefined),
-    nextAttendanceEventResultsPage: fn(async () => undefined),
     selectAttendanceEvent: fn(async () => undefined),
     selectAttendanceEventById: fn(async () => undefined),
     findAttendancePerson: fn(async () => undefined),
@@ -339,23 +327,6 @@ function createPeople(count: number, longNames = false): Person[] {
   }));
 }
 
-function createMajorEvent(): MajorEvent {
-  const now = new Date();
-  return {
-    id: 'major-event-story',
-    name: 'CACiC Storybook',
-    emoji: '💻',
-    startDate: now.toISOString(),
-    endDate: new Date(now.getTime() + 3 * 24 * 60 * 60_000).toISOString(),
-    isPaymentRequired: true,
-    shouldIssueCertificateForNonPayingAttendees: false,
-    shouldIssueCertificateForNonSubscribedAttendees: false,
-    majorEventPrices: [],
-    publicationState: 'PUBLISHED',
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-  };
-}
 
 function createPagination(getCount: () => number) {
   return {

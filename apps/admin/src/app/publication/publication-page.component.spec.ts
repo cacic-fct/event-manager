@@ -1,10 +1,10 @@
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError, type Observable } from 'rxjs';
 import type {
   PublicationActionResult,
   PublicationNode,
@@ -100,6 +100,24 @@ describe('PublicationPageComponent', () => {
       focusTargetType: 'EVENT_GROUP',
       focusTargetId: 'group-1',
     });
+  });
+
+  it('refetches an exact publication target when the scoped route changes', async () => {
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    const { component } = await createComponent(params);
+    api.getWorkspace.mockClear();
+
+    params.next(convertToParamMap({ targetType: 'event-group', targetId: 'group-1' }));
+    await flushAsync();
+
+    expect(api.getWorkspace).toHaveBeenCalledWith({
+      query: null,
+      skip: 0,
+      take: 10,
+      focusTargetType: 'EVENT_GROUP',
+      focusTargetId: 'group-1',
+    });
+    expect(component.selectedNode()?.id).toBe('group-1');
   });
 
   it('trims searches, resets the page, clears searches, and guards pagination boundaries', async () => {
@@ -353,9 +371,9 @@ describe('PublicationPageComponent', () => {
     component.selectNode(majorNode());
     component.openEditor();
 
-    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/events', 'event-1']);
-    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/groups', 'group-1']);
-    expect(router.navigate).toHaveBeenNthCalledWith(3, ['/major-events', 'major-1']);
+    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/event-workspace', 'event', 'event-1', 'settings']);
+    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/event-workspace', 'group', 'group-1', 'settings']);
+    expect(router.navigate).toHaveBeenNthCalledWith(3, ['/event-workspace', 'major-event', 'major-1', 'settings']);
 
     component.selectedNode.set(null);
     component.openEditor();
@@ -364,11 +382,11 @@ describe('PublicationPageComponent', () => {
     expect(api.setPublicationState).not.toHaveBeenCalled();
   });
 
-  async function createComponent(): Promise<{
+  async function createComponent(paramMap: Observable<ParamMap> = of(routeParamMap)): Promise<{
     component: PublicationPageComponent;
     fixture: ComponentFixture<PublicationPageComponent>;
   }> {
-    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: of(routeParamMap) } });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap } });
     const fixture = TestBed.createComponent(PublicationPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();

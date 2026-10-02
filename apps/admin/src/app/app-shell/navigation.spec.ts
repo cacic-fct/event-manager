@@ -12,6 +12,19 @@ describe('workspace nav', () => {
     expect(findNavigationItemForUrl('/workspace/preferences').id).toBe('preferences');
   });
 
+  it('maps scope homes to the correct permission owner', () => {
+    expect(findNavigationItemForUrl('/event-workspace').id).toBe('events');
+    expect(findNavigationItemForUrl('/event-workspace/event/event-1').id).toBe('events');
+    expect(findNavigationItemForUrl('/admin/event-workspace/group/group-1').id).toBe('groups');
+    expect(findNavigationItemForUrl('/event-workspace/major-event/major-1?view=activities').id).toBe('major-events');
+  });
+
+  it('preserves operation ownership for compatible scoped URLs', () => {
+    expect(findNavigationItemForUrl('/subscriptions/event/event-1/interests').id).toBe('subscriptions');
+    expect(findNavigationItemForUrl('/subscriptions/group/group-1/interests').id).toBe('subscriptions');
+    expect(findNavigationItemForUrl('/attendances/major-event/major-1').id).toBe('attendances');
+  });
+
   it('uses unique ids for repeated divider entries', () => {
     const dividerIds = navigationItems.filter((item) => item.kind === 'divider').map((item) => item.id);
 

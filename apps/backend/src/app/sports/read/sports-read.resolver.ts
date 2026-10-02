@@ -39,11 +39,13 @@ export class SportsAdminReadResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
   ): Promise<AdminSportsTournamentListItem[]> {
     return this.sportsRead.adminTournamentList(this.getUser(context), {
       query,
       skip,
       take,
+      majorEventId,
     });
   }
 

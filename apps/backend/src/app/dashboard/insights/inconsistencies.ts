@@ -142,7 +142,7 @@ export function buildInconsistencies(input: {
         inconsistencies.push({
           type: isSportsMatch ? 'SPORTS_MATCH_WITHOUT_PLACE' : 'EVENT_WITHOUT_PLACE',
           action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
-          targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+          targetId: event.sportsMatch ? sportsTargetId(event) : event.id,
           severity: 'WARNING',
           title: isSportsMatch ? 'Partida sem local cadastrado' : 'Evento sem local cadastrado',
           description: isSportsMatch
@@ -189,7 +189,7 @@ export function buildInconsistencies(input: {
       inconsistencies.push({
         type: 'SUSPICIOUS_DURATION',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: event.sportsMatch ? sportsTargetId(event) : event.id,
         severity: 'WARNING',
         title: 'Evento com duração suspeita',
         description: `${event.name} tem mais de 8 horas de duração.`,
@@ -201,7 +201,7 @@ export function buildInconsistencies(input: {
       inconsistencies.push({
         type: 'SUSPICIOUS_DATE',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: event.sportsMatch ? sportsTargetId(event) : event.id,
         severity: 'CRITICAL',
         title: 'Evento com data suspeita',
         description: `${event.name} está cadastrado antes de 2010.`,
@@ -213,7 +213,7 @@ export function buildInconsistencies(input: {
       inconsistencies.push({
         type: isSportsMatch ? 'SPORTS_MATCH_PLACEHOLDER_EMOJI' : 'PLACEHOLDER_EMOJI',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: event.sportsMatch ? sportsTargetId(event) : event.id,
         severity: 'INFO',
         title: isSportsMatch ? 'Partida com emoji padrão' : 'Evento com emoji padrão',
         description: `${event.name} ainda usa o emoji padrão.`,
@@ -309,7 +309,7 @@ export function buildInconsistencies(input: {
           inconsistencies.push({
             type: sportsEvent ? 'SPORTS_PLACE_DOUBLE_BOOKED' : 'PLACE_DOUBLE_BOOKED',
             action: sportsEvent ? 'OPEN_SPORTS' : 'OPEN_EVENT',
-            targetId: sportsEvent?.sportsMatch?.category.tournamentId ?? left.id,
+            targetId: sportsEvent ? sportsTargetId(sportsEvent) : left.id,
             severity: 'CRITICAL',
             title: sportsEvent ? 'Local da partida alocado no mesmo horário' : 'Local alocado em eventos simultâneos',
             description: `${left.locationDescription ?? 'Local sem nome'}: ${left.name} e ${right.name}`,
@@ -322,6 +322,10 @@ export function buildInconsistencies(input: {
   }
 
   return inconsistencies.slice(0, MAX_INCONSISTENCIES);
+}
+
+function sportsTargetId(event: InsightEvent): string | null {
+  return event.majorEventId ?? event.sportsMatch?.category.tournament?.majorEventId ?? null;
 }
 
 function hasPlace(event: InsightEvent): boolean {

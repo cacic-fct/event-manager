@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, Subject, throwError } from 'rxjs';
@@ -20,7 +21,11 @@ import { EventInterestsComponent } from './event-interests.component';
 describe('EventInterestsComponent realtime refresh', () => {
   let workspaceEvents: Subject<void>;
   let eventEvents: Subject<void>;
-  let api: { listInterests: ReturnType<typeof vi.fn>; convertInterestToSubscription: ReturnType<typeof vi.fn> };
+  let api: {
+    listInterests: ReturnType<typeof vi.fn>;
+    countInterests: ReturnType<typeof vi.fn>;
+    convertInterestToSubscription: ReturnType<typeof vi.fn>;
+  };
   let realtime: {
     watchWorkspace: ReturnType<typeof vi.fn>;
     watchEventSubscriptions: ReturnType<typeof vi.fn>;
@@ -32,6 +37,7 @@ describe('EventInterestsComponent realtime refresh', () => {
     eventEvents = new Subject<void>();
     api = {
       listInterests: vi.fn(() => of([interestFixture()])),
+      countInterests: vi.fn(() => of(1)),
       convertInterestToSubscription: vi.fn(() => of({})),
     };
     realtime = {
@@ -43,6 +49,7 @@ describe('EventInterestsComponent realtime refresh', () => {
     await TestBed.configureTestingModule({
       imports: [EventInterestsComponent],
       providers: [
+        provideRouter([]),
         {
           provide: EventApiService,
           useValue: {
@@ -60,6 +67,18 @@ describe('EventInterestsComponent realtime refresh', () => {
         { provide: MatDialog, useValue: { open: vi.fn() } },
       ],
     }).compileComponents();
+  });
+
+  it('loads a scoped interest target directly without requesting the global inventory', async () => {
+    const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
+    fixture.detectChanges();
+    await flushAsync();
+    expect(TestBed.inject(EventApiService).getEvent).toHaveBeenCalledWith('event-1');
+    expect(TestBed.inject(EventApiService).listEvents).not.toHaveBeenCalled();
+    expect(TestBed.inject(EventGroupApiService).listEventGroups).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.selectedTarget()?.targetId).toBe('event-1');
+    expect(api.listInterests).toHaveBeenCalledWith(InterestTargetType.EVENT, 'event-1', expect.any(Object));
   });
 
   it('loads accessible events without requesting unreadable target types', async () => {

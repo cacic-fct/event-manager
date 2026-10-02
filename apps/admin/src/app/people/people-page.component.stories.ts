@@ -136,7 +136,7 @@ export default meta;
 type Story = StoryObj<PeoplePermissionsStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
@@ -396,7 +396,7 @@ function linkedDataSummary(personId: string, variant: 'active' | 'empty' = 'acti
           id: `${event.id}:${person.id}:lecturer`,
           label: event.name,
           description: 'Ministrante',
-          route: `/events/${event.id}`,
+          route: `/event-workspace/event/${event.id}`,
           status: null,
           occurredAt: isoDaysFromNow(-12),
         },

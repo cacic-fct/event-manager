@@ -1,11 +1,12 @@
 import type { UrlMatcher, UrlSegment } from '@angular/router';
+import { adminSportsWorkspaceRoute } from '@cacic-fct/shared-utils';
 
 export const SPORTS_WORKSPACE_AREAS = ['categories', 'teams', 'matches', 'reviews'] as const;
 
 export type SportsWorkspaceArea = 'overview' | (typeof SPORTS_WORKSPACE_AREAS)[number];
 
 export interface SportsWorkspaceRouteState {
-  tournamentId: string | null;
+  majorEventId: string | null;
   area: SportsWorkspaceArea;
   categoryId: string | null;
   teamId: string | null;
@@ -19,15 +20,23 @@ interface RouteParamReader {
 export const sportsWorkspaceMatcher: UrlMatcher = (segments) => matchSportsWorkspaceSegments(segments);
 
 export function matchSportsWorkspaceSegments(segments: UrlSegment[]) {
-  if (segments.length < 1 || segments.length > 5 || segments[0]?.path !== 'sports') {
+  if (segments.length === 1 && segments[0]?.path === 'sports') {
+    return { consumed: segments, posParams: {} };
+  }
+
+  if (segments.length < 3 || segments[0]?.path !== 'sports' || segments[1]?.path !== 'major-event' || segments.length > 6) {
     return null;
   }
 
-  const [, tournamentId, area, entityId, matchId] = segments;
-  const posParams: Record<string, UrlSegment> = {};
-  if (tournamentId) {
-    posParams['tournamentId'] = tournamentId;
+  const majorEventId = segments[2];
+  if (!majorEventId) {
+    return null;
   }
+  const area = segments[3];
+  const entityId = segments[4];
+  const matchId = segments[5];
+  const posParams: Record<string, UrlSegment> = {};
+  posParams['majorEventId'] = majorEventId;
   if (area) {
     posParams['area'] = area;
   }
@@ -42,13 +51,13 @@ export function matchSportsWorkspaceSegments(segments: UrlSegment[]) {
 }
 
 export function parseSportsWorkspaceRoute(params: RouteParamReader): SportsWorkspaceRouteState {
-  const tournamentId = params.get('tournamentId');
+  const majorEventId = params.get('majorEventId');
   const areaParam = params.get('area');
   const area = isSportsWorkspaceArea(areaParam) ? areaParam : 'overview';
   const entityId = params.get('entityId') ?? params.get('categoryId');
 
   return {
-    tournamentId,
+    majorEventId,
     area,
     categoryId: area === 'categories' || area === 'matches' ? entityId : null,
     teamId: area === 'teams' || area === 'reviews' ? entityId : null,
@@ -61,29 +70,10 @@ export function isSportsWorkspaceArea(value: string | null): value is Exclude<Sp
 }
 
 export function sportsWorkspaceRoute(
-  tournamentId: string,
+  majorEventId: string | null,
   area: SportsWorkspaceArea,
   selection: { categoryId?: string; teamId?: string; matchId?: string } = {},
 ): string[] {
-  if (area === 'overview') {
-    return ['/sports', tournamentId];
-  }
-
-  const route = ['/sports', tournamentId, area];
-  if (area === 'categories' && selection.categoryId) {
-    route.push(selection.categoryId);
-  } else if (area === 'teams' && selection.teamId) {
-    route.push(selection.teamId);
-  } else if (area === 'matches') {
-    if (selection.categoryId) {
-      route.push(selection.categoryId);
-      if (selection.matchId) {
-        route.push(selection.matchId);
-      }
-    }
-  } else if (area === 'reviews' && selection.teamId) {
-    route.push(selection.teamId);
-  }
-
-  return route;
+  if (!majorEventId) return ['/sports'];
+  return adminSportsWorkspaceRoute({ majorEventId, area, ...selection });
 }

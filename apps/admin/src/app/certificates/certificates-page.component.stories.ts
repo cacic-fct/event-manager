@@ -1,7 +1,7 @@
-import { inject, provideAppInitializer } from '@angular/core';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { Component, inject, provideAppInitializer } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router, convertToParamMap, provideRouter, withDisabledInitialNavigation, withHashLocation } from '@angular/router';
 import { applicationConfig } from '@storybook/angular';
-import { of } from 'rxjs';
+import { filter, map, of, startWith } from 'rxjs';
 import { CertificatesService } from './certificates.service';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -10,6 +10,22 @@ import {
   type CertificateTemplatesStoryOptions,
 } from '../../../.storybook/storybook-mocks';
 import { CertificatesPageComponent } from './certificates-page.component';
+import { PermissionsService } from '../permissions/permissions.service';
+
+@Component({ template: '' })
+class CertificateStoryRouteComponent {}
+
+function standaloneCertificateRoute() {
+  const router = inject(Router);
+  return { paramMap: router.events.pipe(
+    filter((event) => event instanceof NavigationEnd),
+    map(() => {
+      const segments = router.parseUrl(router.url).root.children['primary']?.segments ?? [];
+      return convertToParamMap({ targetType: segments[1]?.path, targetId: segments[2]?.path, configId: segments[3]?.path });
+    }),
+    startWith(convertToParamMap({})),
+  ) };
+}
 
 interface CertificatesPageStoryArgs extends CertificateTemplatesStoryOptions {
   longContent: boolean;
@@ -79,7 +95,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -151,6 +167,15 @@ export const ParticipantPriceTiers: Story = {
           provide: ActivatedRoute,
           useValue: { paramMap: of(convertToParamMap({ targetType: 'major-event', targetId: 'major-1' })) },
         },
+        {
+          provide: PermissionsService,
+          useValue: {
+            has: () => true,
+            hasAny: () => true,
+            hasAll: () => true,
+            canDelete: () => true,
+          },
+        },
         provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
       ],
     }),
@@ -166,6 +191,83 @@ export const ParticipantPriceTiers: Story = {
     await userEvent.keyboard('{Escape}');
     await expect(tiers).toHaveTextContent('Estudante');
     await expect(tiers).toHaveTextContent('Comunidade');
+  },
+};
+
+export const StandaloneCertificateFolder: Story = {
+  name: 'Pastas de certificados avulsos',
+  decorators: [
+    applicationConfig({
+      providers: [
+        provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        {
+          provide: ActivatedRoute,
+          useFactory: standaloneCertificateRoute,
+        },
+        {
+          provide: PermissionsService,
+          useValue: {
+            has: () => true,
+            hasAny: () => true,
+            hasAll: () => true,
+            canDelete: () => true,
+          },
+        },
+        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+      ],
+    }),
+  ],
+  globals: { motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Certificados avulsos', level: 1 })).toBeVisible();
+    await expect(canvas.queryByRole('combobox', { name: 'Escopo' })).not.toBeInTheDocument();
+    await expect(await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' })).toBeVisible();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Nova pasta' }));
+    await expect(canvas.getByRole('heading', { name: 'Nova pasta', level: 3 })).toBeVisible();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Nome da pasta' }), 'Extensão universitária');
+    await expect(canvas.getByRole('button', { name: 'Criar pasta' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }));
+    await expect(canvas.queryByRole('heading', { name: 'Nova pasta', level: 3 })).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('link', { name: 'Abrir pasta Atividades complementares' }));
+    await expect(await canvas.findByRole('button', { name: 'Editar pasta' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Editar pasta' }));
+    await expect(canvas.getByRole('textbox', { name: 'Nome da pasta' })).toHaveValue('Atividades complementares');
+    await expect(canvas.getByRole('button', { name: 'Salvar alterações' })).toBeVisible();
+  },
+};
+
+export const StandaloneCertificateFoldersReadOnly: Story = {
+  name: 'Pastas avulsas somente leitura',
+  decorators: [
+    applicationConfig({
+      providers: [
+        provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        { provide: ActivatedRoute, useFactory: standaloneCertificateRoute },
+        {
+          provide: PermissionsService,
+          useValue: {
+            has: () => false,
+            hasAny: () => false,
+            hasAll: () => false,
+            canDelete: () => false,
+          },
+        },
+        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+      ],
+    }),
+  ],
+  globals: { motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const folder = await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' });
+    await expect(folder).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Nova pasta' })).not.toBeInTheDocument();
+    await userEvent.click(folder);
+    await expect(await canvas.findByRole('heading', { name: 'Atividades complementares', level: 3 })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Editar pasta' })).not.toBeInTheDocument();
   },
 };
 

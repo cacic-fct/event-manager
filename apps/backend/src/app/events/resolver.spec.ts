@@ -426,10 +426,11 @@ describe('EventsResolver', () => {
       event: {
         create: jest.fn().mockResolvedValue(created),
         findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-1' }),
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: jest.fn().mockResolvedValue([{ majorEventId: 'major-1' }]),
         updateMany: jest.fn(),
       },
       eventGroup: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'group-1', majorEventId: 'major-1' }]),
         updateMany: jest.fn(),
       },
       certificateConfig: {

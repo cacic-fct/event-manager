@@ -1,10 +1,12 @@
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { flushAsync } from '../testing/async-test-helpers';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -23,11 +25,13 @@ import { MajorEventsService } from '../major-events/major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PlacePresetsService } from '../places/place-presets.service';
 import { ShellUiService } from '../app-shell/ui.service';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 
 describe('EventsService', () => {
   let service: EventsService;
   let lastPayload: EventInput | null;
   let api: {
+    cloneEvent: ReturnType<typeof vi.fn>;
     createEvent: ReturnType<typeof vi.fn>;
     updateEvent: ReturnType<typeof vi.fn>;
     listEvents: ReturnType<typeof vi.fn>;
@@ -53,11 +57,15 @@ describe('EventsService', () => {
     getPerson: ReturnType<typeof vi.fn>;
   };
   let grantedPermissions: Set<Permission>;
+  let feedback: {
+    error: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
     grantedPermissions = new Set([Permission.Event.Update, Permission.MajorEvent.Read, Permission.PlacePreset.Read]);
     api = {
+      cloneEvent: vi.fn(),
       createEvent: vi.fn((payload: EventInput) => {
         lastPayload = payload;
         return of({ id: 'event-1' });
@@ -91,10 +99,14 @@ describe('EventsService', () => {
       listPeopleSummaries: vi.fn(() => of([])),
       getPerson: vi.fn((id: string) => of(createAdminPerson({ id, name: 'Pessoa do rascunho', email: null }))),
     };
+    feedback = {
+      error: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
         EventsService,
+        { provide: EventWorkspaceContextService, useValue: { context: signal(null) } },
         ShellUiService,
         { provide: EventApiService, useValue: api },
         { provide: PublicationApiService, useValue: publicationApi },
@@ -105,6 +117,7 @@ describe('EventsService', () => {
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
         { provide: MajorEventsService, useValue: { majorEvents: signal([createAdminMajorEvent()]) } },
+        { provide: AdminFeedbackService, useValue: feedback },
         {
           provide: PermissionsService,
           useValue: {
@@ -140,6 +153,91 @@ describe('EventsService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('tracks semantic event editor changes from a clean baseline', () => {
+    service.resetEventForm(false);
+    expect(service.unsavedChanges()).toBe(false);
+    service.eventForm.controls.name.setValue('Nome alterado');
+    expect(service.unsavedChanges()).toBe(true);
+    service.resetEventForm(false);
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('opens the cloned event workspace so subsequent operations target the copy', async () => {
+    const copy = createAdminEvent({ id: 'event-copy', name: 'Cópia' });
+    api.cloneEvent.mockReturnValue(of(copy));
+    api.getEvent.mockReturnValue(of(copy));
+    vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({
+      afterClosed: () => of({ name: copy.name, parts: {} }),
+    } as never);
+    await service.cloneEvent(createAdminEvent());
+    expect(service.selectedEvent()?.id).toBe(copy.id);
+    expect(router.navigate).toHaveBeenCalledWith(['/event-workspace', 'event', copy.id, 'settings']);
+  });
+
+  it('does not replace a fresh creator when an earlier save finishes later', async () => {
+    const created = new Subject<{id:string}>();
+    api.createEvent.mockReturnValueOnce(created);
+    const saving=service.saveEvent('DRAFT');
+    service.resetEventForm(false);
+    created.next({id:'old-saved-event'});created.complete();await saving;
+    expect(service.eventForm.controls.id.value).toBe('');
+    expect(service.selectedEvent()).toBeNull();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the current scope identity after saving on the same scope URL', async () => {
+    const context=TestBed.inject(EventWorkspaceContextService);
+    context.context.set({kind:'event',id:'event-1',name:'Nome antigo',emoji:'📌'});
+    service.eventForm.patchValue({id:'event-1',name:'Nome novo',emoji:'🧪'});
+    api.getEvent.mockReturnValueOnce(of(createAdminEvent({id:'event-1',name:'Nome novo',emoji:'🧪'})));
+    await service.saveEvent('PUBLISH');
+    expect(context.context()).toEqual(expect.objectContaining({id:'event-1',name:'Nome novo',emoji:'🧪'}));
+  });
+
+  it('creates a fresh event under the group direct parent without changing the previously selected event', async () => {
+    const group = createAdminEventGroup({id:'parent-group',majorEventId:'parent-major',name:'Trilha',emoji:'🌐'});
+    vi.mocked(TestBed.inject(EventGroupApiService).getEventGroup).mockReturnValueOnce(of(group));
+    majorEventApi.getMajorEvent.mockReturnValue(of(createAdminMajorEvent({id:'parent-major',name:'Semana',emoji:'🎓'})));
+    service.selectedEvent.set(createAdminEvent({id:'old-event'}));
+    service.eventForm.controls.id.setValue('old-event');
+    const parents = await service.initializeNewEvent({eventGroupId:'parent-group'});
+    expect(service.selectedEvent()).toBeNull();
+    expect(service.eventForm.controls.id.value).toBe('');
+    expect(service.eventForm.controls.majorEventId.value).toBe('parent-major');
+    expect(service.eventForm.controls.eventGroupId.value).toBe('parent-group');
+    expect(parents.map((parent)=>parent.emoji)).toEqual(['🎓','🌐']);
+    expect(router.navigate).not.toHaveBeenCalled();
+    await service.saveEvent('DRAFT');
+    expect(api.createEvent).toHaveBeenCalledWith(expect.objectContaining({majorEventId:'parent-major',eventGroupId:'parent-group'}));
+    expect(api.updateEvent).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/event-workspace', 'event', 'event-1', 'settings']);
+  });
+
+  it('ignores a prior event whose group metadata arrives after another selection', async () => {
+    const group = new Subject<ReturnType<typeof createAdminEventGroup>>();
+    vi.mocked(TestBed.inject(EventGroupApiService).getEventGroup).mockReturnValueOnce(group);
+    api.getEvent.mockImplementation((id:string)=>of(createAdminEvent({id,name:id,eventGroupId:id==='a'?'group-a':null,eventGroup:null,locationDescription:''})));
+    const first = service.selectEventById('a',{forceOriginal:true});
+    await flushAsync();
+    await service.selectEventById('b',{forceOriginal:true});
+    group.next(createAdminEventGroup({id:'group-a'}));group.complete();
+    await expect(first).resolves.toBe(false);
+    expect(service.selectedEvent()?.id).toBe('b');
+    expect(service.eventForm.controls.id.value).toBe('b');
+    expect(service.eventForm.controls.eventGroupId.value).toBe('');
+  });
+
+  it('does not apply creation parent metadata after a later reset', async () => {
+    const major = new Subject<ReturnType<typeof createAdminMajorEvent>>();
+    majorEventApi.getMajorEvent.mockReturnValueOnce(major);
+    const pending = service.initializeNewEvent({majorEventId:'old-parent'});
+    service.resetEventForm(false);
+    major.next(createAdminMajorEvent({id:'old-parent'}));major.complete();
+    await pending;
+    expect(service.eventForm.controls.majorEventId.value).toBe('');
+    expect(service.selectedEvent()).toBeNull();
   });
 
   it('saves the selected regular attendance tiers and clears them when changing major events', async () => {
@@ -336,6 +434,29 @@ describe('EventsService', () => {
     expect(service.audienceParentRestrictions()).toEqual([
       expect.objectContaining({ label: 'Grupo “Grupo novo”', audience: 'UNESP_ONLY' }),
     ]);
+  });
+
+  it('prefills an event major parent when assigning a group with an explicit parent', () => {
+    const group = createAdminEventGroup({ id: 'event-group-2', majorEventId: 'major-event-1' });
+
+    service.assignEventGroupToEvent(group);
+
+    expect(service.eventForm.controls.majorEventId.value).toBe('major-event-1');
+    expect(service.majorEventNameById('major-event-1')).toBe('Grande evento');
+    expect(service.eventForm.controls.eventGroupId.value).toBe('event-group-2');
+  });
+
+  it('rejects assigning a group from a different major event', () => {
+    service.eventForm.controls.majorEventId.setValue('major-event-2');
+    const group = createAdminEventGroup({ id: 'event-group-2', majorEventId: 'major-event-1' });
+
+    service.assignEventGroupToEvent(group);
+
+    expect(service.eventForm.controls.eventGroupId.value).toBe('');
+    expect(feedback.error).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('outro grande evento') }),
+      'Não foi possível vincular o grupo ao evento.',
+    );
   });
 
   it('allows private drafts without invitations but blocks publication readiness', async () => {

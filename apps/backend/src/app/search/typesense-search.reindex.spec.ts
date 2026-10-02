@@ -1,5 +1,6 @@
 import {
   reindexAllSearchDocuments,
+  reindexEventGroupSearchDocuments,
   reindexEventSearchDocuments,
   replaceAuditLogSearchDocuments,
 } from './typesense-search.reindex';
@@ -30,7 +31,13 @@ describe('typesense reindex helpers', () => {
           publicationState: 'PUBLISHED',
         },
       ],
-      eventGroup: [{ id: 'group-1', name: 'Grupo' }],
+      eventGroup: [{
+        id: 'group-1',
+        name: 'Grupo',
+        emoji: '👥',
+        majorEventId: 'major-1',
+        majorEvent: { name: 'Semana', deletedAt: null },
+      }],
       people: [{ id: 'person-1', name: 'Ana', secondaryEmails: [] }],
       placePreset: [{ id: 'place-1', name: 'Lab' }],
       certificateTemplate: [{ id: 'template-1', name: 'Certificado', isActive: true }],
@@ -54,6 +61,15 @@ describe('typesense reindex helpers', () => {
     );
     expect(client.documents.import).toHaveBeenCalledWith(
       [expect.objectContaining({ id: 'event-1', isPubliclyListed: true })],
+      { action: 'upsert' },
+    );
+    expect(client.documents.import).toHaveBeenCalledWith(
+      [expect.objectContaining({
+        id: 'group-1',
+        emoji: '👥',
+        majorEventId: 'major-1',
+        majorEventName: 'Semana',
+      })],
       { action: 'upsert' },
     );
   });
@@ -88,6 +104,35 @@ describe('typesense reindex helpers', () => {
       select: expect.objectContaining({ id: true, majorEvent: expect.any(Object) }),
     });
     expect(client.documents.upsert).toHaveBeenCalledWith(expect.objectContaining({ id: 'event-1' }));
+  });
+
+  it('reindexes groups after major-event metadata changes', async () => {
+    const client = createClientMock();
+    const prisma = createPrismaMock({
+      eventGroup: [{
+        id: 'group-1',
+        name: 'Grupo',
+        emoji: '👥',
+        majorEventId: 'major-1',
+        majorEvent: { name: 'Semana atualizada', deletedAt: null },
+      }],
+    });
+
+    await reindexEventGroupSearchDocuments({
+      client: client.instance as never,
+      logger: { error: jest.fn() } as never,
+      prisma: prisma as never,
+      where: { majorEventId: 'major-1' },
+    });
+
+    expect(prisma.eventGroup.findMany).toHaveBeenCalledWith({
+      where: { majorEventId: 'major-1', deletedAt: null },
+      select: expect.objectContaining({ id: true, majorEvent: expect.any(Object) }),
+    });
+    expect(client.documents.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'group-1',
+      majorEventName: 'Semana atualizada',
+    }));
   });
 
   it('imports audit-log entries in cursor batches', async () => {

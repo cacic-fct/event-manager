@@ -1,3 +1,5 @@
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -18,7 +20,7 @@ const meta: Meta<AttendanceWorkspaceStoryControls> = {
   args: attendanceWorkspaceStoryDefaultControls,
   argTypes: attendanceWorkspaceStoryControlArgTypes,
   render: controller.render,
-  decorators: [applicationConfig({ providers: [controller.provider] })],
+  decorators: [applicationConfig({ providers: [controller.provider, { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ eventId: 'event-1' })) } }] })],
   parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
 };
 
@@ -26,13 +28,13 @@ export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('tab', { name: /Por evento/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
+    await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
     await expect(canvas.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
-    await userEvent.click(canvas.getByRole('tab', { name: /Por grande evento/ }));
-    await expect(canvas.getByRole('heading', { name: 'Presenças no grande evento' })).toBeVisible();
+
   },
 };
 
@@ -49,9 +51,8 @@ export const EmptyWorkspace: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('Nenhum evento encontrado')).toBeVisible();
-    await userEvent.click(canvas.getByRole('tab', { name: /Por grande evento/ }));
-    await expect(canvas.getByText('Nenhuma pessoa carregada')).toBeVisible();
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
+    await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
   },
 };
 
@@ -68,7 +69,8 @@ export const CompactWorkspace: Story = {
   parameters: { viewport: { defaultViewport: 'tablet' } },
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('tablist')).toBeVisible();
+    await userEvent.tab();
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
   },
 };
 
@@ -77,6 +79,6 @@ export const FrozenSportsEvent: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Evento congelado' })).toBeVisible();
-    await expect(canvas.getAllByLabelText('Partida de torneio esportivo').length).toBeGreaterThan(1);
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
   },
 };

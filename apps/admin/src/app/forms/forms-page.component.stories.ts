@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core';
+import { computed, signal, type EnvironmentProviders, type Provider } from '@angular/core';
 import { FormBuilder, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import {
@@ -28,6 +28,9 @@ import { AuditLogService } from '../audit-logs/audit-log.service';
 import { isDateAfter } from '../shared/date-range-validator';
 import { EventFormLinkDraft, FormsService } from './forms.service';
 import { FormsPageComponent } from './forms-page.component';
+import { EventApiService } from '../graphql/event-api.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 type FormsStoryMode = 'populated' | 'empty' | 'readonly' | 'loading' | 'public-results';
 type FormsStoryTarget = 'all' | 'event' | 'major-event';
@@ -93,7 +96,7 @@ const meta: Meta<FormsStoryArgs> = {
       control: 'select',
       options: ['all', 'event', 'major-event'],
     },
-    itemCount: { control: { type: 'number', min: 0, max: 8, step: 1 } },
+    itemCount: { control: { type: 'number', min: 0, max: 50, step: 1 } },
     selectedIndex: { control: { type: 'number', min: 0, max: 7, step: 1 } },
     sigilo: {
       control: 'select',
@@ -130,8 +133,17 @@ type Story = StoryObj<FormsStoryArgs>;
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
+
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const contextHeader = await canvas.findByRole('button', { name: /Todos os formulários/i });
+    await expect(contextHeader).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByRole('heading', { name: 'Vínculos' })).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Notificar inscritos anteriores' })).toBeEnabled();
+    await userEvent.click(contextHeader);
+    await expect(canvas.getByRole('link', { name: 'Mostrar formulários de todos os contextos' })).toBeVisible();
+    await exerciseFormsStory(canvasElement);
+  },
 };
 
 export const Readonly: Story = {
@@ -178,6 +190,38 @@ export const MajorEventFiltered: Story = {
   },
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement, { selectedFormPublished: false }),
+};
+
+export const DenseEventInventory: Story = {
+  args: {
+    target: 'event',
+    itemCount: 50,
+    selectedIndex: 24,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Vínculos' })).toBeVisible();
+    const ownerPicker = canvas.getAllByRole('button', { name: 'Trocar' })[0];
+    const ownerPickerHost = ownerPicker.closest('app-event-target-picker');
+    if (!ownerPickerHost) throw new Error('Expected the owner target picker host.');
+    const ownerCanvas = within(ownerPickerHost as HTMLElement);
+    await userEvent.click(ownerPicker);
+    await expect(ownerCanvas.getByRole('button', { name: 'Próxima página' })).toBeEnabled();
+    await userEvent.click(ownerCanvas.getByRole('button', { name: 'Próxima página' }));
+    await expect(ownerCanvas.getByRole('button', { name: 'Selecionar Evento 26' })).toBeVisible();
+    await userEvent.click(ownerCanvas.getByRole('button', { name: 'Selecionar Evento 26' }));
+    await expect(canvas.getByText('Evento 26')).toBeVisible();
+  },
+};
+
+export const DenseTargetControls: Story = {
+  args: {
+    target: 'event',
+    itemCount: 50,
+    selectedIndex: 24,
+  },
+  globals: { theme: 'light' },
 };
 
 export const InterestAudience: Story = {
@@ -229,12 +273,28 @@ async function exerciseFormsStory(
 }
 
 function createFormsStoryProviders(args: FormsStoryArgs) {
-  return [
+  const targetEvents = buildEvents(args.target === 'event' ? 60 : 2);
+  const targetMajorEvents = buildMajorEvents(args.target === 'major-event' ? 60 : 2);
+  const pageTargets = <T extends { name: string; endDate?: string | null }>(
+    items: readonly T[],
+    filters?: { query?: string; skip?: number; take?: number; endDateFrom?: string },
+  ): T[] => {
+    const query = filters?.query?.trim().toLocaleLowerCase('pt-BR');
+    const filtered = items.filter((item) =>
+      (!query || item.name.toLocaleLowerCase('pt-BR').includes(query)) &&
+      (!filters?.endDateFrom || !item.endDate || item.endDate >= filters.endDateFrom),
+    );
+    const skip = filters?.skip ?? 0;
+    return filtered.slice(skip, skip + (filters?.take ?? filtered.length));
+  };
+  const providers: Array<Provider | EnvironmentProviders> = [
     provideRouter([]),
     {
       provide: ActivatedRoute,
       useValue: {
-        paramMap: of(convertToParamMap(routeParams(args.target))),
+        paramMap: of(convertToParamMap({ ...routeParams(args.target),
+          ...(args.mode !== 'empty' && args.itemCount > 0 ? { formId: `form-${selectedIndex(args.selectedIndex, args.itemCount) + 1}` } : {}),
+        })),
       },
     },
     {
@@ -246,10 +306,26 @@ function createFormsStoryProviders(args: FormsStoryArgs) {
       useFactory: () => createFormsStoryService(new FormBuilder(), args),
     },
     {
+      provide: EventApiService,
+      useValue: {
+        listEvents: (filters?: { query?: string; skip?: number; take?: number; endDateFrom?: string }) =>
+          of(pageTargets(targetEvents, filters)),
+      },
+    },
+    {
+      provide: MajorEventApiService,
+      useValue: {
+        listMajorEvents: (filters?: { query?: string; skip?: number; take?: number; endDateFrom?: string }) =>
+          of(pageTargets(targetMajorEvents, filters)),
+      },
+    },
+    {
       provide: AuditLogService,
       useValue: { openHistory: () => undefined },
     },
   ];
+  if (args.target !== 'all') providers.push({ provide: ADMIN_SHELL_CONTEXT, useValue: true });
+  return providers;
 }
 
 function createPermissionsStoryService(
@@ -272,8 +348,8 @@ function createPermissionsStoryService(
 }
 
 function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs): FormsService {
-  const events = buildEvents();
-  const majorEvents = buildMajorEvents();
+  const events = buildEvents(args.target === 'event' ? 60 : 2);
+  const majorEvents = buildMajorEvents(args.target === 'major-event' ? 60 : 2);
   const forms = args.mode === 'empty' ? [] : buildForms(args, events, majorEvents);
   const selectedForm = forms[selectedIndex(args.selectedIndex, forms.length)] ?? null;
   const selectedResults = selectedForm ? buildResults(selectedForm, args) : null;
@@ -283,7 +359,12 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
   const links = signal<EventFormLinkDraft[]>(selectedForm ? linkDrafts(selectedForm.links) : []);
   const selectedFormSignal = signal<EventForm | null>(selectedForm);
   const selectedResultsSignal = signal<EventFormResults | null>(selectedResults);
+  const targetFilterSignal = signal<{ eventId?: string; majorEventId?: string } | null>(null);
   const imageTextControls = new Map<string, FormControl<string>>();
+  const setTargetFilter = async (filter: { eventId?: string; majorEventId?: string } | null): Promise<boolean> => {
+    targetFilterSignal.set(filter);
+    return true;
+  };
 
   patchForm(form, selectedForm);
 
@@ -300,7 +381,29 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     majorEvents: signal(majorEvents),
     selectableEvents: computed(() => events),
     selectableMajorEvents: computed(() => majorEvents),
-    targetFilter: signal<{ eventId?: string; majorEventId?: string } | null>(null),
+    targetFilter: targetFilterSignal,
+    targetFilterId: computed(() =>
+      targetFilterSignal()?.eventId
+        ? `event:${targetFilterSignal()?.eventId}`
+        : targetFilterSignal()?.majorEventId
+          ? `major-event:${targetFilterSignal()?.majorEventId}`
+          : null,
+    ),
+    targetFilterLabel: computed(() => {
+      const filter = targetFilterSignal();
+      return filter?.eventId
+        ? (events.find((event) => event.id === filter.eventId)?.name ?? 'Evento selecionado')
+        : filter?.majorEventId
+          ? (majorEvents.find((event) => event.id === filter.majorEventId)?.name ?? 'Grande evento selecionado')
+          : 'Todos os formulários';
+    }),
+    targetSearchLoading: signal(false),
+    formsPagination: {
+      pageIndex: signal(0),
+      hasNextPage: signal(false),
+      hasPreviousPage: computed(() => false),
+      label: computed(() => '1-50'),
+    },
     selectedFormPublished: computed(() => selectedFormSignal()?.publicationState === 'PUBLISHED'),
     selectedFormScheduled: computed(() => selectedFormSignal()?.publicationState === 'SCHEDULED'),
     hasUntitledQuestions: computed(() =>
@@ -313,12 +416,14 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
           (element) => element.type === 'section' || element.type === 'statement' || element.title.trim().length > 0,
         ),
     ),
+    unsavedChanges: signal(false),
     filtersForm: formBuilder.nonNullable.group({ query: [''] }),
+    targetSearchForm: formBuilder.nonNullable.group({ query: [''] }),
     form,
     initialize: async () => undefined,
     loadTargets: async () => undefined,
     loadForms: async () => undefined,
-    createForm: () => {
+    createForm: async () => {
       selectedFormSignal.set(null);
       selectedResultsSignal.set(null);
       elements.set([]);
@@ -326,9 +431,54 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       links.set([]);
       patchForm(form, null);
     },
-    setTargetFilter: (filter: { eventId?: string; majorEventId?: string } | null) => {
-      service.targetFilter.set(filter);
+    confirmDiscardChanges: async () => true,
+    cancelPendingSelection: () => undefined,
+    discardChanges: () => undefined,
+    ownerTargetName: () => {
+      const value = form.getRawValue();
+      const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
+      return value.ownerType === 'EVENT'
+        ? events.find((event) => event.id === id)?.name ?? 'Evento selecionado'
+        : majorEvents.find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado';
     },
+    ownerTargetEmoji: () => {
+      const value = form.getRawValue();
+      const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
+      return value.ownerType === 'EVENT'
+        ? events.find((event) => event.id === id)?.emoji ?? null
+        : majorEvents.find((majorEvent) => majorEvent.id === id)?.emoji ?? null;
+    },
+    setOwnerTarget: (selection: { id: string; name: string; emoji?: string | null }) => {
+      const ownerType = form.controls.ownerType.value;
+      form.patchValue(ownerType === 'EVENT'
+        ? { ownerEventId: selection.id, ownerMajorEventId: '' }
+        : { ownerEventId: '', ownerMajorEventId: selection.id });
+    },
+    linkTargetName: (link: EventFormLinkDraft) =>
+      link.targetName ?? (link.targetType === 'EVENT'
+        ? (events.find((event) => event.id === link.eventId)?.name ?? 'Evento selecionado')
+        : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento selecionado')),
+    linkTargetEmoji: (link: EventFormLinkDraft) =>
+      link.targetEmoji ?? (link.targetType === 'EVENT'
+        ? (events.find((event) => event.id === link.eventId)?.emoji ?? null)
+        : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.emoji ?? null)),
+    setLinkTarget: (localId: string, selection: { id: string; name: string; emoji?: string | null }) => {
+      links.update((current) => current.map((link) => link.localId === localId
+        ? link.targetType === 'EVENT'
+          ? { ...link, eventId: selection.id, majorEventId: null, targetName: selection.name, targetEmoji: selection.emoji }
+          : { ...link, eventId: null, majorEventId: selection.id, targetName: selection.name, targetEmoji: selection.emoji }
+        : link));
+    },
+    setTargetFilter,
+    selectAllForms: async (): Promise<void> => { await setTargetFilter(null); },
+    selectEventScope: async (event: Event): Promise<void> => { await setTargetFilter({ eventId: event.id }); },
+    selectMajorEventScope: async (majorEvent: MajorEvent): Promise<void> => {
+      await setTargetFilter({ majorEventId: majorEvent.id });
+    },
+    applyFormFilters: async () => undefined,
+    previousFormsPage: async () => undefined,
+    nextFormsPage: async () => undefined,
+    selectFormById: async () => true,
     selectForm: async (nextForm: EventForm) => {
       selectedFormSignal.set(nextForm);
       selectedResultsSignal.set(buildResults(nextForm, args));
@@ -374,6 +524,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       imageTextControls.set(cacheKey, control);
       return control;
     },
+    singleImage: (image: FormImage) => [image] as const,
     addLink: (targetType: EventFormTargetType) => {
       links.update((current) => [
         ...current,
@@ -425,8 +576,15 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       currentForm.links.map((link) => link.target?.name ?? 'Vínculo').join(' · ') || 'Sem vínculos de exibição',
     targetName: (link: EventFormLinkInput) =>
       link.targetType === 'EVENT'
-        ? (events.find((event) => event.id === link.eventId)?.name ?? 'Evento')
-        : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento'),
+        ? (events.find((event) => event.id === link.eventId)?.name ?? 'Evento selecionado')
+        : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento selecionado'),
+    priceTiersForLink: (link: EventFormLinkDraft) =>
+      link.targetType === 'MAJOR_EVENT'
+        ? (majorEvents
+            .find((majorEvent) => majorEvent.id === link.majorEventId)
+            ?.majorEventPrices.find((price) => price.type === 'TIERED')?.tiers ?? [])
+        : [],
+    previousSubscriberCount: () => 12,
   } satisfies Partial<FormsService>;
 
   return service as unknown as FormsService;
@@ -442,18 +600,26 @@ function routeParams(target: FormsStoryTarget): Record<string, string> {
   return {};
 }
 
-function buildEvents(): Event[] {
-  return [
+function buildEvents(count = 2): Event[] {
+  const events = [
     createAdminEvent({ id: 'event-1', name: 'Oficina de Angular', emoji: 'computer' }),
     createAdminEvent({ id: 'event-2', name: 'Mesa redonda de acessibilidade', emoji: 'accessibility_new' }),
   ];
+  for (let index = events.length; index < count; index++) {
+    events.push(createAdminEvent({ id: `event-${index + 1}`, name: `Evento ${index + 1}`, emoji: 'event' }));
+  }
+  return events;
 }
 
-function buildMajorEvents(): MajorEvent[] {
-  return [
+function buildMajorEvents(count = 2): MajorEvent[] {
+  const majorEvents = [
     createAdminMajorEvent({ id: 'major-event-1', name: 'Semana da Computação', emoji: 'school' }),
     createAdminMajorEvent({ id: 'major-event-2', name: 'Jornada de Extensão', emoji: 'rocket_launch' }),
   ];
+  for (let index = majorEvents.length; index < count; index++) {
+    majorEvents.push(createAdminMajorEvent({ id: `major-event-${index + 1}`, name: `Grande evento ${index + 1}`, emoji: 'event' }));
+  }
+  return majorEvents;
 }
 
 function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEvent[]): EventForm[] {

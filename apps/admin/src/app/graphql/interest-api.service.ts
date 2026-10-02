@@ -101,6 +101,17 @@ export class InterestApiService {
       .pipe(map((data) => data.eventInterests));
   }
 
+  countInterests(targetType: InterestTargetTypeValue, targetId: string, query?: string) {
+    return this.graphqlHttp
+      .request<{ eventInterestCount: number }>(
+        `query EventInterestCount($targetType: InterestTargetType!, $targetId: String!, $query: String) {
+          eventInterestCount(targetType: $targetType, targetId: $targetId, query: $query)
+        }`,
+        { targetType, targetId, query },
+      )
+      .pipe(map((data) => data.eventInterestCount));
+  }
+
   convertInterestToSubscription(input: ConvertEventInterestInput) {
     return this.graphqlHttp
       .request<{ convertEventInterestToSubscription: AdminEventInterestConversion }>(

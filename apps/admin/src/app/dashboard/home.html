@@ -34,24 +34,24 @@
 
     @if (dashboard.suggestions.length > 0) {
     <div class="quick-actions" aria-label="Atalhos de criação">
-      @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP')) {
-      <a matButton="outlined" [routerLink]="navMap()['groups']?.path">
+      @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP') && canCreateContext('group')) {
+      <a matButton="outlined" [routerLink]="creationRoute('group')">
         <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>
         Novo grupo de eventos
       </a>
-      } @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT')) {
-      <a matButton="filled" [routerLink]="navMap()['events']?.path">
+      } @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT') && canCreateContext('event')) {
+      <a matButton="filled" [routerLink]="creationRoute('event')">
         <mat-icon>{{ navMap()['events']?.icon }}</mat-icon>
         Novo evento
       </a>
-      } @if (hasSuggestion(dashboard.suggestions, 'CREATE_MAJOR_EVENT')) {
-      <a matButton="outlined" [routerLink]="navMap()['major-events']?.path">
+      } @if (hasSuggestion(dashboard.suggestions, 'CREATE_MAJOR_EVENT') && canCreateContext('major-event')) {
+      <a matButton="outlined" [routerLink]="creationRoute('major-event')">
         <mat-icon>{{ navMap()['major-events']?.icon }}</mat-icon>
         Novo grande evento
       </a>
       } @if (hasSuggestion(dashboard.suggestions, 'OPEN_SPORTS')) {
-      <a matButton="outlined" [routerLink]="navMap()['sports']?.path">
-        <mat-icon>{{ navMap()['sports']?.icon }}</mat-icon>
+      <a matButton="outlined" [routerLink]="['/sports']">
+        <mat-icon>sports</mat-icon>
         Gerenciar esportes
       </a>
       }
@@ -327,7 +327,7 @@
     <div class="subsection-title">
       <h3>Próximos 7 dias</h3>
     </div>
-    <mat-list class="event-list upcoming-events-list" aria-label="Eventos dos próximos 7 dias">
+    <mat-list class="event-list upcoming-events-list" tabindex="0" role="region" aria-label="Eventos dos próximos 7 dias">
       @for (event of upcomingEvents(); track event.id) {
       <ng-container [ngTemplateOutlet]="eventItem" [ngTemplateOutletContext]="{ event: event }" />
       }

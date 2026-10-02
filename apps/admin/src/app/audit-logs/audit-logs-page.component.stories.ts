@@ -1,6 +1,6 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { delay, mergeMap, of, throwError, timer, type Observable } from 'rxjs';
 import { AuditLogApiService, type AuditLogExplorerInput } from '../graphql/audit-log-api.service';
 import {
@@ -135,7 +135,7 @@ export const SqlFallback: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Typesense indisponível/)).toBeVisible();
+    await expect(await within(canvasElement).findByText(/Busca básica ativa/)).toBeVisible();
   },
 };
 
@@ -398,3 +398,15 @@ function summaryForEntry(entityType: AuditLogEntityType, operation: AuditLogOper
 
   return `${entityLabel} ${operationLabel} no fluxo simulado.`;
 }
+
+export const ProgressiveFilters: Story = {
+  args: { responseDelay: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const filters = await canvas.findByRole('button', { name: /Filtros avançados/ });
+    await expect(filters).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(filters);
+    await expect(canvas.getByLabelText('Tipo de item')).toBeVisible();
+    await expect(canvas.getByLabelText('Data inicial')).toBeVisible();
+  },
+};

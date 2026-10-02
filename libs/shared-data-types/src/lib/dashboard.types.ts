@@ -131,6 +131,7 @@ export interface DashboardSportsTournament {
 export interface DashboardSportsMatch {
   matchId: string;
   tournamentId: string;
+  majorEventId: string;
   categoryName: string;
   eventName: string;
   startDate: string;

@@ -97,6 +97,12 @@ body {
   font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
 }
+// List metadata typography must not replace the Material Symbols icon font.
+.mat-mdc-list-base .mat-mdc-list-item .mat-icon.material-symbols-outlined {
+  font: normal 24px / 1 'Material Symbols Outlined';
+  letter-spacing: normal;
+}
+
 .mat-mdc-list-base .mat-mdc-list-item {
   height: auto;
   min-height: var(--mat-list-list-item-one-line-container-height, 48px);

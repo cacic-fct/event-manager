@@ -265,6 +265,7 @@ export interface MajorEventPriceInput {
 }
 
 export interface EventGroupInput {
+  majorEventId?: string | null;
   audience?: EventAudience;
   audienceCourseCodes?: string[];
   invitationPersonIds?: string[];

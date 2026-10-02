@@ -1,5 +1,8 @@
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,11 +18,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive, convertToParamMap } from '@angular/router';
 import { PrizeDraw, PrizeDrawEligibleEntry, PrizeDrawSpeed } from '@cacic-fct/event-manager-admin-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { publicPrizeDrawPath } from '@cacic-fct/shared-utils';
-import { firstValueFrom } from 'rxjs';
+import { combineLatest, firstValueFrom, of } from 'rxjs';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
@@ -27,10 +30,14 @@ import {
 import { PermissionsService } from '../permissions/permissions.service';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
 import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
+import { EventTargetPickerComponent } from '../shared/event-target-picker.component';
 
 @Component({
   selector: 'app-prize-draws-page',
   imports: [
+    TwemojiComponent,
     ReactiveFormsModule,
     DatePipe,
     RouterLink,
@@ -48,6 +55,9 @@ import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
     MatTabsModule,
     MatTooltipModule,
     PersonSearchComponent,
+    WorkspaceRecordComponent,
+    WorkspaceScopeComponent,
+    EventTargetPickerComponent,
   ],
   providers: [PrizeDrawWorkspaceService],
   templateUrl: './prize-draws-page.component.html',
@@ -61,18 +71,49 @@ import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
   ],
 })
 export class PrizeDrawsPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   readonly workspace = inject(PrizeDrawWorkspaceService);
+  protected readonly scopeEmoji = computed(() => {
+    const scope = this.workspace.scopeFilter();
+    return scope?.eventId ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
+      : scope?.majorEventId ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji : null;
+  });
+
   protected readonly Permission = Permission;
   protected readonly permissions = inject(PermissionsService);
   protected readonly speeds: PrizeDrawSpeed[] = ['INSTANT', 'QUICK', 'DRAMATIC'];
   private readonly dialog = inject(MatDialog);
 
+  private routeRequest = 0;
   constructor() {
-    inject(ActivatedRoute)
-      .paramMap.pipe(takeUntilDestroyed())
-      .subscribe((params) => {
-        void this.workspace.initialize(params.get('drawId'));
+    const shellContext = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ? inject(EventWorkspaceContextService) : null;
+    effect(() => { shellContext?.scopeSwitchBlocked.set(this.workspace.unsavedChanges()); });
+    inject(DestroyRef).onDestroy(() => { this.routeRequest++; shellContext?.scopeSwitchBlocked.set(false); });
+    const route = inject(ActivatedRoute);
+    const router = inject(Router);
+    combineLatest([route.paramMap, route.queryParamMap ?? of(convertToParamMap({}))])
+      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
+        const request = ++this.routeRequest;
+        const eventId = query.get('eventId') ?? undefined;
+        const majorEventId = query.get('majorEventId') ?? undefined;
+        void (async () => {
+          if (!await this.workspace.setScopeFromRoute(eventId ? { eventId } : majorEventId ? { majorEventId } : null)) return;
+          if (request !== this.routeRequest) return;
+          const drawId = params.get('drawId');
+          await this.workspace.initialize(drawId);
+          if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell) return;
+          const draw = this.workspace.selected();
+          if (draw?.id === drawId && !this.workspace.unsavedChanges()) {
+            await router.navigate([], { relativeTo: route,
+              queryParams: { [draw.target.type === 'EVENT' ? 'eventId' : 'majorEventId']: draw.target.id },
+              queryParamsHandling: 'merge', replaceUrl: true });
+          }
+        })();
       });
+  }
+
+  protected drawQueryParams(demo = false): Record<string, string> {
+    return { ...this.workspace.scopeFilter(), ...(demo ? { demo: 'true' } : {}) };
   }
 
   speedLabel(speed: PrizeDrawSpeed): string {

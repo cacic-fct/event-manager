@@ -1,0 +1,28 @@
+:host { display: block; min-width: 0; }
+.event-workspace.standalone { padding: clamp(1rem, 3vw, 2rem); }
+.workspace-heading, .context-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.workspace-heading h1 { font: var(--mat-sys-headline-small); margin: 0; }
+.workspace-heading p, .context-heading p { margin: 0.25rem 0 0; color: var(--mat-sys-on-surface-variant); }
+.context-heading { justify-content: flex-start; padding-block: 1rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.context-heading > div { min-width: 0; flex: 1; }
+.context-heading h2 { margin: 0; font: var(--mat-sys-title-large); overflow-wrap: anywhere; }
+.context-heading > lib-twemoji { font-size: 2rem; }
+.context-workspace { display: grid; grid-template-columns: minmax(15rem, 0.65fr) minmax(0, 1.7fr); align-items: start; gap: 2rem; }
+.context-workspace > nav { border-inline-end: 1px solid var(--mat-sys-outline-variant); padding-inline-end: 1rem; }
+.context-guide { max-width: 65ch; }
+.activities, .global-entry { min-width: 0; }
+.global-entry { padding-block: 1rem; }
+@media (max-width: 760px) { .context-workspace { grid-template-columns: minmax(0, 1fr); gap: 1rem; } .context-workspace > nav { border-inline-end: 0; border-bottom: 1px solid var(--mat-sys-outline-variant); padding: 0 0 1rem; } }
+
+.participation-summary, .schedule-summary { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin: 1rem 0 2rem; }
+.participation-summary dt, .schedule-summary dt { color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-small); }
+.participation-summary dd { font: var(--mat-sys-title-large); font-variant-numeric: tabular-nums; margin: 0.25rem 0 0; }
+.schedule-summary dd { margin: 0.25rem 0 0; }
+
+.context-workspace.in-shell { grid-template-columns: minmax(0, 1fr); }
+
+.scope-content { min-width: 0; display: grid; gap: 1.5rem; }
+.scope-search { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.scope-search mat-form-field { flex: 1 1 16rem; min-width: 0; }
+.scope-search button { margin-top: 0.5rem; }
+.activities h2 { font: var(--mat-sys-title-large); }

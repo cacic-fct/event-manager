@@ -45,7 +45,8 @@ const withSubscriptionsProviders: Decorator<SubscriptionsPageStoryArgs> = (story
       {
         provide: ActivatedRoute,
         useValue: {
-          paramMap: of(convertToParamMap({ majorEventId: 'major-event-1', subscriptionId })),
+          paramMap: of(convertToParamMap({ majorEventId: args.majorEventCount > 0 ? 'major-event-1' : undefined, subscriptionId })),
+          snapshot: { url: [] },
         },
       },
       ...createWorkspaceSubscriptionsStoryProviders({
@@ -86,11 +87,12 @@ export default meta;
 type Story = StoryObj<SubscriptionsPageStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Inscritos' })).toBeVisible();
-    await expect(await canvas.findByText('7')).toBeVisible();
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
+    await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
   },
 };
 
@@ -117,7 +119,7 @@ export const EmptyWorkspace: Story = {
     eventSubscriptionCount: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Nenhum.*encontrado/i)).toBeVisible();
+    await expect(await within(canvasElement).findByText('Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.')).toBeVisible();
   },
 };
 
@@ -134,7 +136,7 @@ export const DeepLinkedSubscriberDetail: Story = {
   args: { selectedDetail: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByRole('heading', { name: /.+/ })).toBeVisible());
+    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
     await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de eventos/i })).toBeVisible());
   },
 };

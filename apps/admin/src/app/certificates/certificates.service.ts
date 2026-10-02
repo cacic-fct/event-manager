@@ -101,6 +101,8 @@ export class CertificatesService {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
+  private targetSearchRequestGeneration = 0;
+  private routeSelectionGeneration = 0;
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
@@ -124,7 +126,26 @@ export class CertificatesService {
     () => this.certificateConfigModel().issuedTo === 'ATTENDEE' && !this.isStandaloneScope(),
   );
   readonly targetsPagination = createWorkspaceListPagination();
-  readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
+  readonly selectedTarget = signal<{ id: string; name: string; emoji?: string } | null>(null);
+  readonly selectedTargetScopeId = computed(() => {
+    const target = this.selectedTarget();
+    return target ? `${this.targetFiltersForm.controls.scope.value}:${target.id}` : null;
+  });
+  readonly selectedTargetScopeLabel = computed(() => {
+    const target = this.selectedTarget();
+    if (!target) return 'Selecionar contexto do certificado';
+    const scope = this.targetFiltersForm.controls.scope.value;
+    const prefix =
+      scope === 'OTHER'
+        ? 'Certificados avulsos'
+        : scope === 'EVENT_GROUP'
+          ? 'Grupo de eventos'
+          : scope === 'MAJOR_EVENT'
+            ? 'Grande evento'
+            : 'Evento';
+    return `${prefix}: ${target.name}`;
+  });
+  readonly targetSearchLoading = signal(false);
   private readonly selectedCertificateTarget = signal<IssuableTarget | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
   readonly certificateTemplatesLoadState = signal<CertificateTemplatesLoadState>('loading');
@@ -178,6 +199,12 @@ export class CertificatesService {
     required(path.certificateTemplateId);
     required(path.issuedTo);
   });
+  private readonly editorRevision = signal(0);
+  private readonly editorBaseline = signal('');
+  readonly unsavedChanges = computed(() => {
+    this.editorRevision();
+    return this.editorBaseline() !== this.editorSignature();
+  });
 
   constructor() {
     bindLiveSearch({
@@ -190,6 +217,8 @@ export class CertificatesService {
       destroyRef: this.destroyRef,
       search: () => this.searchPeopleForManualIssue(),
     });
+    this.folderForm.valueChanges.subscribe(() => this.editorRevision.update((revision) => revision + 1));
+    this.captureEditorBaseline();
   }
 
   async loadInitialData(): Promise<void> {
@@ -244,6 +273,7 @@ export class CertificatesService {
   }
 
   async loadCertificateTemplates(): Promise<void> {
+    const hadUnsavedChanges = this.unsavedChanges();
     this.certificateTemplatesLoadState.set('loading');
     try {
       const templates = await firstValueFrom(
@@ -266,10 +296,12 @@ export class CertificatesService {
         certificateTemplateId: this.certificateTemplates()[0].id,
       });
       this.syncCertificateFieldsForm(this.certificateFieldValuesJson, this.certificateTemplates()[0].id);
+      if (!hadUnsavedChanges) this.captureEditorBaseline();
       return;
     }
 
     this.syncCertificateFieldsForm(this.certificateFieldValuesJson, selectedTemplateId);
+    if (!hadUnsavedChanges) this.captureEditorBaseline();
   }
 
   isCertificateTemplateAvailable(templateId: string): boolean {
@@ -277,42 +309,44 @@ export class CertificatesService {
   }
 
   async searchTargets(): Promise<void> {
+    const requestGeneration = ++this.targetSearchRequestGeneration;
     const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
     const query = this.targetFiltersForm.controls.query.value.trim() || undefined;
-    const pagination = pageVariables(this.targetsPagination.pageIndex());
-
-    if (scope === 'OTHER') {
-      const items = await firstValueFrom(this.api.listCertificateFolders({ query, ...pagination }));
-      this.certificateFolders.set(applyPagedResult(items, this.targetsPagination));
-      this.issuableEvents.set([]);
-      this.issuableEventGroups.set([]);
-      this.issuableMajorEvents.set([]);
-      return;
+    const pageIndex = this.targetsPagination.pageIndex();
+    const pagination = pageVariables(pageIndex);
+    this.targetSearchLoading.set(true);
+    try {
+      const items =
+        scope === 'OTHER'
+          ? await firstValueFrom(this.api.listCertificateFolders({ query, ...pagination }))
+          : scope === 'EVENT'
+            ? await firstValueFrom(this.api.listCertificateIssuableEvents({ query, ...pagination }))
+            : scope === 'EVENT_GROUP'
+              ? await firstValueFrom(this.api.listCertificateIssuableEventGroups({ query, ...pagination }))
+              : await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ query, ...pagination }));
+      if (
+        requestGeneration !== this.targetSearchRequestGeneration ||
+        scope !== this.targetFiltersForm.controls.scope.value ||
+        pageIndex !== this.targetsPagination.pageIndex() ||
+        query !== (this.targetFiltersForm.controls.query.value.trim() || undefined)
+      ) {
+        return;
+      }
+      this.certificateFolders.set(scope === 'OTHER' ? applyPagedResult(items as CertificateFolder[], this.targetsPagination) : []);
+      this.issuableEvents.set(scope === 'EVENT' ? applyPagedResult(items as Event[], this.targetsPagination) : []);
+      this.issuableEventGroups.set(
+        scope === 'EVENT_GROUP' ? applyPagedResult(items as EventGroup[], this.targetsPagination) : [],
+      );
+      this.issuableMajorEvents.set(
+        scope === 'MAJOR_EVENT' ? applyPagedResult(items as MajorEvent[], this.targetsPagination) : [],
+      );
+    } catch (error) {
+      if (requestGeneration === this.targetSearchRequestGeneration) {
+        this.feedback.error(error, 'Não foi possível buscar os contextos de certificado.');
+      }
+    } finally {
+      if (requestGeneration === this.targetSearchRequestGeneration) this.targetSearchLoading.set(false);
     }
-
-    if (scope === 'EVENT') {
-      const items = await firstValueFrom(this.api.listCertificateIssuableEvents({ query, ...pagination }));
-      this.issuableEvents.set(applyPagedResult(items, this.targetsPagination));
-      this.issuableEventGroups.set([]);
-      this.issuableMajorEvents.set([]);
-      this.certificateFolders.set([]);
-      return;
-    }
-
-    if (scope === 'EVENT_GROUP') {
-      const items = await firstValueFrom(this.api.listCertificateIssuableEventGroups({ query, ...pagination }));
-      this.issuableEventGroups.set(applyPagedResult(items, this.targetsPagination));
-      this.issuableEvents.set([]);
-      this.issuableMajorEvents.set([]);
-      this.certificateFolders.set([]);
-      return;
-    }
-
-    const items = await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ query, ...pagination }));
-    this.issuableMajorEvents.set(applyPagedResult(items, this.targetsPagination));
-    this.issuableEvents.set([]);
-    this.issuableEventGroups.set([]);
-    this.certificateFolders.set([]);
   }
 
   async applyTargetFilters(): Promise<void> {
@@ -342,6 +376,7 @@ export class CertificatesService {
     this.resetCertificateConfigForm();
     resetPagination(this.targetsPagination);
     await this.searchTargets();
+    this.captureEditorBaseline();
   }
 
   async selectTarget(target: IssuableTarget): Promise<void> {
@@ -358,8 +393,12 @@ export class CertificatesService {
     targetId: string | null,
     configId: string | null,
   ): Promise<void> {
+    const routeSelectionGeneration = ++this.routeSelectionGeneration;
     if (!targetType || !targetId) {
+      this.targetFiltersForm.controls.scope.setValue('OTHER', { emitEvent: false });
       this.clearSelection();
+      resetPagination(this.targetsPagination);
+      await this.searchTargets();
       return;
     }
 
@@ -371,17 +410,30 @@ export class CertificatesService {
 
     this.targetFiltersForm.controls.scope.setValue(scope);
     await this.searchTargets();
+    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
 
     const target = await this.getTargetByRoute(scope, targetId);
+    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
     await this.applyTargetSelection(target);
+    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
 
     if (!configId) {
       return;
     }
 
-    const config = this.certificateConfigs().find((candidate) => candidate.id === configId);
-    if (config) {
+    try {
+      const config = await firstValueFrom(this.api.getCertificateConfig(configId));
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      const configTarget = this.getCertificateConfigTarget(config);
+      if (config.scope !== scope || configTarget?.id !== target.id) {
+        void this.router.navigate(['/certificates', this.scopeToTargetType(scope), target.id]);
+        return;
+      }
       this.applyCertificateConfigSelection(config);
+    } catch (error) {
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      this.feedback.error(error, 'Não foi possível abrir a configuração de certificado.');
+      void this.router.navigate(['/certificates', this.scopeToTargetType(scope), target.id]);
     }
   }
 
@@ -393,6 +445,7 @@ export class CertificatesService {
     this.selectedTarget.set({
       id: target.id,
       name: target.name,
+      emoji: target.emoji,
     });
     this.selectedCertificateTarget.set(target);
     if (this.isStandaloneScope()) {
@@ -414,6 +467,7 @@ export class CertificatesService {
       this.loadCertificates(),
       this.loadOptionalPaymentTiers(majorEventId, target.id, scope),
     ]);
+    this.captureEditorBaseline();
   }
 
   private async loadOptionalPaymentTiers(
@@ -447,7 +501,12 @@ export class CertificatesService {
     this.applyCertificateConfigSelection(config);
   }
 
-  private applyCertificateConfigSelection(config: CertificateConfig): void {
+  certificateConfigRoute(configId: string): string[] | null {
+    const target = this.selectedTarget();
+    return target ? ['/certificates', this.scopeToTargetType(this.targetFiltersForm.controls.scope.value), target.id, configId] : null;
+  }
+
+  private applyCertificateConfigSelection(config: CertificateConfig, loadCertificates = true): void {
     this.selectedCertificateConfig.set(config);
     this.certificateFieldValuesJson = config.certificateFieldsJson;
     this.certificateConfigForm().reset({
@@ -473,8 +532,9 @@ export class CertificatesService {
       certificateFields: {},
     });
     this.syncCertificateFieldsForm(config.certificateFieldsJson, config.certificateTemplateId);
+    this.captureEditorBaseline();
     resetPagination(this.certificatesPagination);
-    void this.loadCertificates();
+    if (loadCertificates) void this.loadCertificates();
   }
 
   startNewCertificateConfig(): void {
@@ -490,6 +550,7 @@ export class CertificatesService {
     this.personLookupForm.reset({ query: '' }, { emitEvent: false });
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
+    this.captureEditorBaseline();
     resetPagination(this.certificatesPagination);
     void this.loadCertificates();
   }
@@ -506,6 +567,7 @@ export class CertificatesService {
     resetPagination(this.certificatesPagination);
     this.personSearchResults.set([]);
     this.resetCertificateConfigForm();
+    this.captureEditorBaseline();
   }
 
   onCertificateTemplateChanged(templateId: string): void {
@@ -582,23 +644,26 @@ export class CertificatesService {
   }
 
   startNewFolder(): void {
-    void this.router.navigate(['/certificates']);
-    this.selectedTarget.set(null);
-    this.selectedCertificateTarget.set(null);
-    this.availablePaymentTiers.set([]);
-    this.selectedCertificateConfig.set(null);
-    this.certificateConfigs.set([]);
-    this.certificates.set([]);
-    this.personSearchResults.set([]);
     this.resetFolderForm();
-    this.resetCertificateConfigForm();
+    this.captureEditorBaseline();
   }
 
-  async saveCertificateFolder(): Promise<void> {
+  cancelFolderEdit(): void {
+    const folder = this.selectedCertificateTarget();
+    if (this.isStandaloneScope() && folder) {
+      this.folderForm.setValue({ id: folder.id, name: folder.name, emoji: folder.emoji });
+      this.captureEditorBaseline();
+      return;
+    }
+    this.resetFolderForm();
+    this.captureEditorBaseline();
+  }
+
+  async saveCertificateFolder(): Promise<boolean> {
     if (this.folderForm.invalid) {
       this.folderForm.markAllAsTouched();
       this.snackbar.open('Informe nome e emoji da pasta.', 'Fechar', { duration: 2500 });
-      return;
+      return false;
     }
 
     const raw = this.folderForm.getRawValue();
@@ -627,7 +692,7 @@ export class CertificatesService {
           .afterClosed(),
       );
       if (confirmed !== true) {
-        return;
+        return false;
       }
 
       payload.reissueCertificates = true;
@@ -642,8 +707,10 @@ export class CertificatesService {
       await this.searchTargets();
       void this.router.navigate(['/certificates', 'folder', savedFolder.id]);
       await this.applyTargetSelection(savedFolder);
+      return true;
     } catch (error) {
       this.feedback.error(error, 'Não foi possível salvar a pasta.');
+      return false;
     }
   }
 
@@ -930,16 +997,25 @@ export class CertificatesService {
       return;
     }
 
+    const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
+    const pageIndex = this.certificateConfigsPagination.pageIndex();
     const configs = await firstValueFrom(
       this.api.listCertificateConfigs(
-        this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope,
+        scope,
         selectedTarget.id,
         {
           includeInactive: true,
-          ...pageVariables(this.certificateConfigsPagination.pageIndex()),
+          ...pageVariables(pageIndex),
         },
       ),
     );
+    if (
+      this.selectedTarget()?.id !== selectedTarget.id ||
+      this.targetFiltersForm.controls.scope.value !== scope ||
+      this.certificateConfigsPagination.pageIndex() !== pageIndex
+    ) {
+      return;
+    }
     this.certificateConfigs.set(applyPagedResult(configs, this.certificateConfigsPagination));
 
     const selectedConfig = this.selectedCertificateConfig();
@@ -948,13 +1024,9 @@ export class CertificatesService {
     }
 
     const refreshedSelection = configs.find((config) => config.id === selectedConfig.id);
-    if (!refreshedSelection) {
-      this.selectedCertificateConfig.set(null);
-      this.resetCertificateConfigForm();
-      return;
+    if (refreshedSelection && !this.unsavedChanges()) {
+      this.applyCertificateConfigSelection(refreshedSelection, false);
     }
-
-    this.selectCertificateConfig(refreshedSelection);
   }
 
   async previousCertificateConfigsPage(): Promise<void> {
@@ -1004,16 +1076,27 @@ export class CertificatesService {
       return;
     }
 
+    const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
+    const configId = this.selectedCertificateConfig()?.id;
+    const pageIndex = this.certificatesPagination.pageIndex();
     const certificates = await firstValueFrom(
       this.api.listCertificates(
-        this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope,
+        scope,
         selectedTarget.id,
         {
-          configId: this.selectedCertificateConfig()?.id,
-          ...pageVariables(this.certificatesPagination.pageIndex()),
+          configId,
+          ...pageVariables(pageIndex),
         },
       ),
     );
+    if (
+      this.selectedTarget()?.id !== selectedTarget.id ||
+      this.targetFiltersForm.controls.scope.value !== scope ||
+      this.selectedCertificateConfig()?.id !== configId ||
+      this.certificatesPagination.pageIndex() !== pageIndex
+    ) {
+      return;
+    }
     this.certificates.set(applyPagedResult(certificates, this.certificatesPagination));
   }
 
@@ -1163,6 +1246,17 @@ export class CertificatesService {
       },
       { emitEvent: false },
     );
+  }
+
+  private editorSignature(): string {
+    return JSON.stringify({
+      folder: this.folderForm.getRawValue(),
+      config: this.certificateConfigModel(),
+    });
+  }
+
+  private captureEditorBaseline(): void {
+    this.editorBaseline.set(this.editorSignature());
   }
 
   syncCertificateFieldsForm(

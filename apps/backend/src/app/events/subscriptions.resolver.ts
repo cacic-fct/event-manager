@@ -24,6 +24,7 @@ import { AttendanceCategoryService } from './attendance-category.service';
 import { EventSubscriptionSyncService } from './event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './subscription-counters.service';
 import { refreshSportsParticipantForSubscription } from '../sports/sports-payment.service';
+import { personSearchWhere } from '../people/person-search-where';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -177,12 +178,15 @@ export class EventSubscriptionsResolver {
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ): Promise<WorkspaceEventSubscription[]> {
     const pagination = resolvePagination(skip, take);
+    const personQuery = personSearchWhere(query);
     const subscriptions = await this.prisma.eventSubscription.findMany({
       where: {
         eventId,
         deletedAt: null,
+        ...(personQuery ? { person: personQuery } : {}),
       },
       select: {
         id: true,
@@ -264,6 +268,21 @@ export class EventSubscriptionsResolver {
     }));
   }
 
+  @Query(() => Int, { name: 'workspaceEventSubscriptionCount' })
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  workspaceEventSubscriptionCount(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    return this.prisma.eventSubscription.count({
+      where: {
+        eventId,
+        deletedAt: null,
+        ...(personSearchWhere(query) ? { person: personSearchWhere(query) } : {}),
+      },
+    });
+  }
+
   @Mutation(() => WorkspaceEventSubscription, {
     name: 'createWorkspaceEventSubscription',
   })
@@ -340,24 +359,12 @@ export class EventSubscriptionsResolver {
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ): Promise<WorkspaceMajorEventSubscription[]> {
     const pagination = resolvePagination(skip, take);
-    const searchQuery = query?.trim();
+    const personQuery = personSearchWhere(query);
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
         deletedAt: null,
-        ...(searchQuery
-          ? {
-              person: {
-                OR: [
-                  { name: { contains: searchQuery, mode: 'insensitive' } },
-                  { email: { contains: searchQuery, mode: 'insensitive' } },
-                  { phone: { contains: searchQuery, mode: 'insensitive' } },
-                  { identityDocument: { contains: searchQuery, mode: 'insensitive' } },
-                  { academicId: { contains: searchQuery, mode: 'insensitive' } },
-                ],
-              },
-            }
-          : {}),
+        ...(personQuery ? { person: personQuery } : {}),
       },
       select: this.majorEventSubscriptionSelect(),
       orderBy: {
@@ -368,6 +375,22 @@ export class EventSubscriptionsResolver {
     });
 
     return this.attachMajorEventSubscriptionEvents(majorEventId, subscriptions);
+  }
+
+  @Query(() => Int, { name: 'workspaceMajorEventSubscriptionCount' })
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  workspaceMajorEventSubscriptionCount(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    const personQuery = personSearchWhere(query);
+    return this.prisma.majorEventSubscription.count({
+      where: {
+        majorEventId,
+        deletedAt: null,
+        ...(personQuery ? { person: personQuery } : {}),
+      },
+    });
   }
 
   @Query(() => WorkspaceMajorEventSubscription, {

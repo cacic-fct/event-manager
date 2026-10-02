@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { createPageStoryProviders, defaultPageStoryArgs } from '../stories/page-story-support';
@@ -14,6 +14,7 @@ describe('MajorEventsPageComponent', () => {
       imports: [MajorEventsPageComponent],
       providers: [
         provideNoopAnimations(),
+        provideRouter([]),
         ...createPageStoryProviders(defaultPageStoryArgs),
         {
           provide: ActivatedRoute,
@@ -24,6 +25,8 @@ describe('MajorEventsPageComponent', () => {
     TestBed.overrideProvider(MatDialog, { useValue: dialog });
     await TestBed.compileComponents();
     const fixture: ComponentFixture<MajorEventsPageComponent> = TestBed.createComponent(MajorEventsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
     return { dialog, fixture };
   }
@@ -79,4 +82,26 @@ describe('MajorEventsPageComponent', () => {
       ),
     ).toBeNull();
   });
+  it('keeps prices available when payment is optional and separates certificate policy from registrations', async () => {
+    const { fixture } = await createFixture();
+    const controls = fixture.componentInstance.workspace.majorEventForm.controls;
+    const prices = fixture.componentInstance.workspace.priceTiers.getRawValue();
+    controls.isPaymentRequired.setValue(false);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('[formarrayname="priceTiers"] input')).not.toBeNull();
+    expect(fixture.componentInstance.workspace.priceTiers.getRawValue()).toEqual(prices);
+    expect(element.querySelector('#inscricao [formcontrolname="attendanceEligibility"]')).toBeNull();
+    expect(element.querySelector('#presenca [formcontrolname="attendanceEligibility"]')).not.toBeNull();
+    expect(element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonPayingAttendees"]')).not.toBeNull();
+  });
+
+  it('links activities directly to their event editor', async () => {
+    const { fixture } = await createFixture();
+    const event = fixture.componentInstance.workspace.majorEventEvents()[0];
+    expect(event).toBeDefined();
+    expect((fixture.nativeElement as HTMLElement).querySelector(`a[href="/event-workspace/event/${event.id}/settings"]`)).not.toBeNull();
+  });
+
 });

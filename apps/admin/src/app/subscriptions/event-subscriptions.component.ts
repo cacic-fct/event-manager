@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,7 +11,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import {
   type AuditLogEntityType,
-  type EventType,
   type WorkspaceEventSubscription,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
@@ -19,12 +18,12 @@ import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
-import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import { RouterLink } from '@angular/router';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
 
 @Component({
   selector: 'app-workspace-event-subscriptions-subtab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -36,8 +35,9 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
-    EventFilterPanelComponent,
     PersonSearchComponent,
+    RouterLink,
+    ParticipantSummaryComponent,
   ],
   templateUrl: './event-subscriptions.component.html',
   styleUrls: [
@@ -48,29 +48,11 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     './subscription-subtabs.shared.scss',
   ],
 })
-export class EventSubscriptionsComponent implements OnInit {
+export class EventSubscriptionsComponent {
   readonly workspace = inject(SubscriptionsService);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
-
-  ngOnInit(): void {
-    if (this.workspace.eventResults().length === 0) {
-      void this.workspace.searchEvents();
-    }
-  }
-
-  protected describeEventType(type: EventType | null | undefined): string {
-    if (type === 'MINICURSO') {
-      return 'Minicurso';
-    }
-
-    if (type === 'PALESTRA') {
-      return 'Palestra';
-    }
-
-    return 'Outro';
-  }
 
   protected subscriptionAuditEntityType(subscription: WorkspaceEventSubscription): AuditLogEntityType {
     if (subscription.eventGroupSubscriptionId) {

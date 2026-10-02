@@ -39,17 +39,34 @@ const openLayers = vi.hoisted(() => {
 });
 
 vi.mock('ol/Feature', () => ({ default: openLayers.Feature }));
+vi.mock('ol/Feature.js', () => ({ default: openLayers.Feature }));
 vi.mock('ol/Map', () => ({ default: openLayers.Map }));
+vi.mock('ol/Map.js', () => ({ default: openLayers.Map }));
 vi.mock('ol/View', () => ({ default: openLayers.View }));
+vi.mock('ol/View.js', () => ({ default: openLayers.View }));
 vi.mock('ol/extent', () => ({ boundingExtent: (coordinates: number[][]) => coordinates }));
+vi.mock('ol/extent.js', () => ({ boundingExtent: (coordinates: number[][]) => coordinates }));
 vi.mock('ol/geom/Point', () => ({ default: openLayers.Layer }));
+vi.mock('ol/geom/Point.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/layer/Heatmap', () => ({ default: openLayers.Layer }));
+vi.mock('ol/layer/Heatmap.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/layer/Tile', () => ({ default: openLayers.Layer }));
+vi.mock('ol/layer/Tile.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/layer/Vector', () => ({ default: openLayers.Layer }));
+vi.mock('ol/layer/Vector.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/proj', () => ({ fromLonLat: (coordinates: number[]) => coordinates }));
+vi.mock('ol/proj.js', () => ({ fromLonLat: (coordinates: number[]) => coordinates }));
 vi.mock('ol/source/OSM', () => ({ default: openLayers.Layer }));
+vi.mock('ol/source/OSM.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/source/Vector', () => ({ default: openLayers.Layer }));
+vi.mock('ol/source/Vector.js', () => ({ default: openLayers.Layer }));
 vi.mock('ol/style', () => ({
+  Circle: openLayers.Layer,
+  Fill: openLayers.Layer,
+  Stroke: openLayers.Layer,
+  Style: openLayers.Layer,
+}));
+vi.mock('ol/style.js', () => ({
   Circle: openLayers.Layer,
   Fill: openLayers.Layer,
   Stroke: openLayers.Layer,
@@ -62,6 +79,7 @@ describe('AttendanceHeatmapComponent', () => {
   const resizeObserver = {
     disconnect: vi.fn(),
     observe: vi.fn(),
+    unobserve: vi.fn(),
   };
 
   beforeEach(() => {
@@ -69,6 +87,12 @@ describe('AttendanceHeatmapComponent', () => {
     animationFrameCallbacks = [];
     resizeObserverCallback = undefined;
     vi.clearAllMocks();
+    const gradient = { addColorStop: vi.fn() };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      canvas: document.createElement('canvas'),
+      createLinearGradient: vi.fn(() => gradient),
+      fillRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
     vi.stubGlobal(
       'requestAnimationFrame',
       vi.fn((callback: FrameRequestCallback) => {
@@ -85,11 +109,15 @@ describe('AttendanceHeatmapComponent', () => {
 
         readonly disconnect = resizeObserver.disconnect;
         readonly observe = resizeObserver.observe;
+        readonly unobserve = resizeObserver.unobserve;
       },
     );
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   function createFixture(platformId: 'browser' | 'server' = 'server') {
     TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: platformId }] });

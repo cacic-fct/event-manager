@@ -20,7 +20,7 @@
             <mat-label>Buscar</mat-label>
             <input matInput formControlName="query" />
           </mat-form-field>
-          <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar">
+          <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar" aria-label="Buscar itens publicáveis">
             <mat-icon>search</mat-icon>
           </button>
           <button
@@ -28,7 +28,7 @@
             type="button"
             (click)="clearSearch()"
             [disabled]="loading()"
-            matTooltip="Limpar busca">
+            matTooltip="Limpar busca" aria-label="Limpar busca">
             <mat-icon>close</mat-icon>
           </button>
         </form>

@@ -7,3 +7,4 @@ export * from './event.models';
 export * from './people.models';
 export * from './permission-management.models';
 export * from './prize-draw.models';
+export * from './event-context.models';

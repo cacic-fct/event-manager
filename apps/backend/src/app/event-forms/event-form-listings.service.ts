@@ -35,7 +35,13 @@ export class EventFormListingsService {
 
   async listAdminForms(
     user: AuthenticatedUser | undefined,
-    filters: { query?: string | null; eventId?: string | null; majorEventId?: string | null } = {},
+    filters: {
+      query?: string | null;
+      eventId?: string | null;
+      majorEventId?: string | null;
+      skip?: number | null;
+      take?: number | null;
+    } = {},
   ): Promise<EventFormModel[]> {
     const where: Prisma.EventFormWhereInput = {
       deletedAt: null,
@@ -78,7 +84,9 @@ export class EventFormListingsService {
     const forms = await this.prisma.eventForm.findMany({
       where,
       include: eventFormInclude,
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+      skip: filters.skip ?? undefined,
+      take: filters.take ?? undefined,
     });
 
     return forms.map((form) => toEventFormModel(form));

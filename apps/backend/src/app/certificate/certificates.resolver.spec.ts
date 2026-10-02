@@ -82,6 +82,29 @@ describe('CertificatesResolver authorization', () => {
     expect(downloadService.downloadCertificate).toHaveBeenCalledWith('certificate-1');
   });
 
+  it('loads one certificate configuration through its own authorized target', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-51',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+      eventGroupId: null,
+      majorEventId: null,
+      folderId: null,
+    });
+
+    await expect(
+      resolver.certificateConfig('config-51', { req: { user } } as never),
+    ).resolves.toEqual(expect.objectContaining({ id: 'config-51' }));
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      { scope: CertificateScope.EVENT, targetId: 'event-1' },
+    );
+  });
+
   it('checks frozen target state before creating certificate configs', async () => {
     const { configsService, frozenResources, resolver } = createResolver();
     const user = { sub: 'user-1' };

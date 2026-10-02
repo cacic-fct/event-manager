@@ -85,20 +85,20 @@ test('keeps the selected tournament workspace state on a deep link', async ({ pa
     });
   });
 
-  await page.goto('/admin/sports/tournament-1');
+  await page.goto('/admin/sports/major-event/major-event-1');
 
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
   const matchesTab = page.getByRole('tab', { name: /Partidas e chaves/ });
   await expect(matchesTab).toBeVisible();
 
   await matchesTab.click();
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/matches$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1\/matches$/);
   await expect(matchesTab).toHaveAttribute('aria-selected', 'true');
 
   const categoriesTab = page.getByRole('tab', { name: /Modalidades/ });
   await categoriesTab.click();
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/categories$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1\/categories$/);
   await expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
 });
 

@@ -14,7 +14,11 @@ type PublicationConsistencyEvent = {
   } | null;
   sportsMatch?: {
     id: string;
-    category: { tournamentId: string; status?: string; tournament?: { status: string } };
+    category: {
+      tournamentId: string;
+      status?: string;
+      tournament?: { status: string; majorEventId: string };
+    };
   } | null;
 };
 
@@ -46,7 +50,7 @@ export function buildPublicationConsistencyWarnings(input: {
       warnings.push({
         type: isSportsMatch ? 'PUBLISHED_SPORTS_MATCH_HIDDEN_FROM_USERS' : 'PUBLISHED_EVENT_HIDDEN_FROM_USERS',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: isSportsMatch ? sportsTargetId(event) : event.id,
         eventId: event.id,
         severity: 'WARNING',
         title: isSportsMatch ? 'Partida publicada, mas oculta' : 'Evento publicado, mas oculto',
@@ -58,7 +62,7 @@ export function buildPublicationConsistencyWarnings(input: {
       warnings.push({
         type: isSportsMatch ? 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS' : 'DRAFT_EVENT_VISIBLE_TO_ADMINS',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: isSportsMatch ? sportsTargetId(event) : event.id,
         eventId: event.id,
         severity: 'INFO',
         title: isSportsMatch ? 'Partida ainda não publicada' : 'Evento ainda não publicado',
@@ -75,7 +79,7 @@ export function buildPublicationConsistencyWarnings(input: {
       warnings.push({
         type: 'SPORTS_MATCH_PUBLIC_VISIBILITY_MISMATCH',
         action: 'OPEN_SPORTS',
-        targetId: event.sportsMatch.category.tournamentId,
+        targetId: sportsTargetId(event),
         eventId: event.id,
         severity: 'WARNING',
         title: 'Visibilidade da partida inconsistente',
@@ -103,7 +107,7 @@ export function buildPublicationConsistencyWarnings(input: {
       warnings.push({
         type: isSportsMatch ? 'OVERDUE_SCHEDULED_SPORTS_MATCH_PUBLICATION' : 'OVERDUE_SCHEDULED_PUBLICATION',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',
-        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
+        targetId: isSportsMatch ? sportsTargetId(event) : event.id,
         eventId: event.id,
         severity: 'WARNING',
         title: isSportsMatch ? 'Publicação da partida atrasada' : 'Publicação agendada atrasada',
@@ -149,7 +153,7 @@ export function buildPublicationConsistencyWarnings(input: {
       warnings.push({
         type: 'SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT',
         action: 'OPEN_SPORTS',
-        targetId: majorEvent.sportsTournament.id,
+        targetId: majorEvent.id,
         severity: 'WARNING',
         title: 'Torneio publicado sem modalidades visíveis',
         description: `${majorEvent.name} possui um torneio publicado, mas nenhuma modalidade está disponível no site público.`,
@@ -162,4 +166,8 @@ export function buildPublicationConsistencyWarnings(input: {
 
 function formatPublicationWarningDate(date: Date): string {
   return date.toLocaleString('pt-BR', { timeZone: PUBLICATION_WARNING_TIME_ZONE });
+}
+
+function sportsTargetId(event: PublicationConsistencyEvent): string | null {
+  return event.majorEventId ?? event.sportsMatch?.category.tournament?.majorEventId ?? null;
 }

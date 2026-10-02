@@ -4,16 +4,27 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MergeCandidateStatus, MergeMatchMethod } from '@cacic-fct/event-manager-admin-contracts';
 import { MergeCandidatesService } from './merge-candidates.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
 
 @Component({
   selector: 'app-workspace-merge-candidates-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatListModule, MatSelectModule],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatListModule,
+    MatSelectModule,
+    ParticipantSummaryComponent,
+  ],
   templateUrl: './merge-candidates-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',

@@ -131,3 +131,16 @@ export const CompactDark: Story = {
   parameters: { viewport: { defaultViewport: 'tablet' } },
   globals: { theme: 'dark', motion: 'reduced' },
 };
+
+export const RoleSearch: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByRole('searchbox', { name: 'Buscar cargo por nome ou descrição' });
+    await userEvent.type(search, 'presencas');
+    await expect(canvas.getByRole('button', { name: 'Operação de credenciamento' })).toBeVisible();
+    await userEvent.clear(search);
+    await userEvent.type(search, 'inexistente');
+    await expect(canvas.queryByRole('button', { name: 'Operação de credenciamento' })).toBeNull();
+    await expect(canvas.getByText('Nenhum cargo personalizado encontrado.')).toBeVisible();
+  },
+};

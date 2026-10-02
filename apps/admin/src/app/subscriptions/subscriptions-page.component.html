@@ -1,35 +1,22 @@
 <section class="workspace-tab">
-  <mat-tab-group
-    [selectedIndex]="selectedTabIndex()"
-    (selectedIndexChange)="onSelectedTabIndexChange($event)"
-    animationDuration="160ms"
-    mat-stretch-tabs="false">
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span class="workspace-tab-label"><mat-icon>event</mat-icon>Eventos</span>
-      </ng-template>
+  <h2>Inscrições e interesses</h2>
+  @if (!interestsMode() || context()) {
+    <app-event-context-picker [hideInShell]="context() !== null" [allowGroups]="interestsMode()" [context]="context()"
+      (contextChange)="selectContext($event)" />
+  }
+  <a mat-button routerLink="/subscriptions/interests">Consultar interesses de eventos e grupos</a>
+  @if (contextLoading()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando inscrições" /> }
+  @if (contextError()) { <p role="alert">{{ contextError() }}</p> }
+  @if (interestsMode()) {
+    <app-workspace-event-interests [context]="context()" />
+  } @else if (context() && !contextLoading() && !contextError()) {
+    @if (context()?.kind === 'event') {
       <app-workspace-event-subscriptions-subtab />
-    </mat-tab>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span class="workspace-tab-label">
-          <mat-icon>festival</mat-icon>
-          Grandes eventos
-          @if (selectedMajorEventPendingReceiptsCount()) {
-            <span class="workspace-tab-count" aria-label="Comprovantes pendentes">
-              {{ selectedMajorEventPendingReceiptsCount() }}
-            </span>
-          }
-        </span>
-      </ng-template>
+    } @else {
       <app-workspace-major-event-subscriptions-subtab
         [pendingReceiptsCount]="selectedMajorEventPendingReceiptsCount()" />
-    </mat-tab>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span class="workspace-tab-label"><mat-icon>bookmark_add</mat-icon>Quero ir</span>
-      </ng-template>
-      <app-workspace-event-interests />
-    </mat-tab>
-  </mat-tab-group>
+    }
+  } @else if (!context()) {
+    <p>Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.</p>
+  }
 </section>

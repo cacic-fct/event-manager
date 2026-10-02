@@ -1,5 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -10,7 +10,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, startWith } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { formatDateOnlyUtcBoundary } from '@cacic-fct/shared-utils';
 import { AuditLogApiService, AuditLogExplorerInput } from '../graphql/audit-log-api.service';
 import {
@@ -66,7 +67,6 @@ type AuditLogFilterForm = {
     '../app-shell/layout/forms-feedback.shared.scss',
     './audit-logs-page.component.scss',
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AuditLogsPageComponent {
   private readonly api = inject(AuditLogApiService);
@@ -81,6 +81,13 @@ export class AuditLogsPageComponent {
     dateFrom: new FormControl<Date | null>(null),
     dateTo: new FormControl<Date | null>(null),
     revertedStatus: new FormControl('ALL', { nonNullable: true }),
+  });
+
+  private readonly filterValue = toSignal(this.filters.valueChanges.pipe(startWith(this.filters.getRawValue())));
+  protected readonly advancedFilterCount = computed(() => {
+    const value = this.filterValue();
+    return [value?.entity, value?.entityType, value?.operation, value?.dateFrom, value?.dateTo,
+      value?.revertedStatus !== 'ALL' ? value?.revertedStatus : null].filter(Boolean).length;
   });
 
   protected readonly entityTypeOptions = AUDIT_LOG_ENTITY_TYPE_OPTIONS;

@@ -87,9 +87,16 @@ const PRIZE_DRAW_FIELDS = `
 export class PrizeDrawApiService {
   private readonly graphql = inject(GraphqlHttpService);
 
-  list() {
+  list(filters?: { query?: string; eventId?: string; majorEventId?: string; skip?: number; take?: number }) {
     return this.graphql
-      .request<{ prizeDraws: PrizeDraw[] }>(`query PrizeDraws { prizeDraws { ${PRIZE_DRAW_FIELDS} } }`)
+      .request<{ prizeDraws: PrizeDraw[] }>(
+        `query PrizeDraws($query: String, $eventId: String, $majorEventId: String, $skip: Int, $take: Int) {
+          prizeDraws(query: $query, eventId: $eventId, majorEventId: $majorEventId, skip: $skip, take: $take) {
+            ${PRIZE_DRAW_FIELDS}
+          }
+        }`,
+        filters,
+      )
       .pipe(map((data) => data.prizeDraws));
   }
 

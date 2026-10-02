@@ -6,7 +6,7 @@ import {
   EventGroupUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
@@ -26,6 +26,7 @@ import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/even
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
 import { audienceContext } from '../audiences/audience-context';
+import { eventGroupBelongsToMajorEventWhere } from './major-event-membership';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -115,9 +116,13 @@ export class EventGroupsResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventGroupWhereInput = { deletedAt: null };
+    if (majorEventId) {
+      Object.assign(where, eventGroupBelongsToMajorEventWhere(majorEventId));
+    }
     const accessibleEventGroupIds = await this.authorizationPolicy.accessibleEventGroupIds(
       this.getUser(context),
       Permission.EventGroup.Read,
@@ -134,7 +139,7 @@ export class EventGroupsResolver {
     let prioritizedIds: string[] = [];
 
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
+      if (!majorEventId && this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEventGroups(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -160,9 +165,7 @@ export class EventGroupsResolver {
 
     const groups = await this.prisma.eventGroup.findMany({
       where,
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
       skip: prioritizedIds.length > 0 ? 0 : pagination.skip,
       take: prioritizedIds.length > 0 ? prioritizedIds.length : pagination.take,
     });
@@ -207,6 +210,10 @@ export class EventGroupsResolver {
     input: EventGroupCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    if (input.majorEventId) {
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create], { majorEventId: input.majorEventId });
+      await this.frozenResources.assertMajorEventMutable(input.majorEventId, this.getUser(context), 'edit');
+    }
     const normalizedInput = this.normalizeEventGroupCertificateInput({
       ...withoutAudienceInput(input),
       name: input.name?.trim() || DEFAULT_DRAFT_EVENT_GROUP_NAME,
@@ -224,7 +231,7 @@ export class EventGroupsResolver {
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
           after: withAudienceAudit(created, audienceChange),
-          scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id },
+          scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id, ...(created.majorEventId ? { majorEventId: created.majorEventId } : {}) },
           summary: 'Grupo de eventos criado.',
         },
         tx,
@@ -234,6 +241,8 @@ export class EventGroupsResolver {
     await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
+      emoji: eventGroup.emoji,
+      majorEventId: eventGroup.majorEventId,
     });
     if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name }, audienceChange.personIds);
     return eventGroup;
@@ -253,6 +262,9 @@ export class EventGroupsResolver {
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      if (input.majorEventId !== undefined && input.majorEventId !== (previous.majorEventId ?? null)) {
+        throw new BadRequestException('O vínculo do grupo com um grande evento deve ser definido na criação.');
+      }
       audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT_GROUP', targetId: id }, input, previous, this.getUser(context)?.sub);
       await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(tx, id, normalizedInput);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
@@ -315,6 +327,8 @@ export class EventGroupsResolver {
       await this.postCommitEffects.upsertEventGroup({
         id: eventGroup.id,
         name: eventGroup.name,
+        emoji: eventGroup.emoji,
+        majorEventId: eventGroup.majorEventId,
       });
       await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
       if (normalizedInput.attendanceEligibility !== undefined) {
@@ -394,6 +408,8 @@ export class EventGroupsResolver {
     await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
+      emoji: eventGroup.emoji,
+      majorEventId: eventGroup.majorEventId,
     });
     return eventGroup;
   }

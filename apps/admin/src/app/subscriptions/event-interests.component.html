@@ -1,5 +1,11 @@
 <section class="subtab-layout interest-layout">
-  <aside class="panel interest-target-browser">
+  @if (context() && loadingTargets()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando interessados do contexto" /> }
+  @if (!context()) {<aside class="interest-target-browser">
+    <app-workspace-scope [emoji]="selectedTarget()?.emoji"
+      [scopeId]="selectedTarget()?.targetId ?? null"
+      [title]="selectedTarget()?.name ?? ''"
+      emptyLabel="Selecionar atividade"
+      description="Escolha um evento, grupo ou grande evento.">
     <div class="panel-heading">
       <div>
         <h3>Quero ir</h3>
@@ -22,23 +28,18 @@
 
     <mat-list class="interest-target-list">
       @for (target of filteredTargets(); track target.targetType + ':' + target.targetId) {
-        <mat-list-item
-          role="button"
-          tabindex="0"
-          [attr.aria-current]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId ? 'true' : null"
-          [class.selected-list-item]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId"
-          (click)="selectTarget(target)"
-          (keydown.enter)="selectTarget(target)"
-          (keydown.space)="$event.preventDefault(); selectTarget(target)">
-          <span matListItemTitle class="list-title">
+        <app-workspace-record
+          [title]="target.name"
+          [label]="'Consultar interessados de ' + target.name"
+          [selected]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId"
+          [link]="['/subscriptions', target.targetType === 'EVENT' ? 'event' : target.targetType === 'EVENT_GROUP' ? 'group' : 'major-event', target.targetId, 'interests']">
+          <span recordIcon class="list-title">
             <lib-twemoji [emoji]="target.emoji" />
-            <span>{{ target.name }}</span>
           </span>
-          <span matListItemLine>{{ target.kindLabel }}{{ target.interestEnabled ? '' : ' · Novos interesses desativados' }}</span>
-          @if (target.startDate) {
-            <span matListItemLine>{{ target.startDate | date: 'short' }}</span>
-          }
-        </mat-list-item>
+          <span recordDescription>{{ target.kindLabel }}{{ target.interestEnabled ? '' : ' · Novos interesses desativados' }}
+            @if (target.startDate) { · {{ target.startDate | date: 'short' }} }
+          </span>
+        </app-workspace-record>
       } @empty {
         <mat-list-item>
           <span matListItemTitle>Nenhum evento, grupo ou grande evento encontrado</span>
@@ -46,7 +47,8 @@
         </mat-list-item>
       }
     </mat-list>
-  </aside>
+    </app-workspace-scope>
+  </aside>}
 
   <section class="panel interest-workbench">
     @if (selectedTarget(); as target) {
@@ -72,10 +74,21 @@
           <mat-progress-bar mode="indeterminate" aria-label="Carregando interessados" />
         }
 
+        <mat-form-field class="span-2">
+          <mat-label>Buscar participante</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="participantSearchForm.controls.query" />
+          <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+        </mat-form-field>
+
         <mat-list class="subscription-list interest-list">
           @for (interest of interests(); track interest.id) {
             <mat-list-item>
-              <span matListItemTitle>{{ interest.person?.name ?? interest.personId }}</span>
+              @if (interest.person) {
+                <app-participant-summary matListItemTitle [person]="interest.person" />
+              } @else {
+                <span matListItemTitle>{{ interest.personId }}</span>
+              }
               <span matListItemLine>
                 {{ interest.person?.email ?? 'E-mail não informado' }} ·
                 Interesse registrado em {{ interest.createdAt | date: 'short' }}

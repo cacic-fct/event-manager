@@ -34,9 +34,9 @@ describe('sports read resolvers', () => {
     const operations = [
       [
         'tournament list',
-        () => harness.admin.adminSportsTournamentList(context as never, '  cup  ', 2, 20),
+        () => harness.admin.adminSportsTournamentList(context as never, '  cup  ', 2, 20, 'major-1'),
         harness.sportsRead.adminTournamentList,
-        [harness.user, { query: '  cup  ', skip: 2, take: 20 }],
+        [harness.user, { query: '  cup  ', skip: 2, take: 20, majorEventId: 'major-1' }],
       ],
       [
         'tournament',
@@ -95,6 +95,7 @@ describe('sports read resolvers', () => {
       query: undefined,
       skip: undefined,
       take: undefined,
+      majorEventId: undefined,
     });
   });
 

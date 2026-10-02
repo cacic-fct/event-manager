@@ -35,7 +35,7 @@ export const navigationItems = [
   {
     kind: 'divider',
     id: 'divider-dashboard-events',
-    label: 'Estrutura do evento',
+    label: 'Eventos',
   },
   {
     kind: 'link',
@@ -51,7 +51,7 @@ export const navigationItems = [
     kind: 'link',
     id: 'groups',
     path: 'groups',
-    label: 'Grupos',
+    label: 'Grupos de eventos',
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
     group: 'Estrutura do evento',
@@ -90,7 +90,7 @@ export const navigationItems = [
   {
     kind: 'divider',
     id: 'divider-events-participation',
-    label: 'Participação',
+    label: 'Ferramentas globais',
   },
   {
     kind: 'link',
@@ -116,8 +116,8 @@ export const navigationItems = [
     kind: 'link',
     id: 'certificates',
     path: 'certificates',
-    label: 'Certificados',
-    description: 'Gerencie modelos, emissões e validações de certificados.',
+    label: 'Certificados avulsos',
+    description: 'Organize pastas e emita certificados sem vínculo com eventos.',
     icon: 'workspace_premium',
     group: 'Participação',
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Certificados',
@@ -187,7 +187,7 @@ export const navigationItems = [
     id: 'places',
     path: 'places',
     label: 'Locais',
-    description: 'Gerencie presets de locais usados nos eventos.',
+    description: 'Cadastre locais para reutilizar nos eventos.',
     icon: 'place',
     group: 'Administração',
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Locais',
@@ -246,7 +246,11 @@ export function findNavigationItemForUrl(rawUrl: string): NavigationLinkItem {
   const url = rawUrl.split('?')[0].split('#')[0];
   const segments = url.split('/').filter(Boolean);
 
+  const workspaceIndex = segments.indexOf('event-workspace');
+  const kind = segments[workspaceIndex + (segments[workspaceIndex + 1] === 'new' ? 2 : 1)];
+  const workspaceTab = kind === 'group' ? 'groups' : kind === 'major-event' ? 'major-events' : 'events';
   return (
+    (workspaceIndex >= 0 ? navigationLinkItems.find((item) => item.id === workspaceTab) : undefined) ??
     navigationLinkItems.find((item) => item.path === '' && segments.length === 0) ??
     navigationLinkItems.find((item) => item.path !== '' && segments.includes(item.path)) ??
     navigationLinkItems[0]

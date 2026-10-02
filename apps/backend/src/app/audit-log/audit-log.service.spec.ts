@@ -1116,6 +1116,7 @@ describe('AuditLogService', () => {
       shouldIssueCertificateForEachEvent: true,
       shouldIssuePartialCertificate: true,
       emoji: 'school',
+      majorEventId: 'major-1',
       deletedAt: null,
     };
     const revertedGroup = {

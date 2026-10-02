@@ -1,9 +1,11 @@
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { EventGroupInput } from '@cacic-fct/event-manager-admin-contracts';
@@ -17,6 +19,7 @@ import {
 import { EventGroupsService } from './event-groups.service';
 import { EventsService } from '../events/events.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 
 describe('EventGroupsService', () => {
   let service: EventGroupsService;
@@ -42,6 +45,9 @@ describe('EventGroupsService', () => {
   };
   let router: {
     navigate: ReturnType<typeof vi.fn>;
+  };
+  let feedback: {
+    error: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -74,15 +80,21 @@ describe('EventGroupsService', () => {
     router = {
       navigate: vi.fn(),
     };
+    feedback = {
+      error: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
         EventGroupsService,
+        { provide: EventWorkspaceContextService, useValue: { context: signal(null) } },
         { provide: EventGroupApiService, useValue: api },
+        { provide: MajorEventApiService, useValue: { getMajorEvent: vi.fn(() => of(createAdminMajorEvent())) } },
         { provide: EventApiService, useValue: eventApi },
         { provide: PublicationApiService, useValue: publicationApi },
         { provide: EventsService, useValue: eventsService },
-        { provide: PermissionsService, useValue: { hasAll: vi.fn(() => true) } },
+        { provide: PermissionsService, useValue: { hasAll: vi.fn(() => true), has: vi.fn(() => false) } },
+        { provide: AdminFeedbackService, useValue: feedback },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
@@ -99,6 +111,81 @@ describe('EventGroupsService', () => {
       shouldIssueCertificateForEachEvent: true,
       shouldIssuePartialCertificate: true,
     });
+  });
+
+  it('tracks semantic event-group editor changes from a clean baseline', () => {
+    service.startNewEventGroup(false);
+    expect(service.unsavedChanges()).toBe(false);
+    service.eventGroupForm.controls.name.setValue('Nome alterado');
+    expect(service.unsavedChanges()).toBe(true);
+    service.startNewEventGroup(false);
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('blocks creation in a frozen major event using its exact dates', async () => {
+    const past = new Date(Date.now() - 120 * 86400000).toISOString();
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(of(createAdminMajorEvent({id:'old-major',createdAt:past,endDate:past})));
+    await expect(service.initializeNewEventGroup('old-major')).rejects.toThrow('congelado');
+    expect(service.eventGroupForm.controls.majorEventId.value).toBe('');
+    expect(api.createEventGroup).not.toHaveBeenCalled();
+  });
+
+  it('persists a new empty group under its explicitly selected major event', async () => {
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValue(of(createAdminMajorEvent({id:'major-parent',name:'Semana',emoji:'🎓'})));
+    service.selectedEventGroup.set(createAdminEventGroup({id:'old-group'}));
+    const parents=await service.initializeNewEventGroup('major-parent');
+    expect(service.selectedEventGroup()).toBeNull();expect(service.eventGroupForm.controls.id.value).toBe('');
+    expect(parents).toEqual([{kind:'major-event',id:'major-parent',name:'Semana',emoji:'🎓'}]);
+    expect(router.navigate).not.toHaveBeenCalled();
+    service.eventGroupForm.controls.name.setValue('Novo grupo');
+    await service.saveEventGroup('DRAFT');
+    expect(api.createEventGroup).toHaveBeenCalledWith(expect.objectContaining({name:'Novo grupo',majorEventId:'major-parent'}));
+    expect(api.updateEventGroup).not.toHaveBeenCalled();
+    expect(service.selectedEventGroup()?.majorEventId).toBe('major-parent');
+    expect(router.navigate).toHaveBeenCalledWith(['/event-workspace', 'group', 'event-group-1', 'settings']);
+  });
+
+  it('does not let late group details overwrite the current group', async () => {
+    const delayed=new Subject<ReturnType<typeof createAdminEventGroup>>();
+    api.getEventGroup.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminEventGroup({id:'b'})));
+    const first=service.pickEventGroupById('a');
+    await service.pickEventGroupById('b');
+    delayed.next(createAdminEventGroup({id:'a'}));delayed.complete();await first;
+    expect(service.selectedEventGroup()?.id).toBe('b');expect(service.eventGroupForm.controls.id.value).toBe('b');
+  });
+
+  it('does not navigate to a saved group after its child list finishes for a newer selection', async () => {
+    const delayedEvents = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    eventApi.listEvents.mockReturnValueOnce(delayedEvents);
+
+    const save = service.saveEventGroup('DRAFT');
+    await vi.waitFor(() => expect(eventApi.listEvents).toHaveBeenCalledWith({ eventGroupId: 'event-group-1', take: 200 }));
+    service.startNewEventGroup(false);
+    delayedEvents.next([]);
+    delayedEvents.complete();
+    await save;
+
+    expect(router.navigate).not.toHaveBeenCalledWith(['/event-workspace', 'group', 'event-group-1', 'settings']);
+    expect(service.selectedEventGroup()).toBeNull();
+  });
+
+  it('does not apply a saved group parent restriction after its parent finishes for a newer selection', async () => {
+    const delayedMajor = new Subject<ReturnType<typeof createAdminMajorEvent>>();
+    const majorApi = TestBed.inject(MajorEventApiService);
+    vi.mocked(majorApi.getMajorEvent).mockReturnValueOnce(delayedMajor);
+    vi.mocked(api.createEventGroup).mockReturnValueOnce(of(createAdminEventGroup({ id: 'event-group-1', majorEventId: 'major-1' })));
+    service.eventGroupForm.controls.majorEventId.setValue('major-1');
+
+    const save = service.saveEventGroup('DRAFT');
+    await vi.waitFor(() => expect(majorApi.getMajorEvent).toHaveBeenCalledWith('major-1'));
+    service.startNewEventGroup(false);
+    delayedMajor.next(createAdminMajorEvent({ id: 'major-1' }));
+    delayedMajor.complete();
+    await save;
+
+    expect(router.navigate).not.toHaveBeenCalledWith(['/event-workspace', 'group', 'event-group-1', 'settings']);
+    expect(service.selectedEventGroup()).toBeNull();
+    expect(service.selectedEventGroupMajorEventRestriction()).toBeNull();
   });
 
   it('publishes a saved group when it has linked events', async () => {
@@ -126,7 +213,7 @@ describe('EventGroupsService', () => {
 
     expect(api.createEventGroup).toHaveBeenCalledWith(expect.objectContaining({ name: 'Trilha de Minicursos' }));
     expect(publicationApi.setPublicationState).not.toHaveBeenCalled();
-    expect(service.selectedEventGroup()).toBeNull();
+    expect(service.selectedEventGroup()?.id).toBe('event-group-1');
   });
 
   it('persists independent interest and inherited attendance eligibility settings', async () => {
@@ -182,7 +269,8 @@ describe('EventGroupsService', () => {
     ]);
   });
 
-  it('uses linked event metadata to resolve an inherited parent rule', async () => {
+  it('uses matching linked metadata when a direct parent lookup is unavailable', async () => {
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(throwError(() => new Error('Parent unavailable')));
     const majorEvent = createAdminMajorEvent({
       id: 'major-event-1',
       audience: 'UNESP_ONLY',
@@ -239,6 +327,45 @@ describe('EventGroupsService', () => {
       shouldIssueCertificate: false,
     });
     expect(eventsService.loadEvents).toHaveBeenCalled();
+  });
+
+  it('prefills an explicit group parent when linking an event without a major event', async () => {
+    const group = createAdminEventGroup({ id: 'event-group-1', majorEventId: 'major-1' });
+    const event = createAdminEvent({ id: 'event-1', majorEventId: null });
+    service.selectedEventGroup.set(group);
+
+    await service.addEventToSelectedGroup(event);
+
+    expect(eventApi.updateEvent).toHaveBeenCalledWith('event-1', {
+      eventGroupId: 'event-group-1',
+      majorEventId: 'major-1',
+      shouldIssueCertificate: event.shouldIssueCertificate,
+    });
+  });
+
+  it('rejects an event from another major event before linking it', async () => {
+    const group = createAdminEventGroup({ id: 'event-group-1', majorEventId: 'major-1' });
+    const event = createAdminEvent({ id: 'event-1', majorEventId: 'major-2' });
+    service.selectedEventGroup.set(group);
+
+    await service.addEventToSelectedGroup(event);
+
+    expect(eventApi.updateEvent).not.toHaveBeenCalled();
+    expect(feedback.error).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('outro grande evento') }),
+      'Não foi possível adicionar o evento ao grupo.',
+    );
+  });
+
+  it('shows a recoverable error when linking an event fails', async () => {
+    const group = createAdminEventGroup({ id: 'event-group-1', majorEventId: null });
+    const event = createAdminEvent({ id: 'event-1' });
+    eventApi.updateEvent.mockReturnValueOnce(throwError(() => new Error('membership failed')));
+    service.selectedEventGroup.set(group);
+
+    await service.addEventToSelectedGroup(event);
+
+    expect(feedback.error).toHaveBeenCalledWith(new Error('membership failed'), 'Não foi possível adicionar o evento ao grupo.');
   });
 
   it('searches event groups from the first page using the entered query', async () => {

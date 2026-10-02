@@ -1,8 +1,14 @@
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { combineLatest, of } from 'rxjs';
+import { CreationParentError, type CreationParentSummary } from '../events/events.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { DatePipe } from '@angular/common';
-import { Component, ViewChild, inject } from '@angular/core';
+import { Component, DestroyRef, computed, effect, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink, type ParamMap } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -21,7 +27,6 @@ import { EventsService } from './events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { isFrozenEvent, isFrozenMajorEvent } from '../resource-state/frozen-resource';
-import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
 import { AudienceEditorComponent } from '../shared/audience-editor/audience-editor.component';
 import {
@@ -36,10 +41,16 @@ import {
   type AttendanceEligibilityOption,
   type AttendanceEligibilityParent,
 } from '../shared/event-participation-policy';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 @Component({
   selector: 'app-workspace-events-tab',
   imports: [
+    MatProgressBarModule,
+    MatMenuModule,
+    WorkspaceScopeComponent,
+    MatExpansionModule,
+    RouterLink,
     DatePipe,
     ReactiveFormsModule,
     MatAutocompleteModule,
@@ -53,7 +64,6 @@ import {
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
-    EventFilterPanelComponent,
     PersonSearchComponent,
     AudienceEditorComponent,
   ],
@@ -66,31 +76,66 @@ import {
   ],
 })
 export class EventsPageComponent {
-  @ViewChild(EventFilterPanelComponent)
-  private eventFilterPanel?: EventFilterPanelComponent;
+  protected associationEmoji(kind: 'group' | 'major-event'): string | null {
+    if (kind === 'group') {
+      const id = this.workspace.eventForm.controls.eventGroupId.value;
+      return this.workspace.eventGroupSearchResults().find((group) => group.id === id)?.emoji
+        ?? (this.workspace.selectedEvent()?.eventGroup?.id === id ? this.workspace.selectedEvent()?.eventGroup?.emoji : null) ?? null;
+    }
+    const id = this.workspace.eventForm.controls.majorEventId.value;
+    return this.workspace.majorEventSearchResults().find((major) => major.id === id)?.emoji
+      ?? this.workspace.majorEvents().find((major) => major.id === id)?.emoji
+      ?? (this.workspace.selectedEvent()?.majorEvent?.id === id ? this.workspace.selectedEvent()?.majorEvent?.emoji : null) ?? null;
+  }
+
   readonly workspace = inject(EventsService);
+  private readonly pendingChanges = inject(WorkspacePendingChangesService);
+  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
-  constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const eventId = params.get('eventId');
-      if (eventId) {
-        void this.workspace.selectEventById(eventId, { skipIfCurrent: true });
-        return;
-      }
+  readonly contextLoading = signal(true);
+  readonly contextError = signal('');
+  readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
+  readonly creationParents = signal<CreationParentSummary[]>([]);
+  private contextRequest = 0;
+  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
 
-      if (this.workspace.selectedEvent()) {
-        this.workspace.resetEventForm();
-      }
-    });
+  constructor() {
+    effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
+    this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
+    combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
+      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
+        this.lastContext = {params, query};
+        void this.initializeContext(params, query);
+      });
   }
 
-  focusQuickSearch(): void {
-    this.eventFilterPanel?.focusQuickSearch();
+  retryContext(): void {
+    if (this.lastContext) void this.initializeContext(this.lastContext.params, this.lastContext.query);
+  }
+
+  private async initializeContext(params: ParamMap, query: ParamMap | null): Promise<void> {
+    const request = ++this.contextRequest;
+    const id = params.get('eventId') ?? (params.get('targetType') === 'event' ? params.get('targetId') : null);
+    this.contextLoading.set(true);
+    this.contextError.set('');
+    this.creationParents.set([]);
+    try {
+      if (id) {
+        const selected = await this.workspace.selectEventById(id, { skipIfCurrent: true });
+        if (selected === false && request === this.contextRequest) this.contextError.set('A seleção da versão foi cancelada. Tente novamente para abrir este evento.');
+      }
+      else { const parents = await this.workspace.initializeNewEvent({eventGroupId:query?.get('eventGroupId'),majorEventId:query?.get('majorEventId')}); if (request === this.contextRequest) this.creationParents.set(parents); }
+    } catch (error) {
+      if (request === this.contextRequest) this.contextError.set(error instanceof CreationParentError ? error.message : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+    } finally {
+      if (request === this.contextRequest) this.contextLoading.set(false);
+    }
   }
 
   protected previewDescription(): void {

@@ -69,7 +69,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

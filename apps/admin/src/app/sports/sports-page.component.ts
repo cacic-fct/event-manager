@@ -13,7 +13,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
-import { SportsApiService } from './sports-api.service';
 import { SportsCategoriesSectionComponent } from './sports-categories-section.component';
 import { SportsMatchesSectionComponent } from './sports-matches-section.component';
 import { SportsOverviewSectionComponent } from './sports-overview-section.component';
@@ -61,7 +60,7 @@ const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
     SportsReviewsSectionComponent,
     SportsTeamsSectionComponent,
   ],
-  providers: [SportsApiService, SportsWorkspaceService],
+  providers: [SportsWorkspaceService],
   templateUrl: './sports-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -77,6 +76,12 @@ const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
 export class SportsPageComponent {
   protected readonly workspace = inject(SportsWorkspaceService);
   protected readonly activeAreaIndex = computed(() => SPORTS_WORKSPACE_TAB_AREAS.indexOf(this.workspace.activeArea()));
+  protected readonly scopedMajorEventItem = computed(() => {
+    const majorEventId = this.workspace.majorEventRouteScopeId();
+    return majorEventId
+      ? this.workspace.scopedMajorEventWorkspaceItems().find((item) => item.majorEvent.id === majorEventId) ?? null
+      : null;
+  });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private initialization: Promise<void> | null = null;
@@ -95,31 +100,44 @@ export class SportsPageComponent {
       await this.redirectFromMissingTournament(error);
       return;
     }
-    await this.router.navigate(['/sports', tournamentId]).catch(() => undefined);
+    const majorEventId = this.workspace.tournamentRead()?.tournament.majorEventId ?? null;
+    this.workspace.useMajorEventRouteScope(majorEventId ?? null);
+    await this.router
+      .navigate(sportsWorkspaceRoute(majorEventId, 'overview'), { replaceUrl: true })
+      .catch(() => undefined);
   }
 
-  protected openMajorEvent(item: SportsMajorEventWorkspaceItem): void {
+  protected async openMajorEvent(item: SportsMajorEventWorkspaceItem): Promise<void> {
     if (item.tournament) {
-      void this.openTournament(item.tournament.tournament.id);
+      await this.openTournament(item.tournament.tournament.id);
       return;
     }
-    void this.workspace.openMajorEvent(item.majorEvent.id);
+    const previousScope = this.workspace.majorEventRouteScopeId();
+    this.workspace.useMajorEventRouteScope(item.majorEvent.id);
+    await this.workspace.openMajorEvent(item.majorEvent.id);
+    if (!this.workspace.tournamentRead()) {
+      this.workspace.useMajorEventRouteScope(previousScope || null);
+    }
   }
 
   protected setArea(area: SportsWorkspaceArea): void {
-    const tournamentId = this.workspace.tournamentId();
-    if (!tournamentId) {
+    const majorEventId = this.workspace.majorEventRouteScopeId();
+    if (!majorEventId) {
       return;
     }
 
     this.workspace.activeArea.set(area);
     void this.router
       .navigate(
-        sportsWorkspaceRoute(tournamentId, area, {
-          categoryId: this.workspace.selectedCategoryId() || undefined,
-          teamId: this.workspace.selectedTeamId() || undefined,
-          matchId: this.workspace.selectedMatchId() || undefined,
-        }),
+        sportsWorkspaceRoute(
+          majorEventId,
+          area,
+          {
+            categoryId: this.workspace.selectedCategoryId() || undefined,
+            teamId: this.workspace.selectedTeamId() || undefined,
+            matchId: this.workspace.selectedMatchId() || undefined,
+          },
+        ),
       )
       .catch(() => undefined);
   }
@@ -135,8 +153,14 @@ export class SportsPageComponent {
     const revision = ++this.routeRevision;
     const areaParam = params.get('area');
     if (areaParam && !isSportsWorkspaceArea(areaParam)) {
-      const tournamentId = params.get('tournamentId');
-      void this.router.navigate(tournamentId ? ['/sports', tournamentId] : ['/sports']).catch(() => undefined);
+      const majorEventId = params.get('majorEventId');
+      void this.router
+        .navigate(
+          majorEventId
+            ? ['/sports', 'major-event', majorEventId]
+            : ['/sports'],
+        )
+        .catch(() => undefined);
       return;
     }
 
@@ -146,21 +170,13 @@ export class SportsPageComponent {
       return;
     }
 
-    if (!route.tournamentId) {
+    if (route.majorEventId) {
+      await this.workspace.loadMajorEventScope(route.majorEventId);
+      if (revision !== this.routeRevision) return;
+    } else {
+      this.workspace.useMajorEventRouteScope(null);
       this.workspace.resetWorkspaceRoute();
       return;
-    }
-
-    if (this.workspace.tournamentId() !== route.tournamentId) {
-      try {
-        await this.workspace.loadTournament(route.tournamentId);
-      } catch (error) {
-        await this.redirectFromMissingTournament(error, revision);
-        return;
-      }
-      if (revision !== this.routeRevision) {
-        return;
-      }
     }
 
     this.workspace.activeArea.set(route.area);
@@ -271,7 +287,10 @@ export class SportsPageComponent {
       return;
     }
     this.workspace.resetWorkspaceRoute();
-    await this.router.navigate(['/sports'], { replaceUrl: true }).catch(() => undefined);
+    const majorEventId = this.workspace.majorEventRouteScopeId();
+    await this.router
+      .navigate(majorEventId ? ['/sports', 'major-event', majorEventId] : ['/sports'], { replaceUrl: true })
+      .catch(() => undefined);
   }
 
   private isMissingTournamentError(error: unknown): boolean {

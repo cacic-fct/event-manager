@@ -1,7 +1,9 @@
+import type { EventTargetSelection } from '../shared/event-target-picker.component';
 import { isPlatformBrowser } from '@angular/common';
 import { DestroyRef, PLATFORM_ID, Service, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, Validators } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { auditTime, firstValueFrom, Subscription } from 'rxjs';
@@ -29,6 +31,19 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { ShellUiService } from '../app-shell/ui.service';
 import { isDateAfter } from '../shared/date-range-validator';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData,
+} from '../app-shell/dialogs/confirmation-dialog.component';
+import { bindLiveSearch } from '../search/live-search';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
+  resetPagination,
+} from '../pagination/list-pagination';
 
 type FormOwnerType = EventFormTargetType;
 
@@ -59,7 +74,33 @@ export interface EventFormLinkDraft {
   notifyOnPublish?: boolean | null;
   allowLecturerManualPublish?: boolean | null;
   priceTierIds?: string[] | null;
+  targetName?: string | null;
+  targetEmoji?: string | null;
 }
+
+type EditorFormValue = {
+  id: string;
+  name: string;
+  description: string;
+  ownerType: FormOwnerType;
+  ownerEventId: string;
+  ownerMajorEventId: string;
+  sigilo: EventFormSigilo;
+  responseMode: EventFormResponseMode;
+  resultsPublic: boolean;
+  resultsLive: boolean;
+  allowResponseEdits: boolean;
+  scheduledPublishAt: string;
+};
+
+type FormEditorState = {
+  formValue: EditorFormValue;
+  elements: FormElement[];
+  descriptionImages: FormImage[];
+  links: EventFormLinkDraft[];
+  ownerTargetSummary: { type: FormOwnerType; id: string; name: string; emoji?: string | null } | null;
+};
+
 
 @Service()
 export class FormsService {
@@ -70,6 +111,7 @@ export class FormsService {
   private readonly eventApi = inject(EventApiService);
   private readonly majorEventApi = inject(MajorEventApiService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
@@ -88,6 +130,23 @@ export class FormsService {
   readonly events = signal<Event[]>([]);
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
+  private readonly ownerTargetSummary = signal<{ type: FormOwnerType; id: string; name: string; emoji?: string | null } | null>(null);
+  readonly formsPagination = createWorkspaceListPagination();
+  readonly targetSearchLoading = signal(false);
+  readonly targetFilterId = computed(() => {
+    const filter = this.targetFilter();
+    return filter?.eventId ? `event:${filter.eventId}` : filter?.majorEventId ? `major-event:${filter.majorEventId}` : null;
+  });
+  readonly targetFilterLabel = computed(() => {
+    const filter = this.targetFilter();
+    if (filter?.eventId) {
+      return this.events().find((event) => event.id === filter.eventId)?.name ?? 'Evento selecionado';
+    }
+    if (filter?.majorEventId) {
+      return this.majorEvents().find((event) => event.id === filter.majorEventId)?.name ?? 'Grande evento selecionado';
+    }
+    return 'Todos os formulários';
+  });
   readonly selectedFormPublished = computed(() => this.selectedForm()?.publicationState === 'PUBLISHED');
   readonly selectedFormScheduled = computed(() => this.selectedForm()?.publicationState === 'SCHEDULED');
   readonly hasInvalidLinkAudiences = computed(() => this.links().some((link) => !link.audiences?.length));
@@ -144,8 +203,16 @@ export class FormsService {
   private resultsStreamRecoveryAttempted = false;
   private loadResultsRequestId = 0;
   private loadFormsRequestId = 0;
+  private loadTargetsRequestId = 0;
+  private editorGeneration = 0;
+  private selectionRequest = 0;
+  private pendingSelectionRequest: number | null = null;
+  private savedEditorState: FormEditorState;
 
   readonly filtersForm = this.formBuilder.nonNullable.group({
+    query: [''],
+  });
+  readonly targetSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
   });
 
@@ -164,13 +231,31 @@ export class FormsService {
     scheduledPublishAt: [''],
   });
   private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
+  private readonly editorFormValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  private readonly savedEditorSnapshot = signal('');
+  readonly unsavedChanges = computed(() => {
+    this.editorFormValue();
+    return this.editorStateSignature() !== this.savedEditorSnapshot();
+  });
   readonly canSave = computed(() => {
     this.formStatus();
     return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasInvalidLinkAudiences() && !this.hasUntitledQuestions();
   });
 
   constructor() {
+    this.savedEditorState = this.captureEditorState();
+    this.savedEditorSnapshot.set(this.editorStateSignature(this.savedEditorState));
     this.destroyRef.onDestroy(() => this.closeResultsStream());
+    bindLiveSearch({
+      control: this.filtersForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.applyFormFilters(),
+    });
+    bindLiveSearch({
+      control: this.targetSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.loadTargets(),
+    });
   }
 
   async initialize(): Promise<void> {
@@ -183,15 +268,27 @@ export class FormsService {
   }
 
   async loadTargets(): Promise<void> {
-    const [events, majorEvents] = await Promise.all([
-      firstValueFrom(this.eventApi.listEvents({ take: 500 })),
-      firstValueFrom(this.majorEventApi.listMajorEvents({ take: 500 })),
-    ]);
-    this.events.set(events);
-    this.majorEvents.set(majorEvents);
+    const requestId = ++this.loadTargetsRequestId;
+    this.targetSearchLoading.set(true);
+    try {
+      const query = this.targetSearchForm.controls.query.value.trim() || undefined;
+      const [events, majorEvents] = await Promise.all([
+        firstValueFrom(this.eventApi.listEvents({ query, take: 20 })),
+        firstValueFrom(this.majorEventApi.listMajorEvents({ query, take: 20 })),
+      ]);
+      if (requestId !== this.loadTargetsRequestId) return;
+      this.events.set(this.keepSelectedEvents(events));
+      this.majorEvents.set(this.keepSelectedMajorEvents(majorEvents));
+    } catch (error) {
+      if (requestId === this.loadTargetsRequestId) {
+        this.showError(error, 'Não foi possível buscar os contextos de formulário.');
+      }
+    } finally {
+      if (requestId === this.loadTargetsRequestId) this.targetSearchLoading.set(false);
+    }
   }
 
-  async loadForms(): Promise<void> {
+  async loadForms(options: { preserveEditor?: boolean } = {}): Promise<void> {
     const requestId = ++this.loadFormsRequestId;
     const requestContext = this.formsRequestContext();
     this.ui.loading.set(true);
@@ -201,20 +298,19 @@ export class FormsService {
           query: requestContext.query,
           eventId: requestContext.eventId,
           majorEventId: requestContext.majorEventId,
+          ...pageVariables(this.formsPagination.pageIndex()),
         }),
       );
       if (!this.isCurrentFormsRequest(requestId, requestContext)) {
         return;
       }
-      this.forms.set(forms);
+      this.forms.set(applyPagedResult(forms, this.formsPagination));
       const selected = this.selectedForm();
-      if (selected) {
+      if (selected && !options.preserveEditor && !this.unsavedChanges()) {
         const refreshed = forms.find((form) => form.id === selected.id) ?? null;
         if (refreshed) {
           this.patchSelectedForm(refreshed);
           await this.loadResults();
-        } else {
-          this.clearSelectedForm();
         }
       }
     } catch (error) {
@@ -228,39 +324,192 @@ export class FormsService {
     }
   }
 
-  createForm(): void {
-    void this.router.navigate(this.formsRoute());
-    this.selectedForm.set(null);
-    this.selectedResults.set(null);
-    this.closeResultsStream();
-    this.elements.set([]);
-    this.descriptionImages.set([]);
-    this.links.set([]);
-    this.previousSubscriberCounts.set({});
-    const owner = this.defaultOwner();
-    this.form.reset({
-      id: '',
-      name: '',
-      description: '',
-      ownerType: owner.type,
-      ownerEventId: owner.type === 'EVENT' ? owner.id : '',
-      ownerMajorEventId: owner.type === 'MAJOR_EVENT' ? owner.id : '',
-      sigilo: 'SECRET',
-      responseMode: 'ONE_PER_TARGET',
-      resultsPublic: false,
-      resultsLive: false,
-      allowResponseEdits: false,
-      scheduledPublishAt: '',
-    });
+  async createForm(navigate = true): Promise<void> {
+    const request = ++this.selectionRequest;
+    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) return;
+    if (request !== this.selectionRequest) return;
+    this.clearSelectedForm();
+    if (navigate) void this.router.navigate(this.formsRoute());
   }
 
-  setTargetFilter(filter: { eventId?: string; majorEventId?: string } | null): void {
-    this.targetFilter.set(filter);
+  async confirmDiscardChanges(): Promise<boolean> {
+    if (!this.unsavedChanges()) {
+      return true;
+    }
+
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(ConfirmationDialogComponent, {
+          data: {
+            title: 'Descartar alterações do formulário?',
+            message: 'Há alterações não salvas neste formulário.',
+            details: [
+              'Perguntas, imagens e vínculos alterados serão restaurados para o último estado salvo.',
+              'Use “Salvar rascunho” para manter o trabalho antes de sair.',
+            ],
+            confirmLabel: 'Descartar alterações',
+            tone: 'danger',
+          },
+          width: 'min(30rem, 96vw)',
+        })
+        .afterClosed(),
+    );
+    if (confirmed === true) {
+      this.discardChanges(false);
+    }
+    return confirmed === true;
+  }
+
+  discardChanges(showFeedback = true): void {
+    if (!this.unsavedChanges() || !this.savedEditorState) {
+      return;
+    }
+
+    this.restoreEditorState(this.savedEditorState);
+    if (showFeedback) {
+      this.snackbar.open('Alterações descartadas.', 'Fechar', { duration: 2500 });
+    }
+  }
+
+  async setTargetFilter(filter: { eventId?: string; majorEventId?: string } | null): Promise<boolean> {
+    const currentFilter = this.targetFilter();
+    const scopeChanged =
+      currentFilter?.eventId !== filter?.eventId || currentFilter?.majorEventId !== filter?.majorEventId;
+    if (scopeChanged && !(await this.confirmDiscardChanges())) {
+      return false;
+    }
+    if (scopeChanged) {
+      this.targetFilter.set(filter);
+      this.clearSelectedForm();
+    }
+    if (filter?.eventId && !this.events().some((event) => event.id === filter.eventId)) {
+      try {
+        const event = await firstValueFrom(this.eventApi.getEvent(filter.eventId));
+        this.events.update((events) => [event, ...events]);
+      } catch {
+        // The collection remains usable even when the contextual target is no longer readable.
+      }
+    }
+    if (filter?.majorEventId && !this.majorEvents().some((event) => event.id === filter.majorEventId)) {
+      try {
+        const majorEvent = await firstValueFrom(this.majorEventApi.getMajorEvent(filter.majorEventId));
+        this.majorEvents.update((events) => [majorEvent, ...events]);
+      } catch {
+        // The collection remains usable even when the contextual target is no longer readable.
+      }
+    }
+    return true;
+  }
+
+  async selectAllForms(): Promise<void> {
+    await this.changeTargetFilter(null, ['/forms']);
+  }
+
+  async selectEventScope(event: Event): Promise<void> {
+    await this.changeTargetFilter({ eventId: event.id }, ['/forms', 'event', event.id]);
+  }
+
+  async selectMajorEventScope(majorEvent: MajorEvent): Promise<void> {
+    await this.changeTargetFilter({ majorEventId: majorEvent.id }, ['/forms', 'major-event', majorEvent.id]);
+  }
+
+  currentScopeRoute(): string[] {
+    const filter = this.targetFilter();
+    if (filter?.eventId) {
+      return ['/forms', 'event', filter.eventId];
+    }
+    if (filter?.majorEventId) {
+      return ['/forms', 'major-event', filter.majorEventId];
+    }
+    return ['/forms'];
+  }
+
+  ownerTargetName(): string {
+    const value = this.form.getRawValue();
+    const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
+    if (!id) {
+      return '';
+    }
+    const summary = this.ownerTargetSummary();
+    if (summary?.type === value.ownerType && summary.id === id) {
+      return summary.name;
+    }
+    return value.ownerType === 'EVENT'
+      ? this.events().find((event) => event.id === id)?.name ?? 'Evento selecionado'
+      : this.majorEvents().find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado';
+  }
+
+  ownerTargetEmoji(): string | null {
+    const value = this.form.getRawValue();
+    const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
+    if (!id) {
+      return null;
+    }
+    const summary = this.ownerTargetSummary();
+    if (summary?.type === value.ownerType && summary.id === id) {
+      return summary.emoji ?? null;
+    }
+    return value.ownerType === 'EVENT'
+      ? this.events().find((event) => event.id === id)?.emoji ?? null
+      : this.majorEvents().find((majorEvent) => majorEvent.id === id)?.emoji ?? null;
+  }
+
+  setOwnerTarget(selection: EventTargetSelection): void {
+    const ownerType = this.form.controls.ownerType.value;
+    this.form.patchValue(
+      ownerType === 'EVENT'
+        ? { ownerEventId: selection.id, ownerMajorEventId: '' }
+        : { ownerEventId: '', ownerMajorEventId: selection.id },
+    );
+    this.ownerTargetSummary.set({ type: ownerType, ...selection });
+  }
+
+  linkTargetName(link: EventFormLinkDraft): string {
+    return link.targetName || this.targetName(link);
+  }
+
+  linkTargetEmoji(link: EventFormLinkDraft): string | null {
+    if (link.targetEmoji) {
+      return link.targetEmoji;
+    }
+    if (link.targetType === 'EVENT') {
+      return this.events().find((event) => event.id === link.eventId)?.emoji ?? null;
+    }
+    return this.majorEvents().find((majorEvent) => majorEvent.id === link.majorEventId)?.emoji ?? null;
+  }
+
+  setLinkTarget(localId: string, selection: EventTargetSelection): void {
+    const link = this.links().find((item) => item.localId === localId);
+    if (!link) {
+      return;
+    }
+    this.updateLink(
+      localId,
+      link.targetType === 'EVENT'
+        ? { eventId: selection.id, majorEventId: null, targetName: selection.name, targetEmoji: selection.emoji }
+        : { eventId: null, majorEventId: selection.id, targetName: selection.name, targetEmoji: selection.emoji },
+    );
+  }
+
+  async applyFormFilters(): Promise<void> {
+    resetPagination(this.formsPagination);
+    await this.loadForms();
+  }
+
+  async previousFormsPage(): Promise<void> {
+    await loadPreviousPage(this.formsPagination, () => this.loadForms());
+  }
+
+  async nextFormsPage(): Promise<void> {
+    await loadNextPage(this.formsPagination, () => this.loadForms());
   }
 
   async selectForm(form: EventForm): Promise<void> {
+    const scope = this.targetFilter();
     if (await this.selectFormById(form.id)) {
-      void this.router.navigate(['/forms', form.id]);
+      if (this.selectedForm()?.id !== form.id || this.targetFilter() !== scope) return;
+      if (scope) void this.router.navigate(['/forms', form.id], { queryParams: scope });
+      else void this.router.navigate(['/forms', form.id]);
     }
   }
 
@@ -269,16 +518,36 @@ export class FormsService {
       return true;
     }
 
+    const request = ++this.selectionRequest;
+    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) return false;
+    if (request !== this.selectionRequest) return false;
+    const generation = this.editorGeneration;
+    const snapshot = this.editorStateSignature();
+    const scope = this.targetFilter();
+    this.pendingSelectionRequest = request;
     this.ui.loading.set(true);
     try {
       const detail = await firstValueFrom(this.api.getForm(formId));
+      if (request !== this.selectionRequest || generation !== this.editorGeneration ||
+        this.targetFilter() !== scope || this.editorStateSignature() !== snapshot) return false;
       this.patchSelectedForm(detail);
       await this.loadResults();
-      return true;
+      return request === this.selectionRequest && this.selectedForm()?.id === formId && this.targetFilter() === scope;
     } catch (error) {
-      this.showError(error, 'Não foi possível abrir o formulário.');
+      if (request === this.selectionRequest) this.showError(error, 'Não foi possível abrir o formulário.');
       return false;
     } finally {
+      if (this.pendingSelectionRequest === request) {
+        this.pendingSelectionRequest = null;
+        this.ui.loading.set(false);
+      }
+    }
+  }
+
+  cancelPendingSelection(): void {
+    this.selectionRequest++;
+    if (this.pendingSelectionRequest !== null) {
+      this.pendingSelectionRequest = null;
       this.ui.loading.set(false);
     }
   }
@@ -331,7 +600,7 @@ export class FormsService {
         const saved = await firstValueFrom(this.api.saveForm(saveInput));
         if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
           this.patchSelectedForm(saved);
-          await this.loadForms();
+          await this.loadForms({ preserveEditor: true });
         }
         this.snackbar.open('Imagem adicionada ao formulário.', 'Fechar', { duration: 3000 });
       } else {
@@ -370,7 +639,7 @@ export class FormsService {
         const saved = await firstValueFrom(this.api.saveForm(saveInput));
         if (JSON.stringify(this.toInput()) === JSON.stringify(saveInput)) {
           this.patchSelectedForm(saved);
-          await this.loadForms();
+          await this.loadForms({ preserveEditor: true });
         }
         this.snackbar.open('Imagem removida.', 'Fechar', { duration: 2500 });
       } else {
@@ -446,6 +715,9 @@ export class FormsService {
       {
         ...current,
         ...patch,
+        ...(patch.targetType && patch.targetType !== current.targetType
+          ? { targetName: null, targetEmoji: null }
+          : {}),
         ...(startsRequiredSubscriptionFlow && patch.notifyOnPublish === undefined ? { notifyOnPublish: true } : {}),
       },
       current,
@@ -481,11 +753,34 @@ export class FormsService {
       return;
     }
 
+    const submittedState = this.captureEditorState();
+    const submittedSnapshot = this.editorStateSignature(submittedState);
+    const editorGeneration = this.editorGeneration;
     this.ui.loading.set(true);
     try {
-      const saved = await firstValueFrom(this.api.saveForm(this.toInput()));
-      this.patchSelectedForm(saved);
-      await this.loadForms();
+      const saved = await firstValueFrom(
+        this.api.saveForm(
+          this.toInput(
+            submittedState.formValue,
+            submittedState.elements,
+            submittedState.descriptionImages,
+            submittedState.links,
+          ),
+        ),
+      );
+      if (editorGeneration !== this.editorGeneration) {
+        return;
+      }
+      const changedWhileSaving = this.editorStateSignature() !== submittedSnapshot;
+      if (!changedWhileSaving) {
+        this.patchSelectedForm(saved);
+      } else {
+        const currentState = this.captureEditorState();
+        currentState.formValue.id = saved.id;
+        this.patchSelectedForm(saved);
+        this.restoreEditorState(currentState);
+      }
+      await this.loadForms({ preserveEditor: true });
       this.snackbar.open('Formulário salvo.', 'Fechar', { duration: 3000 });
     } catch (error) {
       this.showError(error, 'Não foi possível salvar o formulário.');
@@ -506,13 +801,27 @@ export class FormsService {
       return;
     }
 
+    const submittedState = this.captureEditorState();
+    const submittedSnapshot = this.editorStateSignature(submittedState);
+    const editorGeneration = this.editorGeneration;
     this.ui.loading.set(true);
     try {
       await firstValueFrom(
         this.api.saveDraft({
           sourceFormId: selected.id,
-          input: this.toInput(),
+          input: this.toInput(
+            submittedState.formValue,
+            submittedState.elements,
+            submittedState.descriptionImages,
+            submittedState.links,
+          ),
         }),
+      );
+      if (editorGeneration !== this.editorGeneration) {
+        return;
+      }
+      this.setSavedEditorBaseline(
+        this.editorStateSignature() === submittedSnapshot ? this.captureEditorState() : submittedState,
       );
       this.snackbar.open('Rascunho salvo.', 'Fechar', { duration: 3000 });
     } catch (error) {
@@ -546,7 +855,7 @@ export class FormsService {
     try {
       const updated = await firstValueFrom(this.api.unpublishForm(selected.id));
       this.patchSelectedForm(updated);
-      await this.loadForms();
+      await this.loadForms({ preserveEditor: true });
       this.snackbar.open('Formulário removido do ar.', 'Fechar', { duration: 3000 });
     } catch (error) {
       this.showError(error, 'Não foi possível despublicar o formulário.');
@@ -613,9 +922,9 @@ export class FormsService {
 
   targetName(link: Pick<EventFormLinkDraft, 'targetType' | 'eventId' | 'majorEventId'>): string {
     if (link.targetType === 'EVENT') {
-      return this.events().find((event) => event.id === link.eventId)?.name ?? 'Evento';
+      return this.events().find((event) => event.id === link.eventId)?.name ?? 'Evento selecionado';
     }
-    return this.majorEvents().find((event) => event.id === link.majorEventId)?.name ?? 'Grande evento';
+    return this.majorEvents().find((event) => event.id === link.majorEventId)?.name ?? 'Grande evento selecionado';
   }
 
   previousSubscriberCount(link: Pick<EventFormLinkDraft, 'localId'>): number | null {
@@ -636,7 +945,7 @@ export class FormsService {
     try {
       const updated = await firstValueFrom(this.api.publishForm({ formId: current.id, scheduledPublishAt }));
       this.patchSelectedForm(updated);
-      await this.loadForms();
+      await this.loadForms({ preserveEditor: true });
       this.snackbar.open(scheduledPublishAt ? 'Publicação agendada.' : 'Formulário publicado.', 'Fechar', {
         duration: 3000,
       });
@@ -648,6 +957,7 @@ export class FormsService {
   }
 
   private patchSelectedForm(form: EventForm): void {
+    this.editorGeneration++;
     this.loadResultsRequestId++;
     this.selectedForm.set(form);
     this.selectedResults.set(null);
@@ -671,10 +981,14 @@ export class FormsService {
       allowResponseEdits: form.allowResponseEdits,
       scheduledPublishAt: form.scheduledPublishAt ? this.toLocalInput(form.scheduledPublishAt) : '',
     });
+    this.setOwnerTargetSummary(form.owner);
+    this.setSavedEditorBaseline();
     this.syncLiveResultsStream(form);
   }
 
   private clearSelectedForm(): void {
+    this.cancelPendingSelection();
+    this.editorGeneration++;
     this.loadResultsRequestId++;
     this.selectedForm.set(null);
     this.selectedResults.set(null);
@@ -698,6 +1012,74 @@ export class FormsService {
       allowResponseEdits: false,
       scheduledPublishAt: '',
     });
+    this.setOwnerTargetSummary(null);
+    this.setSavedEditorBaseline();
+  }
+
+  private setOwnerTargetSummary(
+    summary: EventForm['owner'] | null | undefined,
+  ): void {
+    this.ownerTargetSummary.set(
+      summary
+        ? { type: summary.type, id: summary.id, name: summary.name, emoji: summary.emoji }
+        : null,
+    );
+  }
+
+  private captureEditorState(): FormEditorState {
+    const value = this.form.getRawValue();
+    return this.cloneEditorState({
+      formValue: {
+        id: value.id,
+        name: value.name,
+        description: value.description,
+        ownerType: value.ownerType,
+        ownerEventId: value.ownerEventId,
+        ownerMajorEventId: value.ownerMajorEventId,
+        sigilo: value.sigilo,
+        responseMode: value.responseMode,
+        resultsPublic: value.resultsPublic,
+        resultsLive: value.resultsLive,
+        allowResponseEdits: value.allowResponseEdits,
+        scheduledPublishAt: value.scheduledPublishAt,
+      },
+      elements: this.elements(),
+      descriptionImages: this.descriptionImages(),
+      links: this.links(),
+      ownerTargetSummary: this.ownerTargetSummary(),
+    });
+  }
+
+  private cloneEditorState(state: FormEditorState): FormEditorState {
+    return JSON.parse(JSON.stringify(state)) as FormEditorState;
+  }
+
+  private editorStateSignature(state = this.captureEditorState()): string {
+    return JSON.stringify({
+      ownerType: state.formValue.ownerType,
+      scheduledPublishAt: state.formValue.scheduledPublishAt,
+      input: this.toInput(state.formValue, state.elements, state.descriptionImages, state.links),
+    });
+  }
+
+  private restoreEditorState(state: FormEditorState): void {
+    const next = this.cloneEditorState(state);
+    this.form.reset(next.formValue);
+    this.elements.set(next.elements);
+    this.descriptionImages.set(next.descriptionImages);
+    this.links.set(next.links);
+    this.ownerTargetSummary.set(next.ownerTargetSummary);
+    this.previousSubscriberCounts.set({});
+    for (const link of next.links) {
+      void this.refreshPreviousSubscriberCount(link);
+    }
+    this.form.markAsPristine();
+  }
+
+  private setSavedEditorBaseline(state = this.captureEditorState()): void {
+    this.savedEditorState = this.cloneEditorState(state);
+    this.savedEditorSnapshot.set(this.editorStateSignature(this.savedEditorState));
+    this.form.markAsPristine();
   }
 
   private formsRequestContext(): { query?: string; eventId?: string; majorEventId?: string } {
@@ -707,6 +1089,29 @@ export class FormsService {
       eventId: targetFilter?.eventId,
       majorEventId: targetFilter?.majorEventId,
     };
+  }
+
+  private async changeTargetFilter(
+    filter: { eventId?: string; majorEventId?: string } | null,
+    route: string[],
+  ): Promise<void> {
+    if (!(await this.setTargetFilter(filter))) {
+      return;
+    }
+    resetPagination(this.formsPagination);
+    await Promise.all([this.router.navigate(route), this.loadForms()]);
+  }
+
+  private keepSelectedEvents(events: Event[]): Event[] {
+    const selectedIds = this.selectedEventIds();
+    const retained = this.events().filter((event) => selectedIds.has(event.id));
+    return [...retained, ...events.filter((event) => !retained.some((selected) => selected.id === event.id))];
+  }
+
+  private keepSelectedMajorEvents(events: MajorEvent[]): MajorEvent[] {
+    const selectedIds = this.selectedMajorEventIds();
+    const retained = this.majorEvents().filter((event) => selectedIds.has(event.id));
+    return [...retained, ...events.filter((event) => !retained.some((selected) => selected.id === event.id))];
   }
 
   private isCurrentFormsRequest(
@@ -742,20 +1147,24 @@ export class FormsService {
     return ['/forms'];
   }
 
-  private toInput(): EventFormInput {
-    const value = this.form.getRawValue();
+  private toInput(
+    value = this.form.getRawValue(),
+    elements = this.elements(),
+    descriptionImages = this.descriptionImages(),
+    links = this.links(),
+  ): EventFormInput {
     const base = {
       id: value.id || null,
       name: value.name,
       description: value.description || null,
-      descriptionImagesJson: serializeFormImageReferences(this.descriptionImages()),
-      elementsJson: serializeFormElements(this.elements()),
+      descriptionImagesJson: serializeFormImageReferences(descriptionImages),
+      elementsJson: serializeFormElements(elements),
       sigilo: value.sigilo,
       responseMode: value.responseMode,
       resultsPublic: value.resultsPublic,
       resultsLive: value.resultsPublic ? value.resultsLive : false,
       allowResponseEdits: value.allowResponseEdits,
-      links: this.links().map((link, index) => this.toLinkInput(link, index)),
+      links: links.map((link, index) => this.toLinkInput(link, index)),
     };
 
     if (value.ownerType === 'EVENT') {
@@ -826,19 +1235,27 @@ export class FormsService {
       priceTierIds,
     };
     if (targetType === 'EVENT') {
+      const eventId = link.eventId || fallbackEventId;
+      const event = this.events().find((item) => item.id === eventId);
       return {
         ...base,
         targetType,
-        eventId: link.eventId || fallbackEventId,
+        eventId,
         majorEventId: null,
+        targetName: event?.name ?? link.targetName ?? null,
+        targetEmoji: event?.emoji ?? link.targetEmoji ?? null,
       };
     }
 
+    const majorEventId = link.majorEventId || fallbackMajorEventId;
+    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
     return {
       ...base,
       targetType,
       eventId: null,
-      majorEventId: link.majorEventId || fallbackMajorEventId,
+      majorEventId,
+      targetName: majorEvent?.name ?? link.targetName ?? null,
+      targetEmoji: majorEvent?.emoji ?? link.targetEmoji ?? null,
     };
   }
 
@@ -855,19 +1272,25 @@ export class FormsService {
     };
 
     if (targetType === 'EVENT') {
+      const event = this.selectableEvents()[0];
       return {
         ...base,
         targetType,
-        eventId: this.selectableEvents()[0]?.id ?? '',
+        eventId: event?.id ?? '',
         majorEventId: null,
+        targetName: event?.name ?? null,
+        targetEmoji: event?.emoji ?? null,
       };
     }
 
+    const majorEvent = this.selectableMajorEvents()[0];
     return {
       ...base,
       targetType,
       eventId: null,
-      majorEventId: this.selectableMajorEvents()[0]?.id ?? '',
+      majorEventId: majorEvent?.id ?? '',
+      targetName: majorEvent?.name ?? null,
+      targetEmoji: majorEvent?.emoji ?? null,
     };
   }
 
@@ -878,6 +1301,8 @@ export class FormsService {
       targetType: link.targetType,
       eventId: link.eventId,
       majorEventId: link.majorEventId,
+      targetName: link.target?.name,
+      targetEmoji: link.target?.emoji,
       audiences: normalizeAudiences(link.audiences),
       insertInSubscriptionFlow: link.insertInSubscriptionFlow,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,

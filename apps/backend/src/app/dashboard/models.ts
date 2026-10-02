@@ -284,6 +284,9 @@ export class DashboardSportsMatch {
   tournamentId!: string;
 
   @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => String)
   categoryName!: string;
 
   @Field(() => String)

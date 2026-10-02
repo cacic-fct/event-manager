@@ -1,20 +1,15 @@
 <section class="section attendance-shell">
-  <mat-tab-group
-    animationDuration="160ms"
-    mat-stretch-tabs="false"
-    [selectedIndex]="selectedTabIndex()"
-    (selectedIndexChange)="onSelectedTabIndexChange($event)">
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span class="workspace-tab-label"><mat-icon>event_available</mat-icon>Por evento</span>
-      </ng-template>
+  <h2>Presenças</h2>
+  <app-event-context-picker [hideInShell]="context() !== null" [context]="context()" (contextChange)="selectContext($event)" />
+  @if (contextLoading()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando presenças" /> }
+  @if (contextError()) { <p role="alert">{{ contextError() }}</p> }
+  @if (context() && !contextLoading() && !contextError()) {
+    @if (context()?.kind === 'event') {
       <app-workspace-event-attendances-subtab />
-    </mat-tab>
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <span class="workspace-tab-label"><mat-icon>festival</mat-icon>Por grande evento</span>
-      </ng-template>
+    } @else {
       <app-workspace-major-event-attendances-subtab />
-    </mat-tab>
-  </mat-tab-group>
+    }
+  } @else if (!context()) {
+    <p>Escolha um contexto acima para registrar presenças, consultar participantes ou acompanhar atividades.</p>
+  }
 </section>

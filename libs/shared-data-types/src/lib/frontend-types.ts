@@ -228,6 +228,7 @@ export interface User {
   identityDocument?: string | null;
   academicId?: string | null;
   role: string;
+  unespRole?: string[] | null;
 }
 
 export interface Person {

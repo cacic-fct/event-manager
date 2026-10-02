@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { personSearchWhere } from '../person-search-where';
 @Resolver(() => MergeCandidate)
 export class MergeCandidatesResolver {
   constructor(
@@ -32,10 +33,15 @@ export class MergeCandidatesResolver {
     status?: MergeCandidateStatus,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ) {
     const pagination = resolvePagination(skip, take);
-    const where: Prisma.MergeCandidateWhereInput =
+    const baseWhere: Prisma.MergeCandidateWhereInput =
       status === 'PENDING' ? actionablePendingMergeCandidateWhere : { ...(status ? { status } : {}) };
+    const personQuery = personSearchWhere(query);
+    const where: Prisma.MergeCandidateWhereInput = personQuery
+      ? { AND: [baseWhere, { OR: [{ personA: personQuery }, { personB: personQuery }] }] }
+      : baseWhere;
 
     return this.prisma.mergeCandidate.findMany({
       where,
@@ -48,6 +54,22 @@ export class MergeCandidatesResolver {
       },
       skip: pagination.skip,
       take: pagination.take,
+    });
+  }
+
+  @Query(() => Int, { name: 'mergeCandidateCount' })
+  @RequirePermissions(Permission.MergeCandidate.Read)
+  mergeCandidateCount(
+    @Args('status', { type: () => MergeCandidateStatus, nullable: true }) status?: MergeCandidateStatus,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    const baseWhere: Prisma.MergeCandidateWhereInput =
+      status === 'PENDING' ? actionablePendingMergeCandidateWhere : { ...(status ? { status } : {}) };
+    const personQuery = personSearchWhere(query);
+    return this.prisma.mergeCandidate.count({
+      where: personQuery
+        ? { AND: [baseWhere, { OR: [{ personA: personQuery }, { personB: personQuery }] }] }
+        : baseWhere,
     });
   }
 

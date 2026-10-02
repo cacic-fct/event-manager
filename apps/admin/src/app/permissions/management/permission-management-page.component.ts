@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
@@ -19,13 +19,15 @@ import { firstValueFrom } from 'rxjs';
 import { PersonSearchComponent } from '../../people/person-search/person-search.component';
 import { PermissionManagementStore } from './permission-management.store';
 import { RoleTemplateDialogComponent } from './role-template-dialog.component';
+import { WorkspaceRecordComponent } from '../../shared/workspace-record.component';
+import { matchesWorkspaceText } from '../../search/workspace-text-search';
 import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
 
 @Component({
   selector: 'app-permission-management-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
+    WorkspaceRecordComponent,
     MatCheckboxModule,
     MatChipsModule,
     MatDividerModule,
@@ -52,6 +54,11 @@ import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
 })
 export class PermissionManagementPageComponent {
   protected readonly store = inject(PermissionManagementStore);
+  protected readonly roleSearch = signal('');
+  protected readonly predefinedRoles = computed(() => this.store.predefinedRoles().filter((role) =>
+    matchesWorkspaceText(this.roleSearch(), [role.name, role.description])));
+  protected readonly customRoles = computed(() => this.store.customRoles().filter((role) =>
+    matchesWorkspaceText(this.roleSearch(), [role.name, role.description])));
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
 

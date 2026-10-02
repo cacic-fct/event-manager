@@ -13,10 +13,15 @@ import {
   toPlacePresetSearchDocument,
 } from './typesense-search.documents';
 import { toEventSearchDocument } from './typesense-search.events';
-import { searchTypesenseDocumentIds, searchTypesensePagedDocumentIds } from './typesense-search.query';
+import {
+  searchTypesenseDocumentIds,
+  searchTypesensePagedDocumentIds,
+  searchTypesenseRankedDocumentIds,
+} from './typesense-search.query';
 import {
   reindexAllSearchDocuments,
   reindexEventSearchDocuments,
+  reindexEventGroupSearchDocuments,
   replaceAuditLogSearchDocuments,
 } from './typesense-search.reindex';
 import { toOptionalString } from './typesense-search.shared';
@@ -31,6 +36,7 @@ import type {
   PlacePresetSearchDocument,
   TypesenseNodeConfig,
   TypesensePagedSearchResult,
+  TypesenseRankedSearchResult,
   TypesenseSearchOptions,
   TypesenseSearchResult,
 } from './typesense-search.types';
@@ -45,6 +51,7 @@ import {
 export type {
   AuditLogSearchDocumentInput,
   TypesensePagedSearchResult,
+  TypesenseRankedSearchResult,
   TypesenseSearchOptions,
   TypesenseSearchResult,
 } from './typesense-search.types';
@@ -100,6 +107,39 @@ export class TypesenseSearchService implements OnModuleInit {
     options: number | TypesenseSearchOptions = 50,
   ): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, query, 'name', options);
+  }
+
+  async searchEventsRanked(query: string, options: TypesenseSearchOptions): Promise<TypesenseRankedSearchResult> {
+    return searchTypesenseRankedDocumentIds<EventSearchDocument>({
+      client: this.client,
+      logger: this.logger,
+      collectionName: TYPESENSE_COLLECTIONS.events,
+      query,
+      queryBy: 'name,majorEventName,eventGroupName,shortDescription,description,locationDescription,type,emoji',
+      options: { ...options, queryByWeights: '10,6,6,5,3,2,1,1', sortBy: '_text_match:desc,startDate:desc' },
+    });
+  }
+
+  async searchMajorEventsRanked(query: string, options: TypesenseSearchOptions): Promise<TypesenseRankedSearchResult> {
+    return searchTypesenseRankedDocumentIds<MajorEventSearchDocument>({
+      client: this.client,
+      logger: this.logger,
+      collectionName: TYPESENSE_COLLECTIONS.majorEvents,
+      query,
+      queryBy: 'name,description',
+      options: { ...options, queryByWeights: '10,3', sortBy: '_text_match:desc,startDate:desc' },
+    });
+  }
+
+  async searchEventGroupsRanked(query: string, options: TypesenseSearchOptions): Promise<TypesenseRankedSearchResult> {
+    return searchTypesenseRankedDocumentIds<EventGroupSearchDocument>({
+      client: this.client,
+      logger: this.logger,
+      collectionName: TYPESENSE_COLLECTIONS.eventGroups,
+      query,
+      queryBy: 'name,majorEventName,emoji',
+      options: { ...options, queryByWeights: '10,6,1', sortBy: '_text_match:desc' },
+    });
   }
 
   async searchPeople(query: string, take = 50): Promise<TypesenseSearchResult> {
@@ -212,21 +252,27 @@ export class TypesenseSearchService implements OnModuleInit {
       toMajorEventSearchDocument(input),
     );
     await this.reindexEventsByMajorEventId(input.id);
+    await this.reindexEventGroupsByMajorEventId(input.id);
   }
 
   async deleteMajorEvent(id: string): Promise<void> {
     await this.deleteDocument(TYPESENSE_COLLECTIONS.majorEvents, id);
     await this.reindexEventsByMajorEventId(id);
+    await this.reindexEventGroupsByMajorEventId(id);
   }
 
-  async upsertEventGroup(input: { id: string; name: string }): Promise<void> {
+  async upsertEventGroup(input: { id: string; name: string; emoji?: string; majorEventId?: string | null }): Promise<void> {
     if (!this.client) {
       return;
     }
 
+    const majorEventName = await this.resolveMajorEventName(input.majorEventId);
     await this.upsertDocument<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, {
       id: input.id,
       name: input.name,
+      emoji: input.emoji,
+      majorEventId: input.majorEventId ?? undefined,
+      majorEventName,
     });
     await this.reindexEventsByEventGroupId(input.id);
   }
@@ -319,6 +365,15 @@ export class TypesenseSearchService implements OnModuleInit {
 
   private async reindexEventsByEventGroupId(eventGroupId: string): Promise<void> {
     await this.reindexEvents({ eventGroupId });
+  }
+
+  private async reindexEventGroupsByMajorEventId(majorEventId: string): Promise<void> {
+    await reindexEventGroupSearchDocuments({
+      client: this.client,
+      logger: this.logger,
+      prisma: this.prisma,
+      where: { majorEventId },
+    });
   }
 
   private async reindexEvents(where: Prisma.EventWhereInput): Promise<void> {

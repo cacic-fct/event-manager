@@ -25,6 +25,7 @@ import {
   offlineSubmissionActorNameMap,
   OfflineSubmissionResponseSource,
 } from './offline-submission-response';
+import { personSearchWhere } from '../../people/person-search-where';
 
 const OFFLINE_ATTENDANCE_SUBMISSION_LIST_LIMIT = 1000;
 
@@ -42,6 +43,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
     @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceWhereInput = {};
@@ -55,6 +57,10 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
     if (status) {
       where.status = status;
+    }
+    const personQuery = personSearchWhere(query);
+    if (personQuery) {
+      where.person = personQuery;
     }
 
     const attendances = await this.prisma.eventAttendance.findMany({
@@ -130,11 +136,14 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   eventAttendanceCount(
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ): Promise<number> {
+    const personQuery = personSearchWhere(query);
     return this.prisma.eventAttendance.count({
       where: {
         ...(eventId ? { eventId } : {}),
         ...(status ? { status } : {}),
+        ...(personQuery ? { person: personQuery } : {}),
       },
     });
   }
@@ -185,6 +194,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ) {
     const pagination = resolvePagination(skip, take);
     const majorEvent = await this.prisma.majorEvent.findFirst({
@@ -240,11 +250,41 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     const eventIds = events.map((event) => event.id);
+    const personQuery = personSearchWhere(query);
+    const participationWhere: Prisma.PeopleWhereInput = {
+      deletedAt: null,
+      ...(personId ? { id: personId } : {}),
+      AND: [
+        ...(personQuery ? [personQuery] : []),
+        {
+          OR: [
+            { majorEventSubscriptions: { some: { majorEventId, deletedAt: null } } },
+            {
+              attendances: {
+                some: { status: 'PRESENT', eventId: { in: eventIds } },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const people = await this.prisma.people.findMany({
+      where: participationWhere,
+      select: { id: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      skip: pagination.skip,
+      take: pagination.take,
+    });
+    const pagePersonIds = people.map((person) => person.id);
+    if (pagePersonIds.length === 0) {
+      return [];
+    }
+
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
         deletedAt: null,
-        ...(personId ? { personId } : {}),
+        personId: { in: pagePersonIds },
       },
       include: {
         person: {
@@ -264,7 +304,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         eventId: {
           in: eventIds,
         },
-        ...(personId ? { personId } : {}),
+        personId: { in: pagePersonIds },
       },
       select: {
         personId: true,
@@ -280,25 +320,8 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       },
     });
 
-    const personIds = [
-      ...new Set([
-        ...subscriptions.map((subscription) => subscription.personId),
-        ...attendances.map((attendance) => attendance.personId),
-      ]),
-    ];
-    if (personIds.length === 0) {
-      return [];
-    }
-
-    const pagePersonIds = personIds.slice(pagination.skip, pagination.skip + pagination.take);
-    if (pagePersonIds.length === 0) {
-      return [];
-    }
-
     const attendanceByKey = new Map(
-      attendances
-        .filter((attendance) => pagePersonIds.includes(attendance.personId))
-        .map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
+      attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
     const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(
       attendances.flatMap((attendance) => {
@@ -347,6 +370,49 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
           };
         }),
       };
+    });
+  }
+
+  @Query(() => Int, { name: 'majorEventUserAttendanceCount' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  async majorEventUserAttendanceCount(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    const majorEvent = await this.prisma.majorEvent.findFirst({
+      where: { id: majorEventId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!majorEvent) {
+      throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+    const eventCount = await this.prisma.event.count({ where: { majorEventId, deletedAt: null } });
+    if (eventCount === 0) {
+      return 0;
+    }
+    const search = personSearchWhere(query);
+    const participationWhere: Prisma.PeopleWhereInput = {
+      OR: [
+        {
+          majorEventSubscriptions: {
+            some: { majorEventId, deletedAt: null },
+          },
+        },
+        {
+          attendances: {
+            some: {
+              status: 'PRESENT',
+              event: { majorEventId, deletedAt: null },
+            },
+          },
+        },
+      ],
+    };
+    return this.prisma.people.count({
+      where: {
+        deletedAt: null,
+        AND: [...(search ? [search] : []), participationWhere],
+      },
     });
   }
 

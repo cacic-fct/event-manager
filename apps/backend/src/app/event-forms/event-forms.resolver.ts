@@ -31,8 +31,10 @@ export class EventFormsResolver {
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
   ): Promise<EventForm[]> {
-    return this.forms.listAdminForms(this.getUser(context), { query, eventId, majorEventId });
+    return this.forms.listAdminForms(this.getUser(context), { query, eventId, majorEventId, skip, take });
   }
 
   @Query(() => EventForm, { name: 'eventForm' })

@@ -1,49 +1,51 @@
-<form [formGroup]="form()" class="event-filter-panel">
+<form [formGroup]="form()" class="event-filter-panel" (ngSubmit)="applyFilters.emit()">
   <mat-form-field class="query-field">
-    <mat-label>Busca</mat-label>
+    <mat-label>{{ queryLabel() }}</mat-label>
     <mat-icon matPrefix>search</mat-icon>
-    <input #queryInput matInput formControlName="query" />
-  </mat-form-field>
-
-  <mat-form-field>
-    <mat-label>De</mat-label>
-    <input matInput [matDatepicker]="startDateFromPicker" formControlName="startDateFrom" />
-    <mat-datepicker-toggle matIconSuffix [for]="startDateFromPicker" />
-    <mat-datepicker #startDateFromPicker />
-  </mat-form-field>
-
-  <mat-form-field>
-    <mat-label>Até</mat-label>
-    <input matInput [matDatepicker]="startDateUntilPicker" formControlName="startDateUntil" />
-    <mat-datepicker-toggle matIconSuffix [for]="startDateUntilPicker" />
-    <mat-datepicker #startDateUntilPicker />
-  </mat-form-field>
-
-  <mat-form-field>
-    <mat-label>Em grupo</mat-label>
-    <mat-select formControlName="isInGroup">
-      <mat-option value="ALL">Todos</mat-option>
-      <mat-option value="YES">Sim</mat-option>
-      <mat-option value="NO">Não</mat-option>
-    </mat-select>
-  </mat-form-field>
-
-  <mat-form-field>
-    <mat-label>Em grande evento</mat-label>
-    <mat-select formControlName="isInMajorEvent">
-      <mat-option value="ALL">Todos</mat-option>
-      <mat-option value="YES">Sim</mat-option>
-      <mat-option value="NO">Não</mat-option>
-    </mat-select>
-  </mat-form-field>
-
-  <div class="filter-actions">
-    <button mat-flat-button type="button" (click)="applyFilters.emit()">
-      <mat-icon>tune</mat-icon>
-      {{ applyLabel() }}
+    <input #queryInput matInput type="search" formControlName="query" [placeholder]="queryPlaceholder()" />
+    <button matIconButton matSuffix type="submit" [attr.aria-label]="applyLabel()">
+      <mat-icon>arrow_forward</mat-icon>
     </button>
-    <button mat-button type="button" (click)="resetFilters.emit()">
-      {{ resetLabel() }}
-    </button>
-  </div>
+  </mat-form-field>
+
+  <mat-expansion-panel class="advanced-filters">
+    <mat-expansion-panel-header>
+      <mat-panel-title><mat-icon>tune</mat-icon>Filtros</mat-panel-title>
+      @if (activeFilterCount()) {
+        <mat-panel-description>{{ activeFilterCount() }} {{ activeFilterCount() === 1 ? 'ativo' : 'ativos' }}</mat-panel-description>
+      }
+    </mat-expansion-panel-header>
+    @if (filterHint()) { <p>{{ filterHint() }}</p> }
+    <div class="filter-fields">
+      <mat-form-field>
+        <mat-label>Início a partir de</mat-label>
+        <input matInput [matDatepicker]="startDateFromPicker" formControlName="startDateFrom" />
+        <mat-datepicker-toggle matIconSuffix [for]="startDateFromPicker" aria-label="Abrir calendário da data inicial" />
+        <mat-datepicker #startDateFromPicker />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Início até</mat-label>
+        <input matInput [matDatepicker]="startDateUntilPicker" formControlName="startDateUntil" />
+        <mat-datepicker-toggle matIconSuffix [for]="startDateUntilPicker" aria-label="Abrir calendário da data final" />
+        <mat-datepicker #startDateUntilPicker />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Vínculo com grupo</mat-label>
+        <mat-select formControlName="isInGroup">
+          <mat-option value="ALL">Todos</mat-option>
+          <mat-option value="YES">Com grupo</mat-option>
+          <mat-option value="NO">Sem grupo</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Vínculo com grande evento</mat-label>
+        <mat-select formControlName="isInMajorEvent">
+          <mat-option value="ALL">Todos</mat-option>
+          <mat-option value="YES">Com grande evento</mat-option>
+          <mat-option value="NO">Sem grande evento</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <button mat-button type="button" (click)="resetFilters.emit()">{{ resetLabel() }}</button>
+  </mat-expansion-panel>
 </form>

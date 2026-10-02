@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -56,6 +56,17 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
     })
       .overrideComponent(SubscriptionsPageComponent, { set: { template: '', imports: [] } })
       .compileComponents();
+  });
+
+  it('starts with actual context selection and routes group interests without category tabs', () => {
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    expect(fixture.componentInstance.context()).toBeNull();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.selectContext({ kind: 'event', id: 'event-2' });
+    expect(navigate).toHaveBeenLastCalledWith(['/subscriptions', 'event', 'event-2']);
+    fixture.componentInstance.interestsMode.set(true);
+    fixture.componentInstance.selectContext({ kind: 'group', id: 'group-2' });
+    expect(navigate).toHaveBeenLastCalledWith(['/subscriptions', 'group', 'group-2', 'interests']);
   });
 
   it('opens one stream for the selected major event and updates the badge to zero', async () => {

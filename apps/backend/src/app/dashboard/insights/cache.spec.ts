@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v7:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v7:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v8:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v8:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -103,6 +103,7 @@ describe('dashboard insights cache helpers', () => {
             {
               matchId: 'match-1',
               tournamentId: 'tournament-1',
+              majorEventId: 'major-1',
               categoryName: 'Futsal',
               eventName: 'Time A × Time B',
               startDate: '2026-05-21T15:00:00.000Z',
@@ -147,12 +148,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v7:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v8:none');
     expect(getCacheKey(['event#update', 'certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v7:certificate#issue,event#update',
+      'dashboard:workspace:v8:certificate#issue,event#update',
     );
     expect(getCacheKey(['certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v7:certificate#issue,event#update',
+      'dashboard:workspace:v8:certificate#issue,event#update',
     );
   });
 });

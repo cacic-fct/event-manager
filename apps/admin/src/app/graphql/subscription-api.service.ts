@@ -186,17 +186,33 @@ export class SubscriptionApiService {
       .pipe(map((data) => data.setSportsParticipantTeam));
   }
 
-  listEventSubscriptions(eventId: string, filters?: { skip?: number; take?: number }) {
+  listEventSubscriptions(eventId: string, filters?: { query?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ workspaceEventSubscriptions: WorkspaceEventSubscription[] }>(
-        `query WorkspaceEventSubscriptions($eventId: String!, $skip: Int, $take: Int) {
-          workspaceEventSubscriptions(eventId: $eventId, skip: $skip, take: $take) {
+        `query WorkspaceEventSubscriptions($eventId: String!, $query: String, $skip: Int, $take: Int) {
+          workspaceEventSubscriptions(eventId: $eventId, query: $query, skip: $skip, take: $take) {
             ${WORKSPACE_EVENT_SUBSCRIPTION_FIELDS}
           }
         }`,
-        { eventId, skip: filters?.skip, take: filters?.take },
+        {
+          eventId,
+          ...(filters?.query ? { query: filters.query } : {}),
+          skip: filters?.skip,
+          take: filters?.take,
+        },
       )
       .pipe(map((data) => data.workspaceEventSubscriptions));
+  }
+
+  countEventSubscriptions(eventId: string, query?: string) {
+    return this.graphqlHttp
+      .request<{ workspaceEventSubscriptionCount: number }>(
+        `query WorkspaceEventSubscriptionCount($eventId: String!, $query: String) {
+          workspaceEventSubscriptionCount(eventId: $eventId, query: $query)
+        }`,
+        { eventId, query },
+      )
+      .pipe(map((data) => data.workspaceEventSubscriptionCount));
   }
 
   createEventSubscription(input: { eventId: string; personId: string }) {
@@ -229,6 +245,17 @@ export class SubscriptionApiService {
         { majorEventId, query: filters?.query, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.workspaceMajorEventSubscriptions));
+  }
+
+  countMajorEventSubscriptions(majorEventId: string, query?: string) {
+    return this.graphqlHttp
+      .request<{ workspaceMajorEventSubscriptionCount: number }>(
+        `query WorkspaceMajorEventSubscriptionCount($majorEventId: String!, $query: String) {
+          workspaceMajorEventSubscriptionCount(majorEventId: $majorEventId, query: $query)
+        }`,
+        { majorEventId, query },
+      )
+      .pipe(map((data) => data.workspaceMajorEventSubscriptionCount));
   }
 
   getMajorEventSubscription(majorEventId: string, subscriptionId: string) {

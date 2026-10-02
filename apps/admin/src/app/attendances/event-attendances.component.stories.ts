@@ -35,11 +35,9 @@ export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('heading', { name: 'Eventos' })).toBeVisible();
-    await expect(canvas.getByLabelText('Partida de torneio esportivo')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Ausências do evento' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Atualizar' }));
@@ -79,10 +77,10 @@ export const NoEventSelected: Story = {
   },
 };
 
-export const EmptySearch: Story = {
+export const EmptyContext: Story = {
   args: { eventCount: 0, selectedEvent: false, attendanceCount: 0, offlineSubmissionCount: 0 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Nenhum evento encontrado')).toBeVisible();
+    await expect(await within(canvasElement).findByRole('heading', { name: 'Selecione um evento' })).toBeVisible();
   },
 };
 

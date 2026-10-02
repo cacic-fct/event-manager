@@ -983,11 +983,21 @@ describe('EventFormsService', () => {
   it('includes owned forms when listing admin forms for a target filter', async () => {
     prisma.eventForm.findMany.mockResolvedValue([]);
 
-    await service.listAdminForms(authenticatedUser, { eventId: 'event-1', majorEventId: 'major-1' });
+    await service.listAdminForms(authenticatedUser, {
+      query: ' pesquisa ',
+      eventId: 'event-1',
+      majorEventId: 'major-1',
+      skip: 50,
+      take: 51,
+    });
 
     expect(prisma.eventForm.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        skip: 50,
+        take: 51,
+        orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
         where: expect.objectContaining({
+          name: { contains: 'pesquisa', mode: 'insensitive' },
           AND: expect.arrayContaining([
             {
               OR: [{ ownerEventId: 'event-1' }, { links: { some: { eventId: 'event-1', deletedAt: null } } }],

@@ -1,5 +1,9 @@
+:host { display: block; min-width: 0; }
+
 .novu-inbox {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 12px;
   padding: 12px;
 }
@@ -134,9 +138,8 @@
     padding: 0 6px 6px;
   }
 
-  .tab-label span {
-    display: none;
-  }
+  .tab-label { gap: 4px; }
+  .tab-label mat-icon { display: none; }
 
   :host ::ng-deep .compact-tabs .mdc-tab {
     flex: 0 0 auto;
@@ -170,3 +173,20 @@
     min-width: 0;
   }
 }
+
+.notification-title, .notification-body { overflow-wrap: anywhere; }
+.notification-actions { flex-wrap: wrap; }
+.preference-actions { flex-wrap: wrap; }
+@media (max-width: 720px) {
+  :host ::ng-deep .notification-list .mat-mdc-list-item.notification-item,
+  :host ::ng-deep .preference-list .mat-mdc-list-item.preference-item { flex-wrap: wrap; }
+  .notification-actions, .preference-actions {
+    flex-direction: row;
+    flex-basis: 100%;
+    justify-content: flex-end;
+    margin: 0;
+    padding-block: 0.5rem;
+  }
+}
+
+.compact-tabs, .notification-list, .preference-list { min-width: 0; max-width: 100%; }

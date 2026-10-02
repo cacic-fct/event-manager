@@ -1,4 +1,8 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject } from '@angular/core';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { combineLatest, of } from 'rxjs';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { Component, computed, DestroyRef, effect, OnDestroy, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +16,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, Router, ParamMap, convertToParamMap } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import {
   EventFormBuilderComponent,
@@ -30,12 +34,17 @@ import { FormsService } from './forms.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { DeleteEventFormDialogComponent } from './dialogs/delete-event-form-dialog.component';
 import { FormResultsComponent } from './form-results.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { EventTargetPickerComponent } from '../shared/event-target-picker.component';
 
 @Component({
   selector: 'app-workspace-forms-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    TwemojiComponent,
     ReactiveFormsModule,
+    DatePipe,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
@@ -50,6 +59,9 @@ import { FormResultsComponent } from './form-results.component';
     EventFormDescriptionContentComponent,
     EventFormRendererComponent,
     FormResultsComponent,
+    WorkspaceRecordComponent,
+    WorkspaceScopeComponent,
+    EventTargetPickerComponent,
   ],
   templateUrl: './forms-page.component.html',
   styleUrls: [
@@ -62,8 +74,19 @@ import { FormResultsComponent } from './form-results.component';
   ],
 })
 export class FormsPageComponent implements OnDestroy {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   readonly workspace = inject(FormsService);
+  private readonly shellContext = inject(EventWorkspaceContextService, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
+  private routeReverting = false;
+  protected readonly scopeEmoji = computed(() => {
+    const scope = this.workspace.targetFilter();
+    return scope?.eventId ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
+      : scope?.majorEventId ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji : null;
+  });
+
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
@@ -76,12 +99,33 @@ export class FormsPageComponent implements OnDestroy {
   ];
 
   constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      void this.applyRouteParams(params);
-    });
+    effect(() => this.shellContext?.scopeSwitchBlocked.set(this.workspace.unsavedChanges()));
+    this.destroyRef.onDestroy(() => this.shellContext?.scopeSwitchBlocked.set(false));
+    combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(convertToParamMap({}))])
+      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => { void this.applyRouteParams(params, query); });
+  }
+
+  canDeactivate(nextUrl?: string): boolean | Promise<boolean> {
+    if (this.routeReverting) {
+      return true;
+    }
+    if (nextUrl) {
+      const next = this.router.parseUrl(nextUrl);
+      const segments = next.root.children['primary']?.segments.map((segment) => segment.path) ?? [];
+      // Selecting a form hydrates its editor before the bookmark navigation completes.
+      // That navigation keeps the same editor and scope, including edits entered meanwhile.
+      if (segments.length === 2 && segments[0] === 'forms' && segments[1] === this.workspace.selectedForm()?.id) {
+        const scope = this.workspace.targetFilter();
+        if ((next.queryParams['eventId'] || undefined) === scope?.eventId &&
+          (next.queryParams['majorEventId'] || undefined) === scope?.majorEventId) return true;
+      }
+    }
+    return this.workspace.confirmDiscardChanges();
   }
 
   ngOnDestroy(): void {
+    this.routeRequest++;
+    this.workspace.cancelPendingSelection();
     this.workspace.closeResultsStream();
   }
 
@@ -228,14 +272,41 @@ export class FormsPageComponent implements OnDestroy {
       });
   }
 
-  private async applyRouteParams(params: ParamMap): Promise<void> {
-    const eventId = params.get('eventId')?.trim();
-    const majorEventId = params.get('majorEventId')?.trim();
+  private routeRequest = 0;
+  private async applyRouteParams(params: ParamMap, query: ParamMap): Promise<void> {
+    const request = ++this.routeRequest;
+    const eventId = (params.get('eventId') ?? query.get('eventId'))?.trim();
+    const majorEventId = (params.get('majorEventId') ?? query.get('majorEventId'))?.trim();
     const formId = params.get('formId')?.trim();
-    this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
+    const accepted = await this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
+    if (!accepted) {
+      if (request === this.routeRequest) {
+        this.routeReverting = true;
+        try {
+          await this.router.navigate(this.workspace.currentScopeRoute(), { replaceUrl: true });
+        } finally {
+          this.routeReverting = false;
+        }
+      }
+      return;
+    }
+    if (request !== this.routeRequest) return;
+    if (!formId) {
+      this.workspace.cancelPendingSelection();
+      if (this.workspace.selectedForm()) await this.workspace.createForm(false);
+      if (request !== this.routeRequest) return;
+    }
     await this.workspace.initialize();
+    if (request !== this.routeRequest) return;
     if (formId) {
       await this.workspace.selectFormById(formId, { skipIfCurrent: true });
+      if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell || this.workspace.unsavedChanges()) return;
+      const form = this.workspace.selectedForm();
+      const scope = form?.ownerEventId ? { eventId: form.ownerEventId }
+        : form?.ownerMajorEventId ? { majorEventId: form.ownerMajorEventId } : null;
+      if (form?.id === formId && scope) {
+        await this.router.navigate([], { relativeTo: this.route, queryParams: scope, queryParamsHandling: 'merge', replaceUrl: true });
+      }
     }
   }
 }

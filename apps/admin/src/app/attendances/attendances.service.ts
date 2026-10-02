@@ -31,7 +31,6 @@ import { OfflineAttendanceSubmissionEditDialogComponent } from './dialogs/offlin
 import { OfflineAttendanceSubmissionDialogComponent } from './dialogs/offline/offline-attendance-submission-dialog.component';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
-import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
 import { buildPeopleCandidateLookupFilters, buildPeopleLookupFilters } from '../people/people-lookup';
 import {
@@ -43,7 +42,6 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { buildSubscriberCsv } from '../subscriptions/subscriber-csv-export';
-import { MajorEventsService } from '../major-events/major-events.service';
 
 type AttendanceListItem = {
   eventId: string;
@@ -121,6 +119,20 @@ function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem 
   };
 }
 
+function matchesAttendanceParticipantQuery(
+  attendance: EventAttendanceScannerFeedItem,
+  query: string | undefined,
+): boolean {
+  if (!query) {
+    return true;
+  }
+
+  const normalizedQuery = query.toLocaleLowerCase('pt-BR');
+  return [attendance.personId, attendance.fullName, attendance.identityDocument, attendance.unespRole]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLocaleLowerCase('pt-BR').includes(normalizedQuery));
+}
+
 @Service()
 export class AttendancesService {
   private readonly api = inject(AttendanceApiService);
@@ -130,7 +142,6 @@ export class AttendancesService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
-  private readonly majorEventsService = inject(MajorEventsService);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
@@ -139,19 +150,9 @@ export class AttendancesService {
   private attendanceStreamGeneration = 0;
   private attendanceStreamRecoveryAttempted = false;
   private attendanceLoadRequestId = 0;
+  private majorEventAttendanceLoadRequestId = 0;
 
-  readonly majorEvents = this.majorEventsService.majorEvents;
 
-  readonly attendanceEventFiltersForm = this.formBuilder.group({
-    startDateFrom: this.formBuilder.control<Date | null>(null),
-    startDateUntil: this.formBuilder.control<Date | null>(null),
-    isInGroup: this.formBuilder.nonNullable.control('ALL'),
-    isInMajorEvent: this.formBuilder.nonNullable.control('ALL'),
-    query: this.formBuilder.nonNullable.control(''),
-  });
-
-  readonly attendanceEventResults = signal<Event[]>([]);
-  readonly attendanceEventResultsPagination = createWorkspaceListPagination();
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
@@ -159,6 +160,7 @@ export class AttendancesService {
   private readonly explicitAbsencesByEventId = new Map<string, Promise<EventAttendance[]>>();
   readonly implicitAbsences = signal<EventAttendanceScannerFeedItem[]>([]);
   readonly attendanceTotalCount = signal(0);
+  readonly attendanceSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly attendancesPagination = createWorkspaceListPagination();
   readonly offlineAttendanceSubmissions = signal<OfflineAttendanceSubmissionListItem[]>([]);
   readonly attendanceGroups = computed(() => {
@@ -177,6 +179,8 @@ export class AttendancesService {
     })).filter((group) => group.attendances.length > 0);
   });
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
+  readonly majorEventUserAttendanceCount = signal(0);
+  readonly majorEventAttendanceSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly majorEventUserAttendancesPagination = createWorkspaceListPagination();
   readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(() => {
     const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
@@ -211,54 +215,18 @@ export class AttendancesService {
 
   constructor() {
     bindLiveSearch({
-      control: this.attendanceEventFiltersForm,
+      control: this.attendanceSearchForm.controls.query,
       destroyRef: this.destroyRef,
-      search: () => this.searchAttendanceEvents(),
+      search: () => this.searchAttendances(),
+    });
+    bindLiveSearch({
+      control: this.majorEventAttendanceSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.loadMajorEventUserAttendancesFromFirstPage(),
     });
     this.destroyRef.onDestroy(() => {
       this.closeAttendanceLiveStream();
     });
-  }
-
-  async searchAttendanceEvents(): Promise<void> {
-    resetPagination(this.attendanceEventResultsPagination);
-    await this.loadAttendanceEventResultsPage();
-  }
-
-  async previousAttendanceEventResultsPage(): Promise<void> {
-    await loadPreviousPage(this.attendanceEventResultsPagination, () => this.loadAttendanceEventResultsPage());
-  }
-
-  async nextAttendanceEventResultsPage(): Promise<void> {
-    await loadNextPage(this.attendanceEventResultsPagination, () => this.loadAttendanceEventResultsPage());
-  }
-
-  private async loadAttendanceEventResultsPage(): Promise<void> {
-    const events = await firstValueFrom(
-      this.eventApi.listEvents({
-        ...buildEventListFilters(this.attendanceEventFiltersForm.value),
-        ...pageVariables(this.attendanceEventResultsPagination.pageIndex()),
-      }),
-    );
-    this.attendanceEventResults.set(applyPagedResult(events, this.attendanceEventResultsPagination));
-
-    const selectedEventId = this.attendanceForm.controls.eventId.value;
-    const refreshedSelection = events.find((eventItem) => eventItem.id === selectedEventId);
-
-    if (refreshedSelection) {
-      this.selectedAttendanceEvent.set(refreshedSelection);
-      return;
-    }
-
-    if (!selectedEventId) {
-      this.selectedAttendanceEvent.set(null);
-      return;
-    }
-  }
-
-  async resetAttendanceEventFilters(): Promise<void> {
-    resetEventFiltersForm(this.attendanceEventFiltersForm, { emitEvent: false });
-    await this.searchAttendanceEvents();
   }
 
   async selectAttendanceEvent(eventItem: Event): Promise<void> {
@@ -461,16 +429,22 @@ export class AttendancesService {
       this.offlineAttendanceSubmissions.set([]);
       return;
     }
+    const query = this.attendanceSearchForm.controls.query.value.trim() || undefined;
     const [data, explicitAbsences, roster, attendanceTotalCount, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
           status: 'PRESENT',
+          ...(query ? { query } : {}),
         }),
       ),
-      this.fetchExplicitAbsences(eventId),
+      this.fetchExplicitAbsences(eventId, query),
       firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
-      firstValueFrom(this.api.getEventAttendanceCount(eventId, 'PRESENT')),
+      firstValueFrom(
+        query
+          ? this.api.getEventAttendanceCount(eventId, 'PRESENT', query)
+          : this.api.getEventAttendanceCount(eventId, 'PRESENT'),
+      ),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
     if (!this.isCurrentAttendanceLoad(requestId, eventId)) {
@@ -480,7 +454,7 @@ export class AttendancesService {
     this.attendanceTotalCount.set(attendanceTotalCount);
     this.attendances.set(visibleAttendances.map(mapAttendanceListItem));
     this.explicitAbsences.set(explicitAbsences.map(mapAttendanceListItem));
-    this.implicitAbsences.set(roster.filter((item) => !item.status));
+    this.implicitAbsences.set(roster.filter((item) => !item.status && matchesAttendanceParticipantQuery(item, query)));
     this.offlineAttendanceSubmissions.set(
       submissions.map((submission) => ({
         ...submission,
@@ -493,6 +467,11 @@ export class AttendancesService {
           'Pessoa não resolvida',
       })),
     );
+  }
+
+  async searchAttendances(): Promise<void> {
+    resetPagination(this.attendancesPagination);
+    await this.loadAttendances(this.attendanceForm.controls.eventId.value);
   }
 
   async previousAttendancesPage(): Promise<void> {
@@ -742,33 +721,42 @@ export class AttendancesService {
     // Keep this cross-event aggregate HTTP-only: the existing live source is event-scoped,
     // so subscribing to every constituent event would either omit data or be unbounded.
     const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
+    const requestId = ++this.majorEventAttendanceLoadRequestId;
     if (!majorEventId) {
       this.majorEventUserAttendances.set([]);
+      this.majorEventUserAttendanceCount.set(0);
       this.selectMajorEventUserAttendance(null);
       return;
     }
-    void this.router.navigate(['/attendances/major-event', majorEventId]);
-
-    const attendances = await firstValueFrom(
-      this.api.listMajorEventUserAttendances(majorEventId, {
+    const query = this.majorEventAttendanceSearchForm.controls.query.value.trim() || undefined;
+    const [attendances, count] = await Promise.all([
+      firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, {
+        ...(query ? { query } : {}),
         ...pageVariables(this.majorEventUserAttendancesPagination.pageIndex()),
-      }),
-    );
+      })),
+      firstValueFrom(this.api.getMajorEventUserAttendanceCount(majorEventId, query)),
+    ]);
+    if (
+      requestId !== this.majorEventAttendanceLoadRequestId ||
+      this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId ||
+      this.majorEventAttendanceSearchForm.controls.query.value.trim() !== (query ?? '')
+    ) {
+      return;
+    }
     const visibleAttendances = applyPagedResult(attendances, this.majorEventUserAttendancesPagination);
     this.majorEventUserAttendances.set(visibleAttendances);
+    this.majorEventUserAttendanceCount.set(count);
 
     const selected = this.selectedMajorEventUserAttendance();
     if (selected) {
       const refreshedSelection = visibleAttendances.find(
-        (attendance) => attendance.subscriptionId === selected.subscriptionId,
+        (attendance) => attendance.personId === selected.personId,
       );
       if (refreshedSelection) {
         this.selectMajorEventUserAttendance(refreshedSelection);
-        return;
       }
+      return;
     }
-
-    this.selectMajorEventUserAttendance(visibleAttendances[0] ?? null);
   }
 
   async loadMajorEventUserAttendancesFromFirstPage(): Promise<void> {
@@ -792,15 +780,24 @@ export class AttendancesService {
     await this.loadMajorEventUserAttendances();
   }
 
-  async selectMajorEventAttendancesById(majorEventId: string): Promise<void> {
+  async selectMajorEventAttendancesById(majorEventId: string, navigate = true): Promise<void> {
     this.majorEventAttendanceForm.controls.majorEventId.setValue(majorEventId);
-    void this.router.navigate(['/attendances/major-event', majorEventId]);
+    if (navigate) void this.router.navigate(['/attendances/major-event', majorEventId]);
+    this.selectMajorEventUserAttendance(null);
     resetPagination(this.majorEventUserAttendancesPagination);
     await this.loadMajorEventUserAttendances();
   }
 
   selectMajorEventUserAttendance(attendance: MajorEventUserAttendance | null): void {
     this.selectedMajorEventUserAttendance.set(attendance);
+  }
+
+  async selectMajorEventUserAttendanceById(majorEventId: string, personId: string): Promise<void> {
+    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { personId, take: 1 }));
+    if (this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId) return;
+    const attendance = attendances.find((item) => item.personId === personId);
+    if (!attendance) throw new Error('Participante não encontrado neste grande evento.');
+    this.selectMajorEventUserAttendance(attendance);
   }
 
   getMajorEventUserAttendanceCategory(attendance: MajorEventUserAttendance): AttendanceCategory {
@@ -913,11 +910,12 @@ export class AttendancesService {
   private async fetchAllEventAttendances(
     eventId: string,
     status?: EventAttendance['status'],
+    query?: string,
   ): Promise<EventAttendance[]> {
     const attendances: EventAttendance[] = [];
     for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
       const page = await firstValueFrom(
-        this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE, status }),
+        this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE, status, ...(query ? { query } : {}) }),
       );
       attendances.push(...page);
       if (page.length < EXPORT_PAGE_SIZE) {
@@ -1026,7 +1024,10 @@ export class AttendancesService {
     this.attendanceStreamRecoveryAttempted = false;
   }
 
-  private fetchExplicitAbsences(eventId: string): Promise<EventAttendance[]> {
+  private fetchExplicitAbsences(eventId: string, query?: string): Promise<EventAttendance[]> {
+    if (query) {
+      return this.fetchAllEventAttendances(eventId, 'ABSENT', query);
+    }
     let explicitAbsences = this.explicitAbsencesByEventId.get(eventId);
     if (!explicitAbsences) {
       const request = this.fetchAllEventAttendances(eventId, 'ABSENT');

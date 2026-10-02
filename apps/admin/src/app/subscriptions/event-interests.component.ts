@@ -1,5 +1,6 @@
+import type { EventContextRef } from '../shared/event-context-picker.component';
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { input, effect, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -43,6 +44,9 @@ import {
   type InterestEventSelectionItem,
   type InterestEventSelectionDialogResult,
 } from './interest-event-selection-dialog.component';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
 
 interface InterestTarget {
   targetType: InterestTargetTypeValue;
@@ -72,6 +76,9 @@ interface TargetEventResolution {
     MatProgressBarModule,
     MatTooltipModule,
     TwemojiComponent,
+    ParticipantSummaryComponent,
+    WorkspaceRecordComponent,
+    WorkspaceScopeComponent,
   ],
   templateUrl: './event-interests.component.html',
   styleUrls: [
@@ -82,6 +89,7 @@ interface TargetEventResolution {
   ],
 })
 export class EventInterestsComponent {
+  readonly context = input<EventContextRef | null>(null);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventApi = inject(EventApiService);
   private readonly eventGroupApi = inject(EventGroupApiService);
@@ -100,6 +108,8 @@ export class EventInterestsComponent {
   readonly targets = signal<InterestTarget[]>([]);
   readonly selectedTarget = signal<InterestTarget | null>(null);
   readonly interests = signal<AdminEventInterest[]>([]);
+  readonly interestCount = signal(0);
+  readonly participantSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly targetEventIds = signal<string[]>([]);
   readonly targetEvents = signal<InterestEventSelectionItem[]>([]);
   readonly loadingTargets = signal(false);
@@ -122,18 +132,49 @@ export class EventInterestsComponent {
   private targetRealtimeKey = '';
 
   constructor() {
+    effect(() => { void this.loadTargets(); });
     this.targetSearchForm.controls.query.valueChanges
       .pipe(debounceTime(150), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((query) => this.targetQuery.set(query));
+    this.participantSearchForm.controls.query.valueChanges
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => {
+        resetPagination(this.interestsPagination);
+        void this.loadInterests();
+      });
     this.realtime
       .watchWorkspace()
       .pipe(auditTime(0), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.loadTargets());
     this.destroyRef.onDestroy(() => this.closeTargetRealtime());
-    void this.loadTargets();
   }
 
   async loadTargets(): Promise<void> {
+    const context = this.context();
+    if (context) {
+      const request = ++this.targetsRequest;
+      this.selectedTarget.set(null);
+      this.interests.set([]);
+      this.closeTargetRealtime();
+      this.loadingTargets.set(true);
+      try {
+        const entity = context.kind === 'event' ? await firstValueFrom(this.eventApi.getEvent(context.id))
+          : context.kind === 'group' ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
+          : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
+        if (request !== this.targetsRequest) return;
+        await this.selectTarget({
+          targetType: context.kind === 'event' ? InterestTargetType.EVENT : context.kind === 'group' ? InterestTargetType.EVENT_GROUP : InterestTargetType.MAJOR_EVENT,
+          targetId: entity.id, name: entity.name, emoji: entity.emoji,
+          kindLabel: context.kind === 'event' ? 'Evento' : context.kind === 'group' ? 'Grupo de eventos' : 'Grande evento',
+          interestEnabled: entity.interestEnabled === true,
+        });
+      } catch (error) {
+        if (request === this.targetsRequest) this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
+      } finally {
+        if (request === this.targetsRequest) this.loadingTargets.set(false);
+      }
+      return;
+    }
     const request = ++this.targetsRequest;
     this.loadingTargets.set(true);
     try {
@@ -237,16 +278,22 @@ export class EventInterestsComponent {
     const target = this.selectedTarget();
     if (!target) {
       this.interests.set([]);
+      this.interestCount.set(0);
       this.targetEventIds.set([]);
       this.targetEvents.set([]);
       return;
     }
 
     const request = ++this.interestsRequest;
+    const query = this.participantSearchForm.controls.query.value.trim() || undefined;
     this.loadingInterests.set(true);
     try {
-      const [interests, targetEventResolution] = await Promise.all([
-        firstValueFrom(this.api.listInterests(target.targetType, target.targetId, pageVariables(this.interestsPagination.pageIndex()))),
+      const [interests, count, targetEventResolution] = await Promise.all([
+        firstValueFrom(this.api.listInterests(target.targetType, target.targetId, {
+          query,
+          ...pageVariables(this.interestsPagination.pageIndex()),
+        })),
+        firstValueFrom(this.api.countInterests(target.targetType, target.targetId, query)),
         this.resolveTargetEventIds(target),
       ]);
       if (request !== this.interestsRequest || this.selectedTarget() !== target) {
@@ -256,6 +303,7 @@ export class EventInterestsComponent {
       this.targetEvents.set(targetEventResolution.events);
       this.syncTargetRealtime(target, targetEventResolution.eventIds);
       this.interests.set(applyPagedResult(interests, this.interestsPagination));
+      this.interestCount.set(count);
     } catch (error) {
       if (request === this.interestsRequest) {
         this.feedback.error(error, 'Não foi possível carregar a lista de interessados.');
@@ -342,8 +390,8 @@ export class EventInterestsComponent {
   }
 
   interestCountLabel(): string {
-    const count = this.interests().length;
-    return `${count} ${count === 1 ? 'interesse' : 'interesses'} nesta página`;
+    const count = this.interestCount();
+    return `${count} ${count === 1 ? 'interesse' : 'interesses'}`;
   }
 
   interestPaginationLabel(): string {

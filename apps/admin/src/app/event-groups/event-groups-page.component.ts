@@ -1,8 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { combineLatest, of } from 'rxjs';
+import { CreationParentError, type CreationParentSummary } from '../events/events.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { Component, DestroyRef, computed, effect, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink, type ParamMap } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,12 +33,17 @@ import {
   type AttendanceEligibilityOption,
   type AttendanceEligibilityParent,
 } from '../shared/event-participation-policy';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 @Component({
   selector: 'app-workspace-event-groups-tab',
   imports: [
+    MatProgressBarModule,
+    MatMenuModule,
+    RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
+    MatDialogModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -55,22 +65,49 @@ import {
 })
 export class EventGroupsPageComponent {
   readonly workspace = inject(EventGroupsService);
+  private readonly pendingChanges = inject(WorkspacePendingChangesService);
+  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
+  protected readonly Permission = Permission;
+
+  readonly contextLoading = signal(true);
+  readonly contextError = signal('');
+  readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
+  readonly creationParents = signal<CreationParentSummary[]>([]);
+  private contextRequest = 0;
+  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
 
   constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const groupId = params.get('groupId');
-      if (groupId) {
-        void this.workspace.pickEventGroupById(groupId);
-        return;
-      }
+    effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
+    this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
+    combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
+      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
+        this.lastContext = {params, query};
+        void this.initializeContext(params, query);
+      });
+  }
 
-      if (this.workspace.selectedEventGroup()) {
-        this.workspace.startNewEventGroup();
-      }
-    });
+  retryContext(): void {
+    if (this.lastContext) void this.initializeContext(this.lastContext.params, this.lastContext.query);
+  }
+
+  private async initializeContext(params: ParamMap, query: ParamMap | null): Promise<void> {
+    const request = ++this.contextRequest;
+    const id = params.get('groupId') ?? (params.get('targetType') === 'group' ? params.get('targetId') : null);
+    this.contextLoading.set(true);
+    this.contextError.set('');
+    this.creationParents.set([]);
+    try {
+      if (id) { await this.workspace.pickEventGroupById(id); }
+      else { const parents = await this.workspace.initializeNewEventGroup(query?.get('majorEventId')); if (request === this.contextRequest) this.creationParents.set(parents); }
+    } catch (error) {
+      if (request === this.contextRequest) this.contextError.set(error instanceof CreationParentError ? error.message : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+    } finally {
+      if (request === this.contextRequest) this.contextLoading.set(false);
+    }
   }
 
   protected canEditGroup(group: EventGroup | null | undefined): boolean {
@@ -96,7 +133,7 @@ export class EventGroupsPageComponent {
   }
 
   protected attendanceEligibilityParent(): AttendanceEligibilityParent {
-    return this.workspace.selectedEventGroup()?.majorEventId ? 'MAJOR' : 'NONE';
+    return this.workspace.eventGroupForm.controls.majorEventId.value ? 'MAJOR' : 'NONE';
   }
 
   protected attendanceEligibilityOptions(): AttendanceEligibilityOption[] {

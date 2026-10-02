@@ -71,6 +71,7 @@ const meta: Meta<typeof EventInterestsComponent> = {
           provide: InterestApiService,
           useValue: {
             listInterests: () => of([interest]),
+            countInterests: () => of(1),
             convertInterestToSubscription: () => of({ interest, personId: interest.personId }),
           },
         },

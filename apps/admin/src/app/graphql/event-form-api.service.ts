@@ -113,11 +113,11 @@ export class EventFormApiService {
     );
   }
 
-  listForms(filters?: { query?: string; eventId?: string; majorEventId?: string }) {
+  listForms(filters?: { query?: string; eventId?: string; majorEventId?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ eventForms: EventForm[] }>(
-        `query EventForms($query: String, $eventId: String, $majorEventId: String) {
-          eventForms(query: $query, eventId: $eventId, majorEventId: $majorEventId) {
+        `query EventForms($query: String, $eventId: String, $majorEventId: String, $skip: Int, $take: Int) {
+          eventForms(query: $query, eventId: $eventId, majorEventId: $majorEventId, skip: $skip, take: $take) {
             ${EVENT_FORM_FIELDS}
           }
         }`,

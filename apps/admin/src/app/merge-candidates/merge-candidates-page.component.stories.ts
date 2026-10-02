@@ -78,21 +78,52 @@ function buildCandidates(args: MergeCandidatesPageStoryArgs): MergeCandidate[] {
   });
 }
 
-function createWorkspaceMock() {
+function createMergeCandidatesStoryService() {
   const formBuilder = inject(FormBuilder);
   const candidates = buildCandidates(activeArgs);
   const visibleCount = Math.min(50, candidates.length);
+  const mergeCandidates = signal(candidates.slice(0, visibleCount));
+  const mergeCandidateCount = signal(candidates.length);
+  const pageLabel = signal(candidates.length === 0 ? '0 de 0' : `1-${visibleCount} de ${candidates.length}`);
+  const hasNextPage = signal(candidates.length > visibleCount);
+  const mergeFilterForm = formBuilder.nonNullable.group({
+    status: [activeArgs.statusScenario === 'MIXED' ? 'PENDING' : activeArgs.statusScenario],
+    query: [''],
+  });
+
+  const applyMergeCandidateFilters = async () => {
+    applyFilters();
+    const query = mergeFilterForm.controls.query.value.trim().toLocaleLowerCase('pt-BR');
+    const status = mergeFilterForm.controls.status.value;
+    const filtered = candidates.filter((candidate) => {
+      const personText = [
+        candidate.personA?.name,
+        candidate.personA?.email,
+        candidate.personB?.name,
+        candidate.personB?.email,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('pt-BR');
+      return candidate.status === status && (!query || personText.includes(query));
+    });
+    const page = filtered.slice(0, 50);
+    mergeCandidates.set(page);
+    mergeCandidateCount.set(filtered.length);
+    pageLabel.set(filtered.length === 0 ? '0 de 0' : `1-${page.length} de ${filtered.length}`);
+    hasNextPage.set(filtered.length > page.length);
+  };
+
   return {
-    mergeCandidates: signal(candidates.slice(0, visibleCount)),
-    mergeFilterForm: formBuilder.nonNullable.group({
-      status: [activeArgs.statusScenario === 'MIXED' ? 'PENDING' : activeArgs.statusScenario],
-    }),
+    mergeCandidates,
+    mergeCandidateCount,
+    mergeFilterForm,
     mergeCandidatesPagination: {
-      label: signal(candidates.length === 0 ? '0 de 0' : `1-${visibleCount} de ${candidates.length}`),
+      label: pageLabel,
       hasPreviousPage: signal(false),
-      hasNextPage: signal(candidates.length > visibleCount),
+      hasNextPage,
     },
-    applyMergeCandidateFilters: applyFilters,
+    applyMergeCandidateFilters,
     scanMergeCandidates: scanCandidates,
     mergeCandidate,
     setMergeCandidateStatus: updateCandidate,
@@ -124,7 +155,7 @@ const meta: Meta<MergeCandidatesPageStoryArgs> = {
   decorators: [
     applicationConfig({
       providers: [
-        { provide: MergeCandidatesService, useFactory: createWorkspaceMock },
+        { provide: MergeCandidatesService, useFactory: createMergeCandidatesStoryService },
         {
           provide: PermissionsService,
           useValue: {
@@ -148,9 +179,16 @@ type Story = StoryObj<MergeCandidatesPageStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.findByRole('textbox', { name: 'Buscar pessoa' })).resolves.toBeVisible();
+    await expect(canvas.findByRole('combobox', { name: 'Status' })).resolves.toBeVisible();
     await expect((await canvas.findAllByRole('listitem')).length).toBeGreaterThan(10);
+    await expect((await canvas.findAllByRole('button', { name: 'Unificar' })).length).toBeGreaterThan(0);
     await userEvent.click(canvas.getByRole('button', { name: 'Verificar' }));
     await expect(scanCandidates).toHaveBeenCalled();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Buscar pessoa' }), 'sem-correspondencia');
+    await userEvent.click(canvas.getByRole('button', { name: 'Atualizar' }));
+    await expect(applyFilters).toHaveBeenCalled();
+    await expect(canvas.findByText('Nenhum candidato neste status')).resolves.toBeVisible();
   },
 };
 

@@ -46,9 +46,9 @@ describe('EventFormApiService', () => {
   });
 
   it('maps form list, detail, save, publication, and delete operations', async () => {
-    await expect(firstValueFrom(service.listForms({ query: 'camiseta', eventId: 'event-1' }))).resolves.toEqual([
-      formFixture(),
-    ]);
+    await expect(
+      firstValueFrom(service.listForms({ query: 'camiseta', eventId: 'event-1', skip: 50, take: 51 })),
+    ).resolves.toEqual([formFixture()]);
     await expect(firstValueFrom(service.getForm('form-detail'))).resolves.toEqual(formFixture({ id: 'form-detail' }));
     await expect(firstValueFrom(service.saveForm({ name: 'Pesquisa' } as never))).resolves.toEqual(
       formFixture({ id: 'saved-form' }),
@@ -66,6 +66,8 @@ describe('EventFormApiService', () => {
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('eventForms'), {
       query: 'camiseta',
       eventId: 'event-1',
+      skip: 50,
+      take: 51,
     });
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(4, expect.stringContaining('PublishEventForm'), {
       input: { formId: 'form-1' },

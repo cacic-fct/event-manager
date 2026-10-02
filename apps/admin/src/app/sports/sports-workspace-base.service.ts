@@ -100,6 +100,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly lineupSelections = signal<Record<string, string[]>>({});
   readonly lineupDetails = signal<Record<string, Record<string, { role: string; shirtNumber: string }>>>({});
   readonly selectedMajorEventId = signal('');
+  readonly majorEventRouteScopeId = signal('');
+  readonly majorEventRouteScopeSummary = signal<SportsMajorEventWorkspaceItem['majorEvent'] | null>(null);
   readonly activeArea = signal<'overview' | 'categories' | 'teams' | 'matches' | 'reviews'>('overview');
   readonly selectedCategoryId = signal('');
   readonly selectedTeamId = signal('');
@@ -134,6 +136,16 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       }
     }
 
+    const scopedMajorEvent = this.majorEventRouteScopeSummary();
+    if (scopedMajorEvent && !seenMajorEventIds.has(scopedMajorEvent.id)) {
+      items.push({ majorEvent: scopedMajorEvent, tournament: tournamentsByMajorEventId.get(scopedMajorEvent.id) });
+    }
+
+    const scopedMajorEventId = this.majorEventRouteScopeId();
+    if (scopedMajorEventId) {
+      return items.filter((item) => item.majorEvent.id === scopedMajorEventId);
+    }
+
     const filters = this.majorEventWorkspaceFilters();
     const query = filters.query.trim().toLocaleLowerCase('pt-BR');
     const startDateFrom = dateBoundary(filters.startDateFrom, 'start');
@@ -151,6 +163,12 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         (!startDateUntil || startsAt <= startDateUntil)
       );
     });
+  });
+  readonly scopedMajorEventWorkspaceItems = computed(() => {
+    const majorEventId = this.majorEventRouteScopeId();
+    return majorEventId
+      ? this.majorEventWorkspaceItems().filter((item) => item.majorEvent.id === majorEventId)
+      : [];
   });
   readonly visibleMajorEventWorkspaceItems = computed(() => {
     const start = this.majorEventWorkspacePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE;
@@ -358,18 +376,32 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     area: SportsWorkspaceArea,
     selection: { categoryId?: string; teamId?: string; matchId?: string } = {},
   ): void {
-    const tournamentId = this.tournamentId();
-    if (!tournamentId || !this.router) {
+    const majorEventId = this.majorEventRouteScopeId();
+    if (!majorEventId || !this.router) {
       return;
     }
-    void this.router.navigate(sportsWorkspaceRoute(tournamentId, area, selection)).catch(() => undefined);
+    void this.router
+      .navigate(sportsWorkspaceRoute(majorEventId, area, selection))
+      .catch(() => undefined);
   }
 
-  async navigateToTournamentList(replaceUrl = false): Promise<void> {
+  async navigateToMajorEventScope(replaceUrl = false): Promise<void> {
     if (!this.router) {
       return;
     }
-    await this.router.navigate(['/sports'], { replaceUrl }).catch(() => undefined);
+    const majorEventId = this.majorEventRouteScopeId();
+    await this.router
+      .navigate(majorEventId ? ['/sports', 'major-event', majorEventId] : ['/sports'], { replaceUrl })
+      .catch(() => undefined);
+  }
+
+  useMajorEventRouteScope(majorEventId: string | null): void {
+    const nextId = majorEventId ?? '';
+    const changed = this.majorEventRouteScopeId() !== nextId;
+    this.majorEventRouteScopeId.set(nextId);
+    if (!nextId || changed) {
+      this.majorEventRouteScopeSummary.set(null);
+    }
   }
 
   async initialize(): Promise<void> {
@@ -383,6 +415,42 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       this.places.set(places);
     });
     this.watchWorkspaceIndex();
+  }
+
+  async loadMajorEventScope(majorEventId: string, force = false): Promise<void> {
+    if (!majorEventId) return;
+    if (
+      !force &&
+      this.majorEventRouteScopeId() === majorEventId &&
+      this.selectedMajorEventId() === majorEventId &&
+      (this.tournamentRead() || this.majorEvents().some((item) => item.id === majorEventId))
+    ) {
+      return;
+    }
+
+    this.useMajorEventRouteScope(majorEventId);
+    this.majorEventRouteScopeSummary.set(null);
+    this.resetWorkspaceRoute();
+    this.selectedMajorEventId.set(majorEventId);
+    this.majorEvents.set([]);
+    this.tournaments.set([]);
+    const request = ++this.workspaceIndexRequest;
+    await this.run('Não foi possível abrir a gestão esportiva deste grande evento.', async () => {
+      const tournaments = await firstValueFrom(this.api.tournaments({ majorEventId, take: 1 }));
+      const sportsMajorEvent = tournaments[0]?.majorEvent;
+      const fallbackMajorEvent = !sportsMajorEvent && this.permissions.has(Permission.MajorEvent.Read)
+        ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId))
+        : null;
+      const authorizedMajorEvent = sportsMajorEvent ?? fallbackMajorEvent;
+      if (request !== this.workspaceIndexRequest || this.majorEventRouteScopeId() !== majorEventId) return;
+      this.tournaments.set(tournaments);
+      this.majorEvents.set(fallbackMajorEvent ? [fallbackMajorEvent] : []);
+      if (authorizedMajorEvent) {
+        this.majorEventRouteScopeSummary.set(authorizedMajorEvent);
+      }
+      const tournament = tournaments[0];
+      if (tournament) await this.loadTournament(tournament.tournament.id);
+    });
   }
 
   async applyMajorEventWorkspaceFilters(): Promise<void> {
@@ -433,7 +501,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
     const majorEvent =
       this.majorEvents().find((item) => item.id === majorEventId) ??
-      this.tournaments().find((item) => item.majorEvent.id === majorEventId)?.majorEvent;
+      this.tournaments().find((item) => item.majorEvent.id === majorEventId)?.majorEvent ??
+      this.majorEventRouteScopeSummary();
     if (
       !majorEvent ||
       !(await this.confirmAction(
@@ -457,8 +526,12 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
           majorEventId,
         }),
       );
-      await this.loadTournament(id);
-      await this.loadMajorEventWorkspaceData();
+      if (this.majorEventRouteScopeId() === majorEventId) {
+        await this.loadMajorEventScope(majorEventId, true);
+      } else {
+        await this.loadTournament(id);
+        await this.loadMajorEventWorkspaceData();
+      }
       this.navigateToArea('overview');
     });
   }
@@ -497,6 +570,11 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
   private async refreshWorkspaceIndex(): Promise<void> {
     if (this.tournamentRead()) return;
+    const majorEventId = this.majorEventRouteScopeId();
+    if (majorEventId) {
+      await this.loadMajorEventScope(majorEventId, true);
+      return;
+    }
     await this.loadMajorEventWorkspaceData();
   }
 
@@ -670,7 +748,14 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         }),
       );
       await this.loadTournament(read.tournament.id);
-      this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      const majorEventId = this.majorEventRouteScopeId();
+      if (majorEventId) {
+        const scopedTournaments = await firstValueFrom(this.api.tournaments({ majorEventId, take: 1 }));
+        this.tournaments.set(scopedTournaments);
+        this.majorEventRouteScopeSummary.set(scopedTournaments[0]?.majorEvent ?? this.majorEventRouteScopeSummary());
+      } else {
+        this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      }
       this.notify('Regras gerais salvas.');
     });
   }
@@ -688,11 +773,21 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       return;
     }
     await this.run('Não foi possível excluir o torneio.', async () => {
+      const scopedMajorEventId = this.majorEventRouteScopeId() || tournament.majorEventId;
+      const scopedMajorEvent = this.tournaments().find((item) => item.tournament.id === tournament.id)?.majorEvent;
       await firstValueFrom(this.api.deleteVersioned('deleteSportsTournament', tournament.id, tournament.revision));
       this.tournaments.update((items) => items.filter((item) => item.tournament.id !== tournament.id));
       this.resetWorkspaceRoute();
-      await this.navigateToTournamentList(true);
-      await this.loadMajorEventWorkspaceData();
+      this.useMajorEventRouteScope(scopedMajorEventId || null);
+      await this.navigateToMajorEventScope(true);
+      if (scopedMajorEventId) {
+        await this.loadMajorEventScope(scopedMajorEventId, true);
+        if (scopedMajorEvent) {
+          this.majorEventRouteScopeSummary.set(scopedMajorEvent);
+        }
+      } else {
+        await this.loadMajorEventWorkspaceData();
+      }
       this.notify('Torneio esportivo excluído. O grande evento foi preservado.');
     });
   }

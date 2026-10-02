@@ -244,7 +244,10 @@ describe('buildPublicationConsistencyWarnings', () => {
             id: 'sports-match-event',
             publicationState: 'DRAFT',
             isPubliclyListed: true,
-            sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
+            sportsMatch: {
+              id: 'match-1',
+              category: { tournamentId: 'tournament-1', tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' } },
+            },
           }),
         ],
         majorEvents: [
@@ -260,7 +263,7 @@ describe('buildPublicationConsistencyWarnings', () => {
       expect.objectContaining({
         type: 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS',
         action: 'OPEN_SPORTS',
-        targetId: 'tournament-1',
+        targetId: 'major-event-1',
       }),
     ]);
   });
@@ -283,7 +286,7 @@ describe('buildPublicationConsistencyWarnings', () => {
       expect.objectContaining({
         type: 'SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT',
         action: 'OPEN_SPORTS',
-        targetId: 'tournament-1',
+        targetId: 'mixed-major',
       }),
     ]);
   });
@@ -297,7 +300,10 @@ describe('buildPublicationConsistencyWarnings', () => {
             id: 'sports-match-event',
             publicationState: 'PUBLISHED',
             isPubliclyListed: true,
-            sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
+            sportsMatch: {
+              id: 'match-1',
+              category: { tournamentId: 'tournament-1', tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' } },
+            },
             majorEventId: 'major-event-1',
             majorEvent: {
               id: 'major-event-1',

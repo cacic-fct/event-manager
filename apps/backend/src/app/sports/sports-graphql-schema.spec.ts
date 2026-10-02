@@ -47,10 +47,12 @@ describe('sports GraphQL schema', () => {
     const officialCheckInInput = printed.match(/input SportsOfficialCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const scannerCheckInInput = printed.match(/input SportsRosterScannerCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const athleteProfileInput = printed.match(/input SportsRegistrationMemberProfileUpdateInput \{[^}]+\}/)?.[0] ?? '';
+    const queryType = printed.match(/type Query \{[^}]+\}/)?.[0] ?? '';
 
     expect(printed).toContain('publicSportsTournamentDetail');
     expect(printed).toContain('currentUserSportsTeamWorkspace');
     expect(printed).toContain('adminSportsMatchActionReviewQueue');
+    expect(queryType).toMatch(/adminSportsTournamentList\([^)]*majorEventId: String[^)]*\): \[AdminSportsTournamentListItem!\]!/);
     expect(printed).toContain('commitSportsMatchActions');
     expect(printed).toContain('createSportsOfflineCollectorCredential');
     expect(printed).toContain('collectorPersonId: String');

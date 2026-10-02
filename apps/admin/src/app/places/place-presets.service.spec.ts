@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
 import { PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
 import { createAdminPlacePreset } from '../testing/admin-entity-fixtures';
@@ -42,6 +42,27 @@ describe('PlacePresetsService', () => {
     }).compileComponents();
 
     service = TestBed.inject(PlacePresetsService);
+  });
+
+  it('retains the latest place search when an older response arrives later', async () => {
+    const older = new Subject<ReturnType<typeof createAdminPlacePreset>[]>();
+    api.listPlacePresets.mockReturnValueOnce(older);
+    const pending = service.loadPlacePresets();
+    api.listPlacePresets.mockReturnValueOnce(of([createAdminPlacePreset({ id: 'current', name: 'Local atual' })]));
+    await service.loadPlacePresets();
+    older.next([createAdminPlacePreset({ id: 'old', name: 'Resultado antigo' })]);
+    older.complete();
+    await pending;
+    expect(service.placePresets()[0].id).toBe('current');
+  });
+
+  it('offers recovery after a failed place search', async () => {
+    api.listPlacePresets.mockReturnValueOnce(throwError(() => new Error('offline')));
+    await service.loadPlacePresets();
+    expect(service.placesError()).toContain('Tente novamente');
+    expect(service.loadingPlaces()).toBe(false);
+    await service.loadPlacePresets();
+    expect(service.placesError()).toBeNull();
   });
 
   afterEach(() => {

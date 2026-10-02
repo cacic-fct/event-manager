@@ -907,6 +907,7 @@ describe('CalendarService', () => {
     const service = new CalendarService(prisma as never);
 
     const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br');
+    const unfoldedContent = download.content.replace(/\r\n /g, '');
 
     expect(activeScopes).toHaveBeenCalledWith(
       prisma,
@@ -946,9 +947,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 3 evento(s).');
     expect(download.content).toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('DTEND:20260902T150000Z');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/events/admin-event-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/groups/group-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/major-events/major-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/event/admin-event-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/group/group-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/major-event/major-1');
     expect(download.content).toContain('CLASS:PUBLIC');
     expect(download.content).toContain('TRANSP:OPAQUE');
   });
@@ -1320,6 +1321,7 @@ describe('CalendarService', () => {
     const service = new CalendarService(prisma as never);
 
     const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.com.br');
+    const unfoldedContent = download.content.replace(/\r\n /g, '');
 
     expect(download.fileName).toBe('calendario-super-admin-cacic-eventos.ics');
     expect(prisma.event.findMany).toHaveBeenCalledWith(
@@ -1351,9 +1353,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('SUMMARY:Oficina de TypeScript');
     expect(download.content).toContain('SUMMARY:Trilha de oficinas');
     expect(download.content).toContain('SUMMARY:Congresso CACiC');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/events/event-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/groups/group-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/major-events/major-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/event/event-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/group/group-1');
+    expect(unfoldedContent).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/event-workspace/major-event/major-1');
     expect(download.content).toContain('CLASS:PUBLIC');
     expect(download.content).toContain('TRANSP:TRANSPARENT');
     expect(prisma.superAdminCalendarFeedSettings.updateMany).not.toHaveBeenCalled();

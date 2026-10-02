@@ -44,6 +44,7 @@ describe('CertificatesService', () => {
     createCertificateConfig: ReturnType<typeof vi.fn>;
     createCertificateFolder: ReturnType<typeof vi.fn>;
     cloneCertificateConfig: ReturnType<typeof vi.fn>;
+    getCertificateConfig: ReturnType<typeof vi.fn>;
     getCertificateFolder: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
     issueManualCertificatesFromCsv: ReturnType<typeof vi.fn>;
@@ -58,6 +59,7 @@ describe('CertificatesService', () => {
     updateCertificateFolder: ReturnType<typeof vi.fn>;
   };
   let majorEventsApi: { getMajorEvent: ReturnType<typeof vi.fn> };
+  let eventsApi: { getEvent: ReturnType<typeof vi.fn> };
   let lastPayload: CertificateConfigInput | null;
   let peopleApi: {
     listPeopleSummaries: ReturnType<typeof vi.fn>;
@@ -94,6 +96,9 @@ describe('CertificatesService', () => {
       cloneCertificateConfig: vi.fn((id: string) =>
         of(createAdminCertificateConfig({ id: `${id}-clone`, name: 'Certificate (cópia)' }, certificateTemplate)),
       ),
+      getCertificateConfig: vi.fn((id: string) =>
+        of(createAdminCertificateConfig({ id, event: createAdminEvent({ id: 'event-1' }) }, certificateTemplate)),
+      ),
       getCertificateFolder: vi.fn(() => of(certificateFolderFixture())),
       issueMissedCertificates: vi.fn(() => of([])),
       issueManualCertificatesFromCsv: vi.fn(() =>
@@ -127,6 +132,7 @@ describe('CertificatesService', () => {
       ),
     };
     majorEventsApi = { getMajorEvent: vi.fn(() => throwError(() => new Error('Forbidden'))) };
+    eventsApi = { getEvent: vi.fn(() => of(createAdminEvent())) };
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
     };
@@ -142,7 +148,7 @@ describe('CertificatesService', () => {
       providers: [
         CertificatesService,
         { provide: CertificateApiService, useValue: api },
-        { provide: EventApiService, useValue: {} },
+        { provide: EventApiService, useValue: eventsApi },
         { provide: EventGroupApiService, useValue: {} },
         { provide: MajorEventApiService, useValue: majorEventsApi },
         { provide: PeopleApiService, useValue: peopleApi },
@@ -174,7 +180,7 @@ describe('CertificatesService', () => {
 
     await expect(service.selectTarget(event)).resolves.toBeUndefined();
 
-    expect(service.selectedTarget()).toEqual({ id: event.id, name: event.name });
+    expect(service.selectedTarget()).toEqual({ id: event.id, name: event.name, emoji: event.emoji });
     expect(api.listCertificateConfigs).toHaveBeenCalled();
     expect(api.listCertificates).toHaveBeenCalled();
     expect(service.certificateConfigs()).toEqual([config]);
@@ -182,6 +188,48 @@ describe('CertificatesService', () => {
     service.selectCertificateConfig(config);
     expect(service.paymentTierOptions()).toEqual(['Aluno']);
     expect(service.certificateConfigForm.paymentTiers().value()).toEqual(['Aluno']);
+  });
+
+  it('hydrates a routed certificate configuration independently of the current list page', async () => {
+    const event = createAdminEvent({ id: 'event-1' });
+    const config = createAdminCertificateConfig(
+      { id: 'config-page-2', scope: 'EVENT', eventId: event.id, event },
+      certificateTemplate,
+    );
+    eventsApi.getEvent.mockReturnValue(of(event));
+    api.listCertificateConfigs.mockReturnValue(of([]));
+    api.getCertificateConfig.mockReturnValue(of(config));
+
+    await service.selectTargetByRoute('event', event.id, config.id);
+
+    expect(api.getCertificateConfig).toHaveBeenCalledWith(config.id);
+    expect(service.selectedCertificateConfig()?.id).toBe(config.id);
+    expect(service.certificateConfigForm.name().value()).toBe(config.name);
+  });
+
+  it('keeps the active certificate editor when its configuration is outside the current page', async () => {
+    const config = createAdminCertificateConfig({ id: 'config-page-1' }, certificateTemplate);
+    service.selectCertificateConfig(config);
+    service.certificateConfigsPagination.hasNextPage.set(true);
+    api.listCertificateConfigs.mockReturnValue(of([]));
+
+    await service.nextCertificateConfigsPage();
+
+    expect(service.certificateConfigsPagination.pageIndex()).toBe(1);
+    expect(service.selectedCertificateConfig()?.id).toBe(config.id);
+    expect(service.certificateConfigForm.name().value()).toBe(config.name);
+  });
+
+  it('tracks semantic certificate editor changes against the selected baseline', () => {
+    const config = createAdminCertificateConfig({ id: 'config-1' }, certificateTemplate);
+    service.selectCertificateConfig(config);
+    expect(service.unsavedChanges()).toBe(false);
+
+    service.certificateConfigForm.name().value.set('Nome alterado');
+    expect(service.unsavedChanges()).toBe(true);
+
+    service.startNewCertificateConfig();
+    expect(service.unsavedChanges()).toBe(false);
   });
 
   it('ignores late tier options after another certificate target is selected', async () => {
@@ -309,6 +357,85 @@ describe('CertificatesService', () => {
 
     expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', skip: 0, take: 51 });
     expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-1']);
+  });
+
+  it('keeps only the newest target search response', async () => {
+    const staleResponse = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    const currentResponse = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    api.listCertificateIssuableEvents
+      .mockReturnValueOnce(staleResponse)
+      .mockReturnValueOnce(currentResponse);
+    service.targetFiltersForm.controls.query.setValue('antigo', { emitEvent: false });
+    const staleSearch = service.searchTargets();
+    service.targetFiltersForm.controls.query.setValue('atual', { emitEvent: false });
+    const currentSearch = service.searchTargets();
+
+    currentResponse.next([createAdminEvent({ id: 'current-event', name: 'Atual' })]);
+    currentResponse.complete();
+    await currentSearch;
+    staleResponse.next([createAdminEvent({ id: 'stale-event', name: 'Antigo' })]);
+    staleResponse.complete();
+    await staleSearch;
+
+    expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['current-event']);
+  });
+
+  it('recovers target search after a failed request', async () => {
+    api.listCertificateIssuableEvents
+      .mockReturnValueOnce(throwError(() => new Error('offline')))
+      .mockReturnValueOnce(of([createAdminEvent({ id: 'event-recovered', name: 'Recuperado' })]));
+
+    await service.searchTargets();
+    expect(service.targetSearchLoading()).toBe(false);
+    await service.searchTargets();
+
+    expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-recovered']);
+    expect(service.targetSearchLoading()).toBe(false);
+  });
+
+  it('opens the global certificates route as the standalone folder browser', async () => {
+    await service.selectTargetByRoute(null, null, null);
+
+    expect(service.targetFiltersForm.controls.scope.value).toBe('OTHER');
+    expect(service.selectedTarget()).toBeNull();
+    expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
+    expect(service.certificateFolders().map((folder) => folder.id)).toEqual(['folder-1']);
+    expect(api.listCertificateIssuableEvents).not.toHaveBeenCalled();
+  });
+
+  it('does not restore a scoped event after navigation returns to the global folder browser', async () => {
+    const staleEvent = new Subject<ReturnType<typeof createAdminEvent>>();
+    eventsApi.getEvent.mockReturnValueOnce(staleEvent);
+
+    const staleSelection = service.selectTargetByRoute('event', 'event-old', null);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(eventsApi.getEvent).toHaveBeenCalledWith('event-old');
+    await service.selectTargetByRoute(null, null, null);
+    staleEvent.next(createAdminEvent({ id: 'event-old', name: 'Evento antigo' }));
+    staleEvent.complete();
+    await staleSelection;
+
+    expect(service.targetFiltersForm.controls.scope.value).toBe('OTHER');
+    expect(service.selectedTarget()).toBeNull();
+    expect(service.certificateConfigs()).toEqual([]);
+    expect(service.certificates()).toEqual([]);
+  });
+
+  it('ignores certificate configs that finish loading after the target was cleared', async () => {
+    const staleConfigs = new Subject<ReturnType<typeof createAdminCertificateConfig>[]>();
+    api.listCertificateConfigs.mockReturnValueOnce(staleConfigs);
+    service.targetFiltersForm.controls.scope.setValue('EVENT');
+    const selection = service.selectTarget(createAdminEvent({ id: 'event-old' }));
+    await Promise.resolve();
+
+    await service.selectTargetByRoute(null, null, null);
+    staleConfigs.next([createAdminCertificateConfig({ id: 'config-old' }, certificateTemplate)]);
+    staleConfigs.complete();
+    await selection;
+
+    expect(service.selectedTarget()).toBeNull();
+    expect(service.certificateConfigs()).toEqual([]);
   });
 
   it('searches folders and creates standalone manual certificate configs', async () => {
@@ -620,6 +747,7 @@ describe('CertificatesService', () => {
     expect(service.selectedTarget()).toEqual({
       id: folder.id,
       name: folder.name,
+      emoji: folder.emoji,
     });
   });
 
@@ -648,6 +776,20 @@ describe('CertificatesService', () => {
       emoji: folder.emoji,
       reissueCertificates: true,
     });
+  });
+
+  it('keeps the selected folder workspace while drafting and cancelling a new folder', async () => {
+    const folder = certificateFolderFixture();
+    service.targetFiltersForm.controls.scope.setValue('OTHER');
+    await service.selectTarget(folder);
+
+    service.startNewFolder();
+    expect(service.selectedTarget()?.id).toBe(folder.id);
+    expect(service.folderForm.getRawValue()).toEqual({ id: '', name: '', emoji: '📁' });
+
+    service.cancelFolderEdit();
+    expect(service.folderForm.getRawValue()).toEqual({ id: folder.id, name: folder.name, emoji: folder.emoji });
+    expect(service.selectedTarget()?.id).toBe(folder.id);
   });
 
   it('does not save a folder rename when certificate reissuance is cancelled', async () => {

@@ -2,72 +2,42 @@
   <div class="tab-grid">
     <aside class="panel">
       <div class="panel-heading">
-        <form [formGroup]="workspace.filterForm" class="filter-form">
+        <form [formGroup]="workspace.filterForm" class="filter-form" (ngSubmit)="workspace.applyFilters()">
           <mat-form-field>
             <mat-label>Buscar local</mat-label>
-            <input matInput formControlName="query" />
+            <input matInput type="search" formControlName="query" />
+            <button matIconButton matSuffix type="submit" aria-label="Buscar locais"><mat-icon>search</mat-icon></button>
           </mat-form-field>
-          <button mat-stroked-button type="button" (click)="workspace.loadPlacePresets()">
-            <mat-icon>search</mat-icon>
-            Buscar
-          </button>
+
         </form>
 
         <button mat-stroked-button type="button" (click)="workspace.startNewPlacePreset()">
           <mat-icon>add</mat-icon>
-          Novo
+          Novo local
         </button>
       </div>
 
-      <mat-list class="result-list">
+      @if (workspace.loadingPlaces()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando locais" /> }
+      @if (workspace.placesError()) {
+        <div class="notice" role="alert"><span>{{ workspace.placesError() }}</span><button mat-button type="button" (click)="workspace.loadPlacePresets()">Tentar novamente</button></div>
+      }
+      <div class="result-list" role="group" aria-label="Locais encontrados">
         @for (place of workspace.sortedPlacePresets(); track place.id) {
-          <mat-list-item
-            (click)="workspace.pickPlacePreset(place)"
-            [class.selected-list-item]="workspace.selectedPlacePreset()?.id === place.id">
-            <span matListItemTitle class="list-title">
-              <span>{{ place.name }}</span>
-            </span>
-            <span matListItemLine>
-              {{ place.locationDescription || 'Sem descrição' }}
-            </span>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Editar local"
-              matTooltip="Editar"
-              [disabled]="!permissions.canEdit(Permission.PlacePreset.Update)"
-              (click)="$event.stopPropagation(); workspace.pickPlacePreset(place)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Selecionar para unificar"
-              matTooltip="Selecionar duplicado"
-              [disabled]="
-                !permissions.canEdit(Permission.PlacePreset.Merge) ||
-                !permissions.canDelete(Permission.PlacePreset.Delete)
-              "
-              (click)="$event.stopPropagation(); workspace.chooseMergeSource(place)">
-              <mat-icon>call_merge</mat-icon>
-            </button>
-            <button
-              matIconButton
-              type="button"
-              aria-label="Excluir local"
-              matTooltip="Excluir"
-              [disabled]="!permissions.canDelete(Permission.PlacePreset.Delete)"
-              (click)="$event.stopPropagation(); workspace.deletePlacePreset(place)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </mat-list-item>
+          <app-workspace-record [title]="place.name" [selected]="workspace.selectedPlacePreset()?.id === place.id" [link]="['/places', place.id]">
+            <span recordDescription>{{ place.locationDescription || 'Sem descrição' }}</span>
+            <div recordActions>
+              <button matIconButton type="button" aria-label="Selecionar para unificar" matTooltip="Selecionar duplicado"
+                [disabled]="workspace.selectedPlacePreset()?.id === place.id || !permissions.canEdit(Permission.PlacePreset.Merge) || !permissions.canDelete(Permission.PlacePreset.Delete)"
+                (click)="workspace.chooseMergeSource(place)"><mat-icon>call_merge</mat-icon></button>
+              <button matIconButton type="button" aria-label="Excluir local" matTooltip="Excluir"
+                [disabled]="!permissions.canDelete(Permission.PlacePreset.Delete)"
+                (click)="workspace.deletePlacePreset(place)"><mat-icon>delete</mat-icon></button>
+            </div>
+          </app-workspace-record>
         } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum local encontrado</span>
-            <span matListItemLine>Cadastre um preset ou revise a busca.</span>
-          </mat-list-item>
+          @if (!workspace.loadingPlaces() && !workspace.placesError()) { <p class="empty-note">Nenhum local encontrado. Revise a busca ou cadastre um local.</p> }
         }
-      </mat-list>
+      </div>
 
       <div class="list-pager" aria-label="Paginação de locais">
         <span>Itens {{ workspace.placePresetsPagination.label() }}</span>
@@ -104,7 +74,7 @@
               Novo local
             }
           </h3>
-          <p>{{ workspace.selectedPlacePreset()?.name || 'Crie presets para preencher eventos mais rápido.' }}</p>
+          <p>{{ workspace.selectedPlacePreset()?.name || 'Cadastre um local para reutilizar nos eventos.' }}</p>
         </div>
 
         <div class="panel-actions">
@@ -117,16 +87,14 @@
               Histórico
             </button>
           }
-          <button mat-button type="button" (click)="workspace.startNewPlacePreset()">
-            <mat-icon>restart_alt</mat-icon>
-            Limpar
-          </button>
+
           <button
             mat-stroked-button
             type="button"
             [disabled]="
               !workspace.selectedPlacePreset() ||
               !workspace.mergeSource() ||
+              workspace.mergeSource()?.id === workspace.selectedPlacePreset()?.id ||
               !permissions.canEdit(Permission.PlacePreset.Merge) ||
               !permissions.canDelete(Permission.PlacePreset.Delete)
             "
@@ -138,7 +106,7 @@
             mat-flat-button
             type="button"
             [disabled]="
-              !permissions.canEdit(
+              workspace.placeForm.invalid || !permissions.canEdit(
                 workspace.selectedPlacePreset() ? Permission.PlacePreset.Update : Permission.PlacePreset.Create
               )
             "
@@ -149,6 +117,14 @@
         </div>
       </div>
 
+      @if (workspace.mergeSource(); as source) {
+        <div class="notice" role="status">
+          <mat-icon>call_merge</mat-icon>
+          <span>Local a unificar: <strong>{{ source.name }}</strong>. Selecione o local que deve permanecer e use Unificar.</span>
+          <button mat-button type="button" (click)="workspace.mergeSource.set(null)">Cancelar unificação</button>
+        </div>
+      }
+
       <form [formGroup]="workspace.placeForm" class="panel-stack">
         <section class="surface field-group">
           <h4>Dados do local</h4>
@@ -156,16 +132,6 @@
             <mat-form-field class="span-2">
               <mat-label>Nome</mat-label>
               <input matInput formControlName="name" />
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Latitude</mat-label>
-              <input matInput formControlName="latitude" />
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Longitude</mat-label>
-              <input matInput formControlName="longitude" />
             </mat-form-field>
 
             <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
@@ -178,6 +144,21 @@
               <input matInput formControlName="locationDescription" />
             </mat-form-field>
           </div>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header>
+            <div class="field-grid">
+            <mat-form-field>
+              <mat-label>Latitude</mat-label>
+              <input matInput formControlName="latitude" />
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Longitude</mat-label>
+              <input matInput formControlName="longitude" />
+            </mat-form-field>
+
+            </div>
+          </mat-expansion-panel>
         </section>
 
         <section class="surface field-group">

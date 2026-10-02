@@ -165,15 +165,10 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventForm = new FormGroup({
     majorEventId: new FormControl(selectedMajorEventId ?? '', { nonNullable: true }),
   });
-  const majorEventSearchForm = new FormGroup({
-    query: new FormControl('', { nonNullable: true }),
-  });
   const majorEventSubscriptionSearchForm = new FormGroup({
     query: new FormControl('', { nonNullable: true }),
   });
   const selectedMajorEventIdSignal = signal(selectedMajorEventId ?? '');
-  const majorEventSearchQuery = signal('');
-  majorEventSearchForm.controls.query.valueChanges.subscribe((query) => majorEventSearchQuery.set(query));
   const editMode = signal(false);
   const majorEventEditForm = new FormGroup({
     subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
@@ -194,17 +189,12 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
 
   const service = {
     majorEvents,
-    eventFiltersForm: new FormGroup({
-      startDateFrom: new FormControl<Date | null>(null),
-      startDateUntil: new FormControl<Date | null>(null),
-      isInGroup: new FormControl('ALL', { nonNullable: true }),
-      isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
-      query: new FormControl('', { nonNullable: true }),
-    }),
-    eventResults,
-    eventResultsPagination: createStoryPagination(eventResults().length),
     selectedEvent,
     eventSubscriptions,
+    eventSubscriptionCount: () => eventSubscriptions().length,
+    eventSubscriptionSearchForm: new FormGroup({
+      query: new FormControl('', { nonNullable: true }),
+    }),
     eventSubscriptionsPagination: createStoryPagination(eventSubscriptions().length),
     eventRegularSubscriptions: computed(() =>
       eventSubscriptions().filter((subscription) => !subscription.isLecturerSubscription),
@@ -219,26 +209,18 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       identifier: new FormControl('', { nonNullable: true }),
     }),
     majorEventForm,
-    majorEventSearchForm,
     majorEventSubscriptionSearchForm,
     selectedMajorEvent: computed(
       () => majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEventIdSignal()) ?? null,
     ),
     majorEventSportsWorkspace: signal(null),
-    filteredMajorEvents: computed(() => {
-      const query = majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
-      if (!query) {
-        return majorEvents();
-      }
-
-      return majorEvents().filter((majorEvent) => majorEvent.name.toLocaleLowerCase('pt-BR').includes(query));
-    }),
     majorEventPersonForm: new FormGroup({
       identifierType: new FormControl('email', { nonNullable: true }),
       identifier: new FormControl('', { nonNullable: true }),
     }),
     majorEventEditForm,
     majorEventSubscriptions,
+    majorEventSubscriptionCount: () => majorEventSubscriptions().length,
     majorEventSubscriptionsPagination: createStoryPagination(majorEventSubscriptions().length),
     majorEventEvents,
     selectedMajorEventSubscription,
@@ -249,10 +231,6 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectedEventIds,
     isImportingCsv: signal(false),
     selectedMajorEventEvents: computed(() => selectedMajorEventSubscription()?.events ?? majorEventEvents()),
-    searchEvents: () => Promise.resolve(),
-    resetEventFilters: () => Promise.resolve(),
-    previousEventResultsPage: () => Promise.resolve(),
-    nextEventResultsPage: () => Promise.resolve(),
     selectEvent: (event: Event) => {
       selectedEvent.set(event);
       return Promise.resolve();

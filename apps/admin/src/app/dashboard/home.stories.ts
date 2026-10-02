@@ -212,7 +212,7 @@ export const AllStatesAtOnce: Story = {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

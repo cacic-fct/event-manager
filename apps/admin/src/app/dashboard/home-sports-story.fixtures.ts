@@ -51,6 +51,7 @@ export function buildSportsMatches(
     {
       matchId: 'sports-match-1',
       tournamentId: 'sports-tournament-1',
+      majorEventId: 'sports-major-event-1',
       categoryName: 'Futsal aberto',
       eventName: 'Atlética FCT × Engenharia',
       startDate: dateFromNow(0, 14).toISOString(),
@@ -63,6 +64,7 @@ export function buildSportsMatches(
     {
       matchId: 'sports-match-2',
       tournamentId: 'sports-tournament-1',
+      majorEventId: 'sports-major-event-1',
       categoryName: 'Vôlei misto',
       eventName: 'Computação × Matemática',
       startDate: dateFromNow(0, 16).toISOString(),

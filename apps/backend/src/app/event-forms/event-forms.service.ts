@@ -37,7 +37,13 @@ export class EventFormsService {
 
   async listAdminForms(
     user: AuthenticatedUser | undefined,
-    filters: { query?: string | null; eventId?: string | null; majorEventId?: string | null } = {},
+    filters: {
+      query?: string | null;
+      eventId?: string | null;
+      majorEventId?: string | null;
+      skip?: number | null;
+      take?: number | null;
+    } = {},
   ): Promise<EventFormModel[]> {
     return this.listings.listAdminForms(user, filters);
   }

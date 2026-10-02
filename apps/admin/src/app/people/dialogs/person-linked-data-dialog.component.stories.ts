@@ -236,7 +236,7 @@ function eventResources(skip: number, take: number) {
       id: `event-${item}`,
       label: item === 1 ? 'Minicurso de Angular' : `Atividade ${item}`,
       description: item === 1 ? 'Ministrante' : 'Participante confirmado',
-      route: `/events/event-${item}`,
+      route: `/event-workspace/event/event-${item}`,
       status: null,
       occurredAt: '2026-06-20T14:00:00.000Z',
     };
