@@ -72,7 +72,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars/general.ts',
-          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-general/',
+          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/',
           path: 'docs-general',
           routeBasePath: 'Geral',
           showLastUpdateAuthor: true,
@@ -86,7 +86,7 @@ const config: Config = {
           },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/blog/',
+          editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -209,7 +209,7 @@ const config: Config = {
         path: 'docs-manual',
         routeBasePath: 'Manual',
         sidebarPath: './sidebars/manual.ts',
-        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-manual/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
@@ -221,7 +221,7 @@ const config: Config = {
         path: 'docs-frontend',
         routeBasePath: 'Frontend',
         sidebarPath: './sidebars/frontend.ts',
-        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-frontend/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
@@ -233,7 +233,7 @@ const config: Config = {
         path: 'docs-backend',
         routeBasePath: 'Backend',
         sidebarPath: './sidebars/backend.ts',
-        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/docs-backend/',
+        editUrl: 'https://github.com/cacic-fct/event-manager/tree/main/docs/',
         showLastUpdateAuthor: true,
         showLastUpdateTime: true,
       },
