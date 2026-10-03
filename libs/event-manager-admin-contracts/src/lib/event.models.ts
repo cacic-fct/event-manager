@@ -166,7 +166,7 @@ export interface Event {
 
 export interface EventAudienceInvitation {
   personId: string;
-  person: Pick<Person, 'id' | 'name' | 'email'>;
+  person: Pick<Person, 'id' | 'name' | 'email'> | null;
 }
 
 export interface EventDraft {

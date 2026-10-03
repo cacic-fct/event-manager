@@ -1,3 +1,4 @@
+import { AccountMergeService } from '../account-merge/account-merge.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -15,18 +16,24 @@ export function isUnespAudience(primaryEmail: unknown, secondaryEmails: readonly
 
 @Injectable()
 export class EventAudienceService {
+  private readonly profileCache = new Map<string, { expiresAt: number; value: M2MUserIdentifierLookupMatch | null }>();
+  private readonly pendingProfiles = new Map<string, Promise<M2MUserIdentifierLookupMatch | null>>();
+  private readonly profileCacheTtlMs = 60_000;
+  private readonly profileCacheLimit = 1000;
   private readonly logger = new Logger(EventAudienceService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationPolicyService,
     private readonly featureFlags: BackendFeatureFlagService,
-    private readonly accountManager?: AccountManagerGrpcClient,
+    private readonly accountManager: AccountManagerGrpcClient,
+    private readonly accountMerge: AccountMergeService,
   ) {}
 
   async principalForUser(user?: AuthenticatedUser): Promise<EventAudiencePrincipal> {
     if (!user?.sub) return ANONYMOUS_AUDIENCE;
-    const userId = user.sub;
+    const userId = await this.accountMerge.resolveFinalUserId(user.sub) ?? user.sub;
+    user = { ...user, sub: userId };
     const people = await this.prisma.people.findMany({
       where: { userId, deletedAt: null, mergedIntoId: null },
       select: { id: true },
@@ -44,6 +51,7 @@ export class EventAudienceService {
   }
 
   async principalForStoredUser(userId: string): Promise<EventAudiencePrincipal> {
+    userId = await this.accountMerge.resolveFinalUserId(userId) ?? userId;
     const [user, people] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
       this.prisma.people.findMany({
@@ -114,6 +122,26 @@ export class EventAudienceService {
   }
 
   private async lookupAccountProfile(email: string, expectedUserId: string): Promise<M2MUserIdentifierLookupMatch | null> {
+    const key = JSON.stringify([expectedUserId, email.trim().toLowerCase()]);
+    const cached = this.profileCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+    const pending = this.pendingProfiles.get(key);
+    if (pending) return pending;
+    const lookup = this.fetchAccountProfile(email, expectedUserId).then((value) => {
+      this.profileCache.delete(key);
+      while (this.profileCache.size >= this.profileCacheLimit) {
+        const oldest = this.profileCache.keys().next().value;
+        if (oldest === undefined) break;
+        this.profileCache.delete(oldest);
+      }
+      this.profileCache.set(key, { value, expiresAt: Date.now() + this.profileCacheTtlMs });
+      return value;
+    }).finally(() => this.pendingProfiles.delete(key));
+    this.pendingProfiles.set(key, lookup);
+    return lookup;
+  }
+
+  private async fetchAccountProfile(email: string, expectedUserId: string): Promise<M2MUserIdentifierLookupMatch | null> {
     if (!this.accountManager) {
       return null;
     }

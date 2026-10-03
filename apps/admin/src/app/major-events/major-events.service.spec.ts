@@ -7,7 +7,7 @@ import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../graphql/publishing-api.service';
-import { createAdminEvent, createAdminMajorEventFromInput } from '../testing/admin-entity-fixtures';
+import { createAdminEvent, createAdminMajorEventFromInput, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
@@ -124,6 +124,15 @@ describe('MajorEventsService', () => {
       interestEnabled: true,
       attendanceEligibility: 'ANYONE',
     });
+  });
+
+  it('preserves invitation IDs when the API hides invitee details', async () => {
+    const majorEvent = createAdminMajorEvent({ audienceInvitations: [{ personId: 'private-person', person: null }] });
+    api.getMajorEvent.mockReturnValueOnce(of(majorEvent));
+    await service.pickMajorEventById(majorEvent.id);
+    expect(service.majorEventAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    await service.saveMajorEvent('DRAFT');
+    expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
   });
 
   it('serializes selected invitees for invitation-only major events', async () => {

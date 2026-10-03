@@ -56,6 +56,7 @@ describe('EventDraftsService', () => {
       attendanceRealtime: Record<string, unknown>;
       typesenseSearch: Record<string, unknown>;
       attendanceCategories: Record<string, unknown>;
+      audienceInvitations: Record<string, unknown>;
     }> = {},
   ) {
     const tx = {
@@ -68,6 +69,7 @@ describe('EventDraftsService', () => {
         findFirst: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn(),
+        update: jest.fn(),
         findUniqueOrThrow: jest.fn(),
       },
       eventGroup: {
@@ -133,6 +135,7 @@ describe('EventDraftsService', () => {
         undefined,
         undefined,
         attendanceCategories as never,
+        overrides.audienceInvitations as never,
       ),
       prisma,
       tx,
@@ -283,7 +286,7 @@ describe('EventDraftsService', () => {
     expect(attendanceRealtime.notifyAllConnectedPeople).not.toHaveBeenCalled();
   });
 
-  it('refreshes attendance classification and notifies online users when a draft changes attendance eligibility', async () => {
+  it.each(['policy', 'invitations'] as const)('refreshes attendance classification when a draft changes %s', async (change) => {
     const previousEvent = {
       id: 'event-1',
       name: 'Evento publicado',
@@ -301,10 +304,10 @@ describe('EventDraftsService', () => {
       ...draftRecord,
       payload: {
         ...draftRecord.payload,
-        attendanceEligibility: 'ANYONE',
+        ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }),
       },
     };
-    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService();
+    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({ audienceInvitations: { notifyInvited: jest.fn(), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } });
     prisma.eventDraft.findUnique.mockResolvedValue(draft);
     tx.event.findFirst.mockResolvedValue(previousEvent);
     tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);

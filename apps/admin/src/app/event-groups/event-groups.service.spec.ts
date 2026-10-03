@@ -143,6 +143,14 @@ describe('EventGroupsService', () => {
     });
   });
 
+  it('preserves invitation IDs when the API hides invitee details', async () => {
+    const group = createAdminEventGroup({ audienceInvitations: [{ personId: 'private-person', person: null }] });
+    await service.pickEventGroup(group);
+    expect(service.eventGroupAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    await service.saveEventGroup('DRAFT');
+    expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
+  });
+
   it('serializes selected invitees for invitation-only groups', async () => {
     service.eventGroupForm.patchValue({ audience: 'PUBLIC' });
     service.setEventGroupAudienceInvitations([{ id: 'person-1', name: 'Ana', email: 'ana@example.com' }]);

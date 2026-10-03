@@ -193,6 +193,7 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
 function readAudienceInvitationSnapshots(value: Prisma.JsonValue): AudienceInvitationSnapshot[] {
   return readArrayValue(value, 'movedAudienceInvitationSnapshots').map((entry) => ({
     targetType: readRequiredString(entry, 'targetType') as AudienceInvitationSnapshot['targetType'],
+    ...(entry.coalesced === true ? { coalesced: true } : {}),
     targetId: readRequiredString(entry, 'targetId'),
     personId: readRequiredString(entry, 'personId'),
     createdAt: readRequiredString(entry, 'createdAt'),

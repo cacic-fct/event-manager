@@ -430,6 +430,11 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       context.primaryResource = [...resources][0];
     }
     this.collectResourceIds(raw, context);
+    if (requiredPermissions.length > 0 && requiredPermissions.every((permission) =>
+      [Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create].some((createPermission) => createPermission === permission),
+    )) {
+      delete context.genericId;
+    }
     if (context.genericId && resources.has('subscription')) {
       context.subscriptionId ??= context.genericId;
     }

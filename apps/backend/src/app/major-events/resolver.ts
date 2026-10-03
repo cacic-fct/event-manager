@@ -41,7 +41,7 @@ import { AttendanceCategoryService } from '../events/attendance-category.service
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { AUDIENCE_ADMIN_SELECT, applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
-import { audienceContext } from '../audiences/audience-context';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 
 const PAYMENT_INFO_SELECT = {
@@ -408,16 +408,20 @@ export class MajorEventsResolver {
       }
 
       if (
-        majorEventInput.attendanceEligibility !== undefined &&
-        majorEventInput.attendanceEligibility !== majorEvent.attendanceEligibility
+        (majorEventInput.attendanceEligibility !== undefined &&
+        majorEventInput.attendanceEligibility !== majorEvent.attendanceEligibility) ||
+        audienceChange?.invitationsChanged
       ) {
-        const events = await tx.event.findMany({
-          where: { majorEventId: effectiveId, deletedAt: null },
-          select: { id: true },
+        // Reassess every descendant, including children outside the editor's audience.
+        await audienceContext.run({ ...(audienceContext.getStore() ?? ANONYMOUS_AUDIENCE), bypass: true }, async () => {
+          const events = await tx.event.findMany({
+            where: { majorEventId: effectiveId, deletedAt: null },
+            select: { id: true },
+          });
+          for (const event of events) {
+            await this.attendanceCategories.refreshForEvent(event.id, tx);
+          }
         });
-        for (const event of events) {
-          await this.attendanceCategories.refreshForEvent(event.id, tx);
-        }
       }
 
       const updated = await tx.majorEvent.findUniqueOrThrow({
@@ -455,7 +459,7 @@ export class MajorEventsResolver {
         publicationState: updatedMajorEvent.publicationState,
       });
     });
-    if (majorEventInput.attendanceEligibility !== undefined) {
+    if (majorEventInput.attendanceEligibility !== undefined || audienceChange?.invitationsChanged) {
       await this.attendanceRealtime.notifyAllConnectedPeople();
     }
     return updatedMajorEvent;

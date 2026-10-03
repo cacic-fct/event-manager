@@ -1,3 +1,4 @@
+import { audienceContext } from '../audiences/audience-context';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
@@ -1047,12 +1048,14 @@ describe('MajorEventsResolver', () => {
 
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
-  it('refreshes stored attendance categories when the major-event eligibility policy changes', async () => {
+  it.each(['policy', 'invitations'] as const)('refreshes stored attendance categories when the major-event %s changes', async (change) => {
     const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
     const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
     const tx = {
       event: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
+          ? [{ id: 'event-1' }, { id: 'event-2' }]
+          : [{ id: 'event-1' }]),
       },
       majorEvent: {
         update: jest.fn().mockResolvedValue({ id: 'major-1' }),
@@ -1076,12 +1079,13 @@ describe('MajorEventsResolver', () => {
       { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) } as never,
       attendanceCategories as never,
       attendanceRealtime as never,
+      { notifyInvited: jest.fn().mockResolvedValue(undefined), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } as never,
     );
 
     await expect(
       resolver.updateMajorEvent(
         'major-1',
-        { attendanceEligibility: 'ANYONE' } as never,
+        (change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }) as never,
         { req: { user: { sub: 'admin-1' } } } as never,
       ),
     ).resolves.toBe(updated);
