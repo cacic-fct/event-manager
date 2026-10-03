@@ -8,10 +8,13 @@ let nextWorkspaceRecordId = 0;
 /** A record destination or local selection, with independent secondary actions. */
 @Component({
   selector: 'app-workspace-record',
+  host: { '(click)': '$event.stopPropagation()' },
   imports: [MatButtonModule, NgTemplateOutlet, RouterLink],
   template: `
     <div class="record" [class.selected]="selected()">
-      @if (link(); as destination) {
+      @if (readonly()) {
+        <div class="record-main"><ng-container [ngTemplateOutlet]="content" /></div>
+      } @else if (link(); as destination) {
         <a mat-button class="record-main"
           [routerLink]="disabled() ? null : destination"
           [queryParams]="queryParams()"
@@ -71,6 +74,7 @@ export class WorkspaceRecordComponent {
   readonly title = input.required<string>();
   readonly label = input('');
   readonly selected = input(false);
+  readonly readonly = input(false);
   readonly disabled = input(false);
   readonly link = input<string | string[] | null>(null);
   readonly queryParams = input<Params | null>(null);

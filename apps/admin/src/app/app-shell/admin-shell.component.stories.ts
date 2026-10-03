@@ -224,13 +224,13 @@ export const AutoModeContextAnchor: Story = {
 export const FullModeWithPermissionWarnings: Story = {
   args: {
     navMode: 'full',
-    activeUrl: '/forms',
+    activeUrl: '/places',
     showMissingPermissions: true,
-    missingPermissionTab: 'forms',
+    missingPermissionTab: 'places',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('link', {name:'Formulários'})).toBeVisible();
+    await expect(await canvas.findByRole('link', {name:'Locais'})).toBeVisible();
     await expect(await canvas.findByText('Permissões ausentes nesta seção')).toBeVisible();
   },
 };
@@ -269,7 +269,10 @@ export const ScopedEventOperations: Story = {
     await userEvent.click(operations.getByRole('button',{name:'Menu global'}));
     const global=within(await canvas.findByRole('navigation',{name:'Navegação interna'}));
     await expect(global.getByRole('link',{name:'Eventos'})).toHaveAttribute('href','#/event-workspace');
-    await expect(global.getByRole('link',{name:'Inscrições'})).toBeVisible();
+    await expect(global.getByRole('link', { name: 'Eventos' })).toBeVisible();
+    for (const label of ['Inscrições', 'Presenças', 'Formulários', 'Sorteios', 'Publicação', 'Esportes']) {
+      await expect(global.queryByRole('link', { name: label })).not.toBeInTheDocument();
+    }
     await userEvent.click(global.getByRole('button',{name:'Menu do contexto'}));
     await expect(await canvas.findByRole('navigation',{name:'Operações do evento'})).toBeVisible();
   },

@@ -669,6 +669,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.editingOfficial.set(null);
     this.people.set([]);
     this.peopleTarget.set(null);
+    this.officialForm.controls.scope.enable();
     this.officialForm.reset({ personQuery: '', personId: '', role: 'REFEREE', scope: 'MATCH' });
   }
 

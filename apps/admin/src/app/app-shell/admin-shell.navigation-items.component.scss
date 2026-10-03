@@ -160,9 +160,6 @@
 }
 
 .sidenav .nav-item.context-parent {
-  height: auto;
-  min-height: var(--workspace-nav-item-size);
-  padding-block: 0.5rem;
   flex-shrink: 0;
 }
 
@@ -170,9 +167,4 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.context-parent .nav-label {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }

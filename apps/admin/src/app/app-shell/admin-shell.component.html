@@ -7,9 +7,7 @@
   }
 
   <a routerLink="/" aria-label="Painel" class="logo-link">
-    <lib-cacic-logo
-      [class.logo-bark-mode]="isDarkSignal()"
-      [class.logo-light-mode]="!isDarkSignal()"></lib-cacic-logo>
+    <lib-cacic-logo [class.logo-bark-mode]="isDarkSignal()" [class.logo-light-mode]="!isDarkSignal()"></lib-cacic-logo>
   </a>
 
   <span class="internal-badge">interno</span>
@@ -38,20 +36,40 @@
     [fixedInViewport]="isMobile()">
     <div class="sidenav-shell">
       <div class="workspace-selector">
-        <button mat-button class="nav-item context-selector" type="button" (click)="openContextSelector()"
+        <button
+          mat-button
+          class="nav-item context-selector"
+          type="button"
+          (click)="openContextSelector()"
           [disabled]="eventWorkspace.scopeSwitchBlocked() || !canChooseContext()"
-          [attr.aria-label]="routeContext() ? 'Trocar contexto: ' + (eventWorkspace.context()?.name ?? 'evento selecionado') : 'Escolher evento'">
+          [attr.aria-label]="contextSelectorLabel()"
+          [matTooltip]="contextSelectorLabel()"
+          [matTooltipDisabled]="isMobile()"
+          matTooltipPosition="right">
           <span class="context-avatar">
-            @if (eventWorkspace.context()?.emoji; as emoji) { <lib-twemoji [emoji]="emoji" /> }
-            @else { <mat-icon>search</mat-icon> }
+            @if (eventWorkspace.context()?.emoji; as emoji) {
+              <lib-twemoji [emoji]="emoji" />
+            } @else {
+              <mat-icon>search</mat-icon>
+            }
           </span>
-          <span class="nav-label context-name">{{ eventWorkspace.context()?.name || (routeContext() ? 'Contexto selecionado' : 'Escolher evento') }}</span>
+          <span class="nav-label context-name">{{
+            eventWorkspace.context()?.name || (routeContext() ? 'Contexto selecionado' : 'Escolher evento')
+          }}</span>
         </button>
       </div>
-      <nav class="nav-list" [attr.aria-label]="routeContext() && !showGlobalNavigation() ? 'Operações do evento' : 'Navegação interna'">
+      <nav
+        class="nav-list"
+        [attr.aria-label]="routeContext() && !showGlobalNavigation() ? 'Operações do evento' : 'Navegação interna'">
         @if (routeContext()) {
-          <button mat-button class="nav-item" type="button"
+          <button
+            mat-button
+            class="nav-item"
+            type="button"
             [attr.aria-label]="showGlobalNavigation() ? 'Menu do contexto' : 'Menu global'"
+            [matTooltip]="showGlobalNavigation() ? 'Menu do contexto' : 'Menu global'"
+            [matTooltipDisabled]="isMobile()"
+            matTooltipPosition="right"
             (click)="showGlobalNavigation.set(!showGlobalNavigation())">
             <mat-icon>{{ showGlobalNavigation() ? 'arrow_forward' : 'arrow_back' }}</mat-icon>
             <span class="nav-label">{{ showGlobalNavigation() ? 'Menu do contexto' : 'Menu global' }}</span>
@@ -61,33 +79,76 @@
         @if (routeContext() && !showGlobalNavigation()) {
           @if (eventWorkspace.context(); as context) {
             @if (context.parent; as parent) {
-              <button mat-button class="nav-item context-parent" type="button" [attr.aria-label]="'Voltar para ' + parent.name"
-                [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="switchContext(parent, 'overview')">
-                <mat-icon>arrow_upward</mat-icon><span class="nav-label"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</span>
-              </button>
-            }
-            @if (context.kind === 'major-event' && permissions.canReadTab('groups')) {
-              <button mat-button class="nav-item" type="button" aria-label="Abrir grupo neste contexto"
-                [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="openContextSelector('group')">
-                <mat-icon>folder_open</mat-icon><span class="nav-label">Abrir grupo</span>
+              <button
+                mat-button
+                class="nav-item context-parent"
+                type="button"
+                [attr.aria-label]="'Voltar para ' + parent.name"
+                [matTooltip]="'Voltar para ' + parent.name"
+                [matTooltipDisabled]="isMobile()"
+                matTooltipPosition="right"
+                [disabled]="eventWorkspace.scopeSwitchBlocked()"
+                (click)="switchContext(parent, 'overview')">
+                <mat-icon>arrow_upward</mat-icon
+                ><span class="nav-label"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</span>
               </button>
             }
             @if (context.kind !== 'event' && permissions.canReadTab('events')) {
-              <button mat-button class="nav-item" type="button" aria-label="Abrir evento neste contexto"
-                [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="openContextSelector('event')">
+              <button
+                mat-button
+                class="nav-item"
+                type="button"
+                aria-label="Abrir evento neste contexto"
+                matTooltip="Abrir evento neste contexto"
+                [matTooltipDisabled]="isMobile()"
+                matTooltipPosition="right"
+                [disabled]="eventWorkspace.scopeSwitchBlocked()"
+                (click)="openContextSelector('event')">
                 <mat-icon>event</mat-icon><span class="nav-label">Abrir evento</span>
               </button>
             }
+            @if (context.kind === 'major-event' && permissions.canReadTab('groups')) {
+              <button
+                mat-button
+                class="nav-item"
+                type="button"
+                aria-label="Abrir grupo neste contexto"
+                matTooltip="Abrir grupo neste contexto"
+                [matTooltipDisabled]="isMobile()"
+                matTooltipPosition="right"
+                [disabled]="eventWorkspace.scopeSwitchBlocked()"
+                (click)="openContextSelector('group')">
+                <mat-icon>folder_open</mat-icon><span class="nav-label">Abrir grupo</span>
+              </button>
+            }
             @if (context.kind !== 'event' && !context.isSportsManaged) {
+              <mat-divider></mat-divider>
               @if (canCreateContext(permissions, 'event')) {
-                <button mat-button class="nav-item" type="button" aria-label="Novo evento neste contexto"
-                  [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="createResource('event', context)">
+                <button
+                  mat-button
+                  class="nav-item"
+                  type="button"
+                  aria-label="Novo evento neste contexto"
+                  matTooltip="Novo evento neste contexto"
+                  [matTooltipDisabled]="isMobile()"
+                  matTooltipPosition="right"
+                  [disabled]="eventWorkspace.scopeSwitchBlocked()"
+                  (click)="createResource('event', context)">
                   <mat-icon>add</mat-icon><span class="nav-label">Novo evento</span>
                 </button>
               }
+
               @if (context.kind === 'major-event' && canCreateContext(permissions, 'group')) {
-                <button mat-button class="nav-item" type="button" aria-label="Novo grupo neste grande evento"
-                  [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="createResource('group', context)">
+                <button
+                  mat-button
+                  class="nav-item"
+                  type="button"
+                  aria-label="Novo grupo neste grande evento"
+                  matTooltip="Novo grupo neste grande evento"
+                  [matTooltipDisabled]="isMobile()"
+                  matTooltipPosition="right"
+                  [disabled]="eventWorkspace.scopeSwitchBlocked()"
+                  (click)="createResource('group', context)">
                   <mat-icon>create_new_folder</mat-icon><span class="nav-label">Novo grupo</span>
                 </button>
               }
@@ -95,50 +156,58 @@
             }
           }
           @for (operation of eventWorkspace.operations(); track operation.id) {
-            <a mat-button class="nav-item" [class.active]="currentOperationId() === operation.id"
-              [routerLink]="operation.path" [queryParams]="operation.queryParams"
-              [attr.aria-current]="currentOperationId() === operation.id ? 'page' : null"
-              [attr.aria-label]="operation.label" [matTooltip]="operation.label" matTooltipPosition="right"
-              (click)="closeSidenavIfMobile(sidenav)">
-              <mat-icon>{{ operation.icon }}</mat-icon><span class="nav-label">{{ operation.label }}</span>
-            </a>
-          }
-          @if (eventWorkspace.scopeSwitchBlocked()) { <p class="context-edit-note" role="status">Salve ou descarte as alterações antes de trocar o contexto.</p> }
-        } @else {
-        @for (item of navItems(); track item.id) {
-          @if (item.kind === 'divider') {
-            <mat-divider></mat-divider>
-            <span class="nav-group-label">{{ item.label }}</span>
-          } @else {
             <a
               mat-button
               class="nav-item"
-              [class.active]="activeNavId() === item.id"
-              [attr.aria-current]="activeNavId() === item.id ? 'page' : null"
-              [attr.aria-label]="item.label"
-              [matTooltip]="item.label"
-              [matTooltipDisabled]="isMobile()"
+              [class.active]="currentOperationId() === operation.id"
+              [routerLink]="operation.path"
+              [queryParams]="operation.queryParams"
+              [attr.aria-current]="currentOperationId() === operation.id ? 'page' : null"
+              [attr.aria-label]="operation.label"
+              [matTooltip]="operation.label"
               matTooltipPosition="right"
-              [routerLink]="navigationPath(item)"
               (click)="closeSidenavIfMobile(sidenav)">
-              @if (item.id === 'notifications') {
-                <lib-novu-notification-badge>
-                  <mat-icon>{{ item.icon }}</mat-icon>
-                </lib-novu-notification-badge>
-              } @else {
-                <mat-icon>{{ item.icon }}</mat-icon>
-              }
-
-              <span class="nav-label">{{ item.label }}</span>
-
-              @if (permissions.missingReadForTab(item.id).length > 0) {
-                <span class="nav-warning">
-                  {{ permissions.missingReadForTab(item.id).length }}
-                </span>
-              }
+              <mat-icon>{{ operation.icon }}</mat-icon
+              ><span class="nav-label">{{ operation.label }}</span>
             </a>
           }
-        }
+          @if (eventWorkspace.scopeSwitchBlocked()) {
+            <p class="context-edit-note" role="status">Salve ou descarte as alterações antes de trocar o contexto.</p>
+          }
+        } @else {
+          @for (item of navItems(); track item.id) {
+            @if (item.kind === 'divider') {
+              <mat-divider></mat-divider>
+            } @else {
+              <a
+                mat-button
+                class="nav-item"
+                [class.active]="activeNavId() === item.id"
+                [attr.aria-current]="activeNavId() === item.id ? 'page' : null"
+                [attr.aria-label]="item.label"
+                [matTooltip]="item.label"
+                [matTooltipDisabled]="isMobile()"
+                matTooltipPosition="right"
+                [routerLink]="navigationPath(item)"
+                (click)="closeSidenavIfMobile(sidenav)">
+                @if (item.id === 'notifications') {
+                  <lib-novu-notification-badge>
+                    <mat-icon>{{ item.icon }}</mat-icon>
+                  </lib-novu-notification-badge>
+                } @else {
+                  <mat-icon>{{ item.icon }}</mat-icon>
+                }
+
+                <span class="nav-label">{{ item.label }}</span>
+
+                @if (permissions.missingReadForTab(item.id).length > 0) {
+                  <span class="nav-warning">
+                    {{ permissions.missingReadForTab(item.id).length }}
+                  </span>
+                }
+              </a>
+            }
+          }
         }
       </nav>
 
@@ -167,8 +236,11 @@
           <header class="page-header">
             <div>
               <h1>{{ pageTitle() }}</h1>
-              @if (!routeContext()) { <p>{{ activeNavItem().description }}</p> }
-              @else if (currentOperationId() !== 'overview' && eventWorkspace.context(); as context) { <p class="mobile-context"><lib-twemoji [emoji]="context.emoji" />{{ context.name }}</p> }
+              @if (!routeContext()) {
+                <p>{{ activeNavItem().description }}</p>
+              } @else if (currentOperationId() !== 'overview' && eventWorkspace.context(); as context) {
+                <p class="mobile-context"><lib-twemoji [emoji]="context.emoji" />{{ context.name }}</p>
+              }
             </div>
 
             @if (activeNavItem().helpLink; as helpLink) {

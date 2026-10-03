@@ -9,6 +9,7 @@ type NavigationLink = {
   icon: string;
   group: string;
   helpLink: string | undefined;
+  contextOnly?: true;
   visibleFor?: 'super-admin';
   requiredRoleLabel?: string;
 };
@@ -50,6 +51,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'groups',
+    contextOnly: true,
     path: 'groups',
     label: 'Grupos de eventos',
     description: 'Gerencie agrupamentos de eventos e suas relações.',
@@ -60,6 +62,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'major-events',
+    contextOnly: true,
     path: 'major-events',
     label: 'Grandes eventos',
     description: 'Organize eventos maiores compostos por várias atividades.',
@@ -70,6 +73,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'sports',
+    contextOnly: true,
     path: 'sports',
     label: 'Esportes',
     description: 'Organize torneios, equipes, tabelas, partidas e revisões esportivas.',
@@ -80,6 +84,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'publication',
+    contextOnly: true,
     path: 'publication',
     label: 'Publicação',
     description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
@@ -95,6 +100,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'subscriptions',
+    contextOnly: true,
     path: 'subscriptions',
     label: 'Inscrições',
     description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
@@ -115,6 +121,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'attendances',
+    contextOnly: true,
     path: 'attendances',
     label: 'Presenças',
     description: 'Controle presença, check-ins e registros de participação.',
@@ -135,6 +142,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'forms',
+    contextOnly: true,
     path: 'forms',
     label: 'Formulários',
     description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
@@ -145,6 +153,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'prize-draws',
+    contextOnly: true,
     path: 'draws',
     label: 'Sorteios',
     description: 'Configure, execute e audite sorteios vinculados a eventos.',
@@ -246,6 +255,8 @@ export const navigationItems = [
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Prefer%C3%AAncias',
   },
 ] as const satisfies readonly NavigationItem[];
+
+export const globalNavigationItems = navigationItems.filter((item) => !('contextOnly' in item));
 
 export type NavigationLinkItem = Extract<(typeof navigationItems)[number], { kind: 'link' }>;
 export type NavigationLinkId = NavigationLinkItem['id'];

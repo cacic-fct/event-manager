@@ -140,16 +140,15 @@ export class PublicationPageComponent {
       const previousNode = this.requestedNode();
       this.requestedNode.set(requestedNode);
       if (
-        this.workspace() &&
         (previousNode?.targetType !== requestedNode?.targetType || previousNode?.id !== requestedNode?.id)
       ) {
         this.pageIndex.set(0);
-        void this.refresh();
-      } else {
-        this.selectRequestedNode();
+        this.workspace.set(null);
+        this.selectedNode.set(null);
+        this.expandedNodeKeys.set(new Set());
       }
+      void this.refresh();
     });
-    void this.refresh();
     this.realtime
       .watchWorkspace()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -413,18 +412,6 @@ export class PublicationPageComponent {
     }
 
     return null;
-  }
-
-  private selectRequestedNode(): void {
-    const workspace = this.workspace();
-    if (!workspace) {
-      return;
-    }
-
-    const requested = this.findRequestedNode(workspace);
-    if (requested) {
-      this.selectedNode.set(requested);
-    }
   }
 
   private findRequestedNode(workspace: PublicationWorkspace): PublicationNode | null {

@@ -184,6 +184,39 @@ describe('PublicationPageComponent', () => {
     expect(component.workspaceItems().map((node) => node.id)).toEqual(['major-1', 'group-1', 'event-1']);
   });
 
+  it('reloads the scope when the route changes during the initial request', async () => {
+    const params = new BehaviorSubject(convertToParamMap({ targetType: 'event', targetId: 'old-event' }));
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params } });
+    const older = new Subject<PublicationWorkspace>();
+    const newer = new Subject<PublicationWorkspace>();
+    api.getWorkspace.mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    const fixture = TestBed.createComponent(PublicationPageComponent);
+    params.next(convertToParamMap({ targetType: 'event', targetId: 'event-1' }));
+    expect(api.getWorkspace).toHaveBeenLastCalledWith(expect.objectContaining({ focusTargetId: 'event-1' }));
+    newer.next(workspaceFixture());
+    newer.complete();
+    await flushAsync();
+    older.next(workspaceFixture({ tree: [majorNode()], generatedAt: adminFixtureDateFromNow(-1) }));
+    older.complete();
+    await flushAsync();
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('event-1');
+    fixture.destroy();
+  });
+
+  it('hides the previous tree immediately when changing the scope', async () => {
+    const params = new BehaviorSubject(convertToParamMap({ targetType: 'event', targetId: 'event-1' }));
+    const { component, fixture } = await createComponent(params);
+    const pending = new Subject<PublicationWorkspace>();
+    api.getWorkspace.mockReturnValueOnce(pending);
+    params.next(convertToParamMap({ targetType: 'event', targetId: 'new-event' }));
+    expect(component.workspaceItems()).toEqual([]);
+    expect(component.selectedNode()).toBeNull();
+    pending.next(workspaceFixture({ tree: [], items: [], totalCount: 0 }));
+    pending.complete();
+    await flushAsync();
+    fixture.destroy();
+  });
+
   it('ignores an older workspace response after a newer refresh completes', async () => {
     const { component } = await createComponent();
     const older = new Subject<PublicationWorkspace>();

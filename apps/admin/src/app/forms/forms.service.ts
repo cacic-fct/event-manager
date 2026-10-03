@@ -226,7 +226,7 @@ export class FormsService {
     sigilo: ['SECRET' as EventFormSigilo],
     responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
-    resultsLive: [false],
+    resultsLive: [{ value: false, disabled: true }],
     allowResponseEdits: [false],
     scheduledPublishAt: [''],
   });
@@ -243,6 +243,13 @@ export class FormsService {
   });
 
   constructor() {
+    this.form.controls.resultsPublic.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((resultsPublic) => {
+        const control = this.form.controls.resultsLive;
+        if (resultsPublic) control.enable({ emitEvent: false });
+        else control.disable({ emitEvent: false });
+      });
     this.savedEditorState = this.captureEditorState();
     this.savedEditorSnapshot.set(this.editorStateSignature(this.savedEditorState));
     this.destroyRef.onDestroy(() => this.closeResultsStream());
@@ -380,6 +387,8 @@ export class FormsService {
     }
     if (scopeChanged) {
       this.targetFilter.set(filter);
+      this.forms.set([]);
+      resetPagination(this.formsPagination);
       this.clearSelectedForm();
     }
     if (filter?.eventId && !this.events().some((event) => event.id === filter.eventId)) {

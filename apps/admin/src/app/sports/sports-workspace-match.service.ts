@@ -484,6 +484,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
       role: official.role,
       scope: this.officialScope(official),
     });
+    this.officialForm.controls.scope.disable();
   }
 
   async assignOfficial(): Promise<void> {

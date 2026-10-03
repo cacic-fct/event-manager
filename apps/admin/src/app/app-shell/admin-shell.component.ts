@@ -28,7 +28,7 @@ import { filter, map, startWith } from 'rxjs';
 
 import { PermissionsService } from '../permissions/permissions.service';
 import { ShellService } from './admin-shell.service';
-import { findNavigationItemForUrl, navigationItems } from './navigation';
+import { findNavigationItemForUrl, globalNavigationItems, navigationItems } from './navigation';
 import { isPlatformBrowser } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
@@ -84,6 +84,10 @@ export class AdminShellComponent {
   protected readonly eventWorkspace = inject(EventWorkspaceContextService);
   private readonly contextDialog = inject(MatDialog);
   protected readonly showGlobalNavigation = signal(false);
+  protected readonly contextSelectorLabel = computed(() => {
+    if (!this.routeContext()) return 'Escolher evento';
+    return `Trocar contexto: ${this.eventWorkspace.context()?.name ?? 'evento selecionado'}`;
+  });
   private readonly destroyRef = inject(DestroyRef);
   protected readonly requestActivity = inject(RequestActivityService);
   protected readonly permissions = inject(PermissionsService);
@@ -96,7 +100,7 @@ export class AdminShellComponent {
   protected readonly canChooseContext = computed(() => (['events', 'groups', 'major-events'] as const).some((tab) => this.permissions.canReadTab(tab)));
 
   protected readonly navItems = computed(() => {
-    const items = navigationItems.filter((item) => this.canShowNavItem(item) && !['groups', 'major-events'].includes(item.id));
+    const items = globalNavigationItems.filter((item) => this.canShowNavItem(item));
     return items.filter((item, index) => item.kind !== 'divider' || items[index + 1]?.kind === 'link');
   });
 

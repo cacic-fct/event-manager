@@ -96,6 +96,35 @@ describe('FormsService integration', () => {
     service = TestBed.inject(FormsService);
   });
 
+  it('disables live results until results are public and retains the selection', () => {
+    const { resultsPublic, resultsLive } = service.form.controls;
+    expect(resultsLive.disabled).toBe(true);
+
+    resultsPublic.setValue(true);
+    expect(resultsLive.enabled).toBe(true);
+    resultsLive.setValue(true);
+
+    resultsPublic.setValue(false);
+    expect(resultsLive.disabled).toBe(true);
+    expect(service.form.getRawValue().resultsLive).toBe(true);
+
+    resultsPublic.setValue(true);
+    expect(resultsLive.enabled).toBe(true);
+    expect(resultsLive.value).toBe(true);
+
+    service.form.reset();
+    expect(resultsLive.disabled).toBe(true);
+  });
+
+  it('clears the previous scope inventory and pagination before loading another context', async () => {
+    await service.loadForms();
+    service.formsPagination.pageIndex.set(2);
+    expect(service.forms().length).toBeGreaterThan(0);
+    await service.setTargetFilter({ eventId: 'event-1' });
+    expect(service.forms()).toEqual([]);
+    expect(service.formsPagination.pageIndex()).toBe(0);
+  });
+
   it('loads form targets, opens a form, and loads aggregate results', async () => {
     await service.initialize();
 

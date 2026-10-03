@@ -15,7 +15,7 @@
         <p>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
             {{ selectedAttendanceEvent.startDate | date: 'medium' }}
-            · <a [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
+            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }

@@ -10,13 +10,13 @@ const meta: Meta<WorkspaceRecordComponent> = {
   title: 'CACiC Eventos/Workspace/Components/Record',
   tags: ['autodocs'],
   decorators: [moduleMetadata({ imports: [MatButtonModule, MatIconModule] }), applicationConfig({ providers: [provideRouter([], withHashLocation(), withDisabledInitialNavigation())] })],
-  args: { title: 'Oficina de acessibilidade', selected: false, disabled: false, label: '', activate: fn() },
+  args: { title: 'Oficina de acessibilidade', selected: false, disabled: false, readonly: false, label: '', activate: fn() },
   argTypes: {
     title: { control: 'text' }, label: { control: 'text' },
-    selected: { control: 'boolean' }, disabled: { control: 'boolean' },
+    readonly: { control: 'boolean' }, selected: { control: 'boolean' }, disabled: { control: 'boolean' },
   },
   render: (args) => ({ props: args, template: `
-    <app-workspace-record [title]="title" [label]="label" [selected]="selected" [disabled]="disabled" [link]="link" [queryParams]="queryParams" (activate)="activate($event)">
+    <app-workspace-record [title]="title" [label]="label" [selected]="selected" [disabled]="disabled" [readonly]="readonly" [link]="link" [queryParams]="queryParams" (activate)="activate($event)">
       <mat-icon recordIcon>event</mat-icon>
       <span recordDescription>Minicurso · Auditório da FCT · 24 participantes</span>
       <button recordActions matIconButton type="button" aria-label="Mais ações"><mat-icon>more_vert</mat-icon></button>
@@ -58,4 +58,14 @@ export const Unavailable: Story = {
 export const LongName: Story = {
   args: { title: 'Oficina de acessibilidade e inclusão digital para estudantes, ministrantes e organizadores da comunidade universitária' },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+export const ReadOnly: Story = {
+  args: { readonly: true },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('link', { name: args.title })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: args.title })).toBeNull();
+    await expect(canvas.getByText(args.title)).toBeVisible();
+  },
 };

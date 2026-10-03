@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { WORKSPACE_TAB_PERMISSIONS } from '@cacic-fct/shared-permissions';
 
-import { findNavigationItemForUrl, navigationItems } from './navigation';
+import { findNavigationItemForUrl, globalNavigationItems, navigationItems } from './navigation';
 
 describe('workspace nav', () => {
+  it('keeps resource operations out of the global menu while retaining the event shortcut', () => {
+    const linkIds = globalNavigationItems.filter((item) => item.kind === 'link').map((item) => item.id);
+
+    expect(linkIds).toEqual([
+      'dashboard', 'events', 'certificates', 'people', 'merge-candidates',
+      'notifications', 'places', 'global-operations', 'permissions', 'audit-logs', 'preferences',
+    ]);
+  });
+
   it('does not match dividers as active nav items', () => {
     expect(findNavigationItemForUrl('/').id).toBe('dashboard');
     expect(findNavigationItemForUrl('/workspace/subscriptions').id).toBe('subscriptions');
