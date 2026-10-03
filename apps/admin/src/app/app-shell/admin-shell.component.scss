@@ -47,6 +47,8 @@
 .logo-link { display: flex; align-items: center; }
 
 .content-shell {
+  max-width: 1560px;
+  margin-inline: auto;
   min-height: calc(100dvh - 64px);
   background: var(--mat-sys-surface);
   min-width: 0;

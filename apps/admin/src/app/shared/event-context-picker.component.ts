@@ -149,7 +149,11 @@ let nextPickerId = 0;
     .context-pager { justify-content:space-between; font:var(--mat-sys-body-small); }
     .context-results { max-height:min(30rem, 50dvh); overflow:auto; }
     .context-tree, .context-tree-children { list-style:none; margin:0; padding:0; }
-    .context-tree-children { margin-inline-start:1rem; }
+    .context-tree-children { position:relative; margin-inline-start:1rem; }
+    .context-tree-children:has(> .context-tree-entry)::before {
+      content:''; position:absolute; inset-block:0.125rem; inset-inline-start:0.375rem;
+      border-inline-start:1px solid var(--mat-sys-outline-variant); pointer-events:none;
+    }
     .context-node-row { display:grid; grid-template-columns:44px minmax(0,1fr); align-items:start; }
     .disclosure { margin-block-start:0.5rem; } .disclosure-spacer { width:44px; }
     .container-node { display:grid; gap:0.25rem; min-width:0; padding:0.75rem; overflow-wrap:anywhere; }
@@ -157,7 +161,10 @@ let nextPickerId = 0;
     .node-meta, .node-ancestry, .container-node small { display:block; font:var(--mat-sys-body-small); overflow-wrap:anywhere; }
     .node-ancestry { margin-block-start:0.25rem; }
     .empty-result { padding:0.75rem; font:var(--mat-sys-body-medium); }
-    @media(max-width:480px) { .context-tree-children { margin-inline-start:0.5rem; } }
+    @media(max-width:480px) {
+      .context-tree-children { margin-inline-start:0.5rem; }
+      .context-tree-children:has(> .context-tree-entry)::before { inset-inline-start:0.875rem; }
+    }
   `,
 })
 export class EventContextPickerComponent {

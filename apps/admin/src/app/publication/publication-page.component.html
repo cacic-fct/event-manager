@@ -72,7 +72,7 @@
             </span>
           </button>
           @if ((node.children?.length ?? 0) > 0 && isExpanded(node)) {
-            <ul class="publication-tree-children">
+            <ul class="publication-tree-children" [style.--publication-level]="level">
               @for (child of node.children ?? []; track nodeKey(child)) {
                 <ng-container
                   [ngTemplateOutlet]="publicationTreeNode"

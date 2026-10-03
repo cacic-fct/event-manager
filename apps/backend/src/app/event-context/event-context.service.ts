@@ -72,7 +72,7 @@ type InternalNode = {
   publicationState: string | null;
   majorEventId: string | null;
   eventGroupId: string | null;
-  sortDate: Date;
+  sortDate: Date | null;
   score?: string;
   sourceAdvance?: number;
 };
@@ -361,25 +361,38 @@ export class EventContextService {
     );
     const records = await this.prisma.eventGroup.findMany({
       where,
-      select: GROUP_SELECT,
+      select: {
+        ...GROUP_SELECT,
+        events: {
+          where: this.andEventWhere(
+            { deletedAt: null },
+            this.eventAccessWhere(access.events),
+            this.eventAudienceFilter(),
+            access.allowed.has(AdminEventContextKind.EVENT) ? null : { id: { in: [] } },
+          ),
+          select: { startDate: true },
+          orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+          take: 1,
+        },
+      },
       orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-      skip,
-      take,
+      ...(query ? { skip, take } : {}),
     });
-    return records.map((group) => ({
+    const nodes: InternalNode[] = records.map((group) => ({
       kind: AdminEventContextKind.EVENT_GROUP,
       id: group.id,
       name: group.name,
       emoji: group.emoji,
-      startDate: null,
+      startDate: query ? null : group.events[0]?.startDate ?? null,
       endDate: null,
       eventType: null,
       locationDescription: null,
       publicationState: null,
       majorEventId: group.majorEventId,
       eventGroupId: null,
-      sortDate: group.updatedAt,
+      sortDate: query ? group.updatedAt : group.events[0]?.startDate ?? null,
     }));
+    return query ? nodes : nodes.sort((left, right) => this.compareNodes(left, right, false)).slice(skip, skip + take);
   }
 
   private async listMajorEvents(input: PageInput, query: string, access: Access, skip: number, take: number) {
@@ -753,7 +766,9 @@ export class EventContextService {
       const kindDifference = KIND_ORDER[left.kind] - KIND_ORDER[right.kind];
       return kindDifference || (left.sourceAdvance ?? 0) - (right.sourceAdvance ?? 0) || left.id.localeCompare(right.id);
     }
-    const dateDifference = right.sortDate.getTime() - left.sortDate.getTime();
+    if (left.sortDate === null && right.sortDate !== null) return 1;
+    if (right.sortDate === null && left.sortDate !== null) return -1;
+    const dateDifference = (right.sortDate?.getTime() ?? 0) - (left.sortDate?.getTime() ?? 0);
     if (dateDifference !== 0) return dateDifference;
     const kindDifference = KIND_ORDER[left.kind] - KIND_ORDER[right.kind];
     return kindDifference || left.id.localeCompare(right.id);

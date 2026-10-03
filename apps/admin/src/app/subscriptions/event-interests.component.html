@@ -1,61 +1,11 @@
 <section class="subtab-layout interest-layout">
   @if (context() && loadingTargets()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando interessados do contexto" /> }
-  @if (!context()) {<aside class="interest-target-browser">
-    <app-workspace-scope [emoji]="selectedTarget()?.emoji"
-      [scopeId]="selectedTarget()?.targetId ?? null"
-      [title]="selectedTarget()?.name ?? ''"
-      emptyLabel="Selecionar atividade"
-      description="Escolha um evento, grupo ou grande evento.">
-    <div class="panel-heading">
-      <div>
-        <h3>Quero ir</h3>
-        <p>Escolha um evento, grupo ou grande evento para consultar os interessados.</p>
-      </div>
-    </div>
-
-    <mat-form-field class="interest-target-search">
-      <mat-label>Buscar</mat-label>
-      <mat-icon matPrefix>search</mat-icon>
-      <input
-        matInput
-        aria-label="Buscar eventos, grupos e grandes eventos com interesse"
-        [formControl]="targetSearchForm.controls.query" />
-    </mat-form-field>
-
-    @if (loadingTargets()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos, grupos e grandes eventos com interesse" />
-    }
-
-    <mat-list class="interest-target-list">
-      @for (target of filteredTargets(); track target.targetType + ':' + target.targetId) {
-        <app-workspace-record
-          [title]="target.name"
-          [label]="'Consultar interessados de ' + target.name"
-          [selected]="selectedTarget()?.targetType === target.targetType && selectedTarget()?.targetId === target.targetId"
-          [link]="['/subscriptions', target.targetType === 'EVENT' ? 'event' : target.targetType === 'EVENT_GROUP' ? 'group' : 'major-event', target.targetId, 'interests']">
-          <span recordIcon class="list-title">
-            <lib-twemoji [emoji]="target.emoji" />
-          </span>
-          <span recordDescription>{{ target.kindLabel }}{{ target.interestEnabled ? '' : ' · Novos interesses desativados' }}
-            @if (target.startDate) { · {{ target.startDate | date: 'short' }} }
-          </span>
-        </app-workspace-record>
-      } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhum evento, grupo ou grande evento encontrado</span>
-          <span matListItemLine>Revise a busca para consultar o histórico de interesses.</span>
-        </mat-list-item>
-      }
-    </mat-list>
-    </app-workspace-scope>
-  </aside>}
-
   <section class="panel interest-workbench">
     @if (selectedTarget(); as target) {
       <div class="panel-heading">
         <div>
           <h3><lib-twemoji [emoji]="target.emoji" /> {{ target.name }}</h3>
-          <p>{{ targetTypeLabel(target.targetType) }}</p>
+          <p>{{ targetTypeLabel(target.targetType) }}@if (!target.interestEnabled) { · Novos interesses desativados }</p>
         </div>
       </div>
 

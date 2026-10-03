@@ -184,4 +184,9 @@
   gap: 0.5rem;
 }
 
-.tab-grid.context-editor { grid-template-columns: minmax(0, 1fr); }
+.tab-grid.context-editor {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  max-width: 840px;
+  margin-inline: auto;
+}
