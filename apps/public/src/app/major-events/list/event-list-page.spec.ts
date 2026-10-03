@@ -1,3 +1,7 @@
+import { signal } from '@angular/core';
+import { InterestApiService } from '../../interests/interest-api.service';
+import { PublicEventFormApiService } from '../../forms/event-form-api.service';
+import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { createPublicMajorEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
@@ -17,7 +21,9 @@ describe('MajorEvent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MajorEvent],
-      providers: [
+      providers: [provideHttpClient(),
+      { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})) } },
+      { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: vi.fn(() => of([])) } },
         {
           provide: AnalyticsService,
           useValue: {
@@ -63,6 +69,32 @@ describe('MajorEvent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('loads participation once for the list and refreshes it after invalidation', async () => {
+    TestBed.resetTestingModule();
+    const updates = new Subject<void>();
+    const endsAt = publicFixtureDateFromNow(1);
+    const getStates = vi.fn(() => of({
+      'major-1': { interest: null, subscribed: false, enabled: true, endsAt },
+      'major-2': { interest: null, subscribed: false, enabled: true, endsAt },
+    }));
+    const getState = vi.fn();
+    const listCurrentUserForms = vi.fn(() => of([]));
+    const { fixture } = await createMajorEventFixture({
+      events: [createPublicMajorEvent({ id: 'major-1', endDate: endsAt }), createPublicMajorEvent({ id: 'major-2', endDate: endsAt })],
+      availability: vi.fn(() => of([])), watchCatalog: () => updates, authenticated: true,
+      interestApi: { getStates, getState }, formsApi: { listCurrentUserForms },
+    });
+    await waitForDrawRefresh(fixture);
+    expect(getStates).toHaveBeenCalledExactlyOnceWith('MAJOR_EVENT', ['major-1', 'major-2']);
+    expect(listCurrentUserForms).toHaveBeenCalledTimes(1);
+    expect(getState).not.toHaveBeenCalled();
+    updates.next();
+    await waitForDrawRefresh(fixture);
+    expect(getStates).toHaveBeenCalledTimes(2);
+    expect(listCurrentUserForms).toHaveBeenCalledTimes(2);
+    fixture.destroy();
   });
 
   it('routes tournament-only major events to the tournament subscription', () => {
@@ -159,17 +191,22 @@ async function createMajorEventFixture(input: {
   events: ReturnType<typeof createPublicMajorEvent>[];
   availability: ReturnType<typeof vi.fn>;
   watchCatalog: () => Subject<void>;
+  authenticated?: boolean;
+  interestApi?: Partial<InterestApiService>;
+  formsApi?: Partial<PublicEventFormApiService>;
 }): Promise<{ component: MajorEvent; fixture: ComponentFixture<MajorEvent> }> {
   await TestBed.configureTestingModule({
     imports: [MajorEvent],
-    providers: [
+    providers: [provideHttpClient(),
+      { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})), ...input.interestApi } },
+      { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: vi.fn(() => of([])), ...input.formsApi } },
       {
         provide: AnalyticsService,
         useValue: { trackEvent: vi.fn() },
       },
       {
         provide: AuthService,
-        useValue: { isAuthenticated: () => false, login: vi.fn() },
+        useValue: { isAuthenticated: signal(input.authenticated ?? false), login: vi.fn() },
       },
       {
         provide: ActivatedRoute,

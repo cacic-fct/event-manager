@@ -19,6 +19,15 @@ describe('AuthorizationPolicyService', () => {
     service = new AuthorizationPolicyService(prisma as never);
   });
 
+  it.each([Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create])(
+    'ignores explicit new IDs for %s while retaining actual parents', (permission) => {
+      const context = service.buildResourceContext({ input: { id: 'new-resource', eventGroupId: 'parent-group', majorEventId: 'parent-major' } }, [permission]);
+      expect(context.genericId).toBeUndefined();
+      expect(context).toMatchObject({ eventGroupId: 'parent-group', majorEventId: 'parent-major' });
+      expect(service.buildResourceContext({ id: 'existing-event' }, [Permission.Event.Update]).genericId).toBe('existing-event');
+    },
+  );
+
   it('requires the Event Manager access Keycloak role before DB grants are considered', async () => {
     activeScopes.mockResolvedValue([
       grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),

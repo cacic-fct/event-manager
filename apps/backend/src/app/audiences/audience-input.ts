@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EventAudience, Prisma } from '@prisma/client';
 import { AudienceInvitationService, type AudienceInvitationTarget } from './audience-invitation.service';
-import { audienceContext } from './audience-context';
+import { ANONYMOUS_AUDIENCE, audienceContext } from './audience-context';
 
 export type AudienceInput = {
   audience?: EventAudience | null;
@@ -40,6 +40,7 @@ export const AUDIENCE_ADMIN_SELECT = {
 export type AudienceChange = {
   target: AudienceInvitationTarget;
   personIds: string[];
+  invitationsChanged?: boolean;
   previousInvitationPersonIds?: string[];
   invitationPersonIds?: string[];
 };
@@ -55,28 +56,31 @@ export async function applyAudienceSettings(
 ): Promise<AudienceChange | undefined> {
   if (input.audience === undefined && input.audienceCourseCodes === undefined && input.invitationPersonIds === undefined) return undefined;
   const settings = normalizeAudienceInput(input, previous);
-  const changes = input.invitationPersonIds === undefined ? undefined : await invitations.replaceInvitations(target, input.invitationPersonIds ?? [], actorId, tx);
+  const proposedPersonIds = input.invitationPersonIds;
   const principal = audienceContext.getStore();
   if (principal && !principal.bypass) {
     const included = settings.audience === EventAudience.PUBLIC ||
       (settings.audience === EventAudience.UNESP_ONLY && principal.isUnesp) ||
       (settings.audience === EventAudience.COURSE_ONLY && principal.verifiedCourseCode !== null && settings.audienceCourseCodes.includes(principal.verifiedCourseCode)) ||
-      (settings.audience === EventAudience.INVITATION_ONLY && (changes?.invitations ?? await invitations.listInvitations(target, tx)).some((invitation) => principal.personIds.includes(invitation.personId)));
+      (settings.audience === EventAudience.INVITATION_ONLY && (proposedPersonIds ?? (await invitations.listInvitations(target, tx)).map((invitation) => invitation.personId)).some((personId) => principal.personIds.includes(personId)));
     if (!included) throw new ForbiddenException('Para gerenciar um evento fora do seu público-alvo, é necessária a permissão de acesso fora do público-alvo.');
   }
+  // The current target has already passed access checks. Validate its resulting
+  // audience above, then write both settings atomically before checking ancestors.
+  const changes = await audienceContext.run({ ...(principal ?? ANONYMOUS_AUDIENCE), bypass: true }, async () => {
+    const changes = input.invitationPersonIds === undefined ? undefined
+      : await invitations.replaceInvitations(target, input.invitationPersonIds ?? [], actorId, tx);
+    switch (target.targetType) {
+      case 'EVENT': await tx.event.update({ where: { id: target.targetId }, data: settings }); break;
+      case 'EVENT_GROUP': await tx.eventGroup.update({ where: { id: target.targetId }, data: settings }); break;
+      case 'MAJOR_EVENT': await tx.majorEvent.update({ where: { id: target.targetId }, data: settings }); break;
+    }
+    return changes;
+  });
   switch (target.targetType) {
-    case 'EVENT':
-      await tx.event.update({ where: { id: target.targetId }, data: settings });
-      await tx.event.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } });
-      break;
-    case 'EVENT_GROUP':
-      await tx.eventGroup.update({ where: { id: target.targetId }, data: settings });
-      await tx.eventGroup.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } });
-      break;
-    case 'MAJOR_EVENT':
-      await tx.majorEvent.update({ where: { id: target.targetId }, data: settings });
-      await tx.majorEvent.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } });
-      break;
+    case 'EVENT': await tx.event.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } }); break;
+    case 'EVENT_GROUP': await tx.eventGroup.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } }); break;
+    case 'MAJOR_EVENT': await tx.majorEvent.findUniqueOrThrow({ where: { id: target.targetId }, select: { id: true } }); break;
   }
   const personIds = settings.audience !== EventAudience.INVITATION_ONLY ? [] : previous?.audience === EventAudience.INVITATION_ONLY
     ? changes?.addedPersonIds ?? []
@@ -84,6 +88,7 @@ export async function applyAudienceSettings(
   return {
     target,
     personIds,
+    invitationsChanged: !!changes && (changes.addedPersonIds.length > 0 || changes.removedPersonIds.length > 0),
     ...(changes ? {
       previousInvitationPersonIds: [...changes.invitations.filter((item) => !changes.addedPersonIds.includes(item.personId)).map((item) => item.personId), ...changes.removedPersonIds].sort(),
       invitationPersonIds: changes.invitations.map((item) => item.personId).sort(),

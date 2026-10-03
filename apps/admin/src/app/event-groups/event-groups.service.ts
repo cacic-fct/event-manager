@@ -425,7 +425,7 @@ export class EventGroupsService {
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
     this.eventGroupAudienceInvitations.set(
-      (group.audienceInvitations ?? []).map((invitation) => invitation.person),
+      (group.audienceInvitations ?? []).map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }),
     );
     this.eventGroupEventSearchForm.reset(
       {

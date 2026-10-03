@@ -160,6 +160,7 @@ describe('merge candidate snapshot helpers', () => {
         movedAudienceInvitationSnapshots: [
           {
             targetType: 'EVENT',
+          coalesced: true,
             targetId: 'event-1',
             personId: 'source-person',
             createdAt: '2026-01-01T10:00:00.000Z',
@@ -180,6 +181,7 @@ describe('merge candidate snapshot helpers', () => {
       movedAudienceInvitationSnapshots: [
         {
           targetType: 'EVENT',
+          coalesced: true,
           targetId: 'event-1',
           personId: 'source-person',
           createdAt: '2026-01-01T10:00:00.000Z',
