@@ -1,3 +1,4 @@
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { combineLatest, of } from 'rxjs';
 import type { CreationParentSummary } from '../events/events.service';
@@ -39,6 +40,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
 @Component({
   selector: 'app-workspace-major-events-tab',
   imports: [
+    WorkspaceRecordComponent,
     MatProgressBarModule,
     MatMenuModule,
     MatExpansionModule,

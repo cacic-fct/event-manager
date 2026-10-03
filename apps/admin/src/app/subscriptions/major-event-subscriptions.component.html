@@ -67,7 +67,7 @@
             <p>
               {{ workspace.majorEventSubscriptionCount() }} registros ·
               {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'Pagamento exigido' : 'Pagamento não exigido' }} ·
-              <a [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)">Editar política</a>
+              <a matButton="text" [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)">Editar política</a>
             </p>
           </div>
         </div>
@@ -432,7 +432,7 @@
           <fieldset class="form-fieldset" [disabled]="isSelectedMajorEventLocked()">
             <mat-form-field>
               <mat-label>Status</mat-label>
-              <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.editMode()">
+              <mat-select formControlName="subscriptionStatus">
                 @for (status of statuses; track status) {
                   <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
                 }
@@ -474,7 +474,7 @@
 
             <mat-form-field>
               <mat-label>Faixa de pagamento</mat-label>
-              <mat-select formControlName="paymentTier" [disabled]="!workspace.editMode()">
+              <mat-select formControlName="paymentTier">
                 <mat-option [value]="null">Não informado</mat-option>
                 @for (tier of workspace.majorEventPaymentTiers(); track tier.id) {
                   <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
@@ -482,7 +482,7 @@
               </mat-select>
             </mat-form-field>
 
-            <mat-checkbox formControlName="imageLicenseAgreementAccepted" [disabled]="!workspace.editMode()">
+            <mat-checkbox formControlName="imageLicenseAgreementAccepted">
               Concordou com o
               <a
                 href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"

@@ -15,7 +15,7 @@
     @if (workspace.majorEventAttendanceForm.controls.majorEventId.value; as majorEventId) {
       <p class="empty-note">
         {{ workspace.majorEventUserAttendanceCount() }} participantes ·
-        <a [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']">Editar política de presença</a>
+        <a matButton="text" [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']">Editar política de presença</a>
       </p>
       <mat-form-field class="query-field">
         <mat-label>Buscar participante</mat-label>

@@ -84,6 +84,10 @@ export class AdminShellComponent {
   protected readonly eventWorkspace = inject(EventWorkspaceContextService);
   private readonly contextDialog = inject(MatDialog);
   protected readonly showGlobalNavigation = signal(false);
+  protected readonly contextSelectorLabel = computed(() => {
+    if (!this.routeContext()) return 'Escolher evento';
+    return `Trocar contexto: ${this.eventWorkspace.context()?.name ?? 'evento selecionado'}`;
+  });
   private readonly destroyRef = inject(DestroyRef);
   protected readonly requestActivity = inject(RequestActivityService);
   protected readonly permissions = inject(PermissionsService);

@@ -1,10 +1,9 @@
-import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { Help } from './help';
 
-const openMailClient = fn();
 let activeUserId: string | null = 'storybook-user';
 
 interface HelpStoryArgs {
@@ -18,7 +17,6 @@ const meta: Meta<HelpStoryArgs> = {
   decorators: [
     applicationConfig({
       providers: [
-        { provide: MailtoService, useValue: { open: openMailClient } },
         {
           provide: AuthService,
           useValue: {
@@ -57,13 +55,9 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: /Documentação e manual de uso/ })).toBeVisible();
-    await userEvent.click(canvas.getByRole('link', { name: /Suporte ao usuário/ }));
-    await expect(openMailClient).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: 'fctapp@googlegroups.com',
-        body: expect.stringContaining('storybook-user'),
-      }),
-    );
+    const support = canvas.getByRole('link', { name: /Suporte ao usuário/ });
+    await expect(support.getAttribute('href')).toMatch(/^mailto:fctapp@googlegroups.com\?/);
+    await expect(decodeURIComponent(support.getAttribute('href') ?? '')).toContain('storybook-user');
   },
 };
 
@@ -71,10 +65,8 @@ export const AnonymousSupport: Story = {
   args: { userId: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('link', { name: /Suporte ao usuário/ }));
-    await expect(openMailClient).toHaveBeenCalledWith(
-      expect.objectContaining({ body: expect.stringContaining('userId: Desconhecido') }),
-    );
+    const support = canvas.getByRole('link', { name: /Suporte ao usuário/ });
+    await expect(decodeURIComponent(support.getAttribute('href') ?? '')).toContain('userId: Desconhecido');
   },
 };
 

@@ -118,7 +118,7 @@ describe('PublicationService', () => {
               select: {
                 tournamentId: true,
                 status: true,
-                tournament: { select: { status: true } },
+                tournament: { select: { status: true, majorEventId: true } },
               },
             },
           },
@@ -144,6 +144,44 @@ describe('PublicationService', () => {
         },
       }),
     );
+  });
+
+  it.each([
+    [PublicationTargetType.EVENT, { id: 'selected', majorEventId: 'parent', eventGroupId: 'group' }, PublicationTargetType.MAJOR_EVENT],
+    [PublicationTargetType.EVENT, { id: 'selected', majorEventId: null, eventGroupId: 'parent' }, PublicationTargetType.EVENT_GROUP],
+    [PublicationTargetType.EVENT, { id: 'selected', majorEventId: null, eventGroupId: null }, PublicationTargetType.EVENT],
+    [PublicationTargetType.EVENT_GROUP, { id: 'selected', majorEventId: 'parent', events: [] }, PublicationTargetType.MAJOR_EVENT],
+    [PublicationTargetType.EVENT_GROUP, { id: 'selected', majorEventId: null, events: [{ majorEventId: 'parent' }] }, PublicationTargetType.MAJOR_EVENT],
+    [PublicationTargetType.EVENT_GROUP, { id: 'selected', majorEventId: null, events: [] }, PublicationTargetType.EVENT_GROUP],
+  ])('limits a focused %s workspace to its containing root (%j)', async (targetType, target, rootType) => {
+    const { prisma, service } = createService();
+    if (targetType === PublicationTargetType.EVENT) prisma.event.findFirst.mockResolvedValueOnce(target);
+    else prisma.eventGroup.findFirst.mockResolvedValueOnce(target);
+    await service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, {
+      focusTargetType: targetType, focusTargetId: 'selected',
+    });
+    const rootId = rootType === targetType ? 'selected' : 'parent';
+    const rootCount = rootType === PublicationTargetType.MAJOR_EVENT ? prisma.majorEvent.count
+      : rootType === PublicationTargetType.EVENT_GROUP ? prisma.eventGroup.count : prisma.event.count;
+    expect(JSON.stringify(rootCount.mock.calls[0][0].where)).toContain(JSON.stringify({ id: rootId }));
+    if (rootType !== PublicationTargetType.MAJOR_EVENT) {
+      expect(prisma.majorEvent.count.mock.calls[0][0].where.AND).toContainEqual({ id: { in: [] } });
+    }
+    if (rootType !== PublicationTargetType.EVENT_GROUP) {
+      expect(JSON.stringify(prisma.eventGroup.count.mock.calls[0][0].where)).toContain(JSON.stringify({ id: { in: [] } }));
+    }
+    const warningsWhere = JSON.stringify(prisma.event.findMany.mock.calls[1][0].where);
+    expect(warningsWhere).toContain(rootId);
+  });
+
+  it('does not fall back to global publication data for an unavailable focus', async () => {
+    const { prisma, service } = createService();
+    await service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, {
+      focusTargetType: PublicationTargetType.EVENT, focusTargetId: 'unavailable',
+    });
+    for (const model of [prisma.majorEvent, prisma.eventGroup, prisma.event]) {
+      expect(JSON.stringify(model.count.mock.calls[0][0].where)).toContain('"id":{"in":[]}');
+    }
   });
 
   it('builds flat event-group items from the same tree children as the hierarchy', async () => {

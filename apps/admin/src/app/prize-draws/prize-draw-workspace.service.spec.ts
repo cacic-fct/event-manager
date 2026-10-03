@@ -61,6 +61,18 @@ describe('PrizeDrawWorkspaceService', () => {
     service = TestBed.inject(PrizeDrawWorkspaceService);
   });
 
+  it('clears the previous inventory while another scope loads', async () => {
+    await service.loadDraws();
+    const pending = new Subject<PrizeDraw[]>();
+    api.list.mockReturnValueOnce(pending);
+    const changing = service.setScopeFromRoute({ eventId: 'event-1' });
+    expect(service.draws()).toEqual([]);
+    pending.next([]);
+    pending.complete();
+    await changing;
+    expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: 'event-1' }));
+  });
+
   it('keeps edits typed while the initial target catalog is still loading', async () => {
     const targets = new Subject<ReturnType<typeof createAdminEvent>[]>();
     eventApi.listEvents.mockReturnValueOnce(targets);

@@ -15,7 +15,7 @@
           <mat-icon>arrow_outward</mat-icon>
         </div>
       </a>
-      <a mat-list-item (click)="mailto()" tabindex="0" (keypress)="mailto()">
+      <a mat-list-item [href]="mailtoHref()">
         <mat-icon matListItemIcon>mail</mat-icon>
         <span matListItemTitle>Suporte ao usuário</span>
         <div matListItemMeta>

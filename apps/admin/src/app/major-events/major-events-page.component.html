@@ -165,21 +165,18 @@
 
           <mat-list class="detail-list">
             @for (eventItem of workspace.majorEventEvents(); track eventItem.id) {
-              <mat-list-item>
-                <span matListItemTitle class="list-title">
-                  <lib-twemoji [emoji]="eventItem.emoji" />
-                  @if (permissions.has(Permission.Event.Read)) {
-                    <a [routerLink]="['/event-workspace', 'event', eventItem.id, 'settings']">{{ eventItem.name }}</a>
-                  } @else {
-                    <span>{{ eventItem.name }}</span>
-                  }
-                </span>
-                <span matListItemLine>
+              <app-workspace-record
+                [title]="eventItem.name"
+                [link]="['/event-workspace', 'event', eventItem.id, 'settings']"
+                [readonly]="!permissions.has(Permission.Event.Read)">
+                <lib-twemoji recordIcon [emoji]="eventItem.emoji" />
+                <span recordDescription>
                   {{ eventItem.startDate | date: 'short' }} -
                   {{ eventItem.endDate | date: 'short' }}
                 </span>
                 @if (canEditSelectedMajorEventEvents()) {
                   <button
+                    recordActions
                     matIconButton
                     type="button"
                     aria-label="Remover atividade do grande evento"
@@ -188,7 +185,7 @@
                     <mat-icon>link_off</mat-icon>
                   </button>
                 }
-              </mat-list-item>
+              </app-workspace-record>
             } @empty {
               <mat-list-item>
                 <span matListItemTitle>Nenhuma atividade vinculada</span>

@@ -40,7 +40,10 @@
       <div class="workspace-selector">
         <button mat-button class="nav-item context-selector" type="button" (click)="openContextSelector()"
           [disabled]="eventWorkspace.scopeSwitchBlocked() || !canChooseContext()"
-          [attr.aria-label]="routeContext() ? 'Trocar contexto: ' + (eventWorkspace.context()?.name ?? 'evento selecionado') : 'Escolher evento'">
+          [attr.aria-label]="contextSelectorLabel()"
+          [matTooltip]="contextSelectorLabel()"
+          [matTooltipDisabled]="isMobile()"
+          matTooltipPosition="right">
           <span class="context-avatar">
             @if (eventWorkspace.context()?.emoji; as emoji) { <lib-twemoji [emoji]="emoji" /> }
             @else { <mat-icon>search</mat-icon> }
@@ -52,6 +55,9 @@
         @if (routeContext()) {
           <button mat-button class="nav-item" type="button"
             [attr.aria-label]="showGlobalNavigation() ? 'Menu do contexto' : 'Menu global'"
+            [matTooltip]="showGlobalNavigation() ? 'Menu do contexto' : 'Menu global'"
+            [matTooltipDisabled]="isMobile()"
+            matTooltipPosition="right"
             (click)="showGlobalNavigation.set(!showGlobalNavigation())">
             <mat-icon>{{ showGlobalNavigation() ? 'arrow_forward' : 'arrow_back' }}</mat-icon>
             <span class="nav-label">{{ showGlobalNavigation() ? 'Menu do contexto' : 'Menu global' }}</span>
@@ -62,18 +68,23 @@
           @if (eventWorkspace.context(); as context) {
             @if (context.parent; as parent) {
               <button mat-button class="nav-item context-parent" type="button" [attr.aria-label]="'Voltar para ' + parent.name"
+                [matTooltip]="'Voltar para ' + parent.name"
+                [matTooltipDisabled]="isMobile()"
+                matTooltipPosition="right"
                 [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="switchContext(parent, 'overview')">
                 <mat-icon>arrow_upward</mat-icon><span class="nav-label"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</span>
               </button>
             }
             @if (context.kind === 'major-event' && permissions.canReadTab('groups')) {
               <button mat-button class="nav-item" type="button" aria-label="Abrir grupo neste contexto"
+                matTooltip="Abrir grupo neste contexto" [matTooltipDisabled]="isMobile()" matTooltipPosition="right"
                 [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="openContextSelector('group')">
                 <mat-icon>folder_open</mat-icon><span class="nav-label">Abrir grupo</span>
               </button>
             }
             @if (context.kind !== 'event' && permissions.canReadTab('events')) {
               <button mat-button class="nav-item" type="button" aria-label="Abrir evento neste contexto"
+                matTooltip="Abrir evento neste contexto" [matTooltipDisabled]="isMobile()" matTooltipPosition="right"
                 [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="openContextSelector('event')">
                 <mat-icon>event</mat-icon><span class="nav-label">Abrir evento</span>
               </button>
@@ -81,12 +92,14 @@
             @if (context.kind !== 'event' && !context.isSportsManaged) {
               @if (canCreateContext(permissions, 'event')) {
                 <button mat-button class="nav-item" type="button" aria-label="Novo evento neste contexto"
+                  matTooltip="Novo evento neste contexto" [matTooltipDisabled]="isMobile()" matTooltipPosition="right"
                   [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="createResource('event', context)">
                   <mat-icon>add</mat-icon><span class="nav-label">Novo evento</span>
                 </button>
               }
               @if (context.kind === 'major-event' && canCreateContext(permissions, 'group')) {
                 <button mat-button class="nav-item" type="button" aria-label="Novo grupo neste grande evento"
+                  matTooltip="Novo grupo neste grande evento" [matTooltipDisabled]="isMobile()" matTooltipPosition="right"
                   [disabled]="eventWorkspace.scopeSwitchBlocked()" (click)="createResource('group', context)">
                   <mat-icon>create_new_folder</mat-icon><span class="nav-label">Novo grupo</span>
                 </button>
@@ -108,7 +121,6 @@
         @for (item of navItems(); track item.id) {
           @if (item.kind === 'divider') {
             <mat-divider></mat-divider>
-            <span class="nav-group-label">{{ item.label }}</span>
           } @else {
             <a
               mat-button

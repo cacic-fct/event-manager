@@ -1066,6 +1066,25 @@ describe('SportsWorkspaceService operations', () => {
       expect(workspace.officialForm.controls.personId.value).toBe('');
     });
 
+    it('disables official scope while editing and restores assignment scope when canceled', () => {
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'category-official-1',
+        categoryId: 'category-1',
+        matchId: null,
+      };
+
+      workspace.editOfficial(official);
+
+      expect(workspace.officialForm.controls.scope.disabled).toBe(true);
+      expect(workspace.officialForm.getRawValue().scope).toBe('CATEGORY');
+
+      workspace.cancelOfficialEdit();
+
+      expect(workspace.officialForm.controls.scope.enabled).toBe(true);
+      expect(workspace.officialForm.controls.scope.value).toBe('MATCH');
+    });
+
     it('removes an official through the permissioned versioned delete mutation', async () => {
       const review = createAdminSportsMatchReview();
       const official = {

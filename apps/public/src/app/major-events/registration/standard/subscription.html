@@ -2,9 +2,9 @@
 <router-outlet />
 } @else { @let state = pageState();
 <mat-toolbar>
-  <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
+  <a matIconButton routerLink="/menu" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
-  </button>
+  </a>
   <h1 class="global-toolbar-title">{{ state.status === 'ready' ? state.data.majorEvent.name : 'Inscrição' }}</h1>
 </mat-toolbar>
 

@@ -366,6 +366,12 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     return true;
   };
 
+  form.controls.resultsPublic.valueChanges.subscribe((resultsPublic) => {
+    const control = form.controls.resultsLive;
+    if (resultsPublic) control.enable({ emitEvent: false });
+    else control.disable({ emitEvent: false });
+  });
+
   patchForm(form, selectedForm);
 
   const service = {
@@ -744,7 +750,7 @@ function createEditorForm(formBuilder: FormBuilder) {
     sigilo: ['SECRET' as EventFormSigilo],
     responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
-    resultsLive: [false],
+    resultsLive: [{ value: false, disabled: true }],
     allowResponseEdits: [false],
     scheduledPublishAt: [''],
   });

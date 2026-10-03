@@ -682,6 +682,7 @@ export class PrizeDrawWorkspaceService {
       return false;
     }
     this.scopeFilter.set(filter);
+    this.draws.set([]);
     resetPagination(this.drawsPagination);
     this.createNew(false);
     await this.loadDraws();

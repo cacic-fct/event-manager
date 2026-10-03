@@ -16,8 +16,8 @@ export class Help {
   private readonly mailtoService = inject(MailtoService);
   private readonly authService = inject(AuthService);
 
-  mailto(): void {
-    this.mailtoService.open({
+  mailtoHref(): string {
+    return this.mailtoService.compose({
       to: 'fctapp@googlegroups.com',
       subject: `[FCT-App] Suporte ao usuário`,
       body: `\n\n\n

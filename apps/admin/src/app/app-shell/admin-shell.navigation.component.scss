@@ -76,39 +76,6 @@
   align-self: stretch;
 }
 
-.nav-group-label {
-  display: none;
-  flex: 0 0 auto;
-  overflow: hidden;
-  max-height: 0;
-  max-width: 0;
-  margin: 0 0.75rem;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-small);
-  opacity: 0;
-  text-overflow: ellipsis;
-  visibility: hidden;
-  white-space: nowrap;
-  transition:
-    max-width var(--workspace-nav-transition),
-    opacity var(--workspace-nav-transition);
-}
-
-.sidenav.nav-mode-full .nav-group-label,
-.sidenav.nav-mode-auto .nav-group-label {
-  display: block;
-  max-height: 1rem;
-  max-width: 12rem;
-  margin: 0.5rem 0.75rem 0.125rem;
-}
-
-.sidenav.nav-mode-full .nav-group-label,
-.sidenav.nav-mode-auto:hover .nav-group-label,
-.sidenav.nav-mode-auto:has(:focus-visible) .nav-group-label {
-  opacity: 1;
-  visibility: visible;
-}
-
 @media (prefers-reduced-motion: reduce) {
   :host {
     --workspace-nav-transition: 0ms;
