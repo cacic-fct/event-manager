@@ -6,9 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { EventFormTargetType } from '@cacic-fct/event-manager-public-contracts';
-import { catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
+import { catchError, combineLatest, map, merge, of, startWith, switchMap } from 'rxjs';
 import { InterestApiService } from '../interests/interest-api.service';
 import { NetworkStatusService } from '../shared/network-status.service';
+import { RealtimeInvalidationService } from '../shared/realtime-invalidation.service';
 import { PublicEventFormApiService } from './event-form-api.service';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from './event-form-availability';
 
@@ -35,24 +36,31 @@ export class TargetFormLinks {
   readonly targetId = input.required<string>();
   private readonly api = inject(PublicEventFormApiService);
   private readonly interests = inject(InterestApiService);
+  private readonly realtime = inject(RealtimeInvalidationService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly authenticated = inject(AuthService).isAuthenticated;
   private readonly online = inject(NetworkStatusService).isOnline;
 
   readonly links = toSignal(combineLatest([
     toObservable(this.targetType), toObservable(this.targetId), toObservable(this.authenticated),
-    toObservable(this.online), this.interests.changes.pipe(startWith(undefined)),
+    toObservable(this.online),
   ]).pipe(switchMap(([targetType, targetId, authenticated, online]) => {
     if (!this.isBrowser || !authenticated || !online) return of([]);
-    return this.api.listCurrentUserForms({
-      targetType,
-      eventId: targetType === 'EVENT' ? targetId : null,
-      majorEventId: targetType === 'MAJOR_EVENT' ? targetId : null,
-    }).pipe(map((forms) => forms.flatMap((form) => form.links.flatMap((link) => {
-      if (link.targetType !== targetType || (link.eventId ?? link.majorEventId) !== targetId) return [];
-      const available = isPublicFormLinkAvailable(link);
-      if (!available && !arePublicFormResultsReleased(form, link)) return [];
-      return [{ formId: form.id, linkId: link.id, name: form.name, results: !available }];
-    }))), catchError(() => of([])));
+    return merge(this.interests.changes, this.realtime.watchCatalog()).pipe(
+      startWith(0),
+      switchMap(() => this.api.listCurrentUserForms({
+        targetType,
+        eventId: targetType === 'EVENT' ? targetId : null,
+        majorEventId: targetType === 'MAJOR_EVENT' ? targetId : null,
+      }).pipe(
+        map((forms) => forms.flatMap((form) => form.links.flatMap((link) => {
+          if (link.targetType !== targetType || (link.eventId ?? link.majorEventId) !== targetId) return [];
+          const available = isPublicFormLinkAvailable(link);
+          if (!available && !arePublicFormResultsReleased(form, link)) return [];
+          return [{ formId: form.id, linkId: link.id, name: form.name, results: !available }];
+        }))),
+        catchError(() => of([])),
+      )),
+    );
   })), { initialValue: [] });
 }

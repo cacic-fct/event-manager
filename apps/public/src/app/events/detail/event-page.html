@@ -80,17 +80,17 @@
     }
   </mat-chip-set>
 
-  @if (!data.preview && !isEventFinished() && event.interestEnabled && !data.currentUserSubscription) {
+  @if (!data.preview && !isEventFinished() && !data.currentUserSubscription) {
   <section class="interest-actions" aria-label="Interesse no evento">
     <app-interest-toggle targetType="EVENT" [targetId]="event.id" [targetName]="event.name"
-      [subscribed]="!!data.currentUserSubscription" [endsAt]="event.endDate"
+      [interestEnabled]="!!event.interestEnabled" [subscribed]="!!data.currentUserSubscription" [endsAt]="event.endDate"
       (changed)="refreshInterestForms()" />
   </section>
-  } @if (!data.preview && !isEventFinished() && event.eventGroup?.interestEnabled && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
-  <section class="interest-actions" aria-label="Interesse no grupo de eventos">
+  } @if (!data.preview && !isEventFinished() && event.eventGroup && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
+  <section class="interest-actions" aria-label="Interesse no grupo de eventos" [hidden]="!groupInterest.visible()">
     <p>{{ event.eventGroup.name }}</p>
-    <app-interest-toggle targetType="EVENT_GROUP" [targetId]="event.eventGroupId"
-      [targetName]="event.eventGroup.name"
+    <app-interest-toggle #groupInterest targetType="EVENT_GROUP" [targetId]="event.eventGroupId"
+      [targetName]="event.eventGroup.name" [interestEnabled]="!!event.eventGroup.interestEnabled"
       [subscribed]="!!data.currentUserSubscription?.eventGroupSubscriptionId"
       (changed)="refreshInterestForms()" />
   </section>

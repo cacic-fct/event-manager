@@ -514,7 +514,11 @@ export class CurrentUserSubscriptionFeedService {
       });
     }
     for (const [eventGroupId, group] of interestedEventGroupsById) {
-      if (lecturerEventGroupsById.has(eventGroupId) || certificateEventGroupIds.has(eventGroupId)) {
+      if (
+        attendanceEventGroupsById.has(eventGroupId) ||
+        lecturerEventGroupsById.has(eventGroupId) ||
+        certificateEventGroupIds.has(eventGroupId)
+      ) {
         continue;
       }
       items.push({
