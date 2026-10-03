@@ -841,8 +841,8 @@ export function createAdminE2EEventInterest(overrides: Record<string, unknown> =
     eventGroupId: null,
     majorEventId: null,
     isSubscribed: false,
-    createdAt: '2026-05-20T12:00:00.000Z',
-    updatedAt: '2026-05-20T12:00:00.000Z',
+    createdAt: relativeIsoDate(-1),
+    updatedAt: relativeIsoDate(-1),
     createdById: person.id,
     ...overrides,
   };

@@ -208,6 +208,8 @@ export class EventFormNotificationService {
               paymentTier ? allowedPaymentTiers.has(paymentTier.trim().toLocaleLowerCase('pt-BR')) : false,
             )
           : subscribedPeople;
+      const eligibleSubscribedIds = new Set(eligibleSubscribedPeople.map(({ person }) => person.id));
+      const canAccessPriceTier = (personId: string) => allowedPaymentTiers.size === 0 || eligibleSubscribedIds.has(personId);
       if (audiences.includes(EventFormAudience.SUBSCRIBERS)) {
         for (const subscription of eligibleSubscribedPeople) {
           if (matchesEventFormAudience(audiences, { interested: false, subscribed: true, attended: false })) {
@@ -222,6 +224,7 @@ export class EventFormNotificationService {
         });
         for (const interest of interests) {
           if (
+            canAccessPriceTier(interest.person.id) &&
             matchesEventFormAudience(audiences, {
               interested: true,
               subscribed: subscribedIds.has(interest.person.id),
@@ -238,7 +241,10 @@ export class EventFormNotificationService {
           select: { person: this.notificationPersonSelect() },
         });
         for (const attendance of attendances) {
-          if (matchesEventFormAudience(audiences, { interested: false, subscribed: false, attended: true })) {
+          if (
+            canAccessPriceTier(attendance.person.id) &&
+            matchesEventFormAudience(audiences, { interested: false, subscribed: false, attended: true })
+          ) {
             people.set(attendance.person.id, attendance.person);
           }
         }

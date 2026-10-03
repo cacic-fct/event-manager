@@ -69,10 +69,12 @@
         </mat-chip-set>
         @if (!isPreview()) {
         <app-interest-toggle targetType="MAJOR_EVENT" [targetId]="majorEvent.id" [targetName]="majorEvent.name"
-          [interestEnabled]="!!majorEvent.interestEnabled" [endsAt]="majorEvent.endDate" />
+          [interestEnabled]="!!majorEvent.interestEnabled" [endsAt]="majorEvent.endDate"
+          [prefetchedState]="interestStates()[majorEvent.id] ?? null" [prefetchLoading]="participationLoading()"
+          (changed)="refreshParticipation()" />
         }
         @if (!isPreview() && isAuthenticated()) {
-        <app-target-form-links targetType="MAJOR_EVENT" [targetId]="majorEvent.id" />
+        <app-target-form-links targetType="MAJOR_EVENT" [targetId]="majorEvent.id" [prefetchedForms]="participationForms()" />
         }
       </mat-card-content>
 

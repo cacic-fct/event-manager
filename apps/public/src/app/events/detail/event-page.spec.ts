@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event-page';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
+import { InterestApiService } from '../../interests/interest-api.service';
 import { MatDialog } from '@angular/material/dialog';
 import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -227,6 +228,25 @@ function subscriptionFormFixture(): PublicEventForm {
 }
 
 describe('Event', () => {
+  it('keeps group interest available after a member event ends', async () => {
+    TestBed.resetTestingModule();
+    const data = defaultEventPageData();
+    data.event = {
+      ...data.event,
+      endDate: new Date(Date.now() - 60_000).toISOString(),
+      eventGroupId: 'group-1',
+      eventGroup: { id: 'group-1', name: 'Grupo aberto', emoji: '🎓', interestEnabled: true },
+    };
+    const getState = vi.fn(() => of({ interest: null, enabled: true, subscribed: false,
+      endsAt: new Date(Date.now() + 86_400_000).toISOString() }));
+    TestBed.configureTestingModule({ providers: [{ provide: InterestApiService, useValue: { getState, changes: NEVER } }] });
+    const fixture = await createEventComponentFixture({}, { eventPageData: data, authenticated: true });
+    await fixture.whenStable();
+    expect(getState).toHaveBeenCalledWith('EVENT_GROUP', 'group-1');
+    expect(fixture.nativeElement.querySelector('[aria-label="Interesse no grupo de eventos"] button')).not.toBeNull();
+    fixture.destroy();
+  });
+
   let component: Event;
   let fixture: ComponentFixture<Event>;
   beforeEach(async () => {

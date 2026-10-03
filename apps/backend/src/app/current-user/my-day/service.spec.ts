@@ -15,6 +15,16 @@ describe('CurrentUserMyDayService helpers', () => {
     );
   });
 
+  it('does not expand a major-event interest into every child activity', () => {
+    const association = currentUserAssociatedEventWhere('person-1', undefined, new Date());
+    expect(association.OR).not.toContainEqual({
+      majorEvent: { interests: { some: { personId: 'person-1', deletedAt: null } } },
+    });
+    expect(association.OR).toContainEqual({
+      eventGroup: { interests: { some: { personId: 'person-1', deletedAt: null } } },
+    });
+  });
+
   it('uses stable São Paulo calendar-day bounds', () => {
     const bounds = dayBounds('2026-08-16');
 
