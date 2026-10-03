@@ -43,7 +43,7 @@ test('opens sports management from workspace navigation and lists configured tou
   await page.goto('/admin/event-workspace/major-event/major-event-1');
   await page.getByRole('link', { name: /Esportes/ }).click();
 
-  await expect(page).toHaveURL(/\/admin\/sports$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
   await expect(page.getByText('Semana da Computação')).toBeVisible();
   await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();

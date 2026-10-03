@@ -62,7 +62,7 @@ test('event workspace shows published event draft, scheduling, draft and publish
 test('group and major event workspaces expose draft and publication controls', async ({ page }) => {
   await page.goto('/admin/event-workspace/group/event-group-1/settings');
 
-  await expect(page.getByText('Trilha de Minicursos')).toBeVisible();
+  await expect(page.getByText('Trilha de Minicursos', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: /Novo grupo|Editar grupo/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Salvar rascunho|Voltar para rascunho/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Publicar|Salvar grupo|Atualizar publicação/ })).toBeVisible();
@@ -99,9 +99,9 @@ test('subscription management loads event and major event subscriptions', async 
 });
 
 test('Quero ir lists interests separately and converts one to a subscription', async ({ page }) => {
-  await page.goto('/admin/subscriptions');
+  await page.goto('/admin/subscriptions/major-event/major-event-1');
   await page.getByRole('link', { name: 'Consultar interesses' }).click();
-  await expect(page).toHaveURL(/subscriptions\/interests/);
+  await expect(page).toHaveURL(/subscriptions\/major-event\/major-event-1\/interests/);
   await expect(page.getByRole('heading', { name: 'Interessados' })).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByText('1 interesse')).toBeVisible();

@@ -1062,6 +1062,14 @@ function graphqlData(
   if (query.includes('query WorkspaceMajorEventSubscriptionCount')) {
     return { workspaceMajorEventSubscriptionCount: 1 };
   }
+  if (query.includes('query WorkspaceMajorEventSubscription(')) {
+    return {
+      workspaceMajorEventSubscription: createAdminE2EMajorEventSubscription({
+        id: String(variables['subscriptionId'] ?? 'major-event-subscription-1'),
+        majorEventId: String(variables['majorEventId'] ?? 'major-event-1'),
+      }),
+    };
+  }
   if (query.includes('query EventInterestCount')) {
     return { eventInterestCount: 1 };
   }
@@ -1074,7 +1082,20 @@ function graphqlData(
   }
 
   if (query.includes('query AdminEventInterests')) {
-    return { eventInterests: [createAdminE2EEventInterest()] };
+    const targetType = variables['targetType'];
+    const targetId = variables['targetId'];
+    const interest =
+      (targetType === 'EVENT' || targetType === 'EVENT_GROUP' || targetType === 'MAJOR_EVENT') &&
+      typeof targetId === 'string'
+        ? createAdminE2EEventInterest({
+            targetType,
+            targetId,
+            eventId: targetType === 'EVENT' ? targetId : null,
+            eventGroupId: targetType === 'EVENT_GROUP' ? targetId : null,
+            majorEventId: targetType === 'MAJOR_EVENT' ? targetId : null,
+          })
+        : createAdminE2EEventInterest();
+    return { eventInterests: [interest] };
   }
 
   if (query.includes('mutation ConvertEventInterestToSubscription')) {

@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  InjectionToken,
   OnDestroy,
   PLATFORM_ID,
   QueryList,
@@ -17,6 +18,13 @@ import * as echarts from 'echarts';
 import type { ECharts } from 'echarts';
 import { EventFormResults } from '@cacic-fct/event-manager-admin-contracts';
 import { observeEChartsTheme, readEChartsThemeColor } from '../shared/echarts-theme-colors';
+
+type EChartsFactory = Pick<typeof echarts, 'init'>;
+
+export const FORM_RESULTS_ECHARTS_FACTORY = new InjectionToken<EChartsFactory>('Form results ECharts factory', {
+  providedIn: 'root',
+  factory: () => echarts,
+});
 
 type FormResultSummary = {
   questions: Array<{
@@ -184,6 +192,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
   readonly chartQuestions = computed(() => this.summary().questions.filter((question) => question.buckets.length > 0));
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly echartsFactory = inject(FORM_RESULTS_ECHARTS_FACTORY);
   private readonly charts = new Map<string, ECharts>();
   private readonly resizeObservers = new Map<string, { element: HTMLElement; observer: ResizeObserver }>();
   private stopObservingTheme?: () => void;
@@ -255,7 +264,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
         existingChart.dispose();
         this.charts.delete(question.elementId);
       }
-      const chart = this.charts.get(question.elementId) ?? echarts.init(element, undefined, { renderer: 'canvas' });
+      const chart = this.charts.get(question.elementId) ?? this.echartsFactory.init(element, undefined, { renderer: 'canvas' });
       this.stopObservingTheme ??= observeEChartsTheme(element, () => this.renderCharts());
       const textColor = readEChartsThemeColor(element, '--mat-sys-on-surface', '#1b1b1f');
       const mutedColor = readEChartsThemeColor(element, '--mat-sys-on-surface-variant', '#45464f');
