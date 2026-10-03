@@ -216,6 +216,10 @@ describe('ticket relations during People merges', () => {
     tx.eventTicket.updateMany.mockClear();
 
     await restoreTicketPersonRelations(tx as never, snapshot);
+    expect(tx.eventTicketHistory.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'archive-history', ticketId: 'ticket-active', operation: 'REVOKED' },
+    });
+
 
     expect(tx.eventTicket.updateMany).toHaveBeenNthCalledWith(
       1,
@@ -363,7 +367,7 @@ function createTransaction() {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    eventTicketHistory: { create: jest.fn() },
+    eventTicketHistory: { create: jest.fn().mockResolvedValue({ id: 'archive-history' }), deleteMany: jest.fn() },
     ticketTransfer: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),

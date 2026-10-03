@@ -15,8 +15,19 @@ describe('SportsPaymentService', () => {
   let tx: ReturnType<typeof createTx>;
 
   beforeEach(() => {
-    service = new SportsPaymentService();
+    service = new SportsPaymentService({ forMajorEvent: jest.fn() } as never);
     tx = createTx();
+  });
+
+  it('syncs tickets in the sports subscription transaction and propagates sync failures', async () => {
+    const forMajorEvent = jest.fn().mockRejectedValue(new Error('Ticket sync failed'));
+    service = new SportsPaymentService({ forMajorEvent } as never);
+    await expect(service.ensureParticipant(tx as never, {
+      tournamentId: 'tournament-1', personId: 'person-1',
+      source: SportsParticipantSource.TEAM_ASSIGNMENT, approved: true,
+    })).rejects.toThrow('Ticket sync failed');
+    expect(forMajorEvent).toHaveBeenCalledWith(tx, 'major-1', 'person-1');
+    expect(tx.sportsTournamentParticipant.create).not.toHaveBeenCalled();
   });
 
   it('serializes participant creation by tournament and person', async () => {

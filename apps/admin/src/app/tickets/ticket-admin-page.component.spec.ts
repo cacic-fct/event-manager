@@ -156,6 +156,19 @@ function futureLocalDateTime(days: number): string {
 }
 
 describe('TicketAdminPageComponent', () => {
+  it.each(['0', '-1', '0.001'])('rejects prices that cannot produce a positive cent amount: %s', async (price) => {
+    const { fixture } = setup();
+    await settle(fixture);
+    const component = fixture.componentInstance;
+    expect(Reflect.get(component, 'priceInCents').call(component, price)).toBeNull();
+    const fixedPrice = Reflect.get(component, 'singlePrice');
+    fixedPrice.setValue(price);
+    expect(fixedPrice.invalid).toBe(true);
+    const tier = Reflect.get(component, 'createPriceRow').call(component, majorEvent.majorEventPrices[0].tiers[0], null);
+    tier.controls.amount.setValue(price);
+    expect(tier.invalid).toBe(true);
+  });
+
   it('refreshes holder state without overwriting unsaved configuration', async () => {
     const { fixture, api, changes } = setup();
     await settle(fixture);

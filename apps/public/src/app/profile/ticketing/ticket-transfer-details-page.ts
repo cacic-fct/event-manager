@@ -180,6 +180,8 @@ export class TicketTransferDetailsPage {
 
   stateMessage(transfer: TicketTransfer): string {
     switch (ticketStatusAt(transfer.ticket, this.now())) {
+      case 'UNAVAILABLE':
+        return 'Este bilhete está indisponível porque sua configuração foi desativada.';
       case 'CONSUMED':
         return 'Este bilhete já foi utilizado e não pode ser transferido.';
       case 'EXPIRED':

@@ -47,16 +47,16 @@ describe('ticket administrator audience boundaries', () => {
 
 
 describe('admin ticket status filtering', () => {
-  it('uses the same effective ACTIVE expiry boundary for rows and totals', async () => {
+  it.each(['ACTIVE', 'UNAVAILABLE'])('uses the same effective %s state for rows and totals', async (status) => {
     const prisma = {
       event: { findUnique: jest.fn().mockResolvedValue({ id: 'event' }) },
       eventTicket: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     };
     const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
     const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never);
-    await resolver.adminEventTickets('event', 'ACTIVE', undefined, 50, undefined, context);
+    await resolver.adminEventTickets('event', status, undefined, 50, undefined, context);
     const rowWhere = prisma.eventTicket.findMany.mock.calls[0][0].where;
-    expect(rowWhere).toEqual({ eventId: 'event', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) } });
+    expect(rowWhere).toEqual({ eventId: 'event', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) }, ticketConfig: { enabled: status === 'ACTIVE' } });
     expect(prisma.eventTicket.count).toHaveBeenCalledWith({ where: rowWhere });
   });
 });

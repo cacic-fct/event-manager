@@ -221,6 +221,7 @@ function readTicketPersonRelationsSnapshot(value: Prisma.JsonValue): TicketPerso
       expectedStatus: readTicketStatus(entry, 'expectedStatus'),
       expectedRevokedAt: readNullableString(entry, 'expectedRevokedAt'),
       expectedRevokedReason: readNullableString(entry, 'expectedRevokedReason'),
+      archiveHistoryId: readNullableString(entry, 'archiveHistoryId'),
     };
   });
   const transferSnapshots = readArrayValue(value.transferSnapshots, 'ticket transfer snapshots').map((entry) => ({

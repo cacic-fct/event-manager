@@ -482,15 +482,15 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       });
       if (existingFromSource) {
-      if (
-        existingFromSource.status === EventTicketStatus.ACTIVE &&
-        existingFromSource.holderPersonId === personId &&
-        existingFromSource.issuedAt > attendedAt
-      ) {
-        if (!(await this.hasRevocationHistory(tx, existingFromSource.id))) {
-          await this.alignTicketIssuedAtForAttendance(tx, event, personId, existingFromSource, attendedAt, 'ATTENDANCE');
+        if (
+          existingFromSource.status === EventTicketStatus.ACTIVE &&
+          existingFromSource.holderPersonId === personId &&
+          existingFromSource.issuedAt > attendedAt
+        ) {
+          if (!(await this.hasRevocationHistory(tx, existingFromSource.id))) {
+            await this.alignTicketIssuedAtForAttendance(tx, event, personId, existingFromSource, attendedAt, 'ATTENDANCE');
+          }
         }
-      }
         return;
       }
 

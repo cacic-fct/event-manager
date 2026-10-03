@@ -210,8 +210,14 @@ export class WalletEventTicketCard {
   });
 
   googlePictureUrl(url: string | null): string {
-    if (!url?.includes('lh3.googleusercontent.com')) return url ?? '';
-    return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') return url;
+      return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
+    } catch {
+      return url;
+    }
   }
 
 }

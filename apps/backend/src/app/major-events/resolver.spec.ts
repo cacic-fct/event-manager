@@ -4,6 +4,22 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
 
 describe('MajorEventsResolver', () => {
+  it('blocks tier deletion when ticket policies or offers reference a removed tier', async () => {
+    const { resolver, tx } = createResolver();
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-used' }]);
+    tx.ticketConfig.findFirst.mockResolvedValue({ id: 'config-used' });
+    await expect(resolver['deleteMajorEventPrice'](tx as never, 'major-1')).rejects.toThrow('configurações de bilhetes');
+    expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
+    expect(tx.ticketConfig.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [
+        { includedPriceTierIds: { hasSome: ['tier-used'] } },
+        { recipientAllowedPriceTierIds: { hasSome: ['tier-used'] } },
+        { purchaseVisiblePriceTierIds: { hasSome: ['tier-used'] } },
+        { priceOptions: { some: { priceTierId: { in: ['tier-used'] } } } },
+      ] },
+    }));
+  });
+
   it.each([false, true, undefined])('preserves explicit sports entitlement updates: %s', (value) => {
     const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
     const [payload] = resolver['buildPriceTierPayloads']({
@@ -1063,6 +1079,7 @@ describe('MajorEventsResolver', () => {
       },
       majorEventPrice: { upsert: jest.fn(), deleteMany: jest.fn() },
       priceTier: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+      ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
       eventFormLinkPriceTier: { count: jest.fn().mockResolvedValue(0) },
       sportsTournament: { findFirst: jest.fn() },
     };
@@ -1110,6 +1127,7 @@ function createResolver(
   } = {},
 ) {
   const tx = {
+    ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
     event: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEvent: {
       create: jest.fn(),

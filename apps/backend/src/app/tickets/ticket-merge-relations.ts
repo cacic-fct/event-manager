@@ -28,6 +28,7 @@ export type TicketHolderMergeSnapshot = {
   expectedStatus: EventTicketStatus;
   expectedRevokedAt: string | null;
   expectedRevokedReason: string | null;
+  archiveHistoryId?: string | null;
 };
 
 export type TicketTransferPersonMergeSnapshot = {
@@ -212,6 +213,13 @@ export async function restoreTicketPersonRelations(
         `O bilhete duplicado ${ticket.id} foi alterado após a unificação e não pode ser restaurado com segurança.`,
       );
     }
+  }
+
+  for (const ticket of snapshot.holderSnapshots.filter((entry) => entry.action === 'ARCHIVED')) {
+    if (!ticket.archiveHistoryId) continue;
+    await tx.eventTicketHistory.deleteMany({
+      where: { id: ticket.archiveHistoryId, ticketId: ticket.id, operation: TicketHistoryOperation.REVOKED },
+    });
   }
 
   for (const transfer of snapshot.transferSnapshots) {
@@ -545,7 +553,7 @@ async function archiveDuplicateTicket(
     );
   }
 
-  await tx.eventTicketHistory.create({
+  const archiveHistory = await tx.eventTicketHistory.create({
     data: {
       ticketId: ticket.id,
       operation: TicketHistoryOperation.REVOKED,
@@ -555,6 +563,7 @@ async function archiveDuplicateTicket(
       reason: 'Bilhete duplicado arquivado durante a unificação de pessoas.',
     },
   });
+  snapshot.archiveHistoryId = archiveHistory.id;
   await recordTicketAudit(tx, {
     entityType: AuditLogEntityType.TICKET,
     entityId: ticket.id,

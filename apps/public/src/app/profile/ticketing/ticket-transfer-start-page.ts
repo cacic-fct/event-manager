@@ -219,6 +219,8 @@ export class TicketTransferStartPage {
 
   ticketUnavailableMessage(ticket: WalletTicket): string {
     switch (this.ticketStatus(ticket)) {
+      case 'UNAVAILABLE':
+        return 'Este bilhete está indisponível porque sua configuração foi desativada.';
       case 'CONSUMED':
         return 'Este bilhete já foi utilizado e não pode ser transferido.';
       case 'EXPIRED':

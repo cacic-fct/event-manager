@@ -8,7 +8,7 @@ import { TicketDetailsPage } from './ticket-details-page';
 
 type TicketDetailsStoryArgs = {
   publiclyVisible: boolean;
-  status: 'ACTIVE' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
+  status: 'ACTIVE' | 'CONSUMED' | 'EXPIRED' | 'REVOKED' | 'UNAVAILABLE';
   transferable: boolean;
   ticketName: string;
   ticketEmoji: string;
@@ -34,7 +34,7 @@ const meta: Meta<TicketDetailsStoryArgs> = {
   },
   argTypes: {
     publiclyVisible: { control: 'boolean' },
-    status: { control: 'select', options: ['ACTIVE', 'CONSUMED', 'EXPIRED', 'REVOKED'] },
+    status: { control: 'select', options: ['ACTIVE', 'CONSUMED', 'EXPIRED', 'REVOKED', 'UNAVAILABLE'] },
     transferable: { control: 'boolean' },
     ticketName: { control: 'text' },
     ticketEmoji: { control: 'text' },
@@ -173,4 +173,8 @@ export const LoadError: Story = {
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível carregar as informações deste bilhete.')).toBeVisible();
   },
+};
+
+export const Unavailable: Story = {
+  args: { status: 'UNAVAILABLE', transferable: false },
 };

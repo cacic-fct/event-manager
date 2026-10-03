@@ -133,7 +133,7 @@ export class TicketAdminPageComponent {
   protected readonly priceMode = new FormControl<'SINGLE' | 'PER_TIER'>('SINGLE', { nonNullable: true });
   protected readonly singlePrice = new FormControl('', {
     nonNullable: true,
-    validators: [Validators.required, Validators.min(0)],
+    validators: [Validators.required, Validators.min(0.01)],
   });
   protected readonly priceRows = new FormArray<TicketPriceRow>([]);
   protected readonly ticketSearch = new FormControl('', { nonNullable: true });
@@ -155,6 +155,7 @@ export class TicketAdminPageComponent {
     { value: TicketLifecycleState.Consumed, label: 'Utilizado' },
     { value: TicketLifecycleState.Revoked, label: 'Revogado' },
     { value: TicketLifecycleState.Expired, label: 'Expirado' },
+    { value: TicketLifecycleState.Unavailable, label: 'Indisponível' },
   ];
 
   protected readonly configForm = this.formBuilder.nonNullable.group({
@@ -398,6 +399,7 @@ export class TicketAdminPageComponent {
       [TicketLifecycleState.Consumed]: 'Utilizado',
       [TicketLifecycleState.Revoked]: 'Revogado',
       [TicketLifecycleState.Expired]: 'Expirado',
+      [TicketLifecycleState.Unavailable]: 'Indisponível',
     }[status];
   }
 
@@ -634,7 +636,8 @@ export class TicketAdminPageComponent {
   private priceInCents(value: string): number | null {
     if (!value.trim()) return null;
     const amount = Number(value.replace(',', '.'));
-    return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : null;
+    const amountCents = Math.round(amount * 100);
+    return Number.isSafeInteger(amountCents) && amountCents > 0 ? amountCents : null;
   }
 
   private policyFromForm(value: {
@@ -662,7 +665,7 @@ export class TicketAdminPageComponent {
       label: option?.label ?? tier.name,
       amount: this.formBuilder.nonNullable.control(
         option ? (option.amountCents / 100).toFixed(2) : '',
-        [Validators.required, Validators.min(0)],
+        [Validators.required, Validators.min(0.01)],
       ),
     }) as TicketPriceRow;
   }

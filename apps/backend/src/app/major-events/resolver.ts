@@ -1113,6 +1113,21 @@ export class MajorEventsResolver {
   ): Promise<void> {
     const tiers = await tx.priceTier.findMany({ where, select: { id: true } });
     if (tiers.length > 0) {
+      const tierIds = tiers.map((tier) => tier.id);
+      const ticketConfig = await tx.ticketConfig.findFirst({
+        where: {
+          OR: [
+            { includedPriceTierIds: { hasSome: tierIds } },
+            { recipientAllowedPriceTierIds: { hasSome: tierIds } },
+            { purchaseVisiblePriceTierIds: { hasSome: tierIds } },
+            { priceOptions: { some: { priceTierId: { in: tierIds } } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (ticketConfig) {
+        throw new BadRequestException('Remova as faixas de preço das configurações de bilhetes antes de excluí-las.');
+      }
       const restrictedEvent = await tx.event.findFirst({
         where: { regularAttendancePriceTierIds: { hasSome: tiers.map((tier) => tier.id) } },
         select: { id: true },

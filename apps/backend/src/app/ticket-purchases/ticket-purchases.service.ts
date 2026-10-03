@@ -20,6 +20,7 @@ import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import { TicketEligibilityService } from '../tickets/ticket-eligibility.service';
 import { TicketRealtimeService } from '../tickets/ticket-realtime.service';
 import { hasValidatedSubscriptionReceipt, TicketPurchaseCatalogService } from './ticket-purchase-catalog.service';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { TicketPurchaseModel } from './ticket-purchase.models';
 
 const purchaseInclude = {
@@ -43,6 +44,7 @@ export class TicketPurchasesService {
     private readonly issuance: TicketIssuanceService,
     private readonly eligibility: TicketEligibilityService,
     private readonly realtime: TicketRealtimeService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   private async person(user: AuthenticatedUser) {
@@ -123,6 +125,7 @@ export class TicketPurchasesService {
   async approve(purchaseId: string, user: AuthenticatedUser): Promise<boolean> {
     const target = await this.requirePurchase(purchaseId);
     await this.authorization.assertPermissions(user, [Permission.Receipt.Approve], { majorEventId: target.majorEventId });
+    await this.frozenResources.assertMajorEventMutable(target.majorEventId, user, 'edit');
     if (!target.personId) throw new ConflictException('A pessoa desta compra não está mais disponível.');
     const identity = await this.eligibility.prepareIdentitySnapshot(target.eventId, target.personId, 'purchase');
     return runSerializablePrismaTransaction(this.prisma, async (tx) => {
@@ -162,6 +165,7 @@ export class TicketPurchasesService {
     if (!normalized || normalized.length > 1000) throw new BadRequestException('Informe um motivo de até 1.000 caracteres.');
     const purchase = await this.requirePurchase(purchaseId);
     await this.authorization.assertPermissions(user, [Permission.Receipt.Reject], { majorEventId: purchase.majorEventId });
+    await this.frozenResources.assertMajorEventMutable(purchase.majorEventId, user, 'edit');
     return runSerializablePrismaTransaction(this.prisma, async (tx) => {
       const changed = await tx.ticketPurchase.updateMany({
         where: { id: purchaseId, status: 'UNDER_REVIEW' },

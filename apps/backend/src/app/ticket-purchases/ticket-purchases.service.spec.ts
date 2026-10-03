@@ -41,9 +41,10 @@ function setup() {
   const issuance = { issueForPerson: jest.fn() };
   const eligibility = { prepareIdentitySnapshot: jest.fn().mockResolvedValue({ personId: 'person', userId: 'account', accountManagerProfile: null }), evaluatePurchaseEligibility: jest.fn().mockResolvedValue({ eligible: true, reasons: [] }) };
   const realtime = { enqueueForUsers: jest.fn() };
+  const frozenResources = { assertMajorEventMutable: jest.fn() };
   const service = new TicketPurchasesService(prisma as never, currentUser as never, catalog as never, s3 as never,
-    authorization as never, audit as never, issuance as never, eligibility as never, realtime as never);
-  return { service, tx, prisma, catalog, s3, authorization, audit, issuance, realtime, purchase };
+    authorization as never, audit as never, issuance as never, eligibility as never, realtime as never, frozenResources as never);
+  return { frozenResources, service, tx, prisma, catalog, s3, authorization, audit, issuance, realtime, purchase };
 }
 
 function file() { return { buffer: png, originalname: 'receipt.png', mimetype: 'image/png', size: png.length }; }
@@ -53,6 +54,16 @@ beforeAll(async () => {
 });
 
 describe('ticket purchase transaction boundaries', () => {
+  it.each(['approve', 'reject'] as const)('blocks frozen purchase %s before writing', async (operation) => {
+    const { service, tx, frozenResources, issuance } = setup();
+    frozenResources.assertMajorEventMutable.mockRejectedValue(new Error('Frozen'));
+    const review = operation === 'approve' ? service.approve('purchase', user) : service.reject('purchase', 'Motivo', user);
+    await expect(review).rejects.toThrow('Frozen');
+    expect(frozenResources.assertMajorEventMutable).toHaveBeenCalledWith('major', user, 'edit');
+    expect(tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
+    expect(issuance.issueForPerson).not.toHaveBeenCalled();
+  });
+
   it('does not register a purchase or send invalidation when receipt storage fails', async () => {
     const { service, tx, s3, realtime } = setup();
     s3.uploadFile.mockRejectedValue(new Error('Storage unavailable'));

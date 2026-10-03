@@ -34,10 +34,6 @@ export class TicketTransferRetentionService implements OnModuleInit, OnModuleDes
         const candidates = await this.prisma.ticketTransfer.findMany({
           where: {
             submittedDestinationIdentityDocumentEncrypted: { not: null },
-            OR: [
-              { senderStatus: { in: ['ACCEPTED', 'CANCELED', 'EXPIRED'] } },
-              { recipientStatus: { in: ['IGNORED', 'SYSTEM_INELIGIBLE', 'SYSTEM_DUPLICATE'] } },
-            ],
             event: { endDate: { lte: cutoff } },
           },
           select: { id: true },
@@ -45,6 +41,10 @@ export class TicketTransferRetentionService implements OnModuleInit, OnModuleDes
           take: CLEANUP_BATCH_SIZE,
         });
         if (candidates.length === 0) break;
+        await this.prisma.ticketTransfer.updateMany({
+          where: { id: { in: candidates.map(({ id }) => id) }, senderStatus: 'PENDING', recipientStatus: 'PENDING' },
+          data: { senderStatus: 'EXPIRED' },
+        });
         await this.prisma.ticketTransfer.updateMany({
           where: { id: { in: candidates.map(({ id }) => id) } },
           data: { submittedDestinationIdentityDocumentEncrypted: null },

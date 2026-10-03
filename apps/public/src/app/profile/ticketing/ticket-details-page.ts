@@ -95,6 +95,8 @@ export class TicketDetailsPage {
     switch (ticketStatusAt(ticket, this.now())) {
       case 'ACTIVE':
         return 'Disponível';
+      case 'UNAVAILABLE':
+        return 'Indisponível';
       case 'CONSUMED':
         return 'Utilizado';
       case 'EXPIRED':

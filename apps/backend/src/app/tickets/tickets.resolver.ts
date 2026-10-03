@@ -413,8 +413,10 @@ export class TicketsResolver {
     let stateWhere: Prisma.EventTicketWhereInput = {};
     if (normalizedStatus === 'EXPIRED') {
       stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { lte: now } };
+    } else if (normalizedStatus === 'UNAVAILABLE') {
+      stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { gt: now }, ticketConfig: { enabled: false } };
     } else if (normalizedStatus === 'ACTIVE') {
-      stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { gt: now } };
+      stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { gt: now }, ticketConfig: { enabled: true } };
     } else if (normalizedStatus) {
       if (!Object.values(EventTicketStatus).includes(normalizedStatus as EventTicketStatus)) {
         throw new BadRequestException('Estado do bilhete inválido.');

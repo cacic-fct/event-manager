@@ -32,6 +32,7 @@ export const TicketLifecycleState = {
   Consumed: 'CONSUMED',
   Revoked: 'REVOKED',
   Expired: 'EXPIRED',
+  Unavailable: 'UNAVAILABLE',
 } as const;
 export type TicketLifecycleState = (typeof TicketLifecycleState)[keyof typeof TicketLifecycleState];
 

@@ -72,6 +72,7 @@ type TicketRecord = {
   source: string;
   sourceKey: string | null;
   ticketConfig: {
+    enabled: boolean;
     displayName: string | null;
     displayEmoji: string | null;
     description: string | null;
@@ -167,7 +168,9 @@ export function mapWalletTicket(
       ? TicketLifecycleState.Revoked
       : ticket.expiresAt <= now
         ? TicketLifecycleState.Expired
-        : TicketLifecycleState.Active;
+        : !ticket.ticketConfig.enabled
+          ? TicketLifecycleState.Unavailable
+          : TicketLifecycleState.Active;
   const name = ticket.ticketConfig.displayName?.trim() || ticket.event.name;
   const emoji = ticket.ticketConfig.displayEmoji?.trim() || ticket.event.emoji;
   const transferEligibilityDescription = describeTransferEligibility(ticket.ticketConfig, ticket.event);
@@ -179,12 +182,12 @@ export function mapWalletTicket(
     description: ticket.ticketConfig.description,
     transferEligibilityDescription,
     status,
-    transferable: ticket.ticketConfig.transferable,
+    transferable: ticket.ticketConfig.enabled && ticket.ticketConfig.transferable,
     effectiveExpiresAt: ticket.expiresAt,
     event: mapTicketEventSummary(ticket.event),
     holder: ticket.holder ? mapTicketPersonSummary(ticket.holder) : null,
     aztecPayload:
-      includeAztecPayload && ticket.holder?.userId
+      includeAztecPayload && status === TicketLifecycleState.Active && ticket.holder?.userId
         ? `ticket:${ticket.id}:${ticket.holder.userId}`
         : null,
   };
@@ -352,6 +355,7 @@ export function mapTicketTransfer(
       isRecipient &&
       transfer.senderStatus === TicketTransferSenderStatus.PENDING &&
       transfer.recipientStatus === TicketTransferRecipientStatus.PENDING &&
+      transfer.ticket.ticketConfig.enabled &&
       transfer.ticket.status === EventTicketStatus.ACTIVE &&
       (transfer.initiatorType === TicketTransferInitiatorType.ADMIN || transfer.ticket.expiresAt > now),
   });
@@ -417,7 +421,7 @@ function redactIdentityDocument(value: string | null | undefined, isCPF: boolean
   if (!value?.trim()) return null;
   const digits = value.replace(/\D/g, '');
   const isCpf = isCPF === true || (isCPF == null && isValidCPF(value));
-  return isCpf && digits.length === 11 ? maskCPF(value) : value;
+  return isCpf && digits.length === 11 ? maskCPF(value) : '••••';
 }
 
 function firstName(name: string): string {

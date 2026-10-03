@@ -11,6 +11,7 @@ export function ticketStatusAt(ticket: WalletTicket, nowMs: number): WalletTicke
 
 export function ticketExpirationReason(status: WalletTicket['status']): string {
   switch (status) {
+    case 'UNAVAILABLE': return 'Bilhete indisponível';
     case 'CONSUMED': return 'Bilhete já utilizado';
     case 'REVOKED': return 'Bilhete revogado';
     case 'EXPIRED': return 'Prazo de validade encerrado';

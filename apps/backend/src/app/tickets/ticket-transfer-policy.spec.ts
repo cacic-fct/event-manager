@@ -5,6 +5,25 @@ import { mapWalletTicket } from './ticket.mapper';
 import { TicketTransferRecord, TicketTransferService } from './ticket-transfer.service';
 
 describe('ticket transfer privacy policies', () => {
+  it('hides disabled ticket actions and credentials', () => {
+    const transfer = transferFixture();
+    transfer.ticket.ticketConfig.enabled = false;
+    const ticket = mapWalletTicket(transfer.ticket, true);
+    expect(ticket.status).toBe('UNAVAILABLE');
+    expect(ticket.transferable).toBe(false);
+    expect(ticket.aztecPayload).toBeNull();
+    const recipientView = mapTicketTransfer(transfer, 'RECIPIENT', {} as never);
+    expect(recipientView.canAccept).toBe(false);
+  });
+
+  it.each(['AB123456', '12'])('redacts non-CPF sender documents: %s', (document) => {
+    const transfer = transferFixture();
+    transfer.sender.identityDocument = document;
+    transfer.sender.isCPF = false;
+    const result = mapTicketTransfer(transfer, 'RECIPIENT', { revealSubmittedDocument: () => null } as never);
+    expect(result.sender?.redactedIdentityDocument).toBe('••••');
+  });
+
   it('returns the same sender-facing pending outcome for unknown and ineligible recipients', () => {
     const unknown = classifyRecipientResolution({
       personFound: false,
@@ -180,6 +199,7 @@ function transferFixture(overrides: Record<string, unknown> = {}): TicketTransfe
       createdAt,
       updatedAt: createdAt,
       ticketConfig: {
+        enabled: true,
         displayName: 'Kit de boas-vindas',
         displayEmoji: '🎁',
         description: null,
