@@ -450,7 +450,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
         committedById: 'user-1',
       },
     });
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
     expect(tx.eventAttendance.findUniqueOrThrow).toHaveBeenCalledWith({
       where: {
         personId_eventId: {

@@ -36,6 +36,8 @@ import {
   moveAudienceInvitations,
   type AudienceInvitationSnapshot,
 } from '../people/merge-candidates/operations/audience-invitations';
+import type { TicketPersonRelationsSnapshot } from '../tickets/ticket-merge-relations';
+import { moveTicketPersonRelations, reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   AttendanceSnapshot,
@@ -99,6 +101,7 @@ type MovedRelationsSnapshot = {
   sportsTournamentParticipantSnapshots: SportsTournamentParticipantSnapshot[];
   movedSportsOfficialAssignmentIds: string[];
   sportsOfficialAssignmentSnapshots: SportsOfficialAssignmentSnapshot[];
+  ticketRelations: TicketPersonRelationsSnapshot;
 };
 
 const MAX_ACCOUNT_MERGE_SCORE_CANDIDATES = 100;
@@ -156,6 +159,7 @@ export class AccountMergeService {
 
         await this.ensureAccountMapping(tx, input.oldUserId, input.newUserId);
         const applied = await this.applyLocalMerge(tx, input, actorId);
+        await reassignTicketUserRelations(tx, input.oldUserId, input.newUserId);
 
         if (existing) {
           await tx.externalAccountMergeOperation.update({
@@ -530,6 +534,7 @@ export class AccountMergeService {
     sourcePersonId: string,
     revokedRepresentativeById: string | null = null,
   ): Promise<MovedRelationsSnapshot> {
+    const ticketRelations = await moveTicketPersonRelations(tx, targetPersonId, sourcePersonId, revokedRepresentativeById);
     const sportsRelations = await moveSportsPersonRelations(
       tx,
       targetPersonId,
@@ -580,6 +585,7 @@ export class AccountMergeService {
       coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
       ...permissionRelations,
       ...sportsRelations,
+      ticketRelations,
     };
   }
 

@@ -1,0 +1,72 @@
+@let current = state();
+
+@if (current.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando bilhetes adicionais"></mat-progress-bar>
+} @else if (current.status === 'error') {
+  <section class="ticket-purchase-error" aria-live="polite">
+    <p>Não foi possível carregar os bilhetes adicionais.</p>
+    <button mat-button type="button" (click)="retry()">Tentar novamente</button>
+  </section>
+} @else if (current.options.length || current.purchases.length) {
+  <section class="ticket-purchase-section" aria-labelledby="ticket-purchase-heading">
+    <h2 id="ticket-purchase-heading">Bilhetes adicionais</h2>
+
+    @if (current.options.length) {
+      <div class="ticket-purchase-options">
+        @for (option of current.options; track option.ticketConfigId + option.eventId) {
+          <mat-card class="ticket-purchase-option">
+            <div class="option-heading">
+              <img class="option-emoji" [src]="emojiUrl(option.emoji)" [alt]="option.emoji" />
+              <div>
+                <h3>{{ option.name }}</h3>
+                <p class="option-event">{{ option.event.name }}</p>
+                @if (option.event.locationDescription) {
+                  <p class="option-event">{{ option.event.locationDescription }}</p>
+                }
+              </div>
+            </div>
+            @if (option.description) {
+              <p class="option-description">{{ option.description }}</p>
+            }
+            <div class="option-footer">
+              <div>
+                <p class="option-price">
+                  {{ option.amountCents / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}
+                </p>
+                @if (option.priceTierName) {
+                  <p class="option-tier">Valor para a faixa {{ option.priceTierName }}</p>
+                }
+                <p class="option-expiration">Disponível até {{ option.expiresAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+              </div>
+              <button mat-flat-button type="button" (click)="purchase(option)">
+                <mat-icon>payments</mat-icon>
+                Comprar
+              </button>
+            </div>
+          </mat-card>
+        }
+      </div>
+    }
+
+    @if (current.purchases.length) {
+      <section class="ticket-purchase-history" aria-labelledby="ticket-purchase-history-heading">
+        <h3 id="ticket-purchase-history-heading">Comprovantes enviados</h3>
+        <mat-list>
+          @for (purchase of current.purchases; track purchase.id) {
+            <mat-list-item>
+              <mat-icon matListItemIcon>confirmation_number</mat-icon>
+              <div matListItemTitle>{{ purchase.name }}</div>
+              <div matListItemLine>{{ purchaseStatusLabel(purchase.status) }}</div>
+              @if (purchase.rejectionReason) {
+                <div matListItemLine>{{ purchase.rejectionReason }}</div>
+              }
+              @if (purchase.priceTierName) {
+                <div matListItemLine>Faixa {{ purchase.priceTierName }}</div>
+              }
+            </mat-list-item>
+          }
+        </mat-list>
+      </section>
+    }
+  </section>
+}

@@ -343,7 +343,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         collectedAccuracyMeters: 15,
       },
     });
-    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', txMock);
+    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', txMock, true);
   });
 
   it('converts duplicate attendance writes into conflicts', async () => {

@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
+import { BadRequestException, Optional, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -68,6 +69,7 @@ export class CurrentUserEventSubscriptionService {
       archiveResponsesForSubscriptionScope: async () => [],
       emitResultsDeltas: async () => undefined,
     } as unknown as EventFormsService,
+    @Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService,
   ) {}
 
   getEventSubscriptionError(
@@ -360,6 +362,7 @@ export class CurrentUserEventSubscriptionService {
             createdByMethod: true,
           },
         });
+        await this.ticketSubscriptions?.forEvent(tx, targetEvent.id, personId);
         await this.attendanceCategories.refreshForAttendance(personId, targetEvent.id, tx);
         await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
         const createdByMethod = options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION;
@@ -516,6 +519,7 @@ export class CurrentUserEventSubscriptionService {
           deletedAt: now,
         },
       });
+      await this.ticketSubscriptions?.forEvent(tx, targetEvent.id, personId);
       const archivedFormIds = await this.eventForms.archiveResponsesForSubscriptionScope(
         tx,
         personId,
@@ -880,6 +884,7 @@ export class CurrentUserEventSubscriptionService {
         tx,
       );
     }
+    await this.ticketSubscriptions?.forEvents(tx, [...childEventIds, ...eventsToCreate.map((event) => event.id)], personId);
     await this.refreshEventSubscriptionCounters(tx, [...childEventIds, ...eventsToCreate.map((event) => event.id)]);
 
     const events = await tx.eventSubscription.findMany({

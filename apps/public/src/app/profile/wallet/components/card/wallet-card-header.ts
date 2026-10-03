@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { WALLET_CARD_BRANDS, WalletCardKind } from './wallet-card.types';
+import { WALLET_CARD_BRANDS, WalletCardBrand, WalletCardKind } from './wallet-card.types';
 
 @Component({
   selector: 'app-wallet-card-header',
@@ -35,7 +35,7 @@ import { WALLET_CARD_BRANDS, WalletCardKind } from './wallet-card.types';
       text-align: start;
     }
     .ticket-header:focus-visible {
-      outline: 3px solid #fff;
+      outline: 3px solid currentColor;
       outline-offset: -5px;
     }
     .ticket-brand {
@@ -66,11 +66,11 @@ import { WALLET_CARD_BRANDS, WalletCardKind } from './wallet-card.types';
       }
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletCardHeader {
   readonly kind = input<WalletCardKind>('eventos');
+  readonly brandOverride = input<WalletCardBrand | null>(null);
   readonly selected = output<void>();
-  protected readonly brand = computed(() => WALLET_CARD_BRANDS[this.kind()]);
+  protected readonly brand = computed(() => this.brandOverride() ?? WALLET_CARD_BRANDS[this.kind()]);
   protected readonly imageClass = computed(() => `ticket-icon ${this.brand().imageClass ?? ''}`);
 }

@@ -47,6 +47,7 @@ model MajorEvent {
   majorEventPrices MajorEventPrice[]
 
   certificateConfigs CertificateConfig[]
+  ticketPurchases TicketPurchase[]
 
   publicationState       PublicationState @default(DRAFT)
   scheduledPublishAt     DateTime?
@@ -200,6 +201,8 @@ model PriceTier {
   includesSportsRegistration Boolean @default(false)
 
   eventFormLinks EventFormLinkPriceTier[]
+  ticketPriceOptions TicketPriceOption[]
+  ticketPurchases TicketPurchase[]
 
   @@index([priceId])
   @@map("price_tiers")

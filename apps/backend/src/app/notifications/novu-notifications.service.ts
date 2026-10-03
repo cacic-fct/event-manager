@@ -20,6 +20,7 @@ import type {
   OnlineAttendanceAvailableNotification,
   PrizeDrawNotification,
   SubscriptionStatusNotification,
+  TicketTransferNotification,
 } from './novu-notification.types';
 
 export type {
@@ -51,6 +52,10 @@ export class NovuNotificationsService {
   private readonly audienceInvitationWorkflowIdentifier = this.config.get<string>(
     'NOVU_AUDIENCE_INVITATION_WORKFLOW_IDENTIFIER',
     'audience-invitation',
+  );
+  private readonly ticketTransferWorkflowIdentifier = this.config.get<string>(
+    'NOVU_TICKET_TRANSFER_WORKFLOW_IDENTIFIER',
+    'ticket-transfer',
   );
 
   constructor(private readonly config: ConfigService) {
@@ -233,6 +238,86 @@ export class NovuNotificationsService {
         },
       },
     });
+  }
+
+  async notifyTicketTransfer(input: TicketTransferNotification): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) return false;
+
+    const { title, body, recipientWorkflow } = this.ticketTransferCopy(input);
+    const actionUrl = input.actionUrl;
+    return this.transport.trigger(secretKey, {
+      name: this.ticketTransferWorkflowIdentifier,
+      to: { subscriberId: input.recipientUserId },
+      transactionId: `ticket-transfer:${input.transferId}:${input.notificationType}`,
+      payload: {
+        title,
+        subject: title,
+        body,
+        notificationType: input.notificationType,
+        transferId: input.transferId,
+        ticketName: input.ticketName,
+        eventName: input.eventName,
+        actorFirstName: input.actorFirstName,
+        recipientWorkflow,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: { data: { url: actionUrl, transferId: input.transferId } },
+        webPush: { data: { url: actionUrl, transferId: input.transferId } },
+      },
+    });
+  }
+
+  private ticketTransferCopy(input: TicketTransferNotification): {
+    title: string;
+    body: string;
+    recipientWorkflow: boolean;
+  } {
+    switch (input.notificationType) {
+      case 'SENDER_STARTED':
+        return {
+          title: `Transferência iniciada: ${input.ticketName}`,
+          body: `Você iniciou a transferência de ${input.ticketName}.`,
+          recipientWorkflow: false,
+        };
+      case 'SENDER_ADMIN_STARTED':
+        return {
+          title: `Transferência iniciada pela administração: ${input.ticketName}`,
+          body: `A administração iniciou uma transferência do bilhete ${input.ticketName}.`,
+          recipientWorkflow: false,
+        };
+      case 'SENDER_CANCELED':
+        return {
+          title: `Transferência cancelada: ${input.ticketName}`,
+          body: `Você cancelou a transferência de ${input.ticketName}.`,
+          recipientWorkflow: false,
+        };
+      case 'SENDER_ADMIN_CANCELED':
+        return {
+          title: `Transferência cancelada: ${input.ticketName}`,
+          body: `A administração cancelou a transferência de ${input.ticketName}.`,
+          recipientWorkflow: false,
+        };
+      case 'RECIPIENT_REQUESTED':
+        return {
+          title: 'Novo pedido de transferência',
+          body: `${input.actorFirstName} quer transferir ${input.ticketName} para você.`,
+          recipientWorkflow: true,
+        };
+      case 'RECIPIENT_INELIGIBLE':
+        return {
+          title: 'Tentativa de transferência de bilhete',
+          body: `${input.actorFirstName} tentou transferir ${input.ticketName} para você, mas você não atende aos critérios.`,
+          recipientWorkflow: true,
+        };
+      case 'SENDER_ACCEPTED':
+        return {
+          title: `Bilhete transferido: ${input.ticketName}`,
+          body: `${input.actorFirstName} aceitou a transferência de ${input.ticketName}.`,
+          recipientWorkflow: false,
+        };
+    }
   }
 
   async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<boolean> {

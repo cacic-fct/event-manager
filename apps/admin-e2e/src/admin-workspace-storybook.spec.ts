@@ -167,7 +167,7 @@ test.describe('admin workspace Storybook regression', () => {
             await expect(root.locator('button:visible, input:visible, h1:visible, h2:visible, h3:visible, [role=button]:visible').first()).toBeVisible({ timeout: 20_000 });
             await expect.poll(() => page.evaluate(() => document.fonts.status), { timeout: 10_000 }).toBe('loaded');
             await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--mat-sys-surface').trim())).not.toBe('');
-            await expect.poll(() => page.evaluate(() => [...document.fonts].some((font) => font.family.replaceAll(/["']/g, '') === 'Material Symbols Outlined' && font.status === 'loaded'))).toBe(true);
+            await expect.poll(() => page.evaluate(() => [...document.fonts].some((font) => font.family.replace(/["']/g, '') === 'Material Symbols Outlined' && font.status === 'loaded'))).toBe(true);
             await expect.poll(() => page.locator('mat-icon').evaluateAll((icons) => icons.every((icon) => getComputedStyle(icon).fontFamily.includes('Material Symbols Outlined')))).toBe(true);
             await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).colorScheme)).toBe(viewport.theme);
             // Capture after Angular/MSW settles; there is no fixed timer or app-state injection.

@@ -8,6 +8,7 @@ export interface WalletCardUser {
 }
 
 export type WalletCardKind = 'eventos' | 'offline-code' | 'academic-record';
+export type WalletCardSelection = WalletCardKind | `ticket:${string}`;
 
 export interface WalletCardBrand {
   readonly name: string;

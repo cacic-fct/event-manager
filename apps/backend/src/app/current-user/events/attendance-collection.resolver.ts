@@ -299,7 +299,7 @@ export class CurrentUserAttendanceCollectionResolver {
           ...locationData,
         },
       });
-      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
       if (result.status === EventAttendanceStatus.PRESENT) {
         checkInStarted =
           (await startSportsMatchCheckInFromAthleteAttendance({
@@ -420,7 +420,7 @@ export class CurrentUserAttendanceCollectionResolver {
           create: { personId: input.personId, eventId, ...data },
           update: data,
         });
-        await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+        await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx, true);
         if (attendance.status === EventAttendanceStatus.PRESENT) {
           checkInStarted =
             (await startSportsMatchCheckInFromAthleteAttendance({

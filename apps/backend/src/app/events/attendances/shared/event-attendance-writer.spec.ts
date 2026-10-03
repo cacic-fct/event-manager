@@ -24,6 +24,7 @@ describe('event attendance writer', () => {
     const afterWrite = jest.fn();
     tx.eventAttendance.findUnique.mockResolvedValue({ status: EventAttendanceStatus.ABSENT });
     tx.eventAttendance.update.mockResolvedValue(restored);
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue(restored);
 
     await expect(
       createOrRestoreEventAttendance({
@@ -54,7 +55,7 @@ describe('event attendance writer', () => {
         collectedAccuracyMeters: 10,
       }),
     });
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
     expect(afterWrite).toHaveBeenCalledWith(restored, tx);
   });
 
@@ -85,6 +86,7 @@ describe('event attendance writer', () => {
     const stored = { personId: 'person-1', eventId: 'event-1', status: EventAttendanceStatus.PRESENT };
     const attendedAt = new Date('2026-08-11T13:00:00.000Z');
     tx.eventAttendance.upsert.mockResolvedValue(stored);
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue(stored);
 
     await expect(
       upsertPresentEventAttendance({

@@ -129,6 +129,11 @@ export class AdminReceiptModel {
 
 @ObjectType()
 export class AdminReceiptQueueItemModel {
+  @Field(() => String, { nullable: true }) category?: string;
+  @Field(() => String, { nullable: true }) purchaseId?: string | null;
+  @Field(() => String, { nullable: true }) ticketName?: string | null;
+  @Field(() => Date, { nullable: true }) subscriptionCreatedAt?: Date;
+
   @Field(() => String)
   subscriptionId!: string;
 
@@ -191,7 +196,17 @@ export class AdminReceiptQueueItemModel {
 }
 
 @ObjectType()
+export class ReceiptPaymentTierModel {
+  @Field(() => String) id!: string;
+  @Field(() => String) name!: string;
+}
+
+@ObjectType()
 export class AdminReceiptQueue {
+  @Field(() => Int, { nullable: true }) subscriptionCount?: number;
+  @Field(() => Int, { nullable: true }) ticketCount?: number;
+  @Field(() => [ReceiptPaymentTierModel], { nullable: true }) availablePaymentTiers?: ReceiptPaymentTierModel[];
+
   @Field(() => Int)
   pendingCount!: number;
 

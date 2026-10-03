@@ -70,6 +70,26 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'profile/wallet/add-card',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'profile/wallet/tickets/:ticketId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'profile/wallet/tickets/:ticketId/transfer',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'profile/wallet/ticket-transfers',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'profile/wallet/ticket-transfers/:transferId',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'profile/forms/:formId',
     renderMode: RenderMode.Client,
   },
@@ -147,6 +167,10 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'major-event/:majorEventId/payment',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'major-event/:majorEventId/payment/ticket/:ticketEventId',
     renderMode: RenderMode.Client,
   },
   {

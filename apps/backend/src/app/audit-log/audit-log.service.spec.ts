@@ -12,6 +12,7 @@ describe('AuditLogService', () => {
   let attendanceRealtime: { notifyAllConnectedPeople: jest.Mock };
   let frozenResources: ReturnType<typeof createFrozenResources>;
   let attendanceCategories: { refreshForEvent: jest.Mock };
+  let ticketIssuance: { alignActiveTicketExpirations: jest.Mock; lockEventExpirationAlignment: jest.Mock };
   let service: AuditLogService;
 
   beforeEach(() => {
@@ -21,6 +22,10 @@ describe('AuditLogService', () => {
     attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
     frozenResources = createFrozenResources();
     attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+    ticketIssuance = {
+      alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
+      lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+    };
     service = new AuditLogService(
       prisma as never,
       authorizationPolicy as never,
@@ -28,6 +33,7 @@ describe('AuditLogService', () => {
       typesenseSearch as never,
       attendanceRealtime as never,
       frozenResources as never,
+      ticketIssuance as never,
     );
   });
 
@@ -1361,6 +1367,8 @@ describe('AuditLogService', () => {
   });
 
   it('reverts event updates, restores event-group invariants, and reindexes live events', async () => {
+    const previousEndDate = new Date(Date.now() - 60 * 60 * 1_000);
+    const currentEndDate = new Date();
     const targetEntry = createAuditEntry({
       id: 'audit-event',
       entityType: AuditLogEntityType.EVENT,
@@ -1370,20 +1378,23 @@ describe('AuditLogService', () => {
       before: {
         id: 'event-1',
         name: 'Evento antigo',
+        endDate: previousEndDate,
         eventGroupId: 'group-1',
         majorEventId: 'major-1',
       },
       after: {
         id: 'event-1',
         name: 'Evento novo',
+        endDate: currentEndDate,
         eventGroupId: 'group-1',
         majorEventId: 'major-1',
       },
-      changedFields: ['name'],
+      changedFields: ['name', 'endDate'],
     });
     const currentEvent = {
       id: 'event-1',
       name: 'Evento novo',
+      endDate: currentEndDate,
       eventGroupId: 'group-1',
       majorEventId: 'major-1',
       deletedAt: null,
@@ -1391,6 +1402,7 @@ describe('AuditLogService', () => {
     const revertedEvent = {
       ...currentEvent,
       name: 'Evento antigo',
+      endDate: previousEndDate,
     };
     const revertLog = createAuditEntry({
       id: 'audit-event-revert',
@@ -1421,12 +1433,16 @@ describe('AuditLogService', () => {
       },
       data: {
         name: 'Evento antigo',
+        endDate: previousEndDate,
       },
       select: expect.objectContaining({
         id: true,
         name: true,
       }),
     });
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
     expect(frozenResources.assertEventUpdateMutable).toHaveBeenCalledWith(
       'event-1',
       {
@@ -1447,6 +1463,16 @@ describe('AuditLogService', () => {
       },
     });
     expect(typesenseSearch.upsertEvent).toHaveBeenCalledWith(revertedEvent);
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: null,
+      permission: null,
+    });
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: null,
+      permission: null,
+    });
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 

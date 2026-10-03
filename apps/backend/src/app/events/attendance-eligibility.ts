@@ -14,6 +14,7 @@ import { Prisma, SubscriptionStatus } from '@prisma/client';
  * participant-facing shape.
  */
 export const ATTENDANCE_POLICY_EVENT_SELECT = {
+  ticketConfig: { select: { enabled: true } },
   attendanceEligibility: true,
   majorEventId: true,
   eventGroupId: true,

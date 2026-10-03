@@ -1,5 +1,4 @@
 import {
-  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   DestroyRef,
@@ -9,32 +8,45 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
+import type { TicketRealtimeInvalidation, WalletTicket } from '@cacic-fct/shared-ticketing';
 
 import { WalletPrintStyles } from '../../components/wallet-print-styles';
 import { WalletCard } from '../../components/card/wallet-card';
-import { WalletCardKind, WalletCardUser } from '../../components/card/wallet-card.types';
+import { WalletCardKind, WalletCardSelection, WalletCardUser } from '../../components/card/wallet-card.types';
 import { OfflineCodeStateService } from '../../components/offline-code-card/offline-code-state.service';
 import { PrintDialog } from '../../dialogs/print/print-dialog';
 import { NetworkStatusService } from '../../../../shared/network-status.service';
 import { OfflineUserDataService } from '../../../../shared/offline-user-data.service';
+import { TicketingApiService } from '../../../ticketing/ticketing-api.service';
+import { nextDeadlineDelay, ticketExpirationReason, ticketStatusAt } from '../../../ticketing/ticket-expiration';
+
+interface WalletCardEntry {
+  selectionId: WalletCardSelection;
+  kind: WalletCardKind;
+  ticket?: WalletTicket;
+  ticketStatus?: WalletTicket['status'];
+}
 
 @Component({
   selector: 'app-wallet',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     WalletCard,
     WalletPrintStyles,
@@ -44,6 +56,8 @@ import { OfflineUserDataService } from '../../../../shared/offline-user-data.ser
     MatButtonModule,
     MatDialogModule,
     MatTooltipModule,
+    MatListModule,
+    MatProgressBarModule,
   ],
   providers: [OfflineCodeStateService],
   templateUrl: './wallet.html',
@@ -57,6 +71,7 @@ export class Wallet {
 
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineUserData = inject(OfflineUserDataService);
+  private readonly ticketApi = inject(TicketingApiService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -67,12 +82,20 @@ export class Wallet {
   private selectionTimeout: number | null = null;
   private selectionAnimation: Animation | null = null;
   private listScrollPosition = 0;
+  private ticketRequestId = 0;
+  private ticketUserId: string | undefined;
+  private ticketExpiryTimer: number | null = null;
+  private lastExpiredTicketRefreshSignature = '';
 
   private readonly topCardSlot = viewChild<ElementRef<HTMLElement>>('topCardSlot');
   private readonly walletCardList = viewChild<ElementRef<HTMLElement>>('walletCardList');
   private readonly detailCardSlot = viewChild<ElementRef<HTMLElement>>('detailCardSlot');
-  public readonly selectedCard = signal<WalletCardKind | null>(null);
+  public readonly selectedCard = signal<WalletCardSelection | null>(null);
   public readonly walletView = signal<'list' | 'selecting' | 'detail' | 'closing'>('list');
+  public readonly tickets = signal<WalletTicket[]>([]);
+  public readonly ticketExpiryNow = signal(Date.now());
+  public readonly ticketsLoading = signal(false);
+  public readonly showExpiredTickets = signal(false);
 
   private get isBrowser(): boolean {
     return isPlatformBrowser(this.platformId);
@@ -112,11 +135,42 @@ export class Wallet {
     return isUndergraduate && Boolean(user?.enrollmentNumber);
   });
 
-  public readonly stackedCards = computed<readonly WalletCardKind[]>(() => {
-    const cards: WalletCardKind[] = ['offline-code'];
-    if (this.hasAcademicRecord()) cards.push('academic-record');
+  public readonly activeTickets = computed(() =>
+    this.tickets().filter((ticket) => ticketStatusAt(ticket, this.ticketExpiryNow()) === 'ACTIVE'),
+  );
+  public readonly expiredTickets = computed(() =>
+    this.tickets().filter((ticket) => ticketStatusAt(ticket, this.ticketExpiryNow()) !== 'ACTIVE'),
+  );
+
+  public readonly stackedCards = computed<readonly WalletCardEntry[]>(() => {
+    const cards: WalletCardEntry[] = [{ selectionId: 'offline-code', kind: 'offline-code' }];
+    if (this.hasAcademicRecord()) cards.push({ selectionId: 'academic-record', kind: 'academic-record' });
+    for (const ticket of this.activeTickets()) {
+      cards.push({
+        selectionId: `ticket:${ticket.id}`,
+        kind: 'eventos',
+        ticket,
+        ticketStatus: ticketStatusAt(ticket, this.ticketExpiryNow()),
+      });
+    }
     return cards;
   });
+
+  public readonly selectedCardEntry = computed<WalletCardEntry | null>(() => {
+    const selection = this.selectedCard();
+    if (!selection) return null;
+
+    const stackEntry = this.stackedCards().find((entry) => entry.selectionId === selection);
+    if (stackEntry) return stackEntry;
+
+    const ticketId = selection.startsWith('ticket:') ? selection.slice('ticket:'.length) : null;
+    const ticket = ticketId ? this.tickets().find((item) => item.id === ticketId) : null;
+    return ticket
+      ? { selectionId: selection, kind: 'eventos', ticket, ticketStatus: ticketStatusAt(ticket, this.ticketExpiryNow()) }
+      : null;
+  });
+
+  public readonly selectedTicket = computed(() => this.selectedCardEntry()?.ticket ?? null);
 
   constructor() {
     effect(() => {
@@ -131,9 +185,42 @@ export class Wallet {
       });
     });
 
+    effect((onCleanup) => {
+      const userId = this.authService.user()?.sub;
+      if (userId !== this.ticketUserId) {
+        this.ticketUserId = userId;
+        this.ticketRequestId++;
+        this.tickets.set([]);
+        this.ticketsLoading.set(false);
+        this.clearTicketExpiryTimer();
+        this.lastExpiredTicketRefreshSignature = '';
+        this.showExpiredTickets.set(false);
+        this.selectedCard.set(null);
+        this.walletView.set('list');
+        if (this.selectionTimeout !== null && this.isBrowser) window.clearTimeout(this.selectionTimeout);
+        this.selectionTimeout = null;
+        this.selectionAnimation?.cancel();
+      }
+      if (!userId) return;
+
+      untracked(() => this.loadTickets());
+      const stream = this.ticketApi
+        .watchCurrentUser()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (invalidation) => this.refreshForTicketChange(invalidation),
+          error: () => this.snackBar.open('Não foi possível acompanhar seus bilhetes em tempo real.', 'Fechar', { duration: 3500 }),
+        });
+      onCleanup(() => {
+        stream.unsubscribe();
+        this.ticketRequestId++;
+      });
+    });
+
     this.destroyRef.onDestroy(() => {
       if (this.selectionTimeout !== null) window.clearTimeout(this.selectionTimeout);
       this.selectionAnimation?.cancel();
+      this.clearTicketExpiryTimer();
     });
   }
 
@@ -161,7 +248,7 @@ export class Wallet {
     window.print();
   }
 
-  public selectCard(card: WalletCardKind): void {
+  public selectCard(card: WalletCardSelection): void {
     if (this.walletView() === 'detail') {
       this.returnToCardList();
       return;
@@ -169,7 +256,8 @@ export class Wallet {
 
     if (card === 'eventos' || this.walletView() !== 'list') return;
 
-    const cardIndex = this.stackedCards().indexOf(card);
+    const cardIndex = this.stackedCards().findIndex((entry) => entry.selectionId === card);
+    if (cardIndex < 0) return;
     const cardElement = this.walletCardList()?.nativeElement.children.item(cardIndex);
     const topCardSlot = this.topCardSlot()?.nativeElement;
     const startingCardTop = cardElement?.getBoundingClientRect().top;
@@ -215,23 +303,120 @@ export class Wallet {
     this.finishCardListTransition();
   }
 
-  public cardMotionClass(card: WalletCardKind): string {
+  public cardMotionClass(card: WalletCardSelection): string {
     const selectedCard = this.selectedCard();
     const view = this.walletView();
     if ((view !== 'selecting' && view !== 'closing') || !selectedCard) return '';
 
-    const selectedIndex = this.stackedCards().indexOf(selectedCard);
-    const index = this.stackedCards().indexOf(card);
+    const selectedIndex = this.stackedCards().findIndex((entry) => entry.selectionId === selectedCard);
+    const index = this.stackedCards().findIndex((entry) => entry.selectionId === card);
 
     if (index === selectedIndex) return 'wallet-card-selected';
     if (view === 'closing') return 'wallet-card-returning';
     return index > selectedIndex ? 'wallet-card-after-selected' : 'wallet-card-before-selected';
   }
 
+  public toggleExpiredTickets(): void {
+    this.showExpiredTickets.update((visible) => !visible);
+  }
+
+  public ticketArchiveReason(ticket: WalletTicket): string {
+    return ticketExpirationReason(ticketStatusAt(ticket, this.ticketExpiryNow()));
+  }
+
+  public openArchivedTicket(ticketId: string): void {
+    if (this.walletView() !== 'list' || !this.expiredTickets().some((ticket) => ticket.id === ticketId)) return;
+    if (this.isBrowser) this.listScrollPosition = window.scrollY;
+    this.selectedCard.set(`ticket:${ticketId}`);
+    this.walletView.set('detail');
+    if (this.isBrowser) window.scrollTo(window.scrollX, 0);
+  }
+
+  private loadTickets(): void {
+    const requestId = ++this.ticketRequestId;
+    this.ticketsLoading.set(true);
+    this.ticketApi
+      .myWalletTickets()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (tickets) => {
+          if (requestId !== this.ticketRequestId) return;
+          this.tickets.set(tickets);
+          const selection = this.selectedCard();
+          if (selection?.startsWith('ticket:') && !tickets.some((ticket) => `ticket:${ticket.id}` === selection)) {
+            this.finishCardListTransition();
+          }
+          this.ticketExpiryNow.set(Date.now());
+          this.ticketsLoading.set(false);
+          this.scheduleTicketExpiryRefresh();
+        },
+        error: () => {
+          if (requestId !== this.ticketRequestId) return;
+          this.ticketsLoading.set(false);
+          this.snackBar.open('Não foi possível carregar seus bilhetes.', 'Fechar', { duration: 3500 });
+        },
+      });
+  }
+
+  private refreshForTicketChange(invalidation: TicketRealtimeInvalidation): void {
+    if (
+      invalidation.type === 'TICKETS_CHANGED' ||
+      invalidation.type === 'TRANSFERS_CHANGED' ||
+      invalidation.type === 'PURCHASES_CHANGED'
+    ) {
+      this.loadTickets();
+    }
+  }
+
+  private scheduleTicketExpiryRefresh(): void {
+    this.clearTicketExpiryTimer();
+    if (!this.isBrowser) return;
+
+    const now = Date.now();
+    this.ticketExpiryNow.set(now);
+    const dueTickets = this.tickets().filter(
+      (ticket) => ticket.status === 'ACTIVE' && ticketStatusAt(ticket, now) === 'EXPIRED',
+    );
+    const dueSignature = dueTickets.map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`).sort().join('|');
+    if (dueSignature && dueSignature !== this.lastExpiredTicketRefreshSignature) {
+      this.lastExpiredTicketRefreshSignature = dueSignature;
+      this.loadTickets();
+    } else if (!dueSignature) {
+      this.lastExpiredTicketRefreshSignature = '';
+    }
+
+    const delay = nextDeadlineDelay(
+      this.tickets().filter((ticket) => ticket.status === 'ACTIVE').map((ticket) => ticket.effectiveExpiresAt),
+      now,
+    );
+    if (delay === null) return;
+
+    this.ticketExpiryTimer = window.setTimeout(() => {
+      this.ticketExpiryTimer = null;
+      const currentNow = Date.now();
+      this.ticketExpiryNow.set(currentNow);
+      const newlyDue = this.tickets().filter(
+        (ticket) => ticket.status === 'ACTIVE' && ticketStatusAt(ticket, currentNow) === 'EXPIRED',
+      );
+      const signature = newlyDue.map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`).sort().join('|');
+      if (signature && signature !== this.lastExpiredTicketRefreshSignature) {
+        this.lastExpiredTicketRefreshSignature = signature;
+        this.loadTickets();
+      }
+      this.scheduleTicketExpiryRefresh();
+    }, delay);
+  }
+
+  private clearTicketExpiryTimer(): void {
+    if (this.ticketExpiryTimer !== null && this.isBrowser) window.clearTimeout(this.ticketExpiryTimer);
+    this.ticketExpiryTimer = null;
+  }
+
   private animateCardToList(): boolean {
     const selectedCard = this.selectedCard();
+    const cardIndex = this.stackedCards().findIndex((entry) => entry.selectionId === selectedCard);
     const detailCardTop = this.detailCardSlot()?.nativeElement.getBoundingClientRect().top;
-    if (!this.isBrowser || this.prefersReducedMotion || !selectedCard || detailCardTop === undefined) {
+    if (!this.isBrowser || this.prefersReducedMotion || !selectedCard || cardIndex < 0 || detailCardTop === undefined) {
       if (this.isBrowser) window.scrollTo(window.scrollX, this.listScrollPosition);
       return false;
     }
@@ -241,7 +426,6 @@ export class Wallet {
     this.changeDetectorRef.detectChanges();
     window.scrollTo(window.scrollX, this.listScrollPosition);
 
-    const cardIndex = this.stackedCards().indexOf(selectedCard);
     const cardElement = this.walletCardList()?.nativeElement.children.item(cardIndex);
     if (!cardElement?.animate) return false;
 

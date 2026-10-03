@@ -4,12 +4,12 @@
   <button
     matIconButton
     type="button"
-    [routerLink]="['/profile/attendances/major-event', majorEventId]"
+    [routerLink]="backRoute()"
     aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
   <h1 class="global-toolbar-title">
-    {{ currentState.status === 'ready' ? currentState.subscription.majorEvent.name : 'Pagamento' }}
+    {{ currentState.status === 'ready' ? ticketPageTitle(currentState) : 'Pagamento' }}
   </h1>
 </mat-toolbar>
 
@@ -22,18 +22,32 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else { @let subscription = currentState.subscription; @let majorEvent = subscription.majorEvent; @let paymentInfo =
-  majorEvent.paymentInfo; @let receipt = currentState.receipt;
+  majorEvent.paymentInfo; @let receipt = visibleReceipt();
 
   <header class="payment-header">
-    <span class="status-pill">{{ statusLabel(subscription.subscriptionStatus) }}</span>
+    <span class="status-pill">
+      {{ ticketPurchaseMode
+        ? ticketPurchaseStatusLabel(currentState.uploadedTicketPurchaseReceipt ? 'UNDER_REVIEW' : currentState.ticketPurchase?.status ?? null)
+        : statusLabel(subscription.subscriptionStatus) }}
+    </span>
   </header>
 
   <section class="detail-section">
-    <h2>Valor</h2>
-    @let price = applicablePrice(); @if (price !== null) {
+    <h2>{{ ticketPurchaseMode ? 'Valor do bilhete' : 'Valor' }}</h2>
+    @let price = amountToPay(); @if (price !== null) {
     <p class="amount">{{ price / 100 | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt-BR' }}</p>
     } @else {
-    <p class="empty-text">Não foi possível determinar o valor da inscrição.</p>
+    <p class="empty-text">{{ ticketPurchaseMode ? 'Não foi possível determinar o valor do bilhete.' : 'Não foi possível determinar o valor da inscrição.' }}</p>
+    }
+    @if (ticketPurchaseMode && ticketAmountChanged()) {
+      <p class="ticket-price-changed" role="alert">
+        O valor deste bilhete foi atualizado. Volte à inscrição para conferir o valor atual antes de enviar o comprovante.
+      </p>
+    }
+    @if (ticketPurchaseMode && !currentState.ticketPurchase && !currentState.uploadedTicketPurchaseReceipt) {
+      <p class="ticket-receipt-note">
+        A compra só será registrada depois que o envio do comprovante for concluído. Depois, a equipe analisará o comprovante.
+      </p>
     }
   </section>
 
@@ -117,6 +131,7 @@
       <img [src]="receipt.imageUrl" alt="Comprovante enviado" />
       }
       <div>
+        <p>{{ receipt.fileName }}</p>
         <p>Enviado em {{ receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
         <p>Disponível até {{ receipt.expiresAt | date: 'dd/MM/yyyy' }}</p>
         <p>{{ receipt.sizeBytes / 1024 / 1024 | number: '1.1-1' }} MB</p>
@@ -152,7 +167,15 @@
       aria-label="Enviando comprovante"
       [value]="uploadProgress() ?? 0"></mat-progress-bar>
     } } @else {
-    <p class="empty-text">O envio de comprovantes não está disponível para esta inscrição.</p>
+    @if (ticketPurchaseMode && (currentState.uploadedTicketPurchaseReceipt || currentState.ticketPurchase?.status === 'UNDER_REVIEW' || currentState.ticketPurchase?.status === 'APPROVED')) {
+      <p class="empty-text">O comprovante do bilhete foi enviado e está vinculado a esta compra.</p>
+    } @else if (ticketPurchaseMode && ticketAmountChanged()) {
+      <p class="empty-text">Volte à página da inscrição para conferir e iniciar a compra pelo valor atual.</p>
+    } @else {
+      <p class="empty-text">
+        {{ ticketPurchaseMode ? 'O envio de comprovante não está disponível para este bilhete.' : 'O envio de comprovantes não está disponível para esta inscrição.' }}
+      </p>
+    }
     }
   </section>
   }

@@ -45,7 +45,7 @@ export async function createOrRestoreEventAttendance(params: {
   });
 
   if (existing?.status === EventAttendanceStatus.ABSENT) {
-    const attendance = await tx.eventAttendance.update({
+    await tx.eventAttendance.update({
       where: key,
       data: {
         status: input.status ?? EventAttendanceStatus.PRESENT,
@@ -56,7 +56,8 @@ export async function createOrRestoreEventAttendance(params: {
         ...locationData,
       },
     });
-    await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+    await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
+    const attendance = await tx.eventAttendance.findUniqueOrThrow({ where: key });
     await params.afterWrite?.(attendance, tx);
     return attendance;
   }
@@ -73,7 +74,7 @@ export async function createOrRestoreEventAttendance(params: {
       ...locationData,
     },
   });
-  await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+  await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
   const attendance = await tx.eventAttendance.findUniqueOrThrow({ where: key });
   await params.afterWrite?.(attendance, tx);
   return attendance;
@@ -90,7 +91,7 @@ export async function upsertPresentEventAttendance(params: {
 }) {
   const { tx, attendanceCategories, input } = params;
   const attendedAt = input.attendedAt ?? new Date();
-  const attendance = await tx.eventAttendance.upsert({
+  await tx.eventAttendance.upsert({
     where: {
       personId_eventId: {
         personId: input.personId,
@@ -112,8 +113,10 @@ export async function upsertPresentEventAttendance(params: {
       committedById: input.committedById,
     },
   });
-  await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-  return attendance;
+  await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
+  return tx.eventAttendance.findUniqueOrThrow({
+    where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+  });
 }
 
 function toAttendanceLocationData(location: EventAttendanceLocation | undefined) {

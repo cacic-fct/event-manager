@@ -1,0 +1,87 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.calendar-item-list {
+  padding-block: 0;
+}
+
+:host ::ng-deep .calendar-row.mdc-list-item--with-two-lines,
+:host ::ng-deep .calendar-row.mdc-list-item--with-three-lines {
+  height: auto;
+  min-height: 4.5rem;
+}
+
+:host ::ng-deep .calendar-row .mdc-list-item__content {
+  min-width: 0;
+  overflow: visible;
+  padding-block: 0.75rem;
+  white-space: normal;
+}
+
+.calendar-row [matListItemTitle],
+.calendar-row [matListItemLine] {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.calendar-row [matListItemTitle] {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.calendar-row [matListItemLine] {
+  line-height: 1.45;
+}
+
+.calendar-row .row-supporting-text {
+  padding-block: 0.25rem;
+}
+
+.metadata-item {
+  display: block;
+}
+
+.emoji-frame {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 36px;
+  height: 36px;
+  justify-content: center;
+  margin-inline: 12px;
+  width: 36px;
+}
+
+.twemoji {
+  display: block;
+  height: 32px;
+  width: 32px;
+}
+
+.time-range {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  padding-block: 0.75rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .emoji-frame {
+    flex-basis: 32px;
+    height: 32px;
+    margin-inline: 8px;
+    width: 32px;
+  }
+
+  .twemoji {
+    height: 28px;
+    width: 28px;
+  }
+
+  .time-range {
+    font: var(--mat-sys-label-medium);
+  }
+}

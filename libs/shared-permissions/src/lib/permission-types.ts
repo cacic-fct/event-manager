@@ -116,6 +116,20 @@ export const Permission = {
     Import: 'subscription#import',
     Delete: 'subscription#delete',
   },
+  TicketConfig: {
+    Read: 'ticket-config#read',
+    Create: 'ticket-config#create',
+    Update: 'ticket-config#update',
+  },
+  Ticket: {
+    Read: 'ticket#read',
+    Issue: 'ticket#issue',
+    Revoke: 'ticket#revoke',
+  },
+  TicketTransfer: {
+    Read: 'ticket-transfer#read',
+    Manage: 'ticket-transfer#manage',
+  },
   SportsTournament: {
     Read: 'sports-tournament#read',
     Create: 'sports-tournament#create',

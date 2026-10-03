@@ -38,6 +38,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     },
     eventAttendance: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
     },
@@ -126,6 +127,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     tx.eventAttendance.upsert.mockResolvedValue(attendance);
     tx.eventAttendance.delete.mockResolvedValue(attendance);
     tx.eventAttendance.findUnique.mockResolvedValue(attendance);
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue(attendance);
     tx.sportsMatchRosterEntry.update.mockImplementation(async ({ data }) => {
       persistedCheckedInAt = data.checkedInAt;
       return { id: 'roster-entry-1' };

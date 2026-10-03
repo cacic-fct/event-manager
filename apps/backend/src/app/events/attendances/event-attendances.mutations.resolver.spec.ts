@@ -191,7 +191,7 @@ describe('EventAttendancesMutationsResolver', () => {
         data: expect.objectContaining({ createdByMethod: AttendanceCreationMethod.MANUAL_INPUT }),
       }),
     );
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
 
     tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
     const attendedAt = new Date('2026-05-21T13:00:00.000Z');

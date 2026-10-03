@@ -9,6 +9,11 @@ model User {
   lastLoginAt      DateTime?
 
   people                       People[]
+  ticketTransfersAuthored      TicketTransfer[] @relation("TicketTransferAuthor")
+  ticketTransfersAdminStarted  TicketTransfer[] @relation("TicketTransferInitiatingAdmin")
+  ticketTransfersAsSender      TicketTransfer[] @relation("TicketTransferSenderUser")
+  ticketTransfersAsRecipient   TicketTransfer[] @relation("TicketTransferRecipientUser")
+  ticketTransferCooldown       TicketTransferAuthorCooldown?
   calendarFeedSettings         UserCalendarFeedSettings?
   adminCalendarFeedSettings    UserAdminCalendarFeedSettings?
 

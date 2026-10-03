@@ -164,6 +164,16 @@ export const EVENT_MANAGER_CONTEXT_PERMISSION_DEPENDENCIES = [
     reason: 'Conciliar presenças exige comparar identificadores de pessoas relacionadas ao escopo.',
   },
   {
+    permission: Permission.Ticket.Issue,
+    requires: [Permission.RelatedPerson.Read],
+    reason: 'Emitir um bilhete manualmente exige localizar a pessoa titular.',
+  },
+  {
+    permission: Permission.TicketTransfer.Manage,
+    requires: [Permission.RelatedPerson.Read],
+    reason: 'Iniciar uma transferência administrativa exige localizar a pessoa destinatária.',
+  },
+  {
     permission: Permission.Certificate.Issue,
     requires: [Permission.EventAttendance.Read, Permission.Subscription.Read],
     reason: 'A emissão pode depender de presença e inscrição; o cargo precisa enxergar os dados de elegibilidade.',

@@ -215,7 +215,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         },
         select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
-      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
       if (result.status === 'PRESENT') {
         checkInStarted =
           (await startSportsMatchCheckInFromAthleteAttendance({
@@ -333,7 +333,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
             },
             select: EVENT_ATTENDANCE_AUDIT_SELECT,
           });
-          await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+          await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx, true);
           if (attendance.status === 'PRESENT') {
             checkInStarted =
               (await startSportsMatchCheckInFromAthleteAttendance({
@@ -613,7 +613,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
             collectedAccuracyMeters: submission.collectedAccuracyMeters,
           },
         });
-        await this.attendanceCategories.refreshForAttendance(personId, submission.eventId, tx);
+        await this.attendanceCategories.refreshForAttendance(personId, submission.eventId, tx, true);
         const attendance = await tx.eventAttendance.findUniqueOrThrow({
           where: {
             personId_eventId: {
@@ -857,7 +857,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         where: { personId_eventId: { personId, eventId } },
         data: this.buildEventAttendanceUpdateData(input),
       });
-      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx, true);
       const auditAttendance = await tx.eventAttendance.findUniqueOrThrow({
         where: { personId_eventId: { personId, eventId } },
         select: EVENT_ATTENDANCE_AUDIT_SELECT,

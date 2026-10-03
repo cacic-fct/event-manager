@@ -123,7 +123,7 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
         }),
       }),
     );
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', expect.anything());
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', expect.anything(), true);
     expect(notifySportsMatchAttendanceMutation).toHaveBeenCalledWith(sportsMutationEvents, attendance);
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
   });
@@ -178,12 +178,14 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
       'person-1',
       'event-1',
       expect.anything(),
+      true,
     );
     expect(attendanceCategories.refreshForAttendance).toHaveBeenNthCalledWith(
       2,
       'person-2',
       'event-1',
       expect.anything(),
+      true,
     );
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
   });

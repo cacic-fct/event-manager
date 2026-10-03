@@ -1,0 +1,417 @@
+enum EventTicketIssueSource {
+  EVENT_SUBSCRIPTION
+  MAJOR_EVENT_SUBSCRIPTION
+  ADMIN
+  PURCHASE
+}
+
+enum EventTicketStatus {
+  ACTIVE
+  CONSUMED
+  REVOKED
+}
+
+enum TicketSubscriptionRequirement {
+  ANY
+  REQUIRED
+  NONE
+}
+
+enum TicketExpirationMode {
+  EVENT_END
+  CUSTOM
+}
+
+enum TicketTransferSenderStatus {
+  PENDING
+  ACCEPTED
+  CANCELED
+  EXPIRED
+}
+
+enum TicketTransferRecipientStatus {
+  PENDING
+  ACCEPTED
+  IGNORED
+  SYSTEM_INELIGIBLE
+  SYSTEM_DUPLICATE
+}
+
+enum TicketTransferIgnoreReason {
+  USER_IGNORED
+  INELIGIBLE
+  ALREADY_HELD
+}
+
+enum TicketTransferInitiatorType {
+  HOLDER
+  ADMIN
+}
+
+enum TicketPurchaseStatus {
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum TicketHistoryOperation {
+  ISSUED
+  TRANSFER_REQUESTED
+  TRANSFER_ACCEPTED
+  TRANSFER_IGNORED
+  TRANSFER_CANCELED
+  TRANSFERRED
+  CONSUMED
+  REVOKED
+}
+
+enum TicketNotificationType {
+  SENDER_STARTED
+  SENDER_ADMIN_STARTED
+  SENDER_CANCELED
+  SENDER_ADMIN_CANCELED
+  RECIPIENT_REQUESTED
+  RECIPIENT_INELIGIBLE
+  SENDER_ACCEPTED
+}
+
+enum TicketRealtimeInvalidationType {
+  TICKETS_CHANGED
+  TRANSFERS_CHANGED
+  PURCHASES_CHANGED
+}
+
+enum TicketRealtimeScopeType {
+  USER
+  ADMIN_EVENT
+}
+
+enum TicketEntitlementReconciliationPhase {
+  EVENT_SUBSCRIPTIONS
+  MAJOR_EVENT_SUBSCRIPTIONS
+  COMPLETE
+}
+
+model TicketConfig {
+  id      String @id @default(uuid(7))
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  enabled                       Boolean @default(false)
+  displayName                   String?
+  displayEmoji                  String?
+  description                   String?
+  transferEligibilityDescription String?
+  transferable                  Boolean @default(false)
+
+  issueOnEventSubscription      Boolean @default(false)
+  issueOnMajorEventSubscription Boolean @default(false)
+  includedPriceTierIds          String[] @default([])
+
+  recipientSubscriptionRequirement TicketSubscriptionRequirement @default(ANY)
+  recipientRequiresUnesp           Boolean @default(false)
+  recipientAcademicIdPrefixes      String[] @default([])
+  recipientCourseCodes             String[] @default([])
+  recipientRequiresAccountManagerVerification Boolean @default(false)
+  recipientAllowedPriceTierIds    String[] @default([])
+
+  purchaseEnabled                         Boolean @default(false)
+  purchaseRequiresUnesp                   Boolean @default(false)
+  purchaseAcademicIdPrefixes              String[] @default([])
+  purchaseCourseCodes                     String[] @default([])
+  purchaseRequiresAccountManagerVerification Boolean @default(false)
+  purchaseVisiblePriceTierIds             String[] @default([])
+
+  expirationMode TicketExpirationMode @default(EVENT_END)
+  customExpiresAt DateTime?
+
+  priceOptions TicketPriceOption[]
+  tickets      EventTicket[]
+  purchases    TicketPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ticket_configs")
+}
+
+model TicketPriceOption {
+  id String @id @default(uuid(7))
+
+  ticketConfigId String
+  ticketConfig   TicketConfig @relation(fields: [ticketConfigId], references: [id], onDelete: Cascade)
+
+  // Null is the single fixed-price option. Tier-priced options point at the existing major-event tier.
+  priceTierId String?
+  priceTier   PriceTier? @relation(fields: [priceTierId], references: [id], onDelete: Cascade)
+
+  label       String
+  amountCents Int
+
+  purchases TicketPurchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticketConfigId, priceTierId], map: "ticket_price_options_config_tier_key", where: raw("\"priceTierId\" IS NOT NULL"))
+  @@unique([ticketConfigId], map: "ticket_price_options_config_fixed_key", where: raw("\"priceTierId\" IS NULL"))
+  @@index([priceTierId])
+  @@map("ticket_price_options")
+}
+
+model EventTicket {
+  id String @id @default(uuid(7))
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  ticketConfigId String
+  ticketConfig   TicketConfig @relation(fields: [ticketConfigId], references: [id], onDelete: Restrict)
+
+  holderPersonId String?
+  holder         People? @relation("EventTicketHolder", fields: [holderPersonId], references: [id], onDelete: SetNull)
+
+  originalHolderPersonId String?
+  originalHolder         People? @relation("EventTicketOriginalHolder", fields: [originalHolderPersonId], references: [id], onDelete: SetNull)
+
+  source    EventTicketIssueSource
+  sourceKey String? @unique(map: "event_tickets_source_key_key")
+  status    EventTicketStatus      @default(ACTIVE)
+
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  consumedAt            DateTime?
+  consumedByPersonId    String?
+  revokedAt             DateTime?
+  revokedReason         String?
+
+  history   EventTicketHistory[]
+  transfers TicketTransfer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, holderPersonId], map: "event_tickets_current_holder_key", where: raw("\"status\" IN ('ACTIVE', 'CONSUMED')"))
+  @@index([eventId, status, expiresAt])
+  @@index([holderPersonId, status, expiresAt])
+  @@index([ticketConfigId])
+  @@map("event_tickets")
+}
+
+model EventTicketHistory {
+  id String @id @default(uuid(7))
+
+  ticketId String
+  ticket   EventTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  operation TicketHistoryOperation
+
+  previousHolderPersonId String?
+  previousHolder         People? @relation("TicketHistoryPreviousHolder", fields: [previousHolderPersonId], references: [id], onDelete: SetNull)
+  newHolderPersonId      String?
+  newHolder              People? @relation("TicketHistoryNewHolder", fields: [newHolderPersonId], references: [id], onDelete: SetNull)
+
+  transferId String?
+  transfer   TicketTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
+  actorUserId String?
+  actorName   String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@index([transferId])
+  @@map("event_ticket_history")
+}
+
+model TicketTransfer {
+  id String @id @default(uuid(7))
+
+  ticketId String
+  ticket   EventTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  eventId  String
+  event    Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  senderPersonId String?
+  sender         People? @relation("TicketTransferSender", fields: [senderPersonId], references: [id], onDelete: SetNull)
+  senderUserId   String?
+  senderUser     User?   @relation("TicketTransferSenderUser", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  recipientPersonId String?
+  recipient         People? @relation("TicketTransferRecipient", fields: [recipientPersonId], references: [id], onDelete: SetNull)
+  recipientUserId   String?
+  recipientUser     User?   @relation("TicketTransferRecipientUser", fields: [recipientUserId], references: [id], onDelete: SetNull)
+
+  authorUserId String?
+  author       User?  @relation("TicketTransferAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  initiatorType TicketTransferInitiatorType @default(HOLDER)
+  initiatingAdminUserId String?
+  initiatingAdmin       User? @relation("TicketTransferInitiatingAdmin", fields: [initiatingAdminUserId], references: [id], onDelete: SetNull)
+
+  // Sensitive destination input is AES-GCM encrypted; it is revealed only to the author.
+  submittedDestinationIdentityDocumentEncrypted String?
+
+  senderStatus    TicketTransferSenderStatus    @default(PENDING)
+  recipientStatus TicketTransferRecipientStatus @default(PENDING)
+  ignoreReason    TicketTransferIgnoreReason?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  acceptedAt DateTime?
+  canceledAt DateTime?
+  ignoredAt  DateTime?
+
+  history EventTicketHistory[]
+  resolutionJob TicketTransferResolutionOutbox?
+
+  @@unique([ticketId], map: "ticket_transfers_one_pending_per_ticket", where: raw("\"senderStatus\" = 'PENDING'"))
+  @@index([authorUserId, senderStatus, createdAt])
+  @@index([recipientUserId, recipientStatus, createdAt])
+  @@index([senderPersonId, createdAt])
+  @@index([eventId, createdAt])
+  @@map("ticket_transfers")
+}
+
+model TicketTransferResolutionOutbox {
+  id String @id @default(uuid(7))
+
+  transferId String @unique
+  transfer   TicketTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil    DateTime?
+  completedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+
+  @@index([completedAt, nextAttemptAt])
+  @@map("ticket_transfer_resolution_outbox")
+}
+
+model TicketTransferAuthorCooldown {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  submissionCount Int      @default(0)
+  lastSubmittedAt DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@map("ticket_transfer_author_cooldowns")
+}
+
+model TicketPurchase {
+  id String @id @default(uuid(7))
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+  ticketConfigId String
+  ticketConfig   TicketConfig @relation(fields: [ticketConfigId], references: [id], onDelete: Restrict)
+  majorEventSubscriptionId String?
+  majorEventSubscription   MajorEventSubscription? @relation(fields: [majorEventSubscriptionId], references: [id], onDelete: SetNull)
+  personId String?
+  person   People? @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  priceOptionId String?
+  priceOption   TicketPriceOption? @relation(fields: [priceOptionId], references: [id], onDelete: SetNull)
+  priceTierId   String?
+  priceTier     PriceTier? @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  priceTierName String?
+  ticketName    String
+  ticketEmoji   String
+  amountCents   Int
+
+  status TicketPurchaseStatus @default(UNDER_REVIEW)
+
+  objectKey        String
+  fileName         String
+  mimeType         String
+  sizeBytes        Int
+  receiptUploadedAt DateTime @default(now())
+  receiptExpiresAt DateTime
+
+  rejectionReason String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewedByName  String?
+
+  lgpdDeletionRequestId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticketConfigId, personId], map: "ticket_purchases_config_person_active_key", where: raw("\"status\" IN ('UNDER_REVIEW', 'APPROVED')"))
+  @@index([majorEventId, status, createdAt])
+  @@index([eventId, personId, createdAt])
+  @@index([majorEventSubscriptionId])
+  @@index([receiptExpiresAt])
+  @@map("ticket_purchases")
+}
+
+model TicketNotificationOutbox {
+  id String @id @default(uuid(7))
+
+  transferId String
+  notificationType TicketNotificationType
+  recipientUserId String
+  ticketName String
+  eventName String
+  actorFirstName String
+  actionUrl String
+
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil    DateTime?
+  sentAt        DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+
+  @@unique([transferId, notificationType], map: "ticket_notification_outbox_transfer_type_key")
+  @@index([sentAt, nextAttemptAt])
+  @@map("ticket_notification_outbox")
+}
+
+model TicketRealtimeOutbox {
+  id String @id @default(uuid(7))
+
+  scopeType TicketRealtimeScopeType @default(USER)
+  recipientUserId String?
+  type TicketRealtimeInvalidationType
+  eventId String?
+  ticketId String?
+  transferId String?
+  purchaseId String?
+
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil    DateTime?
+  publishedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime @default(now())
+
+  @@index([publishedAt, nextAttemptAt])
+  @@index([recipientUserId, createdAt])
+  @@map("ticket_realtime_outbox")
+}
+
+model TicketEntitlementReconciliation {
+  id String @id @default(uuid(7))
+
+  eventId String
+  phase   TicketEntitlementReconciliationPhase @default(EVENT_SUBSCRIPTIONS)
+  cursor  String?
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseUntil DateTime?
+  completedAt DateTime?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, createdAt])
+  @@index([completedAt, nextAttemptAt])
+  @@map("ticket_entitlement_reconciliation")
+}

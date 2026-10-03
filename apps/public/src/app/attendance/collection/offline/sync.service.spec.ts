@@ -10,9 +10,11 @@ import { AttendanceCollectionApiService } from '../attendance-collection-api.ser
 import { AttendanceIncognitoWarningService } from '../incognito-warning/attendance-incognito-warning.service';
 import { AttendanceScannerCacheService } from '../scanner/cache.service';
 import { AttendanceOfflineSyncService } from './sync.service';
+import { TICKET_FIXTURE_HOLDER_USER_ID } from '@cacic-fct/shared-ticketing/testing';
 
 describe('AttendanceOfflineSyncService', () => {
   it('synchronizes persisted oral decisions even when the oral page is not active', async () => {
+    const collectedAt = new Date().toISOString();
     const registerOralBatch = vi.fn(() => of([]));
     const markSynced = vi.fn().mockResolvedValue(undefined);
     const oralQueue = {
@@ -23,7 +25,7 @@ describe('AttendanceOfflineSyncService', () => {
           eventId: 'event-1',
           personId: 'person-1',
           status: 'PRESENT',
-          collectedAt: '2026-07-29T12:00:00.000Z',
+          collectedAt,
           location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
         },
       ]),
@@ -60,7 +62,7 @@ describe('AttendanceOfflineSyncService', () => {
         eventId: 'event-1',
         personId: 'person-1',
         status: 'PRESENT',
-        collectedAt: '2026-07-29T12:00:00.000Z',
+        collectedAt,
         collectedByUserId: 'user-1',
         location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
         collectorCredential: undefined,
@@ -159,9 +161,9 @@ describe('AttendanceOfflineSyncService', () => {
       eventId: 'event-1',
       eventName: 'Evento',
       createdByMethod: 'SCANNER',
-      code: 'user:person-1',
+      code: `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
       location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
-      collectedAt: '2026-07-29T12:00:00.000Z',
+      collectedAt: new Date().toISOString(),
       queuedAt: 1,
       updatedAt: 1,
       authorUserId: 'collector-user',
@@ -210,6 +212,7 @@ describe('AttendanceOfflineSyncService', () => {
     expect(commitOfflineAttendances).toHaveBeenCalledWith([
       expect.objectContaining({
         clientId: 'retained-1',
+        code: `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
         authorUserId: 'collector-user',
         collectorCredential: 'signed-collector-proof',
       }),
@@ -338,7 +341,7 @@ function oralItem(): OralItem {
     eventId: 'event-1',
     personId: 'person-1',
     status: 'PRESENT',
-    collectedAt: '2026-07-29T12:00:00.000Z',
+    collectedAt: new Date().toISOString(),
     location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
   };
 }

@@ -80,6 +80,14 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.Subscription.Update,
   Permission.Subscription.Import,
   Permission.Subscription.Delete,
+  Permission.TicketConfig.Read,
+  Permission.TicketConfig.Create,
+  Permission.TicketConfig.Update,
+  Permission.Ticket.Read,
+  Permission.Ticket.Issue,
+  Permission.Ticket.Revoke,
+  Permission.TicketTransfer.Read,
+  Permission.TicketTransfer.Manage,
   Permission.SportsTournament.Read,
   Permission.SportsTournament.Create,
   Permission.SportsTournament.Update,
@@ -159,6 +167,12 @@ const GLOBAL_AND_MAJOR_EVENT_SCOPES = [
   EventManagerPermissionGrantScope.MajorEvent,
 ] as const;
 
+const EVENT_AND_MAJOR_EVENT_SCOPES = [
+  EventManagerPermissionGrantScope.Event,
+  EventManagerPermissionGrantScope.MajorEvent,
+  EventManagerPermissionGrantScope.Global,
+] as const;
+
 const SPORTS_CATEGORY_SCOPES = [
   EventManagerPermissionGrantScope.Global,
   EventManagerPermissionGrantScope.MajorEvent,
@@ -184,6 +198,14 @@ export const EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY: Readonly<
   [Permission.PrizeDraw.Undo]: ALL_GRANT_SCOPES,
   [Permission.PrizeDraw.ContactRead]: ALL_GRANT_SCOPES,
   [Permission.SportsTournament.Read]: SPORTS_MATCH_SCOPES,
+  [Permission.TicketConfig.Read]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.TicketConfig.Create]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.TicketConfig.Update]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.Ticket.Read]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.Ticket.Issue]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.Ticket.Revoke]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.TicketTransfer.Read]: EVENT_AND_MAJOR_EVENT_SCOPES,
+  [Permission.TicketTransfer.Manage]: EVENT_AND_MAJOR_EVENT_SCOPES,
   [Permission.SportsTournament.Create]: GLOBAL_AND_MAJOR_EVENT_SCOPES,
   [Permission.SportsTournament.Update]: GLOBAL_AND_MAJOR_EVENT_SCOPES,
   [Permission.SportsTournament.Delete]: GLOBAL_AND_MAJOR_EVENT_SCOPES,

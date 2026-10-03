@@ -33,3 +33,8 @@ export function formatCPF(cpf: string): string {
 export function unformatCPF(cpf: string): string {
   return cpf.replace(/\D/g, ''); // Remove non-digit characters
 }
+
+export function maskCPF(cpf: string): string {
+  const digits = unformatCPF(cpf);
+  return digits.length === 11 ? `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••` : '••••••••';
+}

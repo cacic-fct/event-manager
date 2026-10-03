@@ -46,6 +46,9 @@ describe('ReceiptAdminQueueService', () => {
 
     await expect(service.listPendingValidationQueue('major-1')).resolves.toEqual({
       pendingCount: 1,
+      subscriptionCount: 1,
+      ticketCount: 0,
+      availablePaymentTiers: [],
       items: [mappedItem],
     });
 
@@ -54,10 +57,28 @@ describe('ReceiptAdminQueueService', () => {
         where: expect.objectContaining({
           majorEventId: 'major-1',
         }),
-        take: 100,
       }),
     );
     expect(mapper.mapAdminQueueItem).toHaveBeenCalledWith({ id: 'subscription-1' });
+  });
+
+  it('sorts combined receipts by edit time and returns full category and tier counts', async () => {
+    const now = new Date();
+    const subscription = { subscriptionId: 'subscription', category: 'SUBSCRIPTION', subscriptionUpdatedAt: now };
+    const ticket = { subscriptionId: 'purchase', category: 'TICKET', subscriptionUpdatedAt: new Date(now.getTime() - 60_000) };
+    const scopedPrisma = {
+      majorEventSubscription: { count: jest.fn().mockResolvedValue(1), findMany: jest.fn().mockResolvedValue([{}]) },
+      priceTier: { findMany: jest.fn().mockResolvedValue([{ id: 'tier-with-no-receipts', name: 'Completo' }]) },
+    };
+    const scopedMapper = { adminQueueSubscriptionSelect: jest.fn().mockReturnValue({}), mapAdminQueueItem: jest.fn().mockReturnValue(subscription) };
+    const purchases = { pending: jest.fn().mockResolvedValue([ticket]) };
+    const merged = new ReceiptAdminQueueService(scopedPrisma as never, scopedMapper as never, notifications as never, purchases as never);
+    await expect(merged.listPendingValidationQueue('major')).resolves.toEqual({
+      pendingCount: 2, subscriptionCount: 1, ticketCount: 1,
+      availablePaymentTiers: [{ id: 'tier-with-no-receipts', name: 'Completo' }], items: [ticket, subscription],
+    });
+    expect(purchases.pending).toHaveBeenCalledWith('major');
+    expect(scopedPrisma.majorEventSubscription.findMany.mock.calls[0][0]).not.toHaveProperty('take');
   });
 
   it('returns a mapped queue item for a subscription', async () => {

@@ -6,6 +6,7 @@ import {
   SportsOfficialRole,
 } from '@prisma/client';
 import type { AudienceInvitationSnapshot } from './audience-invitations';
+import type { TicketPersonRelationsSnapshot } from '../../../tickets/ticket-merge-relations';
 
 export type MergeMatchMethod = 'CPF' | 'EMAIL' | 'NORMALIZED_NAME';
 
@@ -150,4 +151,5 @@ export type MovedRelationsSnapshot = {
   sportsTournamentParticipantSnapshots: SportsTournamentParticipantSnapshot[];
   movedSportsOfficialAssignmentIds: string[];
   sportsOfficialAssignmentSnapshots: SportsOfficialAssignmentSnapshot[];
+  ticketRelations?: TicketPersonRelationsSnapshot;
 };

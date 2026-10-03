@@ -232,7 +232,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             where: { personId_eventId: { personId, eventId } },
           });
       if (!present) {
-        await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+        await this.attendanceCategories.refreshForAttendance(personId, eventId, tx, true);
       }
       await tx.sportsMatchRosterEntry.update({
         where: { id: entry.id },

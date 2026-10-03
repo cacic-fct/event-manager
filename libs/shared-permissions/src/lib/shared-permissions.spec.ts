@@ -346,6 +346,14 @@ describe('shared permissions contract', () => {
     );
   });
 
+  it('allows the ticketing manager preset to enter the tickets workspace without receipt access', () => {
+    const preset = EVENT_MANAGER_PERMISSION_PRESETS.find((candidate) => candidate.id === 'ticketing-manager');
+    const tab = WORKSPACE_TAB_PERMISSIONS.find((candidate) => candidate.id === WorkspacePermissionTab.Tickets);
+    expect(preset).toBeDefined();
+    expect(tab?.read.every((permission) => preset?.permissions.includes(permission))).toBe(true);
+    expect(tab?.read).not.toContain(Permission.Receipt.Read);
+  });
+
   it('keeps workspace tabs and evaluation permissions aligned', () => {
     const permissionsTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Permissions);
     const dashboardTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Dashboard);

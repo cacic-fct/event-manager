@@ -205,6 +205,71 @@ describe('merge candidate snapshot helpers', () => {
     });
   });
 
+  it('parses ticket identity and expected merge state for safe undo', () => {
+    const movedRelations = parseMovedRelations({
+      sourceAttendances: [],
+      sourceLectures: [],
+      insertedAttendanceEventIds: [],
+      insertedLectureEventIds: [],
+      movedEventSubscriptionIds: [],
+      movedMajorEventSubscriptionIds: [],
+      ticketRelations: {
+        holderSnapshots: [
+          {
+            action: 'MOVED',
+            id: 'ticket-1',
+            eventId: 'event-1',
+            sourceKey: 'event-subscription:event-1:source-person',
+            originalHolderPersonId: 'source-person',
+            holderPersonId: 'source-person',
+            status: 'ACTIVE',
+            revokedAt: null,
+            revokedReason: null,
+            expectedHolderPersonId: 'target-person',
+            expectedStatus: 'ACTIVE',
+            expectedRevokedAt: null,
+            expectedRevokedReason: null,
+          },
+        ],
+        transferSnapshots: [],
+        purchaseSnapshots: [
+          {
+            id: 'purchase-1',
+            ticketConfigId: 'ticket-config-1',
+            personId: 'source-person',
+            majorEventSubscriptionId: 'source-subscription',
+            status: 'UNDER_REVIEW',
+            expectedPersonId: 'target-person',
+            expectedMajorEventSubscriptionId: 'target-subscription',
+            expectedStatus: 'UNDER_REVIEW',
+          },
+        ],
+      },
+    });
+
+    expect(movedRelations.ticketRelations).toEqual({
+      holderSnapshots: [
+        expect.objectContaining({
+          action: 'MOVED',
+          id: 'ticket-1',
+          sourceKey: 'event-subscription:event-1:source-person',
+          originalHolderPersonId: 'source-person',
+          expectedHolderPersonId: 'target-person',
+        }),
+      ],
+      transferSnapshots: [],
+      purchaseSnapshots: [
+        expect.objectContaining({
+          id: 'purchase-1',
+          personId: 'source-person',
+          majorEventSubscriptionId: 'source-subscription',
+          expectedPersonId: 'target-person',
+          expectedMajorEventSubscriptionId: 'target-subscription',
+        }),
+      ],
+    });
+  });
+
   it('rejects malformed snapshot payloads', () => {
     expect(() => parsePersonSnapshot(null, 'targetSnapshot')).toThrow(ConflictException);
     expect(() =>

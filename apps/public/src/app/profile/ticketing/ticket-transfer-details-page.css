@@ -1,0 +1,65 @@
+.ticket-transfer-details-page {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1.5rem;
+  margin-inline: auto;
+  max-width: 42rem;
+  padding: 1rem 1rem 2.5rem;
+  width: 100%;
+}
+
+.transfer-ticket-basics,
+.admin-initiator,
+.sender-section,
+.recipient-section,
+.recipient-actions,
+.ticket-extra-information {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-initiator h2,
+.recipient-section h2,
+.ticket-extra-information h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0;
+}
+
+.transfer-ticket-basics > app-calendar-list-item {
+  margin-inline: -0.75rem;
+}
+
+.pending-document-label,
+.transfer-status,
+.ticket-extra-information p {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ticket-extra-information p {
+  overflow-wrap: anywhere;
+}
+
+.pending-document {
+  font: var(--mat-sys-title-medium);
+  margin: -0.75rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.recipient-actions {
+  align-items: start;
+}
+
+.transfer-page-message {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 10rem;
+  text-align: center;
+}
+
+.transfer-page-message p {
+  margin: 0;
+}

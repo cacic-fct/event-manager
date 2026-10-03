@@ -18,7 +18,7 @@
   @if (hasPreciseLocation()) {
   <lib-aztec-scanner
     title="Escanear presença"
-    [acceptedPrefixes]="['user:']"
+    [acceptedPrefixes]="['user:', 'ticket:']"
     (scan)="handleScan($event)"
     [formats]="['Aztec']" />
 

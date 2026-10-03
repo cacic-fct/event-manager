@@ -1,5 +1,13 @@
+import { parseTicketBarcode } from '@cacic-fct/shared-ticketing';
+
 export function parseUserAztecCode(code: string): string | null {
-  const [kind, userId, ...extraParts] = code.trim().split(':');
+  const normalized = code.trim();
+  if (normalized.startsWith('ticket:')) {
+    // The barcode is display-only; attendance verifies persisted ownership.
+    return parseTicketBarcode(normalized)?.holderUserId ?? null;
+  }
+  const parts = normalized.split(':');
+  const [kind, userId, ...extraParts] = parts;
   if (kind !== 'user' || !userId || extraParts.length > 0) {
     return null;
   }

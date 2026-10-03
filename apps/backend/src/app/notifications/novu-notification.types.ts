@@ -78,6 +78,23 @@ export type PrizeDrawNotification = {
   recipient: NotificationRecipient;
 };
 
+export type TicketTransferNotification = {
+  notificationType:
+    | 'SENDER_STARTED'
+    | 'SENDER_ADMIN_STARTED'
+    | 'SENDER_CANCELED'
+    | 'SENDER_ADMIN_CANCELED'
+    | 'RECIPIENT_REQUESTED'
+    | 'RECIPIENT_INELIGIBLE'
+    | 'SENDER_ACCEPTED';
+  transferId: string;
+  recipientUserId: string;
+  ticketName: string;
+  eventName: string;
+  actorFirstName: string;
+  actionUrl: string;
+};
+
 export type NovuTriggerResponse = {
   acknowledged: boolean;
   status: string;

@@ -37,6 +37,7 @@ export class ReceiptQueueMapper {
       subscriptionStatus: true,
       receiptRejectionReason: true,
       updatedAt: true,
+      createdAt: true,
       selectedEvents: {
         where: {
           deletedAt: null,
@@ -121,6 +122,8 @@ export class ReceiptQueueMapper {
       Boolean(latestReceipt?.matchedNameText);
 
     return {
+      category: 'SUBSCRIPTION',
+      subscriptionCreatedAt: subscription.createdAt,
       subscriptionId: subscription.id,
       majorEventId: subscription.majorEventId,
       majorEventName: subscription.majorEvent.name,

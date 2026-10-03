@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
@@ -33,13 +33,13 @@ import { toSVG } from '@bwip-js/browser';
       }
     `,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletBarcodeComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly value = input('');
+  readonly payloadPrefix = input('user:');
   readonly barcodeType = input<'aztec' | 'code128'>('aztec');
   readonly errorCorrectionLevel = input('35');
   readonly label = input('Código de barras');
@@ -75,7 +75,7 @@ export class WalletBarcodeComponent {
 
       return toSVG({
         bcid: 'azteccode',
-        text: `user:${value}`,
+        text: `${this.payloadPrefix()}${value}`,
         height: 300,
         width: 300,
         includetext: false,

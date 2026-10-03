@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -17,7 +17,12 @@ import { MatButtonModule } from '@angular/material/button';
     </mat-toolbar>
 
     <main class="global-container wallet-add-page">
-      <mat-nav-list aria-label="Cartões disponíveis"></mat-nav-list>
+      <mat-nav-list aria-label="Cartões e serviços disponíveis">
+        <a mat-list-item routerLink="/profile/wallet/ticket-transfers">
+          <mat-icon matListItemIcon>swap_horiz</mat-icon>
+          <span matListItemTitle>Transferência de bilhetes</span>
+        </a>
+      </mat-nav-list>
     </main>
   `,
   styles: `
@@ -26,6 +31,5 @@ import { MatButtonModule } from '@angular/material/button';
       padding-block: 1.5rem;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletAddCard {}

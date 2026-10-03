@@ -1,3 +1,4 @@
+import { anonymizeTicketingData, collectTicketingData } from './lgpd-ticketing';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -241,6 +242,7 @@ export class LgpdService {
 
     return {
       metadata: this.metadata(input, dataSubject),
+      ticketing: await collectTicketingData(this.prisma, personIds, userIds),
       accountUsers: { records: selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
       people: { records: people.map((person) => mapPersonForExport(person)) },
       interests: { records: selectManyForExport(eventInterests, LGPD_EVENT_INTEREST_SELECT) },
@@ -424,6 +426,7 @@ export class LgpdService {
         anonymizedSubjectId,
       );
       const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
+      await anonymizeTicketingData(tx, personIds, userIds);
       const certificates = await tx.certificate.deleteMany({ where: { personId: { in: personIds } } });
       const selections = await tx.majorEventSubscriptionEventSelection.deleteMany({
         where: { subscription: { personId: { in: personIds } } },

@@ -13,6 +13,7 @@ import { AuthenticatedUserSyncService, InferredAuthenticatedProfile } from '../a
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
 import { GraphqlContext, PERSON_SELECT, PersonRecord, USER_SELECT, UserRecord } from './selects';
 
 @Injectable()
@@ -48,6 +49,9 @@ export class CurrentUserContextService {
 
     const effectiveUser = await this.resolveMergedAuthenticatedUser(authenticatedUser);
     const user = await this.resolveCurrentUser(effectiveUser);
+    if (user && user.id === effectiveUser.sub) {
+      await this.reconcileTicketAccountRelations(user.id);
+    }
     const person =
       (await this.resolveCurrentPerson(effectiveUser, user)) ??
       (await this.createCurrentPerson(effectiveUser, { allowNonOnboarded: options.allowNonOnboarded }));
@@ -206,6 +210,35 @@ export class CurrentUserContextService {
       ...authenticatedUser,
       sub: finalUserId,
     };
+  }
+
+  private async reconcileTicketAccountRelations(survivingUserId: string): Promise<void> {
+    const sourceUserIds: string[] = [];
+    const visitedUserIds = new Set([survivingUserId]);
+    let frontier = [survivingUserId];
+
+    while (frontier.length > 0) {
+      const mappings = await this.prisma.accountUserMerge.findMany({
+        where: { newUserId: { in: frontier } },
+        select: { oldUserId: true },
+      });
+      const nextFrontier: string[] = [];
+      for (const mapping of mappings) {
+        if (visitedUserIds.has(mapping.oldUserId)) continue;
+        visitedUserIds.add(mapping.oldUserId);
+        sourceUserIds.push(mapping.oldUserId);
+        nextFrontier.push(mapping.oldUserId);
+      }
+      frontier = nextFrontier;
+    }
+
+    if (sourceUserIds.length === 0) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const sourceUserId of sourceUserIds) {
+        await reassignTicketUserRelations(tx, sourceUserId, survivingUserId);
+      }
+    });
   }
 
   private async resolveCurrentPerson(

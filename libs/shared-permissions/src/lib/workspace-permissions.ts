@@ -21,6 +21,7 @@ export const WorkspacePermissionTab = {
   Notifications: 'notifications',
   Preferences: 'preferences',
   PrizeDraws: 'prize-draws',
+  Tickets: 'tickets',
 } as const;
 
 export type WorkspacePermissionTab = (typeof WorkspacePermissionTab)[keyof typeof WorkspacePermissionTab];
@@ -49,6 +50,9 @@ export const WORKSPACE_ENTRY_PERMISSIONS = [
   Permission.PrizeDraw.Read,
   Permission.Receipt.Read,
   Permission.Subscription.Read,
+  Permission.TicketConfig.Read,
+  Permission.Ticket.Read,
+  Permission.TicketTransfer.Read,
   Permission.SportsTournament.Read,
   Permission.SportsCategory.Read,
   Permission.SportsTeam.Read,
@@ -180,6 +184,25 @@ export const WORKSPACE_TAB_PERMISSIONS = [
       Permission.Receipt.Undo,
     ],
     delete: [Permission.Subscription.Delete],
+  },
+  {
+    id: WorkspacePermissionTab.Tickets,
+    label: 'Bilhetes',
+    read: [
+      Permission.TicketConfig.Read,
+      Permission.Ticket.Read,
+      Permission.TicketTransfer.Read,
+      Permission.Event.Read,
+      Permission.MajorEvent.Read,
+    ],
+    edit: [
+      Permission.TicketConfig.Create,
+      Permission.TicketConfig.Update,
+      Permission.Ticket.Issue,
+      Permission.Ticket.Revoke,
+      Permission.TicketTransfer.Manage,
+    ],
+    delete: [],
   },
   {
     id: WorkspacePermissionTab.Sports,

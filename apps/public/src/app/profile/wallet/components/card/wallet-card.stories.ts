@@ -4,16 +4,20 @@ import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-sessio
 import { WalletCard } from './wallet-card';
 import { type WalletCardKind, type WalletCardUser } from './wallet-card.types';
 import { createWalletStoryTotpSession, createWalletStoryUser } from '../../testing/wallet-story-fixtures';
+import { createWalletStoryTicket } from '../../testing/wallet-story-fixtures';
+import type { WalletTicket } from '@cacic-fct/shared-ticketing';
 
 type WalletCardStoryArgs = {
   kind: WalletCardKind;
   user: WalletCardUser;
+  ticket: WalletTicket | null;
+  selectionId: string | null;
 };
 
 const meta: Meta<WalletCardStoryArgs> = {
   component: WalletCard,
   title: 'CACiC Eventos/Profile/Wallet/Card',
-  tags: ['autodocs'],
+  tags: ['autodocs', 'ticketing'],
   parameters: {
     layout: 'centered',
   },
@@ -32,10 +36,14 @@ const meta: Meta<WalletCardStoryArgs> = {
   args: {
     kind: 'eventos',
     user: createWalletStoryUser(),
+    ticket: null,
+    selectionId: null,
   },
   argTypes: {
     kind: { control: 'select', options: ['eventos', 'offline-code', 'academic-record'] },
     user: { control: 'object' },
+    ticket: { control: 'object' },
+    selectionId: { control: 'text' },
   },
 };
 
@@ -48,7 +56,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('CACiC Eventos')).toBeVisible();
-    await expect(canvas.getByText('Ana Clara Silva')).toBeVisible();
+    await expect(canvas.getByText('Marina da Silva')).toBeVisible();
   },
 };
 
@@ -78,5 +86,18 @@ export const AcademicRecord: Story = {
   args: { kind: 'academic-record' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText(/registro acadêmico/i)).toBeVisible();
+  },
+};
+
+export const EventTicket: Story = {
+  args: {
+    ticket: createWalletStoryTicket(),
+    selectionId: 'ticket:018f47a1-3d5b-7abc-8def-0123456789ab',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Festa de encerramento')).toBeVisible();
+    await expect(canvas.getByText('Marina da Silva')).toBeVisible();
+    await expect(canvas.getByRole('img', { name: 'Código do bilhete' })).toBeVisible();
   },
 };

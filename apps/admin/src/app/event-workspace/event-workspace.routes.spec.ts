@@ -26,4 +26,10 @@ describe('canonical event workspace routes', () => {
     expect(children.filter((route) => /^(events|groups|major-events)(\/|$)/.test(route.path ?? ''))).toEqual([]);
     expect(children.filter((route) => route.redirectTo)).toEqual([]);
   });
+
+  it('registers the global ticket picker and event-scoped ticket workspaces', () => {
+    expect(children.some((route) => route.path === 'tickets' && route.pathMatch === 'full')).toBe(true);
+    expect(children.some((route) => route.path === 'tickets/event/:eventId')).toBe(true);
+    expect(children.some((route) => route.path === 'tickets/major-event/:majorEventId')).toBe(true);
+  });
 });

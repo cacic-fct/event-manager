@@ -545,6 +545,7 @@ describe('AttendancesService', () => {
     expect(service.getAttendanceCurrentAssessmentLabel('ACTIVITY_SUBSCRIPTION_MISSING')).toBe(
       'Sem inscrição ativa na atividade.',
     );
+    expect(service.getAttendanceCurrentAssessmentLabel('TICKET_REQUIRED')).toBe('Bilhete não disponível.');
     expect(
       service.getMajorEventCurrentAssessmentLabel({
         ...createAdminMajorEventUserAttendance({ majorEventId: majorEvent.id }, person, majorEvent),

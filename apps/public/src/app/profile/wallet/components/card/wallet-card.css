@@ -22,9 +22,16 @@
   min-height: 17rem;
 }
 
-.wallet-ticket-eventos app-wallet-card-header {
+.wallet-ticket-eventos app-wallet-card-header,
+.wallet-ticket-event-ticket app-wallet-card-header {
   color: #f4f8ff;
   background: #3d3f97;
+}
+
+.wallet-ticket-event-ticket {
+  min-height: 17rem;
+  color: #f7f9ff;
+  background: #272863;
 }
 
 .wallet-ticket-offline-code {

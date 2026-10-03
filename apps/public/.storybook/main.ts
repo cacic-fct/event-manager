@@ -9,6 +9,7 @@ const config: StorybookConfig = {
   addons: ['@storybook/addon-a11y', 'msw-storybook-addon'],
   staticDirs: [
     '../public',
+    { from: '../public', to: '/app' },
     {
       from: '../../../node_modules/@fontsource/material-symbols-outlined/files',
       to: '/material-symbols-outlined-files',

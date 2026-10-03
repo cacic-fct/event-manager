@@ -117,6 +117,7 @@ describe('merge candidate relation movement', () => {
       sportsTournamentParticipantSnapshots: [],
       movedSportsOfficialAssignmentIds: [],
       sportsOfficialAssignmentSnapshots: [],
+      ticketRelations: { holderSnapshots: [], transferSnapshots: [], purchaseSnapshots: [] },
     });
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({
@@ -185,6 +186,7 @@ describe('merge candidate relation movement', () => {
       sportsTournamentParticipantSnapshots: [],
       movedSportsOfficialAssignmentIds: [],
       sportsOfficialAssignmentSnapshots: [],
+      ticketRelations: { holderSnapshots: [], transferSnapshots: [], purchaseSnapshots: [] },
     });
 
     expect(tx.eventAttendance.createMany).not.toHaveBeenCalled();
@@ -270,6 +272,29 @@ function createTransaction() {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    eventTicket: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    eventTicketHistory: { create: jest.fn() },
+    ticketTransfer: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    ticketPurchase: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    ticketNotificationOutbox: { updateMany: jest.fn() },
+    ticketRealtimeOutbox: { updateMany: jest.fn() },
+    ticketTransferAuthorCooldown: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    auditLogEntry: { create: jest.fn() },
+    user: { findUnique: jest.fn().mockResolvedValue(null) },
     eventLecturer: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),

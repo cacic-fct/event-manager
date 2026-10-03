@@ -93,6 +93,10 @@
     </a>
     }
   </div>
+  } @if (detail.targetType === 'major-event' && detail.subscriptionStatus === 'CONFIRMED') {
+    <app-ticket-purchase-options-section
+      [majorEventId]="detail.targetId"
+      [subscriptionStatus]="detail.subscriptionStatus" />
   } @if (detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>

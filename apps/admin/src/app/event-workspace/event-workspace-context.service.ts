@@ -23,7 +23,7 @@ export interface EventWorkspaceContext extends EventWorkspaceRef {
   isSportsManaged?: boolean;
 }
 export interface ContextOperation {
-  id: 'overview' | 'settings' | 'sports' | 'subscriptions' | 'attendances' | 'forms' | 'draws' | 'interests' | 'certificates' | 'publication';
+  id: 'overview' | 'settings' | 'sports' | 'tickets' | 'subscriptions' | 'attendances' | 'forms' | 'draws' | 'interests' | 'certificates' | 'publication';
   label: string;
   icon: string;
   path: string[];
@@ -51,6 +51,7 @@ export function eventContextFromUrl(url: string): EventWorkspaceRef | null {
   if (section === 'event-workspace' && id && ['event', 'group', 'major-event'].includes(kind)) {
     return { kind: kind as EventWorkspaceKind, id };
   }
+  if (section === 'tickets' && id && (kind === 'event' || kind === 'major-event')) return { kind, id };
   if (['subscriptions', 'attendances', 'forms', 'certificates', 'publication'].includes(section) && id) {
     if (kind === 'event' || kind === 'major-event') return { kind, id };
     if (kind === 'group' || kind === 'event-group') return { kind: 'group', id };
@@ -74,6 +75,7 @@ export function contextOperations(context: EventWorkspaceRef): ContextOperation[
   operations.push({ id: 'settings', label: 'Configurações', icon: 'settings', path: adminEventWorkspaceRoute({ ...context, section: 'settings' }), permissionTab: kind === 'group' ? 'groups' : kind === 'event' ? 'events' : 'major-events' });
   if (kind !== 'group') {
     operations.push(
+      { id: 'tickets', label: 'Bilhetes', icon: 'confirmation_number', path: ['/tickets', kind, id], permissionTab: 'tickets' },
       { id: 'subscriptions', label: 'Inscrições', icon: 'how_to_reg', path: ['/subscriptions', kind, id], permissionTab: 'subscriptions' },
       { id: 'attendances', label: 'Presenças', icon: 'fact_check', path: ['/attendances', kind, id], permissionTab: 'attendances' },
       { id: 'forms', label: 'Formulários', icon: 'list_alt', path: ['/forms', kind, id], permissionTab: 'forms' },

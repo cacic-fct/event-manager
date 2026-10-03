@@ -34,6 +34,7 @@ import { AuditLogEntry, AuditLogExplorerInput, AuditLogExplorerResult } from './
 import { getAuditLogRevertConfig, isReversibleAuditOperation } from './audit-log.revert-config';
 import { applyAuditLogRevertInvariants } from './audit-log.revert-invariants';
 import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import {
   diffAuditRecords,
   normalizeAuditSnapshot,
@@ -81,6 +82,10 @@ export class AuditLogService {
       assertEventGroupMutable: async () => undefined,
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    private readonly ticketIssuance: TicketIssuanceService = {
+      alignActiveTicketExpirations: async () => 0,
+      lockEventExpirationAlignment: async () => undefined,
+    } as unknown as TicketIssuanceService,
   ) {}
 
   async record(options: AuditRecordOptions, prisma: AuditPrismaClient = this.prisma): Promise<void> {
@@ -253,8 +258,18 @@ export class AuditLogService {
     const resolvedActor = await this.resolveActor(actor);
     const now = new Date();
     const revertResult = await this.prisma.$transaction(async (tx) => {
+      if (targetEntry.entityType === AuditLogEntityType.EVENT && 'endDate' in revertData) {
+        await this.ticketIssuance.lockEventExpirationAlignment(tx, targetEntry.entityId, 'UPDATE');
+      }
       const updated = await updateAuditEntityRecord(tx, targetEntry.entityType, targetEntry.entityId, revertData);
       await applyAuditLogRevertInvariants(tx, targetEntry.entityType, updated);
+      if (targetEntry.entityType === AuditLogEntityType.EVENT && 'endDate' in revertData) {
+        await this.ticketIssuance.alignActiveTicketExpirations(tx, targetEntry.entityId, {
+          scope: 'EVENT_END_ONLY',
+          actorUserId: resolvedActor.id ?? null,
+          permission: targetEntry.permission,
+        });
+      }
       if (this.shouldRefreshEventAttendance(targetEntry.entityType, revertData)) {
         await this.attendanceCategories.refreshForEvent(targetEntry.entityId, tx);
       }

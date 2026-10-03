@@ -1,0 +1,78 @@
+.ticket-transfer-start-page {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1.5rem;
+  margin-inline: auto;
+  max-width: 42rem;
+  padding: 1rem 1rem 2.5rem;
+  width: 100%;
+}
+
+.transfer-ticket-basics,
+.transfer-form-section,
+.ticket-extra-information {
+  display: grid;
+  gap: 1rem;
+}
+
+.transfer-form-section h2,
+.ticket-extra-information h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0;
+}
+
+.transfer-ticket-basics > app-calendar-list-item {
+  margin-inline: -0.75rem;
+}
+
+.privacy-copy,
+.transfer-status,
+.ticket-extra-information p {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ticket-extra-information p {
+  overflow-wrap: anywhere;
+}
+
+.transfer-form-section form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.transfer-form-section mat-form-field {
+  width: 100%;
+}
+
+.pending-document-label {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+  margin: 0;
+}
+
+.pending-document {
+  font: var(--mat-sys-title-medium);
+  margin: -0.75rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.transfer-page-message {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 10rem;
+  text-align: center;
+}
+
+.transfer-page-message p {
+  margin: 0;
+}

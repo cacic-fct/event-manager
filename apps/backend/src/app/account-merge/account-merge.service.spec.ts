@@ -277,6 +277,38 @@ describe('AccountMergeService', () => {
     );
   });
 
+  it('reassigns pending ticket identity when an account merge has no linked people', async () => {
+    const tx = createTransactionMock();
+    tx.people.findMany.mockResolvedValue([]);
+    tx.user.findUnique.mockResolvedValue({ id: 'new-user' });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(service.acknowledgeAccountMerge(notification(), null)).resolves.toEqual(
+      expect.objectContaining({ status: 'success' }),
+    );
+
+    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith({
+      where: { senderStatus: 'PENDING', authorUserId: 'old-user' },
+      data: { authorUserId: 'new-user' },
+    });
+    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith({
+      where: { senderStatus: 'PENDING', senderUserId: 'old-user' },
+      data: { senderUserId: 'new-user' },
+    });
+    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith({
+      where: { senderStatus: 'PENDING', recipientUserId: 'old-user' },
+      data: { recipientUserId: 'new-user' },
+    });
+    expect(tx.ticketNotificationOutbox.updateMany).toHaveBeenCalledWith({
+      where: { recipientUserId: 'old-user', sentAt: null },
+      data: { recipientUserId: 'new-user' },
+    });
+    expect(tx.ticketRealtimeOutbox.updateMany).toHaveBeenCalledWith({
+      where: { recipientUserId: 'old-user', publishedAt: null },
+      data: { recipientUserId: 'new-user' },
+    });
+  });
+
   it('merges two local people records and moves source relations to the target', async () => {
     const tx = createTransactionMock();
     tx.people.findMany.mockResolvedValueOnce([
@@ -393,6 +425,17 @@ describe('AccountMergeService', () => {
         },
       },
     ]);
+    tx.ticketPurchase.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'ticket-purchase-1',
+          ticketConfigId: 'ticket-config-1',
+          personId: 'source-person',
+          majorEventSubscriptionId: 'major-subscription-1',
+          status: 'UNDER_REVIEW',
+        },
+      ])
+      .mockResolvedValueOnce([]);
     tx.eventFormResponse.findFirst.mockResolvedValue(null);
     tx.eventFormResponse.updateMany.mockResolvedValue({ count: 1 });
     tx.peopleMergeOperation.create.mockResolvedValue({ id: 'merge-operation-1' });
@@ -433,6 +476,16 @@ describe('AccountMergeService', () => {
       where: { id: 'form-response-1', personId: 'source-person' },
       data: { personId: 'target-person' },
     });
+    expect(tx.ticketPurchase.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ticket-purchase-1',
+        ticketConfigId: 'ticket-config-1',
+        personId: 'source-person',
+        majorEventSubscriptionId: 'major-subscription-1',
+        status: 'UNDER_REVIEW',
+      },
+      data: { personId: 'target-person' },
+    });
     expect(tx.peopleMergeOperation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -446,6 +499,16 @@ describe('AccountMergeService', () => {
             coalescedEventFormResponseIds: [],
             movedSportsTeamRepresentativeIds: ['representative-1'],
             revokedSportsTeamRepresentativeIds: [],
+            ticketRelations: expect.objectContaining({
+              purchaseSnapshots: [
+                expect.objectContaining({
+                  id: 'ticket-purchase-1',
+                  personId: 'source-person',
+                  expectedPersonId: 'target-person',
+                  majorEventSubscriptionId: 'major-subscription-1',
+                }),
+              ],
+            }),
           }),
         }),
       }),
@@ -875,6 +938,7 @@ function createTransactionMock() {
   });
 
   return {
+    $queryRaw: jest.fn().mockResolvedValue([]),
     externalAccountMergeOperation: {
       findUnique: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
@@ -897,6 +961,28 @@ function createTransactionMock() {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    eventTicket: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    eventTicketHistory: { create: jest.fn() },
+    ticketTransfer: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    ticketPurchase: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    ticketNotificationOutbox: { updateMany: jest.fn() },
+    ticketRealtimeOutbox: { updateMany: jest.fn() },
+    ticketTransferAuthorCooldown: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    auditLogEntry: { create: jest.fn() },
     eventLecturer: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),

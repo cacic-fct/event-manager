@@ -19,6 +19,10 @@ export type AuditLogEntityType =
   | 'CERTIFICATE'
   | 'MERGE_CANDIDATE'
   | 'RECEIPT_VALIDATION'
+  | 'TICKET'
+  | 'TICKET_TRANSFER'
+  | 'TICKET_PURCHASE'
+  | 'TICKET_CONFIG'
   | 'SYSTEM';
 
 export type AuditLogOperation =

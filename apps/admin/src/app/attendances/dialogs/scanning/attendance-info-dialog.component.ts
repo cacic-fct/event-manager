@@ -211,6 +211,7 @@ export class AttendanceInfoDialogComponent {
       MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'Aguardando comprovante de pagamento',
       MAJOR_EVENT_PAYMENT_NOT_CONFIRMED: 'Pagamento não confirmado',
       MAJOR_EVENT_PAYMENT_UNDER_REVIEW: 'Comprovante em análise',
+      TICKET_REQUIRED: 'Bilhete não disponível',
       PRICE_TIER_NOT_ELIGIBLE: 'Faixa de preço não elegível',
       REQUIREMENTS_CURRENTLY_MET: 'Requisitos atuais atendidos',
     };

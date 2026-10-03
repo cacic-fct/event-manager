@@ -1,5 +1,6 @@
+import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
-import { BadRequestException, NotFoundException, UseGuards } from '@nestjs/common';
+import { BadRequestException, NotFoundException, Optional, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
   AuditLogEntityType,
@@ -106,6 +107,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     private readonly frozenResources: FrozenResourceService,
     private readonly auditLog: AuditLogService,
     private readonly eventForms: EventFormsService,
+    @Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService,
   ) {}
 
   @Query(() => [CurrentUserMajorEventSubscription], {
@@ -940,6 +942,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         });
       }
 
+      await this.ticketSubscriptions?.forMajorEvent(tx, input.majorEventId, person.id);
       await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, person.id, tx);
       await this.majorEventSubscriptions.refreshEventSubscriptionCounters(tx, [
         ...activeEventIdSet,

@@ -1,11 +1,18 @@
-<mat-card class="wallet-ticket" [class.wallet-ticket-stacked]="stacked()" [class]="'wallet-ticket-' + kind()">
-  <app-wallet-card-header [kind]="kind()" (selected)="selectCard()" />
-
-  @switch (kind()) { @case ('eventos') {
-  <app-wallet-event-card [user]="user()" />
-  } @case ('offline-code') {
-  <section class="ticket-details"><app-wallet-offline-code-card /></section>
-  } @case ('academic-record') {
-  <app-wallet-academic-record-card [user]="user()" />
-  } }
+<mat-card class="wallet-ticket" [class.wallet-ticket-stacked]="stacked()" [class]="cardClass()">
+  <app-wallet-card-header [kind]="kind()" [brandOverride]="ticketBrand()" (selected)="selectCard()" />
+  @if (ticket(); as eventTicket) {
+    <app-wallet-event-ticket-card [ticket]="eventTicket" [user]="user()" [status]="ticketStatus() ?? eventTicket.status" />
+  } @else {
+    @switch (kind()) {
+      @case ('eventos') {
+        <app-wallet-event-card [user]="user()" />
+      }
+      @case ('offline-code') {
+        <section class="ticket-details"><app-wallet-offline-code-card /></section>
+      }
+      @case ('academic-record') {
+        <app-wallet-academic-record-card [user]="user()" />
+      }
+    }
+  }
 </mat-card>

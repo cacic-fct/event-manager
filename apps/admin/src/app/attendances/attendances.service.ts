@@ -832,6 +832,8 @@ export class AttendancesService {
         return 'Comprovante de pagamento do grande evento em análise.';
       case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
         return 'Pagamento do grande evento não confirmado.';
+      case 'TICKET_REQUIRED':
+        return 'Bilhete não disponível.';
       case 'PRICE_TIER_NOT_ELIGIBLE':
         return 'Faixa de preço não elegível';
       case 'REQUIREMENTS_CURRENTLY_MET':

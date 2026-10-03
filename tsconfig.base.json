@@ -14,6 +14,8 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
+      "@cacic-fct/shared-ticketing": ["./libs/shared-ticketing/src/index.ts"],
+      "@cacic-fct/shared-ticketing/testing": ["./libs/shared-ticketing/src/testing.ts"],
       "@cacic-fct/shared-event-participation": ["./libs/shared-event-participation/src/index.ts"],
       "@cacic-fct/shared-data-types": ["./libs/shared-data-types/src/index.ts"],
       "@cacic-fct/shared-data-types/sports-metadata": ["./libs/shared-data-types/src/lib/sports-metadata.ts"],
@@ -83,7 +85,9 @@
       ],
       "@cacic-fct/event-manager-admin-contracts": ["./libs/event-manager-admin-contracts/src/index.ts"],
       "@cacic-fct/event-manager-m2m-contracts": ["./libs/event-manager-m2m-contracts/src/index.ts"],
-      "@cacic-fct/backend/http-app": ["./apps/backend/src/app/bootstrap/backend-http-app.ts"]
+      "@cacic-fct/backend/http-app": ["./apps/backend/src/app/bootstrap/backend-http-app.ts"],
+      "@cacic-fct/admin/testing": ["./apps/admin/src/app/testing/admin-entity-fixtures.ts"],
+      "@cacic-fct/backend/ticketing-testing": ["./apps/backend/src/app/tickets/testing/ticketing-e2e-support.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

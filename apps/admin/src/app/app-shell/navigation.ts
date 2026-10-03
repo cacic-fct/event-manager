@@ -104,6 +104,16 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'tickets',
+    path: 'tickets',
+    label: 'Bilhetes',
+    description: 'Configure direitos transferíveis, emissões e compras de bilhetes por evento.',
+    icon: 'confirmation_number',
+    group: 'Participação',
+    helpLink: undefined,
+  },
+  {
+    kind: 'link',
     id: 'attendances',
     path: 'attendances',
     label: 'Presenças',

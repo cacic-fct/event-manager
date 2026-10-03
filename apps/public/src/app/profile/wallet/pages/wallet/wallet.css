@@ -17,6 +17,16 @@
   gap: 1.5rem;
 }
 
+.wallet-ticket-archive {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.wallet-expired-ticket [matListItemTitle] {
+  font-weight: 600;
+}
+
 .wallet-card-list {
   gap: 0;
   padding-bottom: calc((var(--wallet-card-count) - 1) * var(--wallet-stack-header-height));

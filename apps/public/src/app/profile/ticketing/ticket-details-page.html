@@ -1,0 +1,65 @@
+@let current = state();
+
+<mat-toolbar>
+  <a matIconButton routerLink="/profile/wallet" aria-label="Voltar para a carteira">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="global-toolbar-title">Informações do bilhete</h1>
+</mat-toolbar>
+
+<main class="ticket-details-page">
+  @if (current.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando informações do bilhete"></mat-progress-bar>
+  } @else if (current.status === 'empty' || current.status === 'error') {
+    <section class="ticket-page-message" aria-live="polite">
+      <mat-icon aria-hidden="true">{{ current.status === 'error' ? 'error' : 'confirmation_number' }}</mat-icon>
+      <p>{{ current.message }}</p>
+    </section>
+  } @else {
+    @let ticket = current.ticket;
+    <section class="ticket-event-section" aria-label="Informações do evento">
+      <app-calendar-list-item [item]="eventItem(ticket)" />
+    </section>
+
+    <section class="ticket-meta-section" aria-label="Informações do bilhete">
+      <h2>Sobre este bilhete</h2>
+      <mat-list>
+        <mat-list-item>
+          <div matListItemTitle>Status</div>
+          <div matListItemLine>{{ statusLabel(ticket) }}</div>
+        </mat-list-item>
+        <mat-list-item>
+          <div matListItemTitle>Validade</div>
+          <div matListItemLine>{{ ticket.effectiveExpiresAt | date: 'dd/MM/yyyy HH:mm' }}</div>
+        </mat-list-item>
+        <mat-list-item>
+          <div matListItemTitle>Transferência</div>
+          @if (ticket.transferable) {
+            <div matListItemLine>Este bilhete pode ser transferido.</div>
+          } @else {
+            <div matListItemLine>Este bilhete não pode ser transferido.</div>
+          }
+        </mat-list-item>
+      </mat-list>
+      @if (ticket.transferEligibilityDescription) {
+        <div class="ticket-transfer-eligibility">
+          <h3>Quem pode receber</h3>
+          <p>{{ ticket.transferEligibilityDescription }}</p>
+        </div>
+      }
+      @if (ticket.description) {
+        <div class="ticket-description">
+          <h2>Descrição</h2>
+          <p>{{ ticket.description }}</p>
+        </div>
+      }
+    </section>
+
+    @if (canTransfer()) {
+      <a mat-flat-button [routerLink]="['/profile/wallet/tickets', ticket.id, 'transfer']">
+        <mat-icon>send</mat-icon>
+        Transferir bilhete
+      </a>
+    }
+  }
+</main>

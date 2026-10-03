@@ -117,6 +117,17 @@ describe('MergeCandidateOperationsService', () => {
         },
       ])
       .mockResolvedValueOnce([]);
+    tx.ticketPurchase.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'ticket-purchase-1',
+          ticketConfigId: 'ticket-config-1',
+          personId: source.id,
+          majorEventSubscriptionId: null,
+          status: 'UNDER_REVIEW',
+        },
+      ])
+      .mockResolvedValueOnce([]);
     tx.mergeCandidate.update.mockResolvedValue(updatedCandidate);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
@@ -169,6 +180,16 @@ describe('MergeCandidateOperationsService', () => {
       where: { id: 'representative-1' },
       data: { personId: target.id },
     });
+    expect(tx.ticketPurchase.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ticket-purchase-1',
+        ticketConfigId: 'ticket-config-1',
+        personId: source.id,
+        majorEventSubscriptionId: null,
+        status: 'UNDER_REVIEW',
+      },
+      data: { personId: target.id },
+    });
     expect(tx.peopleMergeOperation.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         targetPersonId: target.id,
@@ -181,6 +202,16 @@ describe('MergeCandidateOperationsService', () => {
           sourceAttendances: [],
           sourceLectures: [],
           movedSportsTeamRepresentativeIds: ['representative-1'],
+          ticketRelations: expect.objectContaining({
+            purchaseSnapshots: [
+              expect.objectContaining({
+                id: 'ticket-purchase-1',
+                personId: source.id,
+                expectedPersonId: target.id,
+                status: 'UNDER_REVIEW',
+              }),
+            ],
+          }),
         }),
         createdById: 'actor-1',
       }),
@@ -348,6 +379,46 @@ describe('MergeCandidateOperationsService', () => {
             archivedReason: null,
           },
         ],
+        ticketRelations: {
+          holderSnapshots: [
+            {
+              action: 'MOVED',
+              id: 'ticket-1',
+              eventId: 'event-ticket-1',
+              sourceKey: 'event-subscription:event-ticket-1:source-person',
+              originalHolderPersonId: 'source-person',
+              holderPersonId: 'source-person',
+              status: 'ACTIVE',
+              revokedAt: null,
+              revokedReason: null,
+              expectedHolderPersonId: 'target-person',
+              expectedStatus: 'ACTIVE',
+              expectedRevokedAt: null,
+              expectedRevokedReason: null,
+            },
+          ],
+          transferSnapshots: [
+            {
+              id: 'ticket-transfer-1',
+              senderPersonId: 'source-person',
+              recipientPersonId: 'recipient-person',
+              expectedSenderPersonId: 'target-person',
+              expectedRecipientPersonId: 'recipient-person',
+            },
+          ],
+          purchaseSnapshots: [
+            {
+              id: 'ticket-purchase-1',
+              ticketConfigId: 'ticket-config-1',
+              personId: 'source-person',
+              majorEventSubscriptionId: 'source-subscription',
+              status: 'UNDER_REVIEW',
+              expectedPersonId: 'target-person',
+              expectedMajorEventSubscriptionId: 'target-subscription',
+              expectedStatus: 'UNDER_REVIEW',
+            },
+          ],
+        },
       },
     };
     const updatedCandidate = candidate({ status: 'PENDING' });
@@ -382,6 +453,37 @@ describe('MergeCandidateOperationsService', () => {
         personId: target.id,
       },
       data: { personId: source.id },
+    });
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ticket-1',
+        holderPersonId: target.id,
+        status: 'ACTIVE',
+        revokedAt: null,
+        revokedReason: null,
+        sourceKey: 'event-subscription:event-ticket-1:source-person',
+        originalHolderPersonId: source.id,
+      },
+      data: { holderPersonId: source.id },
+    });
+    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ticket-transfer-1',
+        senderStatus: 'PENDING',
+        senderPersonId: target.id,
+        recipientPersonId: 'recipient-person',
+      },
+      data: { senderPersonId: source.id, recipientPersonId: 'recipient-person' },
+    });
+    expect(tx.ticketPurchase.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'ticket-purchase-1',
+        ticketConfigId: 'ticket-config-1',
+        personId: target.id,
+        majorEventSubscriptionId: 'target-subscription',
+        status: 'UNDER_REVIEW',
+      },
+      data: { personId: source.id, majorEventSubscriptionId: 'source-subscription' },
     });
     expect(tx.eventAttendance.deleteMany).toHaveBeenCalledWith({
       where: {
@@ -556,6 +658,21 @@ function createTransaction() {
       createMany: jest.fn(),
       deleteMany: jest.fn(),
     },
+    eventTicket: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    eventTicketHistory: { create: jest.fn() },
+    ticketTransfer: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    ticketPurchase: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    auditLogEntry: { create: jest.fn() },
     eventLecturer: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),

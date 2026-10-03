@@ -75,6 +75,10 @@ model Event {
   shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
   shouldIssueCertificateForNonSubscribedAttendees Boolean             @default(false)
   certificateConfigs                              CertificateConfig[]
+  ticketConfig                                     TicketConfig?
+  eventTickets                                     EventTicket[]
+  ticketTransfers                                  TicketTransfer[]
+  ticketPurchases                                  TicketPurchase[]
 
   regularAttendancePriceTierIds String[] @default([])
 

@@ -34,6 +34,20 @@ describe('public auth route wiring', () => {
     expect(drawRoutes.every((route) => route.renderMode === RenderMode.Client)).toBe(true);
   });
 
+  it('renders wallet, transfer, and ticket-payment routes only in the browser', () => {
+    const ticketRoutePaths = [
+      'profile/wallet/tickets/:ticketId',
+      'profile/wallet/tickets/:ticketId/transfer',
+      'profile/wallet/ticket-transfers',
+      'profile/wallet/ticket-transfers/:transferId',
+      'major-event/:majorEventId/payment/ticket/:ticketEventId',
+    ];
+
+    for (const path of ticketRoutePaths) {
+      expect(serverRoutes.find((route) => route.path === path)?.renderMode).toBe(RenderMode.Client);
+    }
+  });
+
   it('keeps development-only routes out of production prerendering', () => {
     for (const path of ['dev-tools', 'dev-tools/**']) {
       const routeIndex = serverRoutes.findIndex((route) => route.path === path);

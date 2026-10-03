@@ -56,6 +56,7 @@ describe('EventAttendanceCsvImportResolver', () => {
       ['event-1'],
       ['person-1'],
       expect.any(Object),
+      true,
     );
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -131,6 +132,7 @@ describe('EventAttendanceCsvImportResolver', () => {
       ['event-1'],
       ['person-1'],
       expect.any(Object),
+      true,
     );
   });
 

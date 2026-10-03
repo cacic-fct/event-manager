@@ -25,6 +25,8 @@ describe('event workspace routes', () => {
     ['/subscriptions/event/e1/interests', 'event', 'e1'],
     ['/subscriptions/group/g1/interests', 'group', 'g1'],
     ['/subscriptions/major-event/m1/subscription/s1', 'major-event', 'm1'],
+    ['/tickets/event/e1', 'event', 'e1'],
+    ['/tickets/major-event/m1', 'major-event', 'm1'],
     ['/attendances/event/e1/oral', 'event', 'e1'],
     ['/certificates/event-group/g1/config1', 'group', 'g1'],
     ['/publication/event-group/g1', 'group', 'g1'],
@@ -38,7 +40,7 @@ describe('event workspace routes', () => {
 
   it('gives contextual operations stable unique identifiers', () => {
     const operations = contextOperations({kind:'event',id:'e1'});
-    expect(operations.map((operation)=>operation.id)).toEqual(['settings','subscriptions','attendances','forms','draws','interests','certificates','publication']);
+    expect(operations.map((operation)=>operation.id)).toEqual(['settings','tickets','subscriptions','attendances','forms','draws','interests','certificates','publication']);
     expect(new Set(operations.map((operation)=>operation.id)).size).toBe(operations.length);
   });
 
@@ -46,6 +48,12 @@ describe('event workspace routes', () => {
     expect(contextOperations({kind:'major-event', id:'m1'}).find((item) => item.id === 'sports')?.path).toEqual(['/sports','major-event','m1']);
     expect(contextOperations({kind:'event', id:'e1'}).some((item) => item.id === 'sports')).toBe(false);
     expect(contextOperations({kind:'group', id:'g1'}).some((item) => item.id === 'sports')).toBe(false);
+  });
+
+  it('adds ticket operations only to event and major-event contexts', () => {
+    expect(contextOperations({kind:'event',id:'e1'}).find((item)=>item.id==='tickets')?.path).toEqual(['/tickets','event','e1']);
+    expect(contextOperations({kind:'major-event',id:'m1'}).some((item)=>item.id==='tickets')).toBe(true);
+    expect(contextOperations({kind:'group',id:'g1'}).some((item)=>item.id==='tickets')).toBe(false);
   });
 
   it('creates children with their actual parent and keeps global creation independent', () => {
@@ -58,7 +66,7 @@ describe('event workspace routes', () => {
   });
 
   it('keeps global tools independent of event context', () => {
-    for (const url of ['/event-workspace', '/people/person1', '/merge-candidates', '/certificates', '/preferences', '/event-workspace/event/%broken/settings']) {
+    for (const url of ['/event-workspace', '/people/person1', '/merge-candidates', '/certificates', '/preferences', '/event-workspace/event/%broken/settings', '/tickets']) {
       expect(eventContextFromUrl(url)).toBeNull();
     }
   });

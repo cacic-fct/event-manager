@@ -14,6 +14,13 @@ export class RealtimeApiService {
     return this.watch('/api/realtime/admin/workspace/events', 'Não foi possível manter o painel atualizado.');
   }
 
+  watchEventTickets(eventId: string): Observable<void> {
+    return this.watch(
+      `/api/realtime/admin/events/${encodeURIComponent(eventId)}/tickets/events`,
+      'Não foi possível acompanhar os bilhetes do evento.',
+    );
+  }
+
   watchEventSubscriptions(eventId: string): Observable<void> {
     return this.watch(
       `/api/realtime/admin/events/${encodeURIComponent(eventId)}/subscriptions/events`,

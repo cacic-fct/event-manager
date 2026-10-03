@@ -14,7 +14,12 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$', '^@cacic-fct/backend/http-app$'],
+          allow: [
+            '^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$',
+            '^@cacic-fct/backend/http-app$',
+            '^@cacic-fct/backend/ticketing-testing$',
+            '^@cacic-fct/admin/testing$',
+          ],
           depConstraints: [
             {
               sourceTag: 'scope:shared',

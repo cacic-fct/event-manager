@@ -24,6 +24,7 @@ import { syncEventGroupMajorEvent } from './event-group-major-event';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -247,6 +248,10 @@ export class EventDraftsService {
     } as unknown as SportsBackingResourceLifecycleService,
     private readonly attendanceCategories: AttendanceCategoryService = new AttendanceCategoryService(prisma),
     private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
+    private readonly ticketIssuance: TicketIssuanceService = {
+      alignActiveTicketExpirations: async () => 0,
+      lockEventExpirationAlignment: async () => undefined,
+    } as unknown as TicketIssuanceService,
   ) {}
 
   async listEventDrafts(
@@ -367,6 +372,9 @@ export class EventDraftsService {
     const appliedAt = new Date();
     let audienceChange: AudienceChange | undefined;
     const event = await this.prisma.$transaction(async (tx) => {
+      if (payload.endDate instanceof Date) {
+        await this.ticketIssuance.lockEventExpirationAlignment(tx, draft.sourceEventId, 'UPDATE');
+      }
       const previousEvent = await tx.event.findFirst({
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
@@ -390,6 +398,17 @@ export class EventDraftsService {
           publicationUpdatedBy: user?.sub ?? null,
         },
       });
+      if (
+        payload.endDate instanceof Date &&
+        previousEvent.endDate instanceof Date &&
+        payload.endDate.getTime() !== previousEvent.endDate.getTime()
+      ) {
+        await this.ticketIssuance.alignActiveTicketExpirations(tx, draft.sourceEventId, {
+          scope: 'EVENT_END_ONLY',
+          actorUserId: user?.sub ?? null,
+          permission: Permission.Event.Update,
+        });
+      }
       const attendanceEligibilityChanged =
         payload.attendanceEligibility !== undefined &&
         payload.attendanceEligibility !== previousEvent.attendanceEligibility;

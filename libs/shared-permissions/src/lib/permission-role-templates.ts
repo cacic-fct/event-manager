@@ -45,6 +45,14 @@ export const EVENT_MANAGER_ROLE_TEMPLATES = [
     suggestedScopes: [EventManagerPermissionGrantScope.MajorEvent, EventManagerPermissionGrantScope.Event],
   },
   {
+    id: 'ticketing',
+    name: 'Bilhetes',
+    description: 'Configura, emite e transfere bilhetes nos eventos atribuídos.',
+    emoji: '🎟️',
+    permissions: withRelatedPeople(presetPermissions('ticketing-manager')),
+    suggestedScopes: [EventManagerPermissionGrantScope.MajorEvent, EventManagerPermissionGrantScope.Event],
+  },
+  {
     id: 'attendance',
     name: 'Presenças',
     description: 'Coleta, importa e corrige presenças, além de administrar coletores.',

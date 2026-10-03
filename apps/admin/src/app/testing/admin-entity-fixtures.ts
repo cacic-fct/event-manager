@@ -33,6 +33,7 @@ import type {
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import type { ReceiptValidationQueue, ReceiptValidationQueueItem } from '@cacic-fct/event-manager-admin-contracts';
 
 export const adminFixtureDate = adminFixtureDateFromNow();
 
@@ -108,6 +109,79 @@ export function createAdminDashboardPendingReceiptMajorEvent(
     startDate: adminFixtureDate,
     endDate: adminFixtureDateFromNow(2, 21),
     pendingCount: 3,
+    ...overrides,
+  };
+}
+
+export function createAdminReceiptValidationQueueItem(
+  overrides: Partial<ReceiptValidationQueueItem> = {},
+  now = new Date(),
+): ReceiptValidationQueueItem {
+  const dateFromNow = (days: number, hour = 12): string => {
+    const date = new Date(now);
+    date.setUTCDate(date.getUTCDate() + days);
+    date.setUTCHours(hour, 0, 0, 0);
+    return date.toISOString();
+  };
+  const receipt = {
+    id: 'receipt-1',
+    fileName: 'comprovante-inscricao.png',
+    mimeType: 'image/png',
+    sizeBytes: 184_320,
+    uploadedAt: dateFromNow(-1, 14),
+    expiresAt: dateFromNow(6, 14),
+    imageUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960"><rect width="720" height="960" fill="white"/><text x="80" y="160" font-size="36">Comprovante CACiC</text></svg>',
+    processingStatus: 'PROCESSED',
+    ocrText: 'Comprovante Marina da Silva R$ 120,00',
+    amountMatched: true,
+    matchedAmountText: 'R$ 120,00',
+    nameMatched: true,
+    matchedNameText: 'Marina da Silva',
+    ...overrides.receipt,
+  };
+
+  return {
+    category: 'SUBSCRIPTION',
+    subscriptionId: 'subscription-receipt-1',
+    purchaseId: null,
+    ticketName: null,
+    majorEventId: 'major-event-1',
+    majorEventName: 'Semana da Computação',
+    majorEventCreatedAt: dateFromNow(-30),
+    majorEventEndDate: dateFromNow(10, 21),
+    personId: 'person-receipt-1',
+    personName: 'Marina da Silva',
+    personEmail: 'marina@example.edu',
+    personPhone: '18999998888',
+    amountPaid: 12_000,
+    paymentTier: 'Estudante',
+    subscriptionFlow: 'REGULAR',
+    desiredCourses: 1,
+    desiredLectures: 1,
+    desiredUncategorized: 0,
+    subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+    subscriptionUpdatedAt: dateFromNow(-1, 15),
+    subscriptionCreatedAt: dateFromNow(-3, 12),
+    receiptRejectionReason: null,
+    ...overrides,
+    receipt: overrides.receipt === null ? null : receipt,
+    events: overrides.events ?? [],
+  };
+}
+
+export function createAdminReceiptValidationQueue(
+  overrides: Partial<ReceiptValidationQueue> = {},
+): ReceiptValidationQueue {
+  const items = overrides.items ?? [createAdminReceiptValidationQueueItem()];
+  return {
+    pendingCount: items.length,
+    subscriptionCount: items.filter((item) => item.category !== 'TICKET').length,
+    ticketCount: items.filter((item) => item.category === 'TICKET').length,
+    availablePaymentTiers: [
+      { id: 'tier-student', name: 'Estudante' },
+      { id: 'tier-guest', name: 'Visitante' },
+    ],
+    items,
     ...overrides,
   };
 }

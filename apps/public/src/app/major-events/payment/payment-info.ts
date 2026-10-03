@@ -1,6 +1,7 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,18 +13,40 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
+import type { TicketPurchase, TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { toSVG } from '@bwip-js/browser';
-import { forkJoin } from 'rxjs';
+import { forkJoin, map } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PaymentReceipt, PaymentReceiptApiService } from './receipt-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { TicketPurchaseApiService } from './ticket-purchase-api.service';
+import type { TicketPurchaseReceiptUploadResponse } from './ticket-purchase-api.service';
+import { TicketingApiService } from '../../profile/ticketing/ticketing-api.service';
+
+registerLocaleData(localePt, 'pt-BR');
 
 type PaymentState =
   | { status: 'loading' }
-  | { status: 'ready'; subscription: CurrentUserMajorEventSubscription; receipt: PaymentReceipt | null }
+  | {
+      status: 'ready';
+      subscription: CurrentUserMajorEventSubscription;
+      receipt: PaymentReceipt | null;
+      ticketOption: TicketPurchaseOption | null;
+      ticketPurchase: TicketPurchase | null;
+      uploadedTicketPurchaseReceipt: TicketPurchaseReceiptUploadResponse | null;
+    }
   | { status: 'error'; message: string };
+
+interface PaymentPageData {
+  subscription: CurrentUserMajorEventSubscription | null;
+  receipt: PaymentReceipt | null;
+  ticketOption: TicketPurchaseOption | null;
+  ticketPurchase: TicketPurchase | null;
+  uploadedTicketPurchaseReceipt: TicketPurchaseReceiptUploadResponse | null;
+}
 
 interface PixPayload {
   brCode: string;
@@ -54,13 +77,14 @@ interface ConfirmReceiptDialogData {
   ],
   templateUrl: './payment-info.html',
   styleUrl: './payment-info.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PaymentInfo {
   private readonly route = inject(ActivatedRoute);
   private readonly analytics = inject(AnalyticsService);
   private readonly subscriptionApi = inject(MajorEventSubscriptionApiService);
   private readonly receiptApi = inject(PaymentReceiptApiService);
+  private readonly ticketPurchaseApi = inject(TicketPurchaseApiService);
+  private readonly ticketingApi = inject(TicketingApiService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -70,6 +94,10 @@ export class PaymentInfo {
 
   readonly majorEventId =
     this.route.snapshot.paramMap.get('majorEventId') ?? this.route.snapshot.paramMap.get('eventID') ?? '';
+  readonly ticketEventId = this.route.snapshot.paramMap.get('ticketEventId');
+  readonly ticketConfigId = this.route.snapshot.queryParamMap.get('ticketConfigId');
+  readonly expectedAmountCents = this.parseExpectedAmount(this.route.snapshot.queryParamMap.get('expectedAmountCents'));
+  readonly ticketPurchaseMode = Boolean(this.ticketEventId);
   readonly state = signal<PaymentState>({ status: 'loading' });
   readonly isDragging = signal(false);
   readonly uploadProgress = signal<number | null>(null);
@@ -79,13 +107,28 @@ export class PaymentInfo {
     const subscription = this.readySubscription();
     return subscription ? this.resolveApplicablePrice(subscription) : null;
   });
+  readonly amountToPay = computed(() => {
+    const currentState = this.state();
+    if (currentState.status !== 'ready') return null;
+    return currentState.ticketOption?.amountCents ?? currentState.ticketPurchase?.amountCents ?? this.applicablePrice();
+  });
+  readonly visibleReceipt = computed(() => {
+    const currentState = this.state();
+    if (currentState.status !== 'ready') return null;
+    return currentState.uploadedTicketPurchaseReceipt ?? currentState.ticketPurchase?.receipt ?? currentState.receipt;
+  });
+  readonly ticketAmountChanged = computed(() => {
+    const currentState = this.state();
+    return this.ticketPurchaseMode && currentState.status === 'ready' && currentState.ticketOption !== null &&
+      this.expectedAmountCents !== currentState.ticketOption.amountCents;
+  });
   readonly pixPayload = computed(() => {
     const currentState = this.state();
     if (currentState.status !== 'ready') {
       return null;
     }
 
-    return this.buildPixPayload(currentState.subscription);
+    return this.buildPixPayload(currentState.subscription, this.amountToPay());
   });
 
   constructor() {
@@ -98,6 +141,16 @@ export class PaymentInfo {
       .watchCatalog()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadPage(true));
+    this.ticketingApi
+      .watchCurrentUser()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (invalidation) => {
+          if (invalidation.type === 'PURCHASES_CHANGED' || invalidation.type === 'TICKETS_CHANGED') {
+            this.loadPage(true);
+          }
+        },
+      });
   }
 
   onDragOver(event: DragEvent): void {
@@ -137,9 +190,10 @@ export class PaymentInfo {
     if (brCode) {
       const subscription = this.readySubscription();
       if (subscription) {
-        this.analytics.trackEvent('major_event_pix_code_copied', {
+        this.analytics.trackEvent(this.ticketPurchaseMode ? 'ticket_purchase_pix_code_copied' : 'major_event_pix_code_copied', {
           major_event_id: subscription.majorEvent.id,
           subscription_id: subscription.id,
+          ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
         });
       }
       void this.copyToClipboard(brCode, 'Pix copia e cola copiado.');
@@ -151,9 +205,10 @@ export class PaymentInfo {
     if (paymentInfo?.pixKey) {
       const subscription = this.readySubscription();
       if (subscription) {
-        this.analytics.trackEvent('major_event_pix_key_copied', {
+        this.analytics.trackEvent(this.ticketPurchaseMode ? 'ticket_purchase_pix_key_copied' : 'major_event_pix_key_copied', {
           major_event_id: subscription.majorEvent.id,
           subscription_id: subscription.id,
+          ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
         });
       }
       void this.copyToClipboard(paymentInfo.pixKey, 'Chave Pix copiada.');
@@ -164,11 +219,44 @@ export class PaymentInfo {
     return getSubscriptionStatusLabel(status);
   }
 
+  ticketPageTitle(currentState: Extract<PaymentState, { status: 'ready' }>): string {
+    if (!this.ticketPurchaseMode) return currentState.subscription.majorEvent.name;
+    return currentState.ticketOption?.name ?? currentState.ticketPurchase?.name ?? 'Pagamento do bilhete';
+  }
+
+  ticketPurchaseStatusLabel(status: TicketPurchase['status'] | null): string {
+    switch (status) {
+      case 'UNDER_REVIEW':
+        return 'Comprovante em análise';
+      case 'APPROVED':
+        return 'Compra aprovada';
+      case 'REJECTED':
+        return 'Comprovante rejeitado';
+      default:
+        return 'Compra de bilhete';
+    }
+  }
+
+  backRoute(): string[] {
+    return ['/profile/attendances/major-event', this.majorEventId];
+  }
+
   canUpload(): boolean {
+    const currentState = this.state();
     const subscription = this.readySubscription();
-    if (!subscription || this.isUploading() || !subscription.majorEvent.isPaymentRequired) {
+    if (!subscription || this.isUploading()) {
       return false;
     }
+
+    if (this.ticketPurchaseMode) {
+      if (!currentState || currentState.status !== 'ready' || !currentState.ticketOption || this.ticketAmountChanged()) {
+        return false;
+      }
+      if (currentState.uploadedTicketPurchaseReceipt) return false;
+      return currentState.ticketPurchase?.status !== 'UNDER_REVIEW' && currentState.ticketPurchase?.status !== 'APPROVED';
+    }
+
+    if (!subscription.majorEvent.isPaymentRequired) return false;
 
     if (subscription.subscriptionStatus === 'CONFIRMED' || subscription.subscriptionStatus === 'CANCELED') {
       return false;
@@ -189,15 +277,27 @@ export class PaymentInfo {
     this.pageRequest()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ subscription, receipt }) => {
+        next: ({ subscription, receipt, ticketOption, ticketPurchase, uploadedTicketPurchaseReceipt }) => {
           if (requestId !== this.pageRequestId) return;
           if (!subscription) {
             this.state.set({ status: 'error', message: 'Inscrição não encontrada.' });
             return;
           }
 
-          this.state.set({ status: 'ready', subscription, receipt });
-          if (!background) {
+          if (this.ticketPurchaseMode && !ticketOption && !ticketPurchase) {
+            this.state.set({ status: 'error', message: 'Este bilhete não está disponível para compra.' });
+            return;
+          }
+
+          this.state.set({
+            status: 'ready',
+            subscription,
+            receipt,
+            ticketOption,
+            ticketPurchase,
+            uploadedTicketPurchaseReceipt,
+          });
+          if (!background && !this.ticketPurchaseMode) {
             this.analytics.trackMajorEventTransaction({
               stage: 'payment_page_viewed',
               majorEvent: subscription.majorEvent,
@@ -217,16 +317,55 @@ export class PaymentInfo {
       });
   }
 
-  private pageRequest() {
+  private pageRequest(): Observable<PaymentPageData> {
+    if (!this.ticketPurchaseMode) {
+      return forkJoin({
+        subscription: this.subscriptionApi.getCurrentUserSubscription(this.majorEventId),
+        receipt: this.receiptApi.getCurrentReceipt(this.majorEventId),
+      }).pipe(
+        map(({ subscription, receipt }) => ({
+          subscription,
+          receipt,
+          ticketOption: null,
+          ticketPurchase: null,
+          uploadedTicketPurchaseReceipt: null,
+        })),
+      );
+    }
+
     return forkJoin({
       subscription: this.subscriptionApi.getCurrentUserSubscription(this.majorEventId),
-      receipt: this.receiptApi.getCurrentReceipt(this.majorEventId),
-    });
+      options: this.ticketPurchaseApi.getOptions(this.majorEventId),
+      purchases: this.ticketPurchaseApi.getPurchases(this.majorEventId),
+    }).pipe(
+      map(({ subscription, options, purchases }) => {
+        const ticketOption = options.find(
+          (option) => option.eventId === this.ticketEventId && option.ticketConfigId === this.ticketConfigId,
+        ) ?? null;
+        const ticketPurchase = purchases
+          .filter((purchase) => purchase.eventId === this.ticketEventId && purchase.ticketConfigId === this.ticketConfigId)
+          .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
+
+        return {
+          subscription,
+          receipt: null,
+          ticketOption,
+          ticketPurchase,
+          uploadedTicketPurchaseReceipt: null,
+        };
+      }),
+    );
   }
 
   private reviewFile(file: File): void {
     if (!this.canUpload()) {
-      this.snackBar.open('O envio de comprovantes não está disponível para esta inscrição.', 'OK', { duration: 4000 });
+      this.snackBar.open(
+        this.ticketPurchaseMode
+          ? 'O envio de comprovante não está disponível para este bilhete.'
+          : 'O envio de comprovantes não está disponível para esta inscrição.',
+        'OK',
+        { duration: 4000 },
+      );
       return;
     }
 
@@ -271,6 +410,11 @@ export class PaymentInfo {
   }
 
   private uploadReceipt(file: File): void {
+    if (this.ticketPurchaseMode) {
+      this.uploadTicketPurchaseReceipt(file);
+      return;
+    }
+
     this.uploadProgress.set(0);
     this.receiptApi
       .uploadReceipt(this.majorEventId, file)
@@ -284,6 +428,7 @@ export class PaymentInfo {
 
           const currentState = this.state();
           if (currentState.status === 'ready') {
+            this.pageRequestId++;
             this.state.set({
               ...currentState,
               receipt: event.receipt,
@@ -316,6 +461,50 @@ export class PaymentInfo {
       });
   }
 
+  private uploadTicketPurchaseReceipt(file: File): void {
+    const currentState = this.state();
+    const option = currentState.status === 'ready' ? currentState.ticketOption : null;
+    if (!option || this.expectedAmountCents === null || this.ticketAmountChanged()) {
+      this.snackBar.open('O valor deste bilhete foi atualizado. Volte e confira o valor atual.', 'OK', {
+        duration: 4500,
+      });
+      return;
+    }
+
+    this.uploadProgress.set(0);
+    this.ticketPurchaseApi
+      .uploadReceipt(option.eventId, option.ticketConfigId, this.expectedAmountCents, file)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          if (event.type === 'progress') {
+            this.uploadProgress.set(event.progress);
+            return;
+          }
+
+          const current = this.state();
+          if (current.status === 'ready') {
+            this.pageRequestId++;
+            this.state.set({ ...current, uploadedTicketPurchaseReceipt: event.result });
+          }
+          this.uploadProgress.set(null);
+          this.analytics.trackEvent('ticket_purchase_receipt_uploaded', {
+            major_event_id: option.majorEventId,
+            event_id: option.eventId,
+            ticket_config_id: option.ticketConfigId,
+            purchase_id: event.result.purchaseId,
+            amount_cents: option.amountCents,
+          });
+          this.snackBar.open('Comprovante enviado. A compra está em análise.', 'OK', { duration: 3500 });
+        },
+        error: (error: unknown) => {
+          this.uploadProgress.set(null);
+          if (error instanceof RateLimitError) this.receiptUploadCooldown.start(error.retryAfterSeconds);
+          this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', { duration: 5000 });
+        },
+      });
+  }
+
   private readySubscription(): CurrentUserMajorEventSubscription | null {
     const currentState = this.state();
     return currentState.status === 'ready' ? currentState.subscription : null;
@@ -339,13 +528,16 @@ export class PaymentInfo {
     this.snackBar.open(message, 'OK', { duration: 3000 });
   }
 
-  private buildPixPayload(subscription: CurrentUserMajorEventSubscription): PixPayload | null {
+  private buildPixPayload(
+    subscription: CurrentUserMajorEventSubscription,
+    amountInCents: number | null = null,
+  ): PixPayload | null {
     const paymentInfo = subscription.majorEvent.paymentInfo;
     if (!paymentInfo?.pixKey || !paymentInfo.holder) {
       return null;
     }
 
-    const applicablePrice = this.resolveApplicablePrice(subscription);
+    const applicablePrice = amountInCents ?? this.resolveApplicablePrice(subscription);
     const amount = applicablePrice != null ? (applicablePrice / 100).toFixed(2) : undefined;
     const brCode = this.generatePixBrCode({
       pixKey: paymentInfo.pixKey,
@@ -416,6 +608,12 @@ export class PaymentInfo {
     }
 
     return tiers.length === 1 ? tiers[0].value : (storedAmount ?? null);
+  }
+
+  private parseExpectedAmount(value: string | null): number | null {
+    if (!value || !/^\d+$/.test(value)) return null;
+    const amount = Number(value);
+    return Number.isSafeInteger(amount) ? amount : null;
   }
 
   private normalizeBrCodeText(value: string, maxLength: number): string {
@@ -539,7 +737,6 @@ export class PaymentInfo {
       }
     `,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmReceiptDialog {
   readonly data = inject<ConfirmReceiptDialogData>(MAT_DIALOG_DATA);

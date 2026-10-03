@@ -41,6 +41,7 @@ import { AudienceInvitationService } from '../audiences/audience-invitation.serv
 import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
 import { audienceContext } from '../audiences/audience-context';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -283,6 +284,10 @@ export class EventsResolver {
       publishForBackingEvent: async () => undefined,
     } as unknown as SportsMutationEventsService,
     private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
+    private readonly ticketIssuance: TicketIssuanceService = {
+      alignActiveTicketExpirations: async () => 0,
+      lockEventExpirationAlignment: async () => undefined,
+    } as unknown as TicketIssuanceService,
   ) {}
 
   @ResolveField(() => Boolean)
@@ -511,6 +516,9 @@ export class EventsResolver {
     let audienceChange: AudienceChange | undefined;
     const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
     const event = await this.prisma.$transaction(async (tx) => {
+      if (normalizedInput.endDate instanceof Date) {
+        await this.ticketIssuance.lockEventExpirationAlignment(tx, id, 'UPDATE');
+      }
       const previousEvent = await tx.event.findFirst({
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
@@ -531,6 +539,17 @@ export class EventsResolver {
       });
       if (updatedCount.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
+      }
+      if (
+        normalizedInput.endDate instanceof Date &&
+        previousEvent.endDate instanceof Date &&
+        normalizedInput.endDate.getTime() !== previousEvent.endDate.getTime()
+      ) {
+        await this.ticketIssuance.alignActiveTicketExpirations(tx, id, {
+          scope: 'EVENT_END_ONLY',
+          actorUserId: user?.sub ?? null,
+          permission: Permission.Event.Update,
+        });
       }
       const attendanceEligibilityChanged =
         normalizedInput.attendanceEligibility !== undefined &&
@@ -1107,7 +1126,7 @@ export class EventsResolver {
         createdByMethod: AttendanceCreationMethod.EVENT_DUPLICATION,
       })),
     });
-    await this.attendanceCategories.refreshForEventPersons([eventId], personIds, tx);
+    await this.attendanceCategories.refreshForEventPersons([eventId], personIds, tx, true);
     return result.count;
   }
 

@@ -231,6 +231,7 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
     type: options.type ?? (['MINICURSO', 'PALESTRA', 'OTHER'] as const)[index % 3],
     shortDescription:
       context === 'short-description' ? (options.shortDescription ?? 'Sessão aberta para a comunidade.') : null,
+    sportsMatch: options.sportsMatch ?? null,
     locationDescription: options.locationDescription ?? 'Laboratório 01',
     majorEventId: majorEvent?.id ?? null,
     majorEvent,
@@ -254,7 +255,7 @@ export function createPublicStorySportsMatchEvent(overrides: Partial<PublicEvent
     emoji: '⚽',
     type: 'OTHER',
     context: 'short-description',
-    shortDescription: 'Futsal aberto · Semifinal',
+    shortDescription: 'Futsal aberto. Semifinal',
     locationDescription: 'Ginásio da FCT',
     dayOffset: 1,
     startHour: 19,

@@ -1,8 +1,15 @@
 import { OfflineTotpSeedRecord } from '@cacic-fct/public-indexed-db';
+import {
+  createTicketEventSummary,
+  createTicketPersonSummary,
+  createWalletTicket,
+  TICKET_FIXTURE_HOLDER_USER_ID,
+} from '@cacic-fct/shared-ticketing/testing';
+import type { WalletTicket } from '@cacic-fct/shared-ticketing';
 import { WalletCardUser } from '../components/card/wallet-card.types';
 
 export const walletStoryUser: WalletCardUser = {
-  userId: 'wallet-story-user',
+  userId: TICKET_FIXTURE_HOLDER_USER_ID,
   name: 'Marina da Silva',
   picture: null,
   unespRole: 'aluno-graduacao',
@@ -14,6 +21,26 @@ export function createWalletStoryUser(overrides: Partial<WalletCardUser> = {}): 
   return { ...walletStoryUser, ...overrides };
 }
 
+export function createWalletStoryTicket(overrides: Partial<WalletTicket> = {}): WalletTicket {
+  const event = createTicketEventSummary({
+    id: 'party-event',
+    name: 'Festa de encerramento',
+    emoji: '🎉',
+    type: 'PARTY',
+    ...overrides.event,
+  });
+  const ticket = createWalletTicket({ ...overrides, event });
+  return {
+    ...ticket,
+    holder: overrides.holder === undefined
+      ? createTicketPersonSummary({ personId: 'person-wallet-story' })
+      : overrides.holder,
+    aztecPayload: overrides.aztecPayload === undefined
+      ? `ticket:${ticket.id}:${walletStoryUser.userId}`
+      : overrides.aztecPayload,
+  };
+}
+
 export function createWalletStoryTotpSeed(): OfflineTotpSeedRecord {
   return {
     userId: walletStoryUser.userId,
@@ -22,7 +49,7 @@ export function createWalletStoryTotpSeed(): OfflineTotpSeedRecord {
     algorithm: 'SHA512',
     digits: 6,
     periodSeconds: 30,
-    serverTime: new Date('2026-07-25T12:00:00.000Z').toISOString(),
+    serverTime: new Date().toISOString(),
     sessionExpiresAt: Date.now() + 60 * 60 * 1000,
     updatedAt: Date.now(),
   };

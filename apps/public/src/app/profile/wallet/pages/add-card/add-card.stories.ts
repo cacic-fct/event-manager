@@ -6,9 +6,9 @@ import { WalletAddCard } from './add-card';
 const meta: Meta<WalletAddCard> = {
   component: WalletAddCard,
   title: 'CACiC Eventos/Profile/Wallet/Add Card',
-  tags: ['autodocs'],
+  tags: ['autodocs', 'ticketing'],
   decorators: [applicationConfig({ providers: [provideRouter([])] })],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -19,6 +19,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Adicionar cartão' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Transferência de bilhetes' })).toBeVisible();
   },
 };
 

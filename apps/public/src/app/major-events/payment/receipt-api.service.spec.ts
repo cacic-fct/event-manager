@@ -6,6 +6,8 @@ import { firstValueFrom, toArray } from 'rxjs';
 import { RateLimitError } from '../../shared/rate-limit-error';
 import { PaymentReceiptApiService } from './receipt-api.service';
 
+const receiptFixtureNow = new Date();
+
 describe('PaymentReceiptApiService', () => {
   let httpTesting: HttpTestingController;
   let service: PaymentReceiptApiService;
@@ -87,8 +89,8 @@ function receiptFixture() {
     fileName: 'receipt.png',
     mimeType: 'image/png',
     sizeBytes: 4096,
-    uploadedAt: '2026-06-26T12:00:00.000Z',
-    expiresAt: '2027-06-26T12:00:00.000Z',
+    uploadedAt: receiptFixtureNow.toISOString(),
+    expiresAt: new Date(receiptFixtureNow.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     imageUrl: '/api/major-event-receipts/receipt-1/image',
     processingStatus: 'PENDING',
     amountMatched: null,
