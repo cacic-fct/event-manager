@@ -131,7 +131,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
 
       const expiresAt = this.resolveExpiration(event);
       const issuedAt = options.issuedAt ?? new Date();
-      if (expiresAt <= issuedAt || (!options.issuedAt && expiresAt <= new Date())) {
+      if (source !== EventTicketIssueSource.ADMIN && !options.issuedAt && expiresAt <= issuedAt) {
         throw new ConflictException('O prazo deste bilhete já terminou.');
       }
 
@@ -396,7 +396,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       });
       if (otherOwnedTicket) return;
       const expiresAt = this.resolveExpiration(event);
-      if (expiresAt <= (priorAttendance?.attendedAt ?? new Date())) return;
+      if (!priorAttendance && expiresAt <= new Date()) return;
       const ticket = await this.issueForPerson(tx, eventId, personId, source, expectedKey, {
         eventExpiryLockHeld: true,
         ...(priorAttendance ? { issuedAt: priorAttendance.attendedAt } : {}),
@@ -542,8 +542,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     if (
       ticket.status !== EventTicketStatus.ACTIVE ||
-      ticket.holderPersonId !== personId ||
-      ticket.expiresAt <= attendance.attendedAt
+      ticket.holderPersonId !== personId
     ) return;
     const transferred = await tx.eventTicketHistory.findFirst({
       where: { ticketId: ticket.id, operation: TicketHistoryOperation.TRANSFERRED },
@@ -605,7 +604,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     }));
   }
 
-  /** Consumes only a currently active, unexpired ticket persisted for this holder and event. */
+  /** Expiration is advisory; redemption still requires an unused ticket owned at attendance time. */
   async consumeForAttendance(
     tx: Prisma.TransactionClient,
     eventId: string,
@@ -625,7 +624,6 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           holderPersonId: personId,
           status: EventTicketStatus.ACTIVE,
           issuedAt: { lte: effectiveAt },
-          expiresAt: { gt: effectiveAt },
           transfers: {
             none: {
               senderStatus: 'ACCEPTED',
@@ -657,7 +655,6 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           holderPersonId: personId,
           status: EventTicketStatus.ACTIVE,
           issuedAt: { lte: effectiveAt },
-          expiresAt: { gt: effectiveAt },
           transfers: {
             none: {
               senderStatus: 'ACCEPTED',

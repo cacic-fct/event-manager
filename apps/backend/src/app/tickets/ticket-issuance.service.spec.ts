@@ -47,7 +47,7 @@ function setup() {
 }
 
 describe('ticket issuance and redemption safety', () => {
-  it('skips expired automatic issuance while explicit issuance still rejects expiry', async () => {
+  it('skips expired automatic issuance but allows administrative issuance', async () => {
     const { service, tx, event } = setup();
     event.endDate = new Date(Date.now() - 1_000);
     tx.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription' } as never);
@@ -55,7 +55,10 @@ describe('ticket issuance and redemption safety', () => {
 
     await expect(service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person')).resolves.toBeUndefined();
     expect(tx.eventTicket.create).not.toHaveBeenCalled();
-    await expect(service.issueForPerson(tx as never, 'event', 'person', EventTicketIssueSource.ADMIN)).rejects.toThrow('O prazo deste bilhete já terminou.');
+    await expect(service.issueForPerson(tx as never, 'event', 'person', EventTicketIssueSource.ADMIN)).resolves.toBeDefined();
+    expect(tx.eventTicket.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ source: 'ADMIN', expiresAt: event.endDate }),
+    }));
   });
 
   it.each(['cancellation', 'tier downgrade'])('revokes merged automatic provenance after %s', async (change) => {
@@ -213,10 +216,11 @@ describe('ticket issuance and redemption safety', () => {
     }));
   });
 
-  it('materializes waived-tier tickets at scan time without receipt validation', async () => {
+  it('materializes expired waived-tier tickets at scan time without receipt validation', async () => {
     const { service, tx, event, existing } = setup();
     const attendedAt = new Date();
     const sourceCreatedAt = new Date(attendedAt.getTime() - 60_000);
+    event.endDate = new Date(attendedAt.getTime() - 30_000);
     event.majorEvent = { isPaymentRequired: true };
     event.ticketConfig.createdAt = sourceCreatedAt;
     event.ticketConfig.updatedAt = sourceCreatedAt;
@@ -298,19 +302,19 @@ describe('ticket issuance and redemption safety', () => {
     tx.eventTicket.findFirst.mockResolvedValue({ ...existing, holder: { userId: 'user' }, event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null } } as never);
     tx.eventTicket.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.consumeForAttendance(tx as never, 'event', 'person')).resolves.toBe(false);
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ holderPersonId: 'person', eventId: 'event', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) } }) }));
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ holderPersonId: 'person', eventId: 'event', status: 'ACTIVE' }) }));
     expect(tx.eventTicketHistory.create).not.toHaveBeenCalled();
     expect(tx.auditLogEntry.create).not.toHaveBeenCalled();
     expect(realtime.enqueueForUsers).not.toHaveBeenCalled();
     expect(tx.ticketTransfer.findMany).not.toHaveBeenCalled();
   });
 
-  it('uses the persisted attendance time for a delayed upload when the ticket was valid then', async () => {
+  it('redeems a ticket already expired at attendance time during a delayed upload', async () => {
     const { service, tx, realtime } = setup();
     const processedAt = new Date();
     const attendedAt = new Date(processedAt.getTime() - 2 * 60 * 60 * 1_000);
     const issuedAt = new Date(attendedAt.getTime() - 60 * 60 * 1_000);
-    const expiresAt = new Date(attendedAt.getTime() + 30 * 60 * 1_000);
+    const expiresAt = new Date(attendedAt.getTime() - 30 * 60 * 1_000);
     tx.eventTicket.findFirst.mockResolvedValue({
       id: 'ticket',
       eventId: 'event',
@@ -332,7 +336,6 @@ describe('ticket issuance and redemption safety', () => {
       where: expect.objectContaining({
         holderPersonId: 'person',
         issuedAt: { lte: attendedAt },
-        expiresAt: { gt: attendedAt },
       }),
     }));
     expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -340,10 +343,11 @@ describe('ticket issuance and redemption safety', () => {
         holderPersonId: 'person',
         status: EventTicketStatus.ACTIVE,
         issuedAt: { lte: attendedAt },
-        expiresAt: { gt: attendedAt },
       }),
       data: expect.objectContaining({ consumedAt: attendedAt, consumedByPersonId: 'person' }),
     }));
+    expect(tx.eventTicket.findFirst.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
+    expect(tx.eventTicket.updateMany.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         after: expect.objectContaining({ consumedAt: attendedAt.toISOString() }),
@@ -417,7 +421,7 @@ describe('ticket issuance and redemption safety', () => {
     const update = tx.eventTicket.updateMany.mock.calls[0][0];
     expect(update.data.consumedAt).toBeInstanceOf(Date);
     expect(update.where.issuedAt.lte).toEqual(update.data.consumedAt);
-    expect(update.where.expiresAt.gt).toEqual(update.data.consumedAt);
+    expect(update.where).not.toHaveProperty('expiresAt');
   });
 
   it('still requires the requested person to be the ticket holder at upload time', async () => {
@@ -437,7 +441,7 @@ describe('ticket issuance and redemption safety', () => {
   it('uses the event/holder lookup rather than accepting a barcode ticket ID as ownership', async () => {
     const { service, tx } = setup();
     await expect(service.consumeForAttendance(tx as never, 'event', 'person')).resolves.toBe(false);
-    expect(tx.eventTicket.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ eventId: 'event', holderPersonId: 'person', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) } }) }));
+    expect(tx.eventTicket.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ eventId: 'event', holderPersonId: 'person', status: 'ACTIVE' }) }));
     expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.eventTicket.findFirst.mock.invocationCallOrder[0]);
   });
 });

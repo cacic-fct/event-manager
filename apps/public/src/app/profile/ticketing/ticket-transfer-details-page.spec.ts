@@ -70,12 +70,12 @@ describe('TicketTransferDetailsPage', () => {
     TestBed.resetTestingModule();
   });
 
-  it('disables receipt after expiry while the transfer page remains open', async () => {
+  it.each([false, true])('keeps expired receipt available only for admin-initiated transfers (%s)', async (initiatedByAdmin) => {
     vi.useFakeTimers();
     const ticket = createWalletStoryTicket({
       effectiveExpiresAt: new Date(Date.now() + 1000).toISOString(),
     });
-    const transfer = createTicketStoryTransfer({ ticket });
+    const transfer = createTicketStoryTransfer({ ticket, initiatedByAdmin });
 
     await TestBed.configureTestingModule({
       imports: [TicketTransferDetailsPage],
@@ -102,8 +102,12 @@ describe('TicketTransferDetailsPage', () => {
     await vi.advanceTimersByTimeAsync(1000);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(0);
-    expect(fixture.nativeElement.textContent).toContain('Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.');
+    expect(fixture.componentInstance.canAccept()).toBe(initiatedByAdmin);
+    expect(fixture.nativeElement.textContent.includes('Receber bilhete')).toBe(initiatedByAdmin);
+    if (!initiatedByAdmin) {
+      expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(0);
+      expect(fixture.nativeElement.textContent).toContain('Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.');
+    }
     fixture.destroy();
     TestBed.resetTestingModule();
   });

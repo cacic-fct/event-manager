@@ -192,7 +192,8 @@ model EventTicket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([eventId, holderPersonId], map: "event_tickets_current_holder_key", where: raw("\"status\" IN ('ACTIVE', 'CONSUMED')"))
+  // Match PostgreSQL's normalized predicate so Prisma recognizes the stored partial index.
+  @@unique([eventId, holderPersonId], map: "event_tickets_current_holder_key", where: raw("status = ANY (ARRAY['ACTIVE'::\"EventTicketStatus\", 'CONSUMED'::\"EventTicketStatus\"])"))
   @@index([eventId, status, expiresAt])
   @@index([holderPersonId, status, expiresAt])
   @@index([ticketConfigId])
@@ -343,7 +344,8 @@ model TicketPurchase {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([ticketConfigId, personId], map: "ticket_purchases_config_person_active_key", where: raw("\"status\" IN ('UNDER_REVIEW', 'APPROVED')"))
+  // Match PostgreSQL's normalized predicate so Prisma recognizes the stored partial index.
+  @@unique([ticketConfigId, personId], map: "ticket_purchases_config_person_active_key", where: raw("status = ANY (ARRAY['UNDER_REVIEW'::\"TicketPurchaseStatus\", 'APPROVED'::\"TicketPurchaseStatus\"])"))
   @@index([majorEventId, status, createdAt])
   @@index([eventId, personId, createdAt])
   @@index([majorEventSubscriptionId])

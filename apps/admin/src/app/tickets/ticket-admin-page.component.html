@@ -13,7 +13,10 @@
   </mat-card>
 } @else if (isMajorScope()) {
   <section class="ticket-major-workspace">
-    <p class="intro">Os bilhetes são configurados por evento. Escolha uma atividade deste grande evento para ativar emissões, transferências ou compras de acesso.</p>
+    <p class="intro">
+      Os bilhetes são configurados por evento. Escolha uma atividade deste grande evento para ativar emissões,
+      transferências ou compras de acesso.
+    </p>
 
     <section class="workspace-region">
       <h2>Escolher evento</h2>
@@ -35,7 +38,9 @@
       </div>
 
       @if (configs().length === 0) {
-        <p class="empty-state">Ainda não há bilhetes configurados neste grande evento. Escolha um evento acima para começar.</p>
+        <p class="empty-state">
+          Ainda não há bilhetes configurados neste grande evento. Escolha um evento acima para começar.
+        </p>
       } @else {
         <div class="config-list" aria-label="Eventos com configuração de bilhetes">
           @for (config of configs(); track config.eventId) {
@@ -62,10 +67,18 @@
   </section>
 } @else if (eventSummary(); as event) {
   <section class="ticket-event-workspace">
-    <p class="intro">Bilhetes representam um direito específico de acesso que pode ser transferido quando a configuração permitir.</p>
+    <p class="intro">
+      Bilhetes representam um direito específico de acesso que pode ser transferido quando a configuração permitir.
+    </p>
     <mat-card appearance="outlined" class="purpose-note">
       <mat-icon aria-hidden="true">info</mat-icon>
-      <p>Bilhetes não substituem o cartão padrão da Carteira nem o registro comum de presença. No scanner do evento, o servidor confere a posse real do bilhete mesmo quando a pessoa apresenta o cartão padrão.</p>
+      <p>
+        Bilhetes são apenas um recurso visual para os usuários e para possibilitar a transferência de direitos de
+        acesso.
+        <br />
+
+        No scanner de presenças, o bilhete é consumido mesmo que a pessoa apresente o cartão de usuário da carteira.
+      </p>
     </mat-card>
 
     <mat-tab-group animationDuration="0ms" aria-label="Seções de bilhetes">
@@ -101,7 +114,7 @@
                   <mat-label>Emoji</mat-label>
                   <input matInput formControlName="displayEmoji" maxlength="16" aria-describedby="ticket-emoji-help" />
                   <span matTextSuffix><lib-twemoji [emoji]="configForm.controls.displayEmoji.value" /></span>
-                  <mat-hint id="ticket-emoji-help">Por padrão, usamos o emoji salvo no evento.</mat-hint>
+                  <mat-hint id="ticket-emoji-help">Por padrão, é usado o emoji do evento.</mat-hint>
                 </mat-form-field>
               </div>
               <mat-form-field appearance="outline" class="full-width">
@@ -111,9 +124,13 @@
 
               <div class="subsection">
                 <h3>Emissão automática</h3>
-                <mat-slide-toggle formControlName="issueOnEventSubscription">Emitir após inscrição confirmada neste evento</mat-slide-toggle>
+                <mat-slide-toggle formControlName="issueOnEventSubscription"
+                  >Emitir após inscrição confirmada neste evento</mat-slide-toggle
+                >
                 @if (majorEventId()) {
-                  <mat-slide-toggle formControlName="issueOnMajorEventSubscription">Emitir junto com a inscrição confirmada no grande evento</mat-slide-toggle>
+                  <mat-slide-toggle formControlName="issueOnMajorEventSubscription"
+                    >Emitir junto com a inscrição confirmada no grande evento</mat-slide-toggle
+                  >
                   @if (configForm.controls.issueOnMajorEventSubscription.value) {
                     <mat-form-field appearance="outline" class="full-width">
                       <mat-label>Lotes que incluem este bilhete</mat-label>
@@ -176,7 +193,9 @@
                     <mat-hint>Sem seleção, qualquer curso é aceito.</mat-hint>
                   </mat-form-field>
                   <mat-checkbox formControlName="requiresUnesp">Somente pessoas da Unesp</mat-checkbox>
-                  <mat-checkbox formControlName="requiresAccountManagerVerification">Exigir verificação do vínculo Unesp</mat-checkbox>
+                  <mat-checkbox formControlName="requiresAccountManagerVerification"
+                    >Exigir matrícula confirmada no Account Manager</mat-checkbox
+                  >
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Prefixos adicionais de RA</mat-label>
                     <textarea matInput rows="2" formControlName="requiredAcademicIdPrefixes"></textarea>
@@ -196,12 +215,18 @@
                 </div>
               </div>
               <fieldset [disabled]="!canEditConfig() || saving()">
-                <mat-slide-toggle formControlName="purchaseEnabled" [disabled]="!isTicketEnabled()">Disponibilizar este bilhete para compra</mat-slide-toggle>
+                <mat-slide-toggle formControlName="purchaseEnabled" [disabled]="!isTicketEnabled()"
+                  >Disponibilizar este bilhete para compra</mat-slide-toggle
+                >
                 @if (!isTicketEnabled()) {
-                  <p class="purchase-receipt-rule">Ative a emissão de bilhetes para disponibilizar esta compra adicional.</p>
+                  <p class="purchase-receipt-rule">
+                    Ative a emissão de bilhetes para disponibilizar esta compra adicional.
+                  </p>
                 }
                 @if (isPurchaseEnabled()) {
-                  <p class="purchase-receipt-rule">A oferta aparece apenas para quem tem inscrição no grande evento com pagamento aprovado.</p>
+                  <p class="purchase-receipt-rule">
+                    A oferta aparece apenas para quem tem inscrição no grande evento com pagamento aprovado.
+                  </p>
                   <div class="policy-fields" formGroupName="purchaseVisibility">
                     <mat-form-field appearance="outline">
                       <mat-label>Curso de graduação</mat-label>
@@ -222,8 +247,10 @@
                       <mat-hint>Sem seleção, todos os lotes inscritos podem comprar.</mat-hint>
                     </mat-form-field>
                     <mat-checkbox formControlName="requiresUnesp">Somente pessoas da Unesp</mat-checkbox>
-                    <mat-checkbox formControlName="requiresAccountManagerVerification">Exigir verificação do vínculo Unesp</mat-checkbox>
-                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-checkbox formControlName="requiresAccountManagerVerification"
+                      >Exigir matrícula confirmada no Account Manager.</mat-checkbox
+                    >
+                    <mat-form-field appearance="outline" class="full-width">
                       <mat-label>Prefixos adicionais de RA</mat-label>
                       <textarea matInput rows="2" formControlName="requiredAcademicIdPrefixes"></textarea>
                       <mat-hint>Use um prefixo por linha. O curso é selecionado separadamente acima.</mat-hint>
@@ -239,15 +266,15 @@
                       </mat-select>
                     </mat-form-field>
                     @if (priceMode.value === 'SINGLE') {
-                  <mat-form-field appearance="outline">
-                    <mat-label>Preço (R$)</mat-label>
-                    <input matInput type="number" min="0" step="0.01" [formControl]="singlePrice" required />
-                    @if (singlePrice.hasError('required')) {
-                      <mat-error>Informe um preço.</mat-error>
-                    }
-                    @if (singlePrice.hasError('min')) {
-                      <mat-error>O preço deve ser zero ou maior.</mat-error>
-                    }
+                      <mat-form-field appearance="outline">
+                        <mat-label>Preço (R$)</mat-label>
+                        <input matInput type="number" min="0" step="0.01" [formControl]="singlePrice" required />
+                        @if (singlePrice.hasError('required')) {
+                          <mat-error>Informe um preço.</mat-error>
+                        }
+                        @if (singlePrice.hasError('min')) {
+                          <mat-error>O preço deve ser zero ou maior.</mat-error>
+                        }
                       </mat-form-field>
                     } @else {
                       <div class="price-rows">
@@ -257,7 +284,11 @@
                               <mat-label>Lote</mat-label>
                               <mat-select formControlName="priceTierId">
                                 @for (tier of priceTiers(); track tier.id) {
-                                  <mat-option [value]="tier.id" [disabled]="isPriceTierAlreadySelected(tier.id, index)">{{ tier.name }}</mat-option>
+                                  <mat-option
+                                    [value]="tier.id"
+                                    [disabled]="isPriceTierAlreadySelected(tier.id, index)"
+                                    >{{ tier.name }}</mat-option
+                                  >
                                 }
                               </mat-select>
                             </mat-form-field>
@@ -271,12 +302,20 @@
                                 <mat-error>O preço deve ser zero ou maior.</mat-error>
                               }
                             </mat-form-field>
-                            <button mat-icon-button type="button" [attr.aria-label]="'Remover preço do lote ' + row.controls.label.value" (click)="removePriceOption(index)">
+                            <button
+                              mat-icon-button
+                              type="button"
+                              [attr.aria-label]="'Remover preço do lote ' + row.controls.label.value"
+                              (click)="removePriceOption(index)">
                               <mat-icon>delete</mat-icon>
                             </button>
                           </div>
                         }
-                        <button mat-stroked-button type="button" [disabled]="priceRows.length >= priceTiers().length" (click)="addPriceOption()">
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          [disabled]="priceRows.length >= priceTiers().length"
+                          (click)="addPriceOption()">
                           <mat-icon>add</mat-icon>
                           Adicionar lote
                         </button>
@@ -334,7 +373,11 @@
               <span class="muted">Você pode consultar esta configuração, mas não tem permissão para alterá-la.</span>
             }
             <button matButton="filled" type="submit" [disabled]="!canSaveConfig()">
-              @if (saving()) { Salvando... } @else { Salvar configuração }
+              @if (saving()) {
+                Salvando...
+              } @else {
+                Salvar configuração
+              }
             </button>
           </div>
         </form>
@@ -354,7 +397,11 @@
                 <p>{{ ticketPage().totalCount }} no total</p>
               </div>
               @if (canIssueTickets()) {
-                <button matButton="filled" type="button" [disabled]="!selectedConfig() || saving()" (click)="openManualIssue()">
+                <button
+                  matButton="filled"
+                  type="button"
+                  [disabled]="!selectedConfig() || saving()"
+                  (click)="openManualIssue()">
                   <mat-icon>add</mat-icon>
                   Emitir bilhete
                 </button>
@@ -380,7 +427,9 @@
                 </mat-form-field>
               </div>
               @if (ticketsLoading()) {
-                <div class="loading-inline" aria-live="polite"><mat-spinner diameter="24" aria-label="Carregando bilhetes" /> Carregando bilhetes...</div>
+                <div class="loading-inline" aria-live="polite">
+                  <mat-spinner diameter="24" aria-label="Carregando bilhetes" /> Carregando bilhetes...
+                </div>
               } @else if (ticketsError()) {
                 <div class="inline-error" role="alert">
                   <span>{{ ticketsError() }}</span>
@@ -408,11 +457,21 @@
                       <div class="ticket-metadata">
                         <div>
                           <strong>Expira em</strong>
-                          <time [attr.datetime]="ticket.effectiveExpiresAt">{{ ticket.effectiveExpiresAt | date: 'dd/MM/yyyy HH:mm' }}</time>
+                          <time [attr.datetime]="ticket.effectiveExpiresAt">{{
+                            ticket.effectiveExpiresAt | date: 'dd/MM/yyyy HH:mm'
+                          }}</time>
                         </div>
                         <div>
                           <strong>Origem</strong>
-                          <span>{{ ticket.source === 'ADMIN' ? 'Administração' : ticket.source === 'PURCHASE' ? 'Compra' : ticket.source === 'EVENT_SUBSCRIPTION' ? 'Inscrição no evento' : 'Inscrição no grande evento' }}</span>
+                          <span>{{
+                            ticket.source === 'ADMIN'
+                              ? 'Administração'
+                              : ticket.source === 'PURCHASE'
+                                ? 'Compra'
+                                : ticket.source === 'EVENT_SUBSCRIPTION'
+                                  ? 'Inscrição no evento'
+                                  : 'Inscrição no grande evento'
+                          }}</span>
                         </div>
                         @if (ticket.sourceReference) {
                           <div>
@@ -428,13 +487,13 @@
                             Histórico
                           </button>
                         }
-                        @if (ticket.status === 'ACTIVE' && canManageTransfers()) {
+                        @if ((ticket.status === 'ACTIVE' || ticket.status === 'EXPIRED') && canManageTransfers()) {
                           <button mat-button type="button" [disabled]="saving()" (click)="openAdminTransfer(ticket)">
                             <mat-icon>move_up</mat-icon>
                             Transferir para outra pessoa
                           </button>
                         }
-                        @if (ticket.status === 'ACTIVE' && canRevokeTickets()) {
+                        @if ((ticket.status === 'ACTIVE' || ticket.status === 'EXPIRED') && canRevokeTickets()) {
                           <button mat-button type="button" [disabled]="saving()" (click)="revoke(ticket)">
                             <mat-icon>block</mat-icon>
                             Revogar
@@ -445,12 +504,20 @@
                   }
                 </div>
                 <div class="ticket-pager" aria-label="Paginação de bilhetes">
-                  <button mat-button type="button" [disabled]="cursorHistory().length <= 1 || ticketsLoading()" (click)="previousTicketPage()">
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="cursorHistory().length <= 1 || ticketsLoading()"
+                    (click)="previousTicketPage()">
                     <mat-icon>chevron_left</mat-icon>
                     Anterior
                   </button>
                   <span aria-live="polite">{{ ticketPage().tickets.length }} nesta página</span>
-                  <button mat-button type="button" [disabled]="!ticketPage().nextCursor || ticketsLoading()" (click)="nextTicketPage()">
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="!ticketPage().nextCursor || ticketsLoading()"
+                    (click)="nextTicketPage()">
                     Próxima
                     <mat-icon>chevron_right</mat-icon>
                   </button>

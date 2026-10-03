@@ -108,6 +108,7 @@ export function createTicketTransferServiceFixture() {
   };
   const prisma = {
     eventTicket: tx.eventTicket,
+    ticketTransfer: tx.ticketTransfer,
     $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
   const identities = {

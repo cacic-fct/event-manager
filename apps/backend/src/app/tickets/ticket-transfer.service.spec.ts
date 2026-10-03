@@ -30,6 +30,52 @@ describe('ticket transfer mutations', () => {
     expect(audit.after).toEqual(expect.objectContaining({ senderStatus: TicketTransferSenderStatus.PENDING }));
   });
 
+  it('allows admins to start an expired ticket transfer while holders cannot', async () => {
+    const f = createTicketTransferServiceFixture();
+    f.ticket.expiresAt = new Date(Date.now() - 60_000);
+    f.tx.people.findFirst.mockResolvedValue({ id: 'recipient-person', userId: 'recipient-user', name: 'Recipient' });
+
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never))
+      .rejects.toThrow('Este bilhete não está mais disponível para transferência.');
+    await expect(f.service.startForAdmin('ticket-1', 'recipient-person', 'Correção administrativa', { sub: 'admin-user' } as never))
+      .resolves.toEqual(expect.objectContaining({ initiatorType: 'ADMIN', senderStatus: 'PENDING' }));
+  });
+
+  it.each(['ADMIN', 'HOLDER'])('applies expiration to acceptance only for %s initiated transfers', async (initiatorType) => {
+    const f = createTicketTransferServiceFixture();
+    f.ticket.expiresAt = new Date(Date.now() - 60_000);
+    const incoming = {
+      ...f.transfer,
+      initiatorType,
+      recipientPersonId: 'recipient-person',
+      recipientUserId: 'recipient-user',
+      recipient: { id: 'recipient-person', name: 'Recipient', userId: 'recipient-user' },
+      ticket: { ...(f.transfer.ticket as Record<string, unknown>), expiresAt: f.ticket.expiresAt },
+    };
+    f.tx.ticketTransfer.findUnique.mockResolvedValue(incoming);
+    f.tx.ticketTransfer.findUniqueOrThrow.mockResolvedValue(incoming);
+    f.tx.people.findFirst.mockResolvedValue(incoming.recipient);
+    const updateTicket = jest.fn().mockResolvedValue({ count: 1 });
+    Object.assign(f.tx.eventTicket, { updateMany: updateTicket });
+
+    expect(mapTicketTransfer(incoming as never, 'RECIPIENT', f.service, new Date()).canAccept)
+      .toBe(initiatorType === 'ADMIN');
+    await f.service.acceptForUser('transfer-1', { sub: 'recipient-user' } as never);
+
+    if (initiatorType === 'ADMIN') {
+      expect(updateTicket).toHaveBeenCalledWith(expect.objectContaining({
+        data: { holderPersonId: 'recipient-person' },
+        where: expect.objectContaining({ status: 'ACTIVE', holderPersonId: 'sender-person' }),
+      }));
+      expect(updateTicket.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
+    } else {
+      expect(updateTicket).not.toHaveBeenCalled();
+      expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ senderStatus: 'EXPIRED' }),
+      }));
+    }
+  });
+
   it('allows immediate cancellation even while the author must wait to submit again', async () => {
     const f = createTicketTransferServiceFixture();
     f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date() } as never);

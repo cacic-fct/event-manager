@@ -62,7 +62,7 @@ export class TicketTransferDetailsPage {
     if (
       current.status !== 'ready' ||
       current.transfer.senderStatus !== 'PENDING' ||
-      ticketStatusAt(current.transfer.ticket, this.now()) !== 'ACTIVE'
+      this.ticketIsUnavailable(current.transfer)
     ) return false;
     return current.transfer.canCancel;
   });
@@ -72,7 +72,7 @@ export class TicketTransferDetailsPage {
       current.transfer.canAccept &&
       current.transfer.senderStatus === 'PENDING' &&
       current.transfer.recipientStatus === 'PENDING' &&
-      ticketStatusAt(current.transfer.ticket, this.now()) === 'ACTIVE';
+      !this.ticketIsUnavailable(current.transfer);
   });
   readonly recipientIdentity = computed(() => {
     const recipient = this.readyTransfer()?.recipient;
@@ -183,7 +183,8 @@ export class TicketTransferDetailsPage {
       case 'CONSUMED':
         return 'Este bilhete já foi utilizado e não pode ser transferido.';
       case 'EXPIRED':
-        return 'Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.';
+        if (!transfer.initiatedByAdmin) return 'Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.';
+        break;
       case 'REVOKED':
         return 'Este bilhete foi revogado e não pode ser transferido.';
     }
@@ -197,7 +198,8 @@ export class TicketTransferDetailsPage {
   }
 
   ticketIsUnavailable(transfer: TicketTransfer): boolean {
-    return ticketStatusAt(transfer.ticket, this.now()) !== 'ACTIVE';
+    const status = ticketStatusAt(transfer.ticket, this.now());
+    return status !== 'ACTIVE' && !(transfer.initiatedByAdmin && status === 'EXPIRED');
   }
 
   private confirm(action: 'accept' | 'ignore', transfer: TicketTransfer): void {

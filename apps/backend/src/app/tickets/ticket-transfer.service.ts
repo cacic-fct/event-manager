@@ -328,7 +328,7 @@ export class TicketTransferService {
     if (!admin && ticket.holder.userId !== expectedHolderUserId) {
       throw new NotFoundException('Bilhete não encontrado.');
     }
-    if (ticket.status !== EventTicketStatus.ACTIVE || ticket.expiresAt <= new Date()) {
+    if (ticket.status !== EventTicketStatus.ACTIVE || (!admin && ticket.expiresAt <= new Date())) {
       throw new GoneException('Este bilhete não está mais disponível para transferência.');
     }
     if (!ticket.ticketConfig.enabled || (!admin && !ticket.ticketConfig.transferable)) {
@@ -666,7 +666,11 @@ export class TicketTransferService {
             recipientUserId: userId,
             senderStatus: TicketTransferSenderStatus.PENDING,
             recipientStatus: TicketTransferRecipientStatus.PENDING,
-            ticket: { status: EventTicketStatus.ACTIVE, expiresAt: { gt: new Date() } },
+            ticket: { status: EventTicketStatus.ACTIVE },
+            OR: [
+              { initiatorType: TicketTransferInitiatorType.ADMIN },
+              { ticket: { expiresAt: { gt: new Date() } } },
+            ],
           },
           include: TRANSFER_DETAILS_INCLUDE,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -805,7 +809,10 @@ export class TicketTransferService {
         if (!ticket || ticket.status !== EventTicketStatus.ACTIVE || !ticket.holderPersonId) {
           return this.expireTransfer(tx, transfer, 'Este bilhete não está mais disponível.');
         }
-        if (ticket.expiresAt <= new Date() || ticket.holderPersonId !== transfer.senderPersonId) {
+        if (
+          (transfer.initiatorType !== TicketTransferInitiatorType.ADMIN && ticket.expiresAt <= new Date()) ||
+          ticket.holderPersonId !== transfer.senderPersonId
+        ) {
           return this.expireTransfer(tx, transfer, 'O prazo desta solicitação terminou.');
         }
         if (!ticket.ticketConfig.enabled || !ticket.ticketConfig.transferable && transfer.initiatorType !== TicketTransferInitiatorType.ADMIN) {
@@ -849,7 +856,7 @@ export class TicketTransferService {
             eventId: transfer.eventId,
             holderPersonId: transfer.senderPersonId ?? undefined,
             status: EventTicketStatus.ACTIVE,
-            expiresAt: { gt: now },
+            ...(transfer.initiatorType !== TicketTransferInitiatorType.ADMIN ? { expiresAt: { gt: now } } : {}),
           },
           data: { holderPersonId: recipient.id },
         });

@@ -353,7 +353,7 @@ export function mapTicketTransfer(
       transfer.senderStatus === TicketTransferSenderStatus.PENDING &&
       transfer.recipientStatus === TicketTransferRecipientStatus.PENDING &&
       transfer.ticket.status === EventTicketStatus.ACTIVE &&
-      transfer.ticket.expiresAt > now,
+      (transfer.initiatorType === TicketTransferInitiatorType.ADMIN || transfer.ticket.expiresAt > now),
   });
   return model;
 }

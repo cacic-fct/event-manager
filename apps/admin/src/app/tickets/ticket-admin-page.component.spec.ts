@@ -285,7 +285,13 @@ describe('TicketAdminPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Utilizado');
     expect(fixture.nativeElement.textContent).toContain('Revogado');
     expect(fixture.nativeElement.textContent).toContain('Expirado');
-    expect(fixture.nativeElement.querySelectorAll('button')).toBeDefined();
+    const rows = [...fixture.nativeElement.querySelectorAll('.ticket-row')] as HTMLElement[];
+    for (const row of rows) {
+      const editable = row.textContent?.includes('Ativo') || row.textContent?.includes('Expirado');
+      expect(row.textContent?.includes('Transferir')).toBe(Boolean(editable));
+      expect(row.textContent?.includes('Revogar')).toBe(Boolean(editable));
+    }
+    expect(rows).toHaveLength(4);
   });
 
   it('shows a holder-list error and offers retry', async () => {
