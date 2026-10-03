@@ -287,6 +287,7 @@ export class EventSubscriptionsResolver {
           personId: input.personId,
           createdById,
           createdByMethod: 'ADMIN_DASHBOARD',
+          imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted ?? false,
         },
         select: {
           id: true,

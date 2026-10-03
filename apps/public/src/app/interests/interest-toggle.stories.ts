@@ -14,6 +14,7 @@ const meta: Meta<InterestToggle> = {
     targetId: { control: 'text' },
     targetName: { control: 'text' },
     subscribed: { control: 'boolean' },
+    interestEnabled: { control: 'boolean' },
     endsAt: { control: 'text' },
   },
   parameters: { layout: 'padded', a11y: { test: 'error' } },
@@ -38,6 +39,20 @@ export const Playground: Story = {
 export const Interested: Story = {
   globals: { theme: 'light', network: 'online' },
   parameters: mockInterest(true),
+};
+
+export const ExistingInterestAfterDisablement: Story = {
+  args: { interestEnabled: false },
+  globals: { theme: 'light', network: 'online' },
+  parameters: mockInterest(true, false, false, false),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = await canvas.findByRole('button', { name: 'Quero ir: Palestra aberta' });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(toggle);
+    await waitFor(() => expect(canvas.queryByRole('button', { name: 'Quero ir: Palestra aberta' })).toBeNull());
+  },
 };
 
 export const SaveError: Story = {
@@ -79,7 +94,7 @@ export const Finished: Story = {
   parameters: mockInterest(true, false, true),
 };
 
-function mockInterest(initiallyInterested: boolean, failSave = false, finished = false) {
+function mockInterest(initiallyInterested: boolean, failSave = false, finished = false, enabled = true) {
   let interested = initiallyInterested;
   return { msw: { handlers: { graphql: [http.post('/api/graphql', async ({ request }) => {
     const { query, variables } = await request.json() as {
@@ -95,7 +110,7 @@ function mockInterest(initiallyInterested: boolean, failSave = false, finished =
     const record = interested ? createPublicEventInterest({ [key]: variables.targetId }) : null;
     if (query.includes('CurrentUserInterestState')) {
       return HttpResponse.json({ data: { currentUserInterestState: {
-        interest: record, subscribed: false, endsAt: publicFixtureDateFromNow(finished ? -1 : 1), enabled: true,
+        interest: record, subscribed: false, endsAt: publicFixtureDateFromNow(finished ? -1 : 1), enabled,
       } } });
     }
     return HttpResponse.json({ data: { [mutation ? 'setCurrentUserInterest' : 'currentUserInterest']: record } });

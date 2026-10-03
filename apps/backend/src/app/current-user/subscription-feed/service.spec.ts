@@ -92,6 +92,25 @@ describe('CurrentUserSubscriptionFeedService', () => {
     );
   });
 
+  it('merges group interest with attendance into one feed card', async () => {
+    const attendedEvent = event('attended-child', 'Atividade', 'group-1');
+    const prisma = createPrisma({
+      attendanceEvents: [{ event: attendedEvent }],
+      eventGroupInterests: [{
+        eventGroup: { ...eventGroup('group-1', 'Grupo'), events: [attendedEvent] },
+        createdAt: new Date(),
+      }],
+    });
+    const service = new CurrentUserSubscriptionFeedService(prisma as never, createMapper() as never);
+
+    const feed = await service.getCurrentUserSubscriptionFeed('person-1');
+
+    expect(feed.items).toEqual([expect.objectContaining({
+      type: 'EVENT_GROUP', eventGroupId: 'group-1',
+      participation: expect.objectContaining({ isInterested: true, isSubscribed: false }),
+    })]);
+  });
+
   it('keeps a direct event interest visible when the event belongs to a standalone group', async () => {
     const interestedEvent = event('group-child-interest', 'Atividade de interesse', 'group-interest');
     const prisma = createPrisma({ eventInterests: [{ event: interestedEvent }] });
