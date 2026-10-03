@@ -224,6 +224,63 @@ describe('EventInterestsService', () => {
     );
   });
 
+  it.each([true, false, null, undefined])('forwards standalone conversion consent (%s) to subscription creation', async (consent) => {
+    const prisma = createPrisma();
+    const interest = interestRecord({ eventId: 'event-1' });
+    prisma.eventInterest.findFirst.mockResolvedValue(interest);
+    prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: null, eventGroupId: null });
+    prisma.eventSubscription.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'sub-1', eventGroupSubscriptionId: null,
+    });
+    const workspaceSubscriptions = { createWorkspaceEventSubscription: jest.fn() };
+    const service = new EventInterestsService(
+      prisma as never,
+      { assertPermissions: jest.fn() } as never,
+      {} as never,
+      workspaceSubscriptions as never,
+      {} as never,
+    );
+
+    await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+      interestId: 'interest-1', imageLicenseAgreementAccepted: consent,
+    });
+
+    expect(workspaceSubscriptions.createWorkspaceEventSubscription).toHaveBeenCalledWith(
+      { eventId: 'event-1', personId: 'person-1', imageLicenseAgreementAccepted: consent ?? undefined },
+      expect.any(Object),
+    );
+  });
+
+  it('includes the interested event when creating a major registration with unrelated selections', async () => {
+    const prisma = createPrisma();
+    const interest = interestRecord({ eventId: 'event-1' });
+    prisma.eventInterest.findFirst.mockResolvedValue(interest);
+    prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: 'major-1', eventGroupId: null });
+    prisma.event.findUnique.mockResolvedValue({ majorEventId: 'major-1' });
+    prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      subscription: { id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED },
+    });
+    const workspaceSubscriptions = { createWorkspaceMajorEventSubscription: jest.fn() };
+    const service = new EventInterestsService(
+      prisma as never,
+      { assertPermissions: jest.fn() } as never,
+      {} as never,
+      workspaceSubscriptions as never,
+      {} as never,
+    );
+
+    await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+      interestId: 'interest-1', selectedEventIds: ['event-2'],
+    });
+
+    expect(workspaceSubscriptions.createWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedEventIds: ['event-1', 'event-2'] }),
+      expect.any(Object),
+    );
+  });
+
   it('adds an unselected activity to an existing major registration without replacing its selection', async () => {
     const prisma = createPrisma();
     const interest = interestRecord({ eventId: 'event-2' });
@@ -253,13 +310,13 @@ describe('EventInterestsService', () => {
 
     await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
       interestId: 'interest-1',
-      selectedEventIds: ['event-2'],
+      selectedEventIds: ['event-3'],
     });
 
     expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
       'major-sub-1',
       expect.objectContaining({
-        selectedEventIds: ['event-1', 'event-2'],
+        selectedEventIds: ['event-1', 'event-2', 'event-3'],
         subscriptionStatus: SubscriptionStatus.CONFIRMED,
       }),
       expect.any(Object),

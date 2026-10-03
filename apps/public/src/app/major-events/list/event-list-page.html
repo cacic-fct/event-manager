@@ -67,9 +67,9 @@
           </mat-chip>
           }
         </mat-chip-set>
-        @if (!isPreview() && majorEvent.interestEnabled) {
+        @if (!isPreview()) {
         <app-interest-toggle targetType="MAJOR_EVENT" [targetId]="majorEvent.id" [targetName]="majorEvent.name"
-          [endsAt]="majorEvent.endDate" />
+          [interestEnabled]="!!majorEvent.interestEnabled" [endsAt]="majorEvent.endDate" />
         }
         @if (!isPreview() && isAuthenticated()) {
         <app-target-form-links targetType="MAJOR_EVENT" [targetId]="majorEvent.id" />

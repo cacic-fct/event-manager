@@ -2,6 +2,12 @@
 title: Problemas do usuário
 ---
 
+## O botão de login não funciona
+
+Pode ser que o backend esteja temporariamente indisponível. Aguarde alguns minutos e tente novamente.
+
+Caso o problema persista, comunique o CACiC.
+
 ## O aplicativo parece desatualizado
 
 Abra **Preferências > Service Worker** e use **Atualizar**.
