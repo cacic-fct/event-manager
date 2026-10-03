@@ -299,6 +299,8 @@ describe('MergeCandidateOperationsService', () => {
         insertedAttendanceEventIds: ['event-1'],
         insertedLectureEventIds: ['lecture-1'],
         movedEventSubscriptionIds: ['event-subscription-1'],
+        movedEventInterestIds: ['moved-interest'],
+        retiredEventInterestIds: ['duplicate-interest'],
         movedEventGroupSubscriptionIds: ['group-subscription-1'],
         movedMajorEventSubscriptionIds: ['major-subscription-1'],
         movedSportsTeamRepresentativeIds: [],
@@ -430,6 +432,15 @@ describe('MergeCandidateOperationsService', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(service.undoMergeCandidatePeople('candidate-1', 'actor-1')).resolves.toBe(updatedCandidate);
+    expect(tx.eventInterest.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['moved-interest'] }, personId: 'target-person' },
+      data: { personId: 'source-person' },
+    });
+    expect(tx.eventInterest.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['duplicate-interest'] }, personId: 'source-person' },
+      data: { deletedAt: null },
+    });
+
 
     expect(auditLog.record).toHaveBeenCalledTimes(1);
     expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({

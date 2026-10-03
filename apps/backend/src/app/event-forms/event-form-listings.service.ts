@@ -1,3 +1,4 @@
+import { resolvePagination } from '../common/pagination';
 import { Injectable } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
@@ -85,8 +86,7 @@ export class EventFormListingsService {
       where,
       include: eventFormInclude,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
-      skip: filters.skip ?? undefined,
-      take: filters.take ?? undefined,
+      ...resolvePagination(filters.skip ?? undefined, filters.take ?? undefined),
     });
 
     return forms.map((form) => toEventFormModel(form));

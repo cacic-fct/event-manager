@@ -6,6 +6,6 @@ export class EventAudienceInvitation {
   @Field(() => String)
   personId!: string;
 
-  @Field(() => Person)
-  person!: Person;
+  @Field(() => Person, { nullable: true })
+  person!: Person | null;
 }

@@ -25,7 +25,11 @@ export async function moveRelations(
   revokedRepresentativeById: string | null = null,
 ): Promise<MovedRelationsSnapshot> {
   const ticketRelations = await moveTicketPersonRelations(tx, targetPersonId, sourcePersonId, revokedRepresentativeById);
-  const movedEventInterestIds = await moveEventInterests(tx, sourcePersonId, targetPersonId);
+  const { movedIds: movedEventInterestIds, retiredIds: retiredEventInterestIds } = await moveEventInterests(
+    tx,
+    sourcePersonId,
+    targetPersonId,
+  );
   const movedAudienceInvitationSnapshots = await moveAudienceInvitations(tx, sourcePersonId, targetPersonId);
   const sportsRelations = await moveSportsPersonRelations(
     tx,
@@ -448,6 +452,7 @@ export async function moveRelations(
     insertedLectureEventIds: insertedLectureRows.map((lecture) => lecture.eventId),
     movedEventSubscriptionIds,
     ...(movedEventInterestIds.length ? { movedEventInterestIds } : {}),
+    ...(retiredEventInterestIds.length ? { retiredEventInterestIds } : {}),
     movedEventGroupSubscriptionIds,
     movedMajorEventSubscriptionIds,
     movedAudienceInvitationSnapshots,

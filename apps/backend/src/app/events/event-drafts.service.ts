@@ -418,7 +418,8 @@ export class EventDraftsService {
       if (
         attendancePriceTierPolicyChanged(payload, previousEvent) ||
         attendanceEligibilityChanged ||
-        attendanceTargetChanged
+        attendanceTargetChanged ||
+        audienceChange?.invitationsChanged
       ) {
         await this.attendanceCategories.refreshForEvent(draft.sourceEventId, tx);
       }
@@ -462,7 +463,7 @@ export class EventDraftsService {
       return updated;
     });
 
-    await this.runAppliedDraftSideEffects(event, payload, draft.id);
+    await this.runAppliedDraftSideEffects(event, payload, draft.id, audienceChange?.invitationsChanged);
     if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
     return event;
   }
@@ -748,6 +749,7 @@ export class EventDraftsService {
     event: EventDraftAppliedEvent,
     input: EventUpdateInput,
     draftId: string,
+    invitationsChanged = false,
   ): Promise<void> {
     const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [
       {
@@ -756,7 +758,7 @@ export class EventDraftsService {
       },
     ];
 
-    if (this.didChangeOnlineAttendanceWindow(input)) {
+    if (this.didChangeOnlineAttendanceWindow(input) || invitationsChanged) {
       tasks.push({
         name: 'attendance realtime notification',
         run: () => this.attendanceRealtime.notifyAllConnectedPeople(),

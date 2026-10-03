@@ -440,7 +440,7 @@ export class MajorEventsService {
       priceType,
     });
     this.majorEventAudienceInvitations.set(
-      (majorEvent.audienceInvitations ?? []).map((invitation) => invitation.person),
+      (majorEvent.audienceInvitations ?? []).map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }),
     );
     this.resetPriceTiers(
       price?.tiers.length

@@ -882,8 +882,11 @@ export class FormsService {
     this.ui.loading.set(true);
     try {
       await firstValueFrom(this.api.deleteForm(selected.id));
-      this.createForm();
-      await this.loadForms();
+      if (this.selectedForm()?.id === selected.id) {
+        this.clearSelectedForm();
+        void this.router.navigate(this.formsRoute());
+      }
+      await this.loadForms({ preserveEditor: true });
       this.snackbar.open('Formulário excluído.', 'Fechar', { duration: 3000 });
     } catch (error) {
       this.showError(error, 'Não foi possível excluir o formulário.');

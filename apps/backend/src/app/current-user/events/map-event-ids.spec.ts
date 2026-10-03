@@ -37,13 +37,6 @@ describe('currentUserMapEventWhere', () => {
               },
             },
             {
-              majorEvent: {
-                interests: {
-                  some: { personId: 'person-1', deletedAt: null },
-                },
-              },
-            },
-            {
               majorEventSelections: {
                 some: {
                   deletedAt: null,

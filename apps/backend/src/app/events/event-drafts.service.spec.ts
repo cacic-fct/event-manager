@@ -57,6 +57,7 @@ describe('EventDraftsService', () => {
       typesenseSearch: Record<string, unknown>;
       attendanceCategories: Record<string, unknown>;
       ticketIssuance: Record<string, unknown>;
+      audienceInvitations: Record<string, unknown>;
     }> = {},
   ) {
     const tx = {
@@ -69,6 +70,7 @@ describe('EventDraftsService', () => {
         findFirst: jest.fn(),
         findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn(),
+        update: jest.fn(),
         findUniqueOrThrow: jest.fn(),
       },
       eventGroup: {
@@ -123,6 +125,11 @@ describe('EventDraftsService', () => {
       refreshForEvent: jest.fn(),
       ...(overrides.attendanceCategories ?? {}),
     };
+    const audienceInvitations = {
+      notifyInvited: jest.fn(),
+      replaceInvitations: jest.fn().mockResolvedValue({ invitations: [], addedPersonIds: [], removedPersonIds: [] }),
+      ...(overrides.audienceInvitations ?? {}),
+    };
     const ticketIssuance = {
       alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
       lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
@@ -140,7 +147,7 @@ describe('EventDraftsService', () => {
         undefined,
         undefined,
         attendanceCategories as never,
-        undefined,
+        audienceInvitations as never,
         ticketIssuance as never,
       ),
       prisma,
@@ -151,6 +158,7 @@ describe('EventDraftsService', () => {
       attendanceRealtime,
       typesenseSearch,
       attendanceCategories,
+      audienceInvitations,
       ticketIssuance,
     };
   }
@@ -323,7 +331,7 @@ describe('EventDraftsService', () => {
     });
   });
 
-  it('refreshes attendance classification and notifies online users when a draft changes attendance eligibility', async () => {
+  it.each(['policy', 'invitations'] as const)('refreshes attendance classification when a draft changes %s', async (change) => {
     const previousEvent = {
       id: 'event-1',
       name: 'Evento publicado',
@@ -335,16 +343,24 @@ describe('EventDraftsService', () => {
     };
     const updatedEvent = {
       ...previousEvent,
-      attendanceEligibility: 'ANYONE',
+      ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : {}),
     };
     const draft = {
       ...draftRecord,
       payload: {
         ...draftRecord.payload,
-        attendanceEligibility: 'ANYONE',
+        ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }),
       },
     };
-    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService();
+    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({
+      audienceInvitations: {
+        replaceInvitations: jest.fn().mockResolvedValue({
+          invitations: [{ personId: 'person-new' }],
+          addedPersonIds: ['person-new'],
+          removedPersonIds: [],
+        }),
+      },
+    });
     prisma.eventDraft.findUnique.mockResolvedValue(draft);
     tx.event.findFirst.mockResolvedValue(previousEvent);
     tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);

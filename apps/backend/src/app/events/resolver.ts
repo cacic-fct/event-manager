@@ -560,7 +560,8 @@ export class EventsResolver {
       if (
         attendancePriceTierPolicyChanged(normalizedInput, previousEvent) ||
         attendanceEligibilityChanged ||
-        attendanceTargetChanged
+        attendanceTargetChanged ||
+        audienceChange?.invitationsChanged
       ) {
         await this.attendanceCategories.refreshForEvent(id, tx);
       }
@@ -596,7 +597,7 @@ export class EventsResolver {
       if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
       await this.postCommitEffects.upsertEvent(event);
       await this.sportsMutationEvents.publishForBackingEvent(event.id);
-      if (this.didChangeOnlineAttendanceWindow(input)) {
+      if (this.didChangeOnlineAttendanceWindow(input) || audienceChange?.invitationsChanged) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
     }

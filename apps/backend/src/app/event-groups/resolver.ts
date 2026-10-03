@@ -25,7 +25,7 @@ import { AttendanceCategoryService } from '../events/attendance-category.service
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
-import { audienceContext } from '../audiences/audience-context';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { eventGroupBelongsToMajorEventWhere } from './major-event-membership';
 
 type GraphqlContext = {
@@ -269,14 +269,17 @@ export class EventGroupsResolver {
       await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(tx, id, normalizedInput);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
-      if (normalizedInput.attendanceEligibility !== undefined) {
-        const events = await tx.event.findMany({
-          where: { eventGroupId: id, deletedAt: null },
-          select: { id: true },
+      if (normalizedInput.attendanceEligibility !== undefined || audienceChange?.invitationsChanged) {
+        // Reassess every descendant, including children outside the editor's audience.
+        await audienceContext.run({ ...(audienceContext.getStore() ?? ANONYMOUS_AUDIENCE), bypass: true }, async () => {
+          const events = await tx.event.findMany({
+            where: { eventGroupId: id, deletedAt: null },
+            select: { id: true },
+          });
+          for (const event of events) {
+            await this.attendanceCategories.refreshForEvent(event.id, tx);
+          }
         });
-        for (const event of events) {
-          await this.attendanceCategories.refreshForEvent(event.id, tx);
-        }
       }
 
       if (normalizedInput.shouldIssueCertificate === false) {
@@ -331,7 +334,7 @@ export class EventGroupsResolver {
         majorEventId: eventGroup.majorEventId,
       });
       await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
-      if (normalizedInput.attendanceEligibility !== undefined) {
+      if (normalizedInput.attendanceEligibility !== undefined || audienceChange?.invitationsChanged) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
     }

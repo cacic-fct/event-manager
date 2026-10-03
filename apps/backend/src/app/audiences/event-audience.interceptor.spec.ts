@@ -69,6 +69,26 @@ describe('event audience request isolation', () => {
     expect(catalogScope).toEqual(member);
   });
 
+  it('runs credential-free public reads with the anonymous audience and still asserts scope', async () => {
+    const { interceptor, auth, audience, authorization } = setup();
+    audience.principalForUser.mockResolvedValueOnce(ANONYMOUS_AUDIENCE as never);
+    const context = graphqlContext();
+    context.getArgByIndex(2).req.cookies = {};
+    const output = await interceptor.intercept(context, { handle: () => defer(() => of(audienceContext.getStore())) });
+    expect(await firstValueFrom(output)).toEqual(ANONYMOUS_AUDIENCE);
+    expect(auth.authenticateSession).not.toHaveBeenCalled();
+    expect(audience.principalForUser).toHaveBeenCalledWith(undefined);
+    expect(authorization.assertAudienceForPermissions).toHaveBeenCalledWith([], {}, ANONYMOUS_AUDIENCE);
+  });
+
+  it('rejects invalid supplied credentials before entering an audience scope', async () => {
+    const { interceptor, auth } = setup();
+    auth.authenticateSession.mockRejectedValueOnce(new Error('invalid credentials'));
+    const handler = { handle: jest.fn(() => of('content')) };
+    await expect(interceptor.intercept(graphqlContext(), handler)).rejects.toThrow('invalid credentials');
+    expect(handler.handle).not.toHaveBeenCalled();
+  });
+
   it('never applies historical access to mutations even if the handler is marked', async () => {
     const { interceptor } = setup(false, true);
     const output = await interceptor.intercept(graphqlContext({}, 'mutation'), { handle: () => defer(() => of(audienceContext.getStore())) });

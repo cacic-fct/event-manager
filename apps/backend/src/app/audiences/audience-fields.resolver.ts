@@ -20,6 +20,14 @@ async function canManageInvitations(authorization: AuthorizationPolicyService, c
   }
 }
 
+async function invitationSelect(authorization: AuthorizationPolicyService, context: AudienceGraphqlContext) {
+  const user = context.req?.user ?? context.request?.user;
+  const permissions = await authorization.evaluateGlobalPermissions(user, [Permission.Person.Read]);
+  return permissions.includes(Permission.Person.Read)
+    ? AUDIENCE_ADMIN_SELECT
+    : { audienceInvitations: { select: { personId: true } } } as const;
+}
+
 type AudienceParent = { id: string; audience?: EventAudience; audienceCourseCodes?: string[] };
 
 @Resolver(() => Event)
@@ -41,7 +49,9 @@ export class EventAudienceFieldsResolver {
   @ResolveField(() => [EventAudienceInvitation])
   async audienceInvitations(@Parent() parent: AudienceParent, @Context() context: AudienceGraphqlContext) {
     if (!(await canManageInvitations(this.authorization, context, Permission.Event.Update, { eventId: parent.id }))) return [];
-    return (await this.prisma.event.findUniqueOrThrow({ where: { id: parent.id }, select: AUDIENCE_ADMIN_SELECT })).audienceInvitations;
+    const select = await invitationSelect(this.authorization, context);
+    const record = await this.prisma.event.findUniqueOrThrow({ where: { id: parent.id }, select });
+    return record.audienceInvitations.map((invitation) => ({ ...invitation, person: 'person' in invitation ? invitation.person : null }));
   }
 }
 
@@ -64,7 +74,9 @@ export class EventGroupAudienceFieldsResolver {
   @ResolveField(() => [EventAudienceInvitation])
   async audienceInvitations(@Parent() parent: AudienceParent, @Context() context: AudienceGraphqlContext) {
     if (!(await canManageInvitations(this.authorization, context, Permission.EventGroup.Update, { eventGroupId: parent.id }))) return [];
-    return (await this.prisma.eventGroup.findUniqueOrThrow({ where: { id: parent.id }, select: AUDIENCE_ADMIN_SELECT })).audienceInvitations;
+    const select = await invitationSelect(this.authorization, context);
+    const record = await this.prisma.eventGroup.findUniqueOrThrow({ where: { id: parent.id }, select });
+    return record.audienceInvitations.map((invitation) => ({ ...invitation, person: 'person' in invitation ? invitation.person : null }));
   }
 }
 
@@ -87,6 +99,8 @@ export class MajorEventAudienceFieldsResolver {
   @ResolveField(() => [EventAudienceInvitation])
   async audienceInvitations(@Parent() parent: AudienceParent, @Context() context: AudienceGraphqlContext) {
     if (!(await canManageInvitations(this.authorization, context, Permission.MajorEvent.Update, { majorEventId: parent.id }))) return [];
-    return (await this.prisma.majorEvent.findUniqueOrThrow({ where: { id: parent.id }, select: AUDIENCE_ADMIN_SELECT })).audienceInvitations;
+    const select = await invitationSelect(this.authorization, context);
+    const record = await this.prisma.majorEvent.findUniqueOrThrow({ where: { id: parent.id }, select });
+    return record.audienceInvitations.map((invitation) => ({ ...invitation, person: 'person' in invitation ? invitation.person : null }));
   }
 }

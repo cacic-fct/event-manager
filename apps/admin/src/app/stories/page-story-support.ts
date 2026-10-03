@@ -267,7 +267,7 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     majorEventEvents: signal(linkedEvents),
     majorEventEventSearchResults: signal(searchResults),
     majorEventAudienceInvitations: signal(
-      selectedMajorEvent?.audienceInvitations?.map((invitation) => invitation.person) ?? [],
+      selectedMajorEvent?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? [],
     ),
     majorEventForm,
     majorEventEventSearchForm: formBuilder.nonNullable.group({ query: ['Angular', [Validators.required]] }),
@@ -353,7 +353,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     selectedEventGroup: signal(selectedGroup),
     eventGroupEvents: signal(linkedEvents),
     eventGroupEventSearchResults: signal(eventSummaries.slice(0, 2)),
-    eventGroupAudienceInvitations: signal(selectedGroup?.audienceInvitations?.map((invitation) => invitation.person) ?? []),
+    eventGroupAudienceInvitations: signal(selectedGroup?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? []),
     savingEventGroup: signal(args.mode === 'loading'),
     selectedEventGroupHasMajorEventEvents: computed(() =>
       linkedEvents.some((eventItem) => Boolean(eventItem.majorEvent)),
@@ -508,7 +508,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     eventsPagination: createWorkspaceListPagination(),
     selectedEvent: signal(selectedEvent),
     selectedEventDraft: signal(draft),
-    eventAudienceInvitations: signal(selectedEvent?.audienceInvitations?.map((invitation) => invitation.person) ?? []),
+    eventAudienceInvitations: signal(selectedEvent?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? []),
     eventLecturers: signal([{ personId: people[0].id, name: people[0].name }]),
     eventAttendanceCollectors: signal([{ personId: people[1].id, name: people[1].name }]),
     selectedMajorEventName: signal(selectedEvent?.majorEvent?.name ?? ''),

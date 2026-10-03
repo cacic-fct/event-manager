@@ -1535,6 +1535,59 @@ describe('AuditLogService', () => {
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
   });
 
+  it('reverts attendance eligibility and recalculates assessments in the same transaction', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-event-policy',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      eventId: 'event-1',
+      before: {
+        id: 'event-1',
+        majorEventId: 'major-1',
+        attendanceEligibility: 'ANYONE',
+      },
+      after: {
+        id: 'event-1',
+        majorEventId: 'major-1',
+        attendanceEligibility: 'REGISTERED_ONLY',
+      },
+      changedFields: ['attendanceEligibility'],
+    });
+    const currentEvent = {
+      id: 'event-1',
+      majorEventId: 'major-1',
+      attendanceEligibility: 'REGISTERED_ONLY',
+      deletedAt: null,
+    };
+    const revertedEvent = {
+      ...currentEvent,
+      attendanceEligibility: 'ANYONE',
+    };
+    const revertLog = createAuditEntry({
+      id: 'audit-event-policy-revert',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.REVERT,
+      revertTargetId: 'audit-event-policy',
+    });
+    const tx = createTransaction(revertedEvent, revertLog);
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-old' }]);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue(currentEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await expect(
+      service.revertEntry({ entryId: 'audit-event-policy', mode: AuditLogRevertMode.ENTRY_ONLY }, undefined),
+    ).resolves.toEqual(expect.objectContaining({ id: 'audit-event-policy-revert' }));
+
+    expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: { attendanceEligibility: 'ANYONE' } }));
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+  });
+
   it('soft-deletes created events when reverting their creation', async () => {
     const targetEntry = createAuditEntry({
       id: 'audit-event-create',

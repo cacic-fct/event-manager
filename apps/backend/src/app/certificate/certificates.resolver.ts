@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   Certificate,
   CertificateDownload,
@@ -244,7 +245,7 @@ export class CertificatesResolver {
       context.req ?? context.request,
       TURNSTILE_ACTIONS.certificateValidation,
     );
-    return this.publicValidationService.validateCertificate(certificateId);
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.publicValidationService.validateCertificate(certificateId));
   }
 
   @Public()
@@ -262,7 +263,7 @@ export class CertificatesResolver {
     })
     certificateId: string,
   ) {
-    return this.downloadService.downloadPublicCertificate(certificateId);
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.downloadService.downloadPublicCertificate(certificateId));
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })

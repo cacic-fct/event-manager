@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import {
   moveAudienceInvitations,
   restoreAudienceInvitations,
@@ -6,7 +5,7 @@ import {
 } from './audience-invitations';
 
 describe('people merge audience invitations', () => {
-  it('moves all invitation kinds, skips target conflicts, and preserves notification metadata', async () => {
+  it('moves all invitation kinds, coalesces target conflicts, and preserves notification metadata', async () => {
     const tx = createTransaction();
     const createdAt = new Date('2026-01-01T10:00:00.000Z');
     const notifiedAt = new Date('2026-01-02T10:00:00.000Z');
@@ -58,6 +57,16 @@ describe('people merge audience invitations', () => {
 
     await expect(moveAudienceInvitations(tx as never, 'source-person', 'target-person')).resolves.toEqual([
       {
+        coalesced: true,
+        targetType: 'EVENT',
+        targetId: 'event-conflict',
+        personId: 'source-person',
+        createdAt: createdAt.toISOString(),
+        createdById: 'creator-event',
+        notifiedAt: notifiedAt.toISOString(),
+        notificationAttemptedAt: attemptedAt.toISOString(),
+      },
+      {
         targetType: 'EVENT',
         targetId: 'event-move',
         personId: 'source-person',
@@ -91,6 +100,7 @@ describe('people merge audience invitations', () => {
       data: { personId: 'target-person' },
     });
     expect(tx.eventAudienceInvitation.update).toHaveBeenCalledTimes(1);
+    expect(tx.eventAudienceInvitation.delete).toHaveBeenCalledWith({ where: { eventId_personId: { eventId: 'event-conflict', personId: 'source-person' } } });
     expect(tx.eventGroupAudienceInvitation.update).toHaveBeenCalledWith({
       where: { eventGroupId_personId: { eventGroupId: 'group-move', personId: 'source-person' } },
       data: { personId: 'target-person' },
@@ -99,6 +109,16 @@ describe('people merge audience invitations', () => {
       where: { majorEventId_personId: { majorEventId: 'major-move', personId: 'source-person' } },
       data: { personId: 'target-person' },
     });
+  });
+
+  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'] as const)('restores the coalesced %s source invitation without changing the target', async (targetType) => {
+    const tx = createTransaction();
+    const createdAt = new Date();
+    const snapshot = { targetType, targetId: 'target', personId: 'source', createdAt: createdAt.toISOString(), createdById: 'creator', notifiedAt: null, notificationAttemptedAt: null, coalesced: true };
+    await restoreAudienceInvitations(tx as never, [snapshot], 'source', 'destination');
+    const model = targetType === 'EVENT' ? tx.eventAudienceInvitation : targetType === 'EVENT_GROUP' ? tx.eventGroupAudienceInvitation : tx.majorEventAudienceInvitation;
+    expect(model.create).toHaveBeenCalledWith({ data: expect.objectContaining({ personId: 'source', createdAt, createdById: 'creator', notifiedAt: null, notificationAttemptedAt: null }) });
+    expect(model.updateMany).not.toHaveBeenCalled();
   });
 
   it('restores only rows moved by the merge and detects changed rows', async () => {
@@ -164,18 +184,24 @@ function createTransaction() {
   return {
     eventAudienceInvitation: {
       findMany: jest.fn().mockResolvedValue([]),
+      delete: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
     eventGroupAudienceInvitation: {
       findMany: jest.fn().mockResolvedValue([]),
+      delete: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
     majorEventAudienceInvitation: {
       findMany: jest.fn().mockResolvedValue([]),
+      delete: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-  } as unknown as Prisma.TransactionClient;
+  };
 }

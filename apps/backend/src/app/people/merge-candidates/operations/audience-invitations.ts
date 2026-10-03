@@ -5,6 +5,7 @@ export type AudienceInvitationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVEN
 
 export type AudienceInvitationSnapshot = {
   targetType: AudienceInvitationTargetType;
+  coalesced?: boolean;
   targetId: string;
   personId: string;
   createdAt: string;
@@ -59,6 +60,9 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
+      (row) => tx.eventAudienceInvitation.delete({
+        where: { eventId_personId: { eventId: row.targetId, personId: sourcePersonId } },
+      }),
     )));
 
   const eventGroupRows = await tx.eventGroupAudienceInvitation.findMany({
@@ -91,6 +95,9 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
+      (row) => tx.eventGroupAudienceInvitation.delete({
+        where: { eventGroupId_personId: { eventGroupId: row.targetId, personId: sourcePersonId } },
+      }),
     )));
 
   const majorEventRows = await tx.majorEventAudienceInvitation.findMany({
@@ -123,6 +130,9 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
+      (row) => tx.majorEventAudienceInvitation.delete({
+        where: { majorEventId_personId: { majorEventId: row.targetId, personId: sourcePersonId } },
+      }),
     )));
 
   return snapshots;
@@ -139,6 +149,21 @@ export async function restoreAudienceInvitations(
       throw new ConflictException(
         `Audience invitation ${snapshot.targetType}:${snapshot.targetId} has an unexpected source person.`,
       );
+    }
+    if (snapshot.coalesced) {
+      const data = {
+        personId: sourcePersonId,
+        createdAt: new Date(snapshot.createdAt),
+        createdById: snapshot.createdById,
+        notifiedAt: snapshot.notifiedAt ? new Date(snapshot.notifiedAt) : null,
+        notificationAttemptedAt: snapshot.notificationAttemptedAt ? new Date(snapshot.notificationAttemptedAt) : null,
+      };
+      switch (snapshot.targetType) {
+        case 'EVENT': await tx.eventAudienceInvitation.create({ data: { ...data, eventId: snapshot.targetId } }); break;
+        case 'EVENT_GROUP': await tx.eventGroupAudienceInvitation.create({ data: { ...data, eventGroupId: snapshot.targetId } }); break;
+        case 'MAJOR_EVENT': await tx.majorEventAudienceInvitation.create({ data: { ...data, majorEventId: snapshot.targetId } }); break;
+      }
+      continue;
     }
     const result =
       snapshot.targetType === 'EVENT'
@@ -168,15 +193,16 @@ async function moveInvitationRows(
   targetIds: readonly string[],
   targetType: AudienceInvitationTargetType,
   update: (row: InvitationRow) => Promise<unknown>,
+  remove: (row: InvitationRow) => Promise<unknown>,
 ): Promise<AudienceInvitationSnapshot[]> {
   const targetIdSet = new Set(targetIds);
   const snapshots: AudienceInvitationSnapshot[] = [];
   for (const row of sourceRows) {
-    if (targetIdSet.has(row.targetId)) {
-      continue;
-    }
-    await update(row);
+    const coalesced = targetIdSet.has(row.targetId);
+    if (coalesced) await remove(row);
+    else await update(row);
     snapshots.push({
+      ...(coalesced ? { coalesced: true } : {}),
       targetType,
       targetId: row.targetId,
       personId: row.personId,

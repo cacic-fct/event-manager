@@ -86,7 +86,7 @@
       [interestEnabled]="!!event.interestEnabled" [subscribed]="!!data.currentUserSubscription" [endsAt]="event.endDate"
       (changed)="refreshInterestForms()" />
   </section>
-  } @if (!data.preview && !isEventFinished() && event.eventGroup && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
+  } @if (!data.preview && event.eventGroup && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
   <section class="interest-actions" aria-label="Interesse no grupo de eventos" [hidden]="!groupInterest.visible()">
     <p>{{ event.eventGroup.name }}</p>
     <app-interest-toggle #groupInterest targetType="EVENT_GROUP" [targetId]="event.eventGroupId"
