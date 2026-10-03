@@ -9,7 +9,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import type { InterestTargetType } from '@cacic-fct/shared-event-participation';
 import { finalize, timer } from 'rxjs';
 import { NetworkStatusService } from '../shared/network-status.service';
-import { InterestApiService } from './interest-api.service';
+import { CurrentUserInterestState, InterestApiService } from './interest-api.service';
 
 @Component({
   selector: 'app-interest-toggle',
@@ -48,6 +48,8 @@ export class InterestToggle {
   readonly interestEnabled = input(true);
   readonly endsAt = input<string | null>(null);
   readonly changed = output<boolean>();
+  readonly prefetchedState = input<CurrentUserInterestState | null>();
+  readonly prefetchLoading = input(false);
 
   private readonly api = inject(InterestApiService);
   private readonly snackBar = inject(MatSnackBar);
@@ -88,12 +90,28 @@ export class InterestToggle {
       this.reload();
       this.subscribed();
       if (!this.isBrowser || !authenticated) {
+        this.loading.set(false);
+        this.loadFailed.set(false);
+        this.error.set(null);
         this.interested.set(false);
         this.serverSubscribed.set(false);
         this.serverEndsAt.set(null);
         return;
       }
       if (!online) return;
+      const prefetchedState = this.prefetchedState();
+      if (prefetchedState !== undefined) {
+        this.loading.set(this.prefetchLoading());
+        this.loadFailed.set(!prefetchedState && !this.prefetchLoading());
+        this.error.set(this.loadFailed() ? 'Não foi possível carregar seu interesse. Tente novamente.' : null);
+        if (prefetchedState && !this.prefetchLoading()) {
+          this.interested.set(Boolean(prefetchedState.interest));
+          this.serverSubscribed.set(prefetchedState.subscribed);
+          this.serverEndsAt.set(prefetchedState.endsAt);
+          this.enabled.set(prefetchedState.enabled);
+        }
+        return;
+      }
       this.loading.set(true);
       this.error.set(null);
       this.loadFailed.set(false);
@@ -113,7 +131,10 @@ export class InterestToggle {
     });
   }
 
-  retry(): void { this.reload.update((value) => value + 1); }
+  retry(): void {
+    if (this.prefetchedState() !== undefined) this.changed.emit(this.interested());
+    else this.reload.update((value) => value + 1);
+  }
 
   toggle(): void {
     if (!this.isBrowser || this.blocked() || this.saving()) return;

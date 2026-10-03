@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import type { GraphqlResponse, GraphqlVariables } from '@cacic-fct/event-manager-public-contracts';
 import type { EventInterest, InterestTargetType } from '@cacic-fct/shared-event-participation';
-import { Observable, Subject, map, tap } from 'rxjs';
+import { Observable, Subject, forkJoin, map, of, tap } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 
 const INTEREST_FIELDS = 'id personId eventId eventGroupId majorEventId createdAt';
@@ -29,6 +29,35 @@ export class InterestApiService {
         }
       }
     `, { targetType, targetId }).pipe(map((data) => data.currentUserInterestState));
+  }
+
+  getStates(targetType: InterestTargetType, targetIds: string[]): Observable<Record<string, CurrentUserInterestState>> {
+    if (!targetIds.length) return of({});
+    // Stay below the server's alias and complexity limits for large catalogs.
+    if (targetIds.length > 40) {
+      const batches = Array.from({ length: Math.ceil(targetIds.length / 40) }, (_, index) =>
+        this.getStates(targetType, targetIds.slice(index * 40, (index + 1) * 40)),
+      );
+      return forkJoin(batches).pipe(map((states) => Object.assign({}, ...states)));
+    }
+    const variables: GraphqlVariables = { targetType };
+    const declarations = targetIds.map((id, index) => {
+      variables[`id${index}`] = id;
+      return `$id${index}: String!`;
+    });
+    const fields = targetIds.map((_, index) => `
+      state${index}: currentUserInterestState(targetType: $targetType, targetId: $id${index}) {
+        interest { ${INTEREST_FIELDS} }
+        subscribed endsAt enabled
+      }
+    `);
+    return this.query<Record<string, CurrentUserInterestState>>(`
+      query CurrentUserInterestStates($targetType: InterestTargetType!, ${declarations.join(', ')}) {
+        ${fields.join('\n')}
+      }
+    `, variables).pipe(map((data) => Object.fromEntries(
+      targetIds.map((id, index) => [id, data[`state${index}`]]),
+    )));
   }
 
   list(majorEventId?: string): Observable<EventInterest[]> {

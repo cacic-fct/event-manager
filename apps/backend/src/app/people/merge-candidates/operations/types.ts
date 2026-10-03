@@ -133,6 +133,7 @@ export type MovedRelationsSnapshot = {
   insertedLectureEventIds: string[];
   movedEventSubscriptionIds: string[];
   movedEventInterestIds?: string[];
+  retiredEventInterestIds?: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
   movedAudienceInvitationSnapshots: AudienceInvitationSnapshot[];

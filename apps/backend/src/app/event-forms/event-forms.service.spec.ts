@@ -1663,6 +1663,29 @@ describe('EventFormsService', () => {
     expect(prisma.eventFormResponse.findMany).toHaveBeenCalledTimes(enabled ? 1 : 0);
   });
 
+  it.each([true, false])('filters interested people and attendees by major-event tiers (tiered=%s)', async (tiered) => {
+    const form = formRecord({ links: [linkRecord({
+      targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: 'major-1', eventId: null,
+      audiences: [EventFormAudience.INTERESTED, EventFormAudience.ATTENDEES], notifyOnPublish: true,
+      priceTierIds: tiered ? ['Premium'] : [],
+    })] });
+    const person = (id: string) => ({ id, name: id, email: `${id}@example.com` });
+    prisma.majorEventSubscription.findMany.mockResolvedValue([
+      { person: person('allowed'), paymentTier: ' premium ' },
+      { person: person('wrong-tier'), paymentTier: 'Standard' },
+    ]);
+    prisma.eventInterest.findMany.mockResolvedValue([{ person: person('unsubscribed') }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([
+      { person: person('allowed') }, { person: person('wrong-tier') }, { person: person('unsubscribed') },
+    ]);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+    notifications.notifyEventFormAvailable.mockResolvedValue(true);
+    await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(1);
+    const payload = notifications.notifyEventFormAvailable.mock.calls[0][0];
+    expect(payload.recipients.map((recipient: { subscriberId: string }) => recipient.subscriberId).sort())
+      .toEqual(tiered ? ['allowed'] : ['allowed', 'unsubscribed', 'wrong-tier']);
+  });
+
   it('notifies only active major registrants about unanswered required forms', async () => {
     const form = formRecord({ links: [linkRecord({
       targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: 'major-1', eventId: null,
@@ -2082,6 +2105,7 @@ function linkRecord(
     availableFrom?: Date | null;
     availableUntil?: Date | null;
     responseCount?: number;
+    priceTierIds?: string[];
   } = {},
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
