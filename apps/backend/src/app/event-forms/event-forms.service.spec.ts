@@ -981,6 +981,17 @@ describe('EventFormsService', () => {
     );
   });
 
+  it.each([
+    [{}, { skip: 0, take: 50 }],
+    [{ skip: -1, take: 2147483647 }, { skip: 0, take: 1000 }],
+    [{ skip: 0, take: -1 }, { skip: 0, take: 0 }],
+    [{ skip: null, take: null }, { skip: 0, take: 50 }],
+  ])('bounds admin pagination %j', async (filters, expected) => {
+    prisma.eventForm.findMany.mockResolvedValue([]);
+    await service.listAdminForms(authenticatedUser, filters);
+    expect(prisma.eventForm.findMany).toHaveBeenCalledWith(expect.objectContaining(expected));
+  });
+
   it('includes owned forms when listing admin forms for a target filter', async () => {
     prisma.eventForm.findMany.mockResolvedValue([]);
 

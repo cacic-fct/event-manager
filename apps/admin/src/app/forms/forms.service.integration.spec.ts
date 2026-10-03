@@ -200,6 +200,29 @@ describe('FormsService integration', () => {
     expect(dialog.open).toHaveBeenCalledTimes(2);
   });
 
+  it('clears an edited form after deletion without a late discard prompt', async () => {
+    await service.selectFormById('form-1');
+    service.form.controls.description.setValue('Descrição não salva');
+    dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    await service.delete();
+    expect(formApi.deleteForm).toHaveBeenCalledWith('form-1');
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(service.selectedForm()).toBeNull();
+    expect(service.unsavedChanges()).toBe(false);
+    expect(router.navigate).toHaveBeenCalledWith(['/forms']);
+  });
+
+  it('retains unsaved edits when deletion fails', async () => {
+    await service.selectFormById('form-1');
+    service.form.controls.description.setValue('Descrição não salva');
+    formApi.deleteForm.mockReturnValue(throwError(() => new Error('Deletion failed')));
+    await service.delete();
+    expect(service.selectedForm()?.id).toBe('form-1');
+    expect(service.form.controls.description.value).toBe('Descrição não salva');
+    expect(service.unsavedChanges()).toBe(true);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('starts a clean form only after discarding the previous edits', async () => {
     await service.selectFormById('form-1');
     service.form.controls.description.setValue('Descrição não salva');

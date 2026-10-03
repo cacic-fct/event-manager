@@ -98,6 +98,11 @@ export const routes: Route[] = [
         loadChildren: () => import('../dashboard/home.routes').then((m) => m.routes),
       },
 
+      { path: 'events', pathMatch: 'full', redirectTo: 'event-workspace' },
+      { path: 'events/:id', pathMatch: 'full', redirectTo: 'event-workspace/event/:id' },
+      { path: 'groups/:id', pathMatch: 'full', redirectTo: 'event-workspace/group/:id' },
+      { path: 'major-events/:id', pathMatch: 'full', redirectTo: 'event-workspace/major-event/:id' },
+
       {
         path: 'event-workspace',
         pathMatch: 'full',

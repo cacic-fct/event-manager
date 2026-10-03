@@ -1,3 +1,4 @@
+import { resolvePagination } from '../common/pagination';
 import { randomInt } from 'node:crypto';
 import {
   BadRequestException,
@@ -115,8 +116,7 @@ export class PrizeDrawService {
       where: { deletedAt: null, ...(filtersAnd.length ? { AND: filtersAnd } : {}) },
       include: DRAW_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
-      skip: filters.skip ?? undefined,
-      take: filters.take ?? undefined,
+      ...resolvePagination(filters.skip ?? undefined, filters.take ?? undefined),
     });
     const weightBreakdowns = await this.loadWeightBreakdowns(records);
     return Promise.all(records.map((record) => this.mapDraw(record, false, false, weightBreakdowns)));

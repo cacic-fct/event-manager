@@ -43,6 +43,19 @@ describe('PrizeDrawService', () => {
       expect(context.eligibility.resolve).not.toHaveBeenCalled();
     });
 
+    it.each([
+      [{}, { skip: 0, take: 50 }],
+      [{ skip: -1, take: 2147483647 }, { skip: 0, take: 1000 }],
+      [{ skip: 0, take: -1 }, { skip: 0, take: 0 }],
+      [{ skip: null, take: null }, { skip: 0, take: 50 }],
+    ])('bounds admin pagination %j', async (filters, expected) => {
+      const context = createContext();
+      context.policy.accessibleEventTargets.mockResolvedValue(null);
+      context.prisma.prizeDraw.findMany.mockResolvedValue([]);
+      await context.service.listAdmin(actor(), filters);
+      expect(context.prisma.prizeDraw.findMany).toHaveBeenCalledWith(expect.objectContaining(expected));
+    });
+
     it('filters and pages the admin inventory within the authorized target set', async () => {
       const context = createContext();
       context.policy.accessibleEventTargets.mockResolvedValue({
