@@ -75,6 +75,7 @@ test('selects an event, reports save failures, and protects unsaved changes', as
   const confirmation = page.getByRole('dialog', { name: 'Descartar alterações?' });
   await expect(confirmation).toBeVisible();
   await confirmation.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(confirmation).toBeHidden();
   await expect(page).toHaveURL(/\/admin\/tickets\/event\/event-1$/);
   await expect(name).toHaveValue('Acesso ao laboratório');
 

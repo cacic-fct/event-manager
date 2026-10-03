@@ -204,8 +204,10 @@ export class AdminShellComponent {
   }
 
   protected currentOperationId(): ContextOperation['id'] | undefined {
-    const path = this.activeUrl().split(/[?#]/)[0];
-    const section = path.split('/').filter(Boolean)[0];
+    const segments = this.activeUrl().split(/[?#]/)[0].split('/').filter(Boolean);
+    if (segments[0] === 'admin') segments.shift();
+    const path = `/${segments.join('/')}`;
+    const section = segments[0];
     if (path.startsWith('/event-workspace/new/')) return undefined;
     if (path.endsWith('/settings')) return 'settings';
     if (section === 'event-workspace' && this.routeContext()?.kind === 'event') return 'settings';

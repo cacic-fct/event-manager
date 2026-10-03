@@ -1,5 +1,6 @@
 import { expect, test } from './support/e2e-test';
 import {
+  adminE2EReadPermissions,
   authenticatedAdminUserFixture,
   createAdminE2EDashboardInsights,
   mockAdminApi,
@@ -13,6 +14,7 @@ test.beforeEach(async ({ page }) => {
 test('workspace dashboard renders operational queues from mocked admin fixtures', async ({ page }) => {
   await mockAdminApi(page, {
     user: authenticatedAdminUserFixture(),
+    permissions: [...adminE2EReadPermissions, 'event#create'],
     dashboardInsights: createAdminE2EDashboardInsights(),
   });
 
@@ -46,6 +48,7 @@ test('workspace dashboard refetches visibly after a live invalidation without na
 
   await mockAdminApi(page, {
     user: authenticatedAdminUserFixture(),
+    permissions: [...adminE2EReadPermissions, 'event#create'],
     dashboardInsights: () => {
       dashboardRequests += 1;
       return dashboardRequests === 1 ? initialInsights : refreshedInsights;

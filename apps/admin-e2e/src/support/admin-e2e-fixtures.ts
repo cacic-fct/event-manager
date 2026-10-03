@@ -919,7 +919,7 @@ function graphqlData(
     return { events: [event] };
   }
 
-  if (query.includes('query GetEvent')) {
+  if (query.includes('query GetEvent(')) {
     return { event };
   }
 

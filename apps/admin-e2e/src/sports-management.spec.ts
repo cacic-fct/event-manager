@@ -9,6 +9,7 @@ import {
 } from './support/admin-e2e-fixtures';
 
 const sportsReadPermissions = [
+  'event#read',
   'major-event#read',
   'sports-tournament#read',
   'sports-category#read',
@@ -39,7 +40,7 @@ test('opens sports management from workspace navigation and lists configured tou
     });
   });
 
-  await page.goto('/admin/');
+  await page.goto('/admin/event-workspace/major-event/major-event-1');
   await page.getByRole('link', { name: /Esportes/ }).click();
 
   await expect(page).toHaveURL(/\/admin\/sports$/);
@@ -56,6 +57,14 @@ test('keeps the selected tournament workspace state on a deep link', async ({ pa
   });
   await page.route('**/api/graphql', async (route) => {
     const body = route.request().postDataJSON() as { query?: string };
+    if (body.query?.includes('query AdminSportsTournamentList')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { adminSportsTournamentList: [adminSportsTournamentListFixture()] } }),
+      });
+      return;
+    }
     if (body.query?.includes('query AdminSportsApplications')) {
       await route.fulfill({
         status: 200,

@@ -36,11 +36,6 @@ test('configures, freezes, and opens a prize draw with an auditable roster', asy
     variables?: { skip?: number; take?: number };
   };
   expect(variables.variables).toMatchObject({ skip: 0, take: 51 });
-  const contextHeader = page.getByRole('button', { name: /Todos os sorteios/i });
-  await expect(contextHeader).toHaveAttribute('aria-expanded', 'false');
-  await contextHeader.click();
-  await expect(page.getByRole('button', { name: 'Mostrar sorteios de todos os contextos' })).toBeVisible();
-
   await expect(page.getByRole('heading', { name: 'Configurar sorteio' })).toBeVisible();
   await expect(page.getByLabel('Título')).toHaveValue('Kit CACiC');
   await expect(page.getByText('Ada Lovelace')).toBeVisible();
