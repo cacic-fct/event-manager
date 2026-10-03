@@ -43,6 +43,20 @@
   list-style: none;
 }
 
+.publication-tree-children {
+  --publication-indent-step: 1.25rem;
+  position: relative;
+}
+
+.publication-tree-children:has(> .publication-tree-entry)::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.125rem;
+  inset-inline-start: calc(var(--publication-level) * var(--publication-indent-step) + 1.25rem);
+  border-inline-start: 1px solid var(--mat-sys-outline-variant);
+  pointer-events: none;
+}
+
 .publication-tree-node {
   width: calc(100% - (var(--publication-level) * 1.25rem));
   min-height: 4.25rem;

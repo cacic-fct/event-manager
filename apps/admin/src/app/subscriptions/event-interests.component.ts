@@ -1,6 +1,6 @@
 import type { EventContextRef } from '../shared/event-context-picker.component';
 import { DatePipe } from '@angular/common';
-import { input, effect, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { input, effect, Component, DestroyRef, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -45,8 +45,6 @@ import {
   type InterestEventSelectionDialogResult,
 } from './interest-event-selection-dialog.component';
 import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
-import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
-import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
 
 interface InterestTarget {
   targetType: InterestTargetTypeValue;
@@ -77,8 +75,6 @@ interface TargetEventResolution {
     MatTooltipModule,
     TwemojiComponent,
     ParticipantSummaryComponent,
-    WorkspaceRecordComponent,
-    WorkspaceScopeComponent,
   ],
   templateUrl: './event-interests.component.html',
   styleUrls: [
@@ -103,9 +99,6 @@ export class EventInterestsComponent {
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
-  readonly targetSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
-  readonly targetQuery = signal('');
-  readonly targets = signal<InterestTarget[]>([]);
   readonly selectedTarget = signal<InterestTarget | null>(null);
   readonly interests = signal<AdminEventInterest[]>([]);
   readonly interestCount = signal(0);
@@ -116,26 +109,16 @@ export class EventInterestsComponent {
   readonly loadingInterests = signal(false);
   readonly convertingInterestId = signal<string | null>(null);
   readonly interestsPagination = createWorkspaceListPagination();
-  readonly filteredTargets = computed(() => {
-    const query = this.targetQuery().trim().toLocaleLowerCase('pt-BR');
-    if (!query) {
-      return this.targets();
-    }
-
-    return this.targets().filter((target) =>
-      `${target.name} ${target.kindLabel}`.toLocaleLowerCase('pt-BR').includes(query),
-    );
-  });
   private targetsRequest = 0;
   private interestsRequest = 0;
   private targetRealtimeSubscriptions: Subscription[] = [];
   private targetRealtimeKey = '';
 
   constructor() {
-    effect(() => { void this.loadTargets(); });
-    this.targetSearchForm.controls.query.valueChanges
-      .pipe(debounceTime(150), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((query) => this.targetQuery.set(query));
+    effect(() => {
+      const context = this.context();
+      untracked(() => void this.loadTargets(context));
+    });
     this.participantSearchForm.controls.query.valueChanges
       .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => {
@@ -149,122 +132,45 @@ export class EventInterestsComponent {
     this.destroyRef.onDestroy(() => this.closeTargetRealtime());
   }
 
-  async loadTargets(): Promise<void> {
-    const context = this.context();
-    if (context) {
-      const request = ++this.targetsRequest;
+  async loadTargets(context = this.context()): Promise<void> {
+    const request = ++this.targetsRequest;
+    const current = this.selectedTarget();
+    const targetType = context?.kind === 'event' ? InterestTargetType.EVENT
+      : context?.kind === 'group' ? InterestTargetType.EVENT_GROUP : InterestTargetType.MAJOR_EVENT;
+    const sameTarget = context !== null && current?.targetType === targetType && current.targetId === context.id;
+    if (!sameTarget) {
+      ++this.interestsRequest;
       this.selectedTarget.set(null);
       this.interests.set([]);
+      this.interestCount.set(0);
+      this.targetEventIds.set([]);
+      this.targetEvents.set([]);
+      this.loadingInterests.set(false);
+      resetPagination(this.interestsPagination);
       this.closeTargetRealtime();
-      this.loadingTargets.set(true);
-      try {
-        const entity = context.kind === 'event' ? await firstValueFrom(this.eventApi.getEvent(context.id))
-          : context.kind === 'group' ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
-          : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
-        if (request !== this.targetsRequest) return;
-        await this.selectTarget({
-          targetType: context.kind === 'event' ? InterestTargetType.EVENT : context.kind === 'group' ? InterestTargetType.EVENT_GROUP : InterestTargetType.MAJOR_EVENT,
-          targetId: entity.id, name: entity.name, emoji: entity.emoji,
-          kindLabel: context.kind === 'event' ? 'Evento' : context.kind === 'group' ? 'Grupo de eventos' : 'Grande evento',
-          interestEnabled: entity.interestEnabled === true,
-        });
-      } catch (error) {
-        if (request === this.targetsRequest) this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
-      } finally {
-        if (request === this.targetsRequest) this.loadingTargets.set(false);
-      }
-      return;
     }
-    const request = ++this.targetsRequest;
-    this.loadingTargets.set(true);
+    this.loadingTargets.set(context !== null);
+    if (!context) return;
+
     try {
-      await this.permissions.evaluateWorkspacePermissions();
-      const results = await Promise.allSettled([
-        this.permissions.has(Permission.Event.Read)
-          ? this.loadAllTargetPages((page) => this.eventApi.listEvents(page))
-          : Promise.resolve([]),
-        this.permissions.has(Permission.EventGroup.Read)
-          ? this.loadAllTargetPages((page) => this.eventGroupApi.listEventGroups(page))
-          : Promise.resolve([]),
-        this.permissions.has(Permission.MajorEvent.Read)
-          ? this.loadAllTargetPages((page) => this.majorEventApi.listMajorEvents(page))
-          : Promise.resolve([]),
-      ]);
-      const [eventResult, groupResult, majorResult] = results;
-      const events = eventResult.status === 'fulfilled' ? eventResult.value : [];
-      const groups = groupResult.status === 'fulfilled' ? groupResult.value : [];
-      const majorEvents = majorResult.status === 'fulfilled' ? majorResult.value : [];
-      const failure = results.find((result) => result.status === 'rejected');
-      if (failure?.status === 'rejected' && request === this.targetsRequest) {
-        this.feedback.error(failure.reason, 'Não foi possível carregar alguns eventos ou grupos. Tente novamente.');
-      }
-      if (request !== this.targetsRequest) {
-        return;
-      }
-
-      const targets: InterestTarget[] = [
-        ...events
-          .map((event) => ({
-            interestEnabled: event.interestEnabled === true,
-            targetType: InterestTargetType.EVENT,
-            targetId: event.id,
-            name: event.name,
-            emoji: event.emoji,
-            kindLabel: 'Evento',
-            startDate: event.startDate,
-          })),
-        ...groups
-          .map((group) => ({
-            interestEnabled: group.interestEnabled === true,
-            targetType: InterestTargetType.EVENT_GROUP,
-            targetId: group.id,
-            name: group.name,
-            emoji: group.emoji,
-            kindLabel: 'Grupo de eventos',
-            startDate: null,
-          })),
-        ...majorEvents
-          .map((majorEvent) => ({
-            interestEnabled: majorEvent.interestEnabled === true,
-            targetType: InterestTargetType.MAJOR_EVENT,
-            targetId: majorEvent.id,
-            name: majorEvent.name,
-            emoji: majorEvent.emoji,
-            kindLabel: 'Grande evento',
-            startDate: majorEvent.startDate,
-          })),
-      ].sort((left, right) => {
-        if (!left.startDate && !right.startDate) {
-          return left.name.localeCompare(right.name, 'pt-BR');
-        }
-        if (!left.startDate) return 1;
-        if (!right.startDate) return -1;
-        return left.startDate.localeCompare(right.startDate);
+      const entity = context.kind === 'event' ? await firstValueFrom(this.eventApi.getEvent(context.id))
+        : context.kind === 'group' ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
+        : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
+      if (request !== this.targetsRequest) return;
+      this.selectedTarget.set({
+        targetType,
+        targetId: entity.id,
+        name: entity.name,
+        emoji: entity.emoji,
+        kindLabel: this.targetTypeLabel(targetType),
+        interestEnabled: entity.interestEnabled === true,
+        startDate: 'startDate' in entity ? entity.startDate : null,
       });
-
-      this.targets.set(targets);
-      const current = this.selectedTarget();
-      const next = current
-        ? targets.find((target) => this.targetKey(target) === this.targetKey(current))
-        : targets[0];
-      if (next) {
-        if (current && this.targetKey(current) === this.targetKey(next)) {
-          this.selectedTarget.set(next);
-          await this.loadInterests();
-        } else {
-          await this.selectTarget(next);
-        }
-      } else {
-        this.selectedTarget.set(null);
-        this.interests.set([]);
-        this.closeTargetRealtime();
-      }
+      await this.loadInterests();
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível carregar os interesses.');
+      if (request === this.targetsRequest) this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
     } finally {
-      if (request === this.targetsRequest) {
-        this.loadingTargets.set(false);
-      }
+      if (request === this.targetsRequest) this.loadingTargets.set(false);
     }
   }
 

@@ -69,6 +69,32 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
     expect(navigate).toHaveBeenLastCalledWith(['/subscriptions', 'group', 'group-2', 'interests']);
   });
 
+  it.each([
+    { parameter: 'eventId', kind: 'event' },
+    { parameter: 'groupId', kind: 'group' },
+    { parameter: 'majorEventId', kind: 'major-event' },
+  ])('restores the $kind interests scope from a deep link', ({ parameter, kind }) => {
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        paramMap: of(convertToParamMap({ [parameter]: 'linked-1' })),
+        snapshot: { url: [{ path: 'interests' }] },
+      },
+    });
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    expect(fixture.componentInstance.interestsMode()).toBe(true);
+    expect(fixture.componentInstance.context()).toEqual({ kind, id: 'linked-1' });
+    expect(workspace.closeLiveUpdates).toHaveBeenCalled();
+    expect(receiptApi.watchQueue).not.toHaveBeenCalled();
+  });
+
+  it.each(['event', 'major-event', 'group'] as const)('preserves the %s scope in the interests link', (kind) => {
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    fixture.componentInstance.context.set({ kind, id: 'selected-1' });
+    expect(fixture.componentInstance.interestsLink()).toEqual(['/subscriptions', kind, 'selected-1', 'interests']);
+    expect(fixture.componentInstance.subscriptionsLink()).toEqual(kind === 'group'
+      ? ['/subscriptions'] : ['/subscriptions', kind, 'selected-1']);
+  });
+
   it('opens one stream for the selected major event and updates the badge to zero', async () => {
     const restoreEventSource = installFakeEventSource();
     try {

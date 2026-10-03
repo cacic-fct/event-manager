@@ -9,6 +9,9 @@ export class WorkspaceEventSubscriptionCreateInput {
 
   @Field(() => String)
   personId!: string;
+
+  @Field(() => Boolean, { nullable: true })
+  imageLicenseAgreementAccepted?: boolean;
 }
 
 @InputType()

@@ -60,16 +60,25 @@ export class EventFormNotificationService {
       }
 
       const requiresExistingSubscriberResponse = this.isRequiredSubscriptionForm(link);
-      if (
-        requiresExistingSubscriberResponse &&
-        !this.featureFlags.isEnabled('requiredSubscriptionFormNotificationsEnabled')
-      ) {
+      const requiredNotificationsEnabled = this.featureFlags.isEnabled('requiredSubscriptionFormNotificationsEnabled');
+      const otherAudiences = (link.audiences ?? [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES]).filter(
+        (audience) => audience !== EventFormAudience.SUBSCRIBERS,
+      );
+      if (requiresExistingSubscriberResponse && !requiredNotificationsEnabled && otherAudiences.length === 0) {
         continue;
       }
 
-      const recipients = requiresExistingSubscriberResponse
+      const requiredRecipients = requiresExistingSubscriberResponse && requiredNotificationsEnabled
         ? await this.findRequiredSubscriptionRecipients(form, link)
+        : [];
+      const audienceRecipients = requiresExistingSubscriberResponse
+        ? otherAudiences.length > 0
+          ? await this.findNotificationRecipients({ ...link, audiences: otherAudiences })
+          : []
         : await this.findNotificationRecipients(link);
+      const recipients = [...new Map(
+        [...requiredRecipients, ...audienceRecipients].map((recipient) => [recipient.subscriberId, recipient]),
+      ).values()];
       if (recipients.length === 0) {
         await this.prisma.eventFormLink.updateMany({
           where: {
@@ -94,7 +103,7 @@ export class EventFormNotificationService {
           targetId: link.eventId ?? link.majorEventId ?? '',
           targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
           recipients,
-          requiredSubscriptionForm: requiresExistingSubscriberResponse,
+          requiredSubscriptionForm: requiresExistingSubscriberResponse && requiredNotificationsEnabled,
           ...(link.audiences?.includes(EventFormAudience.INTERESTED)
             ? { audienceVersion: [...link.audiences].sort().join(',') }
             : {}),

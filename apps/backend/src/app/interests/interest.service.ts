@@ -472,13 +472,14 @@ export class EventInterestsService {
           if (event.majorEventId) {
             await this.createMajorEventSubscriptionFromInterest(actor, interest, {
               ...request,
-              selectedEventIds: request.selectedEventIds ?? [event.id],
+              selectedEventIds: [...new Set([event.id, ...(request.selectedEventIds ?? [])])],
             });
           } else if (!event.eventGroupId) {
             await this.workspaceSubscriptions.createWorkspaceEventSubscription(
               {
                 eventId: event.id,
                 personId: interest.personId,
+                imageLicenseAgreementAccepted: request.imageLicenseAgreementAccepted ?? undefined,
               },
               { req: { user: actor } },
             );

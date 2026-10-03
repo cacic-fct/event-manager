@@ -2,8 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, Subject, throwError } from 'rxjs';
-import { Permission } from '@cacic-fct/shared-permissions';
+import { of, Subject } from 'rxjs';
 import { InterestTargetType } from '@cacic-fct/shared-event-participation';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import type { Event } from '@cacic-fct/event-manager-admin-contracts';
@@ -81,36 +80,36 @@ describe('EventInterestsComponent realtime refresh', () => {
     expect(api.listInterests).toHaveBeenCalledWith(InterestTargetType.EVENT, 'event-1', expect.any(Object));
   });
 
-  it('loads accessible events without requesting unreadable target types', async () => {
-    vi.mocked(TestBed.inject(PermissionsService).has).mockImplementation((permission) => permission !== Permission.EventGroup.Read);
+  it('waits for scope selection without loading an inventory or participants', async () => {
     const fixture = TestBed.createComponent(EventInterestsComponent);
     fixture.detectChanges();
     await flushAsync();
-    expect(TestBed.inject(EventGroupApiService).listEventGroups).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.targets().map((target) => target.targetId)).toContain('event-1');
-    expect(api.listInterests).toHaveBeenCalled();
+    expect(fixture.componentInstance.selectedTarget()).toBeNull();
+    expect(TestBed.inject(EventApiService).listEvents).not.toHaveBeenCalled();
+    expect(api.listInterests).not.toHaveBeenCalled();
   });
 
-  it('keeps successful target types available if another request fails', async () => {
-    vi.mocked(TestBed.inject(EventGroupApiService).listEventGroups).mockReturnValue(throwError(() => new Error('Forbidden')));
+  it('ignores an old scope lookup after another deep link is selected', async () => {
+    const oldScope = new Subject<Event>();
+    vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValueOnce(oldScope)
+      .mockReturnValueOnce(of(eventFixture({ id: 'event-2' })));
     const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
+    fixture.detectChanges();
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-2' });
     fixture.detectChanges();
     await flushAsync();
-    expect(fixture.componentInstance.targets().map((target) => target.targetId)).toContain('event-1');
-    expect(TestBed.inject(AdminFeedbackService).error).toHaveBeenCalled();
-  });
-
-  it('finds interested targets beyond the first 200 records', async () => {
-    const listEvents = vi.mocked(TestBed.inject(EventApiService).listEvents);
-    listEvents.mockReturnValueOnce(of(Array.from({ length: 200 }, (_, index) => ({
-      ...eventFixture(), id: `old-${index}`, name: `Outro evento ${index}`, interestEnabled: false,
-    })))).mockReturnValueOnce(of([eventFixture()]));
-    const fixture = TestBed.createComponent(EventInterestsComponent);
+    oldScope.next(eventFixture());
+    oldScope.complete();
+    await flushAsync();
+    expect(fixture.componentInstance.selectedTarget()?.targetId).toBe('event-2');
+    expect(api.listInterests).not.toHaveBeenCalledWith(InterestTargetType.EVENT, 'event-1', expect.anything());
+    fixture.componentRef.setInput('context', null);
     fixture.detectChanges();
     await flushAsync();
-    expect(listEvents).toHaveBeenCalledWith({ skip: 200, take: 200 });
-    fixture.componentInstance.targetQuery.set('Oficina');
-    expect(fixture.componentInstance.filteredTargets().map((target) => target.targetId)).toEqual(['event-1']);
+    expect(fixture.componentInstance.interests()).toEqual([]);
+    expect(fixture.componentInstance.targetEventIds()).toEqual([]);
+    expect(fixture.componentInstance.interestCount()).toBe(0);
   });
 
   it('keeps the selected target activities when target lookups resolve out of order', async () => {
@@ -131,23 +130,13 @@ describe('EventInterestsComponent realtime refresh', () => {
       }
       return of([]);
     });
-    vi.mocked(TestBed.inject(MajorEventApiService).listMajorEvents).mockReturnValue(of([
-      createAdminMajorEvent({ id: 'major-a', name: 'Grande evento A', startDate: publicFixtureDateFromNow(1) }),
-      createAdminMajorEvent({ id: 'major-b', name: 'Grande evento B', startDate: publicFixtureDateFromNow(2) }),
-    ]));
-
     const fixture = TestBed.createComponent(EventInterestsComponent);
     fixture.detectChanges();
     await flushAsync();
-    await flushAsync();
-
     const component = fixture.componentInstance;
-    const targetA = component.targets().find((target) => target.targetId === 'major-a');
-    const targetB = component.targets().find((target) => target.targetId === 'major-b');
-    expect(targetA).toBeDefined();
-    expect(targetB).toBeDefined();
-    if (!targetA || !targetB) throw new Error('Expected major-event targets');
-
+    const targetA = { targetType: InterestTargetType.MAJOR_EVENT, targetId: 'major-a', name: 'A', emoji: '🎓', kindLabel: 'Grande evento', interestEnabled: true };
+    const targetB = { ...targetA, targetId: 'major-b', name: 'B' };
+    await component.selectTarget(targetA);
     const targetAPromise = component.selectTarget(targetA);
     const targetBPromise = component.selectTarget(targetB);
     targetBResolution.next(targetBEvents);
@@ -167,6 +156,7 @@ describe('EventInterestsComponent realtime refresh', () => {
   it.each([undefined, { imageLicenseAgreementAccepted: false }])('does not convert without required consent: %s', async (result) => {
     vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ afterClosed: () => of(result) } as never);
     const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
     fixture.detectChanges();
     await flushAsync();
     await fixture.componentInstance.convertInterest(interestFixture());
@@ -179,6 +169,7 @@ describe('EventInterestsComponent realtime refresh', () => {
       afterClosed: () => of({ imageLicenseAgreementAccepted: true }),
     } as never);
     const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
     fixture.detectChanges();
     await flushAsync();
     await fixture.componentInstance.convertInterest(interestFixture());
@@ -192,12 +183,12 @@ describe('EventInterestsComponent realtime refresh', () => {
 
   it('refreshes the current page on workspace and selected-event invalidations without resetting UI state', async () => {
     const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
     fixture.detectChanges();
     await flushAsync();
 
     const component = fixture.componentInstance;
     component.interestsPagination.pageIndex.set(1);
-    component.targetSearchForm.controls.query.setValue('Oficina');
     await flushAsync();
     const beforeRefresh = api.listInterests.mock.calls.length;
 
@@ -210,18 +201,18 @@ describe('EventInterestsComponent realtime refresh', () => {
     expect(api.listInterests.mock.calls.length).toBeGreaterThan(beforeRefresh);
     expect(api.listInterests.mock.calls.length).toBe(afterWorkspaceRefresh + 1);
     expect(component.interestsPagination.pageIndex()).toBe(1);
-    expect(component.targetSearchForm.controls.query.value).toBe('Oficina');
     expect(realtime.watchWorkspace).toHaveBeenCalledOnce();
     expect(realtime.watchEventSubscriptions).toHaveBeenCalledWith('event-1');
   });
 
   it('keeps the selected history accessible after interest collection is disabled', async () => {
     const fixture = TestBed.createComponent(EventInterestsComponent);
+    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
     fixture.detectChanges();
     await flushAsync();
-    vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(of([
+    vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValue(of(
       { ...eventFixture(), interestEnabled: false },
-    ]));
+    ));
     await fixture.componentInstance.loadTargets();
     fixture.detectChanges();
     expect(fixture.componentInstance.selectedTarget()?.targetId).toBe('event-1');
@@ -245,9 +236,7 @@ describe('EventInterestsComponent realtime refresh', () => {
       const fixture = TestBed.createComponent(EventInterestsComponent);
       fixture.detectChanges();
       await flushAsync();
-      const target = fixture.componentInstance.targets().find((item) => item.targetType === targetType);
-      expect(target).toBeDefined();
-      if (!target) throw new Error('Expected interest target');
+      const target = { targetType, targetId: targetType === InterestTargetType.EVENT ? 'event-1' : 'group-1', name: 'Atividade', emoji: '🎓', kindLabel: 'Atividade', interestEnabled: true };
       await fixture.componentInstance.selectTarget(target);
       await fixture.componentInstance.convertInterest({ ...interestFixture(), targetType, targetId: target.targetId });
       expect(TestBed.inject(MajorEventApiService).getMajorEvent).toHaveBeenCalledWith('major-1');

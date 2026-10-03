@@ -97,6 +97,16 @@ export class SubscriptionsPageComponent implements OnDestroy {
     void this.router.navigate(['/subscriptions', context.kind, context.id, ...(this.interestsMode() ? ['interests'] : [])]);
   }
 
+  interestsLink(): string[] {
+    const context = this.context();
+    return context ? ['/subscriptions', context.kind, context.id, 'interests'] : ['/subscriptions', 'interests'];
+  }
+
+  subscriptionsLink(): string[] {
+    const context = this.context();
+    return context && context.kind !== 'group' ? ['/subscriptions', context.kind, context.id] : ['/subscriptions'];
+  }
+
   private async openMajorEventSubscriptionRoute(
     majorEventId: string,
     subscriptionId: string | null,

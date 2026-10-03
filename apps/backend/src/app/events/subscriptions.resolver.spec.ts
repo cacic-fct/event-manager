@@ -414,7 +414,7 @@ describe('EventSubscriptionsResolver', () => {
     );
   });
 
-  it('creates a workspace event subscription through a serializable transaction', async () => {
+  it.each([true, false, undefined])('persists workspace event consent (%s) through a serializable transaction', async (consent) => {
     const createdAt = new Date('2026-06-22T12:00:00.000Z');
     const created = {
       id: 'event-subscription-1',
@@ -483,6 +483,7 @@ describe('EventSubscriptionsResolver', () => {
         {
           eventId: 'event-1',
           personId: 'person-1',
+          imageLicenseAgreementAccepted: consent,
         },
         { req: { user } } as never,
       ),
@@ -501,6 +502,7 @@ describe('EventSubscriptionsResolver', () => {
           personId: 'person-1',
           createdById: 'admin-1',
           createdByMethod: 'ADMIN_DASHBOARD',
+          imageLicenseAgreementAccepted: consent ?? false,
         },
       }),
     );

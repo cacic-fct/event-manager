@@ -14,6 +14,31 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+for (const view of [
+  { name: 'settings', route: '/admin/event-workspace/event/event-1/settings', ready: '.context-editor', bounded: '.context-editor', maxWidth: 840 },
+  { name: 'subscriptions', route: '/admin/subscriptions/event/event-1', ready: 'app-workspace-subscriptions-tab', bounded: '.content-shell', maxWidth: 1560 },
+]) {
+  test(`admin ${view.name} stays bounded on wide screens and fits mobile`, async ({ page }) => {
+    for (const viewport of [{ width: 2560, height: 1440 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(view.route);
+      await expect(page.locator(view.ready)).toBeVisible();
+      await expect(page.locator(view.bounded)).toBeVisible();
+      const dimensions = await page.locator('.content-shell').evaluate((shell) => {
+        const available = shell.closest('mat-sidenav-content');
+        if (!available) throw new Error('Admin layout is unavailable');
+        const bounds = shell.getBoundingClientRect();
+        const parent = available.getBoundingClientRect();
+        return { width: bounds.width, centerOffset: bounds.x - parent.x - (parent.width - bounds.width) / 2 };
+      });
+      expect(dimensions.width).toBeLessThanOrEqual(1560);
+      expect(Math.abs(dimensions.centerOffset)).toBeLessThanOrEqual(1);
+      expect(await page.locator(view.bounded).evaluate((element) => element.getBoundingClientRect().width)).toBeLessThanOrEqual(view.maxWidth);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+    }
+  });
+}
+
 test('event workspace shows published event draft, scheduling, draft and publish actions', async ({ page }) => {
   await page.goto('/admin/event-workspace/event/event-1/settings');
 

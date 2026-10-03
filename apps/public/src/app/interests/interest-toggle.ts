@@ -14,9 +14,9 @@ import { InterestApiService } from './interest-api.service';
 @Component({
   selector: 'app-interest-toggle',
   imports: [MatButtonModule, MatIconModule, MatSnackBarModule],
-  host: { '[hidden]': 'isSubscribed() || isFinished()' },
+  host: { '[hidden]': '!visible()' },
   template: `
-    @if (!isSubscribed() && !isFinished()) {
+    @if (visible()) {
     <button mat-stroked-button type="button" [attr.aria-pressed]="interested()"
       [attr.aria-label]="'Quero ir: ' + targetName()" [attr.aria-busy]="loading() || saving()"
       [attr.aria-disabled]="saving()" [disabled]="blocked()" (click)="toggle()">
@@ -45,6 +45,7 @@ export class InterestToggle {
   readonly targetId = input.required<string>();
   readonly targetName = input.required<string>();
   readonly subscribed = input(false);
+  readonly interestEnabled = input(true);
   readonly endsAt = input<string | null>(null);
   readonly changed = output<boolean>();
 
@@ -69,8 +70,10 @@ export class InterestToggle {
     const end = this.serverEndsAt() ?? this.endsAt();
     return Boolean(end && new Date(end).getTime() <= this.now());
   });
+  readonly visible = computed(() => !this.isSubscribed() && !this.isFinished()
+    && (this.interested() || (this.interestEnabled() && this.enabled()) || this.loading() || this.loadFailed()));
   readonly blocked = computed(() => this.loading() || this.loadFailed() || !this.isOnline()
-    || this.isSubscribed() || this.isFinished() || !this.enabled());
+    || this.isSubscribed() || this.isFinished() || (!this.interested() && (!this.enabled() || !this.interestEnabled())));
   private readonly reload = signal(0);
 
   constructor() {
