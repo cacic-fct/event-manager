@@ -113,7 +113,14 @@ test('Quero ir lists interests separately and converts one to a subscription', a
   await selection.getByRole('button', { name: 'Continuar' }).click();
   const confirmation = page.getByRole('dialog');
   await expect(confirmation.getByRole('heading', { name: 'Converter interesse em inscrição?' })).toBeVisible();
-  await confirmation.getByRole('button', { name: 'Converter em inscrição' }).click();
+  const imageLicenseAgreement = confirmation.getByRole('checkbox', {
+    name: 'A pessoa concordou com o contrato de licença de uso de imagem do CACiC.',
+  });
+  const convertButton = confirmation.getByRole('button', { name: 'Converter em inscrição' });
+  await expect(imageLicenseAgreement).toBeVisible();
+  await expect(convertButton).toBeDisabled();
+  await imageLicenseAgreement.check();
+  await convertButton.click();
   await expect(page.getByRole('button', { name: 'Inscrito' })).toBeVisible();
 });
 
