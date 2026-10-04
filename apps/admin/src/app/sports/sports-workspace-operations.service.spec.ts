@@ -116,6 +116,9 @@ describe('SportsWorkspaceService operations', () => {
       expect(workspace.majorEventRouteScopeId()).toBe(majorEvent.id);
       expect(workspace.tournaments()).toEqual([tournamentListItem]);
       expect(workspace.majorEventRouteScopeSummary()).toEqual(tournamentListItem.majorEvent);
+      expect(workspace.scopedMajorEventWorkspaceItems()).toEqual([
+        { majorEvent: tournamentListItem.majorEvent, tournament: tournamentListItem },
+      ]);
       expect(workspace.loadTournament).toHaveBeenCalledWith(tournament.id);
     });
 

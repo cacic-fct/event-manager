@@ -45,11 +45,13 @@ test('opens sports management from workspace navigation and lists configured tou
 
   await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  const tournament = page
-    .locator('.sports-major-event-list mat-list-item')
-    .filter({ hasText: 'Semana da Computação' });
+  const tournamentList = page.locator('.sports-major-event-list');
+  await expect(tournamentList.locator('mat-list-item')).toHaveCount(1);
+  const tournament = tournamentList
+    .locator('mat-list-item')
+    .filter({ hasText: '2 modalidades · 8 equipes · Publicado' });
   await expect(tournament).toBeVisible();
-  await expect(tournament.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
+  await expect(tournament.getByText('Semana da Computação')).toBeVisible();
   await expect(tournament.getByText('3 pendências')).toBeVisible();
 });
 
