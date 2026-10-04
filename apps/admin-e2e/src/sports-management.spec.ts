@@ -45,9 +45,10 @@ test('opens sports management from workspace navigation and lists configured tou
 
   await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  await expect(page.getByText('Semana da Computação')).toBeVisible();
-  await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
-  await expect(page.getByText('3 pendências')).toBeVisible();
+  const tournament = page.getByRole('listitem').filter({ hasText: 'Semana da Computação' });
+  await expect(tournament).toBeVisible();
+  await expect(tournament.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
+  await expect(tournament.getByText('3 pendências')).toBeVisible();
 });
 
 test('keeps the selected tournament workspace state on a deep link', async ({ page }) => {

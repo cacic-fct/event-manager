@@ -102,7 +102,7 @@ test('Quero ir lists interests separately and converts one to a subscription', a
   await page.goto('/admin/subscriptions/major-event/major-event-1');
   await page.getByRole('link', { name: 'Consultar interesses' }).click();
   await expect(page).toHaveURL(/subscriptions\/major-event\/major-event-1\/interests/);
-  await expect(page.getByRole('heading', { name: 'Interessados' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Interessados', level: 1 })).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByText('1 interesse')).toBeVisible();
 

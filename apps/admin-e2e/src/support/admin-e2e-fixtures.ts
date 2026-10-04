@@ -50,7 +50,7 @@ export function adminSportsTournamentListFixture(overrides: Record<string, unkno
     },
     majorEvent: {
       id: 'major-event-1',
-      name: 'Jogos Universitários',
+      name: 'Semana da Computação',
       emoji: '🏆',
       startDate: relativeIsoDate(1),
       endDate: relativeIsoDate(7, 22),

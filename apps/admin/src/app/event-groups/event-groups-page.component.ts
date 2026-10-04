@@ -243,7 +243,10 @@ export class EventGroupsPageComponent {
   }
 
   private isGroupFrozen(group: EventGroup): boolean {
-    const events = this.workspace.eventSummaries().filter((eventItem) => eventItem.eventGroupId === group.id);
+    const events =
+      this.workspace.selectedEventGroup()?.id === group.id
+        ? this.workspace.eventGroupEvents()
+        : this.workspace.eventSummaries().filter((eventItem) => eventItem.eventGroupId === group.id);
     return isFrozenEventGroup(group, events);
   }
 }
