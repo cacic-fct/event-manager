@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
 });
 
-test('opens the configured sports tournament from workspace navigation', async ({ page }) => {
+test('opens sports management from workspace navigation and lists configured tournaments', async ({ page }) => {
   await mockAdminApi(page, {
     user: authenticatedAdminUserFixture(),
     permissions: sportsReadPermissions,
@@ -45,9 +45,12 @@ test('opens the configured sports tournament from workspace navigation', async (
 
   await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Visão geral/ })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Modalidades/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Regras gerais' })).toBeVisible();
+  const tournament = page
+    .locator('.sports-major-event-list mat-list-item')
+    .filter({ hasText: 'Semana da Computação' });
+  await expect(tournament).toBeVisible();
+  await expect(tournament.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
+  await expect(tournament.getByText('3 pendências')).toBeVisible();
 });
 
 test('keeps the selected tournament workspace state on a deep link', async ({ page }) => {
