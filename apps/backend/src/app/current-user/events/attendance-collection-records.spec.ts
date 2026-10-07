@@ -31,7 +31,10 @@ describe('createAttendance', () => {
         afterCheckInStarted,
       }),
     ).resolves.toBe(attendance);
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+      attendedAt: expect.any(Date),
+      actorUserId: undefined,
+    });
     expect(tx.eventAttendance.create).not.toHaveBeenCalled();
     expect(afterCreate).not.toHaveBeenCalled();
     expect(afterCheckInStarted).not.toHaveBeenCalled();

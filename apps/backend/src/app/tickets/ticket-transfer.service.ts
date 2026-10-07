@@ -22,6 +22,7 @@ import { isValidCPF } from '@cacic-fct/shared-utils';
 import { audienceContext, ANONYMOUS_AUDIENCE } from '../audiences/audience-context';
 import { normalizeIdentityDocumentForLookup } from '../common/person-identity';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsIdentityProtectionService } from '../sports/security/sports-identity-protection.service';
@@ -78,6 +79,7 @@ export class TicketTransferService {
     private readonly identities: SportsIdentityProtectionService,
     private readonly eligibility: TicketEligibilityService,
     private readonly realtime: TicketRealtimeService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   async startForUser(
@@ -165,6 +167,9 @@ export class TicketTransferService {
           include: TRANSFER_DETAILS_INCLUDE,
         });
         if (!transfer || transfer.authorUserId !== userId) throw new NotFoundException('Solicitação não encontrada.');
+        if (transfer.initiatorType === TicketTransferInitiatorType.ADMIN) {
+          await this.frozenResources.assertEventMutable(transfer.eventId, user, 'edit');
+        }
         await this.lockTicket(tx, transfer.ticketId);
         if (transfer.senderStatus !== TicketTransferSenderStatus.PENDING) {
           throw new ConflictException('Esta solicitação não está mais pendente.');
@@ -546,6 +551,9 @@ export class TicketTransferService {
       this.prisma.eventTicket.findUnique({ where: { id: ticketId }, select: { eventId: true } }),
     );
     if (!targetTicket) throw new NotFoundException('Bilhete não encontrado.');
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.frozenResources.assertEventMutable(targetTicket.eventId, admin, 'edit'),
+    );
     const identitySnapshot = await this.eligibility.prepareIdentitySnapshot(
       targetTicket.eventId,
       recipientPersonId,

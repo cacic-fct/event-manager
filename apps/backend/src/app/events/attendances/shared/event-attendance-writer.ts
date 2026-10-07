@@ -50,7 +50,10 @@ export async function createOrRestoreEventAttendance(params: {
     existing?.status === EventAttendanceStatus.PRESENT &&
     existing.category === AttendanceCategory.NON_REGULAR
   ) {
-    await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
+    await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true, {
+      attendedAt: input.attendedAt ?? new Date(),
+      actorUserId: input.committedById ?? input.createdById,
+    });
     return tx.eventAttendance.findUniqueOrThrow({ where: key });
   }
 

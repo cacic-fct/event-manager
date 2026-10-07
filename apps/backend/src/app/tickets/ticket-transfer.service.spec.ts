@@ -190,3 +190,22 @@ describe('ticket transfer mutations', () => {
     }));
   });
 });
+
+
+describe('administrative transfer frozen protection', () => {
+  it('blocks starting an administrative transfer before resolving recipient or writing', async () => {
+    const { service, tx, frozenResources, eligibility } = createTicketTransferServiceFixture();
+    frozenResources.assertEventMutable.mockRejectedValue(new Error('Frozen'));
+    await expect(service.startForAdmin('ticket-1', 'recipient', 'Correção', { sub: 'admin' } as never)).rejects.toThrow('Frozen');
+    expect(eligibility.prepareIdentitySnapshot).not.toHaveBeenCalled();
+    expect(tx.ticketTransfer.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks cancelling an administrative transfer on a frozen event', async () => {
+    const { service, tx, transfer, frozenResources } = createTicketTransferServiceFixture();
+    transfer.initiatorType = 'ADMIN';
+    frozenResources.assertEventMutable.mockRejectedValue(new Error('Frozen'));
+    await expect(service.cancelForUser('transfer-1', { sub: 'sender-user' } as never)).rejects.toThrow('Frozen');
+    expect(tx.ticketTransfer.updateMany).not.toHaveBeenCalled();
+  });
+});

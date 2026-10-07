@@ -568,6 +568,29 @@ describe('AccountMergeService', () => {
     );
   });
 
+  it('moves interests and records duplicate retirement for account merge undo', async () => {
+    const tx = createTransactionMock();
+    tx.eventInterest.findMany.mockResolvedValueOnce([
+      { id: 'moved-interest', eventId: 'event-1', eventGroupId: null, majorEventId: null, deletedAt: null },
+      { id: 'retired-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
+    ]).mockResolvedValueOnce([
+      { id: 'existing-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
+    ]);
+
+    const result = await service['moveRelations'](tx as never, 'target-person', 'source-person');
+
+    expect(result.movedEventInterestIds).toEqual(['moved-interest']);
+    expect(result.retiredEventInterestIds).toEqual(['retired-interest']);
+    expect(tx.eventInterest.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['moved-interest'] }, personId: 'source-person' },
+      data: { personId: 'target-person' },
+    });
+    expect(tx.eventInterest.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['retired-interest'] }, personId: 'source-person', deletedAt: null },
+      data: { deletedAt: expect.any(Date) },
+    });
+  });
+
   it('moves audience invitations during account merges without resetting notification state', async () => {
     const tx = createTransactionMock();
     const createdAt = new Date('2026-01-01T10:00:00.000Z');
@@ -983,6 +1006,7 @@ function createTransactionMock() {
       delete: jest.fn(),
     },
     auditLogEntry: { create: jest.fn() },
+    eventInterest: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     eventLecturer: {
       findMany: jest.fn().mockResolvedValue([]),
       createMany: jest.fn(),

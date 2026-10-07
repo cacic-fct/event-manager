@@ -33,7 +33,9 @@ describe('ticket administrator audience boundaries', () => {
         throw new ForbiddenException('Outside event audience');
       }),
     };
-    const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+      { assertEventMutable: jest.fn() } as never,
+    );
     const principal: EventAudiencePrincipal = { userId: 'manager', personIds: ['manager-person'], isUnesp: false, verifiedCourseCode: null, bypass: false };
     await expect(audienceContext.run(principal, () => call(resolver))).rejects.toThrow(ForbiddenException);
     expect(observed.length).toBeGreaterThan(0);
@@ -53,7 +55,9 @@ describe('admin ticket status filtering', () => {
       eventTicket: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     };
     const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
-    const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+      { assertEventMutable: jest.fn() } as never,
+    );
     await resolver.adminEventTickets('event', status, undefined, 50, undefined, context);
     const rowWhere = prisma.eventTicket.findMany.mock.calls[0][0].where;
     expect(rowWhere).toEqual({ eventId: 'event', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) }, ticketConfig: { enabled: status === 'ACTIVE' } });

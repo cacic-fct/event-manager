@@ -383,7 +383,10 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         context as never,
       ),
     ).resolves.toBe(attendance);
-    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+      attendedAt: expect.any(Date),
+      actorUserId: 'collector-user',
+    });
     expect(tx.eventAttendance.create).not.toHaveBeenCalled();
     expect(tx.eventAttendance.update).not.toHaveBeenCalled();
     expect(auditLog.record).not.toHaveBeenCalled();

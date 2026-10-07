@@ -52,6 +52,7 @@ const defaultPermissions = [
 ];
 
 interface SetupOptions {
+  majorScope?: boolean;
   permissions?: readonly string[];
   initialConfig?: typeof config | null;
   tickets?: typeof activeTicket[];
@@ -61,7 +62,7 @@ interface SetupOptions {
 }
 
 function setup(options: SetupOptions = {}) {
-  const params = new BehaviorSubject(convertToParamMap({ eventId }));
+  const params = new BehaviorSubject(convertToParamMap(options.majorScope ? { majorEventId } : { eventId }));
   const changes = new Subject<void>();
   const permissions = new Set(options.permissions ?? defaultPermissions);
   const api = {
@@ -69,7 +70,7 @@ function setup(options: SetupOptions = {}) {
     getEventTickets: vi.fn(() =>
       options.ticketError
         ? throwError(() => options.ticketError)
-        : of({ tickets: options.tickets ?? [], totalCount: options.tickets?.length ?? 0, nextCursor: null }),
+        : of({ tickets: options.tickets ?? [], totalCount: options.tickets?.length ?? 0, nextCursor: null as string | null }),
     ),
     saveConfig: vi.fn(() =>
       options.saveError ? throwError(() => options.saveError) : of(options.initialConfig ?? config),
@@ -156,6 +157,72 @@ function futureLocalDateTime(days: number): string {
 }
 
 describe('TicketAdminPageComponent', () => {
+  it('resets pagination when switching event configurations and rejects stale realtime refreshes', async () => {
+    const { fixture, api } = setup({ majorScope: true, initialConfig: config });
+    await settle(fixture);
+    const component = fixture.componentInstance;
+    const nextConfig = createAdminTicketConfig({ eventId: 'event-2', majorEventId });
+    await Reflect.get(component, 'selectConfig').call(component, config);
+    api.getEventTickets.mockReturnValueOnce(of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'event-1-cursor' }));
+    await Reflect.get(component, 'resetTicketPage').call(component);
+    Reflect.get(component, 'nextTicketPage').call(component);
+    await settle(fixture);
+
+    await Reflect.get(component, 'selectConfig').call(component, nextConfig);
+    expect(Reflect.get(component, 'cursorHistory')()).toEqual([null]);
+    expect(api.getEventTickets).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: 'event-2', cursor: undefined }));
+    const reads = api.getEventTickets.mock.calls.length;
+    await Reflect.get(component, 'refreshLiveEvent').call(component, eventId);
+    Reflect.get(component, 'previousTicketPage').call(component);
+    expect(api.getEventTickets.mock.calls.length).toBe(reads);
+    fixture.destroy();
+  });
+
+  it.each(['save', 'person-action'])('resets pagination after a %s operation reloads the first page', async (operation) => {
+    const { fixture, api } = setup({ initialConfig: config, dialogResult: true });
+    await settle(fixture);
+    const component = fixture.componentInstance;
+    api.getEventTickets.mockReturnValueOnce(of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'page-2-cursor' }));
+    await Reflect.get(component, 'resetTicketPage').call(component);
+    Reflect.get(component, 'nextTicketPage').call(component);
+    await settle(fixture);
+
+    if (operation === 'save') {
+      const name = fixture.nativeElement.querySelector('input[formControlName="displayName"]') as HTMLInputElement;
+      name.value = 'Novo nome';
+      name.dispatchEvent(new Event('input'));
+      await Reflect.get(component, 'saveConfig').call(component);
+      expect(api.saveConfig).toHaveBeenCalledOnce();
+    } else {
+      await Reflect.get(component, 'openManualIssue').call(component);
+    }
+    expect(Reflect.get(component, 'cursorHistory')()).toEqual([null]);
+    expect(api.getEventTickets).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: undefined }));
+    fixture.destroy();
+  });
+
+  it('ignores a live config response after switching away and returning to the same event', async () => {
+    const { fixture, api } = setup({ majorScope: true, initialConfig: config });
+    await settle(fixture);
+    const component = fixture.componentInstance;
+    await Reflect.get(component, 'selectConfig').call(component, config);
+    const delayed = new Subject<typeof config[]>();
+    api.getConfigs.mockReturnValueOnce(delayed);
+    const previousReads = api.getConfigs.mock.calls.length;
+    const refresh = Reflect.get(component, 'refreshLiveEvent').call(component, eventId);
+    await vi.waitFor(() => expect(api.getConfigs.mock.calls.length).toBe(previousReads + 1));
+
+    await Reflect.get(component, 'selectConfig').call(component, createAdminTicketConfig({ eventId: 'event-2', majorEventId }));
+    const currentConfig = createAdminTicketConfig({ ...config, displayName: 'Configuração atualizada' });
+    await Reflect.get(component, 'selectConfig').call(component, currentConfig);
+    delayed.next([config]);
+    delayed.complete();
+    await refresh;
+    expect(Reflect.get(component, 'selectedConfig')()).toEqual(currentConfig);
+    expect(Reflect.get(component, 'configForm').controls.displayName.value).toBe('Configuração atualizada');
+    fixture.destroy();
+  });
+
   it.each(['0', '-1', '0.001'])('rejects prices that cannot produce a positive cent amount: %s', async (price) => {
     const { fixture } = setup();
     await settle(fixture);

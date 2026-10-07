@@ -1,3 +1,4 @@
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { ConflictException, GoneException } from '@nestjs/common';
 import { EventTicketIssueSource, TicketHistoryOperation } from '@prisma/client';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
@@ -781,10 +782,12 @@ function createTransferRuntime(prisma: PrismaService) {
     get: jest.fn((key: string) => key === 'SPORTS_IDENTITY_SECRET' ? 'ticketing-integration-secret' : 'test'),
   } as never);
   const eligibility = new TicketEligibilityService(prisma, {} as never);
-  const transfers = new TicketTransferService(prisma, identities, eligibility, realtime);
+  const transfers = new TicketTransferService(prisma, identities, eligibility, realtime, new FrozenResourceService(prisma));
   const resolution = new TicketTransferResolutionService(prisma, identities, eligibility, realtime);
   const issuance = new TicketIssuanceService(prisma, realtime);
-  const resolver = new TicketsResolver(prisma, {} as never, {} as never, issuance, eligibility, transfers, realtime);
+  const resolver = new TicketsResolver(prisma, {} as never, {} as never, issuance, eligibility, transfers, realtime,
+    new FrozenResourceService(prisma),
+  );
   return { realtime, published, transfers, resolution, resolver };
 }
 

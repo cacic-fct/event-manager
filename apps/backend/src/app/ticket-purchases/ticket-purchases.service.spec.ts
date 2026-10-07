@@ -29,6 +29,7 @@ function setup() {
     majorEventSubscription: { findUnique: jest.fn().mockResolvedValue({
       personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: now, paymentTier: 'Básico',
     }) },
+    priceTier: { findFirst: jest.fn().mockResolvedValue({ name: 'Básico' }) },
     eventTicket: { findFirst: jest.fn().mockResolvedValue(null) },
     people: { findUnique: jest.fn().mockResolvedValue({ userId: 'account' }) },
   };
@@ -130,5 +131,25 @@ describe('ticket purchase transaction boundaries', () => {
     await expect(service.reject('purchase', 'Comprovante inválido', user)).rejects.toThrow('Forbidden');
     expect(authorization.assertPermissions).toHaveBeenCalledWith(user, expect.any(Array), { majorEventId: 'major' });
     expect(tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('purchase tier identity', () => {
+  it('approves the same renamed tier without changing its historical snapshot', async () => {
+    const { service, tx, purchase, issuance } = setup();
+    tx.priceTier.findFirst.mockResolvedValue({ name: 'Estudante' });
+    tx.majorEventSubscription.findUnique.mockResolvedValue({ personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: new Date(), paymentTier: 'Estudante' });
+    await expect(service.approve('purchase', user)).resolves.toBe(true);
+    expect(tx.priceTier.findFirst).toHaveBeenCalledWith({ where: { id: 'tier', price: { majorEventId: 'major' } }, select: { name: true } });
+    expect(purchase.priceTierName).toBe('Básico');
+    expect(issuance.issueForPerson).toHaveBeenCalled();
+  });
+
+  it('still rejects a participant who moved to another tier', async () => {
+    const { service, tx, issuance } = setup();
+    tx.majorEventSubscription.findUnique.mockResolvedValue({ personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: new Date(), paymentTier: 'Professor' });
+    await expect(service.approve('purchase', user)).rejects.toThrow(ConflictException);
+    expect(issuance.issueForPerson).not.toHaveBeenCalled();
   });
 });

@@ -117,6 +117,7 @@ export function createTicketTransferServiceFixture() {
   };
   const eligibility = { prepareIdentitySnapshot: jest.fn(), evaluateRecipientEligibility: jest.fn().mockResolvedValue({ eligible: true }) };
   const realtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
-  const service = new TicketTransferService(prisma as never, identities as never, eligibility as never, realtime as never);
-  return { service, tx, eligibility, transfer, ticket };
+  const frozenResources = { assertEventMutable: jest.fn() };
+  const service = new TicketTransferService(prisma as never, identities as never, eligibility as never, realtime as never, frozenResources as never);
+  return { service, tx, eligibility, transfer, ticket, frozenResources };
 }

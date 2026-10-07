@@ -52,7 +52,7 @@ describe('event attendance writer', () => {
         }),
       ).resolves.toEqual(refreshed);
 
-      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, { attendedAt: expect.any(Date), actorUserId: 'new-collector' });
       expect(attendanceCategories.refreshForAttendance.mock.invocationCallOrder[0]).toBeLessThan(
         tx.eventAttendance.findUniqueOrThrow.mock.invocationCallOrder[0],
       );

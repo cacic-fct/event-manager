@@ -136,9 +136,14 @@ export class TicketPurchasesService {
       if (!purchase.majorEventSubscriptionId || !purchase.personId) throw new ConflictException('A inscrição desta compra não está mais disponível.');
       await this.lockSubscription(tx, purchase.majorEventSubscriptionId);
       const subscription = await tx.majorEventSubscription.findUnique({ where: { id: purchase.majorEventSubscriptionId } });
+      // Names are historical display snapshots; an administrator can rename a tier without changing its identity.
+      const currentTier = purchase.priceTierId
+        ? await tx.priceTier.findFirst({ where: { id: purchase.priceTierId, price: { majorEventId: purchase.majorEventId } }, select: { name: true } })
+        : null;
+      const expectedTierName = currentTier?.name ?? purchase.priceTierName;
       if (!hasValidatedSubscriptionReceipt(subscription) || !subscription ||
         subscription.personId !== purchase.personId || subscription.majorEventId !== purchase.majorEventId ||
-        subscription.paymentTier?.trim().toLocaleLowerCase('pt-BR') !== purchase.priceTierName?.trim().toLocaleLowerCase('pt-BR')) {
+        subscription.paymentTier?.trim().toLocaleLowerCase('pt-BR') !== expectedTierName?.trim().toLocaleLowerCase('pt-BR')) {
         throw new ConflictException('A inscrição ou modalidade mudou. Revise a compra antes de aprovar.');
       }
       const expiresAt = purchase.ticketConfig.expirationMode === 'CUSTOM' ? purchase.ticketConfig.customExpiresAt : purchase.event.endDate;

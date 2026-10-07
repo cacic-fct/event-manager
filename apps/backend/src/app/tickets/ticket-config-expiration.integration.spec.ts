@@ -96,6 +96,7 @@ describe('ticket configuration expiry integration', () => {
       {} as never,
       {} as never,
       realtime as never,
+      { assertEventMutable: jest.fn() } as never,
     );
 
     await resolver.saveTicketConfig({

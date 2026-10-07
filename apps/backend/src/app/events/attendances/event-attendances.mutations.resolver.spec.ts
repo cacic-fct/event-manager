@@ -330,7 +330,10 @@ describe('EventAttendancesMutationsResolver', () => {
         { req: { user: { sub: 'collector-1' } } } as never,
       ),
     ).resolves.toBe(attendance);
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+      attendedAt: expect.any(Date),
+      actorUserId: 'collector-1',
+    });
     expect(tx.eventAttendance.create).not.toHaveBeenCalled();
     expect(tx.eventAttendance.update).not.toHaveBeenCalled();
   });

@@ -20,6 +20,7 @@ function setup() {
     {} as never,
     {} as never,
     {} as never,
+    { assertEventMutable: jest.fn() } as never,
   );
   const input = createAdminTicketConfig({ eventId: 'event', purchaseEnabled: false });
   const context = { req: { user: { sub: 'admin' } } } as never;

@@ -9,7 +9,7 @@ import {
   eventAttendanceEligibility,
 } from './attendance-eligibility';
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
-import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
+import { TicketIssuanceService, type ConsumeTicketOptions } from '../tickets/ticket-issuance.service';
 import {
   AudienceInvitationService,
   invitationFactForAttendance,
@@ -133,6 +133,7 @@ export class AttendanceCategoryService {
     eventId: string,
     tx: PrismaExecutor = this.prisma,
     consumeTicket = false,
+    redemption?: ConsumeTicketOptions,
   ): Promise<void> {
     const attendance = await tx.eventAttendance.findUnique({
       where: {
@@ -164,10 +165,11 @@ export class AttendanceCategoryService {
     }
 
     if (consumeTicket && attendance.status === 'PRESENT' && attendance.event.ticketConfig?.enabled) {
-      await this.tickets?.syncForAttendance(tx as Prisma.TransactionClient, eventId, personId, attendance.attendedAt);
+      const redemptionTime = redemption?.attendedAt ?? attendance.attendedAt;
+      await this.tickets?.syncForAttendance(tx as Prisma.TransactionClient, eventId, personId, redemptionTime);
       await this.tickets?.consumeForAttendance(tx, eventId, personId, {
-        actorUserId: attendance.committedById ?? attendance.createdById ?? undefined,
-        attendedAt: attendance.attendedAt,
+        actorUserId: redemption?.actorUserId ?? attendance.committedById ?? attendance.createdById ?? undefined,
+        attendedAt: redemptionTime,
       });
     }
     const currentAssessment = await this.assessAttendance(tx, attendance.personId, attendance.event);

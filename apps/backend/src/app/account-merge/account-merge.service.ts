@@ -31,6 +31,7 @@ import {
   unionPermissionRelationValidity,
 } from '../people/permission-relation-validity';
 import { toAttendanceCreateData, toAttendanceSnapshot } from '../people/merge-candidates/operations/attendance';
+import { moveEventInterests } from '../people/merge-candidates/operations/interests';
 import { moveSportsPersonRelations } from '../people/merge-candidates/operations/sports-representatives';
 import {
   moveAudienceInvitations,
@@ -85,6 +86,8 @@ type MovedRelationsSnapshot = {
   insertedAttendanceEventIds: string[];
   insertedLectureEventIds: string[];
   movedEventSubscriptionIds: string[];
+  movedEventInterestIds: string[];
+  retiredEventInterestIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
   movedAudienceInvitationSnapshots: AudienceInvitationSnapshot[];
@@ -564,6 +567,7 @@ export class AccountMergeService {
       targetPersonId,
       sourcePersonId,
     );
+    const interests = await moveEventInterests(tx, sourcePersonId, targetPersonId);
     const movedAudienceInvitationSnapshots = await moveAudienceInvitations(tx, sourcePersonId, targetPersonId);
     const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
     const permissionRelations = await this.movePermissionRelations(tx, targetPersonId, sourcePersonId);
@@ -578,6 +582,8 @@ export class AccountMergeService {
       insertedAttendanceEventIds: insertedAttendanceRows.map((attendance) => attendance.eventId),
       insertedLectureEventIds: insertedLectureRows.map((lecture) => lecture.eventId),
       movedEventSubscriptionIds,
+      movedEventInterestIds: interests.movedIds,
+      retiredEventInterestIds: interests.retiredIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
       movedAudienceInvitationSnapshots,

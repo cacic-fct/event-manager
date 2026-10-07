@@ -291,6 +291,7 @@ export class TicketAdminPageComponent {
   protected async selectConfig(config: AdminTicketConfig): Promise<void> {
     if (this.saving()) return;
     await this.pendingChanges.navigate(async () => {
+      this.liveRequest += 1;
       this.selectedConfig.set(config);
       this.eventSummary.set({
         id: config.event.id,
@@ -302,7 +303,7 @@ export class TicketAdminPageComponent {
       });
       this.populateForm(config);
       void this.loadPriceTiers(config.majorEventId);
-      void this.loadTickets(null);
+      await this.resetTicketPage();
       return true;
     });
   }
@@ -321,7 +322,7 @@ export class TicketAdminPageComponent {
       this.selectedConfig.set(saved);
       this.populateForm(saved);
       this.snackbar.open('Configuração de bilhetes salva.', 'Fechar', { duration: 3000 });
-      await this.loadTickets(null);
+      await this.resetTicketPage();
     } catch (error) {
       this.configError.set(getErrorMessage(error, 'Não foi possível salvar a configuração dos bilhetes.'));
       this.feedback.showErrorMessage(this.configError() ?? 'Não foi possível salvar a configuração dos bilhetes.');
@@ -434,9 +435,10 @@ export class TicketAdminPageComponent {
   }
 
   private async refreshLiveEvent(eventId: string): Promise<void> {
+    if (eventId !== this.eventId()) return;
     const request = ++this.liveRequest;
     await this.loadTickets(this.cursorHistory().at(-1) ?? null);
-    if (this.hasUnsavedChanges() || this.saving()) return;
+    if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) return;
     try {
       const configs = await firstValueFrom(this.api.getConfigs({ eventId }));
       if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) return;
@@ -467,7 +469,7 @@ export class TicketAdminPageComponent {
         await this.loadPriceTiers(event.majorEventId ?? null, request);
         if (request !== this.configRequest) return;
         this.populateForm(config);
-        await this.loadTickets(null);
+        await this.resetTicketPage();
       } else if (this.routeMajorEventId) {
         const [configs, majorEvent] = await Promise.all([
           firstValueFrom(this.api.getConfigs({ majorEventId: this.routeMajorEventId })),
@@ -527,9 +529,9 @@ export class TicketAdminPageComponent {
     }
   }
 
-  private resetTicketPage(): void {
+  private resetTicketPage(): Promise<void> {
     this.cursorHistory.set([null]);
-    void this.loadTickets(null);
+    return this.loadTickets(null);
   }
 
   private populateForm(config: AdminTicketConfig | null): void {
@@ -724,7 +726,7 @@ export class TicketAdminPageComponent {
     if (!result) return;
     this.operationError.set(null);
     this.snackbar.open(data.action === 'ISSUE' ? 'Bilhete emitido.' : 'Transferência enviada para confirmação.', 'Fechar', { duration: 3500 });
-    await this.loadTickets(null);
+    await this.resetTicketPage();
   }
 
   private showError(error: unknown, fallback: string): void {

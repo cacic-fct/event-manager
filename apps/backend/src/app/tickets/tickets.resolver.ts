@@ -16,6 +16,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
+import { FrozenResourceService } from '../common/frozen-resource.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
@@ -92,6 +93,7 @@ export class TicketsResolver {
     private readonly eligibility: TicketEligibilityService,
     private readonly transfers: TicketTransferService,
     private readonly realtime: TicketRealtimeService,
+    private readonly frozenResources: FrozenResourceService,
   ) {}
 
   @Query(() => [WalletTicketModel], { name: 'myWalletTickets' })
@@ -264,6 +266,9 @@ export class TicketsResolver {
       user,
       [existing ? Permission.TicketConfig.Update : Permission.TicketConfig.Create],
       { eventId: input.eventId },
+    );
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.frozenResources.assertEventMutable(input.eventId, user, 'edit'),
     );
     const saved = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
 
@@ -473,6 +478,9 @@ export class TicketsResolver {
       [Permission.Ticket.Issue, Permission.RelatedPerson.Read],
       { eventId: input.eventId },
     );
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.frozenResources.assertEventMutable(input.eventId, user, 'edit'),
+    );
     const ticket = await runSerializablePrismaTransaction(this.prisma, async (tx) =>
       this.issuance.issueForPerson(
         tx,
@@ -504,6 +512,9 @@ export class TicketsResolver {
     );
     if (!existing) throw new NotFoundException('Bilhete não encontrado.');
     await this.authorization.assertPermissions(user, [Permission.Ticket.Revoke], { eventId: existing.eventId });
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.frozenResources.assertEventMutable(existing.eventId, user, 'edit'),
+    );
 
     await runSerializablePrismaTransaction(this.prisma, async (tx) => {
       const ticket = await tx.eventTicket.findUnique({ where: { id: input.ticketId } });
