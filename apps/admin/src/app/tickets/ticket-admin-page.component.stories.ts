@@ -31,6 +31,7 @@ interface TicketAdminStoryArgs {
   apiState: 'ready' | 'loading' | 'load-error' | 'holders-error' | 'save-error';
   enabled: boolean;
   purchaseEnabled: boolean;
+  purchaseLimit: number | null;
   eligibilityProfile: 'open' | 'unesp-student' | 'ra-prefix';
   priceModel: 'SINGLE' | 'PER_TIER';
   expirationMode: 'EVENT_END' | 'CUSTOM';
@@ -146,6 +147,7 @@ const meta: Meta<TicketAdminStoryArgs> = {
     apiState: 'ready',
     enabled: true,
     purchaseEnabled: true,
+    purchaseLimit: null,
     eligibilityProfile: 'unesp-student',
     priceModel: 'PER_TIER',
     expirationMode: 'EVENT_END',
@@ -158,6 +160,7 @@ const meta: Meta<TicketAdminStoryArgs> = {
     apiState: { control: 'select', options: ['ready', 'loading', 'load-error', 'holders-error', 'save-error'] },
     enabled: { control: 'boolean' },
     purchaseEnabled: { control: 'boolean' },
+    purchaseLimit: { control: { type: 'number', min: 1, step: 1 } },
     eligibilityProfile: { control: 'select', options: ['open', 'unesp-student', 'ra-prefix'] },
     priceModel: { control: 'inline-radio', options: ['SINGLE', 'PER_TIER'] },
     expirationMode: { control: 'inline-radio', options: ['EVENT_END', 'CUSTOM'] },
@@ -171,6 +174,10 @@ const meta: Meta<TicketAdminStoryArgs> = {
 
 export default meta;
 type Story = StoryObj<TicketAdminStoryArgs>;
+
+export const LimitedSales: Story = {
+  args: { purchaseEnabled: true, purchaseLimit: 100 },
+};
 
 export const Playground: Story = {};
 
@@ -353,6 +360,7 @@ function createProviders(args: TicketAdminStoryArgs) {
     includedPriceTierIds: hasMajorEvent ? ['tier-student'] : [],
     recipientPolicy,
     purchaseEnabled: args.purchaseEnabled && hasMajorEvent,
+    purchaseLimit: args.purchaseLimit,
     purchaseVisibility: {
       ...config.purchaseVisibility,
       requiredAcademicIdPrefixes: args.eligibilityProfile === 'ra-prefix' ? ['2024', '2025'] : [],

@@ -62,6 +62,12 @@ export class TicketPurchaseCatalogService {
       for (const config of configs) {
         const expiresAt = config.expirationMode === 'CUSTOM' ? config.customExpiresAt : config.event.endDate;
         if (!expiresAt || expiresAt <= new Date()) continue;
+        if (config.purchaseLimit != null) {
+          const reserved = await tx.ticketPurchase.count({
+            where: { ticketConfigId: config.id, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+          });
+          if (reserved >= config.purchaseLimit) continue;
+        }
         const price = selectTicketPrice(config.priceOptions, tier?.id ?? null);
         if (!price || price.amountCents <= 0) continue;
         const [owned, pendingPurchase] = await Promise.all([

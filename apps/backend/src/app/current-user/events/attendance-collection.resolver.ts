@@ -163,6 +163,7 @@ export class CurrentUserAttendanceCollectionResolver {
     return createAttendance({
       prisma: this.prisma,
       attendanceCategories: this.attendanceCategories,
+      refreshNonRegular: true,
       input: {
         eventId: input.eventId,
         personId: person.id,

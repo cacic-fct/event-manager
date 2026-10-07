@@ -188,6 +188,7 @@ const ADMIN_TICKET_CONFIG_FIELDS = `
   includedPriceTierIds
   recipientPolicy { ${TICKET_RECIPIENT_POLICY_FIELDS} }
   purchaseEnabled
+  purchaseLimit
   purchaseVisibility {
     ${TICKET_RECIPIENT_POLICY_FIELDS}
     requiresValidatedSubscription

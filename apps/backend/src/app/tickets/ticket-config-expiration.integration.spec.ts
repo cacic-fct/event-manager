@@ -3,7 +3,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TicketsResolver } from './tickets.resolver';
 
 describe('ticket configuration expiry integration', () => {
-  it('aligns active tickets with the saved expiry policy in one transaction', async () => {
+  it.each([null, 25])('saves purchase limit %s and aligns active tickets in one transaction', async (purchaseLimit) => {
     const expiresAt = new Date(Date.now() + 3 * 86_400_000);
     const event = {
       id: 'event-1',
@@ -40,6 +40,7 @@ describe('ticket configuration expiry integration', () => {
       recipientRequiresAccountManagerVerification: false,
       recipientAllowedPriceTierIds: [],
       purchaseEnabled: false,
+      purchaseLimit,
       purchaseRequiresUnesp: false,
       purchaseAcademicIdPrefixes: [],
       purchaseCourseCodes: [],
@@ -113,6 +114,7 @@ describe('ticket configuration expiry integration', () => {
         allowedPriceTierIds: [],
       },
       purchaseEnabled: false,
+      purchaseLimit,
       purchaseVisibility: {
         subscriptionRequirement: 'REQUIRED',
         requiresUnesp: false,
@@ -127,6 +129,9 @@ describe('ticket configuration expiry integration', () => {
       customExpiresAt: expiresAt,
     } as never, { request: { user: { sub: 'admin-1' } } } as never);
 
+    expect(tx.ticketConfig.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ purchaseLimit }), update: expect.objectContaining({ purchaseLimit }),
+    }));
     expect(issuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, event.id, {
       scope: 'ALL_ACTIVE',
       actorUserId: 'admin-1',

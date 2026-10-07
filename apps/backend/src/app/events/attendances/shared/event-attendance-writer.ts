@@ -1,4 +1,4 @@
-import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
+import { AttendanceCategory, AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { AttendanceCategoryService } from '../../attendance-category.service';
 
 export type EventAttendanceLocation = {
@@ -22,13 +22,14 @@ type AttendanceCategoryWriter = Pick<AttendanceCategoryService, 'refreshForAtten
 
 /**
  * Creates an attendance, or restores a record explicitly marked absent.
- * Existing present records are deliberately left to the database uniqueness
- * constraint so callers can retain their domain-specific conflict response.
+ * Scanner callers can refresh non-regular present records without changing
+ * their collection metadata. Other duplicates retain their conflict response.
  */
 export async function createOrRestoreEventAttendance(params: {
   tx: Prisma.TransactionClient;
   attendanceCategories: AttendanceCategoryWriter;
   input: EventAttendanceWriteInput;
+  refreshNonRegular?: boolean;
   afterWrite?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
 }) {
   const { tx, attendanceCategories, input } = params;
@@ -41,8 +42,17 @@ export async function createOrRestoreEventAttendance(params: {
   };
   const existing = await tx.eventAttendance.findUnique({
     where: key,
-    select: { status: true },
+    select: { status: true, category: true },
   });
+
+  if (
+    params.refreshNonRegular &&
+    existing?.status === EventAttendanceStatus.PRESENT &&
+    existing.category === AttendanceCategory.NON_REGULAR
+  ) {
+    await attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx, true);
+    return tx.eventAttendance.findUniqueOrThrow({ where: key });
+  }
 
   if (existing?.status === EventAttendanceStatus.ABSENT) {
     await tx.eventAttendance.update({

@@ -93,6 +93,8 @@ export class TicketPurchasesService {
     try {
       purchase = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
         await this.lockSubscription(tx, offer.majorEventSubscriptionId);
+        // Serialize reservations for the same ticket configuration before checking stock.
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "ticket_configs" WHERE "id" = ${offer.ticketConfigId} FOR UPDATE`);
         const current = await this.catalog.requireOffer(tx, person.id, eventId, identity);
         if (current.amountCents !== offer.amountCents || current.priceTierId !== offer.priceTierId ||
           current.ticketConfigId !== offer.ticketConfigId || current.majorEventSubscriptionId !== offer.majorEventSubscriptionId) {

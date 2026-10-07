@@ -288,6 +288,7 @@ export function createAdminTicketConfig(
       allowedPriceTierIds: [],
     },
     purchaseEnabled: false,
+    purchaseLimit: null,
     purchaseVisibility: {
       subscriptionRequirement: 'REQUIRED',
       requiresUnesp: false,

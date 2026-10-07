@@ -278,6 +278,14 @@ export class TicketsResolver {
           expectedConfigVersion,
           before ? { id: before.id, updatedAt: before.updatedAt } : null,
         );
+        if (before && normalized.purchaseLimit != null) {
+          const reserved = await tx.ticketPurchase.count({
+            where: { ticketConfigId: before.id, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
+          });
+          if (normalized.purchaseLimit < reserved) {
+            throw new BadRequestException('O limite não pode ser menor que a quantidade de compras aprovadas ou em análise.');
+          }
+        }
         const data = {
           enabled: normalized.enabled,
           displayName: normalized.displayName,
@@ -295,6 +303,7 @@ export class TicketsResolver {
           recipientRequiresAccountManagerVerification: normalized.recipientRequiresAccountManagerVerification,
           recipientAllowedPriceTierIds: normalized.recipientAllowedPriceTierIds,
           purchaseEnabled: normalized.purchaseEnabled,
+          purchaseLimit: normalized.purchaseLimit,
           purchaseRequiresUnesp: normalized.purchaseRequiresUnesp,
           purchaseAcademicIdPrefixes: normalized.purchaseAcademicIdPrefixes,
           purchaseCourseCodes: normalized.purchaseCourseCodes,
@@ -682,6 +691,9 @@ export class TicketsResolver {
     if (!Object.values(TicketExpirationMode).includes(input.expirationMode)) {
       throw new BadRequestException('Selecione um critério de validade válido.');
     }
+    if (input.purchaseLimit != null && (!Number.isInteger(input.purchaseLimit) || input.purchaseLimit < 1 || input.purchaseLimit > 2_147_483_647)) {
+      throw new BadRequestException('Informe uma quantidade inteira de bilhetes entre 1 e 2.147.483.647, ou selecione vendas ilimitadas.');
+    }
     const recipientAllowedPriceTierIds = normalizeIds(input.recipientPolicy.allowedPriceTierIds);
     const purchaseVisiblePriceTierIds = normalizeIds(input.purchaseVisibility.allowedPriceTierIds);
     if (
@@ -758,6 +770,7 @@ export class TicketsResolver {
       recipientRequiresAccountManagerVerification: input.recipientPolicy.requiresAccountManagerVerification,
       recipientAllowedPriceTierIds,
       purchaseEnabled: input.purchaseEnabled,
+      purchaseLimit: input.purchaseLimit ?? null,
       purchaseRequiresUnesp: input.purchaseVisibility.requiresUnesp,
       purchaseAcademicIdPrefixes,
       purchaseCourseCodes,
@@ -788,6 +801,7 @@ export class TicketsResolver {
     recipientRequiresAccountManagerVerification: boolean;
     recipientAllowedPriceTierIds: string[];
     purchaseEnabled: boolean;
+    purchaseLimit?: number | null;
     purchaseRequiresUnesp: boolean;
     purchaseAcademicIdPrefixes: string[];
     purchaseCourseCodes: string[];
@@ -816,6 +830,7 @@ export class TicketsResolver {
       recipientRequiresAccountManagerVerification: config.recipientRequiresAccountManagerVerification,
       recipientAllowedPriceTierIds: config.recipientAllowedPriceTierIds,
       purchaseEnabled: config.purchaseEnabled,
+      purchaseLimit: config.purchaseLimit ?? null,
       purchaseRequiresUnesp: config.purchaseRequiresUnesp,
       purchaseAcademicIdPrefixes: config.purchaseAcademicIdPrefixes,
       purchaseCourseCodes: config.purchaseCourseCodes,

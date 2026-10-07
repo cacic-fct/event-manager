@@ -116,6 +116,7 @@ model TicketConfig {
   recipientAllowedPriceTierIds    String[] @default([])
 
   purchaseEnabled                         Boolean @default(false)
+  purchaseLimit                           Int?
   purchaseRequiresUnesp                   Boolean @default(false)
   purchaseAcademicIdPrefixes              String[] @default([])
   purchaseCourseCodes                     String[] @default([])

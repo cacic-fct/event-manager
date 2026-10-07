@@ -170,6 +170,10 @@ export class TicketAdminPageComponent {
     includedPriceTierIds: this.formBuilder.nonNullable.control<string[]>([]),
     recipientPolicy: this.createPolicyGroup(),
     purchaseEnabled: false,
+    purchaseUnlimited: true,
+    purchaseLimit: this.formBuilder.nonNullable.control({ value: 100, disabled: true }, [
+      Validators.required, Validators.min(1), Validators.max(2_147_483_647), Validators.pattern(/^\d+$/),
+    ]),
     purchaseVisibility: this.createPolicyGroup(),
     expirationMode: this.formBuilder.nonNullable.control<TicketExpirationMode>(TicketExpirationMode.EventEnd),
     customExpiresAt: this.formBuilder.nonNullable.control('', Validators.required),
@@ -202,6 +206,14 @@ export class TicketAdminPageComponent {
         .pipe(debounceTime(150))
         .subscribe(() => void this.refreshLiveEvent(eventId));
       onCleanup(() => subscription.unsubscribe());
+    });
+    merge(
+      this.configForm.controls.purchaseUnlimited.valueChanges,
+      this.configForm.controls.purchaseEnabled.valueChanges,
+    ).pipe(takeUntilDestroyed()).subscribe(() => {
+      const controls = this.configForm.controls;
+      if (controls.purchaseUnlimited.value || !controls.purchaseEnabled.value) controls.purchaseLimit.disable();
+      else controls.purchaseLimit.enable();
     });
     this.configForm.controls.expirationMode.valueChanges.pipe(takeUntilDestroyed()).subscribe((mode) => {
       const expiry = this.configForm.controls.customExpiresAt;
@@ -551,6 +563,8 @@ export class TicketAdminPageComponent {
         allowedPriceTierIds: [...(recipientPolicy?.allowedPriceTierIds ?? [])],
       },
       purchaseEnabled: config?.purchaseEnabled ?? false,
+      purchaseUnlimited: config?.purchaseLimit == null,
+      purchaseLimit: config?.purchaseLimit ?? 100,
       purchaseVisibility: {
         subscriptionRequirement: TicketSubscriptionRequirement.Required,
         requiresUnesp: purchaseVisibility?.requiresUnesp ?? defaultPolicy.requiresUnesp,
@@ -604,6 +618,7 @@ export class TicketAdminPageComponent {
       includedPriceTierIds: value.issueOnMajorEventSubscription ? [...value.includedPriceTierIds] : [],
       recipientPolicy: this.policyFromForm(value.recipientPolicy),
       purchaseEnabled: value.purchaseEnabled && value.enabled && Boolean(this.majorEventId()),
+      purchaseLimit: value.purchaseUnlimited || !value.purchaseEnabled ? null : value.purchaseLimit,
       purchaseVisibility: {
         ...this.policyFromForm(value.purchaseVisibility),
         subscriptionRequirement: TicketSubscriptionRequirement.Required,

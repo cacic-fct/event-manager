@@ -90,6 +90,18 @@ describe('ticket purchase transaction boundaries', () => {
     expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['account'], { type: 'PURCHASES_CHANGED', eventId: 'party', purchaseId: 'purchase' });
   });
 
+  it('removes the uploaded receipt if the final ticket was reserved during processing', async () => {
+    const { service, catalog, tx, s3 } = setup();
+    const offer = await catalog.requireOffer();
+    catalog.requireOffer.mockClear();
+    catalog.requireOffer.mockResolvedValueOnce(offer);
+    catalog.requireOffer.mockRejectedValueOnce(new ConflictException('Bilhetes esgotados.'));
+    await expect(service.upload('party', { buffer: png, mimetype: 'image/png', originalname: 'receipt.png', size: png.length } as never, { ticketConfigId: 'config', amountCents: 2500 }, user)).rejects.toThrow('Bilhetes esgotados.');
+    expect(tx.ticketPurchase.create).not.toHaveBeenCalled();
+    expect(s3.deleteFile).toHaveBeenCalledWith('stored-key');
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+
   it('prevents duplicate approval or issuance when another review wins', async () => {
     const { service, tx, issuance } = setup();
     tx.ticketPurchase.updateMany.mockResolvedValue({ count: 0 });

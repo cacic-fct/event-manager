@@ -3,6 +3,40 @@ import { AttendanceCreationMethod, Prisma, SportsMatchState } from '@prisma/clie
 import { createAttendance } from './attendance-collection-records';
 
 describe('createAttendance', () => {
+  it('re-evaluates a non-regular re-scan without recording another creation or starting check-in', async () => {
+    const attendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT', category: 'REGULAR' };
+    const tx = {
+      eventAttendance: {
+        findUnique: jest.fn().mockResolvedValue({ ...attendance, category: 'NON_REGULAR' }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+        create: jest.fn(),
+      },
+    };
+    const attendanceCategories = { refreshForAttendance: jest.fn() };
+    const afterCreate = jest.fn();
+    const afterCheckInStarted = jest.fn();
+
+    await expect(
+      createAttendance({
+        prisma: { $transaction: jest.fn((callback) => callback(tx)) } as never,
+        attendanceCategories: attendanceCategories as never,
+        refreshNonRegular: true,
+        input: {
+          eventId: 'event-1',
+          personId: 'person-1',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+          location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 10 },
+        },
+        afterCreate,
+        afterCheckInStarted,
+      }),
+    ).resolves.toBe(attendance);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+    expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+    expect(afterCreate).not.toHaveBeenCalled();
+    expect(afterCheckInStarted).not.toHaveBeenCalled();
+  });
+
   it('starts a scheduled match when the collected person is an approved match athlete', async () => {
     const attendance = { personId: 'athlete-1', eventId: 'event-1', status: 'PRESENT' };
     const tx = {

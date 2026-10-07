@@ -227,6 +227,23 @@
                   <p class="purchase-receipt-rule">
                     A oferta aparece apenas para quem tem inscrição no grande evento com pagamento aprovado.
                   </p>
+                  <div class="policy-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Quantidade de bilhetes à venda</mat-label>
+                      <mat-select formControlName="purchaseUnlimited">
+                        <mat-option [value]="true">Ilimitada</mat-option>
+                        <mat-option [value]="false">Quantidade definida</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    @if (!configForm.controls.purchaseUnlimited.value) {
+                      <mat-form-field appearance="outline">
+                        <mat-label>Limite de bilhetes à venda</mat-label>
+                        <input matInput type="number" inputmode="numeric" min="1" max="2147483647" step="1" formControlName="purchaseLimit" required />
+                        <mat-hint>Compras em análise reservam bilhetes; compras recusadas liberam a reserva.</mat-hint>
+                        <mat-error>Informe uma quantidade inteira entre 1 e 2.147.483.647.</mat-error>
+                      </mat-form-field>
+                    }
+                  </div>
                   <div class="policy-fields" formGroupName="purchaseVisibility">
                     <mat-form-field appearance="outline">
                       <mat-label>Curso de graduação</mat-label>

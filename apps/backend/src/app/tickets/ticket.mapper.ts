@@ -117,6 +117,7 @@ type TicketConfigRecord = {
   recipientRequiresAccountManagerVerification: boolean;
   recipientAllowedPriceTierIds: string[];
   purchaseEnabled: boolean;
+  purchaseLimit?: number | null;
   purchaseRequiresUnesp: boolean;
   purchaseAcademicIdPrefixes: string[];
   purchaseCourseCodes: string[];
@@ -276,6 +277,7 @@ export function mapTicketConfig(config: TicketConfigRecord): TicketConfigModel {
     includedPriceTierIds: config.includedPriceTierIds,
     recipientPolicy,
     purchaseEnabled: config.purchaseEnabled,
+    purchaseLimit: config.purchaseLimit ?? null,
     purchaseVisibility,
     priceOptions,
     expirationMode: config.expirationMode as TicketConfigModel['expirationMode'],

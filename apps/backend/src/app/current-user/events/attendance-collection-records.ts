@@ -31,6 +31,7 @@ export async function createAttendance(params: {
   prisma: PrismaService;
   attendanceCategories: AttendanceCategoryService;
   input: CreateAttendanceInput;
+  refreshNonRegular?: boolean;
   idempotencyKey?: string;
   afterIdempotencyLock?: (tx: Prisma.TransactionClient) => Promise<void>;
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
@@ -49,6 +50,7 @@ export async function createAttendance(params: {
           tx,
           attendanceCategories: params.attendanceCategories,
           input: params.input,
+          refreshNonRegular: params.refreshNonRegular,
           afterWrite: async (attendance, transaction) => {
             if ((params.input.status ?? EventAttendanceStatus.PRESENT) === EventAttendanceStatus.PRESENT) {
               checkInStarted =

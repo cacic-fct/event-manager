@@ -95,6 +95,7 @@ export class TicketConfigModel {
   @Field(() => [String]) includedPriceTierIds!: string[];
   @Field(() => TicketRecipientPolicyModel) recipientPolicy!: TicketRecipientPolicyModel;
   @Field(() => Boolean) purchaseEnabled!: boolean;
+  @Field(() => Int, { nullable: true }) purchaseLimit!: number | null;
   @Field(() => TicketPurchaseVisibilityModel) purchaseVisibility!: TicketPurchaseVisibilityModel;
   @Field(() => [TicketPriceOptionModel]) priceOptions!: TicketPriceOptionModel[];
   @Field(() => String) expirationMode!: TicketExpirationMode;
@@ -117,6 +118,7 @@ export class TicketConfigInputModel {
   @Field(() => [String]) includedPriceTierIds!: string[];
   @Field(() => TicketRecipientPolicyInputModel) recipientPolicy!: TicketRecipientPolicyInputModel;
   @Field(() => Boolean) purchaseEnabled!: boolean;
+  @Field(() => Int, { nullable: true }) purchaseLimit?: number | null;
   @Field(() => TicketPurchaseVisibilityInputModel) purchaseVisibility!: TicketPurchaseVisibilityInputModel;
   @Field(() => [TicketPriceOptionInputModel]) priceOptions!: TicketPriceOptionInputModel[];
   @Field(() => String) expirationMode!: TicketExpirationMode;

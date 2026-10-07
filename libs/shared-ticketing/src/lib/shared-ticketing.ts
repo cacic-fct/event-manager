@@ -130,6 +130,7 @@ export type TicketConfig = {
   includedPriceTierIds: readonly string[];
   recipientPolicy: TicketRecipientPolicy;
   purchaseEnabled: boolean;
+  purchaseLimit: number | null;
   purchaseVisibility: TicketPurchaseVisibilityPolicy;
   priceOptions: readonly TicketPriceOption[];
   expirationMode: TicketExpirationMode;
@@ -138,7 +139,8 @@ export type TicketConfig = {
   updatedAt: string;
 };
 
-export type TicketConfigInput = Omit<TicketConfig, 'id' | 'createdAt' | 'updatedAt' | 'priceOptions'> & {
+export type TicketConfigInput = Omit<TicketConfig, 'id' | 'createdAt' | 'updatedAt' | 'priceOptions' | 'purchaseLimit'> & {
+  purchaseLimit?: number | null;
   priceOptions: readonly TicketPriceOptionInput[];
 };
 

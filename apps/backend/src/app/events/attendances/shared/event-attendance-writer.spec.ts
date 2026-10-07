@@ -1,4 +1,4 @@
-import { AttendanceCreationMethod, EventAttendanceStatus } from '@prisma/client';
+import { AttendanceCategory, AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { createOrRestoreEventAttendance, upsertPresentEventAttendance } from './event-attendance-writer';
 
 describe('event attendance writer', () => {
@@ -16,7 +16,76 @@ describe('event attendance writer', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
+
+  it.each([AttendanceCategory.REGULAR, AttendanceCategory.NON_REGULAR])(
+    'returns the refreshed %s category when re-scanning non-regular attendance without rewriting provenance',
+    async (category) => {
+      const original = {
+        personId: 'person-1',
+        eventId: 'event-1',
+        status: EventAttendanceStatus.PRESENT,
+        category: AttendanceCategory.NON_REGULAR,
+        attendedAt: new Date(Date.now() - 60_000),
+        createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+        createdById: 'original-collector',
+        committedById: 'original-uploader',
+      };
+      const refreshed = { ...original, category };
+      const afterWrite = jest.fn();
+      tx.eventAttendance.findUnique.mockResolvedValue(original);
+      tx.eventAttendance.findUniqueOrThrow.mockResolvedValue(refreshed);
+
+      await expect(
+        createOrRestoreEventAttendance({
+          tx: tx as never,
+          attendanceCategories,
+          input: {
+            personId: original.personId,
+            eventId: original.eventId,
+            createdByMethod: AttendanceCreationMethod.SCANNER,
+            createdById: 'new-collector',
+          },
+          refreshNonRegular: true,
+          afterWrite,
+        }),
+      ).resolves.toEqual(refreshed);
+
+      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
+      expect(attendanceCategories.refreshForAttendance.mock.invocationCallOrder[0]).toBeLessThan(
+        tx.eventAttendance.findUniqueOrThrow.mock.invocationCallOrder[0],
+      );
+      expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+      expect(tx.eventAttendance.update).not.toHaveBeenCalled();
+      expect(afterWrite).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [AttendanceCategory.REGULAR, true],
+    [AttendanceCategory.NON_REGULAR, false],
+  ])('preserves duplicate conflicts for category %s with refresh enabled: %s', async (category, refreshNonRegular) => {
+    tx.eventAttendance.findUnique.mockResolvedValue({ status: EventAttendanceStatus.PRESENT, category });
+    const duplicate = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    tx.eventAttendance.create.mockRejectedValue(duplicate);
+
+    await expect(
+      createOrRestoreEventAttendance({
+        tx: tx as never,
+        attendanceCategories,
+        input: {
+          personId: 'person-1',
+          eventId: 'event-1',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+        },
+        refreshNonRegular,
+      }),
+    ).rejects.toBe(duplicate);
+    expect(attendanceCategories.refreshForAttendance).not.toHaveBeenCalled();
   });
 
   it('restores an absent attendance and refreshes its category in the supplied transaction', async () => {

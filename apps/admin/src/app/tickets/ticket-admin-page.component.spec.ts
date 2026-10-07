@@ -246,6 +246,34 @@ describe('TicketAdminPageComponent', () => {
     expect(api.saveConfig).not.toHaveBeenCalled();
   });
 
+  it('loads a fixed sales limit, validates integers, and can switch back to unlimited', async () => {
+    const limited = createAdminTicketConfig({
+      ...config, purchaseEnabled: true, purchaseLimit: 25,
+      priceOptions: [{ id: 'price', priceTierId: null, label: 'Preço único', amountCents: 1000 }],
+    });
+    const { fixture, api } = setup({ initialConfig: limited });
+    await settle(fixture);
+    const quantity = fixture.nativeElement.querySelector('input[formControlName="purchaseLimit"]') as HTMLInputElement;
+    expect(quantity.value).toBe('25');
+    for (const invalid of ['', '0', '-1', '1.5']) {
+      quantity.value = invalid;
+      quantity.dispatchEvent(new Event('input'));
+      await settle(fixture);
+      expect(getButton(fixture, 'Salvar configuração')?.disabled).toBe(true);
+    }
+    quantity.value = '30';
+    quantity.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    getButton(fixture, 'Salvar configuração')?.click();
+    await vi.waitFor(() => expect(api.saveConfig).toHaveBeenCalledWith(expect.objectContaining({ purchaseLimit: 30 })));
+    await settle(fixture);
+    const mode = fixture.nativeElement.querySelector('mat-select[formControlName="purchaseUnlimited"]') as HTMLElement;
+    await chooseMatOption(fixture, mode, 'Ilimitada');
+    expect(fixture.nativeElement.querySelector('input[formControlName="purchaseLimit"]')).toBeNull();
+    getButton(fixture, 'Salvar configuração')?.click();
+    await vi.waitFor(() => expect(api.saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ purchaseLimit: null })));
+  });
+
   it('shows save errors and keeps the form available for correction', async () => {
     const { fixture, api, feedback } = setup({ saveError: new Error('Configuração recusada pelo servidor.') });
     await settle(fixture);
