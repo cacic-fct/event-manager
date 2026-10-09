@@ -278,6 +278,7 @@ describe('MajorEventsResolver', () => {
       endDate: new Date('2026-08-05T12:00:00.000Z'),
       isPaymentRequired: false,
       publicationState: 'DRAFT',
+      publishedAt: null,
     };
     const updatedMajorEvent = {
       ...majorEvent,
@@ -287,7 +288,9 @@ describe('MajorEventsResolver', () => {
       publicationUpdatedBy: 'admin-1',
     };
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(majorEvent),
         update: jest.fn().mockResolvedValue({ id: 'major-1' }),
         findUniqueOrThrow: jest.fn().mockResolvedValue(updatedMajorEvent),
       },
@@ -295,7 +298,11 @@ describe('MajorEventsResolver', () => {
     const prisma = {
       $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
       majorEvent: {
-        findFirst: jest.fn().mockResolvedValue(majorEvent),
+        findFirst: jest.fn().mockResolvedValue({
+          ...majorEvent,
+          publicationState: 'PUBLISHED',
+          publishedAt: new Date('2026-07-20T12:00:00.000Z'),
+        }),
       },
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
     };
@@ -338,10 +345,19 @@ describe('MajorEventsResolver', () => {
         }),
       }),
     );
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEvent.findFirst.mock.invocationCallOrder[0],
+    );
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "major_events"');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('"deletedAt" IS NULL');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
+    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('major-1');
+    expect(prisma.majorEvent.findFirst).not.toHaveBeenCalled();
     expect(auditLog.record).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        before: { publicationState: 'DRAFT' },
+        before: { publicationState: 'DRAFT', publishedAt: null },
         after: {
           publicationState: 'PUBLISHED',
           publishedAt: expect.any(Date),
@@ -349,17 +365,60 @@ describe('MajorEventsResolver', () => {
         },
         actor: { sub: 'admin-1' },
         summary: 'Conteúdo publicado.',
+        metadata: { category: 'publication-lifecycle' },
         squashWindowMs: 0,
         force: true,
       }),
       tx,
     );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
     expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'major-1',
         publicationState: 'PUBLISHED',
       }),
     );
+  });
+
+  it('uses the locked major-event snapshot and preserves draft publication fields on an ordinary edit', async () => {
+    const stalePublishedAt = new Date('2026-07-20T12:00:00.000Z');
+    const currentMajorEvent = majorEventRecord({ publicationState: 'DRAFT', publishedAt: null });
+    const updatedMajorEvent = { ...currentMajorEvent, name: 'SECOMPP atualizado' };
+    const { resolver, prisma, tx, auditLog } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue({
+      ...currentMajorEvent,
+      publicationState: 'PUBLISHED',
+      publishedAt: stalePublishedAt,
+    });
+    tx.majorEvent.findFirst.mockResolvedValue(currentMajorEvent);
+    tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updatedMajorEvent);
+
+    await expect(
+      resolver.updateMajorEvent(
+        'major-1',
+        { name: 'SECOMPP atualizado', publishAfterUpdate: false },
+        context() as never,
+      ),
+    ).resolves.toBe(updatedMajorEvent);
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.majorEvent.findFirst.mock.invocationCallOrder[0],
+    );
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "major_events"');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
+    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('major-1');
+    expect(prisma.majorEvent.findFirst).not.toHaveBeenCalled();
+    expect(tx.majorEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { name: 'SECOMPP atualizado' } }),
+    );
+    expect(tx.majorEvent.update.mock.calls[0]?.[0].data).not.toHaveProperty('publicationState');
+    expect(tx.majorEvent.update.mock.calls[0]?.[0].data).not.toHaveProperty('publishedAt');
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record.mock.calls[0]?.[0].before).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0]?.[0].before).not.toHaveProperty('publishedAt');
   });
 
   it('returns no major events when scoped read access is empty', async () => {
@@ -663,7 +722,7 @@ describe('MajorEventsResolver', () => {
   });
 
   it('updates major-event content, payment info, price tiers, and certificate flags together', async () => {
-    const { resolver, prisma, tx, frozenResources, typesenseSearch } = createResolver({ paymentInfoTableExists: true });
+    const { resolver, tx, frozenResources, typesenseSearch } = createResolver({ paymentInfoTableExists: true });
     const existing = majorEventRecord({
       isPaymentRequired: false,
       paymentInfo: paymentInfoRecord(),
@@ -675,7 +734,7 @@ describe('MajorEventsResolver', () => {
       publicationState: 'DRAFT',
       isPaymentRequired: true,
     });
-    prisma.majorEvent.findFirst.mockResolvedValue(existing);
+    tx.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updated);
     tx.priceTier.findMany.mockResolvedValue([
@@ -773,7 +832,7 @@ describe('MajorEventsResolver', () => {
   });
 
   it('synchronizes renamed tier snapshots for active and restorable subscriptions without changing payment history', async () => {
-    const { resolver, prisma, tx } = createResolver();
+    const { resolver, tx } = createResolver();
     const existing = majorEventRecord();
     const updated = majorEventRecord({
       majorEventPrices: [
@@ -787,7 +846,7 @@ describe('MajorEventsResolver', () => {
         },
       ],
     });
-    prisma.majorEvent.findFirst.mockResolvedValue(existing);
+    tx.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updated);
     tx.priceTier.findMany.mockResolvedValue([
@@ -859,8 +918,8 @@ describe('MajorEventsResolver', () => {
   });
 
   it('requires a linked tournament before a price tier can include sports registration', async () => {
-    const { resolver, prisma, tx } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.sportsTournament.findFirst.mockResolvedValue(null);
 
@@ -887,8 +946,8 @@ describe('MajorEventsResolver', () => {
   });
 
   it('preserves price tiers referenced by active or restorable event attendance policies', async () => {
-    const { resolver, prisma, tx } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.priceTier.findMany.mockResolvedValue([{ id: 'kit-tier' }]);
     tx.event.findFirst.mockResolvedValue({ id: 'deleted-kit-event' });
@@ -904,13 +963,13 @@ describe('MajorEventsResolver', () => {
   });
 
   it('deletes payment info and price tiers when update inputs clear them', async () => {
-    const { resolver, prisma, tx } = createResolver({ paymentInfoTableExists: true });
+    const { resolver, tx } = createResolver({ paymentInfoTableExists: true });
     const existing = majorEventRecord({
       isPaymentRequired: false,
       paymentInfo: paymentInfoRecord(),
       publicationState: 'DRAFT',
     });
-    prisma.majorEvent.findFirst.mockResolvedValue(existing);
+    tx.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ paymentInfo: null }));
 
@@ -940,8 +999,8 @@ describe('MajorEventsResolver', () => {
   });
 
   it('does not remove a price tier while a subscription form is attached to it', async () => {
-    const { resolver, prisma, tx } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.eventFormLinkPriceTier.count.mockResolvedValue(1);
 
@@ -954,13 +1013,13 @@ describe('MajorEventsResolver', () => {
   });
 
   it('clears existing payment info and price tiers when update inputs are empty', async () => {
-    const { resolver, prisma, tx } = createResolver({ paymentInfoTableExists: true });
+    const { resolver, tx } = createResolver({ paymentInfoTableExists: true });
     const existing = majorEventRecord({
       isPaymentRequired: false,
       paymentInfo: paymentInfoRecord(),
       publicationState: 'DRAFT',
     });
-    prisma.majorEvent.findFirst.mockResolvedValue(existing);
+    tx.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ paymentInfo: null }));
 
@@ -1018,14 +1077,16 @@ describe('MajorEventsResolver', () => {
   });
 
   it('throws when updating a missing major event', async () => {
-    const { resolver, prisma } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(null);
+    const { resolver, tx, prisma } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(null);
 
     await expect(
       resolver.updateMajorEvent('missing-major', { name: 'Novo nome' }, context() as never),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.majorEvent.update).not.toHaveBeenCalled();
   });
 
   it('deletes major events with frozen-resource, audit, and search cleanup', async () => {
@@ -1166,6 +1227,7 @@ function createResolver(
 ) {
   const tx = {
     ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
+    $executeRaw: jest.fn().mockResolvedValue(1),
     event: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEvent: {
       create: jest.fn(),

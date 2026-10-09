@@ -8,8 +8,15 @@ describe('EventsResolver', () => {
   it('refreshes attendance classifications and realtime after an invitation-only edit', async () => {
     const event = { id: 'event-1', name: 'Evento', audience: 'PUBLIC', audienceCourseCodes: [],
       eventGroupId: null, majorEventId: null, attendanceEligibility: 'INVITED_ONLY', deletedAt: null };
-    const tx = { event: { findFirst: jest.fn().mockResolvedValue(event), update: jest.fn(),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue(event) } };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      event: {
+        findFirst: jest.fn().mockResolvedValue(event),
+        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(event),
+      },
+    };
     const prisma = { event: { findFirst: jest.fn().mockResolvedValue(event) },
       $transaction: jest.fn((operation) => operation(tx)) };
     const attendance = { refreshForEvent: jest.fn() };
@@ -402,6 +409,7 @@ describe('EventsResolver', () => {
       majorEventId: 'major-new',
       eventGroupId: null,
       publicationState: 'DRAFT',
+      publishedAt: null,
     };
     const updatedDetail = {
       id: 'event-1',
@@ -432,6 +440,7 @@ describe('EventsResolver', () => {
       publicationUpdatedBy: 'user-1',
     };
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       event: {
         findFirst: jest.fn().mockResolvedValue(previousAudit),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -443,7 +452,12 @@ describe('EventsResolver', () => {
     };
     const prisma = {
       event: {
-        findFirst: jest.fn().mockResolvedValue({ eventGroupId: null }),
+        findFirst: jest.fn().mockResolvedValue({
+          eventGroupId: null,
+          majorEventId: null,
+          publicationState: 'PUBLISHED',
+          publishedAt: new Date('2026-06-20T12:00:00.000Z'),
+        }),
       },
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
     };
@@ -509,6 +523,12 @@ describe('EventsResolver', () => {
         }),
       }),
     );
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.event.findFirst.mock.invocationCallOrder[0]);
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "events"');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('"deletedAt" IS NULL');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
+    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('event-1');
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'user-1' }, [Permission.Event.Update], {
       majorEventId: 'major-new',
     });
@@ -521,6 +541,8 @@ describe('EventsResolver', () => {
       }),
       tx,
     );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
     expect(auditLog.record.mock.calls[0][0].before).not.toHaveProperty('publicationState');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publicationState');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('scheduledPublishAt');
@@ -530,7 +552,7 @@ describe('EventsResolver', () => {
     expect(auditLog.record).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        before: { publicationState: 'DRAFT' },
+        before: { publicationState: 'DRAFT', publishedAt: null },
         after: {
           publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
@@ -539,6 +561,7 @@ describe('EventsResolver', () => {
         },
         actor: { sub: 'user-1' },
         summary: 'Conteúdo publicado.',
+        metadata: { category: 'publication-lifecycle' },
         squashWindowMs: 0,
         force: true,
       }),
@@ -547,6 +570,94 @@ describe('EventsResolver', () => {
     expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
     expect(attendanceCategories.refreshForEvent).not.toHaveBeenCalled();
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the locked event snapshot when a content update does not request publication', async () => {
+    const stalePublishedAt = new Date('2026-06-20T12:00:00.000Z');
+    const currentEvent = {
+      id: 'event-1',
+      name: 'Evento antigo',
+      majorEventId: null,
+      eventGroupId: null,
+      publicationState: 'DRAFT',
+      publishedAt: null,
+    };
+    const updatedDetail = {
+      id: 'event-1',
+      name: 'Evento atualizado',
+      emoji: 'calendar',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      majorEventId: null,
+      majorEvent: null,
+      eventGroupId: null,
+      eventGroup: null,
+      startDate: new Date('2026-06-22T12:00:00.000Z'),
+      endDate: new Date('2026-06-22T13:00:00.000Z'),
+    };
+    const updatedAudit = { ...currentEvent, name: updatedDetail.name };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      event: {
+        findFirst: jest.fn().mockResolvedValue(currentEvent),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+      },
+      eventGroup: { updateMany: jest.fn() },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          majorEventId: null,
+          eventGroupId: null,
+          publicationState: 'PUBLISHED',
+          publishedAt: stalePublishedAt,
+        }),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const auditLog = { record: jest.fn() };
+    const resolver = new EventsResolver(
+      prisma as never,
+      { upsertEvent: jest.fn() } as never,
+      {} as never,
+      { assertEventUpdateMutable: jest.fn() } as never,
+      { assertPermissions: jest.fn() } as never,
+      auditLog as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { publishForBackingEvent: jest.fn() } as never,
+    );
+
+    await expect(
+      resolver.updateEvent(
+        'event-1',
+        { name: updatedDetail.name, majorEventId: null, eventGroupId: null, publishAfterUpdate: false } as never,
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).resolves.toBe(updatedDetail);
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.event.findFirst.mock.invocationCallOrder[0]);
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "events"');
+    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
+    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('event-1');
+    expect(tx.event.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.event.updateMany.mock.calls[0]?.[0].data).not.toHaveProperty('publicationState');
+    expect(tx.event.updateMany.mock.calls[0]?.[0].data).not.toHaveProperty('publishedAt');
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: { id: 'event-1', name: 'Evento antigo', majorEventId: null, eventGroupId: null },
+        after: { id: 'event-1', name: 'Evento atualizado', majorEventId: null, eventGroupId: null },
+      }),
+      tx,
+    );
   });
 
   it('clones selected reusable event settings without copying the online attendance code', async () => {

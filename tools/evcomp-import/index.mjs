@@ -45,8 +45,12 @@ export async function runImport({
     );
     const unmatchedPeople = snapshot.people.flatMap((person) => {
       const resolution = resolutions.get(String(person.sourceId));
-      return resolution.status === 'matched' ? [] : [toUnmatchedPerson(person, resolution, snapshot)];
+      return resolution.status === 'matched' || resolution.reason === 'erased_person'
+        ? [] : [toUnmatchedPerson(person, resolution, snapshot)];
     });
+    const suppressedPeople = snapshot.people.filter((person) =>
+      resolutions.get(String(person.sourceId))?.reason === 'erased_person',
+    ).length;
     const operations = buildOperations(
       snapshot,
       resolutions,
@@ -72,7 +76,8 @@ export async function runImport({
       people: {
         ...peopleCounters,
         matched: [...resolutions.values()].filter((item) => item.status === 'matched').length,
-        unmatched: unmatchedPeople.length,
+        unmatched: unmatchedPeople.length + suppressedPeople,
+        suppressed: suppressedPeople,
       },
       operations: counters,
       skippedSourceRows: operations.skippedSourceRows,
@@ -122,6 +127,8 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
   }
 
   for (const registration of registrations.values()) {
+    const resolution = resolutions.get(String(registration.sourcePersonId));
+    if (resolution?.reason === 'erased_person') continue;
     if (!toSourceBoolean(registration.active)) {
       skippedSourceRows.push({
         kind: 'registration',
@@ -130,7 +137,6 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
       });
       continue;
     }
-    const resolution = resolutions.get(String(registration.sourcePersonId));
     const majorEventId = eventMappings.get(String(registration.sourceEventId));
     if (resolution?.status !== 'matched' || !majorEventId) {
       skippedSourceRows.push({
@@ -191,6 +197,7 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
 
   for (const attendance of snapshot.attendances) {
     const resolution = resolutions.get(String(attendance.sourcePersonId));
+    if (resolution?.reason === 'erased_person') continue;
     const eventId = activityMappings.get(String(attendance.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
       skippedSourceRows.push({
@@ -211,6 +218,7 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
 
   for (const lecturer of snapshot.lecturers) {
     const resolution = resolutions.get(String(lecturer.sourcePersonId));
+    if (resolution?.reason === 'erased_person') continue;
     const eventId = activityMappings.get(String(lecturer.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
       skippedSourceRows.push({

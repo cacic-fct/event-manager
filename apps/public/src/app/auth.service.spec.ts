@@ -53,7 +53,11 @@ describe('AuthService', () => {
     auth.user.set({ sub: 'user-id' });
 
     const logout = auth.logout();
-    httpTesting.expectOne('/api/auth/logout').flush({});
+    httpTesting.expectOne('/api/auth/logout').flush({
+      success: true,
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
 
     await expect(logout).resolves.toBeUndefined();
     expect(auth.user()).toBeNull();
@@ -76,7 +80,7 @@ describe('AuthService', () => {
     const request = httpTesting.expectOne('/api/auth/logout');
     expect(request.request.body).not.toHaveProperty('refreshToken');
     expect(request.request.body).not.toHaveProperty('idTokenHint');
-    request.flush({ message: 'Keycloak unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+    request.error(new ProgressEvent('network error'));
 
     await expect(logout).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(auth.user()).toEqual(user);
@@ -86,6 +90,28 @@ describe('AuthService', () => {
     const refreshRequest = httpTesting.expectOne('/api/auth/refresh');
     refreshRequest.flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(auth.user()).toBeNull();
+  });
+
+  it('clears local auth and follows the fallback URL when the server expires the cookie', async () => {
+    auth.user.set({ sub: 'user-id' });
+
+    const logout = auth.logout();
+    const request = httpTesting.expectOne('/api/auth/logout');
+    request.flush(
+      {
+        success: false,
+        localSessionCleared: false,
+        globalLogoutComplete: false,
+        cookieExpired: true,
+        logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+      },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+
+    await expect(logout).resolves.toBeUndefined();
+    expect(auth.user()).toBeNull();
+    expect(window.sessionStorage.getItem('cacic-eventos:post-logout-redirect')).toBe('true');
+    expect(clearTrackingCookies).toHaveBeenCalledOnce();
   });
 
   it('waits for registered local cleanup before making the logout request', async () => {

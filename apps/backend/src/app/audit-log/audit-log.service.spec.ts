@@ -4,6 +4,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogExplorerRevertedStatus } from './audit-log.models';
 import { AuditLogService } from './audit-log.service';
+import { AuditLogMetadataCategory } from './audit-log.types';
 
 describe('AuditLogService', () => {
   let prisma: ReturnType<typeof createPrisma>;
@@ -392,6 +393,222 @@ describe('AuditLogService', () => {
       expect.objectContaining({ field: 'email', before: 'ana@example.com', after: 'ana@unesp.br' }),
       expect.objectContaining({ field: 'name', before: 'Ana Silva', after: 'Ana Clara Silva' }),
     ]);
+  });
+
+  it.each([
+    {
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      scope: { eventId: 'event-1', majorEventId: 'major-1' },
+      contentChanged: false,
+      scenario: 'publish-only update',
+    },
+    {
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      scope: { eventId: 'event-1', majorEventId: 'major-1' },
+      contentChanged: true,
+      scenario: 'combined update',
+    },
+    {
+      entityType: AuditLogEntityType.MAJOR_EVENT,
+      entityId: 'major-1',
+      scope: { majorEventId: 'major-1' },
+      contentChanged: false,
+      scenario: 'publish-only update',
+    },
+    {
+      entityType: AuditLogEntityType.MAJOR_EVENT,
+      entityId: 'major-1',
+      scope: { majorEventId: 'major-1' },
+      contentChanged: true,
+      scenario: 'combined update',
+    },
+  ] as const)(
+    'keeps publication history separate for $entityType after a $scenario',
+    async ({ entityType, entityId, scope, contentChanged }) => {
+      const tx = createPrisma();
+      const records: ReturnType<typeof createAuditEntry>[] = [];
+      const transactionService = new AuditLogService(
+        tx as never,
+        authorizationPolicy as never,
+        attendanceCategories as never,
+        typesenseSearch as never,
+        attendanceRealtime as never,
+        frozenResources as never,
+      );
+      tx.auditLogEntry.findFirst.mockImplementation(async () => records.at(-1) ?? null);
+      tx.auditLogEntry.create.mockImplementation(async ({ data }) => {
+        const entry = createAuditEntry({ ...data, id: `audit-${records.length + 1}` });
+        records.push(entry);
+        return entry as never;
+      });
+      tx.auditLogEntry.update.mockImplementation(async ({ where, data }) => {
+        const entry = records.find((candidate) => candidate.id === where.id);
+        if (!entry) throw new Error(`Audit entry ${where.id} was not found.`);
+        Object.assign(entry, data);
+        return entry as never;
+      });
+      const actor = {
+        id: 'admin-1',
+        name: 'Admin',
+        type: AuditLogActorType.USER,
+      } as const;
+      const permission =
+        entityType === AuditLogEntityType.EVENT ? Permission.Event.Update : Permission.MajorEvent.Update;
+      const auditScope = { permission, ...scope };
+      const publishedAt = new Date();
+      const publicationMetadata = {
+        category: AuditLogMetadataCategory.PUBLICATION_LIFECYCLE,
+      };
+      const contentBefore = { name: 'Original' };
+      const contentAfter = { name: 'Updated' };
+      const currentContent = contentChanged ? contentAfter : contentBefore;
+
+      // A publish-only update still calls the content audit path, which must
+      // be a no-op; a combined update records the content row before lifecycle.
+      await transactionService.record(
+        {
+          entityType,
+          entityId,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: contentBefore,
+          after: contentChanged ? contentAfter : contentBefore,
+          scope: auditScope,
+        },
+        tx as never,
+      );
+      await transactionService.record(
+        {
+          entityType,
+          entityId,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: { publicationState: 'DRAFT', publishedAt: null },
+          after: { publicationState: 'PUBLISHED', publishedAt },
+          scope: auditScope,
+          summary: 'Conteúdo publicado.',
+          metadata: publicationMetadata,
+          force: true,
+          squashWindowMs: 0,
+        },
+        tx as never,
+      );
+
+      expect(records).toHaveLength(contentChanged ? 2 : 1);
+      const lifecycleEntry = records.at(-1);
+      if (!lifecycleEntry) throw new Error('Publication lifecycle audit entry was not recorded.');
+      expect(lifecycleEntry.changedFields).toEqual(['publicationState', 'publishedAt']);
+      expect(lifecycleEntry.after).toEqual({
+        publicationState: 'PUBLISHED',
+        publishedAt: publishedAt.toISOString(),
+      });
+      expect(lifecycleEntry.metadata).toEqual(publicationMetadata);
+
+      await transactionService.record(
+        {
+          entityType,
+          entityId,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: currentContent,
+          after: {
+            ...currentContent,
+            name: 'Edited after publication',
+          },
+          scope: auditScope,
+        },
+        tx as never,
+      );
+
+      expect(tx.auditLogEntry.update).not.toHaveBeenCalled();
+      expect(records).toHaveLength(contentChanged ? 3 : 2);
+      const laterContentEntry = records.at(-1);
+      if (!laterContentEntry) throw new Error('Content audit entry was not recorded.');
+      expect(laterContentEntry.before).toEqual(currentContent);
+      expect(laterContentEntry.after).toEqual({ ...currentContent, name: 'Edited after publication' });
+      expect(lifecycleEntry.after).toEqual({
+        publicationState: 'PUBLISHED',
+        publishedAt: publishedAt.toISOString(),
+      });
+    },
+  );
+
+  it.each([AuditLogEntityType.EVENT, AuditLogEntityType.MAJOR_EVENT])(
+    'keeps legacy %s publication rows out of the content squash path',
+    async (entityType) => {
+      const legacyLifecycleEntry = createAuditEntry({
+        entityType,
+        entityId: entityType === AuditLogEntityType.EVENT ? 'event-1' : 'major-1',
+        summary: 'Conteúdo publicado.',
+        changedFields: ['publicationState', 'publishedAt'],
+        before: { publicationState: 'DRAFT', publishedAt: null },
+        after: { publicationState: 'PUBLISHED', publishedAt: new Date() },
+        lastRecordedAt: new Date(),
+      });
+      prisma.auditLogEntry.findFirst.mockResolvedValue(legacyLifecycleEntry);
+
+      await service.record({
+        entityType,
+        entityId: legacyLifecycleEntry.entityId,
+        operation: AuditLogOperation.UPDATE,
+        actor: {
+          id: 'admin-1',
+          name: 'Admin',
+          type: AuditLogActorType.USER,
+        },
+        before: { name: 'Original' },
+        after: { name: 'Changed' },
+        scope: { permission: Permission.Event.Update },
+      });
+
+      expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+      expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          entityType,
+          entityId: legacyLifecycleEntry.entityId,
+          before: { name: 'Original' },
+          after: { name: 'Changed' },
+        }),
+      });
+    },
+  );
+
+  it('does not squash an incoming lifecycle row into a recent content edit', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue(
+      createAuditEntry({
+        entityType: AuditLogEntityType.EVENT,
+        entityId: 'event-1',
+        summary: 'Evento atualizado.',
+        changedFields: ['name'],
+        lastRecordedAt: new Date(),
+      }),
+    );
+
+    await service.record({
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      actor: {
+        id: 'admin-1',
+        name: 'Admin',
+        type: AuditLogActorType.USER,
+      },
+      before: { publicationState: 'DRAFT' },
+      after: { publicationState: 'PUBLISHED' },
+      summary: 'Conteúdo publicado.',
+      metadata: { category: AuditLogMetadataCategory.PUBLICATION_LIFECYCLE },
+    });
+
+    expect(prisma.auditLogEntry.update).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityType: AuditLogEntityType.EVENT,
+        entityId: 'event-1',
+        metadata: { category: AuditLogMetadataCategory.PUBLICATION_LIFECYCLE },
+      }),
+    });
   });
 
   it('does not squash updates recorded under a different scope id', async () => {

@@ -2,6 +2,50 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { applyOperation, buildOperations, refreshDerivedData, runImport } from './index.mjs';
+import { suppressionDigest } from './suppression.mjs';
+
+test('omits erased identities and their participation identifiers from import reports', async () => {
+  const originalSecret = process.env.LGPD_IMPORT_SUPPRESSION_SECRET;
+  const secret = 'test-import-suppression-secret-32-bytes';
+  process.env.LGPD_IMPORT_SUPPRESSION_SECRET = secret;
+  const sourceId = 'erased-source-person';
+  const rows = [
+    { entityType: 'person_suppression_key', sourceId: 'v1', targetId: suppressionDigest(secret, 'key', 'evcomp') },
+    { entityType: 'person_suppression', sourceId: suppressionDigest(secret, 'person', 'evcomp', sourceId), targetId: 'suppressed' },
+  ];
+  const writes = [];
+  try {
+    const report = await runImport({
+      config: { eventMappings: [], activityMappings: [] },
+      snapshot: {
+        people: [{ sourceId, name: 'Erased Person', email: 'erased@example.test', academicId: 'erased-academic-id' }],
+        registrations: [
+          { sourceId: 'erased-registration', sourcePersonId: sourceId, active: 1 },
+          { sourceId: 'erased-inactive-registration', sourcePersonId: sourceId, active: 0 },
+        ],
+        attendances: [{ sourceId: 'erased-attendance', sourcePersonId: sourceId }],
+        lecturers: [{ sourcePersonId: sourceId, sourceActivityId: 'erased-lecture' }],
+      },
+      target: {
+        async query(sql) {
+          if (!sql.startsWith('SELECT')) writes.push(sql);
+          return { rows: sql.includes('to_regclass') ? [{ table_name: 'external_import_records' }]
+            : sql.includes("'person_suppression_key'") ? rows : [] };
+        },
+      },
+      apply: false,
+    });
+    assert.equal(report.people.suppressed, 1);
+    assert.equal(report.people.unmatched, 1);
+    assert.deepEqual(report.unmatchedPeople, []);
+    assert.deepEqual(report.skippedSourceRows, []);
+    assert.deepEqual(writes, []);
+    assert.doesNotMatch(JSON.stringify(report), /erased-|Erased Person|erased@example/);
+  } finally {
+    if (originalSecret === undefined) delete process.env.LGPD_IMPORT_SUPPRESSION_SECRET;
+    else process.env.LGPD_IMPORT_SUPPRESSION_SECRET = originalSecret;
+  }
+});
 
 test('uses text arrays for Prisma string IDs in PostgreSQL', async () => {
   const source = await readFile(new URL('./index.mjs', import.meta.url), 'utf8');
