@@ -578,6 +578,10 @@ export class AttendancesApiService {
     ).pipe(map((data) => data.downloadCurrentUserCertificate));
   }
 
+  getCertificateArchiveCooldown(): Observable<{ cooldownSeconds: number }> {
+    return this.http.get<{ cooldownSeconds: number }>('/api/current-user/certificates/archive-status');
+  }
+
   downloadCurrentUserCertificatesArchive(): Observable<CertificateArchiveDownload> {
     return this.http
       .get('/api/current-user/certificates/archive.zip', { observe: 'response', responseType: 'blob' })
@@ -620,11 +624,21 @@ export class AttendancesApiService {
   }
 
   private readArchiveCooldownSeconds(headers: HttpHeaders): number {
+    if (headers.get('x-ratelimit-disabled') === 'true') {
+      return 0;
+    }
+    const cooldownUntil = this.readNonNegativeIntegerHeader(headers, 'x-ratelimit-cooldown-until');
+    if (cooldownUntil > 0) {
+      return Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+    }
     const cooldownSeconds = this.readNonNegativeIntegerHeader(headers, 'x-ratelimit-cooldown-seconds');
     if (cooldownSeconds > 0) {
       return cooldownSeconds;
     }
 
+    if (headers.has('x-ratelimit-cooldown-seconds')) {
+      return 0;
+    }
     return this.readNonNegativeIntegerHeader(headers, 'ratelimit-remaining') === 0
       ? this.readNonNegativeIntegerHeader(headers, 'ratelimit-reset')
       : 0;

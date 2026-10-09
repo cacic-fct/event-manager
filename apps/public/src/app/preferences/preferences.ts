@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -46,12 +46,16 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
           <mat-list-item
             role="button"
             tabindex="0"
-            (click)="authService.logout()"
-            (keydown.enter)="authService.logout()"
-            (keydown.space)="authService.logout(); $event.preventDefault()">
+            (click)="logout()"
+            (keydown.enter)="logout()"
+            (keydown.space)="logout(); $event.preventDefault()">
             <mat-icon matListItemIcon>logout</mat-icon>
             <span matListItemTitle>Sair da conta</span>
           </mat-list-item>
+        }
+
+        @if (logoutError()) {
+          <p role="alert">Não foi possível sair da conta. Tente novamente.</p>
         }
       </mat-nav-list>
     </main>
@@ -61,4 +65,14 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 export class Preferences {
   readonly authService = inject(AuthService);
   readonly serviceWorkerService = inject(ServiceWorkerService);
+  readonly logoutError = signal(false);
+
+  async logout(): Promise<void> {
+    this.logoutError.set(false);
+    try {
+      await this.authService.logout();
+    } catch {
+      this.logoutError.set(true);
+    }
+  }
 }

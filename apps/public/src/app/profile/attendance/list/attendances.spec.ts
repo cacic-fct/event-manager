@@ -411,8 +411,28 @@ describe('Attendances', () => {
     fixture.detectChanges();
 
     const button = fixture.nativeElement.querySelector('.download-button') as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.textContent).toContain('Disponível em 15:00');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-describedby')).toBe('certificate-archive-status');
+    button.click();
+    expect(api.downloadCurrentUserCertificatesArchive).toHaveBeenCalledTimes(1);
+    expect(button.textContent).toContain('Baixar certificados em 15:00');
+  });
+
+  it('restores server cooldown and clears it when the authenticated account changes', async () => {
+    const { api, component, fixture, authUser } = await createFixture();
+    api.getCertificateArchiveCooldown.mockReturnValue(of({ cooldownSeconds: 300 }));
+    authUser.set({ sub: 'another-user' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(component.certificateArchiveCooldownSeconds()).toBeGreaterThan(0);
+    expect(fixture.nativeElement.querySelector('.download-button').textContent).toContain('Baixar certificados em');
+    api.getCertificateArchiveCooldown.mockReturnValue(of({ cooldownSeconds: 0 }));
+    authUser.set({ sub: 'original-user' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.certificateArchiveCooldownSeconds()).toBe(0);
   });
 
   it('recovers into the cooldown state when another tab receives a rate-limit response', async () => {
@@ -430,7 +450,7 @@ describe('Attendances', () => {
     component.downloadCertificatesArchive();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Disponível em 15:00');
+    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Baixar certificados em 15:00');
     expect(snackBar.open).toHaveBeenCalledWith('Aguarde antes de solicitar outro arquivo de certificados.', 'Fechar', {
       duration: 5000,
     });
@@ -487,6 +507,7 @@ async function createFixture({
 } = {}): Promise<{
   api: {
     getSubscriptionsFeed: ReturnType<typeof vi.fn>;
+    getCertificateArchiveCooldown: ReturnType<typeof vi.fn>;
     downloadCurrentUserCertificatesArchive: ReturnType<typeof vi.fn>;
   };
   component: Attendances;
@@ -505,6 +526,7 @@ async function createFixture({
 }> {
   const api = {
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
+    getCertificateArchiveCooldown: vi.fn(() => of({ cooldownSeconds: 0 })),
     downloadCurrentUserCertificatesArchive: vi.fn(() =>
       of({
         blob: new Blob(['PK']),

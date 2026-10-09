@@ -323,6 +323,41 @@ describe('EventInterestsService', () => {
     );
   });
 
+  it.each([false, true])('merges missing group activities into an existing registration (complete=%s)', async (complete) => {
+    const prisma = createPrisma();
+    const interest = interestRecord({ eventGroupId: 'group-1' });
+    prisma.eventInterest.findFirst.mockResolvedValue(interest);
+    prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
+    prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [] });
+    prisma.eventGroup.findFirst.mockResolvedValue({ majorEventId: 'major-1' });
+    prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValue({
+      subscription: { id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED },
+    });
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({
+      id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED,
+    });
+    prisma.majorEventSubscriptionEventSelection.findMany.mockResolvedValue(
+      (complete ? ['event-1', 'event-2', 'outside-group'] : ['event-1', 'outside-group']).map((eventId) => ({ eventId })),
+    );
+    const workspaceSubscriptions = { updateWorkspaceMajorEventSubscription: jest.fn() };
+    const service = new EventInterestsService(
+      prisma as never, { assertPermissions: jest.fn() } as never, {} as never,
+      workspaceSubscriptions as never, {} as never,
+    );
+
+    await expect(service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+      interestId: 'interest-1', selectedEventIds: ['event-1', 'event-2'],
+    })).resolves.toEqual(expect.objectContaining({ majorEventSubscriptionId: 'major-sub-1' }));
+    if (complete) {
+      expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).not.toHaveBeenCalled();
+    } else {
+      expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
+        'major-sub-1', expect.objectContaining({ selectedEventIds: ['event-1', 'outside-group', 'event-2'] }),
+        expect.any(Object),
+      );
+    }
+  });
+
   it('requires parent-scope permissions before creating a linked major registration', async () => {
     const prisma = createPrisma();
     const interest = interestRecord({ eventId: 'event-1' });

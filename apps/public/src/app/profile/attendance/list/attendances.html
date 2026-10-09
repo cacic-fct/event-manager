@@ -36,6 +36,8 @@
       type="button"
       class="download-button"
       [disabled]="isCertificateArchiveDownloadDisabled()"
+      [disabledInteractive]="true"
+      aria-describedby="certificate-archive-status"
       [attr.aria-busy]="isDownloadingCertificates()"
       (click)="downloadCertificatesArchive()">
       <span class="download-button-content">
@@ -48,6 +50,16 @@
       </span>
     </button>
   </div>
+
+  <p id="certificate-archive-status" role="status" class="visually-hidden">
+    @if (isDownloadingCertificates()) {
+      Preparando o arquivo com todos os seus certificados.
+    } @else if (certificateArchiveCooldownSeconds() > 0) {
+      Aguarde o tempo indicado no botão antes de baixar todos os certificados novamente.
+    } @else {
+      Download de todos os certificados disponível.
+    }
+  </p>
 
   @if (filtersOpen()) {
   <section id="participation-filter-panel" class="filter-panel" aria-label="Opções de filtro">

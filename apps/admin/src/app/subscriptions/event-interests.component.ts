@@ -363,7 +363,7 @@ export class EventInterestsComponent {
             : { eventGroupId: target.targetId, ...page },
         ),
       );
-      const selectionItems = events.map((event) => ({
+      const selectionItems = events.filter((event) => !event.isSportsMatch).map((event) => ({
         id: event.id,
         name: event.name,
         startDate: event.startDate,

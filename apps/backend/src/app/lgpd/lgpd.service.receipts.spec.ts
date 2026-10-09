@@ -47,7 +47,7 @@ describe('LgpdService receipt cleanup', () => {
   });
 
   it('only soft-deletes data when scheduling deletion so it can be cancelled', async () => {
-    const { s3, tx, service } = context;
+    const { s3, tx, typesenseSearch, service } = context;
 
     await expect(
       service.scheduleDeletion({
@@ -60,6 +60,10 @@ describe('LgpdService receipt cleanup', () => {
       peopleUpdated: 2,
       recordsUpdated: 2,
     });
+
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledTimes(2);
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('source-person');
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('target-person');
 
     expect(s3.deleteFile).not.toHaveBeenCalled();
     expect(tx.majorEventReceiptValidationAction.deleteMany).not.toHaveBeenCalled();

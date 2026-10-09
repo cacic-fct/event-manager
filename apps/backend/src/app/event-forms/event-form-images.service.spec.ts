@@ -1,6 +1,7 @@
 import { EventFormImagesService } from './event-form-images.service';
 import { ForbiddenException } from '@nestjs/common';
 import { Readable } from 'node:stream';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { formRecord, linkRecord } from './event-form.spec-support';
 
 describe('EventFormImagesService references and cleanup', () => {
@@ -30,8 +31,9 @@ describe('EventFormImagesService references and cleanup', () => {
   });
 
   it('keeps subscription-flow images available before registration', async () => {
-    const { service, prisma, authorization } = createHarness();
+    const { service, prisma, authorization, s3 } = createHarness();
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
     prisma.eventFormImage.findUnique.mockResolvedValue({
       id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
       form: formRecord({
@@ -43,6 +45,35 @@ describe('EventFormImagesService references and cleanup', () => {
     await expect(service.downloadById('image-1', { sub: 'user-1' } as never)).resolves.toEqual(
       expect.objectContaining({ contentType: 'image/avif' }),
     );
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'event-1', allowSubscription: true }),
+    }));
+    expect(s3.downloadFile).toHaveBeenCalledWith('image-1.avif');
+  });
+
+  it.each([false, true])('denies non-participants image access for a hidden target (subscription flow: %s)', async (insertInSubscriptionFlow) => {
+    const { service, prisma, authorization, s3 } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.event.findFirst.mockResolvedValue(null);
+    prisma.eventFormImage.findFirst.mockResolvedValue({
+      objectKey: 'private.avif',
+      form: formRecord({
+        resultsPublic: false,
+        links: [linkRecord({
+          eventId: 'hidden-event',
+          event: { id: 'hidden-event', name: 'Hidden', emoji: null, majorEventId: null, eventGroupId: null },
+          audiences: ['SUBSCRIBERS'],
+          insertInSubscriptionFlow,
+        })],
+      }),
+    });
+
+    await expect(service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
+    }));
+    expect(s3.downloadFile).not.toHaveBeenCalled();
   });
 
   it('allows one stored asset to be referenced by the form and multiple questions', async () => {
@@ -197,18 +228,22 @@ describe('EventFormImagesService references and cleanup', () => {
 
 function createHarness() {
   const prisma = {
+    event: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockResolvedValue({ majorEventId: null, eventGroupId: null }),
+    },
+    eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventAttendance: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventInterest: { findFirst: jest.fn().mockResolvedValue(null) },
     eventFormImage: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn(),
     },
     eventForm: { findMany: jest.fn() },
     eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
-    event: { findUnique: jest.fn().mockResolvedValue({ majorEventId: null, eventGroupId: null }) },
-    eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
-    eventInterest: { findFirst: jest.fn().mockResolvedValue(null) },
-    eventAttendance: { findFirst: jest.fn().mockResolvedValue(null) },
   };
   const s3 = {
     deleteFile: jest.fn().mockResolvedValue(undefined),

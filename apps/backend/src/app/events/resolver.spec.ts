@@ -237,17 +237,17 @@ describe('EventsResolver', () => {
     );
   });
 
-  it('uses scalar event snapshots for update audit records', async () => {
+  it.each([false, true])('audits publication separately when content changes: %s', async (contentChanged) => {
     const previousAudit = {
       id: 'event-1',
       name: 'Evento antigo',
-      majorEventId: 'major-old',
+      majorEventId: 'major-new',
       eventGroupId: null,
-      publicationState: 'PUBLISHED',
+      publicationState: 'DRAFT',
     };
     const updatedDetail = {
       id: 'event-1',
-      name: 'Evento novo',
+      name: contentChanged ? 'Evento novo' : 'Evento antigo',
       emoji: 'calendar',
       type: 'OTHER',
       description: null,
@@ -265,12 +265,13 @@ describe('EventsResolver', () => {
     };
     const updatedAudit = {
       id: 'event-1',
-      name: 'Evento novo',
+      name: contentChanged ? 'Evento novo' : 'Evento antigo',
       majorEventId: 'major-new',
       eventGroupId: null,
       publicationState: 'PUBLISHED',
       scheduledPublishAt: null,
-      publishedAt: new Date('2026-06-22T13:00:00.000Z'),
+      publishedAt: new Date(),
+      publicationUpdatedBy: 'user-1',
     };
     const tx = {
       event: {
@@ -328,7 +329,7 @@ describe('EventsResolver', () => {
       resolver.updateEvent(
         'event-1',
         {
-          name: 'Evento novo',
+          name: contentChanged ? 'Evento novo' : 'Evento antigo',
           majorEventId: 'major-new',
           eventGroupId: null,
           shouldAllowOralAttendance: false,
@@ -341,7 +342,7 @@ describe('EventsResolver', () => {
     expect(tx.event.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          name: 'Evento novo',
+          name: contentChanged ? 'Evento novo' : 'Evento antigo',
           shouldAllowOralAttendance: false,
           publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
@@ -368,6 +369,23 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        before: { publicationState: 'DRAFT' },
+        after: {
+          publicationState: 'PUBLISHED',
+          scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
+          publicationUpdatedBy: 'user-1',
+        },
+        actor: { sub: 'user-1' },
+        summary: 'Conteúdo publicado.',
+        squashWindowMs: 0,
+        force: true,
+      }),
+      tx,
+    );
     expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);

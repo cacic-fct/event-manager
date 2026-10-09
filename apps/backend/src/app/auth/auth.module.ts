@@ -10,6 +10,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { redisProvider } from '../redis/redis.provider';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
+import { LogoutOriginGuard } from './guards/logout-origin.guard';
 
 @Module({
   controllers: [AuthController],
@@ -24,6 +25,7 @@ import { RateLimitService } from '../rate-limit/rate-limit.service';
     redisProvider,
     RateLimitGuard,
     RateLimitService,
+    LogoutOriginGuard,
   ],
   exports: [KeycloakAuthService, KeycloakM2mTokenService, AuthenticatedUserSyncService, AuthorizationPolicyService],
 })

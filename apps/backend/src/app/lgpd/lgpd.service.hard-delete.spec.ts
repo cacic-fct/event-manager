@@ -15,6 +15,47 @@ describe('LgpdService hard delete', () => {
     restoreLgpdServiceTestContext();
   });
 
+  it('removes profiles before people and scrubs historical profile fields and matching metadata', async () => {
+    const { tx, service } = context;
+    tx.lecturerProfile.findMany.mockResolvedValue([{ linkedin: 'current-linkedin' }]);
+    tx.lecturerProfile.deleteMany.mockResolvedValue({ count: 1 });
+    tx.people.deleteMany.mockImplementation(async () => {
+      if (tx.lecturerProfile.deleteMany.mock.calls.length === 0) {
+        throw new Error('LecturerProfile foreign key restricts person deletion');
+      }
+      return { count: 2 };
+    });
+    tx.auditLogEntry.findMany.mockResolvedValue([{
+      id: 'profile-audit', entityType: 'LECTURER_PROFILE', entityId: 'profile-1',
+      actorId: 'admin-user', actorName: 'Admin', actorEmail: 'admin@example.com', entityLabel: 'Lecturer',
+      before: { personId: 'source-person', linkedin: 'historical-linkedin', biography: 'Old biography' },
+      after: { personId: 'source-person', linkedin: 'current-linkedin', displayName: 'Lecturer',
+        googleUserPicture: 'https://example.com/picture', whatsapp: '18999990000', email: 'lecturer@example.com' },
+      changes: [{ field: 'linkedin', before: 'historical-linkedin', after: 'current-linkedin' }],
+      metadata: { contact: 'current-linkedin' },
+    }]);
+
+    await expect(service.hardDelete({ userId: 'new-user', requestId: 'profile-erasure' }))
+      .resolves.toEqual(expect.objectContaining({ success: true, peopleDeleted: 2 }));
+
+    expect(tx.lecturerProfile.deleteMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] } },
+    });
+    expect(tx.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'profile-audit' },
+      data: expect.objectContaining({
+        before: { personId: 'anonymized:profile-erasure', linkedin: '[ANONIMIZADO]', biography: '[ANONIMIZADO]' },
+        after: expect.objectContaining({ linkedin: '[ANONIMIZADO]', displayName: '[ANONIMIZADO]',
+          googleUserPicture: '[ANONIMIZADO]', whatsapp: '[ANONIMIZADO]', email: '[ANONIMIZADO]' }),
+        changes: [{ field: 'linkedin', before: '[ANONIMIZADO]', after: '[ANONIMIZADO]' }],
+        metadata: { contact: '[ANONIMIZADO]' },
+      }),
+    });
+    expect(tx.auditLogEntry.update.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.lecturerProfile.deleteMany.mock.invocationCallOrder[0],
+    );
+  });
+
   it('hard deletes source and target identities when the request uses the old merged user id', async () => {
     const { prisma, s3, tx, typesenseSearch, service } = context;
     const anonymizedAuditSubjectId = 'anonymized:erase-1';
@@ -156,6 +197,10 @@ describe('LgpdService hard delete', () => {
         updatedByEmail: null,
       },
     });
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledTimes(2);
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('source-person');
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('target-person');
+
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });

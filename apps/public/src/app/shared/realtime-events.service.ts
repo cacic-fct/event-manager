@@ -1,6 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { AuthService, watchRecoveringReplayableEventSource } from '@cacic-fct/shared-angular';
+import { Observable, Subject, Subscription } from 'rxjs';
 
 export interface RealtimeEventMessage<TPayload = unknown> {
   type?: string;
@@ -14,12 +15,13 @@ export interface RealtimeEventMessage<TPayload = unknown> {
 @Service()
 export class RealtimeEventsService implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly auth = inject(AuthService);
   private readonly messages = new Subject<RealtimeEventMessage>();
 
   private readonly watchedMajorEventIds = new Map<string, number>();
   private readonly watchedEventIds = new Map<string, number>();
 
-  private source: EventSource | null = null;
+  private source: Subscription | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private globalWatchers = 0;
 
@@ -80,22 +82,20 @@ export class RealtimeEventsService implements OnDestroy {
       return;
     }
 
-    this.source = new EventSource(this.buildUrl());
-
-    this.source.onmessage = (event) => {
-      this.emitMessage(event.data);
-    };
-
-    this.source.onerror = () => {
-      // Native EventSource already retries automatically.
-      // Do not manually reconnect here, or we may fight browser retry behavior.
-    };
+    this.source = watchRecoveringReplayableEventSource(this.buildUrl(), {
+      decode: (event) => {
+        const message = JSON.parse(event.data) as RealtimeEventMessage;
+        return message.type === 'heartbeat' ? null : message;
+      },
+      errorMessage: 'Não foi possível acompanhar as atualizações dos eventos.',
+      recover: () => this.auth.isAuthenticated() ? this.auth.refreshMe() : Promise.resolve(),
+    }).subscribe((message) => this.messages.next(message));
   }
 
   disconnect(): void {
     this.clearReconnectTimer();
 
-    this.source?.close();
+    this.source?.unsubscribe();
     this.source = null;
   }
 
@@ -168,7 +168,7 @@ export class RealtimeEventsService implements OnDestroy {
       return;
     }
 
-    this.source?.close();
+    this.source?.unsubscribe();
     this.source = null;
 
     this.connect();
@@ -202,19 +202,5 @@ export class RealtimeEventsService implements OnDestroy {
     }
 
     return url.toString();
-  }
-
-  private emitMessage(data: string): void {
-    try {
-      const message = JSON.parse(data) as RealtimeEventMessage;
-
-      if (message.type === 'heartbeat') {
-        return;
-      }
-
-      this.messages.next(message);
-    } catch {
-      // Ignore malformed SSE payloads.
-    }
   }
 }

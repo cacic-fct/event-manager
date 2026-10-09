@@ -1,5 +1,5 @@
 import { ForbiddenException, MessageEvent } from '@nestjs/common';
-import { Observable, firstValueFrom, of, take, toArray } from 'rxjs';
+import { NEVER, Observable, firstValueFrom, of, take, toArray } from 'rxjs';
 import { clearInterval as nodeClearInterval, setInterval as nodeSetInterval } from 'node:timers';
 import { PUBLIC_CATALOG_REALTIME_CHANNEL } from './public-catalog-invalidation';
 import { RealtimeInvalidationController } from './realtime-invalidation.controller';
@@ -25,6 +25,30 @@ describe('RealtimeInvalidationController', () => {
       { data: { type: 'CURRENT_USER_DATA_INVALIDATED', revision: 1 } },
     ]);
     expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('records shared snapshots and minute boundaries once before fan-out', async () => {
+    jest.useFakeTimers();
+    const { controller, invalidations, replay } = createControllerWithDependencies();
+    const load = jest.fn().mockResolvedValue({ revision: 1 });
+    const first = getReplayPolling(controller)('shared', undefined, 5_000, load).subscribe();
+    const second = getReplayPolling(controller)('shared', undefined, 5_000, load).subscribe();
+    await jest.advanceTimersByTimeAsync(0);
+    expect(replay.record).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(replay.record).toHaveBeenCalledTimes(1);
+    first.unsubscribe();
+    second.unsubscribe();
+
+    invalidations.watch.mockReturnValue(NEVER as never);
+    const publicFirst = controller.streamPublicCatalog(undefined).subscribe();
+    const publicSecond = controller.streamPublicCatalog(undefined).subscribe();
+    await jest.advanceTimersByTimeAsync(60_000);
+    expect(replay.record).toHaveBeenCalledTimes(2);
+    expect(invalidations.watch).toHaveBeenCalledTimes(1);
+    publicFirst.unsubscribe();
+    publicSecond.unsubscribe();
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('keeps polling after a transient snapshot failure', async () => {
@@ -246,10 +270,12 @@ function createControllerWithDependencies(
   options: { workspaceEvent?: MessageEvent; hasWorkspaceAccess?: boolean } = {},
 ) {
   const invalidations = {
+    heartbeat: NEVER,
     scope: jest.fn((channel: string, ...parts: string[]) => [channel, ...parts].join(':')),
     watch: jest.fn(() => of(options.workspaceEvent ?? { data: { type: 'heartbeat', timestamp: 1 } })),
   };
   const replay = {
+    record: jest.fn(async (_scope: string, event: MessageEvent) => event),
     replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: unknown) => source),
   };
   const fingerprints = {

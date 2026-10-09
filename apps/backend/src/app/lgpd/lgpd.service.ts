@@ -24,6 +24,7 @@ import {
   LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
   LGPD_EVENT_INTEREST_SELECT,
   LGPD_EVENT_LECTURER_SELECT,
+  LGPD_LECTURER_PROFILE_SELECT,
   LGPD_EVENT_SUBSCRIPTION_SELECT,
   LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
   LGPD_MAJOR_EVENT_RECEIPT_SELECT,
@@ -60,6 +61,7 @@ export class LgpdService {
 
     const userWhere = { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] };
     const [
+      lecturerProfiles,
       accountUsers,
       accountUserMerges,
       externalAccountMergeOperations,
@@ -83,6 +85,13 @@ export class LgpdService {
       prizeDrawSpinEntriesForExport,
       prizeDrawWinsForExport,
     ] = await Promise.all([
+      personIds.length > 0
+        ? this.prisma.lecturerProfile.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_LECTURER_PROFILE_SELECT,
+            orderBy: { createdAt: 'asc' },
+          })
+        : Promise.resolve([]),
       this.prisma.user.findMany({
         where: { id: { in: userIds } },
         select: LGPD_ACCOUNT_USER_SELECT,
@@ -264,6 +273,7 @@ export class LgpdService {
         spinEntries: selectManyForExport(prizeDrawSpinEntriesForExport, LGPD_PRIZE_DRAW_SPIN_ENTRY_SELECT),
         wins: selectManyForExport(prizeDrawWinsForExport, LGPD_PRIZE_DRAW_WIN_SELECT),
       },
+      lecturerProfiles: { records: selectManyForExport(lecturerProfiles, LGPD_LECTURER_PROFILE_SELECT) },
       lecturerActivities: { records: selectManyForExport(lectures, LGPD_EVENT_LECTURER_SELECT) },
       certificates: { records: selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
@@ -333,6 +343,8 @@ export class LgpdService {
           certificates.count,
       };
     });
+
+    await Promise.all(personIds.map((personId) => this.typesenseSearch.deletePerson(personId)));
 
     this.logger.log(
       `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
@@ -441,6 +453,7 @@ export class LgpdService {
         where: { personId: { in: personIds } },
       });
       const attendances = await tx.eventAttendance.deleteMany({ where: { personId: { in: personIds } } });
+      const lecturerProfiles = await tx.lecturerProfile.deleteMany({ where: { personId: { in: personIds } } });
       const lecturers = await tx.eventLecturer.deleteMany({ where: { personId: { in: personIds } } });
       const prizeDrawManualEntries = await tx.prizeDrawManualEntry.deleteMany({
         where: { personId: { in: personIds } },
@@ -556,6 +569,7 @@ export class LgpdService {
           majorEventSubscriptions.count +
           attendances.count +
           lecturers.count +
+          lecturerProfiles.count +
           prizeDrawManualEntries.count +
           prizeDrawWeightOverrides.count +
           prizeDrawExcludedPeople.count +
@@ -576,6 +590,7 @@ export class LgpdService {
       };
     });
 
+    await Promise.all(personIds.map((personId) => this.typesenseSearch.deletePerson(personId)));
     await synchronizeAnonymizedAuditEntries(this.prisma, this.typesenseSearch, this.logger, anonymizedAuditEntryIds);
     try {
       await this.storageCleanup?.reconcile();

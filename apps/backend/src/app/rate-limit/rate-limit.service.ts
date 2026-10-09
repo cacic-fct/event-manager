@@ -40,6 +40,9 @@ local freeAttempts = tonumber(ARGV[3])
 local maxAttempts = tonumber(ARGV[4])
 local baseCooldownMs = tonumber(ARGV[5])
 local maxCooldownMs = tonumber(ARGV[6])
+local cooldownAfterFreeAttempts = ARGV[7] == "1"
+local slidingWindow = ARGV[8] == "1"
+local consume = ARGV[9] == "1"
 
 local state = redis.call('HMGET', key, 'attempts', 'windowResetMs', 'blockedUntilMs')
 local attempts = tonumber(state[1]) or 0
@@ -82,12 +85,19 @@ if maxAttempts > 0 and attempts >= maxAttempts then
   return {0, attempts, 0, resetSeconds, resetSeconds, 0}
 end
 
+if not consume then
+  return {1, attempts, remaining_attempts(attempts), 0, resetSeconds, 0}
+end
+
 attempts = attempts + 1
 
 local cooldownMs = 0
-if attempts > freeAttempts then
+if attempts > freeAttempts or (cooldownAfterFreeAttempts and attempts == freeAttempts) then
   cooldownMs = baseCooldownMs
   local exponent = attempts - freeAttempts - 1
+  if cooldownAfterFreeAttempts then
+    exponent = attempts - freeAttempts
+  end
   for _ = 1, exponent do
     cooldownMs = cooldownMs * 2
     if cooldownMs >= maxCooldownMs then
@@ -101,6 +111,11 @@ if attempts > freeAttempts then
   blockedUntilMs = now + cooldownMs
 else
   blockedUntilMs = 0
+end
+
+if slidingWindow then
+  windowResetMs = now + windowMs
+  resetSeconds = math.ceil(windowMs / 1000)
 end
 
 redis.call('HSET', key, 'attempts', attempts, 'windowResetMs', windowResetMs, 'blockedUntilMs', blockedUntilMs)
@@ -118,13 +133,21 @@ export class RateLimitService {
     private readonly config: ConfigService,
   ) {}
 
+  async status(input: RateLimitConsumeInput): Promise<RateLimitDecision> {
+    return this.evaluate(input, false);
+  }
+
   async consume(input: RateLimitConsumeInput): Promise<RateLimitDecision> {
+    return this.evaluate(input, true);
+  }
+
+  private async evaluate(input: RateLimitConsumeInput, consume: boolean): Promise<RateLimitDecision> {
     const disabled = this.isDisabled();
 
     try {
       const resourceParts = this.normalizeResourceParts(input.resourceParts);
-      const globalResult = await this.consumeRedis({ ...input, resourceParts: [] });
-      const resourceResult = resourceParts.length ? await this.consumeRedis({ ...input, resourceParts }) : undefined;
+      const globalResult = await this.consumeRedis({ ...input, resourceParts: [] }, consume);
+      const resourceResult = resourceParts.length ? await this.consumeRedis({ ...input, resourceParts }, consume) : undefined;
       const rawResult = this.combineDecisions(globalResult, resourceResult);
       const wouldBlock = !rawResult.allowed;
       if (disabled && wouldBlock) {
@@ -189,6 +212,7 @@ export class RateLimitService {
 
   private async consumeRedis(
     input: RateLimitConsumeInput,
+    consume: boolean,
   ): Promise<Omit<RateLimitDecision, 'disabled' | 'wouldBlock'>> {
     const now = Date.now();
     const policy = input.policy;
@@ -203,6 +227,9 @@ export class RateLimitService {
       (policy.maxAttempts ?? 0).toString(),
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
+      policy.cooldownAfterFreeAttempts ? '1' : '0',
+      policy.slidingWindow ? '1' : '0',
+      consume ? '1' : '0',
     );
 
     if (!Array.isArray(result) || result.length < 6) {
@@ -294,6 +321,7 @@ export class RateLimitService {
     response.setHeader('X-RateLimit-Reset', decision.resetSeconds.toString());
     response.setHeader('X-RateLimit-Policy', decision.policyName);
     response.setHeader('X-RateLimit-Cooldown-Seconds', decision.cooldownSeconds.toString());
+    response.setHeader('X-RateLimit-Cooldown-Until', (Date.now() + decision.cooldownSeconds * 1000).toString());
 
     if (decision.disabled) {
       response.setHeader('X-RateLimit-Disabled', 'true');
