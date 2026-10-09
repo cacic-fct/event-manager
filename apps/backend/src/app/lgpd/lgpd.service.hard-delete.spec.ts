@@ -27,12 +27,16 @@ describe('LgpdService hard delete', () => {
     try {
       await service.hardDelete({ userId: 'new-user', requestId: 'import-erasure' });
       expect(tx.externalImportRecord.deleteMany).toHaveBeenCalledWith({
-        where: { OR: [
-          { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '10' },
-          { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '11' },
-        ] },
+        where: { entityType: 'person', targetId: { in: ['source-person', 'target-person'] } },
       });
-      expect(tx.externalImportRecord.upsert).toHaveBeenCalledTimes(3);
+      expect(tx.externalImportRecord.upsert).toHaveBeenCalledTimes(1);
+      expect(tx.externalImportRecord.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({ entityType: 'person_suppression', targetId: 'suppressed' }),
+          expect.objectContaining({ entityType: 'person_suppression', targetId: 'suppressed' }),
+        ],
+        skipDuplicates: true,
+      });
       expect(tx.externalImportRecord.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
         tx.people.deleteMany.mock.invocationCallOrder[0],
       );

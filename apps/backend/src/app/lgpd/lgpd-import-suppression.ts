@@ -60,24 +60,24 @@ export async function suppressErasedImportPeople(tx: Prisma.TransactionClient, p
     });
   }
 
-  for (const record of records) {
-    const tokenWhere = {
+  const tokens = records.map((record) => ({
       sourceNamespace: record.sourceNamespace,
       entityType: SUPPRESSION_ENTITY_TYPE,
       sourceId: digest(secret, 'person', record.sourceNamespace, record.sourceId),
-    };
-    await tx.externalImportRecord.upsert({
-      where: { sourceNamespace_entityType_sourceId: tokenWhere },
-      create: { ...tokenWhere, targetId: 'suppressed' },
-      update: {},
+      targetId: 'suppressed',
+  }));
+  // Historical cleanup can include many source people; avoid one write per row.
+  for (let offset = 0; offset < tokens.length; offset += 1000) {
+    await tx.externalImportRecord.createMany({
+      data: tokens.slice(offset, offset + 1000),
+      skipDuplicates: true,
     });
   }
 
   const deleted = await tx.externalImportRecord.deleteMany({
     where: {
-      OR: records.map((record) => ({
-        sourceNamespace: record.sourceNamespace, entityType: 'person', sourceId: record.sourceId,
-      })),
+      entityType: 'person',
+      targetId: { in: [...new Set(records.map((record) => record.targetId))] },
     },
   });
   return deleted.count;

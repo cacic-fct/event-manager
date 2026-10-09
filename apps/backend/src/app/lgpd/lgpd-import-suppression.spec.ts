@@ -30,6 +30,10 @@ describe('erased import suppression', () => {
         records.push(create);
         return create;
       }),
+      createMany: jest.fn().mockImplementation(async ({ data }) => {
+        records.push(...data);
+        return { count: data.length };
+      }),
       deleteMany: jest.fn().mockImplementation(async () => {
         const index = records.findIndex((row) => row.entityType === 'person' && row.targetId === 'erased-person');
         records.splice(index, 1);
@@ -55,7 +59,7 @@ describe('erased import suppression', () => {
     expect(records).not.toContainEqual(expect.objectContaining({ entityType: 'person', sourceId: '10' }));
     expect(records).toContainEqual(expect.objectContaining({ entityType: 'person', targetId: 'other-person' }));
     expect(records).toContainEqual(expect.objectContaining({ entityType: 'event', sourceId: '10' }));
-    expect(delegate.upsert.mock.invocationCallOrder.at(-1)).toBeLessThan(delegate.deleteMany.mock.invocationCallOrder[0]);
+    expect(delegate.createMany.mock.invocationCallOrder[0]).toBeLessThan(delegate.deleteMany.mock.invocationCallOrder[0]);
   });
 
   it.each([undefined, 'short'])('rejects erasure without a sufficiently strong secret (%s)', async (value) => {
