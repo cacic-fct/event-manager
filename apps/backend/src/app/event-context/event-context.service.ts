@@ -359,40 +359,73 @@ export class EventContextService {
       this.groupHierarchyWhere(input, access),
       this.groupSearchWhere(query, access),
     );
-    const records = await this.prisma.eventGroup.findMany({
-      where,
-      select: {
-        ...GROUP_SELECT,
-        events: {
-          where: this.andEventWhere(
-            { deletedAt: null },
-            this.eventAccessWhere(access.events),
-            this.eventAudienceFilter(),
-            access.allowed.has(AdminEventContextKind.EVENT) ? null : { id: { in: [] } },
-          ),
-          select: { startDate: true },
-          orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
-          take: 1,
-        },
-      },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-      ...(query ? { skip, take } : {}),
+    const readableEvents = this.andEventWhere(
+      { deletedAt: null },
+      this.eventAccessWhere(access.events),
+      this.eventAudienceFilter(),
+      access.allowed.has(AdminEventContextKind.EVENT) ? null : { id: { in: [] } },
+    );
+    // Prisma cannot order groups by a relation's minimum date. Page the event
+    // aggregates first, then hydrate only the selected groups using the same access filters.
+    const datedGroups = query ? [] : await this.prisma.event.groupBy({
+      by: ['eventGroupId'],
+      where: this.andEventWhere(readableEvents, {
+        eventGroupId: { not: null },
+        eventGroup: { is: where },
+      }),
+      _min: { startDate: true },
+      orderBy: [{ _min: { startDate: 'desc' } }, { eventGroupId: 'asc' }],
+      skip,
+      take,
     });
+    const datedIds = datedGroups.flatMap((group) => group.eventGroupId ? [group.eventGroupId] : []);
+    let records: Prisma.EventGroupGetPayload<{ select: typeof GROUP_SELECT }>[] = [];
+    if (query) {
+      records = await this.prisma.eventGroup.findMany({
+        where,
+        select: GROUP_SELECT,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        skip,
+        take,
+      });
+    } else if (datedIds.length) {
+      records = await this.prisma.eventGroup.findMany({
+        where: this.andGroupWhere(where, { id: { in: datedIds } }),
+        select: GROUP_SELECT,
+        take,
+      });
+    }
+    const dates = new Map(datedGroups.map((group) => [group.eventGroupId, group._min.startDate]));
+    if (!query && datedGroups.length < take) {
+      const datedCount = skip > 0
+        ? await this.prisma.eventGroup.count({
+            where: this.andGroupWhere(where, { events: { some: readableEvents } }),
+          })
+        : 0;
+      const undated = await this.prisma.eventGroup.findMany({
+        where: this.andGroupWhere(where, { events: { none: readableEvents } }),
+        select: GROUP_SELECT,
+        orderBy: { id: 'asc' },
+        skip: Math.max(0, skip - datedCount),
+        take: take - datedGroups.length,
+      });
+      records.push(...undated);
+    }
     const nodes: InternalNode[] = records.map((group) => ({
       kind: AdminEventContextKind.EVENT_GROUP,
       id: group.id,
       name: group.name,
       emoji: group.emoji,
-      startDate: query ? null : group.events[0]?.startDate ?? null,
+      startDate: query ? null : dates.get(group.id) ?? null,
       endDate: null,
       eventType: null,
       locationDescription: null,
       publicationState: null,
       majorEventId: group.majorEventId,
       eventGroupId: null,
-      sortDate: query ? group.updatedAt : group.events[0]?.startDate ?? null,
+      sortDate: query ? group.updatedAt : dates.get(group.id) ?? null,
     }));
-    return query ? nodes : nodes.sort((left, right) => this.compareNodes(left, right, false)).slice(skip, skip + take);
+    return query ? nodes : nodes.sort((left, right) => this.compareNodes(left, right, false));
   }
 
   private async listMajorEvents(input: PageInput, query: string, access: Access, skip: number, take: number) {
@@ -496,7 +529,18 @@ export class EventContextService {
     if (input.query?.trim()) return null;
     return {
       OR: [
-        { majorEventId: null },
+        {
+          majorEventId: null,
+          events: { none: {
+            deletedAt: null,
+            majorEventId: { not: null },
+            majorEvent: { is: this.andMajorWhere(
+              { deletedAt: null },
+              this.idAccessWhere(access.majors),
+              this.majorAudienceFilter(),
+            ) },
+          } },
+        },
         { majorEventId: { not: null }, majorEvent: { is: this.inaccessibleMajorWhere(access) } },
       ],
     };
