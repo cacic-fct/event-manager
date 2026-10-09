@@ -28,7 +28,11 @@ import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
-import { omitPublicationAuditFields, pickPublicationAuditFields } from '../publishing/publishing-audit';
+import {
+  omitPublicationAuditFields,
+  pickPublicationAuditFields,
+  PUBLICATION_LIFECYCLE_AUDIT_METADATA,
+} from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
 import {
@@ -351,33 +355,38 @@ export class MajorEventsResolver {
   ) {
     await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'edit');
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
-    const majorEvent = await this.prisma.majorEvent.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      select: this.getMajorEventSelect(paymentInfoTableExists),
-    });
-
-    if (!majorEvent) {
-      throw new NotFoundException(`Major event ${id} was not found.`);
-    }
-
-    const hasExistingPaymentInfo =
-      paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
-
     const { publishAfterUpdate = false, ...majorEventInput } = input;
-    const data = {
-      ...this.buildMajorEventUpdateData(
-        majorEventInput,
-        majorEvent.isPaymentRequired,
-        hasExistingPaymentInfo,
-        paymentInfoTableExists,
-      ),
-      ...this.buildPublicationUpdate(majorEvent, this.getUser(context), publishAfterUpdate),
-    };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT "id" FROM "major_events"
+        WHERE "id" = ${id} AND "deletedAt" IS NULL
+        FOR UPDATE
+      `;
+      const majorEvent = await tx.majorEvent.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
+
+      if (!majorEvent) {
+        throw new NotFoundException(`Major event ${id} was not found.`);
+      }
+
+      const hasExistingPaymentInfo =
+        paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
+      const data = {
+        ...this.buildMajorEventUpdateData(
+          majorEventInput,
+          majorEvent.isPaymentRequired,
+          hasExistingPaymentInfo,
+          paymentInfoTableExists,
+        ),
+        ...this.buildPublicationUpdate(majorEvent, this.getUser(context), publishAfterUpdate),
+      };
+
       await this.sportsBackingLifecycle.assertMajorEventUpdateAllowed(tx, id, input);
       const persisted = await tx.majorEvent.update({
         where: {
@@ -440,6 +449,7 @@ export class MajorEventsResolver {
             after: pickPublicationAuditFields(updated),
             scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
             summary: 'Conteúdo publicado.',
+            metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
             force: true,
           },

@@ -15,6 +15,7 @@ import { mapOfflineSubmissionForExport, mapPersonForExport, selectManyForExport 
 import { anonymizeOfflineAttendanceSubmissions, buildOfflineSubmissionSubjectWhere } from './lgpd-offline-submissions';
 import { findReceiptObjectKeys } from './lgpd-receipts';
 import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
+import { suppressErasedImportPeople } from './lgpd-import-suppression';
 import {
   LGPD_ACCOUNT_USER_MERGE_SELECT,
   LGPD_ACCOUNT_USER_SELECT,
@@ -412,12 +413,12 @@ export class LgpdService {
   async hardDelete(input: { userId: string; email?: string; requestId: string }) {
     const dataSubject = await resolveDataSubject(this.prisma, input);
     const { people: dataSubjectPeople, personIds, userIds } = dataSubject;
-    if (personIds.length === 0 && userIds.length === 0) {
-      return { success: true, peopleDeleted: 0, usersDeleted: 0, recordsDeleted: 0 };
-    }
-
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      const importRecords = await suppressErasedImportPeople(tx, personIds);
+      if (personIds.length === 0 && userIds.length === 0) {
+        return { anonymizedAuditEntryIds: [], peopleDeleted: 0, usersDeleted: 0, recordsDeleted: importRecords };
+      }
       await this.storageCleanup?.enqueueInTransaction(tx, input.requestId, receiptObjectKeys);
       const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
       const anonymizedAuditEntryIds = await anonymizeAuditEntries(
@@ -586,7 +587,8 @@ export class LgpdService {
           sportsPlayerApplicationCategories.count +
           sportsPlayerApplications.count +
           offlineAttendanceSubmissions +
-          eventDrafts,
+          eventDrafts +
+          importRecords,
       };
     });
 

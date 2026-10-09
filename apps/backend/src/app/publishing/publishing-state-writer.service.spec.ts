@@ -3,6 +3,7 @@ import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { PUBLICATION_LIFECYCLE_AUDIT_METADATA } from './publishing-audit';
 import { PublicationStateWriterService } from './publishing-state-writer.service';
 
 describe('PublicationStateWriterService', () => {
@@ -131,6 +132,7 @@ describe('PublicationStateWriterService', () => {
           eventGroupId: 'group-1',
         },
         summary: 'Conteúdo publicado.',
+        metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
         squashWindowMs: 0,
       }),
       tx,
@@ -303,6 +305,7 @@ describe('PublicationStateWriterService', () => {
         before: previous,
         after: updated,
         summary: 'Conteúdo publicado.',
+        metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
       }),
       tx,
     );

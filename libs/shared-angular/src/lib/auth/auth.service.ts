@@ -22,6 +22,16 @@ import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 import { SilentSsoService } from './silent-sso.service';
 
+type LogoutResponse = {
+  success: boolean;
+  globalLogoutComplete: boolean;
+  logoutUrl?: string;
+};
+
+type CookieExpiredLogoutFailure = {
+  logoutUrl?: string;
+};
+
 @Service()
 export class AuthService {
   private readonly accountLoginUrl = 'https://account.cacic.com.br/api/auth/login';
@@ -157,14 +167,12 @@ export class AuthService {
 
       try {
         const { logoutUrl } = await firstValueFrom(
-          this.http.post<{ logoutUrl?: string }>('/api/auth/logout', {
+          this.http.post<LogoutResponse>('/api/auth/logout', {
             postLogoutRedirectUri,
           }),
         );
 
-        this.clearSession();
-        this.markPostLogoutRedirect();
-        this.clearAccountTrackingCookiesBestEffort();
+        this.completeLocalLogout();
 
         if (logoutUrl) {
           window.location.assign(logoutUrl);
@@ -175,6 +183,13 @@ export class AuthService {
         return;
       } catch (error) {
         this.logUnexpectedAuthError('Logout failed', error);
+        const cookieExpiredFailure = this.readCookieExpiredLogoutFailure(error);
+        if (cookieExpiredFailure) {
+          this.completeLocalLogout();
+          window.location.assign(cookieExpiredFailure.logoutUrl || postLogoutRedirectUri);
+          return;
+        }
+
         if (refreshExpiresAt !== null) {
           this.scheduleRefresh(refreshExpiresAt);
         }
@@ -476,6 +491,27 @@ export class AuthService {
 
   private clearAccountTrackingCookiesBestEffort(): void {
     this.runAccountTrackingSyncBestEffort(() => this.accountPrivacy.clearTrackingCookies());
+  }
+
+  private completeLocalLogout(): void {
+    this.clearSession();
+    this.markPostLogoutRedirect();
+    this.clearAccountTrackingCookiesBestEffort();
+  }
+
+  private readCookieExpiredLogoutFailure(error: unknown): CookieExpiredLogoutFailure | null {
+    if (!this.isHttpError(error) || !error.error || typeof error.error !== 'object' || Array.isArray(error.error)) {
+      return null;
+    }
+
+    const payload = error.error as Record<string, unknown>;
+    if (payload['cookieExpired'] !== true) {
+      return null;
+    }
+
+    return {
+      logoutUrl: typeof payload['logoutUrl'] === 'string' ? payload['logoutUrl'] : undefined,
+    };
   }
 
   private runAccountTrackingSyncBestEffort(createRequest: () => Observable<unknown>): void {

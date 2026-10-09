@@ -26,6 +26,7 @@ import {
   provideCacicTrustedTypes,
   trustedExternalScriptUrl,
 } from '../security/trusted-types';
+import { CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT } from './replay-development-mode.token';
 import { filterCacicSentryLog } from './sentry-log-filter';
 
 export type CacicObservabilityConfig = {
@@ -54,9 +55,9 @@ export type CacicObservabilityConfig = {
 const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
 const DEFAULT_UMAMI_ANALYTICS_SRC = 'https://a.cacic.com.br/b.js';
 const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.com.br/recorder.js';
-const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
-const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
-const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
+const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 0.15;
+const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'strict';
+const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 300_000;
 
 @Service({ autoProvided: false })
 class CacicSentryErrorHandler implements ErrorHandler {
@@ -77,7 +78,11 @@ class CacicObservabilityConsentService {
   }
 
   isReplayEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
-    return this.evaluate(() => config.analytics.replay?.isEnabled(user) ?? this.isPerformanceEnabled(config, user));
+    try {
+      return this.evaluate(() => config.analytics.replay?.isEnabled(user) ?? false);
+    } catch {
+      return false;
+    }
   }
 
   isGlitchtipEnabled(config: CacicObservabilityConfig, user: AuthenticatedUser | null): boolean {
@@ -104,17 +109,19 @@ class CacicUmamiReplayScriptLoader {
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly isDevelopment = inject(CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   start(config: CacicObservabilityConfig): void {
-    if (!this.isBrowser || isDevMode() || !config.analytics.websiteId) {
+    if (!this.isBrowser || this.isDevelopment || !config.analytics.websiteId) {
       return;
     }
 
     effect(
       () => {
         if (!this.auth.initialized()) {
+          this.removeScript();
           return;
         }
 

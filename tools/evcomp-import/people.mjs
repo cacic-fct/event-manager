@@ -1,5 +1,6 @@
 import { createUuidV7, normalizeAcademicId, normalizeEmail, resolvePerson } from './core.mjs';
 import { getImportedTarget, recordImportedTarget } from './provenance.mjs';
+import { loadSuppressedPeople, suppressionDigest } from './suppression.mjs';
 
 const IMPORT_ENTITY_TYPE = 'person';
 
@@ -12,10 +13,15 @@ export async function resolveImportPeople(
   target,
   sourcePeople,
   explicitMappings,
-  { apply = false, sourceNamespace = 'evcomp', actorId = null } = {},
+  { apply = false, sourceNamespace = 'evcomp', actorId = null,
+    suppressionSecret = process.env.LGPD_IMPORT_SUPPRESSION_SECRET } = {},
 ) {
   const uniqueSourcePeople = uniquePeopleBySourceId(sourcePeople);
   const normalizedNamespace = normalizeSourceNamespace(sourceNamespace);
+  const suppressionKey = suppressionSecret?.trim();
+  const suppressedPeople = uniqueSourcePeople.length > 0
+    ? await loadSuppressedPeople(target, normalizedNamespace, suppressionKey)
+    : new Set();
   const explicitPersonMappings = normalizeMappings(explicitMappings);
   const provenanceBySourceId = new Map();
   const provenanceTargetIds = new Set();
@@ -47,6 +53,12 @@ export async function resolveImportPeople(
   for (const sourcePerson of uniqueSourcePeople) {
     const sourceId = sourceIdOf(sourcePerson);
     const sourceKey = sourceId ?? String(sourcePerson.sourceId);
+    if (sourceId != null && suppressedPeople.size > 0 &&
+      suppressedPeople.has(suppressionDigest(suppressionKey, 'person', normalizedNamespace, sourceId))) {
+      resolutions.set(sourceKey, { status: 'unmatched', reason: 'erased_person', candidates: [] });
+      counters.unresolved += 1;
+      continue;
+    }
     const explicitTargetId = explicitPersonMappings.get(sourceKey);
     let resolution;
 

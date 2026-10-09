@@ -30,7 +30,11 @@ import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/even
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
-import { omitPublicationAuditFields, pickPublicationAuditFields } from '../publishing/publishing-audit';
+import {
+  omitPublicationAuditFields,
+  pickPublicationAuditFields,
+  PUBLICATION_LIFECYCLE_AUDIT_METADATA,
+} from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
@@ -496,6 +500,11 @@ export class EventsResolver {
     const { publishAfterUpdate = false, ...eventInput } = input;
     const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
     const event = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT "id" FROM "events"
+        WHERE "id" = ${id} AND "deletedAt" IS NULL
+        FOR UPDATE
+      `;
       const previousEvent = await tx.event.findFirst({
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
@@ -571,6 +580,7 @@ export class EventsResolver {
               eventGroupId: updatedAudit.eventGroupId,
             },
             summary: 'Conteúdo publicado.',
+            metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
             force: true,
           },

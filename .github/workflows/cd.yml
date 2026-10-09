@@ -241,6 +241,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
 
     if: needs.detect-affected.outputs.has_apps == 'true'
 
@@ -275,6 +277,7 @@ jobs:
             type=sha,prefix=
 
       - name: Build and push image
+        id: push
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -286,6 +289,14 @@ jobs:
             APP_VERSION=${{ needs.prepare-release.outputs.version }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+      - name: Generate image provenance attestation
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/cacic-fct/event-manager/${{ matrix.app }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
 
   release:
     name: Create GitHub release

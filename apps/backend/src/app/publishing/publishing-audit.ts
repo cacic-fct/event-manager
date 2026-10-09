@@ -1,3 +1,5 @@
+import { AuditLogMetadataCategory } from '../audit-log/audit-log.types';
+
 const PUBLICATION_AUDIT_FIELDS = [
   'publicationState',
   'scheduledPublishAt',
@@ -6,6 +8,10 @@ const PUBLICATION_AUDIT_FIELDS = [
   'publicationScheduledBy',
   'publicationUpdatedBy',
 ] as const;
+
+export const PUBLICATION_LIFECYCLE_AUDIT_METADATA = {
+  category: AuditLogMetadataCategory.PUBLICATION_LIFECYCLE,
+} as const;
 
 /**
  * Keeps publication lifecycle bookkeeping out of content-edit audit entries.
