@@ -31,6 +31,12 @@ export function normalizeAudienceInput(input: AudienceInput, previous?: { audien
   return { audience, audienceCourseCodes: audience === EventAudience.COURSE_ONLY ? [...new Set(courses)] : [] };
 }
 
+export const AUDIENCE_AUDIT_SELECT = {
+  audience: true,
+  audienceCourseCodes: true,
+  audienceInvitations: { select: { personId: true } },
+} as const;
+
 export const AUDIENCE_ADMIN_SELECT = {
   audience: true,
   audienceCourseCodes: true,

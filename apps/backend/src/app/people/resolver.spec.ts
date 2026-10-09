@@ -559,6 +559,9 @@ describe('PeopleResolver', () => {
       prisma,
     );
     expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('person-1');
+    for (const invitations of [prisma.eventAudienceInvitation, prisma.eventGroupAudienceInvitation, prisma.majorEventAudienceInvitation]) {
+      expect(invitations.deleteMany).toHaveBeenCalledWith({ where: { personId: 'person-1' } });
+    }
   });
 });
 
@@ -628,6 +631,9 @@ function createPrisma() {
       findUniqueOrThrow: jest.fn().mockResolvedValue(person()),
       update: jest.fn().mockResolvedValue(person({ deletedAt: new Date('2026-06-21T12:00:00.000Z') })),
     },
+    eventAudienceInvitation: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    eventGroupAudienceInvitation: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    majorEventAudienceInvitation: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     certificate: linkedModel(),
     eventSubscription: linkedModel(),
     eventGroupSubscription: linkedModel(),

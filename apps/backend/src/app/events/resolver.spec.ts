@@ -277,7 +277,7 @@ describe('EventsResolver', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(previousAudit),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit).mockResolvedValueOnce(updatedDetail),
       },
       eventGroup: {
         updateMany: jest.fn(),
@@ -387,7 +387,7 @@ describe('EventsResolver', () => {
       tx,
     );
     expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
-    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceCategories.refreshForEvent).not.toHaveBeenCalled();
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 
