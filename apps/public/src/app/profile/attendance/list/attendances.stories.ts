@@ -33,6 +33,7 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
               : args.state === 'error'
                 ? throwError(() => new Error('Não foi possível carregar suas inscrições.'))
                 : of(feed),
+          getCertificateArchiveCooldown: () => of({ cooldownSeconds: args.certificateArchiveCooldownSeconds }),
           downloadCurrentUserCertificatesArchive: () =>
             of({
               blob: new Blob(['storybook']),
@@ -145,8 +146,7 @@ export const CertificateDownloadCooldown: Story = {
   args: { certificateArchiveCooldownSeconds: 15 * 60 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Baixar todos os certificados' }));
-    await expect(await canvas.findByRole('button', { name: /Disponível em 15:00/ })).toBeDisabled();
+    await expect(await canvas.findByRole('button', { name: /Baixar certificados em/ })).toHaveAttribute('aria-disabled', 'true');
   },
 };
 

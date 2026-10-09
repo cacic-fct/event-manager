@@ -5,6 +5,8 @@ export interface RateLimitPolicy {
   readonly baseCooldownMs: number;
   readonly maxCooldownMs: number;
   readonly maxAttempts?: number;
+  readonly cooldownAfterFreeAttempts?: boolean;
+  readonly slidingWindow?: boolean;
 }
 
 const minute = 60_000;
@@ -89,11 +91,12 @@ export const RATE_LIMIT_POLICIES = {
   },
   currentUserCertificateArchive: {
     name: 'current-user-certificate-archive',
-    windowMs: 15 * minute,
-    freeAttempts: 2,
-    baseCooldownMs: 15 * minute,
-    maxCooldownMs: 15 * minute,
-    maxAttempts: 2,
+    windowMs: 24 * 60 * minute,
+    freeAttempts: 3,
+    baseCooldownMs: 5 * minute,
+    maxCooldownMs: 2 * 60 * minute,
+    cooldownAfterFreeAttempts: true,
+    slidingWindow: true,
   },
   publicEvents: {
     name: 'public-events',
