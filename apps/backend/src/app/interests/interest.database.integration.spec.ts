@@ -46,7 +46,11 @@ describeDatabase('event interest with PostgreSQL and real subscription services'
     const subscriptions = new CurrentUserEventSubscriptionService(prisma, new CurrentUserEventMapperService(), categories);
     const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) } as unknown as AuthorizationPolicyService;
     interests = new EventInterestsService(prisma, authorization, subscriptions, workspace, frozen);
-    certificates = new CertificateEligibilityService(prisma, {} as CertificateSportsEligibility);
+    certificates = new CertificateEligibilityService(
+      prisma,
+      {} as CertificateSportsEligibility,
+      { getEventInvitationFacts: async () => new Map() } as never,
+    );
   });
 
   beforeEach(async () => {

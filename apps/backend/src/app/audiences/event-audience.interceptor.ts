@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor, UnauthorizedException } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
@@ -36,7 +36,9 @@ export class EventAudienceInterceptor implements NestInterceptor {
     // Shared offline caches explicitly request anonymous content. A session cookie
     // may exist before the frontend has finished restoring its authentication state.
     const anonymousOnly = kind === 'graphql' && isPublic && request.headers['x-event-audience'] === 'public';
-    const basePrincipal = anonymousOnly ? ANONYMOUS_AUDIENCE : await (request.audiencePrincipal ??= this.resolvePrincipal(request));
+    const basePrincipal = anonymousOnly
+      ? ANONYMOUS_AUDIENCE
+      : await (request.audiencePrincipal ??= this.resolvePrincipal(request, isPublic));
     const readOperation = kind === 'graphql'
       ? GqlExecutionContext.create(context).getInfo<{ operation?: { operation?: string } }>()?.operation?.operation === 'query'
       : request.method === 'GET';
@@ -51,9 +53,14 @@ export class EventAudienceInterceptor implements NestInterceptor {
     return new Observable((subscriber) => audienceContext.run(principal, () => next.handle().subscribe(subscriber)));
   }
 
-  private async resolvePrincipal(request: AudienceRequest): Promise<EventAudiencePrincipal> {
+  private async resolvePrincipal(request: AudienceRequest, isPublic: boolean): Promise<EventAudiencePrincipal> {
     if (!request.user && (request.headers.authorization || readAuthCookie(request, AUTH_SESSION_COOKIE_NAME))) {
-      await authenticateHttpRequest(request, this.auth);
+      try {
+        await authenticateHttpRequest(request, this.auth);
+      } catch (error) {
+        if (!isPublic || !(error instanceof UnauthorizedException)) throw error;
+        return ANONYMOUS_AUDIENCE;
+      }
     }
     return this.audiences.principalForUser(request.user);
   }

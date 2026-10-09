@@ -101,11 +101,12 @@ describe('CertificateConfigsService', () => {
       );
     });
 
-    it('rejects unsupported invitation criteria before creating a configuration', async () => {
+    it('stores invited-only certificate eligibility', async () => {
       const { prisma, service, input } = setup();
-      await expect(service.createConfig({ ...input, attendeeEligibility: AttendanceEligibility.INVITED_ONLY }))
-        .rejects.toThrow('Invitation-based certificate eligibility is not supported.');
-      expect(prisma.certificateConfig.create).not.toHaveBeenCalled();
+      await service.createConfig({ ...input, attendeeEligibility: AttendanceEligibility.INVITED_ONLY });
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attendeeEligibility: AttendanceEligibility.INVITED_ONLY }) }),
+      );
     });
 
     it('persists multiple tiers and removes duplicate selections', async () => {

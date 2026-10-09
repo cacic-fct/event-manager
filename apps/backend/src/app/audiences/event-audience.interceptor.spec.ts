@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { ExecutionContextHost } from '@nestjs/core/helpers/execution-context-host';
 import { defer, firstValueFrom, of } from 'rxjs';
 import { IS_PUBLIC_KEY, AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
@@ -81,12 +82,29 @@ describe('event audience request isolation', () => {
     expect(authorization.assertAudienceForPermissions).toHaveBeenCalledWith([], {}, ANONYMOUS_AUDIENCE);
   });
 
-  it('rejects invalid supplied credentials before entering an audience scope', async () => {
-    const { interceptor, auth } = setup();
-    auth.authenticateSession.mockRejectedValueOnce(new Error('invalid credentials'));
+  it('falls back to anonymous audience on invalid optional credentials for public routes', async () => {
+    const { interceptor, auth, authorization } = setup();
+    auth.authenticateSession.mockRejectedValueOnce(new UnauthorizedException('invalid credentials'));
+    const handler = { handle: jest.fn(() => defer(() => of(audienceContext.getStore()))) };
+    const output = await interceptor.intercept(graphqlContext(), handler);
+    expect(await firstValueFrom(output)).toEqual(ANONYMOUS_AUDIENCE);
+    expect(handler.handle).toHaveBeenCalled();
+    expect(authorization.assertAudienceForPermissions).toHaveBeenCalledWith([], {}, ANONYMOUS_AUDIENCE);
+  });
+
+  it('rejects invalid supplied credentials on protected routes', async () => {
+    const { interceptor, auth } = setup(false);
+    auth.authenticateSession.mockRejectedValueOnce(new UnauthorizedException('invalid credentials'));
     const handler = { handle: jest.fn(() => of('content')) };
     await expect(interceptor.intercept(graphqlContext(), handler)).rejects.toThrow('invalid credentials');
     expect(handler.handle).not.toHaveBeenCalled();
+  });
+
+  it('propagates non-authentication failures while resolving optional credentials', async () => {
+    const { interceptor, auth } = setup();
+    auth.authenticateSession.mockRejectedValueOnce(new Error('key service unavailable'));
+    await expect(interceptor.intercept(graphqlContext(), { handle: () => of('content') }))
+      .rejects.toThrow('key service unavailable');
   });
 
   it('never applies historical access to mutations even if the handler is marked', async () => {
