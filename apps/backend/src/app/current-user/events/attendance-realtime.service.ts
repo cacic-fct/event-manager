@@ -46,6 +46,7 @@ import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../../audiences/audience-context';
+import { AudienceInvitationService, invitationFactForAttendance } from '../../audiences/audience-invitation.service';
 import {
   eventAttendanceEligibility,
   isApprovedAttendance,
@@ -148,6 +149,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     private readonly mapper: CurrentUserEventMapperService,
     private readonly prisma: PrismaService,
     private readonly publicEvents: PublicEventsResolver,
+    private readonly audienceInvitations: AudienceInvitationService,
   ) {}
 
   onModuleDestroy(): void {
@@ -405,6 +407,8 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
       majorEventSubscriptions.map((subscription) => [subscription.majorEventId, subscription]),
     );
 
+    const invitationFacts = await this.audienceInvitations.getEventInvitationFacts(events, [personId]);
+
     return events.flatMap((event) => {
       const policy = eventAttendanceEligibility(event);
       const majorSubscription = event.majorEventId
@@ -421,7 +425,11 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         event,
         registrationEvidence,
       );
-      return isAttendanceEligible(policy, { registered, approved })
+      return isAttendanceEligible(policy, {
+        registered,
+        approved,
+        invited: invitationFactForAttendance(event, invitationFacts.get(`${personId}:${event.id}`)),
+      })
         ? [
             {
               eventId: event.id,

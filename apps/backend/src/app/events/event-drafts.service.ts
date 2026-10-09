@@ -24,6 +24,7 @@ import { syncEventGroupMajorEvent } from './event-group-major-event';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
+import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -414,7 +415,11 @@ export class EventDraftsService {
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      assertAudiencePublicationReady(updatedAudit);
+      const publicationTarget = await tx.event.findUniqueOrThrow({
+        where: { id: draft.sourceEventId, deletedAt: null },
+        select: PUBLICATION_EVENT_SELECT,
+      });
+      assertAudiencePublicationReady(publicationTarget);
       await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {

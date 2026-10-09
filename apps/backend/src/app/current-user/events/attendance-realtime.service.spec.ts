@@ -155,6 +155,33 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     }));
   });
 
+  it('lists invited-only events when the person is invited', async () => {
+    const event = {
+      id: 'invited-event',
+      majorEventId: null,
+      eventGroupId: null,
+      attendanceEligibility: 'INVITED_ONLY',
+      autoSubscribe: false,
+      eventGroup: null,
+      majorEvent: null,
+    };
+    const mappedEvent = { id: event.id };
+    const invitationFacts = new Map([
+      [`person-1:${event.id}`, { event: true, eventGroup: false, majorEvent: false }],
+    ]);
+    const { mapper, prisma, service, audienceInvitations } = createService({
+      getEventInvitationFacts: jest.fn().mockResolvedValue(invitationFacts),
+    });
+    prisma.event.findMany.mockResolvedValueOnce([event]);
+    prisma.eventSubscription.findMany.mockResolvedValueOnce([]);
+    mapper.mapPublicEvent.mockReturnValueOnce(mappedEvent);
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([
+      { eventId: event.id, event: mappedEvent },
+    ]);
+    expect(audienceInvitations.getEventInvitationFacts).toHaveBeenCalledWith([event], ['person-1']);
+  });
+
   it('lists a pending selected major-event activity for REGISTERED_ONLY without a child subscription row', async () => {
     const { mapper, prisma, service } = createService();
     const event = {
@@ -527,7 +554,7 @@ describe('CurrentUserRealtimeEventsController', () => {
   });
 });
 
-function createService() {
+function createService(audienceInvitations = { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) }) {
   const dependencies = {
     auth: {
       authenticateSession: jest.fn(),
@@ -561,10 +588,12 @@ function createService() {
     dependencies.mapper as never,
     dependencies.prisma as never,
     dependencies.publicEvents as never,
+    audienceInvitations as never,
   );
 
   return {
     ...dependencies,
+    audienceInvitations,
     service,
   };
 }

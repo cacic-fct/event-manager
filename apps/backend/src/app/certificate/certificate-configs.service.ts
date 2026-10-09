@@ -883,9 +883,6 @@ export class CertificateConfigsService {
   private normalizeAttendeeEligibility(
     requested: AttendanceEligibility | null | undefined,
   ): AttendanceEligibility | null {
-    if (requested === AttendanceEligibility.INVITED_ONLY) {
-      throw new BadRequestException('Invitation-based certificate eligibility is not supported.');
-    }
     return requested === AttendanceEligibility.ANYONE ? null : requested ?? null;
   }
 

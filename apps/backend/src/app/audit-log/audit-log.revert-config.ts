@@ -18,6 +18,7 @@ const EVENT_MUTABLE_FIELDS = [
   'majorEventId',
   'eventGroupId',
   'allowSubscription',
+  'interestEnabled',
   'requiresImageLicenseAgreement',
   'subscriptionStartDate',
   'subscriptionEndDate',

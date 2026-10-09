@@ -108,6 +108,118 @@ describe('EventInterestsService', () => {
     expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
   });
 
+  it('keeps a major-event group interest actionable while only some activities are selected', async () => {
+    const prisma = createPrisma();
+    prisma.eventInterest.findMany.mockResolvedValue([interestRecord({ eventGroupId: 'group-1' })]);
+    prisma.eventGroup.findUnique.mockResolvedValue({
+      majorEventId: 'major-1',
+      events: [
+        { id: 'event-1', majorEventId: 'major-1', autoSubscribe: false },
+        { id: 'event-2', majorEventId: 'major-1', autoSubscribe: false },
+      ],
+    });
+    prisma.majorEventSubscriptionEventSelection.findMany.mockResolvedValue([
+      { eventId: 'event-1', subscription: { personId: 'person-1' } },
+    ]);
+
+    const rows = await serviceFor(prisma).listAdminInterests(
+      { sub: 'admin-1' } as never,
+      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
+    );
+
+    expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: false }));
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2'] } }),
+    }));
+    expect(prisma.eventGroup.findUnique).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({
+        events: expect.objectContaining({ where: { deletedAt: null, sportsMatch: { is: null } } }),
+      }),
+    }));
+  });
+
+  it('counts complete event-group coverage from group subscriptions, selected events, and auto-subscription', async () => {
+    const prisma = createPrisma();
+    prisma.eventInterest.findMany.mockResolvedValue([interestRecord({ eventGroupId: 'group-1' })]);
+    prisma.eventGroup.findUnique.mockResolvedValue({
+      majorEventId: 'major-1',
+      events: [
+        { id: 'event-1', majorEventId: 'major-1', autoSubscribe: false },
+        { id: 'event-2', majorEventId: 'major-1', autoSubscribe: false },
+        { id: 'automatic-event', majorEventId: 'major-1', autoSubscribe: true },
+      ],
+    });
+    prisma.majorEventSubscriptionEventSelection.findMany.mockResolvedValue([
+      { eventId: 'event-1', subscription: { personId: 'person-1' } },
+      { eventId: 'event-2', subscription: { personId: 'person-1' } },
+    ]);
+    prisma.majorEventSubscription.findMany.mockResolvedValue([
+      { personId: 'person-1', majorEventId: 'major-1' },
+    ]);
+
+    const rows = await serviceFor(prisma).listAdminInterests(
+      { sub: 'admin-1' } as never,
+      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
+    );
+
+    expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2', 'automatic-event'] } }),
+    }));
+  });
+
+  it('counts a standalone event-group subscription as full group coverage', async () => {
+    const prisma = createPrisma();
+    prisma.eventInterest.findMany.mockResolvedValue([interestRecord({ eventGroupId: 'group-1' })]);
+    prisma.eventGroup.findUnique.mockResolvedValue({
+      majorEventId: null,
+      events: [{ id: 'event-1', majorEventId: null, autoSubscribe: false }],
+    });
+    prisma.eventGroupSubscription.findMany.mockResolvedValue([{ personId: 'person-1' }]);
+
+    const rows = await serviceFor(prisma).listAdminInterests(
+      { sub: 'admin-1' } as never,
+      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
+    );
+
+    expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
+  });
+
+  it('batches subscription enrichment for the current user interest list', async () => {
+    const prisma = createPrisma();
+    prisma.eventInterest.findMany.mockResolvedValue([
+      { ...interestRecord({ eventId: 'event-1' }), id: 'interest-1' },
+      { ...interestRecord({ eventId: 'event-2' }), id: 'interest-2' },
+      { ...interestRecord({ eventId: 'event-3' }), id: 'interest-3' },
+      { ...interestRecord({ eventGroupId: 'group-1' }), id: 'interest-4' },
+      { ...interestRecord({ majorEventId: 'major-1' }), id: 'interest-5' },
+    ]);
+    prisma.event.findMany.mockResolvedValue([
+      { id: 'event-1', eventGroupId: 'group-1', majorEventId: 'major-1', autoSubscribe: false },
+      { id: 'event-2', eventGroupId: 'group-1', majorEventId: 'major-1', autoSubscribe: false },
+      { id: 'event-3', eventGroupId: null, majorEventId: 'major-2', autoSubscribe: true },
+      { id: 'group-event-1', eventGroupId: 'group-1', majorEventId: 'major-1', autoSubscribe: false },
+    ]);
+    prisma.majorEventSubscription.findMany.mockResolvedValue([
+      { majorEventId: 'major-1' },
+      { majorEventId: 'major-2' },
+    ]);
+    prisma.eventSubscription.findMany.mockResolvedValue([{ eventId: 'event-2' }]);
+    prisma.eventGroupSubscription.findMany.mockResolvedValue([{ eventGroupId: 'group-1' }]);
+
+    const rows = await serviceFor(prisma).listCurrentUserInterests('person-1');
+
+    expect(rows.map(({ isSubscribed }) => isSubscribed)).toEqual([false, true, true, true, true]);
+    expect(prisma.event.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.eventGroupSubscription.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.majorEventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(prisma.eventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(prisma.eventGroupSubscription.findFirst).not.toHaveBeenCalled();
+  });
+
   it('treats a selected major-event activity as subscribed without treating other activities as subscribed', async () => {
     const prisma = createPrisma();
     prisma.event.findFirst.mockResolvedValue({ id: 'event-2', interestEnabled: true, endDate: endDate() });
@@ -551,15 +663,20 @@ function automaticInterestPrisma(targetType: 'EVENT' | 'EVENT_GROUP') {
   const interest = interestRecord(targetType === 'EVENT' ? { eventId: 'target-1' } : { eventGroupId: 'target-1' });
   prisma.event.findFirst.mockResolvedValue({ id: 'target-1', interestEnabled: true, endDate: endDate() });
   prisma.event.findUnique.mockResolvedValue({ majorEventId: 'major-1', autoSubscribe: true });
+  prisma.event.findMany.mockResolvedValue(targetType === 'EVENT'
+    ? [{ id: 'target-1', eventGroupId: null, majorEventId: 'major-1', autoSubscribe: true }]
+    : [{ id: 'automatic-event', eventGroupId: 'target-1', majorEventId: 'major-1', autoSubscribe: true }]);
   prisma.eventGroup.findFirst.mockResolvedValue({ id: 'target-1', interestEnabled: true, events: [{ endDate: endDate() }] });
-  prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [{ id: 'automatic-event' }] });
+  prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [
+    { id: 'automatic-event', majorEventId: 'major-1', autoSubscribe: true },
+  ] });
   prisma.eventInterest.findFirst.mockResolvedValue(interest);
   prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
   prisma.eventInterest.findMany.mockResolvedValue([interest]);
   prisma.majorEventSubscription.findFirst.mockResolvedValue({
     id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
   });
-  prisma.majorEventSubscription.findMany.mockResolvedValue([{ personId: 'person-1' }]);
+  prisma.majorEventSubscription.findMany.mockResolvedValue([{ personId: 'person-1', majorEventId: 'major-1' }]);
   return prisma;
 }
 

@@ -287,6 +287,54 @@ describe('EventDraftsService', () => {
     expect(attendanceRealtime.notifyAllConnectedPeople).not.toHaveBeenCalled();
   });
 
+  it('rejects draft publication without invitations for an inherited invited-only attendance policy', async () => {
+    const previousEvent = {
+      id: 'event-1',
+      name: 'Evento publicado',
+      publicationState: PublicationState.PUBLISHED,
+      publishedAt: new Date('2026-06-01T12:00:00.000Z'),
+      majorEventId: null,
+      eventGroupId: 'group-1',
+    };
+    const updatedEvent = {
+      ...previousEvent,
+      name: 'Evento revisado',
+      emoji: '🎟️',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      shouldIssueCertificate: false,
+      isPubliclyListed: true,
+      startDate: new Date('2026-07-01T12:00:00.000Z'),
+      endDate: new Date('2026-07-01T13:00:00.000Z'),
+    };
+    const { service, prisma, tx } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue(draftRecord);
+    tx.event.findFirst.mockResolvedValue(previousEvent);
+    tx.event.findUniqueOrThrow
+      .mockResolvedValueOnce(updatedEvent)
+      .mockResolvedValueOnce(updatedEvent)
+      .mockResolvedValueOnce({
+        audience: 'PUBLIC',
+        attendanceEligibility: null,
+        audienceInvitations: [],
+        eventGroup: {
+          audience: 'PUBLIC',
+          attendanceEligibility: 'INVITED_ONLY',
+          audienceInvitations: [],
+          deletedAt: null,
+        },
+        majorEvent: null,
+      });
+
+    await expect(service.applyEventDraft('draft-1', user as never)).rejects.toThrow('convidada');
+    expect(tx.event.findUniqueOrThrow).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      where: { id: 'event-1', deletedAt: null },
+      select: expect.objectContaining({ eventGroup: expect.any(Object), majorEvent: expect.any(Object) }),
+    }));
+  });
+
   it.each(['policy', 'invitations'] as const)('refreshes attendance classification when a draft changes %s', async (change) => {
     const previousEvent = {
       id: 'event-1',
