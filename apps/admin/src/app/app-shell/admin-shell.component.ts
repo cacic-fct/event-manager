@@ -15,6 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
@@ -47,6 +48,7 @@ const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly Na
     MatIconModule,
     MatProgressBarModule,
     MatSidenavModule,
+    MatSnackBarModule,
     MatTooltipModule,
     MatDividerModule,
     CacicLogoComponent,
@@ -63,6 +65,7 @@ const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly Na
 })
 export class AdminShellComponent {
   private readonly authService = inject(AuthService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly breakpointObserver = inject(BreakpointObserver);
   public readonly router = inject(Router);
 
@@ -174,7 +177,11 @@ export class AdminShellComponent {
   }
 
   protected async logout(): Promise<void> {
-    await this.authService.logout();
+    try {
+      await this.authService.logout();
+    } catch {
+      this.snackBar.open('Não foi possível sair da conta. Tente novamente.', 'Fechar', { duration: 5000 });
+    }
   }
 
   private canShowNavItem(item: (typeof navigationItems)[number]): boolean {

@@ -15,7 +15,6 @@ import {
   DEFAULT_KEYCLOAK_REALM_URL,
 } from './auth.constants';
 import { AuthorizationState, AuthorizationStateService } from './authorization-state.service';
-import { LogoutDto } from './dto/logout.dto';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 import {
   decodeJwtPayload,
@@ -226,33 +225,29 @@ export class KeycloakAuthService {
     }
   }
 
-  async logout(input: LogoutDto): Promise<{
+  async logout(input: { refreshToken?: string; postLogoutRedirectUri?: string }): Promise<{
     refreshTokenRevoked: boolean;
     logoutUrl: string;
   }> {
     let refreshTokenRevoked = false;
 
-    if (input.refreshToken && this.clientSecret) {
+    if (input.refreshToken) {
       const payload = new URLSearchParams();
-      payload.set('token', input.refreshToken);
-      payload.set('token_type_hint', 'refresh_token');
+      payload.set('refresh_token', input.refreshToken);
       const headers = this.createFormHeaders();
       this.addClientAuthentication(payload, headers);
 
       try {
-        await this.postKeycloakForm(`${this.realmUrl}/protocol/openid-connect/revoke`, payload.toString(), headers);
+        await this.postKeycloakForm(`${this.realmUrl}/protocol/openid-connect/logout`, payload.toString(), headers);
         refreshTokenRevoked = true;
       } catch (error) {
-        this.logKeycloakFailure('refresh token revocation', error);
+        this.logKeycloakFailure('refresh token logout', error);
+        throw this.toTokenExchangeException(error, 'Could not log out from Keycloak.');
       }
     }
 
     const logoutUrl = new URL(`${this.realmUrl}/protocol/openid-connect/logout`);
     logoutUrl.searchParams.set('client_id', this.clientId);
-
-    if (input.idTokenHint) {
-      logoutUrl.searchParams.set('id_token_hint', input.idTokenHint);
-    }
 
     const postLogoutRedirectUri = input.postLogoutRedirectUri ?? this.defaultPostLogoutRedirectUri;
     if (postLogoutRedirectUri) {
@@ -422,7 +417,7 @@ export class KeycloakAuthService {
     return (await this.sessions.get(sessionId))?.sessionExpiresAt ?? null;
   }
 
-  async getSessionLogoutInput(sessionId: string): Promise<LogoutDto | null> {
+  async getSessionLogoutInput(sessionId: string): Promise<{ refreshToken?: string } | null> {
     const session = await this.sessions.get(sessionId);
     if (!session) {
       return null;
@@ -430,7 +425,6 @@ export class KeycloakAuthService {
 
     return {
       refreshToken: session.refreshToken,
-      idTokenHint: session.idTokenHint,
     };
   }
 

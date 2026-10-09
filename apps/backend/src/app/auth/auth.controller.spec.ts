@@ -1,8 +1,16 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { AuthController } from './auth.controller';
-import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME } from './auth.constants';
+import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME, IS_PUBLIC_KEY } from './auth.constants';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
+import { LogoutOriginGuard } from './guards/logout-origin.guard';
 import { KeycloakAuthService } from './keycloak-auth.service';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 
 describe('AuthController callback redirect validation', () => {
   const originalEnv = { ...process.env };
@@ -69,6 +77,13 @@ describe('AuthController callback redirect validation', () => {
   afterEach(() => {
     process.env = { ...originalEnv };
     jest.useRealTimers();
+  });
+
+  it('keeps logout public for expired sessions and applies the strict Origin guard', () => {
+    const handler = AuthController.prototype.logout;
+
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, handler)).toBe(true);
+    expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([LogoutOriginGuard, RateLimitGuard]);
   });
 
   it('accepts only allowlisted callback redirect origins and paths', async () => {
@@ -399,23 +414,28 @@ describe('AuthController callback redirect validation', () => {
       requestFixture(
         {
           cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+          origin: 'https://events.example.com',
           'x-forwarded-proto': 'https',
         },
         true,
       ),
       response as never,
       {
+        refreshToken: 'attacker-refresh-token',
+        idTokenHint: 'attacker-id-token',
         postLogoutRedirectUri: 'https://events.example.com/app',
-      },
+      } as never,
     );
 
     expect(keycloakAuthService.getSessionLogoutInput).toHaveBeenCalledWith('session-id');
     expect(keycloakAuthService.clearSession).toHaveBeenCalledWith('session-id');
     expect(keycloakAuthService.logout).toHaveBeenCalledWith({
       refreshToken: 'stored-refresh',
-      idTokenHint: 'stored-id-token',
       postLogoutRedirectUri: 'https://events.example.com/app',
     });
+    expect(keycloakAuthService.logout.mock.invocationCallOrder[0]).toBeLessThan(
+      keycloakAuthService.clearSession.mock.invocationCallOrder[0],
+    );
     expect(response.clearCookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, {
       httpOnly: true,
       sameSite: 'lax',
@@ -439,6 +459,52 @@ describe('AuthController callback redirect validation', () => {
         path: '/',
       }),
     );
+  });
+
+  it('keeps the server session and cookie when Keycloak logout fails', async () => {
+    keycloakAuthService.getSessionLogoutInput.mockResolvedValue({ refreshToken: 'stored-refresh' });
+    keycloakAuthService.logout.mockRejectedValueOnce(
+      new ServiceUnavailableException('Keycloak authentication is temporarily unavailable.'),
+    );
+    const response = responseFixture();
+
+    await expect(
+      controller.logout(
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+            origin: 'https://events.example.com',
+          },
+          true,
+        ),
+        response as never,
+      ),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(keycloakAuthService.clearSession).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it('validates the redirect before contacting Keycloak or clearing the session', async () => {
+    const response = responseFixture();
+
+    await expect(
+      controller.logout(
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+            origin: 'https://events.example.com',
+          },
+          true,
+        ),
+        response as never,
+        { postLogoutRedirectUri: 'https://evil.example/logout' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(keycloakAuthService.logout).not.toHaveBeenCalled();
+    expect(keycloakAuthService.clearSession).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
   });
 
   it('returns only granted normalized permissions for the authenticated user', async () => {

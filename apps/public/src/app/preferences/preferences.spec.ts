@@ -91,4 +91,21 @@ describe('Preferences', () => {
 
     expect(authService.logout).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the logout action available and reports a failed request', async () => {
+    authState.set(true);
+    authService.logout.mockImplementationOnce(async () => {
+      throw new Error('Keycloak unavailable');
+    });
+    fixture.detectChanges();
+
+    await fixture.componentInstance.logout();
+
+    expect(authService.logout).toHaveBeenCalledOnce();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não foi possível sair da conta. Tente novamente.',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Sair da conta');
+  });
 });

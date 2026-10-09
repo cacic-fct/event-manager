@@ -198,7 +198,7 @@ describe('KeycloakAuthService', () => {
     ).toThrow('KEYCLOAK_CLIENT_SECRET must be set for production authentication.');
   });
 
-  it('exchanges, refreshes, and revokes tokens through Keycloak form endpoints', async () => {
+  it('exchanges, refreshes, and logs out through Keycloak form endpoints', async () => {
     mockedAxios.post
       .mockResolvedValueOnce({ data: { access_token: 'access-token' } })
       .mockResolvedValueOnce({ data: { access_token: 'refreshed-token' } })
@@ -216,12 +216,12 @@ describe('KeycloakAuthService', () => {
     await expect(
       service.logout({
         refreshToken: 'refresh-token',
-        idTokenHint: 'id-token',
+        postLogoutRedirectUri: 'https://app.example/',
       }),
     ).resolves.toEqual({
       refreshTokenRevoked: true,
       logoutUrl:
-        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&id_token_hint=id-token&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
+        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
     });
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -240,18 +240,17 @@ describe('KeycloakAuthService', () => {
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       3,
-      'https://keycloak.example/realms/cacic/protocol/openid-connect/revoke',
-      expect.stringContaining('token_type_hint=refresh_token'),
-      expect.any(Object),
-    );
-    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('client_secret');
-    expect(mockedAxios.post.mock.calls[2][2]).toEqual(
+      'https://keycloak.example/realms/cacic/protocol/openid-connect/logout',
+      expect.stringContaining('refresh_token=refresh-token'),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Basic ZXZlbnQtbWFuYWdlcjpzZWNyZXQ=',
         }),
       }),
     );
+    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('token_type_hint');
+    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('client_secret');
+    expect(new URL(String(mockedAxios.post.mock.calls[2][0])).searchParams.has('id_token_hint')).toBe(false);
   });
 
   it('can authenticate the Keycloak client with client_secret_post when configured', async () => {
@@ -683,10 +682,23 @@ describe('KeycloakAuthService', () => {
     });
     await expect(service.getSessionLogoutInput(sessionId)).resolves.toEqual({
       refreshToken,
-      idTokenHint: 'id-token',
     });
     await service.clearSession(sessionId);
     expect(sessions.delete).toHaveBeenCalledWith(sessionId);
+  });
+
+  it('surfaces upstream Keycloak logout failures', async () => {
+    mockedAxios.post.mockRejectedValueOnce(new Error('provider unavailable'));
+
+    await expect(service.logout({ refreshToken: 'refresh-token' })).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://keycloak.example/realms/cacic/protocol/openid-connect/logout',
+      expect.stringContaining('refresh_token=refresh-token'),
+      expect.any(Object),
+    );
   });
 
   it('uses the session ID token identity when the access token omits the subject claim', async () => {
