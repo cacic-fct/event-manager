@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { NEVER, Subject, of, throwError } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -16,12 +16,14 @@ describe('MoreInfo', () => {
   let component: MoreInfo;
   let fixture: ComponentFixture<MoreInfo>;
   let httpTesting: HttpTestingController;
+  let routeParams: Subject<ParamMap>;
   let prizeDrawsApi: {
     availability: ReturnType<typeof vi.fn>;
     watch: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
+    routeParams = new Subject<ParamMap>();
     prizeDrawsApi = {
       availability: vi.fn(() => of([])),
       watch: vi.fn(() => NEVER),
@@ -47,7 +49,7 @@ describe('MoreInfo', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ eventType: 'event', eventId: 'event-1' })),
+            paramMap: routeParams,
             snapshot: {
               paramMap: convertToParamMap({
                 eventType: 'event',
@@ -76,6 +78,7 @@ describe('MoreInfo', () => {
 
   it('renders the event name in the page body instead of the toolbar', async () => {
     fixture.detectChanges();
+    routeParams.next(convertToParamMap({ eventType: 'event', eventId: 'event-1' }));
     await fixture.whenStable();
     const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
     const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
@@ -219,6 +222,7 @@ describe('MoreInfo', () => {
     prizeDrawsApi.watch.mockReturnValue(updates);
 
     fixture.detectChanges();
+    routeParams.next(convertToParamMap({ eventType: 'event', eventId: 'event-1' }));
     await fixture.whenStable();
     const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
     const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
