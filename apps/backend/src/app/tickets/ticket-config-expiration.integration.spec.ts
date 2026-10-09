@@ -88,6 +88,7 @@ describe('ticket configuration expiry integration', () => {
       enqueueExistingSubscriptionReconciliation: jest.fn().mockResolvedValue(undefined),
     };
     const realtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
+    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
     const resolver = new TicketsResolver(
       prisma as never,
       authorization as never,
@@ -97,6 +98,7 @@ describe('ticket configuration expiry integration', () => {
       {} as never,
       realtime as never,
       { assertEventMutable: jest.fn() } as never,
+      attendanceCategories as never,
     );
 
     await resolver.saveTicketConfig({
@@ -144,6 +146,9 @@ describe('ticket configuration expiry integration', () => {
       .toBeLessThan(tx.ticketConfig.upsert.mock.invocationCallOrder[0]);
     expect(tx.ticketConfig.upsert.mock.invocationCallOrder[0])
       .toBeLessThan(issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith(event.id, tx);
+    expect(issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0])
+      .toBeLessThan(attendanceCategories.refreshForEvent.mock.invocationCallOrder[0]);
     expect(issuance.enqueueExistingSubscriptionReconciliation).toHaveBeenCalledWith(tx, event.id, savedConfig.updatedAt);
   });
 });

@@ -38,11 +38,13 @@ describe('non-regular attendance ticket rescan', () => {
         create: jest.fn(),
       },
       eventTicket: {
-        findFirst: jest.fn().mockImplementation(async ({ where }: { where: { status: EventTicketStatus; issuedAt?: { lte: Date }; transfers?: { none: { acceptedAt: { gt: Date } } } } }) => {
-          if (ticket.status !== where.status) return null;
-          if (where.issuedAt && ticket.issuedAt > where.issuedAt.lte) return null;
-          if (where.transfers && ticket.acceptedAt && ticket.acceptedAt > where.transfers.none.acceptedAt.gt) return null;
-          return { ...ticket };
+        findFirst: jest.fn().mockImplementation(async ({ where }: { where: { status: EventTicketStatus } }) =>
+          ticket.status === where.status ? { id: ticket.id } : null,
+        ),
+        findMany: jest.fn().mockImplementation(async ({ where }: { where: { status: EventTicketStatus; issuedAt?: { lte: Date } } }) => {
+          if (ticket.status !== where.status) return [];
+          if (where.issuedAt && ticket.issuedAt > where.issuedAt.lte) return [];
+          return [{ ...ticket, transfers: [] }];
         }),
         updateMany: jest.fn().mockImplementation(async ({ data }: { data: { status: EventTicketStatus } }) => {
           Object.assign(ticket, data);

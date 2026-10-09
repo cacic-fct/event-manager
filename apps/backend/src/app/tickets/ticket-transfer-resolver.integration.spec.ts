@@ -13,6 +13,7 @@ describe('ticket transfer GraphQL mutation integration', () => {
       fixture.service,
       {} as never,
       { assertEventMutable: jest.fn() } as never,
+      {} as never,
     );
 
     const result = await resolver.startTicketTransfer(

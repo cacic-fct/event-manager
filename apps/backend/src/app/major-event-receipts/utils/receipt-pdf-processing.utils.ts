@@ -70,9 +70,10 @@ async function withReceiptPdf<T>(
   const inputPath = join(directory, 'receipt.pdf');
 
   try {
+    // Uploaded bytes are the file contents, never the path. The fixed filename lives
+    // in a private mkdtemp directory and exclusive creation prevents overwriting files.
     // codeql[js/http-to-file-access]
-    // Uploaded PDFs are written to a private, mkdtemp-created directory for bounded processing.
-    await fs.writeFile(inputPath, buffer, { mode: 0o600 });
+    await fs.writeFile(inputPath, buffer, { mode: 0o600, flag: 'wx' });
     return await operation(inputPath, directory);
   } catch (error: unknown) {
     if (error instanceof ReceiptPdfProcessingError) {

@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { TicketLifecycleState } from '@cacic-fct/shared-ticketing';
 import { audienceContext, EventAudiencePrincipal } from '../audiences/audience-context';
 import { TicketsResolver } from './tickets.resolver';
 
@@ -35,6 +36,7 @@ describe('ticket administrator audience boundaries', () => {
     };
     const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never,
       { assertEventMutable: jest.fn() } as never,
+      {} as never,
     );
     const principal: EventAudiencePrincipal = { userId: 'manager', personIds: ['manager-person'], isUnesp: false, verifiedCourseCode: null, bypass: false };
     await expect(audienceContext.run(principal, () => call(resolver))).rejects.toThrow(ForbiddenException);
@@ -57,10 +59,96 @@ describe('admin ticket status filtering', () => {
     const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
     const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never, {} as never, {} as never, {} as never, {} as never,
       { assertEventMutable: jest.fn() } as never,
+      {} as never,
     );
     await resolver.adminEventTickets('event', status, undefined, 50, undefined, context);
     const rowWhere = prisma.eventTicket.findMany.mock.calls[0][0].where;
-    expect(rowWhere).toEqual({ eventId: 'event', status: 'ACTIVE', expiresAt: { gt: expect.any(Date) }, ticketConfig: { enabled: status === 'ACTIVE' } });
+    expect(rowWhere).toEqual(status === 'ACTIVE'
+      ? {
+          eventId: 'event',
+          status: 'ACTIVE',
+          expiresAt: { gt: expect.any(Date) },
+          ticketConfig: { enabled: true },
+          event: { is: { deletedAt: null } },
+        }
+      : {
+          eventId: 'event',
+          status: 'ACTIVE',
+          expiresAt: { gt: expect.any(Date) },
+          OR: [
+            { ticketConfig: { enabled: false } },
+            { event: { is: { deletedAt: { not: null } } } },
+          ],
+        });
     expect(prisma.eventTicket.count).toHaveBeenCalledWith({ where: rowWhere });
+  });
+
+  it('includes a soft-deleted event with enabled ticket configuration in UNAVAILABLE', async () => {
+    const now = Date.now();
+    const deletedAt = new Date(now - 60_000);
+    const prisma = {
+      event: { findUnique: jest.fn().mockResolvedValue({ id: 'event' }) },
+      eventTicket: {
+        findMany: jest.fn().mockResolvedValue([{
+          id: 'ticket',
+          eventId: 'event',
+          status: 'ACTIVE',
+          expiresAt: new Date(Date.now() + 60_000),
+          holder: null,
+          originalHolder: null,
+          source: 'ADMIN',
+          sourceKey: null,
+          history: [],
+          ticketConfig: {
+            enabled: true,
+            displayName: null,
+            displayEmoji: null,
+            description: null,
+            transferEligibilityDescription: null,
+            transferable: false,
+            recipientSubscriptionRequirement: 'ANY',
+            recipientRequiresUnesp: false,
+            recipientAcademicIdPrefixes: [],
+            recipientCourseCodes: [],
+            recipientRequiresAccountManagerVerification: false,
+            recipientAllowedPriceTierIds: [],
+          },
+          event: {
+            id: 'event',
+            name: 'Evento excluído',
+            emoji: '🎟️',
+            type: 'OTHER',
+            startDate: new Date(now - 120_000),
+            endDate: deletedAt,
+            locationDescription: null,
+            majorEventId: null,
+            isPubliclyListed: false,
+            publicationState: 'DRAFT',
+            audience: 'PUBLIC',
+            deletedAt,
+          },
+        }]),
+        count: jest.fn().mockResolvedValue(1),
+      },
+    };
+    const resolver = new TicketsResolver(
+      prisma as never,
+      { assertPermissions: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { assertEventMutable: jest.fn() } as never,
+      {} as never,
+    );
+
+    const result = await resolver.adminEventTickets('event', 'UNAVAILABLE', undefined, 50, undefined, context);
+
+    expect(result.tickets[0]?.status).toBe(TicketLifecycleState.Unavailable);
+    const where = prisma.eventTicket.findMany.mock.calls[0][0].where;
+    expect(where.OR).toContainEqual({ event: { is: { deletedAt: { not: null } } } });
+    expect(where.OR).toContainEqual({ ticketConfig: { enabled: false } });
+    expect(prisma.eventTicket.count).toHaveBeenCalledWith({ where });
   });
 });

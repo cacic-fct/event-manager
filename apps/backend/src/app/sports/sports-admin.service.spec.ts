@@ -9,6 +9,7 @@ import {
   SportsScoreEntrySource,
   SportsTournamentStatus,
 } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsAdminService } from './sports-admin.service';
 
 describe('SportsAdminService', () => {
@@ -49,6 +50,10 @@ describe('SportsAdminService', () => {
   const publication = {
     setEventPublicationState: jest.fn(),
   };
+  const ticketIssuance = {
+    lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+    alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
+  };
   let tx: ReturnType<typeof createTransaction>;
   let service: SportsAdminService;
 
@@ -62,17 +67,23 @@ describe('SportsAdminService', () => {
       auditLog as never,
       payments as never,
       publication as never,
+      ticketIssuance as never,
     );
   });
 
   it('attaches a compatible existing Event and enables shared attendance', async () => {
+    const originalEvent = createEvent();
+    const rescheduledEndDate = new Date(originalEvent.endDate.getTime() + 60 * 60_000);
     prisma.sportsCategory.findFirst.mockResolvedValue({
       eventGroupId: 'group-1',
     });
     tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
-    tx.event.findFirst.mockResolvedValue(createEvent());
+    tx.event.findFirst
+      .mockResolvedValueOnce({ endDate: originalEvent.endDate })
+      .mockResolvedValueOnce(originalEvent);
     tx.event.update.mockResolvedValue({
       ...createEvent(),
+      endDate: rescheduledEndDate,
       shouldCollectAttendance: true,
     });
     tx.sportsMatch.create.mockResolvedValue({
@@ -92,19 +103,32 @@ describe('SportsAdminService', () => {
       {
         categoryId: 'category-1',
         eventId: 'event-1',
+        startDate: originalEvent.startDate,
+        endDate: rescheduledEndDate,
       },
       actor,
     );
 
     expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('group-1', actor, 'edit');
     expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', actor, 'edit');
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
     expect(tx.event.update).toHaveBeenCalledWith({
       where: { id: 'event-1' },
       data: expect.objectContaining({
+        endDate: rescheduledEndDate,
         shouldCollectAttendance: true,
         allowSubscription: false,
       }),
     });
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: 'admin-1',
+      permission: Permission.SportsMatch.Create,
+    });
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
+    expect(tx.event.update.mock.invocationCallOrder[0])
+      .toBeLessThan(ticketIssuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
     expect(tx.event.create).not.toHaveBeenCalled();
     expect(result.id).toBe('match-1');
   });
@@ -281,6 +305,53 @@ describe('SportsAdminService', () => {
     expect(tx.event.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ name: 'Final feminina' }) }),
     );
+  });
+
+  it('locks ticket expiry inputs and aligns event-end tickets when a match is rescheduled', async () => {
+    const updatedEndDate = new Date('2026-08-01T14:00:00.000Z');
+    tx.sportsMatch.findFirst
+      .mockResolvedValueOnce({ eventId: 'event-1' })
+      .mockResolvedValueOnce({
+        id: 'match-1',
+        eventId: 'event-1',
+        categoryId: 'category-1',
+        stageId: null,
+        venueId: null,
+        homeRegistrationId: null,
+        awayRegistrationId: null,
+        winnerAdvancesToId: null,
+        loserAdvancesToId: null,
+        revision: 3,
+        livestreamProvider: null,
+        livestreamUrl: null,
+        event: createEvent(),
+        category: {
+          id: 'category-1',
+          eventGroupId: 'group-1',
+          tournamentId: 'tournament-1',
+          tournament: { majorEventId: 'major-1' },
+        },
+      });
+    tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsMatch.findUniqueOrThrow.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      revision: 4,
+      event: { ...createEvent(), endDate: updatedEndDate },
+    });
+
+    await service.updateMatch('match-1', { expectedRevision: 3, endDate: updatedEndDate }, actor);
+
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: 'admin-1',
+      permission: Permission.SportsMatch.Update,
+    });
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
+    expect(tx.event.update.mock.invocationCallOrder[0])
+      .toBeLessThan(ticketIssuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
   });
 
   it('normalizes registration answers and stores a server-derived form snapshot', async () => {

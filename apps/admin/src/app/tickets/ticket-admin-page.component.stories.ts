@@ -231,6 +231,8 @@ export const DisabledConfiguration: Story = {
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Desativado')).toBeVisible();
     await expect(within(canvasElement).getByText('Ative a emissão de bilhetes para disponibilizar esta compra adicional.')).toBeVisible();
+    await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Bilhetes emitidos' }));
+    await expect(within(canvasElement).getByRole('button', { name: 'Emitir bilhete' })).toBeDisabled();
   },
 };
 

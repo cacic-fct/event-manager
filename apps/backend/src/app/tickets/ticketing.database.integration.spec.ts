@@ -110,7 +110,27 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     ]));
 
     const issuance = new TicketIssuanceService(prisma, runtime.realtime);
-    await prisma.$transaction((tx) => issuance.consumeForAttendance(tx, fixture.eventId, fixture.recipientPersonId));
+    if (!savedTransfer.acceptedAt) throw new Error('Accepted transfer must have an acceptance time.');
+    const attendedAtBeforeTransfer = new Date(savedTransfer.acceptedAt.getTime() - 1_000);
+    await expect(prisma.$transaction((tx) => issuance.consumeForAttendance(
+      tx,
+      fixture.eventId,
+      fixture.recipientPersonId,
+      { attendedAt: attendedAtBeforeTransfer },
+    ))).resolves.toBe(false);
+    await expect(prisma.$transaction((tx) => issuance.consumeForAttendance(
+      tx,
+      fixture.eventId,
+      fixture.senderPersonId,
+      { attendedAt: attendedAtBeforeTransfer },
+    ))).resolves.toBe(true);
+    const redeemedTicket = await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } });
+    expect(redeemedTicket).toEqual(expect.objectContaining({
+      status: 'CONSUMED',
+      holderPersonId: fixture.recipientPersonId,
+      consumedByPersonId: fixture.senderPersonId,
+      consumedAt: attendedAtBeforeTransfer,
+    }));
     const archivedWalletTicket = await runtime.resolver.myWalletTicket(fixture.ticketId, recipientContext);
     expect(archivedWalletTicket).toEqual(expect.objectContaining({
       id: fixture.ticketId,
@@ -787,6 +807,7 @@ function createTransferRuntime(prisma: PrismaService) {
   const issuance = new TicketIssuanceService(prisma, realtime);
   const resolver = new TicketsResolver(prisma, {} as never, {} as never, issuance, eligibility, transfers, realtime,
     new FrozenResourceService(prisma),
+    new AttendanceCategoryService(prisma, undefined, issuance),
   );
   return { realtime, published, transfers, resolution, resolver };
 }

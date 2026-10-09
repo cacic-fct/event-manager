@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import { SportsStandingsService } from '../scoring/sports-standings.service';
+import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -68,6 +69,7 @@ export abstract class SportsMatchOperationSupport {
     protected readonly mutationEvents: SportsMutationEventsService,
     protected readonly auditLog: AuditLogService,
     protected readonly frozen: FrozenResourceService,
+    protected readonly ticketIssuance: TicketIssuanceService,
   ) {}
 
   protected authenticatedActor(actor: AuthenticatedUser | AuditActor): AuthenticatedUser | undefined {

@@ -236,6 +236,24 @@ describe('TicketAdminPageComponent', () => {
     expect(tier.invalid).toBe(true);
   });
 
+  it('disables manual issuance and guards the action when the ticket configuration is disabled', async () => {
+    const { fixture, dialog } = setup({ initialConfig: { ...config, enabled: false } });
+    await settle(fixture);
+    const ticketsTab = [...fixture.nativeElement.querySelectorAll('[role="tab"]')].find((tab: HTMLElement) =>
+      tab.textContent?.includes('Bilhetes emitidos'),
+    ) as HTMLElement | undefined;
+    ticketsTab?.click();
+    await settle(fixture);
+
+    expect(getButton(fixture, 'Emitir bilhete')?.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'A emissão manual está indisponível enquanto esta configuração estiver desativada.',
+    );
+    await Reflect.get(fixture.componentInstance, 'openManualIssue').call(fixture.componentInstance);
+    expect(dialog.open).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+
   it('refreshes holder state without overwriting unsaved configuration', async () => {
     const { fixture, api, changes } = setup();
     await settle(fixture);

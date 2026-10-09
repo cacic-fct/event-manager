@@ -428,12 +428,15 @@
               <div>
                 <h2>Bilhetes emitidos</h2>
                 <p>{{ ticketPage().totalCount }} no total</p>
+                @if (canIssueTickets() && selectedConfig() && !selectedConfig()?.enabled) {
+                  <p class="muted">A emissão manual está indisponível enquanto esta configuração estiver desativada.</p>
+                }
               </div>
               @if (canIssueTickets()) {
                 <button
                   matButton="filled"
                   type="button"
-                  [disabled]="!selectedConfig() || saving()"
+                  [disabled]="!canIssueSelectedConfig() || saving()"
                   (click)="openManualIssue()">
                   <mat-icon>add</mat-icon>
                   Emitir bilhete

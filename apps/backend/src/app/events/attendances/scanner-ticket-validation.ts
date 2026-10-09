@@ -21,16 +21,33 @@ export async function assertScannerTicket(
     where: {
       id: barcode.ticketId,
       eventId: input.eventId,
-      holderPersonId: input.personId,
-      holder: { userId: barcode.holderUserId, deletedAt: null, mergedIntoId: null },
       status: { in: ['ACTIVE', 'CONSUMED'] },
       expiresAt: { gt: attendedAt },
       issuedAt: { lte: attendedAt },
-      transfers: { none: { senderStatus: 'ACCEPTED', recipientStatus: 'ACCEPTED', acceptedAt: { gt: attendedAt } } },
       ticketConfig: { enabled: true },
       event: { deletedAt: null },
     },
-    select: { id: true },
+    select: {
+      holderPersonId: true,
+      holder: { select: { userId: true, deletedAt: true, mergedIntoId: true } },
+      transfers: {
+        where: {
+          senderStatus: 'ACCEPTED',
+          recipientStatus: 'ACCEPTED',
+          acceptedAt: { gt: attendedAt },
+        },
+        select: { senderPersonId: true, senderUserId: true, acceptedAt: true },
+        orderBy: { acceptedAt: 'asc' },
+        take: 1,
+      },
+    },
   });
-  if (!ticket) throw new BadRequestException('Este bilhete não é válido para esta presença.');
+  const firstFutureTransfer = ticket?.transfers[0];
+  const ownedAtAttendance = firstFutureTransfer
+    ? firstFutureTransfer.senderPersonId === input.personId && firstFutureTransfer.senderUserId === barcode.holderUserId
+    : ticket?.holderPersonId === input.personId &&
+      ticket.holder?.userId === barcode.holderUserId &&
+      !ticket.holder.deletedAt &&
+      !ticket.holder.mergedIntoId;
+  if (!ownedAtAttendance) throw new BadRequestException('Este bilhete não é válido para esta presença.');
 }

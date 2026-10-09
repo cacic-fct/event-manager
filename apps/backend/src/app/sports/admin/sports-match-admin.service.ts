@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -11,6 +12,7 @@ import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsMatchInput } from '../sports-admin.types';
 import { createSportsMatchBackingEvent } from '../sports-match-event-sync';
 import { PublicationTransitionService } from '../../publishing/publishing-transition.service';
+import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';
 
 import { SportsMatchAdminLifecycleService } from './sports-match-admin-lifecycle.service';
 
@@ -21,8 +23,9 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
     auditLog: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[2],
     payments: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[3],
     private readonly publication: PublicationTransitionService,
+    ticketIssuance: TicketIssuanceService,
   ) {
-    super(prisma, frozen, auditLog, payments);
+    super(prisma, frozen, auditLog, payments, ticketIssuance);
   }
 
   async createMatch(input: CreateSportsMatchInput, actor: AuthenticatedUser) {
@@ -85,6 +88,15 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
         category.status !== SportsCategoryStatus.DRAFT &&
         category.tournament.status !== SportsTournamentStatus.DRAFT &&
         category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED;
+      let previousEventEndDate: Date | undefined;
+      if (input.eventId && input.endDate) {
+        await this.ticketIssuance.lockEventExpirationAlignment(tx, input.eventId, 'UPDATE');
+        const previousEvent = await tx.event.findFirst({
+          where: { id: input.eventId, deletedAt: null },
+          select: { endDate: true },
+        });
+        previousEventEndDate = previousEvent?.endDate;
+      }
       const event = input.eventId
         ? await this.attachCompatibleEvent(
             tx,
@@ -114,6 +126,13 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             publishedAt: publishImmediately ? new Date() : null,
             actorId,
           });
+      if (previousEventEndDate && event.endDate.getTime() !== previousEventEndDate.getTime()) {
+        await this.ticketIssuance.alignActiveTicketExpirations(tx, event.id, {
+          scope: 'EVENT_END_ONLY',
+          actorUserId: actorId,
+          permission: Permission.SportsMatch.Create,
+        });
+      }
       const match = await tx.sportsMatch.create({
         data: {
           eventId: event.id,

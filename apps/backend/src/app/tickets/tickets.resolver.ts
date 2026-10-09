@@ -18,6 +18,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { GraphqlContext } from '../current-user/selects';
+import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
@@ -94,6 +95,7 @@ export class TicketsResolver {
     private readonly transfers: TicketTransferService,
     private readonly realtime: TicketRealtimeService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly attendanceCategories: AttendanceCategoryService,
   ) {}
 
   @Query(() => [WalletTicketModel], { name: 'myWalletTickets' })
@@ -343,6 +345,7 @@ export class TicketsResolver {
           permission: before ? Permission.TicketConfig.Update : Permission.TicketConfig.Create,
           enqueueInvalidations: false,
         });
+        await this.attendanceCategories.refreshForEvent(input.eventId, tx);
         await this.audit.record({
           entityType: AuditLogEntityType.TICKET_CONFIG,
           entityId: config.id,
@@ -428,9 +431,21 @@ export class TicketsResolver {
     if (normalizedStatus === 'EXPIRED') {
       stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { lte: now } };
     } else if (normalizedStatus === 'UNAVAILABLE') {
-      stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { gt: now }, ticketConfig: { enabled: false } };
+      stateWhere = {
+        status: EventTicketStatus.ACTIVE,
+        expiresAt: { gt: now },
+        OR: [
+          { ticketConfig: { enabled: false } },
+          { event: { is: { deletedAt: { not: null } } } },
+        ],
+      };
     } else if (normalizedStatus === 'ACTIVE') {
-      stateWhere = { status: EventTicketStatus.ACTIVE, expiresAt: { gt: now }, ticketConfig: { enabled: true } };
+      stateWhere = {
+        status: EventTicketStatus.ACTIVE,
+        expiresAt: { gt: now },
+        ticketConfig: { enabled: true },
+        event: { is: { deletedAt: null } },
+      };
     } else if (normalizedStatus) {
       if (!Object.values(EventTicketStatus).includes(normalizedStatus as EventTicketStatus)) {
         throw new BadRequestException('Estado do bilhete inválido.');

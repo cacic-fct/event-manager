@@ -288,7 +288,7 @@ describe('EventsResolver', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(previousAudit),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValue(updatedAudit),
       },
       eventGroup: {
         updateMany: jest.fn(),
@@ -603,7 +603,7 @@ describe('EventsResolver', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(currentEvent),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValue(updatedAudit),
       },
       eventGroup: { updateMany: jest.fn() },
     };
@@ -622,7 +622,7 @@ describe('EventsResolver', () => {
     const resolver = new EventsResolver(
       prisma as never,
       { upsertEvent: jest.fn() } as never,
-      {} as never,
+      { notifyAllConnectedPeople: jest.fn() } as never,
       { assertEventUpdateMutable: jest.fn() } as never,
       { assertPermissions: jest.fn() } as never,
       auditLog as never,
@@ -851,7 +851,7 @@ describe('EventsResolver', () => {
         },
       ],
     });
-    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx);
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx, true);
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({

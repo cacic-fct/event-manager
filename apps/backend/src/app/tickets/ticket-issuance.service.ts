@@ -618,19 +618,24 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       const effectiveAt = options.attendedAt && options.attendedAt.getTime() < processedAt.getTime()
         ? options.attendedAt
         : processedAt;
-      const ticket = await tx.eventTicket.findFirst({
+      const candidates = await tx.eventTicket.findMany({
         where: {
           eventId,
-          holderPersonId: personId,
           status: EventTicketStatus.ACTIVE,
           issuedAt: { lte: effectiveAt },
-          transfers: {
-            none: {
-              senderStatus: 'ACCEPTED',
-              recipientStatus: 'ACCEPTED',
-              acceptedAt: { gt: effectiveAt },
+          OR: [
+            { holderPersonId: personId },
+            {
+              transfers: {
+                some: {
+                  senderPersonId: personId,
+                  senderStatus: 'ACCEPTED',
+                  recipientStatus: 'ACCEPTED',
+                  acceptedAt: { gt: effectiveAt },
+                },
+              },
             },
-          },
+          ],
           event: { deletedAt: null, ticketConfig: { is: { enabled: true } } },
           holder: { deletedAt: null, mergedIntoId: null },
         },
@@ -644,7 +649,23 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
             },
           },
           holder: { select: { userId: true } },
+          transfers: {
+            where: {
+              senderStatus: 'ACCEPTED',
+              recipientStatus: 'ACCEPTED',
+              acceptedAt: { gt: effectiveAt },
+            },
+            select: { senderPersonId: true, acceptedAt: true },
+            orderBy: { acceptedAt: 'asc' },
+            take: 1,
+          },
         },
+      });
+      const ticket = candidates.find((candidate) => {
+        const firstFutureTransfer = candidate.transfers[0];
+        return firstFutureTransfer
+          ? firstFutureTransfer.senderPersonId === personId
+          : candidate.holderPersonId === personId;
       });
       if (!ticket) return false;
 
@@ -652,16 +673,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         where: {
           id: ticket.id,
           eventId,
-          holderPersonId: personId,
+          holderPersonId: ticket.holderPersonId,
           status: EventTicketStatus.ACTIVE,
           issuedAt: { lte: effectiveAt },
-          transfers: {
-            none: {
-              senderStatus: 'ACCEPTED',
-              recipientStatus: 'ACCEPTED',
-              acceptedAt: { gt: effectiveAt },
-            },
-          },
         },
         data: {
           status: EventTicketStatus.CONSUMED,
@@ -675,8 +689,8 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         data: {
           ticketId: ticket.id,
           operation: TicketHistoryOperation.CONSUMED,
-          previousHolderPersonId: personId,
-          newHolderPersonId: personId,
+          previousHolderPersonId: ticket.holderPersonId,
+          newHolderPersonId: ticket.holderPersonId,
           actorUserId: options.actorUserId ?? null,
         },
       });
@@ -691,9 +705,14 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         permission: null,
         eventId,
         majorEventId: ticket.event.majorEventId ?? ticket.event.eventGroup?.majorEventId,
-        before: { status: EventTicketStatus.ACTIVE, holderPersonId: personId },
-        after: { status: EventTicketStatus.CONSUMED, holderPersonId: personId, consumedAt: effectiveAt.toISOString() },
-        metadata: { attendedAt: effectiveAt.toISOString(), processedAt: processedAt.toISOString() },
+        before: { status: EventTicketStatus.ACTIVE, holderPersonId: ticket.holderPersonId },
+        after: {
+          status: EventTicketStatus.CONSUMED,
+          holderPersonId: ticket.holderPersonId,
+          consumedByPersonId: personId,
+          consumedAt: effectiveAt.toISOString(),
+        },
+        metadata: { attendedByPersonId: personId, attendedAt: effectiveAt.toISOString(), processedAt: processedAt.toISOString() },
       });
       await this.realtime.enqueueForUsers(tx, [ticket.holder?.userId], {
         type: 'TICKETS_CHANGED',

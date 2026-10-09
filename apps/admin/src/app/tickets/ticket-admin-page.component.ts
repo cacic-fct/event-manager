@@ -188,6 +188,9 @@ export class TicketAdminPageComponent {
   );
   protected readonly canReadTickets = computed(() => this.permissions.has(Permission.Ticket.Read));
   protected readonly canIssueTickets = computed(() => this.permissions.has(Permission.Ticket.Issue));
+  protected readonly canIssueSelectedConfig = computed(() =>
+    this.canIssueTickets() && this.selectedConfig()?.enabled === true,
+  );
   protected readonly canRevokeTickets = computed(() => this.permissions.has(Permission.Ticket.Revoke));
   protected readonly canManageTransfers = computed(() => this.permissions.has(Permission.TicketTransfer.Manage));
   protected readonly canReadHistory = computed(() => this.permissions.has(Permission.TicketTransfer.Read));
@@ -347,7 +350,7 @@ export class TicketAdminPageComponent {
   protected async openManualIssue(): Promise<void> {
     const eventId = this.eventId();
     const config = this.selectedConfig();
-    if (!eventId || !config || !this.canIssueTickets()) return;
+    if (!eventId || !config?.enabled || !this.canIssueTickets()) return;
     await this.openPersonActionDialog({
       action: 'ISSUE',
       eventId,

@@ -216,7 +216,7 @@ export class AdminShellComponent {
     if (section === 'event-workspace' && this.routeContext()?.kind === 'event') return 'settings';
     if (path.endsWith('/interests')) return 'interests';
     return ({ 'event-workspace': 'overview', events: 'overview', groups: 'overview',
-      'major-events': 'overview', subscriptions: 'subscriptions', attendances: 'attendances',
+      'major-events': 'overview', tickets: 'tickets', subscriptions: 'subscriptions', attendances: 'attendances',
       forms: 'forms', draws: 'draws', sports: 'sports', certificates: 'certificates', publication: 'publication',
     } as Record<string, ContextOperation['id']>)[section];
   }

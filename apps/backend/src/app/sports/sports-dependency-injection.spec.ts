@@ -15,6 +15,7 @@ import { SportsMatchRosterService } from './rosters/sports-match-roster.service'
 import { SportsAutoroutingService } from './routing/sports-autorouting.service';
 import { SportsStandingsService } from './scoring/sports-standings.service';
 import { SportsPaymentService } from './sports-payment.service';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 
 describe('sports service dependency injection', () => {
   it('resolves required mutation safeguards and duplication collaborators through Nest', async () => {
@@ -26,6 +27,7 @@ describe('sports service dependency injection', () => {
     const defaultRedirect = {};
     const mutationEvents = {};
     const eventEffects = {};
+    const ticketIssuance = {};
     const rosters = {};
     const payments = {};
     const moduleRef = await Test.createTestingModule({
@@ -42,6 +44,7 @@ describe('sports service dependency injection', () => {
         { provide: SportsRealtimeService, useValue: realtime },
         { provide: SportsMutationEventsService, useValue: mutationEvents },
         { provide: EventPostCommitEffectsService, useValue: eventEffects },
+        { provide: TicketIssuanceService, useValue: ticketIssuance },
         { provide: SportsAutoroutingService, useValue: autorouting },
         { provide: CurrentUserDefaultRedirectService, useValue: defaultRedirect },
         { provide: SportsMatchRosterService, useValue: rosters },
@@ -62,6 +65,7 @@ describe('sports service dependency injection', () => {
       expect(dependency(operations, 'frozen')).toBe(frozen);
       expect(dependency(operations, 'mutationEvents')).toBe(mutationEvents);
       expect(dependency(operations, 'eventEffects')).toBe(eventEffects);
+      expect(dependency(operations, 'ticketIssuance')).toBe(ticketIssuance);
       expect(dependency(bracket, 'frozen')).toBe(frozen);
       expect(dependency(bracket, 'eventEffects')).toBe(eventEffects);
       expect(dependency(teamDuplicator, 'payments')).toBe(payments);

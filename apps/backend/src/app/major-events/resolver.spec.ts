@@ -1057,8 +1057,8 @@ describe('MajorEventsResolver', () => {
   });
 
   it('rejects inline publication when invited attendance has no active invitee', async () => {
-    const { resolver, tx, auditLog, prisma } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx, auditLog } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue(majorEventRecord());
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ attendanceEligibility: 'INVITED_ONLY' }));
     await expect(resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never)).rejects.toThrow('confirmar presença');
@@ -1066,13 +1066,13 @@ describe('MajorEventsResolver', () => {
   });
 
   it('selects only invitation IDs for major-event mutation audit snapshots', async () => {
-    const { resolver, tx, prisma } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue(majorEventRecord());
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord());
     await resolver.updateMajorEvent('major-1', { name: 'Novo nome' }, context() as never);
     const expectedSelect = expect.objectContaining({ audienceInvitations: { select: { personId: true } } });
-    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+    expect(tx.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
     expect(tx.majorEvent.findUniqueOrThrow).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
   });
 
@@ -1167,12 +1167,14 @@ describe('MajorEventsResolver', () => {
     const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
     const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       event: {
         findMany: jest.fn(async () => audienceContext.getStore()?.bypass
           ? [{ id: 'event-1' }, { id: 'event-2' }]
           : [{ id: 'event-1' }]),
       },
       majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(previous),
         update: jest.fn().mockResolvedValue({ id: 'major-1' }),
         findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
       },
@@ -1248,9 +1250,6 @@ function createResolver(
     eventFormLinkPriceTier: {
       count: jest.fn().mockResolvedValue(0),
     },
-    certificateConfig: {
-      create: jest.fn(),
-    },
     sportsTournament: {
       findFirst: jest.fn(),
     },
@@ -1259,6 +1258,7 @@ function createResolver(
       updateMany: jest.fn(),
     },
     certificateConfig: {
+      create: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
     },

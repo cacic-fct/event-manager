@@ -12,6 +12,7 @@ import { SportsTeamAdminService } from './admin/sports-team-admin.service';
 import { SportsTournamentAdminService } from './admin/sports-tournament-admin.service';
 import { SportsVenueAdminService } from './admin/sports-venue-admin.service';
 import { SportsPaymentService } from './sports-payment.service';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 
 export * from './sports-admin.types';
 
@@ -32,6 +33,7 @@ export class SportsAdminService {
     auditLog: AuditLogService,
     payments: SportsPaymentService,
     publication: PublicationTransitionService,
+    ticketIssuance: TicketIssuanceService,
   ) {
     const dependencies = [prisma, frozen, auditLog, payments] as const;
     this.tournaments = new SportsTournamentAdminService(...dependencies);
@@ -39,7 +41,7 @@ export class SportsAdminService {
     this.teams = new SportsTeamAdminService(...dependencies);
     this.registrations = new SportsRegistrationAdminService(...dependencies);
     this.venues = new SportsVenueAdminService(...dependencies);
-    this.matches = new SportsMatchAdminService(...dependencies, publication);
+    this.matches = new SportsMatchAdminService(...dependencies, publication, ticketIssuance);
     this.officials = new SportsOfficialAdminService(...dependencies);
     this.scoreEntries = new SportsScoreEntryAdminService(...dependencies);
   }

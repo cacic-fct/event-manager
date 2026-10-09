@@ -21,6 +21,7 @@ describe('ticket resolver permission alternatives', () => {
         {} as never,
         {} as never,
         { assertEventMutable: jest.fn() } as never,
+        {} as never,
       );
 
       await expect(resolver.adminTicketEligibilityWarnings('event-1', 'person-1', {
@@ -59,7 +60,7 @@ describe('ticket mutation frozen protection', () => {
     const frozenResources = { assertEventMutable: jest.fn().mockRejectedValue(new Error('Frozen')) };
     const issuance = { issueForPerson: jest.fn() };
     const resolver = new TicketsResolver(prisma as never, authorization as never, {} as never,
-      issuance as never, {} as never, {} as never, {} as never, frozenResources as never);
+      issuance as never, {} as never, {} as never, {} as never, frozenResources as never, {} as never);
     const user = { sub: 'manager' };
     const context = { req: { user } } as never;
     const change = operation === 'configuration'

@@ -28,21 +28,6 @@ ALTER TABLE "major_events"
   ADD COLUMN "interestEnabled" BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN "attendanceEligibility" "AttendanceEligibility" NOT NULL DEFAULT 'APPROVED_REGISTRATIONS_ONLY';
 
--- Existing standalone activities without registrations allowed online
--- attendance without a subscription. Preserve that access, including activities
--- in standalone groups, while leaving parent inheritance and new defaults intact.
--- BEGIN LEGACY ATTENDANCE BACKFILL
-UPDATE "events" AS event
-SET "attendanceEligibility" = 'ANYONE'::"AttendanceEligibility"
-WHERE NOT event."allowSubscription"
-  AND event."majorEventId" IS NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM "event_groups" AS event_group
-    WHERE event_group."id" = event."eventGroupId"
-      AND event_group."majorEventId" IS NOT NULL
-  );
--- END LEGACY ATTENDANCE BACKFILL
-
 -- Existing configurations keep the event/group/major-event certificate rules.
 -- A nullable additional criterion avoids overwriting independent payment and
 -- registration exceptions with a new scope-wide default.

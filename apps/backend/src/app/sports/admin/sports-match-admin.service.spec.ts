@@ -6,6 +6,10 @@ describe('SportsMatchAdminService publication', () => {
   const actor = { sub: 'admin-1' } as never;
   const frozen = { assertEventMutable: jest.fn() };
   const publication = { setEventPublicationState: jest.fn() };
+  const ticketIssuance = {
+    lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+    alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
+  };
   const prisma = { sportsMatch: { findFirst: jest.fn() } };
 
   beforeEach(() => {
@@ -32,6 +36,7 @@ describe('SportsMatchAdminService publication', () => {
       {} as never,
       {} as never,
       publication as never,
+      ticketIssuance as never,
     );
   }
 

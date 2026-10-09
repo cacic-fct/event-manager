@@ -11,6 +11,7 @@ import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
+import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import { SportsRealtimeService } from '../realtime/sports-realtime.service';
@@ -59,8 +60,9 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
     auditLog: AuditLogService,
     frozen: FrozenResourceService,
     private readonly eventEffects: EventPostCommitEffectsService,
+    ticketIssuance: TicketIssuanceService,
   ) {
-    super(prisma, advancement, standings, mutationEvents, auditLog, frozen);
+    super(prisma, advancement, standings, mutationEvents, auditLog, frozen, ticketIssuance);
   }
 
   async commit(inputs: SportsMatchCommandInput[], actor: SportsMatchCommandActor): Promise<SportsMatchAction[]> {

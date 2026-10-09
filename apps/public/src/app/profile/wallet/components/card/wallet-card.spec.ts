@@ -4,6 +4,7 @@ import { WalletCardUser } from './wallet-card.types';
 import { createWalletStoryTicket } from '../../testing/wallet-story-fixtures';
 import { WalletBarcodeComponent } from '../barcode/barcode';
 import { By } from '@angular/platform-browser';
+import { WalletEventCard } from './wallet-event-card';
 
 describe('WalletCard', () => {
   let fixture: ComponentFixture<WalletCard>;
@@ -48,6 +49,16 @@ describe('WalletCard', () => {
     expect(fixture.nativeElement.querySelector('.avatar')?.getAttribute('src')).toBe(
       'https://lh3.googleusercontent.com/a/test-user=s512-c',
     );
+  });
+
+  it.each([
+    'https://lh3.googleusercontent.com.evil.example/a/test-user=s96-c',
+    'https://example.com/lh3.googleusercontent.com/a/test-user=s96-c',
+    'http://lh3.googleusercontent.com/a/test-user=s96-c',
+  ])('does not resize an untrusted profile picture URL: %s', (picture) => {
+    const eventCard = fixture.debugElement.query(By.directive(WalletEventCard)).componentInstance as WalletEventCard;
+
+    expect(eventCard.googlePictureUrl(picture)).toBe(picture);
   });
 
   it('shows a ticket as its own pass with a raw prefixed payload', () => {
