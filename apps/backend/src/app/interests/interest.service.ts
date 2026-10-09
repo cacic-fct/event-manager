@@ -445,7 +445,10 @@ export class EventInterestsService {
 
     const actor = user;
     const existing = await this.findExistingSubscription(interest);
-    if (!existing) {
+    const shouldMergeGroupSelections = Boolean(
+      interest.eventGroupId && request.selectedEventIds?.length,
+    );
+    if (!existing || shouldMergeGroupSelections) {
       try {
         if (target.targetType === InterestTargetType.MAJOR_EVENT) {
           await this.createMajorEventSubscriptionFromInterest(actor, interest, request);
@@ -506,7 +509,7 @@ export class EventInterestsService {
               ...request,
               selectedEventIds,
             });
-          } else {
+          } else if (!existing) {
             await this.assertEventGroupConversionPermissions(actor, interest.eventGroupId);
             await this.frozenResources.assertEventGroupMutable(interest.eventGroupId, actor, 'edit');
             await this.eventSubscriptions.subscribeCurrentUserEventGroup(
@@ -562,7 +565,6 @@ export class EventInterestsService {
       select: { id: true, subscriptionStatus: true },
     });
     if (existingMajorSubscription) {
-      await this.assertMajorConversionPermissions(actor, majorEventId, Permission.Subscription.Update);
       const existingSelections = await this.prisma.majorEventSubscriptionEventSelection.findMany({
         where: { subscriptionId: existingMajorSubscription.id, deletedAt: null },
         select: { eventId: true },
@@ -570,9 +572,16 @@ export class EventInterestsService {
       const mergedEventIds = [
         ...new Set([...existingSelections.map(({ eventId }) => eventId), ...selectedEventIds]),
       ];
+      if (
+        !this.inactiveMajorSubscriptionStatuses().includes(existingMajorSubscription.subscriptionStatus) &&
+        selectedEventIds.every((id) => existingSelections.some(({ eventId }) => eventId === id))
+      ) {
+        return;
+      }
       if (mergedEventIds.length === 0) {
         return;
       }
+      await this.assertMajorConversionPermissions(actor, majorEventId, Permission.Subscription.Update);
       const nextStatus = request.subscriptionStatus
         ?? (this.inactiveMajorSubscriptionStatuses().includes(existingMajorSubscription.subscriptionStatus)
           ? await this.defaultMajorEventStatus(majorEventId, request)

@@ -171,6 +171,7 @@ describe('EventGroupsResolver authorization', () => {
     const source = {
       id: 'group-source',
       name: 'Trilhas',
+      interestEnabled: true,
       emoji: '📚',
       shouldIssueCertificate: true,
       shouldIssueCertificateForNonPayingAttendees: true,
@@ -253,6 +254,7 @@ describe('EventGroupsResolver authorization', () => {
       Permission.CertificateConfig.Create,
     ]);
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
+    expect(tx.eventGroup.create).toHaveBeenCalledWith({ data: expect.objectContaining({ interestEnabled: true }) });
     expect(tx.certificateConfig.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         scope: 'EVENT_GROUP',
@@ -381,6 +383,7 @@ describe('EventGroupsResolver authorization', () => {
       deletedAt: null,
     };
     const tx = {
+      event: { findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]) },
       eventGroup: {
         findFirst: jest.fn().mockResolvedValue(group),
         update: jest.fn(),
@@ -398,12 +401,15 @@ describe('EventGroupsResolver authorization', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const attendanceCategories = { refreshForEvent: jest.fn() };
+    const attendanceRealtime = { notifyAllConnectedPeople: jest.fn() };
     const resolver = new EventGroupsResolver(
       prisma as never,
       typesenseSearch as never,
       frozenResources as never,
       {} as never,
       auditLog as never,
+      undefined, undefined, undefined, attendanceCategories as never, attendanceRealtime as never,
     );
 
     await expect(resolver.deleteEventGroup('group-1', { req: { user: { sub: 'admin-1' } } } as never)).resolves.toEqual(
@@ -430,6 +436,10 @@ describe('EventGroupsResolver authorization', () => {
       }),
       tx,
     );
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+    expect(attendanceCategories.refreshForEvent.mock.invocationCallOrder[0]).toBeGreaterThan(tx.eventGroup.update.mock.invocationCallOrder[0]);
     expect(typesenseSearch.deleteEventGroup).toHaveBeenCalledWith('group-1');
   });
 

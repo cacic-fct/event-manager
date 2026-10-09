@@ -240,11 +240,34 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     const eventIds = events.map((event) => event.id);
+    // Page the union before hydrating people and resolving their assessments.
+    // Registrations precede attendance-only participants.
+    const page = await this.prisma.$queryRaw<{ personId: string }[]>(Prisma.sql`
+      WITH participants AS (
+        SELECT "personId", MAX("createdAt") AS "registeredAt", NULL::timestamp AS "attendedAt"
+        FROM major_event_subscriptions
+        WHERE "majorEventId" = ${majorEventId} AND "deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
+        GROUP BY "personId"
+        UNION ALL
+        SELECT "personId", NULL::timestamp AS "registeredAt", MIN("attendedAt") AS "attendedAt"
+        FROM event_attendances
+        WHERE "eventId" IN (${Prisma.join(eventIds)}) AND status = 'PRESENT'
+          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
+        GROUP BY "personId"
+      )
+      SELECT "personId" FROM participants
+      GROUP BY "personId"
+      ORDER BY MAX("registeredAt") DESC NULLS LAST, MIN("attendedAt") ASC NULLS LAST, "personId" ASC
+      LIMIT ${pagination.take} OFFSET ${pagination.skip}
+    `);
+    const pagePersonIds = page.map(({ personId }) => personId);
+    if (pagePersonIds.length === 0) return [];
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
         deletedAt: null,
-        ...(personId ? { personId } : {}),
+        personId: { in: pagePersonIds },
       },
       include: {
         person: {
@@ -264,7 +287,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         eventId: {
           in: eventIds,
         },
-        ...(personId ? { personId } : {}),
+        personId: { in: pagePersonIds },
       },
       select: {
         personId: true,
@@ -280,24 +303,8 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       },
     });
 
-    const personIds = [
-      ...new Set([
-        ...subscriptions.map((subscription) => subscription.personId),
-        ...attendances.map((attendance) => attendance.personId),
-      ]),
-    ];
-    if (personIds.length === 0) {
-      return [];
-    }
-
-    const pagePersonIds = personIds.slice(pagination.skip, pagination.skip + pagination.take);
-    if (pagePersonIds.length === 0) {
-      return [];
-    }
-
     const attendanceByKey = new Map(
       attendances
-        .filter((attendance) => pagePersonIds.includes(attendance.personId))
         .map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
     const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(

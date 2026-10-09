@@ -94,6 +94,28 @@ describe('EventInterestsComponent realtime refresh', () => {
     expect(fixture.componentInstance.filteredTargets().map((target) => target.targetId)).toEqual(['event-1']);
   });
 
+  it.each([InterestTargetType.MAJOR_EVENT, InterestTargetType.EVENT_GROUP])(
+    'excludes backing sports matches from %s conversion activities', async (targetType) => {
+      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(of([
+        eventFixture({ id: 'activity-1' }), eventFixture({ id: 'match-1', isSportsMatch: true }),
+      ]));
+      const fixture = TestBed.createComponent(EventInterestsComponent);
+      fixture.detectChanges();
+      await flushAsync();
+      const component = fixture.componentInstance;
+      await component.selectTarget({ targetType, targetId: 'target-1', name: 'Alvo', emoji: '📅', kindLabel: 'Alvo', interestEnabled: true });
+      expect(component.targetEventIds()).toEqual(['activity-1']);
+      expect(component.targetEvents().map(({ id }) => id)).toEqual(['activity-1']);
+
+      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(of([
+        eventFixture({ id: 'match-1', isSportsMatch: true }),
+      ]));
+      await component.selectTarget({ targetType, targetId: 'sports-only', name: 'Esportes', emoji: '⚽', kindLabel: 'Alvo', interestEnabled: true });
+      expect(component.targetEventIds()).toEqual([]);
+      expect(component.canConvertInterest(interestFixture())).toBe(false);
+    },
+  );
+
   it('keeps the selected target activities when target lookups resolve out of order', async () => {
     const eventApi = TestBed.inject(EventApiService);
     const listEvents = vi.mocked(eventApi.listEvents);
