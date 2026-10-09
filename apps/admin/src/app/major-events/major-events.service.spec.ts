@@ -14,6 +14,22 @@ import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
 describe('MajorEventsService', () => {
+  it('restores the saved major event when edits are discarded without changing the route', async () => {
+    const majorEvent = createAdminMajorEvent({ id: 'major-1', name: 'Grande evento salvo' });
+    api.getMajorEvent.mockReturnValue(of(majorEvent));
+    await service.pickMajorEventById(majorEvent.id);
+    service.majorEventForm.controls.name.setValue('Nome descartado');
+
+    await service.discardChanges();
+    await service.pickMajorEventById(majorEvent.id);
+
+    expect(service.selectedMajorEvent()?.id).toBe(majorEvent.id);
+    expect(service.majorEventForm.controls.name.value).toBe('Grande evento salvo');
+    expect(service.unsavedChanges()).toBe(false);
+    expect(api.getMajorEvent).toHaveBeenCalledTimes(2);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   let service: MajorEventsService;
   let lastPayload: MajorEventInput | null;
   let publicationApi: {

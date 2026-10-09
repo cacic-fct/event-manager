@@ -22,6 +22,22 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 
 describe('EventGroupsService', () => {
+  it('restores the saved group when edits are discarded without changing the route', async () => {
+    const group = createAdminEventGroup({ id: 'group-1', name: 'Grupo salvo', majorEventId: null });
+    api.getEventGroup.mockReturnValue(of(group));
+    await service.pickEventGroupById(group.id);
+    service.eventGroupForm.controls.name.setValue('Nome descartado');
+
+    await service.discardChanges();
+    await service.pickEventGroupById(group.id);
+
+    expect(service.selectedEventGroup()?.id).toBe(group.id);
+    expect(service.eventGroupForm.controls.name.value).toBe('Grupo salvo');
+    expect(service.unsavedChanges()).toBe(false);
+    expect(api.getEventGroup).toHaveBeenCalledTimes(2);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   let service: EventGroupsService;
   let lastPayload: EventGroupInput | null;
   let api: {

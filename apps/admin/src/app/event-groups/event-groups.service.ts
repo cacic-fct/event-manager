@@ -319,6 +319,16 @@ export class EventGroupsService {
     void this.router.navigate(this.eventGroupPublicationRoute(selectedGroup.id));
   }
 
+  async discardChanges(creationMajorEventId?: string | null): Promise<void> {
+    const groupId = this.selectedEventGroup()?.id;
+    if (!groupId) {
+      await this.initializeNewEventGroup(creationMajorEventId);
+      return;
+    }
+    this.loadedSelectionId = null;
+    await this.pickEventGroupById(groupId);
+  }
+
   startNewEventGroup(navigate = true): void {
     this.selectionRequest++;
     this.loadedSelectionId = null;

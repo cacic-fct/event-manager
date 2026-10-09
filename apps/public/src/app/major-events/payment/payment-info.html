@@ -44,6 +44,9 @@
         O valor deste bilhete foi atualizado. Volte à inscrição para conferir o valor atual antes de enviar o comprovante.
       </p>
     }
+    @if (ticketOfferExpired()) {
+      <p role="alert">O prazo de compra deste bilhete encerrou. Não faça o pagamento. Volte à inscrição para conferir os bilhetes disponíveis.</p>
+    }
     @if (ticketPurchaseMode && !currentState.ticketPurchase && !currentState.uploadedTicketPurchaseReceipt) {
       <p class="ticket-receipt-note">
         A compra só será registrada depois que o envio do comprovante for concluído. Depois, a equipe analisará o comprovante.
@@ -51,6 +54,7 @@
     }
   </section>
 
+  @if (!ticketOfferExpired()) {
   <section class="detail-section">
     <h2>Dados bancários</h2>
     @if (paymentInfo) {
@@ -116,6 +120,7 @@
     </button>
     }
   </section>
+  }
   }
 
   <section class="detail-section">

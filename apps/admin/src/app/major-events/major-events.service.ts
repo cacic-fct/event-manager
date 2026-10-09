@@ -319,6 +319,16 @@ export class MajorEventsService {
     void this.router.navigate(['/forms', 'major-event', selectedMajorEvent.id]);
   }
 
+  async discardChanges(): Promise<void> {
+    const majorEventId = this.selectedMajorEvent()?.id;
+    if (!majorEventId) {
+      this.resetMajorEventForm(false);
+      return;
+    }
+    this.loadedSelectionId = null;
+    await this.pickMajorEventById(majorEventId);
+  }
+
   resetMajorEventForm(navigate = true): void {
     this.selectionRequest++;
     this.loadedSelectionId = null;

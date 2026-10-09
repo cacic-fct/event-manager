@@ -68,7 +68,9 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
 export class EventGroupsPageComponent {
   readonly workspace = inject(EventGroupsService);
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
-  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly pendingRegistration = this.pendingChanges.register(() =>
+    this.workspace.discardChanges(this.lastContext?.query?.get('majorEventId')),
+  );
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);

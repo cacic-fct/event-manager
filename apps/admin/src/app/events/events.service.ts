@@ -357,6 +357,17 @@ export class EventsService {
     return request === this.selectionRequest;
   }
 
+  async discardChanges(creationParents: { majorEventId?: string | null; eventGroupId?: string | null } = {}): Promise<void> {
+    const eventId = this.selectedEvent()?.id;
+    if (!eventId) {
+      await this.initializeNewEvent(creationParents);
+      return;
+    }
+    const draftId = this.selectedEventDraft()?.id;
+    this.loadedSelectionId = null;
+    await this.selectEventById(eventId, { draftId, forceOriginal: !draftId });
+  }
+
   resetEventForm(navigate = true): void {
     this.selectionRequest++;
     this.loadedSelectionId = null;

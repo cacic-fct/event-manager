@@ -118,6 +118,7 @@ describe('PaymentInfo', () => {
       ticketPurchaseMode: boolean;
       state: ReturnType<typeof signal>;
       pageRequestId: number;
+      paymentNow: ReturnType<typeof signal<number>>;
       pageRequest(): Subject<{
         subscription: CurrentUserMajorEventSubscription | null;
         receipt: null;
@@ -135,6 +136,7 @@ describe('PaymentInfo', () => {
     liveComponent.ticketPurchaseMode = false;
     liveComponent.state = signal({ status: 'loading' });
     liveComponent.pageRequestId = 0;
+    liveComponent.paymentNow = signal(Date.now());
     liveComponent.pageRequest = () => requests.shift() as typeof older;
     liveComponent.receiptUploadCooldown = { clear: vi.fn() };
     liveComponent.destroyRef = { onDestroy: () => () => undefined };

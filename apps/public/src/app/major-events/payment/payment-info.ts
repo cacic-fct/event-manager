@@ -1,7 +1,7 @@
-import { CurrencyPipe, DatePipe, DecimalPipe, registerLocaleData } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, isPlatformBrowser, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,6 +25,7 @@ import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.
 import { TicketPurchaseApiService } from './ticket-purchase-api.service';
 import type { TicketPurchaseReceiptUploadResponse } from './ticket-purchase-api.service';
 import { TicketingApiService } from '../../profile/ticketing/ticketing-api.service';
+import { nextDeadlineDelay } from '../../profile/ticketing/ticket-expiration';
 
 registerLocaleData(localePt, 'pt-BR');
 
@@ -88,6 +89,7 @@ export class PaymentInfo {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly receiptUploadCooldown = createRateLimitCooldown(this.destroyRef);
   private pageRequestId = 0;
@@ -99,6 +101,7 @@ export class PaymentInfo {
   readonly expectedAmountCents = this.parseExpectedAmount(this.route.snapshot.queryParamMap.get('expectedAmountCents'));
   readonly ticketPurchaseMode = Boolean(this.ticketEventId);
   readonly state = signal<PaymentState>({ status: 'loading' });
+  private readonly paymentNow = signal(Date.now());
   readonly isDragging = signal(false);
   readonly uploadProgress = signal<number | null>(null);
   readonly uploadCooldownSeconds = this.receiptUploadCooldown.seconds;
@@ -122,9 +125,14 @@ export class PaymentInfo {
     return this.ticketPurchaseMode && currentState.status === 'ready' && currentState.ticketOption !== null &&
       this.expectedAmountCents !== currentState.ticketOption.amountCents;
   });
+  readonly ticketOfferExpired = computed(() => {
+    const currentState = this.state();
+    return this.ticketPurchaseMode && currentState.status === 'ready' && currentState.ticketOption !== null &&
+      Date.parse(currentState.ticketOption.expiresAt) <= this.paymentNow();
+  });
   readonly pixPayload = computed(() => {
     const currentState = this.state();
-    if (currentState.status !== 'ready') {
+    if (currentState.status !== 'ready' || this.ticketOfferExpired()) {
       return null;
     }
 
@@ -132,6 +140,14 @@ export class PaymentInfo {
   });
 
   constructor() {
+    effect((onCleanup) => {
+      const currentState = this.state();
+      if (!this.isBrowser || !this.ticketPurchaseMode || currentState.status !== 'ready' || !currentState.ticketOption) return;
+      const delay = nextDeadlineDelay([currentState.ticketOption.expiresAt], this.paymentNow());
+      if (delay === null) return;
+      const timer = window.setTimeout(() => this.paymentNow.set(Date.now()), delay);
+      onCleanup(() => window.clearTimeout(timer));
+    });
     this.loadPage();
     this.realtime
       .watchCurrentUserData()
@@ -186,6 +202,7 @@ export class PaymentInfo {
   }
 
   copyPixCode(): void {
+    this.paymentNow.set(Date.now());
     const brCode = this.pixPayload()?.brCode;
     if (brCode) {
       const subscription = this.readySubscription();
@@ -201,6 +218,8 @@ export class PaymentInfo {
   }
 
   copyPixKey(): void {
+    this.paymentNow.set(Date.now());
+    if (this.ticketOfferExpired()) return;
     const paymentInfo = this.readySubscription()?.majorEvent.paymentInfo;
     if (paymentInfo?.pixKey) {
       const subscription = this.readySubscription();
@@ -249,7 +268,7 @@ export class PaymentInfo {
     }
 
     if (this.ticketPurchaseMode) {
-      if (!currentState || currentState.status !== 'ready' || !currentState.ticketOption || this.ticketAmountChanged()) {
+      if (!currentState || currentState.status !== 'ready' || !currentState.ticketOption || this.ticketAmountChanged() || this.ticketOfferExpired()) {
         return false;
       }
       if (currentState.uploadedTicketPurchaseReceipt) return false;
@@ -297,6 +316,7 @@ export class PaymentInfo {
             ticketPurchase,
             uploadedTicketPurchaseReceipt,
           });
+          this.paymentNow.set(Date.now());
           if (!background && !this.ticketPurchaseMode) {
             this.analytics.trackMajorEventTransaction({
               stage: 'payment_page_viewed',
@@ -462,6 +482,11 @@ export class PaymentInfo {
   }
 
   private uploadTicketPurchaseReceipt(file: File): void {
+    this.paymentNow.set(Date.now());
+    if (this.ticketOfferExpired()) {
+      this.snackBar.open('O prazo de compra deste bilhete encerrou. Não faça o pagamento.', 'OK', { duration: 4500 });
+      return;
+    }
     const currentState = this.state();
     const option = currentState.status === 'ready' ? currentState.ticketOption : null;
     if (!option || this.expectedAmountCents === null || this.ticketAmountChanged()) {

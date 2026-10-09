@@ -7,7 +7,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { createTicketPurchaseOption, createTicketPurchaseReceipt } from '@cacic-fct/shared-ticketing/testing';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 import { TicketingApiService } from '../../profile/ticketing/ticketing-api.service';
@@ -20,11 +20,12 @@ describe('ticket purchase payment integration', () => {
   let fixture: ComponentFixture<PaymentInfo>;
   let analytics: { trackEvent: ReturnType<typeof vi.fn>; trackMajorEventTransaction: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     analytics = { trackEvent: vi.fn(), trackMajorEventTransaction: vi.fn() };
     snackBar = { open: vi.fn() };
-    const dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
+    dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
     const majorEventSubscription = {
       id: 'subscription-1',
       majorEventId: 'major-1',
@@ -35,7 +36,7 @@ describe('ticket purchase payment integration', () => {
         id: 'major-1',
         name: 'Congresso de Computação',
         isPaymentRequired: true,
-        paymentInfo: null,
+        paymentInfo: { bankName: 'Banco de teste', pixKey: 'pix@example.com', holder: 'Evento de teste', pixCity: 'São Paulo' },
         additionalPaymentInfo: null,
         majorEventPrices: [],
       },
@@ -81,6 +82,54 @@ describe('ticket purchase payment integration', () => {
     fixture.destroy();
     http.verify();
     TestBed.resetTestingModule();
+    vi.useRealTimers();
+  });
+
+  function loadOffer(expiresAt: string): void {
+    const requests = http.match('/api/graphql');
+    requests.find((request) => request.request.body.query.includes('myTicketPurchaseOptions'))?.flush({
+      data: { myTicketPurchaseOptions: [createTicketPurchaseOption({
+        eventId: 'party-event', majorEventId: 'major-1', ticketConfigId: 'party-config', amountCents: 2500, expiresAt,
+      })] },
+    });
+    requests.find((request) => request.request.body.query.includes('myTicketPurchases'))?.flush({ data: { myTicketPurchases: [] } });
+    fixture.detectChanges();
+  }
+
+  it('removes payment and upload controls at the offer deadline without a realtime event', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    loadOffer(expiresAt);
+    expect(fixture.nativeElement.querySelector('.pix-qr')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="file"]')).not.toBeNull();
+
+    vi.advanceTimersByTime(60_000);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.pix-qr')).toBeNull();
+    expect(fixture.nativeElement.querySelector('input[type="file"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Copiar chave Pix');
+    expect(fixture.nativeElement.textContent).not.toContain('Banco de teste');
+    expect(fixture.nativeElement.textContent).toContain('O prazo de compra deste bilhete encerrou. Não faça o pagamento.');
+    expect(fixture.componentInstance.canUpload()).toBe(false);
+    expect(fixture.componentInstance.pixPayload()).toBeNull();
+  });
+
+  it('does not upload when the user confirms a receipt after the offer deadline', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    loadOffer(new Date(Date.now() + 60_000).toISOString());
+    const confirmation = new Subject<boolean>();
+    dialog.open.mockReturnValue({ afterClosed: () => confirmation });
+    const file = new File(['recibo'], 'comprovante.pdf', { type: 'application/pdf' });
+    const input = fixture.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { configurable: true, value: { item: () => file } });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    vi.advanceTimersByTime(60_000);
+    confirmation.next(true);
+
+    http.expectNone('/api/ticket-purchases/party-event/receipt');
+    expect(snackBar.open).toHaveBeenCalledWith('O prazo de compra deste bilhete encerrou. Não faça o pagamento.', 'OK', { duration: 4500 });
   });
 
   it('shows the ticket receipt only after the upload endpoint succeeds', async () => {

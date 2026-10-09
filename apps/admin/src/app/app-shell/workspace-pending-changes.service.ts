@@ -9,15 +9,20 @@ export interface WorkspacePendingChangesRegistration {
   destroy(): void;
 }
 
+interface PendingEditor {
+  pending: boolean;
+  discard?: () => void | Promise<void>;
+}
+
 @Service()
 export class WorkspacePendingChangesService {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router, { optional: true });
-  private readonly registrations = signal(new Map<symbol, boolean>());
+  private readonly registrations = signal(new Map<symbol, PendingEditor>());
   private bypassRouteGuard = false;
   private routeTransitionApproved = false;
 
-  readonly pending = computed(() => [...this.registrations().values()].some(Boolean));
+  readonly pending = computed(() => [...this.registrations().values()].some((editor) => editor.pending));
 
   constructor() {
     const routerEvents = this.router?.events;
@@ -30,9 +35,9 @@ export class WorkspacePendingChangesService {
     }
   }
 
-  register(): WorkspacePendingChangesRegistration {
+  register(discard?: () => void | Promise<void>): WorkspacePendingChangesRegistration {
     const id = Symbol('workspace-pending-changes');
-    this.update(id, false);
+    this.registrations.update((registrations) => new Map(registrations).set(id, { pending: false, discard }));
     return {
       set: (pending) => this.update(id, pending),
       destroy: () => this.remove(id),
@@ -56,8 +61,9 @@ export class WorkspacePendingChangesService {
     if (this.bypassRouteGuard || this.routeTransitionApproved) {
       return true;
     }
+    const hadPendingChanges = this.pending();
     const confirmed = await this.confirmDiscardChanges();
-    this.routeTransitionApproved = confirmed && this.pending();
+    this.routeTransitionApproved = confirmed && hadPendingChanges;
     return confirmed;
   }
 
@@ -70,7 +76,7 @@ export class WorkspacePendingChangesService {
       return true;
     }
 
-    return (
+    const confirmed = (
       (await firstValueFrom(
         this.dialog
           .open(ConfirmationDialogComponent, {
@@ -86,15 +92,24 @@ export class WorkspacePendingChangesService {
           .afterClosed(),
       )) === true
     );
+    if (confirmed) {
+      for (const [id, editor] of this.registrations()) {
+        if (!editor.pending) continue;
+        await editor.discard?.();
+        this.update(id, false);
+      }
+    }
+    return confirmed;
   }
 
   private update(id: symbol, pending: boolean): void {
     this.registrations.update((registrations) => {
-      if (registrations.get(id) === pending) {
+      const editor = registrations.get(id);
+      if (!editor || editor.pending === pending) {
         return registrations;
       }
       const updated = new Map(registrations);
-      updated.set(id, pending);
+      updated.set(id, { ...editor, pending });
       return updated;
     });
   }
