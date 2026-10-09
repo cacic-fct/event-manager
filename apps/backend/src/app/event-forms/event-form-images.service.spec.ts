@@ -1,6 +1,36 @@
 import { EventFormImagesService } from './event-form-images.service';
+import { EventFormAudience, PublicationState } from '@prisma/client';
+import { ForbiddenException } from '@nestjs/common';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 
 describe('EventFormImagesService references and cleanup', () => {
+  it.each([false, true])('denies non-participants image access for a hidden target (subscription flow: %s)', async (insertInSubscriptionFlow) => {
+    const { service, prisma, authorization, s3 } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventFormImage.findFirst.mockResolvedValue({
+      objectKey: 'private.avif',
+      form: {
+        id: 'form-1',
+        publicationState: PublicationState.PUBLISHED,
+        deletedAt: null,
+        _count: { responses: 0 },
+        links: [{
+          eventId: 'hidden-event',
+          majorEventId: null,
+          audience: EventFormAudience.SUBSCRIBERS,
+          insertInSubscriptionFlow,
+          availableFrom: null,
+          availableUntil: null,
+          _count: { responses: 0 },
+        }],
+      },
+    });
+
+    await expect(service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser))
+      .rejects.toBeInstanceOf(ForbiddenException);
+    expect(s3.downloadFile).not.toHaveBeenCalled();
+  });
+
   it('allows one stored asset to be referenced by the form and multiple questions', async () => {
     const { service, prisma } = createHarness();
     prisma.eventFormImage.findMany.mockResolvedValue([
@@ -153,7 +183,11 @@ describe('EventFormImagesService references and cleanup', () => {
 
 function createHarness() {
   const prisma = {
+    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventAttendance: { findFirst: jest.fn().mockResolvedValue(null) },
     eventFormImage: {
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn(),
@@ -161,12 +195,15 @@ function createHarness() {
     eventForm: { findMany: jest.fn() },
     eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
   };
-  const s3 = { deleteFile: jest.fn().mockResolvedValue(undefined) };
+  const s3 = { deleteFile: jest.fn().mockResolvedValue(undefined), downloadFile: jest.fn() };
   const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
   return {
     prisma,
     s3,
-    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, {} as never),
+    authorization,
+    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, {
+      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' } }),
+    } as never),
   };
 }
 

@@ -5,8 +5,46 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { EventFormAudience } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../public-events/models';
 import { toLinkModel } from './event-form-model.mapper';
 import { EventFormLinkRecord } from './event-form-records';
+
+export async function canStartPublicSubscriptionForLink(
+  prisma: PrismaService,
+  link: Pick<EventFormLinkModel, 'eventId' | 'majorEventId'>,
+): Promise<boolean> {
+  const now = new Date();
+  const subscriptionWindow = [
+    { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }] },
+    { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }] },
+  ];
+  if (link.eventId) {
+    return Boolean(
+      await prisma.event.findFirst({
+        where: {
+          id: link.eventId,
+          allowSubscription: true,
+          startDate: { gt: now },
+          AND: [PUBLIC_EVENT_WHERE, ...subscriptionWindow],
+        },
+        select: { id: true },
+      }),
+    );
+  }
+  if (link.majorEventId) {
+    return Boolean(
+      await prisma.majorEvent.findFirst({
+        where: {
+          ...PUBLIC_MAJOR_EVENT_WHERE,
+          id: link.majorEventId,
+          AND: subscriptionWindow,
+        },
+        select: { id: true },
+      }),
+    );
+  }
+  return false;
+}
 
 export async function canPersonAnswerLink(
   prisma: PrismaService,

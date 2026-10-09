@@ -17,6 +17,7 @@ import {
   canPersonAccessLinkPriceTier,
   canPersonAnswerLink,
   canPersonViewPublicResults,
+  canStartPublicSubscriptionForLink,
 } from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
@@ -184,6 +185,9 @@ export class EventFormListingsService {
       return [];
     }
 
+    const target = normalizeTarget(input);
+    const allowFutureSubscriber =
+      options.subscriptionFlowOnly === true && (await canStartPublicSubscriptionForLink(this.prisma, target));
     const forms = await this.listFormsForTarget(input, {
       ...options,
       includeReleasedResults: options.subscriptionFlowOnly !== true,
@@ -191,7 +195,7 @@ export class EventFormListingsService {
     const eligible: EventFormModel[] = [];
     for (const form of forms) {
       const link = findLinkForTarget(form, input);
-      if (link && (await this.canListCurrentUserForm(person.id, form, link, options))) {
+      if (link && (await this.canListCurrentUserForm(person.id, form, link, { ...options, allowFutureSubscriber }))) {
         eligible.push(toPublicEventFormModel(form, input));
       }
     }
@@ -456,7 +460,7 @@ export class EventFormListingsService {
     personId: string,
     form: EventFormModel,
     link: EventFormModel['links'][number],
-    options: { subscriptionFlowOnly?: boolean },
+    options: { subscriptionFlowOnly?: boolean; allowFutureSubscriber: boolean },
   ): Promise<boolean> {
     if (options.subscriptionFlowOnly !== true && !(await canPersonAccessLinkPriceTier(this.prisma, personId, link))) {
       return false;
@@ -464,7 +468,7 @@ export class EventFormListingsService {
 
     if (
       await canPersonAnswerLink(this.prisma, personId, link, {
-        allowFutureSubscriber: Boolean(options.subscriptionFlowOnly),
+        allowFutureSubscriber: options.allowFutureSubscriber && link.insertInSubscriptionFlow,
       })
     ) {
       return true;

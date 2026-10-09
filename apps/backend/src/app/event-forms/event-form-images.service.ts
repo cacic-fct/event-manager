@@ -27,6 +27,7 @@ import {
   canPersonAccessLinkPriceTier,
   canPersonAnswerLink,
   canPersonViewPublicResults,
+  canStartPublicSubscriptionForLink,
 } from './event-form-eligibility';
 import { toEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
@@ -407,7 +408,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     const model = toEventFormModel(form);
     for (const link of model.links) {
       if (!isLinkAvailable(link as never)) continue;
-      if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber: true })) {
+      const allowFutureSubscriber =
+        link.insertInSubscriptionFlow && (await canStartPublicSubscriptionForLink(this.prisma, link));
+      if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber })) {
         return;
       }
       if (!(await canPersonAccessLinkPriceTier(this.prisma, person.id, link))) continue;
