@@ -218,6 +218,14 @@ function createTransactionMock() {
   });
 
   return {
+    externalImportRecord: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue({}),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     auditLogEntry: {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
@@ -254,6 +262,7 @@ function createTransactionMock() {
     prizeDrawSpinEntry: writeManyDelegate(),
     prizeDrawSpin: writeManyDelegate(),
     $executeRaw: jest.fn().mockResolvedValue(0),
+    $queryRaw: jest.fn().mockResolvedValue([]),
     externalAccountMergeOperation: deleteManyDelegate(),
     peopleMergeOperation: deleteManyDelegate(),
     mergeCandidate: deleteManyDelegate(),

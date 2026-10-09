@@ -3,6 +3,10 @@ import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, Prisma } from
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
+export const AuditLogMetadataCategory = {
+  PUBLICATION_LIFECYCLE: 'publication-lifecycle',
+} as const;
+
 export type AuditActor = {
   id?: string | null;
   name: string;

@@ -219,7 +219,7 @@ describe('KeycloakAuthService', () => {
         postLogoutRedirectUri: 'https://app.example/',
       }),
     ).resolves.toEqual({
-      refreshTokenRevoked: true,
+      globalLogoutComplete: true,
       logoutUrl:
         'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
     });
@@ -685,20 +685,36 @@ describe('KeycloakAuthService', () => {
     });
     await service.clearSession(sessionId);
     expect(sessions.delete).toHaveBeenCalledWith(sessionId);
+    sessions.get.mockResolvedValue(null);
+    await expect(service.authenticateSession(sessionId)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('surfaces upstream Keycloak logout failures', async () => {
+  it('returns an incomplete global logout result when Keycloak is unavailable', async () => {
     mockedAxios.post.mockRejectedValueOnce(new Error('provider unavailable'));
 
-    await expect(service.logout({ refreshToken: 'refresh-token' })).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(service.logout({ refreshToken: 'refresh-token' })).resolves.toEqual({
+      globalLogoutComplete: false,
+      logoutUrl:
+        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
+    });
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
       'https://keycloak.example/realms/cacic/protocol/openid-connect/logout',
       expect.stringContaining('refresh_token=refresh-token'),
       expect.any(Object),
     );
+  });
+
+  it('returns the token-free browser logout URL when the session has no refresh token', async () => {
+    await expect(
+      service.logout({ postLogoutRedirectUri: 'https://app.example/' }),
+    ).resolves.toEqual({
+      globalLogoutComplete: false,
+      logoutUrl:
+        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
+    });
+
+    expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
   it('uses the session ID token identity when the access token omits the subject claim', async () => {
