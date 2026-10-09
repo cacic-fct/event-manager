@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
@@ -88,6 +88,7 @@ import { RealtimeFingerprintService } from './realtime/realtime-fingerprint.serv
 import { RealtimeInvalidationController } from './realtime/realtime-invalidation.controller';
 import { RealtimeInvalidationService } from './realtime/realtime-invalidation.service';
 import { SseReplayService } from './realtime/sse-replay.service';
+import { SseConnectionInterceptor } from './realtime/sse-connection.interceptor';
 import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
@@ -563,6 +564,10 @@ const schedulerProviders = useInMemoryTestInfra
     {
       provide: APP_GUARD,
       useClass: KeycloakScopeGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SseConnectionInterceptor,
     },
   ],
 })

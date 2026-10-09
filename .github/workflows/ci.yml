@@ -544,6 +544,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Detect sensitive file changes
         run: |
@@ -600,8 +601,7 @@ jobs:
     needs:
       - prepare-untrusted-pr
 
-    permissions:
-      contents: read
+    permissions: {}
 
     if: >
       github.event_name == 'pull_request' &&
@@ -612,6 +612,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -631,9 +632,6 @@ jobs:
 
       - name: Generate Prisma client
         run: bunx prisma generate --schema apps/backend/prisma/schema
-
-      - name: Derive Nx SHAs
-        uses: nrwl/nx-set-shas@v5
 
       - name: Lint all projects
         run: bunx nx run-many -t lint --all --parallel=3
@@ -678,8 +676,7 @@ jobs:
     needs:
       - prepare-untrusted-pr
 
-    permissions:
-      contents: read
+    permissions: {}
 
     if: >
       github.event_name == 'pull_request' &&
@@ -690,6 +687,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -710,9 +708,6 @@ jobs:
       - name: Generate Prisma client
         run: bunx prisma generate --schema apps/backend/prisma/schema
 
-      - name: Derive Nx SHAs
-        uses: nrwl/nx-set-shas@v5
-
       - name: Run unit tests with coverage
         run: bunx nx run-many -t test -p admin,backend,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
 
@@ -723,8 +718,7 @@ jobs:
     needs:
       - prepare-untrusted-pr
 
-    permissions:
-      contents: read
+    permissions: {}
 
     strategy:
       fail-fast: false
@@ -742,6 +736,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -807,8 +802,7 @@ jobs:
     needs:
       - prepare-untrusted-pr
 
-    permissions:
-      contents: read
+    permissions: {}
 
     if: >
       github.event_name == 'pull_request' &&
@@ -819,6 +813,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -855,8 +850,7 @@ jobs:
     needs:
       - prepare-untrusted-pr
 
-    permissions:
-      contents: read
+    permissions: {}
 
     if: >
       github.event_name == 'pull_request' &&
@@ -867,6 +861,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -901,8 +896,7 @@ jobs:
       - untrusted-pr-backend-e2e
       - untrusted-pr-build
 
-    permissions:
-      contents: read
+    permissions: {}
 
     if: >
       always() &&

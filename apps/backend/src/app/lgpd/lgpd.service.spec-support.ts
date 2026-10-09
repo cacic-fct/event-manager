@@ -183,6 +183,7 @@ function createPrismaMock() {
     },
     eventAttendance: findManyDelegate(),
     offlineEventAttendanceSubmission: findManyDelegate(),
+    lecturerProfile: findManyDelegate(),
     eventLecturer: findManyDelegate(),
     prizeDrawManualEntry: findManyDelegate(),
     prizeDrawWeightOverride: findManyDelegate(),
@@ -241,6 +242,10 @@ function createTransactionMock() {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
     },
+    lecturerProfile: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     eventLecturer: deleteManyDelegate(),
     prizeDrawManualEntry: deleteManyDelegate(),
     prizeDrawWeightOverride: deleteManyDelegate(),
@@ -290,6 +295,7 @@ function createS3Mock() {
 
 function createTypesenseSearchMock() {
   return {
+    deletePerson: jest.fn().mockResolvedValue(undefined),
     upsertAuditLogEntry: jest.fn().mockResolvedValue(undefined),
   };
 }

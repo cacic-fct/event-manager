@@ -1,6 +1,6 @@
 import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
-import { EMPTY, interval, map, merge, Observable, Subject, takeUntil } from 'rxjs';
+import { EMPTY, interval, map, merge, Observable, Subject, share, takeUntil } from 'rxjs';
 import { SseReplayService } from './sse-replay.service';
 
 const REALTIME_INVALIDATION_REDIS_CHANNEL = 'realtime:invalidation:v1';
@@ -27,6 +27,11 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
   private readonly logger = new Logger(RealtimeInvalidationService.name);
   private readonly channels = new Map<string, RealtimeInvalidationChannel>();
   private readonly destroy$ = new Subject<void>();
+  readonly heartbeat = interval(HEARTBEAT_INTERVAL_MS).pipe(
+    takeUntil(this.destroy$),
+    map(() => ({ data: { type: 'heartbeat', timestamp: Date.now() } })),
+    share(),
+  );
   private subscriber?: Redis;
   private subscriberReady = false;
   private destroyed = false;
@@ -129,18 +134,7 @@ export class RealtimeInvalidationService implements OnModuleInit, OnModuleDestro
 
     return new Observable<MessageEvent>((subscriber) => {
       const channel = this.acquireChannel(scope);
-      const subscription = merge(
-        channel.subject,
-        interval(HEARTBEAT_INTERVAL_MS).pipe(
-          takeUntil(this.destroy$),
-          map(() => ({
-            data: {
-              type: 'heartbeat',
-              timestamp: Date.now(),
-            },
-          })),
-        ),
-      ).subscribe(subscriber);
+      const subscription = merge(channel.subject, this.heartbeat).subscribe(subscriber);
 
       return () => {
         subscription.unsubscribe();

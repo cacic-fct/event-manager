@@ -1021,6 +1021,57 @@ describe('EventFormsService', () => {
     expect(forms[0].links[0].responseCount).toBe(0);
   });
 
+  it.each([EventFormTargetType.EVENT, EventFormTargetType.MAJOR_EVENT])(
+    'does not expose subscription-flow forms for an inaccessible %s to a non-participant',
+    async (targetType) => {
+      const target = targetType === EventFormTargetType.EVENT
+        ? { targetType, eventId: 'event-1', majorEventId: null }
+        : { targetType, eventId: null, majorEventId: 'major-1' };
+      prisma.eventForm.findMany.mockResolvedValue([
+        formRecord({ links: [linkRecord({ ...target, insertInSubscriptionFlow: true })] }),
+      ]);
+
+      await expect(service.listCurrentUserForms(context, target)).resolves.toEqual([]);
+      await expect(service.listCurrentUserForms(context, target, { subscriptionFlowOnly: true })).resolves.toEqual([]);
+
+      expect(targetType === EventFormTargetType.EVENT
+        ? prisma.event.findFirst
+        : prisma.majorEvent.findFirst).toHaveBeenCalled();
+    },
+  );
+
+  it.each([EventFormTargetType.EVENT, EventFormTargetType.MAJOR_EVENT])(
+    'allows future subscribers only in an open public %s subscription flow',
+    async (targetType) => {
+      const target = targetType === EventFormTargetType.EVENT
+        ? { targetType, eventId: 'event-1', majorEventId: null }
+        : { targetType, eventId: null, majorEventId: 'major-1' };
+      const targetQuery = targetType === EventFormTargetType.EVENT
+        ? prisma.event.findFirst
+        : prisma.majorEvent.findFirst;
+      targetQuery.mockResolvedValue({ id: target.eventId ?? target.majorEventId });
+      prisma.eventForm.findMany.mockResolvedValue([
+        formRecord({ links: [linkRecord({ ...target, insertInSubscriptionFlow: true })] }),
+      ]);
+
+      await expect(service.listCurrentUserForms(context, target)).resolves.toEqual([]);
+      await expect(service.listCurrentUserForms(context, target, { subscriptionFlowOnly: true })).resolves.toHaveLength(1);
+    },
+  );
+
+  it('preserves subscriber access to subscription-flow forms after public registration closes', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([
+      formRecord({ links: [linkRecord({ insertInSubscriptionFlow: true })] }),
+    ]);
+    prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
+
+    await expect(service.listCurrentUserForms(
+      context,
+      { targetType: EventFormTargetType.EVENT, eventId: 'event-1' },
+      { subscriptionFlowOnly: true },
+    )).resolves.toHaveLength(1);
+  });
+
   it('lists released public results for attendees who cannot answer the form audience', async () => {
     prisma.eventForm.findMany.mockResolvedValue([
       formRecord({
@@ -1842,6 +1893,8 @@ describe('EventFormsService', () => {
 
 function createPrisma() {
   const client = {
+    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
     $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(client)),
     $executeRaw: jest.fn(),
     eventForm: {

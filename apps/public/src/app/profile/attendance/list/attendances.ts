@@ -147,7 +147,7 @@ export class Attendances {
     }
 
     return this.certificateArchiveCooldownSeconds() > 0
-      ? `Disponível em ${this.certificateArchiveCooldownTime()}`
+      ? `Baixar certificados em ${this.certificateArchiveCooldownTime()}`
       : 'Baixar todos os certificados';
   });
   readonly filtersOpen = signal(false);
@@ -199,6 +199,20 @@ export class Attendances {
   );
 
   constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      toObservable(this.feedUserId).pipe(
+        distinctUntilChanged(),
+        switchMap((userId) => {
+          this.certificateArchiveCooldownEndsAt.set(0);
+          return userId ? this.api.getCertificateArchiveCooldown().pipe(catchError(() => of(null))) : of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe((status) => {
+        if (status) {
+          this.startCertificateArchiveCooldown(status.cooldownSeconds);
+        }
+      });
+    }
     this.realtime
       .watchCurrentUserData()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -322,7 +336,7 @@ export class Attendances {
     this.isDownloadingCertificates.set(true);
     this.api
       .downloadCurrentUserCertificatesArchive()
-      .pipe(finalize(() => this.isDownloadingCertificates.set(false)))
+      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.isDownloadingCertificates.set(false)))
       .subscribe({
         next: (download) => {
           this.certificateFileDownload.saveBlob(download.blob, download.fileName);
@@ -356,7 +370,7 @@ export class Attendances {
       return 0;
     }
 
-    const retryAfter = error.headers.get('retry-after')?.trim();
+    const retryAfter = (error.headers.get('retry-after') ?? error.headers.get('x-ratelimit-cooldown-seconds'))?.trim();
     return retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) : 0;
   }
 

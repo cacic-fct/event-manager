@@ -7,10 +7,47 @@ import {
   assertPersonIsEventLecturer,
   canPersonAnswerLink,
   canPersonViewPublicResults,
+  canStartPublicSubscriptionForLink,
 } from './event-form-eligibility';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../public-events/models';
 import type { EventFormLinkRecord } from './event-form-records';
 
 describe('event form eligibility helpers', () => {
+  it.each(['event', 'majorEvent'] as const)('requires public visibility and an open subscription window for %s', async (kind) => {
+    const prisma = createPrismaMock();
+    const link = kind === 'event'
+      ? { eventId: 'event-1', majorEventId: null }
+      : { eventId: null, majorEventId: 'major-1' };
+    await expect(canStartPublicSubscriptionForLink(prisma as never, link)).resolves.toBe(false);
+    expect(prisma[kind].findFirst).toHaveBeenCalledWith({
+      where: kind === 'event' ? {
+        id: 'event-1',
+        allowSubscription: true,
+        startDate: { gt: expect.any(Date) },
+        AND: [PUBLIC_EVENT_WHERE,
+          { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: expect.any(Date) } }] },
+          { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: expect.any(Date) } }] },
+        ],
+      } : {
+        ...PUBLIC_MAJOR_EVENT_WHERE,
+        id: 'major-1',
+        AND: [
+          { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: expect.any(Date) } }] },
+          { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: expect.any(Date) } }] },
+        ],
+      },
+      select: { id: true },
+    });
+    prisma[kind].findFirst.mockResolvedValue({ id: 'public-target' });
+    await expect(canStartPublicSubscriptionForLink(prisma as never, link)).resolves.toBe(true);
+  });
+
+  it('rejects future-subscriber access without a target', async () => {
+    await expect(canStartPublicSubscriptionForLink(createPrismaMock() as never, {
+      eventId: null, majorEventId: null,
+    })).resolves.toBe(false);
+  });
+
   it('allows subscriber-only links when the person is subscribed to the event', async () => {
     const prisma = createPrismaMock();
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
@@ -274,6 +311,8 @@ describe('event form eligibility helpers', () => {
 
 function createPrismaMock() {
   return {
+    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
     eventAttendance: {
       findFirst: jest.fn().mockResolvedValue(null),
     },

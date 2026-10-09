@@ -5,8 +5,10 @@ import type { Request } from 'express';
 import {
   EMPTY,
   Observable,
+  of,
   Subject,
   catchError,
+  concatMap,
   defer,
   distinctUntilChanged,
   exhaustMap,
@@ -35,7 +37,6 @@ import { SseReplayService } from './sse-replay.service';
 
 type RequestWithUser = Request & { user?: AuthenticatedUser };
 
-const HEARTBEAT_INTERVAL_MS = 25_000;
 const PERSONAL_REFRESH_INTERVAL_MS = 5_000;
 const SUBSCRIPTION_REFRESH_INTERVAL_MS = 3_000;
 const ORGANIZER_REFRESH_INTERVAL_MS = 2_000;
@@ -61,6 +62,15 @@ const REALTIME_SSE_RESPONSE = {
 @Controller('realtime')
 export class RealtimeInvalidationController {
   private readonly pollingSnapshots = new Map<string, Observable<MessageEvent>>();
+
+  private readonly publicCatalog = defer(() => {
+    const scope = this.invalidations.scope(PUBLIC_CATALOG_REALTIME_CHANNEL);
+    const minuteBoundary = interval(60_000).pipe(
+      map(() => ({ data: { type: 'PUBLIC_TIME_BOUNDARY', minute: Math.floor(Date.now() / 60_000) } })),
+      concatMap((event) => this.recordSnapshot(scope, event)),
+    );
+    return merge(this.invalidations.watch(scope), minuteBoundary);
+  }).pipe(share());
 
   constructor(
     private readonly invalidations: RealtimeInvalidationService,
@@ -104,7 +114,7 @@ export class RealtimeInvalidationController {
   @Public()
   @Sse('public/catalog/events')
   @UseGuards(RateLimitGuard)
-  @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
+  @RateLimit(RATE_LIMIT_POLICIES.publicRealtimeEvents)
   @ApiOperation({
     summary: 'Stream replayable public event-catalog invalidations',
     description: 'Notifica alterações no catálogo público e mudanças de fronteira temporal sem exigir autenticação.',
@@ -114,10 +124,7 @@ export class RealtimeInvalidationController {
   @ApiOkResponse(REALTIME_SSE_RESPONSE)
   streamPublicCatalog(@Headers('last-event-id') lastEventId: string | undefined): Observable<MessageEvent> {
     const scope = this.invalidations.scope(PUBLIC_CATALOG_REALTIME_CHANNEL);
-    const minuteBoundary = interval(60_000).pipe(
-      map(() => ({ data: { type: 'PUBLIC_TIME_BOUNDARY', minute: Math.floor(Date.now() / 60_000) } })),
-    );
-    return this.replay.replay(scope, lastEventId, merge(this.invalidations.watch(scope), minuteBoundary));
+    return this.replay.replay(scope, lastEventId, this.publicCatalog);
   }
 
   @Sse('current-user/data/events')
@@ -266,6 +273,7 @@ export class RealtimeInvalidationController {
         ),
         distinctUntilChanged((previous, current) => isDeepStrictEqual(previous, current)),
         map((data) => ({ data })),
+        concatMap((event) => this.recordSnapshot(scope, event)),
         share({
           connector: () => new Subject<MessageEvent>(),
           resetOnComplete: true,
@@ -287,9 +295,10 @@ export class RealtimeInvalidationController {
       });
       this.pollingSnapshots.set(scope, snapshots);
     }
-    const heartbeat = interval(HEARTBEAT_INTERVAL_MS).pipe(
-      map(() => ({ data: { type: 'heartbeat', timestamp: Date.now() } })),
-    );
-    return this.replay.replay(scope, lastEventId, merge(snapshots, heartbeat));
+    return this.replay.replay(scope, lastEventId, merge(snapshots, this.invalidations.heartbeat));
+  }
+
+  private recordSnapshot(scope: string, event: MessageEvent): Observable<MessageEvent> {
+    return defer(() => this.replay.record(scope, event)).pipe(catchError(() => of(event)));
   }
 }
