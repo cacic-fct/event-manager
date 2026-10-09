@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import Redis from 'ioredis';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { SseConnectionInterceptor } from './sse-connection.interceptor';
 import { firstValueFrom, take } from 'rxjs';
 import { AppModule } from '../app.module';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
@@ -34,6 +36,7 @@ describe('realtime invalidation provider integration', () => {
     const providers = Reflect.getMetadata(MODULE_METADATA.PROVIDERS, AppModule) as unknown[];
 
     expect(controllers).toContain(RealtimeInvalidationController);
+    expect(providers).toContainEqual({ provide: APP_INTERCEPTOR, useClass: SseConnectionInterceptor });
     expect(providers).toEqual(
       expect.arrayContaining([RealtimeFingerprintService, RealtimeInvalidationService, SseReplayService]),
     );

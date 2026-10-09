@@ -103,6 +103,15 @@ export const RATE_LIMIT_POLICIES = {
     maxCooldownMs: minute,
     maxAttempts: 60,
   },
+  publicRealtimeEvents: {
+    name: 'public-realtime-events',
+    windowMs: minute,
+    // Shared campus/carrier IPs need room for initial connections and reconnects.
+    freeAttempts: 1200,
+    baseCooldownMs: minute,
+    maxCooldownMs: minute,
+    maxAttempts: 1200,
+  },
   publicAnalytics: {
     name: 'public-analytics-tunnel',
     windowMs: minute,

@@ -60,16 +60,16 @@ export class SseReplayService {
       let lastDeliveredId = lastEventId;
       let replayFinished = false;
       let sourceCompleted = false;
-      const buffered: StoredSseEvent[] = [];
+      const buffered: MessageEvent[] = [];
       const pendingPublishes = new Set<Promise<void>>();
 
-      const deliver = (event: StoredSseEvent) => {
+      const deliver = (event: MessageEvent) => {
         if (event.id === lastDeliveredId) {
           return;
         }
 
         lastDeliveredId = event.id;
-        subscriber.next(this.toMessageEvent(event));
+        subscriber.next(event);
       };
 
       const completeWhenReady = () => {
@@ -85,7 +85,10 @@ export class SseReplayService {
             return;
           }
 
-          const publication = this.publish(scope, event)
+          const recorded = event.id && this.isCursorForScope(event.id, scope)
+            ? Promise.resolve(event)
+            : this.publish(scope, event).then((stored) => this.toMessageEvent(stored));
+          const publication = recorded
             .then((stored) => {
               if (replayFinished) {
                 deliver(stored);
@@ -110,7 +113,7 @@ export class SseReplayService {
       void this.readReplay(scope, lastEventId)
         .then((events) => {
           for (const event of events) {
-            deliver(event);
+            deliver(this.toMessageEvent(event));
           }
           replayFinished = true;
 
