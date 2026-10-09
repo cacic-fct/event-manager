@@ -2,9 +2,8 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { GUARDS_METADATA, HTTP_CODE_METADATA } from '@nestjs/common/constants';
 import { AuthController } from './auth.controller';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME, IS_PUBLIC_KEY } from './auth.constants';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
@@ -17,6 +16,7 @@ describe('AuthController callback redirect validation', () => {
   let controller: AuthController;
   let keycloakAuthService: {
     buildAuthorizationUrl: jest.Mock;
+    buildLogoutUrl: jest.Mock;
     clearSession: jest.Mock;
     consumeAuthorizationState: jest.Mock;
     createSession: jest.Mock;
@@ -38,11 +38,13 @@ describe('AuthController callback redirect validation', () => {
     authorizationPolicy.evaluatePermissions.mockResolvedValue([]);
     process.env.KEYCLOAK_ALLOWED_CALLBACK_REDIRECT_ORIGINS = 'https://events.example.com';
     process.env.KEYCLOAK_ALLOWED_POST_LOGOUT_REDIRECT_ORIGINS = 'https://events.example.com';
+    delete process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI;
     keycloakAuthService = {
       buildAuthorizationUrl: jest.fn().mockResolvedValue({
         authorizationUrl: 'https://sso.example/auth',
         state: 'state-1',
       }),
+      buildLogoutUrl: jest.fn().mockReturnValue('https://sso.example/logout?client_id=event-manager'),
       clearSession: jest.fn(),
       consumeAuthorizationState: jest.fn().mockResolvedValue({
         redirectUri: 'https://events.example.com/api/auth/callback',
@@ -64,7 +66,8 @@ describe('AuthController callback redirect validation', () => {
       getPostLoginRedirectUri: jest.fn().mockReturnValue('/admin/'),
       getSessionLogoutInput: jest.fn(),
       logout: jest.fn().mockResolvedValue({
-        logoutUrl: 'https://sso.example/logout',
+        globalLogoutComplete: false,
+        logoutUrl: 'https://sso.example/logout?client_id=event-manager',
       }),
       refreshSession: jest.fn().mockResolvedValue({
         expiresAt: Date.now() + 300_000,
@@ -84,6 +87,7 @@ describe('AuthController callback redirect validation', () => {
 
     expect(Reflect.getMetadata(IS_PUBLIC_KEY, handler)).toBe(true);
     expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([LogoutOriginGuard, RateLimitGuard]);
+    expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler)).toBe(200);
   });
 
   it('accepts only allowlisted callback redirect origins and paths', async () => {
@@ -281,8 +285,13 @@ describe('AuthController callback redirect validation', () => {
       controller.logout(requestFixture(), responseFixture() as never, {
         postLogoutRedirectUri: 'https://events.example.com/app?loggedOut=1#token',
       }),
-    ).resolves.toEqual({ logoutUrl: 'https://sso.example/logout' });
+    ).resolves.toEqual({
+      success: true,
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
 
+    expect(keycloakAuthService.buildLogoutUrl).toHaveBeenCalledWith('https://events.example.com/app?loggedOut=1');
     expect(keycloakAuthService.logout).toHaveBeenCalledWith(
       expect.objectContaining({
         postLogoutRedirectUri: 'https://events.example.com/app?loggedOut=1',
@@ -408,33 +417,44 @@ describe('AuthController callback redirect validation', () => {
       refreshToken: 'stored-refresh',
       idTokenHint: 'stored-id-token',
     });
+    keycloakAuthService.logout.mockResolvedValueOnce({
+      globalLogoutComplete: true,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
     const response = responseFixture();
 
-    await controller.logout(
-      requestFixture(
+    await expect(
+      controller.logout(
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+            origin: 'https://events.example.com',
+            'x-forwarded-proto': 'https',
+          },
+          true,
+        ),
+        response as never,
         {
-          cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
-          origin: 'https://events.example.com',
-          'x-forwarded-proto': 'https',
-        },
-        true,
+          refreshToken: 'attacker-refresh-token',
+          idTokenHint: 'attacker-id-token',
+          postLogoutRedirectUri: 'https://events.example.com/app',
+        } as never,
       ),
-      response as never,
-      {
-        refreshToken: 'attacker-refresh-token',
-        idTokenHint: 'attacker-id-token',
-        postLogoutRedirectUri: 'https://events.example.com/app',
-      } as never,
-    );
+    ).resolves.toEqual({
+      success: true,
+      globalLogoutComplete: true,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
 
+    expect(keycloakAuthService.buildLogoutUrl).toHaveBeenCalledWith('https://events.example.com/app');
     expect(keycloakAuthService.getSessionLogoutInput).toHaveBeenCalledWith('session-id');
     expect(keycloakAuthService.clearSession).toHaveBeenCalledWith('session-id');
     expect(keycloakAuthService.logout).toHaveBeenCalledWith({
       refreshToken: 'stored-refresh',
       postLogoutRedirectUri: 'https://events.example.com/app',
     });
-    expect(keycloakAuthService.logout.mock.invocationCallOrder[0]).toBeLessThan(
-      keycloakAuthService.clearSession.mock.invocationCallOrder[0],
+    expect(keycloakAuthService.clearSession.mock.invocationCallOrder[0]).toBeLessThan(
+      keycloakAuthService.logout.mock.invocationCallOrder[0],
     );
     expect(response.clearCookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, {
       httpOnly: true,
@@ -461,11 +481,12 @@ describe('AuthController callback redirect validation', () => {
     );
   });
 
-  it('keeps the server session and cookie when Keycloak logout fails', async () => {
+  it('clears the local session and cookie when back-channel Keycloak logout is incomplete', async () => {
     keycloakAuthService.getSessionLogoutInput.mockResolvedValue({ refreshToken: 'stored-refresh' });
-    keycloakAuthService.logout.mockRejectedValueOnce(
-      new ServiceUnavailableException('Keycloak authentication is temporarily unavailable.'),
-    );
+    keycloakAuthService.logout.mockResolvedValueOnce({
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
     const response = responseFixture();
 
     await expect(
@@ -479,10 +500,91 @@ describe('AuthController callback redirect validation', () => {
         ),
         response as never,
       ),
-    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    ).resolves.toEqual({
+      success: true,
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
 
-    expect(keycloakAuthService.clearSession).not.toHaveBeenCalled();
-    expect(response.clearCookie).not.toHaveBeenCalled();
+    expect(keycloakAuthService.clearSession).toHaveBeenCalledWith('session-id');
+    expect(response.clearCookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.any(Object));
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it('still deletes the local session when its refresh token cannot be read', async () => {
+    keycloakAuthService.getSessionLogoutInput.mockRejectedValueOnce(new Error('Redis read unavailable'));
+    keycloakAuthService.logout.mockResolvedValueOnce({
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
+    const response = responseFixture();
+
+    await expect(
+      controller.logout(
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+            origin: 'https://events.example.com',
+          },
+          true,
+        ),
+        response as never,
+      ),
+    ).resolves.toEqual({
+      success: true,
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
+
+    expect(keycloakAuthService.clearSession).toHaveBeenCalledWith('session-id');
+    expect(keycloakAuthService.logout).toHaveBeenCalledWith({
+      refreshToken: undefined,
+      postLogoutRedirectUri: undefined,
+    });
+    expect(keycloakAuthService.clearSession.mock.invocationCallOrder[0]).toBeLessThan(
+      keycloakAuthService.logout.mock.invocationCallOrder[0],
+    );
+    expect(response.clearCookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.any(Object));
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it('expires the cookie and reports local logout failure when Redis deletion fails', async () => {
+    keycloakAuthService.getSessionLogoutInput.mockResolvedValue({ refreshToken: 'stored-refresh' });
+    keycloakAuthService.clearSession.mockRejectedValueOnce(new Error('Redis unavailable'));
+    keycloakAuthService.logout.mockResolvedValueOnce({
+      globalLogoutComplete: false,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
+    const response = responseFixture();
+
+    await expect(
+      controller.logout(
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+            origin: 'https://events.example.com',
+          },
+          true,
+        ),
+        response as never,
+      ),
+    ).resolves.toEqual({
+      success: false,
+      localSessionCleared: false,
+      globalLogoutComplete: false,
+      cookieExpired: true,
+      logoutUrl: 'https://sso.example/logout?client_id=event-manager',
+    });
+
+    expect(keycloakAuthService.logout).toHaveBeenCalledWith({
+      refreshToken: 'stored-refresh',
+      postLogoutRedirectUri: undefined,
+    });
+    expect(keycloakAuthService.clearSession.mock.invocationCallOrder[0]).toBeLessThan(
+      keycloakAuthService.logout.mock.invocationCallOrder[0],
+    );
+    expect(response.clearCookie).toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.any(Object));
+    expect(response.status).toHaveBeenCalledWith(503);
   });
 
   it('validates the redirect before contacting Keycloak or clearing the session', async () => {
@@ -557,6 +659,7 @@ function responseFixture() {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
     redirect: jest.fn(),
+    status: jest.fn().mockReturnThis(),
   };
 }
 

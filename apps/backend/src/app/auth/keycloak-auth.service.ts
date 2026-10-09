@@ -225,11 +225,24 @@ export class KeycloakAuthService {
     }
   }
 
+  buildLogoutUrl(postLogoutRedirectUri?: string): string {
+    const logoutUrl = new URL(`${this.realmUrl}/protocol/openid-connect/logout`);
+    logoutUrl.searchParams.set('client_id', this.clientId);
+
+    const redirectUri = postLogoutRedirectUri ?? this.defaultPostLogoutRedirectUri;
+    if (redirectUri) {
+      logoutUrl.searchParams.set('post_logout_redirect_uri', redirectUri);
+    }
+
+    return logoutUrl.toString();
+  }
+
   async logout(input: { refreshToken?: string; postLogoutRedirectUri?: string }): Promise<{
-    refreshTokenRevoked: boolean;
+    globalLogoutComplete: boolean;
     logoutUrl: string;
   }> {
-    let refreshTokenRevoked = false;
+    const logoutUrl = this.buildLogoutUrl(input.postLogoutRedirectUri);
+    let globalLogoutComplete = false;
 
     if (input.refreshToken) {
       const payload = new URLSearchParams();
@@ -239,24 +252,15 @@ export class KeycloakAuthService {
 
       try {
         await this.postKeycloakForm(`${this.realmUrl}/protocol/openid-connect/logout`, payload.toString(), headers);
-        refreshTokenRevoked = true;
+        globalLogoutComplete = true;
       } catch (error) {
         this.logKeycloakFailure('refresh token logout', error);
-        throw this.toTokenExchangeException(error, 'Could not log out from Keycloak.');
       }
     }
 
-    const logoutUrl = new URL(`${this.realmUrl}/protocol/openid-connect/logout`);
-    logoutUrl.searchParams.set('client_id', this.clientId);
-
-    const postLogoutRedirectUri = input.postLogoutRedirectUri ?? this.defaultPostLogoutRedirectUri;
-    if (postLogoutRedirectUri) {
-      logoutUrl.searchParams.set('post_logout_redirect_uri', postLogoutRedirectUri);
-    }
-
     return {
-      refreshTokenRevoked,
-      logoutUrl: logoutUrl.toString(),
+      globalLogoutComplete,
+      logoutUrl,
     };
   }
 
