@@ -1778,6 +1778,37 @@ describe('AuditLogService', () => {
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
   });
 
+  it('reverts an interest-enable change without losing the audited setting', async () => {
+    const targetEntry = createAuditEntry({
+      id: 'audit-event-interest',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.UPDATE,
+      eventId: 'event-1',
+      before: { id: 'event-1', interestEnabled: false },
+      after: { id: 'event-1', interestEnabled: true },
+      changedFields: ['interestEnabled'],
+    });
+    const currentEvent = { id: 'event-1', interestEnabled: true, deletedAt: null };
+    const revertLog = createAuditEntry({
+      id: 'audit-event-interest-revert',
+      entityType: AuditLogEntityType.EVENT,
+      entityId: 'event-1',
+      operation: AuditLogOperation.REVERT,
+      revertTargetId: targetEntry.id,
+    });
+    const tx = createTransaction({ ...currentEvent, interestEnabled: false }, revertLog);
+    prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
+    prisma.event.findUnique.mockResolvedValue(currentEvent);
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx));
+    prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
+
+    await expect(service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined))
+      .resolves.toEqual(expect.objectContaining({ id: revertLog.id }));
+
+    expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: { interestEnabled: false } }));
+  });
+
   it('soft-deletes created events when reverting their creation', async () => {
     const targetEntry = createAuditEntry({
       id: 'audit-event-create',

@@ -29,7 +29,9 @@
       <ng-template mat-tab-label>
         <span class="workspace-tab-label"><mat-icon>bookmark_add</mat-icon>Quero ir</span>
       </ng-template>
-      <app-workspace-event-interests />
+      <ng-template matTabContent>
+        <app-workspace-event-interests />
+      </ng-template>
     </mat-tab>
   </mat-tab-group>
 </section>

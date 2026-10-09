@@ -311,7 +311,10 @@ describe('event form eligibility helpers', () => {
 
 function createPrismaMock() {
   return {
-    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    event: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockResolvedValue({ eventGroupId: null }),
+    },
     majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
     eventAttendance: {
       findFirst: jest.fn().mockResolvedValue(null),
@@ -325,9 +328,6 @@ function createPrismaMock() {
     },
     eventInterest: {
       findFirst: jest.fn().mockResolvedValue(null),
-    },
-    event: {
-      findUnique: jest.fn().mockResolvedValue({ eventGroupId: null }),
     },
     majorEventSubscriptionEventSelection: {
       findFirst: jest.fn().mockResolvedValue(null),
