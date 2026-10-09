@@ -330,11 +330,14 @@ describe('MajorEventsResolver', () => {
         },
         actor: { sub: 'admin-1' },
         summary: 'Conteúdo publicado.',
+        metadata: { category: 'publication-lifecycle' },
         squashWindowMs: 0,
         force: true,
       }),
       tx,
     );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
     expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'major-1',

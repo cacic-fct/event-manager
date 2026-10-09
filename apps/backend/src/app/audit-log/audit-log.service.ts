@@ -44,6 +44,7 @@ import {
 import { synchronizeAuditLogEntry } from './audit-log.synchronization';
 import {
   AuditActor,
+  AuditLogMetadataCategory,
   AuditPrismaClient,
   AuditRecordOptions,
   RevertEntityConfig,
@@ -51,6 +52,12 @@ import {
 } from './audit-log.types';
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
+const LEGACY_PUBLICATION_LIFECYCLE_SUMMARIES = new Set([
+  'Conteúdo movido para rascunho.',
+  'Publicação agendada.',
+  'Conteúdo publicado.',
+  'Conteúdo despublicado.',
+]);
 
 @Injectable()
 export class AuditLogService {
@@ -97,7 +104,8 @@ export class AuditLogService {
     const canSquash =
       squashWindowMs > 0 &&
       options.operation === AuditLogOperation.UPDATE &&
-      options.entityType !== AuditLogEntityType.SYSTEM;
+      options.entityType !== AuditLogEntityType.SYSTEM &&
+      !isPublicationLifecycleMetadata(options.metadata);
 
     if (canSquash) {
       const squashed = await this.trySquashUpdate(options, actor, before, after, changes, now, squashWindowMs, prisma);
@@ -424,6 +432,7 @@ export class AuditLogService {
     squashWindowMs: number,
   ): boolean {
     return (
+      !isPublicationLifecycleEntry(entry) &&
       entry.operation === options.operation &&
       (entry.actorId ?? null) === (actor.id ?? null) &&
       entry.actorName === actor.name &&
@@ -770,4 +779,37 @@ export class AuditLogService {
       }
     });
   }
+}
+
+function isPublicationLifecycleMetadata(metadata: Record<string, unknown> | undefined): boolean {
+  return metadata?.category === AuditLogMetadataCategory.PUBLICATION_LIFECYCLE;
+}
+
+function isPublicationLifecycleEntry(entry: PrismaAuditLogEntry): boolean {
+  if (
+    entry.entityType !== AuditLogEntityType.EVENT &&
+    entry.entityType !== AuditLogEntityType.MAJOR_EVENT
+  ) {
+    return false;
+  }
+
+  if (entry.operation !== AuditLogOperation.UPDATE) {
+    return false;
+  }
+
+  if (isPublicationLifecycleMetadata(readAuditMetadata(entry.metadata))) {
+    return true;
+  }
+
+  // Before lifecycle categories were persisted, publication transitions used
+  // these dedicated summaries. Keep those rows out of later content squashes.
+  return LEGACY_PUBLICATION_LIFECYCLE_SUMMARIES.has(entry.summary ?? '');
+}
+
+function readAuditMetadata(value: PrismaAuditLogEntry['metadata']): Record<string, unknown> | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
 }

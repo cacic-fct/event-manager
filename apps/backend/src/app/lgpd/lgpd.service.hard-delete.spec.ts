@@ -15,6 +15,42 @@ describe('LgpdService hard delete', () => {
     restoreLgpdServiceTestContext();
   });
 
+  it('erases imported source and merged-person mappings inside the hard-delete transaction', async () => {
+    const { tx, service } = context;
+    const originalSecret = process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
+    process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = 'test-import-suppression-secret-32-bytes';
+    tx.externalImportRecord.findMany.mockResolvedValue([
+      { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '10', targetId: 'source-person' },
+      { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '11', targetId: 'target-person' },
+    ]);
+    tx.externalImportRecord.deleteMany.mockResolvedValue({ count: 2 });
+    try {
+      await service.hardDelete({ userId: 'new-user', requestId: 'import-erasure' });
+      expect(tx.externalImportRecord.deleteMany).toHaveBeenCalledWith({
+        where: { OR: [
+          { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '10' },
+          { sourceNamespace: 'evcomp', entityType: 'person', sourceId: '11' },
+        ] },
+      });
+      expect(tx.externalImportRecord.upsert).toHaveBeenCalledTimes(3);
+      expect(tx.externalImportRecord.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+        tx.people.deleteMany.mock.invocationCallOrder[0],
+      );
+    } finally {
+      if (originalSecret === undefined) delete process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
+      else process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = originalSecret;
+    }
+  });
+
+  it('does not erase people when suppression storage fails', async () => {
+    const { tx, service } = context;
+    tx.externalImportRecord.findMany.mockRejectedValue(new Error('suppression storage unavailable'));
+    await expect(service.hardDelete({ userId: 'new-user', requestId: 'import-erasure' }))
+      .rejects.toThrow('suppression storage unavailable');
+    expect(tx.people.deleteMany).not.toHaveBeenCalled();
+    expect(tx.user.deleteMany).not.toHaveBeenCalled();
+  });
+
   it('removes profiles before people and scrubs historical profile fields and matching metadata', async () => {
     const { tx, service } = context;
     tx.lecturerProfile.findMany.mockResolvedValue([{ linkedin: 'current-linkedin' }]);

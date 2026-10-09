@@ -28,7 +28,11 @@ import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
-import { omitPublicationAuditFields, pickPublicationAuditFields } from '../publishing/publishing-audit';
+import {
+  omitPublicationAuditFields,
+  pickPublicationAuditFields,
+  PUBLICATION_LIFECYCLE_AUDIT_METADATA,
+} from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
 import {
@@ -416,6 +420,7 @@ export class MajorEventsResolver {
             after: pickPublicationAuditFields(updated),
             scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
             summary: 'Conteúdo publicado.',
+            metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
             force: true,
           },

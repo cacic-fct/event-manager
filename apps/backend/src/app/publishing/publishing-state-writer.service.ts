@@ -12,6 +12,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolvePublicationActorId } from './publishing-auth';
 import { publicationSummary } from './publishing-labels';
+import { PUBLICATION_LIFECYCLE_AUDIT_METADATA } from './publishing-audit';
 import { PUBLICATION_EVENT_SELECT, PUBLICATION_MAJOR_EVENT_SELECT } from './publishing.selects';
 import { TargetSync } from './publishing.types';
 
@@ -66,6 +67,7 @@ export class PublicationStateWriterService {
             eventGroupId: updated.eventGroupId,
           },
           summary: publicationSummary(state),
+          metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
           squashWindowMs: 0,
         },
         tx,
@@ -139,6 +141,7 @@ export class PublicationStateWriterService {
             eventGroupId: updated.eventGroupId,
           },
           summary: publicationSummary(PrismaPublicationState.PUBLISHED),
+          metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
           squashWindowMs: 0,
         },
         tx,
@@ -197,6 +200,7 @@ export class PublicationStateWriterService {
               eventGroupId: updated.eventGroupId,
             },
             summary: publicationSummary(input.state),
+            metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
           },
           tx,
@@ -234,6 +238,7 @@ export class PublicationStateWriterService {
               majorEventId: updated.id,
             },
             summary: publicationSummary(input.state),
+            metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
             squashWindowMs: 0,
           },
           tx,
@@ -283,6 +288,7 @@ export class PublicationStateWriterService {
             majorEventId: updated.id,
           },
           summary: publicationSummary(state),
+          metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
           squashWindowMs: 0,
         },
         tx,
@@ -353,6 +359,7 @@ export class PublicationStateWriterService {
             majorEventId: updated.id,
           },
           summary: publicationSummary(PrismaPublicationState.PUBLISHED),
+          metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
           squashWindowMs: 0,
         },
         tx,

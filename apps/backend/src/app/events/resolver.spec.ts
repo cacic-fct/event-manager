@@ -305,6 +305,8 @@ describe('EventsResolver', () => {
       }),
       tx,
     );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
     expect(auditLog.record.mock.calls[0][0].before).not.toHaveProperty('publicationState');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publicationState');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('scheduledPublishAt');
@@ -323,6 +325,7 @@ describe('EventsResolver', () => {
         },
         actor: { sub: 'user-1' },
         summary: 'Conteúdo publicado.',
+        metadata: { category: 'publication-lifecycle' },
         squashWindowMs: 0,
         force: true,
       }),
