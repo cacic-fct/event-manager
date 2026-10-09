@@ -329,6 +329,8 @@ export class LgpdService {
       };
     });
 
+    await Promise.all(personIds.map((personId) => this.typesenseSearch.deletePerson(personId)));
+
     this.logger.log(
       `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
     );
@@ -566,6 +568,7 @@ export class LgpdService {
       };
     });
 
+    await Promise.all(personIds.map((personId) => this.typesenseSearch.deletePerson(personId)));
     await synchronizeAnonymizedAuditEntries(this.prisma, this.typesenseSearch, this.logger, anonymizedAuditEntryIds);
     try {
       await this.storageCleanup?.reconcile();

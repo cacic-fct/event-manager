@@ -197,6 +197,10 @@ describe('LgpdService hard delete', () => {
         updatedByEmail: null,
       },
     });
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledTimes(2);
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('source-person');
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('target-person');
+
     expect(tx.eventSubscription.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
     });

@@ -293,6 +293,7 @@ function createS3Mock() {
 
 function createTypesenseSearchMock() {
   return {
+    deletePerson: jest.fn().mockResolvedValue(undefined),
     upsertAuditLogEntry: jest.fn().mockResolvedValue(undefined),
   };
 }
