@@ -235,7 +235,7 @@ services:
       - 'traefik.http.routers.event-manager-fctapp.rule=Host(`fctapp.cacic.com.br`)'
       - 'traefik.http.routers.event-manager-fctapp.tls=true'
       - 'traefik.http.routers.event-manager-fctapp.middlewares=event-manager-fctapp-redirect'
-      - 'traefik.http.middlewares.event-manager-fctapp-redirect.redirectregex.regex=^https?://fctapp\.cacic\.dev\.br/.*$$'
+      - 'traefik.http.middlewares.event-manager-fctapp-redirect.redirectregex.regex=^https?://fctapp\.cacic\.com\.br/.*$$'
       - 'traefik.http.middlewares.event-manager-fctapp-redirect.redirectregex.replacement=https://eventos.cacic.com.br/app/'
       - 'traefik.http.middlewares.event-manager-fctapp-redirect.redirectregex.permanent=true'
     networks:
