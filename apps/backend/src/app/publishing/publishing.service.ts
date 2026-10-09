@@ -206,7 +206,7 @@ export class PublicationService {
     const eventAccessWhere = this.buildAccessibleEventWhere(eventTargets);
     const majorEventAccessWhere = this.buildAccessibleIdWhere<Prisma.MajorEventWhereInput>(majorEventIds);
     const eventGroupAccessWhere = this.buildAccessibleIdWhere<Prisma.EventGroupWhereInput>(eventGroupIds);
-    const root = await this.resolveWorkspaceRoot(input, eventAccessWhere, eventGroupAccessWhere);
+    const root = await this.resolveWorkspaceRoot(input, eventAccessWhere, eventGroupAccessWhere, majorEventIds);
     const scoped = Boolean(input.focusTargetType && input.focusTargetId);
     const excludedRoot = { id: { in: [] as string[] } };
     const rootWhere = (targetType: PublicationTargetType) => {
@@ -595,6 +595,7 @@ export class PublicationService {
     input: PublicationWorkspaceInput,
     eventWhere: Prisma.EventWhereInput | null,
     groupWhere: Prisma.EventGroupWhereInput | null,
+    accessibleMajorEventIds: Set<string> | null,
   ): Promise<{ targetType: PublicationTargetType; id: string } | null> {
     const id = input.focusTargetId;
     if (!id || !input.focusTargetType) return null;
@@ -616,7 +617,8 @@ export class PublicationService {
       });
       if (!group) return null;
       const majorEventId = group.majorEventId ?? group.events[0]?.majorEventId;
-      return majorEventId ? { targetType: PublicationTargetType.MAJOR_EVENT, id: majorEventId }
+      return majorEventId && (accessibleMajorEventIds === null || accessibleMajorEventIds.has(majorEventId))
+        ? { targetType: PublicationTargetType.MAJOR_EVENT, id: majorEventId }
         : { targetType: PublicationTargetType.EVENT_GROUP, id };
     }
     const event = await this.prisma.event.findFirst({

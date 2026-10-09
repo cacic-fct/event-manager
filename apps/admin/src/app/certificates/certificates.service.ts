@@ -363,7 +363,8 @@ export class CertificatesService {
   }
 
   async onScopeChanged(scope: WorkspaceCertificateScope): Promise<void> {
-    void this.router.navigate(['/certificates']);
+    if (this.unsavedChanges()) return;
+    if (!(await this.router.navigate(['/certificates']))) return;
     this.targetFiltersForm.controls.scope.setValue(scope);
     this.selectedTarget.set(null);
     this.selectedCertificateTarget.set(null);

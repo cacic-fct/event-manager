@@ -174,6 +174,32 @@ describe('PublicationService', () => {
     expect(warningsWhere).toContain(rootId);
   });
 
+  it('keeps a readable group as the publication root when its major event is inaccessible', async () => {
+    const { authorizationPolicy, prisma, service } = createService();
+    authorizationPolicy.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set(['event-1']),
+      majorEventIds: new Set(),
+      eventGroupIds: new Set(['group-1']),
+    });
+    authorizationPolicy.accessibleMajorEventIds.mockResolvedValue(new Set(['other-major']));
+    authorizationPolicy.accessibleEventGroupIds.mockResolvedValue(new Set(['group-1']));
+    prisma.eventGroup.findFirst.mockResolvedValueOnce({
+      id: 'group-1',
+      majorEventId: 'parent-major',
+      events: [],
+    });
+
+    await service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, {
+      focusTargetType: PublicationTargetType.EVENT_GROUP,
+      focusTargetId: 'group-1',
+    });
+
+    expect(JSON.stringify(prisma.eventGroup.count.mock.calls[0][0].where)).toContain('group-1');
+    expect(JSON.stringify(prisma.eventGroup.count.mock.calls[0][0].where)).not.toContain('parent-major');
+    expect(prisma.majorEvent.count.mock.calls[0][0].where.AND).toContainEqual({ id: { in: [] } });
+    expect(JSON.stringify(prisma.event.count.mock.calls[0][0].where)).toContain('group-1');
+  });
+
   it('does not fall back to global publication data for an unavailable focus', async () => {
     const { prisma, service } = createService();
     await service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, {

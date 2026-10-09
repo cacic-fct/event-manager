@@ -52,6 +52,10 @@ describe('event workspace routes', () => {
     const major = {kind:'major-event' as const,id:'m1',name:'Semana',emoji:'🎓'};
     const group = {kind:'group' as const,id:'g1',name:'Trilha',emoji:'🌐',majorEventId:'m1'};
     expect(eventCreationTarget('event', group)).toEqual({commands:['/event-workspace','new','event'],queryParams:{eventGroupId:'g1',majorEventId:'m1'}});
+    expect(eventCreationTarget('event', { ...group, majorEventId: null, parent: major })).toEqual({
+      commands: ['/event-workspace', 'new', 'event'],
+      queryParams: { eventGroupId: 'g1', majorEventId: 'm1' },
+    });
     expect(eventCreationTarget('group', major).queryParams).toEqual({majorEventId:'m1'});
     expect(eventCreationTarget('major-event', major).queryParams).toBeUndefined();
     expect(eventCreationTarget('event').queryParams).toBeUndefined();

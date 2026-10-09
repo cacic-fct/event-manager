@@ -22,6 +22,8 @@ import { SportsWorkspaceService } from './sports-workspace.service';
 import type { SportsMajorEventWorkspaceItem } from './sports.models';
 import {
   isSportsWorkspaceArea,
+  legacySportsWorkspaceRoute,
+  parseLegacySportsWorkspaceRoute,
   parseSportsWorkspaceRoute,
   sportsWorkspaceRoute,
   type SportsWorkspaceArea,
@@ -151,6 +153,12 @@ export class SportsPageComponent {
 
   private async applyRoute(params: { get(name: string): string | null }): Promise<void> {
     const revision = ++this.routeRevision;
+    const legacyRoute = parseLegacySportsWorkspaceRoute(params);
+    if (legacyRoute) {
+      await this.applyLegacyRoute(legacyRoute, params, revision);
+      return;
+    }
+
     const areaParam = params.get('area');
     if (areaParam && !isSportsWorkspaceArea(areaParam)) {
       const majorEventId = params.get('majorEventId');
@@ -181,6 +189,46 @@ export class SportsPageComponent {
 
     this.workspace.activeArea.set(route.area);
     await this.applyRouteSelection(route, revision);
+  }
+
+  private async applyLegacyRoute(
+    legacyRoute: NonNullable<ReturnType<typeof parseLegacySportsWorkspaceRoute>>,
+    params: { get(name: string): string | null },
+    revision: number,
+  ): Promise<void> {
+    await this.initializeWorkspace();
+    if (revision !== this.routeRevision) return;
+    try {
+      await this.workspace.loadTournament(legacyRoute.tournamentId);
+    } catch (error) {
+      await this.redirectFromMissingTournament(error, revision);
+      return;
+    }
+    if (revision !== this.routeRevision) return;
+
+    const majorEventId = this.workspace.tournamentRead()?.tournament.majorEventId ?? null;
+    this.workspace.useMajorEventRouteScope(majorEventId);
+    if (!majorEventId) {
+      this.workspace.resetWorkspaceRoute();
+      await this.router.navigate(['/sports'], {
+        replaceUrl: true,
+        queryParamsHandling: 'preserve',
+        preserveFragment: true,
+      }).catch(() => undefined);
+      return;
+    }
+
+    const route = { ...legacyRoute, majorEventId };
+    this.workspace.activeArea.set(route.area);
+    await this.applyRouteSelection(route, revision);
+    if (revision !== this.routeRevision) return;
+    const destination = legacySportsWorkspaceRoute(params, majorEventId);
+    if (!destination) return;
+    await this.router.navigate(destination, {
+      replaceUrl: true,
+      queryParamsHandling: 'preserve',
+      preserveFragment: true,
+    }).catch(() => undefined);
   }
 
   private async applyRouteSelection(route: SportsWorkspaceRouteState, revision: number): Promise<void> {
