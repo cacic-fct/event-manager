@@ -194,10 +194,20 @@ export class TicketPurchasesService {
     return this.s3.downloadFile(purchase.objectKey);
   }
 
-  async pending(majorEventId?: string): Promise<AdminReceiptQueueItem[]> {
+  pendingWhere(majorEventId?: string): Prisma.TicketPurchaseWhereInput {
+    return {
+      status: 'UNDER_REVIEW',
+      ...(majorEventId ? { majorEventId } : {}),
+      majorEvent: { deletedAt: null },
+      person: { is: { deletedAt: null } },
+    };
+  }
+
+  async pending(majorEventId?: string, limit = 100): Promise<AdminReceiptQueueItem[]> {
     const purchases = await this.prisma.ticketPurchase.findMany({
-      where: { status: 'UNDER_REVIEW', ...(majorEventId ? { majorEventId } : {}), majorEvent: { deletedAt: null }, person: { is: { deletedAt: null } } },
-      include: purchaseInclude, orderBy: [{ updatedAt: 'asc' }, { createdAt: 'asc' }],
+      where: this.pendingWhere(majorEventId),
+      include: purchaseInclude, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+      take: limit,
     });
     return purchases.flatMap((purchase): AdminReceiptQueueItem[] => {
       const person = purchase.person;

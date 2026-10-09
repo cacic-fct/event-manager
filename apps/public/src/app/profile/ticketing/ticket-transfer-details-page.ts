@@ -61,8 +61,7 @@ export class TicketTransferDetailsPage {
     const current = this.state();
     if (
       current.status !== 'ready' ||
-      current.transfer.senderStatus !== 'PENDING' ||
-      this.ticketIsUnavailable(current.transfer)
+      current.transfer.senderStatus !== 'PENDING'
     ) return false;
     return current.transfer.canCancel;
   });

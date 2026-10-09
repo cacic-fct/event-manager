@@ -242,7 +242,8 @@ export class NovuNotificationsService {
 
   async notifyTicketTransfer(input: TicketTransferNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
-    if (!secretKey) return false;
+    // Disabled delivery completes the outbox item; only delivery failures need retries.
+    if (!secretKey) return true;
 
     const { title, body, recipientWorkflow } = this.ticketTransferCopy(input);
     const actionUrl = input.actionUrl;

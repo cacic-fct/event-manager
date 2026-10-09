@@ -99,12 +99,26 @@ describe('ticket transfer mutations', () => {
 
   it('allows a new request once the author submission cooldown ends', async () => {
     const f = createTicketTransferServiceFixture();
-    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date(Date.now() - 11_000) } as never);
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date(Date.now() - 21_000) } as never);
     await f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never);
     expect(f.tx.ticketTransfer.create).toHaveBeenCalled();
     expect(f.tx.ticketTransferAuthorCooldown.update).toHaveBeenCalledWith(expect.objectContaining({
       data: { submissionCount: { increment: 1 }, lastSubmittedAt: expect.any(Date) },
     }));
+  });
+
+  it('applies the five-second cooldown before the third submission', async () => {
+    const f = createTicketTransferServiceFixture();
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 2, lastSubmittedAt: new Date() } as never);
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow('Você poderá iniciar outra transferência');
+    expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects user transfers for deleted events', async () => {
+    const f = createTicketTransferServiceFixture();
+    f.ticket.event.deletedAt = new Date();
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow('Este bilhete não pode ser transferido');
+    expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
   });
 
   it('serializes cancellation against the ticket and uses a pending-state compare-and-set', async () => {

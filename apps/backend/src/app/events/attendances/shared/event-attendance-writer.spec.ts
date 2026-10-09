@@ -19,6 +19,25 @@ describe('event attendance writer', () => {
     jest.resetAllMocks();
   });
 
+  it.each([createOrRestoreEventAttendance, upsertPresentEventAttendance])(
+    'rejects a ticket from another event before writing attendance',
+    async (writeAttendance) => {
+      const scannerTx = { ...tx, $queryRaw: jest.fn(), eventTicket: { findFirst: jest.fn().mockResolvedValue(null) } };
+      await expect(writeAttendance({
+        tx: scannerTx as never,
+        attendanceCategories,
+        input: {
+          eventId: 'other-event', personId: 'person-1',
+          scannerCode: 'ticket:019af432-98b0-7000-8000-000000000001:holder-user',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+        },
+      })).rejects.toThrow('Este bilhete não é válido para esta presença.');
+      expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+      expect(tx.eventAttendance.upsert).not.toHaveBeenCalled();
+      expect(attendanceCategories.refreshForAttendance).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([AttendanceCategory.REGULAR, AttendanceCategory.NON_REGULAR])(
     'returns the refreshed %s category when re-scanning non-regular attendance without rewriting provenance',
     async (category) => {

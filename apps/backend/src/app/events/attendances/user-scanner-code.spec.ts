@@ -7,7 +7,7 @@ describe('attendance barcode identity', () => {
   it('uses holder identity from both user and ticket barcodes', () => {
     expect(parseUserAztecCode(`user:${userId}`)).toBe(userId);
     expect(parseUserAztecCode(`ticket:${ticketId}:${userId}`)).toBe(userId);
-    expect(scannerUserIdForStorage(`ticket:${ticketId}:${userId}`)).toBe(userId);
+    expect(scannerUserIdForStorage(`ticket:${ticketId}:${userId}`)).toBe(`ticket:${ticketId}:${userId}`);
     expect(parseStoredScannerUserId(`ticket:${ticketId}:${userId}`)).toBe(userId);
     expect(parseStoredScannerUserId(userId)).toBe(userId);
   });

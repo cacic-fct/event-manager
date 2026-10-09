@@ -31,6 +31,7 @@ import {
   offlineSubmissionActorNameMap,
 } from './offline-submission-response';
 import { errorMessage } from './offline-attendance-resolution';
+import { assertScannerTicket } from './scanner-ticket-validation';
 import { parseStoredScannerUserId, scannerUserIdForStorage } from './user-scanner-code';
 import {
   notifySportsMatchAttendanceMutation,
@@ -407,6 +408,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       {
         eventId,
         personId: person.id,
+        scannerCode: code,
         createdById,
         committedById: createdById,
         createdByMethod: AttendanceCreationMethod.SCANNER,
@@ -454,6 +456,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       {
         eventId: input.eventId,
         personId: person.id,
+        scannerCode: input.code,
         createdByMethod: AttendanceCreationMethod.SCANNER,
         createdById: this.getActorId(context),
         committedById: this.getActorId(context),
@@ -553,6 +556,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        await assertScannerTicket(tx, {
+          eventId: submission.eventId, personId, attendedAt: submission.collectedAt,
+          scannerCode: submission.createdByMethod === AttendanceCreationMethod.SCANNER ? submission.scannerCode : null,
+        });
         const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
           where: {
             id: submission.id,
@@ -1070,7 +1077,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       return scannerUserIdForStorage(inputScannerCode);
     }
 
-    return storedScannerCode ? parseStoredScannerUserId(storedScannerCode) : null;
+    return storedScannerCode?.trim().startsWith('ticket:')
+      ? scannerUserIdForStorage(storedScannerCode)
+      : storedScannerCode ? parseStoredScannerUserId(storedScannerCode) : null;
   }
 
   private async resolveMergedPersonId(personId: string): Promise<string> {

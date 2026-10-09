@@ -171,7 +171,7 @@ export class ReceiptValidationPageComponent {
   protected async approve(item: ReceiptValidationQueueItem): Promise<void> {
     if (this.isTicketPurchase(item)) {
       const purchaseId = item.purchaseId ?? item.subscriptionId;
-      if (this.saving() || !this.canEditReceiptValidation(item) || !item.receipt) return;
+      if (this.saving() || !this.canApprove(item) || !item.receipt) return;
       this.saving.set(true);
       try {
         const approved = await firstValueFrom(this.api.approveTicketPurchase(purchaseId));
@@ -208,7 +208,7 @@ export class ReceiptValidationPageComponent {
   protected async reject(item: ReceiptValidationQueueItem): Promise<void> {
     if (this.isTicketPurchase(item)) {
       const reason = this.rejectionForm.controls.reason.value.trim();
-      if (!reason || this.saving() || !this.canEditReceiptValidation(item)) return;
+      if (!reason || this.saving() || !this.canReject(item)) return;
       this.saving.set(true);
       try {
         const rejected = await firstValueFrom(
@@ -335,6 +335,7 @@ export class ReceiptValidationPageComponent {
   }
 
   protected canApprove(item: ReceiptValidationQueueItem): boolean {
+    if (!this.canApproveReceipt(item)) return false;
     if (this.isTicketPurchase(item)) return true;
     if (item.subscriptionFlow !== 'RANKED_VOTING') {
       return true;
@@ -347,6 +348,14 @@ export class ReceiptValidationPageComponent {
       this.countEventsByType(selectedEvents, 'PALESTRA') === this.countEventsByType(recommendedEvents, 'PALESTRA') &&
       this.countEventsByType(selectedEvents, 'OTHER') === this.countEventsByType(recommendedEvents, 'OTHER')
     );
+  }
+
+  protected canApproveReceipt(item: ReceiptValidationQueueItem): boolean {
+    return this.canEditReceiptValidation(item) && this.permissions.has(Permission.Receipt.Approve);
+  }
+
+  protected canReject(item: ReceiptValidationQueueItem): boolean {
+    return this.canEditReceiptValidation(item) && this.permissions.has(Permission.Receipt.Reject);
   }
 
   protected canEditReceiptValidation(item: ReceiptValidationQueueItem): boolean {

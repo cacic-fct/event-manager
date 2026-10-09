@@ -1,4 +1,5 @@
 import { AttendanceCategory, AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
+import { assertScannerTicket } from '../scanner-ticket-validation';
 import { AttendanceCategoryService } from '../../attendance-category.service';
 
 export type EventAttendanceLocation = {
@@ -10,6 +11,7 @@ export type EventAttendanceLocation = {
 export type EventAttendanceWriteInput = {
   eventId: string;
   personId: string;
+  scannerCode?: string | null;
   createdByMethod: AttendanceCreationMethod;
   createdById?: string;
   committedById?: string;
@@ -33,6 +35,7 @@ export async function createOrRestoreEventAttendance(params: {
   afterWrite?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
 }) {
   const { tx, attendanceCategories, input } = params;
+  await assertScannerTicket(tx, input);
   const locationData = toAttendanceLocationData(input.location);
   const key = {
     personId_eventId: {
@@ -103,6 +106,7 @@ export async function upsertPresentEventAttendance(params: {
   input: Omit<EventAttendanceWriteInput, 'location' | 'status'>;
 }) {
   const { tx, attendanceCategories, input } = params;
+  await assertScannerTicket(tx, input);
   const attendedAt = input.attendedAt ?? new Date();
   await tx.eventAttendance.upsert({
     where: {

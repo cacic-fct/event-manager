@@ -169,7 +169,7 @@ export function mapWalletTicket(
       ? TicketLifecycleState.Revoked
       : ticket.expiresAt <= now
         ? TicketLifecycleState.Expired
-        : !ticket.ticketConfig.enabled
+        : !ticket.ticketConfig.enabled || ticket.event.deletedAt != null
           ? TicketLifecycleState.Unavailable
           : TicketLifecycleState.Active;
   const name = ticket.ticketConfig.displayName?.trim() || ticket.event.name;
@@ -183,7 +183,7 @@ export function mapWalletTicket(
     description: ticket.ticketConfig.description,
     transferEligibilityDescription,
     status,
-    transferable: ticket.ticketConfig.enabled && ticket.ticketConfig.transferable,
+    transferable: ticket.ticketConfig.enabled && ticket.event.deletedAt == null && ticket.ticketConfig.transferable,
     effectiveExpiresAt: ticket.expiresAt,
     event: mapTicketEventSummary(ticket.event),
     holder: ticket.holder ? mapTicketPersonSummary(ticket.holder) : null,
@@ -358,6 +358,7 @@ export function mapTicketTransfer(
       transfer.senderStatus === TicketTransferSenderStatus.PENDING &&
       transfer.recipientStatus === TicketTransferRecipientStatus.PENDING &&
       transfer.ticket.ticketConfig.enabled &&
+      transfer.ticket.event.deletedAt == null &&
       transfer.ticket.status === EventTicketStatus.ACTIVE &&
       (transfer.initiatorType === TicketTransferInitiatorType.ADMIN || transfer.ticket.expiresAt > now),
   });
@@ -366,7 +367,7 @@ export function mapTicketTransfer(
 
 export function mapAdminEventTicket(ticket: TicketRecord): AdminEventTicketModel {
   const model = new AdminEventTicketModel();
-  Object.assign(model, mapWalletTicket(ticket, true), {
+  Object.assign(model, mapWalletTicket(ticket, false), {
     originalHolder: ticket.originalHolder ? mapTicketPersonSummary(ticket.originalHolder) : null,
     source: ticket.source,
     sourceReference: ticket.sourceKey,

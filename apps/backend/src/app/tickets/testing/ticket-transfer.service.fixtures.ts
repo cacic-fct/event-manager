@@ -5,6 +5,7 @@ export function createTicketTransferServiceFixture() {
   const holder = { id: 'sender-person', name: 'Sender Name', identityDocument: '52998224725', isCPF: true, userId: 'sender-user' };
   const event = {
     id: 'event-1',
+    deletedAt: null as Date | null,
     name: 'Kit de boas-vindas',
     majorEventId: null,
     endDate: new Date(now.getTime() + 86_400_000),

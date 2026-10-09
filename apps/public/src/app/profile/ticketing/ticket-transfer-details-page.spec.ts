@@ -70,6 +70,27 @@ describe('TicketTransferDetailsPage', () => {
     TestBed.resetTestingModule();
   });
 
+  it.each(['EXPIRED', 'CONSUMED', 'REVOKED', 'UNAVAILABLE'] as const)('allows cancellation of an unavailable sender ticket (%s)', async (status) => {
+    const transfer = createTicketStoryTransfer({ recipient: null, canCancel: true, ticket: createWalletStoryTicket({ status }) });
+    TestBed.configureTestingModule({
+      imports: [TicketTransferDetailsPage],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) }, paramMap: of(convertToParamMap({ transferId: transfer.id })) } },
+        { provide: TicketingApiService, useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() } },
+        { provide: AuthService, useValue: { user: () => ({ sub: 'holder-user', claims: {} }) } },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    });
+    const fixture = TestBed.createComponent(TicketTransferDetailsPage);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canCancel()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Cancelar pedido');
+    fixture.destroy();
+    TestBed.resetTestingModule();
+  });
+
   it.each([false, true])('keeps expired receipt available only for admin-initiated transfers (%s)', async (initiatedByAdmin) => {
     vi.useFakeTimers();
     const ticket = createWalletStoryTicket({

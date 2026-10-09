@@ -150,6 +150,7 @@ export class OfflineAttendanceCommitter {
         input: {
           eventId: item.eventId,
           personId: person.id,
+          scannerCode: item.createdByMethod === AttendanceCreationMethod.SCANNER ? item.code : undefined,
           createdByMethod: item.createdByMethod as AttendanceCreationMethod,
           createdById,
           committedById: submittedById,

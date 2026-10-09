@@ -69,7 +69,8 @@
       @if (transfer.senderStatus === 'PENDING') {
         @if (ticketIsUnavailable(transfer)) {
           <p class="transfer-status" role="status">{{ stateMessage(transfer) }}</p>
-        } @else if (canCancel()) {
+        }
+        @if (canCancel()) {
           <button mat-flat-button type="button" [disabled]="!canCancel() || isCanceling()" (click)="cancelTransfer()">
             <mat-icon>cancel</mat-icon>
             {{ isCanceling() ? 'Cancelando pedido…' : 'Cancelar pedido' }}

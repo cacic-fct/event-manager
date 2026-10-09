@@ -336,7 +336,7 @@ export class TicketTransferService {
     if (ticket.status !== EventTicketStatus.ACTIVE || (!admin && ticket.expiresAt <= new Date())) {
       throw new GoneException('Este bilhete não está mais disponível para transferência.');
     }
-    if (!ticket.ticketConfig.enabled || (!admin && !ticket.ticketConfig.transferable)) {
+    if (ticket.event.deletedAt || !ticket.ticketConfig.enabled || (!admin && !ticket.ticketConfig.transferable)) {
       throw new ConflictException('Este bilhete não pode ser transferido.');
     }
     return ticket;
@@ -374,7 +374,7 @@ export class TicketTransferService {
       update: {},
     });
     if (state.lastSubmittedAt) {
-      const availableAt = transferStartAvailableAt(state.lastSubmittedAt, state.submissionCount - 1);
+      const availableAt = transferStartAvailableAt(state.lastSubmittedAt, state.submissionCount);
       if (availableAt > submittedAt) {
         throw new ConflictException(`Você poderá iniciar outra transferência em ${availableAt.toISOString()}.`);
       }
@@ -823,7 +823,7 @@ export class TicketTransferService {
         ) {
           return this.expireTransfer(tx, transfer, 'O prazo desta solicitação terminou.');
         }
-        if (!ticket.ticketConfig.enabled || !ticket.ticketConfig.transferable && transfer.initiatorType !== TicketTransferInitiatorType.ADMIN) {
+        if (ticket.event.deletedAt || !ticket.ticketConfig.enabled || !ticket.ticketConfig.transferable && transfer.initiatorType !== TicketTransferInitiatorType.ADMIN) {
           return this.expireTransfer(tx, transfer, 'Este bilhete não pode mais ser transferido.');
         }
 

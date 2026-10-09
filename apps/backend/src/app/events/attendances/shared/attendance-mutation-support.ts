@@ -25,6 +25,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     input: {
       eventId: string;
       personId: string;
+      scannerCode?: string | null;
       createdByMethod: AttendanceCreationMethod;
       createdById?: string;
       committedById?: string;

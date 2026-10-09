@@ -40,6 +40,7 @@ interface SetupOptions {
   queue?: ReceiptValidationQueue;
   refreshedQueue?: ReceiptValidationQueue;
   approvalResult?: boolean;
+  permissions?: readonly string[];
 }
 
 function setup(options: SetupOptions = {}) {
@@ -62,8 +63,8 @@ function setup(options: SetupOptions = {}) {
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ majorEventId: 'major-event-1' }) } } },
       { provide: ReceiptValidationApiService, useValue: api },
       { provide: PermissionsService, useValue: {
-        has: (permission: string) => permission === Permission.Frozen.Update,
-        hasAny: () => true,
+        has: (permission: string) => options.permissions?.includes(permission) ?? true,
+        hasAny: (permissions: string[]) => options.permissions ? permissions.some((permission) => options.permissions?.includes(permission)) : true,
       } },
       { provide: AdminFeedbackService, useValue: feedback },
       { provide: MatSnackBar, useValue: { open: vi.fn(() => ({ onAction: () => of(undefined) })) } },
@@ -106,6 +107,14 @@ async function applyTicketFilter(fixture: ComponentFixture<ReceiptValidationPage
 }
 
 describe('ReceiptValidationPageComponent queue review', () => {
+  it.each([Permission.Receipt.Approve, Permission.Receipt.Reject])('shows only the authorized ticket action for %s', async (permission) => {
+    const { fixture } = setup({ queue: createAdminReceiptValidationQueue({ items: [ticketItem] }), permissions: [permission, Permission.Frozen.Update] });
+    await settle(fixture);
+    expect(Boolean(button(fixture, 'Aprovar comprovante'))).toBe(permission === Permission.Receipt.Approve);
+    expect(Boolean(button(fixture, 'Recusar comprovante'))).toBe(permission === Permission.Receipt.Reject);
+    fixture.destroy();
+  });
+
   it('starts with the oldest edit and combines both receipt types with protected previews', async () => {
     const { fixture, api } = setup();
     await settle(fixture);

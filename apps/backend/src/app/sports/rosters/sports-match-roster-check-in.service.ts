@@ -60,6 +60,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     actor: SportsAuditActor,
     collectorInput: SportsOfflineCollectorInput = {},
     attendanceCreationMethod: AttendanceCreationMethod = AttendanceCreationMethod.MANUAL_INPUT,
+    scannerCode?: string,
   ) {
     const clientId = clientIdValue.trim();
     if (!clientId || clientId.length > 200) {
@@ -223,6 +224,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
               personId,
               eventId,
               attendedAt: effectiveCheckedInAt,
+              scannerCode,
               createdByMethod: attendanceCreationMethod,
               createdById: collector.userId,
               committedById: officialUserId,
@@ -598,6 +600,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         actor,
         collectorInput,
         AttendanceCreationMethod.SCANNER,
+        code,
       );
     }
 
@@ -691,6 +694,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         input: {
           personId: person.id,
           eventId: context.eventId,
+          scannerCode: code,
           attendedAt: at,
           createdByMethod: AttendanceCreationMethod.SCANNER,
           createdById: collector.userId,

@@ -167,6 +167,7 @@ export class CurrentUserAttendanceCollectionResolver {
       input: {
         eventId: input.eventId,
         personId: person.id,
+        scannerCode: input.code,
         createdByMethod: AttendanceCreationMethod.SCANNER,
         createdById: getActorId(context) ?? collector.userId ?? undefined,
         committedById: getActorId(context) ?? collector.userId ?? undefined,

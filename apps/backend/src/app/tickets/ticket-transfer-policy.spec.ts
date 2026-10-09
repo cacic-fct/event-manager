@@ -1,7 +1,7 @@
 import { TicketTransferIgnoreReason, TicketTransferRecipientStatus } from '@prisma/client';
 import { classifyRecipientResolution, transferStartAvailableAt } from './ticket-transfer-policy';
 import { mapTicketTransfer } from './ticket.mapper';
-import { mapWalletTicket } from './ticket.mapper';
+import { mapAdminEventTicket, mapWalletTicket } from './ticket.mapper';
 import { TicketTransferRecord, TicketTransferService } from './ticket-transfer.service';
 
 describe('ticket transfer privacy policies', () => {
@@ -14,6 +14,20 @@ describe('ticket transfer privacy policies', () => {
     expect(ticket.aztecPayload).toBeNull();
     const recipientView = mapTicketTransfer(transfer, 'RECIPIENT', {} as never);
     expect(recipientView.canAccept).toBe(false);
+  });
+
+  it('hides credentials and transfer actions for deleted events', () => {
+    const transfer = transferFixture();
+    transfer.ticket.event.deletedAt = new Date();
+    const wallet = mapWalletTicket(transfer.ticket, true);
+    expect(wallet).toMatchObject({ status: 'UNAVAILABLE', transferable: false, aztecPayload: null });
+    expect(mapTicketTransfer(transfer, 'RECIPIENT', {} as never).canAccept).toBe(false);
+  });
+
+  it('exposes barcodes only in the holder wallet, never in admin responses', () => {
+    const ticket = transferFixture().ticket;
+    expect(mapWalletTicket(ticket, true).aztecPayload).not.toBeNull();
+    expect(mapAdminEventTicket(ticket).aztecPayload).toBeNull();
   });
 
   it.each(['AB123456', '12'])('redacts non-CPF sender documents: %s', (document) => {

@@ -22,6 +22,7 @@ function setup() {
     $queryRaw: jest.fn(),
     ticketPurchase: {
       create: jest.fn().mockResolvedValue(purchase),
+      findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(purchase),
       findUniqueOrThrow: jest.fn().mockResolvedValue(purchase),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -63,6 +64,14 @@ describe('ticket purchase transaction boundaries', () => {
     expect(frozenResources.assertMajorEventMutable).toHaveBeenCalledWith('major', user, 'edit');
     expect(tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
     expect(issuance.issueForPerson).not.toHaveBeenCalled();
+  });
+
+  it('bounds pending receipt reads and uses the same eligibility predicate for counts', async () => {
+    const { service, tx } = setup();
+    await service.pending('major', 100);
+    expect(tx.ticketPurchase.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      take: 100, where: service.pendingWhere('major'),
+    }));
   });
 
   it('does not register a purchase or send invalidation when receipt storage fails', async () => {

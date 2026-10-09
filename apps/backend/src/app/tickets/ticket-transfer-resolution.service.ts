@@ -157,6 +157,7 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           ticket.status !== EventTicketStatus.ACTIVE ||
           ticket.expiresAt <= now ||
           ticket.holderPersonId !== current.senderPersonId ||
+          ticket.event.deletedAt != null ||
           !ticket.ticketConfig.enabled ||
           !ticket.ticketConfig.transferable
         ) {

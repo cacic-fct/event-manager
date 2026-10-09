@@ -19,6 +19,7 @@ type AttendanceLocationInput = {
 type CreateAttendanceInput = {
   eventId: string;
   personId: string;
+  scannerCode?: string | null;
   createdByMethod: AttendanceCreationMethod;
   createdById?: string;
   committedById?: string;

@@ -9,6 +9,8 @@ import { ReceiptQueueMapper } from '../mappers/receipt-queue.mapper';
 import { AdminReceiptQueueItem, AdminReceiptQueueResponse } from '../receipt.types';
 import { TicketPurchasesService } from '../../ticket-purchases/ticket-purchases.service';
 
+const QUEUE_LIMIT = 100;
+
 @Injectable()
 export class ReceiptAdminQueueService {
   constructor(
@@ -31,7 +33,7 @@ export class ReceiptAdminQueueService {
     });
 
     const ticketCount = this.ticketPurchases ? await this.prisma.ticketPurchase.count({
-      where: { status: 'UNDER_REVIEW', majorEvent: { deletedAt: null } },
+      where: this.ticketPurchases.pendingWhere(),
     }) : 0;
     return { pendingCount: pendingCount + ticketCount };
   }
@@ -57,22 +59,29 @@ export class ReceiptAdminQueueService {
             updatedAt: 'asc',
           },
           {
-            createdAt: 'asc',
+            id: 'asc',
           },
         ],
+        take: QUEUE_LIMIT,
       }),
     ]);
 
-    const ticketItems = await this.ticketPurchases?.pending(majorEventId) ?? [];
+    const [ticketItems, ticketCount] = this.ticketPurchases
+      ? await Promise.all([
+          this.ticketPurchases.pending(majorEventId, QUEUE_LIMIT),
+          this.prisma.ticketPurchase.count({ where: this.ticketPurchases.pendingWhere(majorEventId) }),
+        ])
+      : [[], 0];
     const availablePaymentTiers = majorEventId && this.ticketPurchases
       ? await this.prisma.priceTier.findMany({ where: { price: { majorEventId } }, select: { id: true, name: true }, orderBy: { value: 'asc' } })
       : [];
     const items = [...subscriptions.map((subscription) => this.mapper.mapAdminQueueItem(subscription)), ...ticketItems]
-      .sort((a, b) => a.subscriptionUpdatedAt.getTime() - b.subscriptionUpdatedAt.getTime() || a.subscriptionId.localeCompare(b.subscriptionId));
+      .sort((a, b) => a.subscriptionUpdatedAt.getTime() - b.subscriptionUpdatedAt.getTime() || a.subscriptionId.localeCompare(b.subscriptionId))
+      .slice(0, QUEUE_LIMIT);
     return {
-      pendingCount: pendingCount + ticketItems.length,
+      pendingCount: pendingCount + ticketCount,
       subscriptionCount: pendingCount,
-      ticketCount: ticketItems.length,
+      ticketCount,
       availablePaymentTiers,
       items,
     };

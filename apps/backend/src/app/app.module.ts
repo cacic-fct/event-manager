@@ -9,6 +9,7 @@ import { TicketTransferResolutionService } from './tickets/ticket-transfer-resol
 import { TicketTransferRetentionService } from './tickets/ticket-transfer-retention.service';
 import { Module } from '@nestjs/common';
 import { TicketPurchaseCatalogService } from './ticket-purchases/ticket-purchase-catalog.service';
+import { TicketPurchaseRetentionService } from './ticket-purchases/ticket-purchase-retention.service';
 import { TicketPurchasesService } from './ticket-purchases/ticket-purchases.service';
 import { TicketPurchasesResolver } from './ticket-purchases/ticket-purchases.resolver';
 import { TicketPurchasesController } from './ticket-purchases/ticket-purchases.controller';
@@ -430,6 +431,7 @@ const schedulerProviders = useInMemoryTestInfra
     TicketTransferRetentionService,
     TicketPurchaseCatalogService,
     TicketPurchasesService,
+    TicketPurchaseRetentionService,
     TicketPurchasesResolver,
     TicketSubscriptionSyncService,
     HealthService,

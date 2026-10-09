@@ -3,6 +3,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { NEVER, delay, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../../graphql/receipt-validation-api.service';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { PermissionsService } from '../../permissions/permissions.service';
 import {
   adminFixtureDateFromNow,
@@ -184,7 +185,7 @@ function createReceiptValidationStoryProviders(queue: ReceiptValidationQueue, ar
     {
       provide: PermissionsService,
       useValue: {
-        has: () => false,
+        has: (permission: string) => args.canMutate && permission !== Permission.Frozen.Update,
         hasAny: () => args.canMutate,
         canEdit: () => args.canMutate,
       },
