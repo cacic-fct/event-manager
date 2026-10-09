@@ -61,10 +61,10 @@ export async function suppressErasedImportPeople(tx: Prisma.TransactionClient, p
   }
 
   const tokens = records.map((record) => ({
-      sourceNamespace: record.sourceNamespace,
-      entityType: SUPPRESSION_ENTITY_TYPE,
-      sourceId: digest(secret, 'person', record.sourceNamespace, record.sourceId),
-      targetId: 'suppressed',
+    sourceNamespace: record.sourceNamespace,
+    entityType: SUPPRESSION_ENTITY_TYPE,
+    sourceId: digest(secret, 'person', record.sourceNamespace, record.sourceId),
+    targetId: 'suppressed',
   }));
   // Historical cleanup can include many source people; avoid one write per row.
   for (let offset = 0; offset < tokens.length; offset += 1000) {

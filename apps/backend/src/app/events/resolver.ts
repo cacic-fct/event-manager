@@ -491,6 +491,11 @@ export class EventsResolver {
     const { publishAfterUpdate = false, ...eventInput } = input;
     const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
     const event = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT "id" FROM "events"
+        WHERE "id" = ${id} AND "deletedAt" IS NULL
+        FOR UPDATE
+      `;
       const previousEvent = await tx.event.findFirst({
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,

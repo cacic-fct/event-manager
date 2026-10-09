@@ -344,33 +344,38 @@ export class MajorEventsResolver {
   ) {
     await this.frozenResources.assertMajorEventMutable(id, this.getUser(context), 'edit');
     const paymentInfoTableExists = await this.hasPaymentInfoTable();
-    const majorEvent = await this.prisma.majorEvent.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      select: this.getMajorEventSelect(paymentInfoTableExists),
-    });
-
-    if (!majorEvent) {
-      throw new NotFoundException(`Major event ${id} was not found.`);
-    }
-
-    const hasExistingPaymentInfo =
-      paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
-
     const { publishAfterUpdate = false, ...majorEventInput } = input;
-    const data = {
-      ...this.buildMajorEventUpdateData(
-        majorEventInput,
-        majorEvent.isPaymentRequired,
-        hasExistingPaymentInfo,
-        paymentInfoTableExists,
-      ),
-      ...this.buildPublicationUpdate(majorEvent, this.getUser(context), publishAfterUpdate),
-    };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT "id" FROM "major_events"
+        WHERE "id" = ${id} AND "deletedAt" IS NULL
+        FOR UPDATE
+      `;
+      const majorEvent = await tx.majorEvent.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
+        select: this.getMajorEventSelect(paymentInfoTableExists),
+      });
+
+      if (!majorEvent) {
+        throw new NotFoundException(`Major event ${id} was not found.`);
+      }
+
+      const hasExistingPaymentInfo =
+        paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
+      const data = {
+        ...this.buildMajorEventUpdateData(
+          majorEventInput,
+          majorEvent.isPaymentRequired,
+          hasExistingPaymentInfo,
+          paymentInfoTableExists,
+        ),
+        ...this.buildPublicationUpdate(majorEvent, this.getUser(context), publishAfterUpdate),
+      };
+
       await this.sportsBackingLifecycle.assertMajorEventUpdateAllowed(tx, id, input);
       const persisted = await tx.majorEvent.update({
         where: {
