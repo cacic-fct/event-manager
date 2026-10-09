@@ -78,6 +78,7 @@ describe('merge candidate audit anonymization', () => {
   it('anonymizes merge candidate identifiers and matching values', async () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const tx = {
+      lecturerProfile: { findMany: jest.fn().mockResolvedValue([]) },
       auditLogEntry: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -123,6 +124,7 @@ describe('merge candidate audit anonymization', () => {
   it('anonymizes people merge source and target identifiers in audit metadata', async () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const tx = {
+      lecturerProfile: { findMany: jest.fn().mockResolvedValue([]) },
       auditLogEntry: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -164,6 +166,7 @@ describe('merge candidate audit anonymization', () => {
   it('anonymizes account merge user identifiers in audit metadata', async () => {
     const update = jest.fn().mockResolvedValue(undefined);
     const tx = {
+      lecturerProfile: { findMany: jest.fn().mockResolvedValue([]) },
       auditLogEntry: {
         findMany: jest.fn().mockResolvedValue([
           {

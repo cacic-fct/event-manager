@@ -240,6 +240,7 @@ describe('EventsResolver', () => {
   it('uses scalar event snapshots for update audit records', async () => {
     const previousEndDate = new Date();
     const updatedEndDate = new Date(previousEndDate.getTime() + 60 * 60 * 1_000);
+    const eventStartDate = new Date();
     const previousAudit = {
       id: 'event-1',
       name: 'Evento antigo',
@@ -263,7 +264,7 @@ describe('EventsResolver', () => {
       },
       eventGroupId: null,
       eventGroup: null,
-      startDate: new Date('2026-06-22T12:00:00.000Z'),
+      startDate: eventStartDate,
       endDate: updatedEndDate,
     };
     const updatedAudit = {
@@ -274,7 +275,7 @@ describe('EventsResolver', () => {
       eventGroupId: null,
       publicationState: 'PUBLISHED',
       scheduledPublishAt: null,
-      publishedAt: new Date('2026-06-22T13:00:00.000Z'),
+      publishedAt: new Date(),
     };
     const tx = {
       event: {
@@ -387,6 +388,162 @@ describe('EventsResolver', () => {
       actorUserId: 'user-1',
       permission: Permission.Event.Update,
     });
+    expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('audits publication separately when content changes: %s', async (contentChanged) => {
+    const eventStartDate = new Date();
+    const eventEndDate = new Date(eventStartDate.getTime() + 60 * 60 * 1_000);
+    const previousAudit = {
+      id: 'event-1',
+      name: 'Evento antigo',
+      majorEventId: 'major-new',
+      eventGroupId: null,
+      publicationState: 'DRAFT',
+    };
+    const updatedDetail = {
+      id: 'event-1',
+      name: contentChanged ? 'Evento novo' : 'Evento antigo',
+      emoji: 'calendar',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      majorEventId: 'major-new',
+      majorEvent: {
+        id: 'major-new',
+        name: 'Grande evento',
+      },
+      eventGroupId: null,
+      eventGroup: null,
+      startDate: eventStartDate,
+      endDate: eventEndDate,
+    };
+    const updatedAudit = {
+      id: 'event-1',
+      name: contentChanged ? 'Evento novo' : 'Evento antigo',
+      majorEventId: 'major-new',
+      eventGroupId: null,
+      publicationState: 'PUBLISHED',
+      scheduledPublishAt: null,
+      publishedAt: new Date(),
+      publicationUpdatedBy: 'user-1',
+    };
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(previousAudit),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+      },
+      eventGroup: {
+        updateMany: jest.fn(),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ eventGroupId: null }),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertEvent: jest.fn(),
+    };
+    const frozenResources = {
+      assertEventUpdateMutable: jest.fn(),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const attendanceCategories = {
+      refreshForEvent: jest.fn().mockResolvedValue(undefined),
+    };
+    const attendanceRealtime = {
+      notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined),
+    };
+    const sportsMutationEvents = {
+      publishForBackingEvent: jest.fn(),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      attendanceRealtime as never,
+      frozenResources as never,
+      authorizationPolicy as never,
+      auditLog as never,
+      attendanceCategories as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
+    );
+
+    await expect(
+      resolver.updateEvent(
+        'event-1',
+        {
+          name: contentChanged ? 'Evento novo' : 'Evento antigo',
+          majorEventId: 'major-new',
+          eventGroupId: null,
+          shouldAllowOralAttendance: false,
+          publishAfterUpdate: true,
+        } as never,
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).resolves.toBe(updatedDetail);
+
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: contentChanged ? 'Evento novo' : 'Evento antigo',
+          shouldAllowOralAttendance: false,
+          publicationState: 'PUBLISHED',
+          scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
+          publicationUpdatedBy: 'user-1',
+        }),
+      }),
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'user-1' }, [Permission.Event.Update], {
+      majorEventId: 'major-new',
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: expect.objectContaining({
+          majorEventId: 'major-new',
+          eventGroupId: null,
+        }),
+      }),
+      tx,
+    );
+    expect(auditLog.record.mock.calls[0][0].before).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('scheduledPublishAt');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        before: { publicationState: 'DRAFT' },
+        after: {
+          publicationState: 'PUBLISHED',
+          scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
+          publicationUpdatedBy: 'user-1',
+        },
+        actor: { sub: 'user-1' },
+        summary: 'Conteúdo publicado.',
+        squashWindowMs: 0,
+        force: true,
+      }),
+      tx,
+    );
     expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
@@ -583,7 +740,7 @@ describe('EventsResolver', () => {
         },
       ],
     });
-    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx, true);
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx);
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({

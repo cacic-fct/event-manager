@@ -30,7 +30,7 @@ import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/even
 import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
-import { omitPublicationAuditFields } from '../publishing/publishing-audit';
+import { omitPublicationAuditFields, pickPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
@@ -591,6 +591,29 @@ export class EventsResolver {
         },
         tx,
       );
+      if (publishAfterUpdate) {
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.EVENT,
+            entityId: updated.id,
+            entityLabel: updated.name,
+            operation: AuditLogOperation.UPDATE,
+            actor: this.getUser(context),
+            before: pickPublicationAuditFields(previousEvent),
+            after: pickPublicationAuditFields(updatedAudit),
+            scope: {
+              permission: Permission.Event.Update,
+              eventId: updatedAudit.id,
+              majorEventId: updatedAudit.majorEventId,
+              eventGroupId: updatedAudit.eventGroupId,
+            },
+            summary: 'Conteúdo publicado.',
+            squashWindowMs: 0,
+            force: true,
+          },
+          tx,
+        );
+      }
       return updated;
     });
     if (event) {

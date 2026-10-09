@@ -269,7 +269,7 @@ describe('MajorEventsResolver', () => {
     );
   });
 
-  it('moves a published major event back to draft when content is edited', async () => {
+  it.each([false, true])('audits major event publication separately when content changes: %s', async (contentChanged) => {
     const majorEvent = {
       id: 'major-1',
       name: 'SECOMPP',
@@ -277,12 +277,14 @@ describe('MajorEventsResolver', () => {
       startDate: new Date('2026-08-01T12:00:00.000Z'),
       endDate: new Date('2026-08-05T12:00:00.000Z'),
       isPaymentRequired: false,
-      publicationState: 'PUBLISHED',
+      publicationState: 'DRAFT',
     };
     const updatedMajorEvent = {
       ...majorEvent,
-      name: 'SECOMPP 2026',
-      publicationState: 'DRAFT',
+      name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
+      publicationState: 'PUBLISHED',
+      publishedAt: new Date(),
+      publicationUpdatedBy: 'admin-1',
     };
     const tx = {
       majorEvent: {
@@ -318,7 +320,7 @@ describe('MajorEventsResolver', () => {
       resolver.updateMajorEvent(
         'major-1',
         {
-          name: 'SECOMPP 2026',
+          name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
           publishAfterUpdate: true,
         },
         { req: { user: { sub: 'admin-1' } } } as never,
@@ -328,7 +330,7 @@ describe('MajorEventsResolver', () => {
     expect(tx.majorEvent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          name: 'SECOMPP 2026',
+          name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
           publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
           publishedAt: expect.any(Date),
@@ -336,10 +338,26 @@ describe('MajorEventsResolver', () => {
         }),
       }),
     );
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        before: { publicationState: 'DRAFT' },
+        after: {
+          publicationState: 'PUBLISHED',
+          publishedAt: expect.any(Date),
+          publicationUpdatedBy: 'admin-1',
+        },
+        actor: { sub: 'admin-1' },
+        summary: 'Conteúdo publicado.',
+        squashWindowMs: 0,
+        force: true,
+      }),
+      tx,
+    );
     expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'major-1',
-        publicationState: 'DRAFT',
+        publicationState: 'PUBLISHED',
       }),
     );
   });

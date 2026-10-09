@@ -261,6 +261,47 @@ describe('CertificateDownloadService', () => {
     expect(archiveStream.finalize).toHaveBeenCalledTimes(1);
   });
 
+  it('waits for ZIP entry processing and cancels rendering on disconnect', async () => {
+    const archiveStream = createArchive();
+    archiveStream.append.mockImplementation(() => undefined);
+    jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    const browser = { close: jest.fn().mockResolvedValue(undefined) };
+    jest.mocked(chromium.launch).mockResolvedValue(browser as never);
+    const service = new CertificateDownloadService({} as never, {} as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+    const render = jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
+      fileName: 'certificate.pdf', content: Buffer.alloc(1024),
+    });
+    const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
+    await service.createCertificatesArchive('Ana', ['first', 'second'], {});
+    await new Promise(setImmediate);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(archiveStream.append).toHaveBeenCalledTimes(1);
+    archiveStream.destroy();
+    await closed;
+    await new Promise(setImmediate);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(browser.close).toHaveBeenCalled();
+    expect(service['activeArchives']).toBe(0);
+  });
+
+  it('rejects excess simultaneous archives without launching another browser', async () => {
+    const archives = [createArchive(), createArchive()];
+    for (const archive of archives) { archive.append.mockImplementation(() => undefined); }
+    jest.mocked(createZipArchive).mockResolvedValueOnce(archives[0] as never).mockResolvedValueOnce(archives[1] as never);
+    jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockResolvedValue(undefined) } as never);
+    const service = new CertificateDownloadService({} as never, {} as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+    jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({ fileName: 'certificate.pdf', content: Buffer.from('pdf') });
+    await service.createCertificatesArchive('Ana', ['first'], {});
+    await service.createCertificatesArchive('Bia', ['second'], {});
+    await expect(service.createCertificatesArchive('Caio', ['third'], {})).rejects.toThrow('Certificate downloads are busy.');
+    expect(chromium.launch).toHaveBeenCalledTimes(2);
+    for (const archive of archives) { archive.destroy(); }
+    await new Promise(setImmediate);
+    expect(service['activeArchives']).toBe(0);
+  });
+
   it('uses fallback archive names when the person name has no safe characters', async () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
@@ -350,7 +391,7 @@ function createArchive() {
     complete = resolve;
   });
   return Object.assign(archive, {
-    append: jest.fn(),
+    append: jest.fn().mockImplementation(() => { queueMicrotask(() => archive.emit('entry')); }),
     finalize: jest.fn().mockImplementation(async () => complete()),
     completed,
   });

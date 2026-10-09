@@ -20,3 +20,12 @@ export function omitPublicationAuditFields<T extends Record<string, unknown>>(
   }
   return snapshot;
 }
+
+/** Captures only lifecycle fields so publication records do not duplicate content edits. */
+export function pickPublicationAuditFields<T extends Record<string, unknown>>(
+  record: T,
+): Partial<Pick<T, Extract<keyof T, (typeof PUBLICATION_AUDIT_FIELDS)[number]>>> {
+  return Object.fromEntries(
+    PUBLICATION_AUDIT_FIELDS.filter((field) => field in record).map((field) => [field, record[field]]),
+  ) as Partial<Pick<T, Extract<keyof T, (typeof PUBLICATION_AUDIT_FIELDS)[number]>>>;
+}

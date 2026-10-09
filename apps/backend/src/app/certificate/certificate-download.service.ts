@@ -5,9 +5,11 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { chromium, type Browser, type Page } from 'playwright';
+import { Readable } from 'node:stream';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
@@ -27,6 +29,7 @@ export type CertificateArchive = {
 
 @Injectable()
 export class CertificateDownloadService {
+  private activeArchives = 0;
   private readonly logger = new Logger(CertificateDownloadService.name);
 
   constructor(
@@ -122,11 +125,22 @@ export class CertificateDownloadService {
 
   async createCertificatesArchive(
     personName: string,
-    certificateIds: string[],
+    certificateIds: Iterable<string> | AsyncIterable<string>,
     metadata: unknown,
   ): Promise<CertificateArchive> {
     const safeName = this.normalizeFileNamePart(personName) || 'certificados';
-    const stream = await createZipArchive();
+    // Reject instead of building an unbounded queue of expensive rendering jobs.
+    if (this.activeArchives >= 2) {
+      throw new ServiceUnavailableException('Certificate downloads are busy. Please try again shortly.');
+    }
+    this.activeArchives++;
+    let stream: ZipArchiveStream;
+    try {
+      stream = await createZipArchive();
+    } catch (error) {
+      this.activeArchives--;
+      throw error;
+    }
     stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
     stream.on('error', (error) => this.logger.error(error.message, error.stack));
     void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata).catch((error: unknown) => {
@@ -135,6 +149,8 @@ export class CertificateDownloadService {
       if (!stream.destroyed) {
         stream.destroy(archiveError);
       }
+    }).finally(() => {
+      this.activeArchives--;
     });
 
     return {
@@ -146,28 +162,39 @@ export class CertificateDownloadService {
   private async appendCertificatesToArchive(
     archive: ZipArchiveStream,
     safeName: string,
-    certificateIds: readonly string[],
+    certificateIds: Iterable<string> | AsyncIterable<string>,
     metadata: unknown,
   ): Promise<void> {
     let browser: Browser | undefined;
+    const cancel = () => {
+      void browser?.close().catch(() => undefined);
+    };
+    archive.once('close', cancel);
+    const deadline = setTimeout(() => archive.destroy(new Error('Certificate archive generation timed out.')), 30 * 60_000);
+    deadline.unref();
     try {
       browser = await chromium.launch({ headless: true });
-      for (const certificateId of certificateIds) {
+      for await (const certificateId of certificateIds) {
         if (archive.destroyed) {
           return;
         }
 
         const certificate = await this.renderCertificateFile(certificateId, false, browser);
-        archive.append(certificate.content, { name: certificate.fileName });
+        await this.appendArchiveEntry(archive, certificate.content, certificate.fileName);
       }
 
       if (!archive.destroyed) {
-        archive.append(`${JSON.stringify(metadata, null, 2)}\n`, { name: `${safeName}_events.json` });
+        await this.appendArchiveEntry(archive, metadata instanceof Readable ? metadata : `${JSON.stringify(metadata, null, 2)}\n`, `${safeName}_events.json`);
         await archive.finalize();
       }
     } catch (error) {
       archive.destroy(error instanceof Error ? error : new Error('Failed to create certificate archive.'));
     } finally {
+      clearTimeout(deadline);
+      archive.off('close', cancel);
+      if (metadata instanceof Readable) {
+        metadata.destroy();
+      }
       if (browser) {
         try {
           await browser.close();
@@ -184,6 +211,35 @@ export class CertificateDownloadService {
         }
       }
     }
+  }
+
+  private appendArchiveEntry(archive: ZipArchiveStream, content: Buffer | string | Readable, name: string): Promise<void> {
+    // Wait until Archiver has processed this entry before rendering another PDF.
+    // This propagates slow-reader backpressure instead of accumulating PDF buffers.
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        archive.off('entry', complete);
+        archive.off('error', fail);
+        archive.off('close', closed);
+      };
+      const complete = () => {
+        cleanup();
+        resolve();
+      };
+      const fail = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+      const closed = () => fail(new Error('Certificate archive download was interrupted.'));
+      archive.once('entry', complete);
+      archive.once('error', fail);
+      archive.once('close', closed);
+      if (archive.destroyed) {
+        closed();
+      } else {
+        archive.append(content, { name });
+      }
+    });
   }
 
   private buildVerificationUrl(certificateId: string): string {
@@ -257,6 +313,10 @@ export class CertificateDownloadService {
   private async renderPdf(renderedHtml: string, sharedBrowser?: Browser): Promise<Buffer> {
     const browser = sharedBrowser ?? (await chromium.launch({ headless: true }));
     let page: Page | undefined;
+    const timeout = setTimeout(() => {
+      void (page ? page.close() : browser.close()).catch(() => undefined);
+    }, 60_000);
+    timeout.unref();
     try {
       page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
@@ -268,6 +328,7 @@ export class CertificateDownloadService {
     } catch {
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {
+      clearTimeout(timeout);
       if (page) {
         try {
           await page.close();

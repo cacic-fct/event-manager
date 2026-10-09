@@ -250,36 +250,50 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     const eventIds = events.map((event) => event.id);
-    const personQuery = personSearchWhere(query);
-    const participationWhere: Prisma.PeopleWhereInput = {
-      deletedAt: null,
-      ...(personId ? { id: personId } : {}),
-      AND: [
-        ...(personQuery ? [personQuery] : []),
-        {
-          OR: [
-            { majorEventSubscriptions: { some: { majorEventId, deletedAt: null } } },
-            {
-              attendances: {
-                some: { status: 'PRESENT', eventId: { in: eventIds } },
-              },
-            },
-          ],
-        },
-      ],
-    };
-    const people = await this.prisma.people.findMany({
-      where: participationWhere,
-      select: { id: true },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
-      skip: pagination.skip,
-      take: pagination.take,
-    });
-    const pagePersonIds = people.map((person) => person.id);
-    if (pagePersonIds.length === 0) {
-      return [];
-    }
+    const normalizedQuery = query?.trim();
+    const searchPattern = normalizedQuery?.replace(/[\\%_]/g, '\\$&');
+    const participantSearchFilter = normalizedQuery && searchPattern
+      ? Prisma.sql`AND (
+          p."name" ILIKE ${`%${searchPattern}%`}
+          OR p."email" ILIKE ${`%${searchPattern}%`}
+          OR ${normalizedQuery} = ANY(p."secondaryEmails")
+          OR p."phone" ILIKE ${`%${searchPattern}%`}
+          OR p."identityDocument" LIKE ${`%${searchPattern}%`}
+          OR p."academicId" LIKE ${`%${searchPattern}%`}
+        )`
+      : Prisma.empty;
 
+    // Page the union before hydrating people and resolving their assessments.
+    // Registrations precede attendance-only participants.
+    const page = await this.prisma.$queryRaw<{ personId: string }[]>(Prisma.sql`
+      WITH participants AS (
+        SELECT subscription."personId", MAX(subscription."createdAt") AS "registeredAt", NULL::timestamp AS "attendedAt"
+        FROM major_event_subscriptions AS subscription
+        JOIN people AS p ON p.id = subscription."personId"
+        WHERE subscription."majorEventId" = ${majorEventId}
+          AND subscription."deletedAt" IS NULL
+          AND p."deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND subscription."personId" = ${personId}` : Prisma.empty}
+          ${participantSearchFilter}
+        GROUP BY subscription."personId"
+        UNION ALL
+        SELECT attendance."personId", NULL::timestamp AS "registeredAt", MIN(attendance."attendedAt") AS "attendedAt"
+        FROM event_attendances AS attendance
+        JOIN people AS p ON p.id = attendance."personId"
+        WHERE attendance."eventId" IN (${Prisma.join(eventIds)})
+          AND attendance.status = 'PRESENT'
+          AND p."deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND attendance."personId" = ${personId}` : Prisma.empty}
+          ${participantSearchFilter}
+        GROUP BY attendance."personId"
+      )
+      SELECT "personId" FROM participants
+      GROUP BY "personId"
+      ORDER BY MAX("registeredAt") DESC NULLS LAST, MIN("attendedAt") ASC NULLS LAST, "personId" ASC
+      LIMIT ${pagination.take} OFFSET ${pagination.skip}
+    `);
+    const pagePersonIds = page.map(({ personId }) => personId);
+    if (pagePersonIds.length === 0) return [];
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,

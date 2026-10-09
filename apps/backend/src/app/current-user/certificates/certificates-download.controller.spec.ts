@@ -24,7 +24,7 @@ describe('CurrentUserCertificatesDownloadController', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'certificate-1',
-            issuedAt: new Date('2026-07-25T12:00:00.000Z'),
+            issuedAt: new Date(Date.now() - 60_000),
             configId: 'config-1',
             renderedData: { events: [{ id: 'event-1' }] },
             config: {
@@ -52,25 +52,26 @@ describe('CurrentUserCertificatesDownloadController', () => {
       prisma as never,
       currentUserContext as never,
       downloadService as never,
+      {} as never,
     );
     const request = { user: { sub: 'user-1' } };
 
     const file = await controller.downloadArchive(request as never);
 
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
-    expect(downloadService.createCertificatesArchive).toHaveBeenCalledWith(
-      'João da Silva',
-      ['certificate-1'],
-      expect.objectContaining({
-        certificates: [
-          expect.objectContaining({
-            certificateId: 'certificate-1',
-            eventIds: ['event-1'],
-            targetId: 'event-1',
-          }),
-        ],
-      }),
-    );
+    const [, ids, manifest] = downloadService.createCertificatesArchive.mock.calls[0] as unknown as
+      [string, AsyncIterable<string>, Readable];
+    const certificateIds: string[] = [];
+    for await (const id of ids) { certificateIds.push(id); }
+    expect(certificateIds).toEqual(['certificate-1']);
+    let manifestJson = '';
+    for await (const chunk of manifest) { manifestJson += chunk; }
+    expect(JSON.parse(manifestJson).certificates).toEqual([
+      expect.objectContaining({ certificateId: 'certificate-1', eventIds: ['event-1'], targetId: 'event-1' }),
+    ]);
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      take: 50, orderBy: { id: 'asc' }, where: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
+    }));
     expect(file.getStream()).toBe(archiveStream);
     expect(file.getHeaders()).toEqual({
       type: 'application/zip',

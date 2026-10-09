@@ -23,7 +23,7 @@ describe('MajorEvent', () => {
       imports: [MajorEvent],
       providers: [provideHttpClient(),
       { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})) } },
-      { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: vi.fn(() => of([])) } },
+      { provide: PublicEventFormApiService, useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])) } },
         {
           provide: AnalyticsService,
           useValue: {
@@ -80,20 +80,20 @@ describe('MajorEvent', () => {
       'major-2': { interest: null, subscribed: false, enabled: true, endsAt },
     }));
     const getState = vi.fn();
-    const listCurrentUserForms = vi.fn(() => of([]));
+    const listCurrentUserFormsForMajorEvents = vi.fn(() => of([]));
     const { fixture } = await createMajorEventFixture({
       events: [createPublicMajorEvent({ id: 'major-1', endDate: endsAt }), createPublicMajorEvent({ id: 'major-2', endDate: endsAt })],
       availability: vi.fn(() => of([])), watchCatalog: () => updates, authenticated: true,
-      interestApi: { getStates, getState }, formsApi: { listCurrentUserForms },
+      interestApi: { getStates, getState }, formsApi: { listCurrentUserFormsForMajorEvents },
     });
     await waitForDrawRefresh(fixture);
     expect(getStates).toHaveBeenCalledExactlyOnceWith('MAJOR_EVENT', ['major-1', 'major-2']);
-    expect(listCurrentUserForms).toHaveBeenCalledTimes(1);
+    expect(listCurrentUserFormsForMajorEvents).toHaveBeenCalledExactlyOnceWith(['major-1', 'major-2']);
     expect(getState).not.toHaveBeenCalled();
     updates.next();
     await waitForDrawRefresh(fixture);
     expect(getStates).toHaveBeenCalledTimes(2);
-    expect(listCurrentUserForms).toHaveBeenCalledTimes(2);
+    expect(listCurrentUserFormsForMajorEvents).toHaveBeenCalledTimes(2);
     fixture.destroy();
   });
 
@@ -199,7 +199,7 @@ async function createMajorEventFixture(input: {
     imports: [MajorEvent],
     providers: [provideHttpClient(),
       { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})), ...input.interestApi } },
-      { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: vi.fn(() => of([])), ...input.formsApi } },
+      { provide: PublicEventFormApiService, useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])), ...input.formsApi } },
       {
         provide: AnalyticsService,
         useValue: { trackEvent: vi.fn() },

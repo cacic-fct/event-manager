@@ -15,6 +15,24 @@ describe('LgpdService data export', () => {
     restoreLgpdServiceTestContext();
   });
 
+  it('exports lecturer profiles for all resolved people, including LinkedIn and contact data', async () => {
+    const { prisma, service } = context;
+    const profile = {
+      id: 'profile-1', personId: 'source-person', displayName: 'Lecturer', biography: 'Biography',
+      linkedin: 'lecturer-linkedin', email: 'lecturer@example.com', whatsapp: '18999990000',
+      googleUserPicture: 'https://example.com/picture', publishGoogleUserPicture: true,
+    };
+    prisma.lecturerProfile.findMany.mockResolvedValue([profile]);
+
+    const result = await service.collectUserData({ userId: 'new-user' });
+
+    expect(result.lecturerProfiles).toEqual({ records: [expect.objectContaining(profile)] });
+    expect(prisma.lecturerProfile.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { personId: { in: ['source-person', 'target-person'] } },
+      select: expect.objectContaining({ linkedin: true, biography: true, whatsapp: true }),
+    }));
+  });
+
   it('exports merged source and target identities when the request uses the final user id', async () => {
     const { prisma, service } = context;
     prisma.eventSubscription.findMany.mockResolvedValue([{ id: 'moved-subscription' }]);

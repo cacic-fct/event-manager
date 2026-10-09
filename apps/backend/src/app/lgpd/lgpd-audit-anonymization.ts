@@ -45,6 +45,11 @@ const PERSONAL_AUDIT_FIELDS = new Set([
   'externalRef',
   'pairKey',
   'matchValue',
+  'displayName',
+  'biography',
+  'googleUserPicture',
+  'whatsapp',
+  'linkedin',
 ]);
 
 export function buildAuditLogSubjectWhere(
@@ -142,16 +147,36 @@ export async function anonymizeAuditEntries(
   dataSubject: DataSubjectResolution,
   anonymizedSubjectId: string,
 ): Promise<string[]> {
+  const lecturerProfiles = await tx.lecturerProfile.findMany({
+    where: { personId: { in: dataSubject.personIds } },
+  });
   const entries = await tx.auditLogEntry.findMany({
     where: buildAuditLogSubjectWhere(dataSubject),
   });
   const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
   const sensitiveValues = getSensitiveAuditValues(dataSubject);
+  for (const profile of lecturerProfiles) {
+    for (const value of [
+      profile.displayName,
+      profile.biography,
+      profile.googleUserPicture,
+      profile.email,
+      profile.whatsapp,
+      profile.linkedin,
+    ]) {
+      if (typeof value === 'string' && value.length > 0) {
+        sensitiveValues.add(value);
+        sensitiveValues.add(value.toLowerCase());
+      }
+    }
+  }
   const identityValues = new Set(identifiers);
 
   const auditEntryUpdates = entries.map((entry) => {
     const personalDataRoot =
-      entry.entityType === AuditLogEntityType.PERSON || entry.entityType === AuditLogEntityType.MERGE_CANDIDATE;
+      entry.entityType === AuditLogEntityType.PERSON ||
+      entry.entityType === AuditLogEntityType.MERGE_CANDIDATE ||
+      entry.entityType === AuditLogEntityType.LECTURER_PROFILE;
     const actorMatches = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
     const entitySubjectMatches =
       (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
