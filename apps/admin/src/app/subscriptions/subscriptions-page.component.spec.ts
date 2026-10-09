@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { Component, input } from '@angular/core';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -11,6 +12,61 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsPageComponent } from './subscriptions-page.component';
 import { flushAsync } from '../testing/async-test-helpers';
+import { EventSubscriptionsComponent } from './event-subscriptions.component';
+import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
+import { EventInterestsComponent } from './event-interests.component';
+
+@Component({ selector: 'app-workspace-event-subscriptions-subtab', template: '' })
+class EventSubscriptionsTabStub {}
+
+@Component({ selector: 'app-workspace-major-event-subscriptions-subtab', template: '' })
+class MajorEventSubscriptionsTabStub {
+  readonly pendingReceiptsCount = input(0);
+}
+
+@Component({ selector: 'app-workspace-event-interests', template: 'Interesses' })
+class EventInterestsTabStub {
+  static readonly initialize = vi.fn();
+
+  constructor() {
+    EventInterestsTabStub.initialize();
+  }
+}
+
+describe('SubscriptionsPageComponent lazy interest loading', () => {
+  it('initializes the interests tab only after it is selected', async () => {
+    EventInterestsTabStub.initialize.mockClear();
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionsPageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: Router, useValue: { navigate: vi.fn(async () => true) } },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})), snapshot: { url: [] } } },
+        { provide: SubscriptionsService, useValue: {
+          majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
+          closeLiveUpdates: vi.fn(),
+        } },
+        { provide: PermissionsService, useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false } },
+        { provide: ReceiptValidationApiService, useValue: {} },
+      ],
+    }).overrideComponent(SubscriptionsPageComponent, {
+      remove: { imports: [EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent] },
+      add: { imports: [EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub] },
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(EventInterestsTabStub.initialize).not.toHaveBeenCalled();
+
+    fixture.nativeElement.querySelectorAll('[role="tab"]')[2].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(EventInterestsTabStub.initialize).toHaveBeenCalledOnce();
+    });
+  });
+});
 
 describe('SubscriptionsPageComponent receipt queue live updates', () => {
   let workspace: {

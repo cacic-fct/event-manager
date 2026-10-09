@@ -3,7 +3,7 @@ import {
   EventFormLink as EventFormLinkModel,
 } from '@cacic-fct/shared-data-types';
 import { matchesEventFormAudience } from '@cacic-fct/shared-event-participation';
-import { SubscriptionStatus } from '@prisma/client';
+import { Prisma, SubscriptionStatus } from '@prisma/client';
 import {
   ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES,
   isActiveMajorEventRegistration,
@@ -238,6 +238,45 @@ async function isPersonSubscriber(
   }
 
   return false;
+}
+
+export function eventSubscriberWhere(personId: string): Prisma.EventWhereInput {
+  const inactiveStatuses = inactiveMajorSubscriptionStatuses();
+  return {
+    OR: [
+      {
+        subscriptions: {
+          some: { personId, deletedAt: null },
+        },
+      },
+      {
+        majorEventSelections: {
+          some: {
+            deletedAt: null,
+            subscription: {
+              personId,
+              deletedAt: null,
+              subscriptionStatus: { notIn: inactiveStatuses },
+            },
+          },
+        },
+      },
+      {
+        autoSubscribe: true,
+        majorEvent: {
+          is: {
+            subscriptions: {
+              some: {
+                personId,
+                deletedAt: null,
+                subscriptionStatus: { notIn: inactiveStatuses },
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 async function isPersonAttendee(
