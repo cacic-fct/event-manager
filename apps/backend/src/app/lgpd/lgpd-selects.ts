@@ -283,3 +283,19 @@ export const LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT = {
 export type LgpdOfflineSubmission = Prisma.OfflineEventAttendanceSubmissionGetPayload<{
   select: typeof LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT;
 }>;
+
+export const LGPD_LECTURER_PROFILE_SELECT = {
+  id: true,
+  personId: true,
+  displayName: true,
+  biography: true,
+  publishGoogleUserPicture: true,
+  googleUserPicture: true,
+  email: true,
+  whatsapp: true,
+  linkedin: true,
+  createdAt: true,
+  createdById: true,
+  updatedAt: true,
+  updatedById: true,
+} satisfies Prisma.LecturerProfileSelect;

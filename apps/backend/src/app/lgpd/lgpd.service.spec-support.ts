@@ -182,6 +182,7 @@ function createPrismaMock() {
     },
     eventAttendance: findManyDelegate(),
     offlineEventAttendanceSubmission: findManyDelegate(),
+    lecturerProfile: findManyDelegate(),
     eventLecturer: findManyDelegate(),
     prizeDrawManualEntry: findManyDelegate(),
     prizeDrawWeightOverride: findManyDelegate(),
@@ -238,6 +239,10 @@ function createTransactionMock() {
     offlineEventAttendanceSubmission: {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
+    },
+    lecturerProfile: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     eventLecturer: deleteManyDelegate(),
     prizeDrawManualEntry: deleteManyDelegate(),
