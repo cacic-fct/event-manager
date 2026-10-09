@@ -1,16 +1,82 @@
 import { TestBed } from '@angular/core/testing';
+import { Component, input, output } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
-import { NEVER, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
 import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../graphql/receipt-validation-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionsPageComponent } from './subscriptions-page.component';
 import { flushAsync } from '../testing/async-test-helpers';
+import { EventSubscriptionsComponent } from './event-subscriptions.component';
+import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
+import { EventInterestsComponent } from './event-interests.component';
+import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
+
+@Component({ selector: 'app-event-context-picker', template: '' })
+class EventContextPickerStub {
+  readonly hideInShell = input(false);
+  readonly allowGroups = input(false);
+  readonly context = input<EventContextRef | null>(null);
+  readonly contextChange = output<EventContextRef>();
+}
+
+@Component({ selector: 'app-workspace-event-subscriptions-subtab', template: '' })
+class EventSubscriptionsTabStub {}
+
+@Component({ selector: 'app-workspace-major-event-subscriptions-subtab', template: '' })
+class MajorEventSubscriptionsTabStub {
+  readonly pendingReceiptsCount = input(0);
+}
+
+@Component({ selector: 'app-workspace-event-interests', template: 'Interesses' })
+class EventInterestsTabStub {
+  readonly context = input<EventContextRef | null>(null);
+  static readonly initialize = vi.fn();
+
+  constructor() {
+    EventInterestsTabStub.initialize();
+  }
+}
+
+describe('SubscriptionsPageComponent lazy interest loading', () => {
+  it('loads interests only after the interests route is selected', async () => {
+    EventInterestsTabStub.initialize.mockClear();
+    const paramMap = new BehaviorSubject(convertToParamMap({}));
+    const route = { paramMap, snapshot: { url: [] as Array<{ path: string }> } };
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionsPageComponent],
+      providers: [
+        provideRouter([]),
+        { provide: Router, useValue: { navigate: vi.fn(async () => true) } },
+        { provide: ActivatedRoute, useValue: route },
+        { provide: SubscriptionsService, useValue: {
+          majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
+          closeLiveUpdates: vi.fn(),
+        } },
+        { provide: PermissionsService, useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false } },
+        { provide: ReceiptValidationApiService, useValue: {} },
+      ],
+    }).overrideComponent(SubscriptionsPageComponent, {
+      remove: { imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent] },
+      add: { imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub] },
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(EventInterestsTabStub.initialize).not.toHaveBeenCalled();
+
+    route.snapshot.url = [{ path: 'interests' }];
+    paramMap.next(convertToParamMap({ eventId: 'event-1' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(EventInterestsTabStub.initialize).toHaveBeenCalledOnce();
+  });
+});
 
 describe('SubscriptionsPageComponent receipt queue live updates', () => {
   let workspace: {

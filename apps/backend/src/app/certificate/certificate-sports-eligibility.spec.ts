@@ -369,7 +369,7 @@ describe('CertificateSportsEligibility', () => {
       event: {
         findMany: jest.fn().mockResolvedValue([]),
       },
-    } as never);
+    } as never, { resolve: jest.fn() } as never, { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never);
     const config = {
       scope: CertificateScope.MAJOR_EVENT,
       majorEventId: 'major-event-1',

@@ -1,7 +1,12 @@
 import { UrlSegment, convertToParamMap } from '@angular/router';
+import { canReadFeatureGuard } from '../app-shell/access.guard';
+import { routes } from '../app-shell/admin-shell.routes';
 import {
+  legacySportsWorkspaceRoute,
+  parseLegacySportsWorkspaceRoute,
   parseSportsWorkspaceRoute,
   matchSportsWorkspaceSegments,
+  sportsWorkspaceMatcher,
   sportsWorkspaceRoute,
 } from './sports-workspace-routes';
 
@@ -21,7 +26,13 @@ function matchWorkspaceUrl(url: string) {
 }
 
 describe('sports workspace routes', () => {
-  it('matches global and major-event-scoped deep-link shapes', () => {
+  it('keeps sports routes behind the sports read permission guard', () => {
+    const children = routes.find((route) => route.path === '')?.children ?? [];
+    const sportsRoute = children.find((route) => route.matcher === sportsWorkspaceMatcher);
+    expect(sportsRoute?.canMatch).toContain(canReadFeatureGuard);
+  });
+
+  it('matches global, scoped, and legacy tournament deep-link shapes', () => {
     expect(matchWorkspaceUrl('/sports')).toEqual({ consumed: ['sports'], params: {} });
     expect(matchWorkspaceUrl('/sports/major-event/major-1')).toEqual({
       consumed: ['sports', 'major-event', 'major-1'],
@@ -40,9 +51,44 @@ describe('sports workspace routes', () => {
         matchId: 'match-1',
       },
     });
-    expect(matchWorkspaceUrl('/sports/tournament-1')).toBeNull();
-    expect(matchWorkspaceUrl('/sports/tournament-1/matches/category-1/match-1')).toBeNull();
+    expect(matchWorkspaceUrl('/sports/tournament-1')).toEqual({
+      consumed: ['sports', 'tournament-1'],
+      params: { legacyTournamentId: 'tournament-1' },
+    });
+    expect(matchWorkspaceUrl('/sports/tournament-1/categories/category-1')).toEqual({
+      consumed: ['sports', 'tournament-1', 'categories', 'category-1'],
+      params: { legacyTournamentId: 'tournament-1', area: 'categories', entityId: 'category-1' },
+    });
+    expect(matchWorkspaceUrl('/sports/tournament-1/matches/category-1/match-1')).toEqual({
+      consumed: ['sports', 'tournament-1', 'matches', 'category-1', 'match-1'],
+      params: {
+        legacyTournamentId: 'tournament-1',
+        area: 'matches',
+        categoryId: 'category-1',
+        matchId: 'match-1',
+      },
+    });
+    expect(matchWorkspaceUrl('/sports/major-event')).toBeNull();
     expect(matchWorkspaceUrl('/sports/major-event/major-1/matches/category-1/match-1/extra')).toBeNull();
+  });
+
+  it('maps legacy tournament match links to major-event-scoped URLs', () => {
+    const legacy = convertToParamMap({
+      legacyTournamentId: 'tournament-1',
+      area: 'matches',
+      categoryId: 'category-1',
+      matchId: 'match-1',
+    });
+    expect(parseLegacySportsWorkspaceRoute(legacy)).toEqual({
+      tournamentId: 'tournament-1',
+      area: 'matches',
+      categoryId: 'category-1',
+      teamId: null,
+      matchId: 'match-1',
+    });
+    expect(legacySportsWorkspaceRoute(legacy, 'major-1')).toEqual([
+      '/sports', 'major-event', 'major-1', 'matches', 'category-1', 'match-1',
+    ]);
   });
 
   it('parses the overview and each deep-linked detail shape', () => {

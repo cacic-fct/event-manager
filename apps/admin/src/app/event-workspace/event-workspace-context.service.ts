@@ -96,7 +96,8 @@ export function eventCreationTarget(kind: EventWorkspaceKind, parent?: EventWork
   if (parent?.kind === 'major-event' && kind !== 'major-event') queryParams['majorEventId'] = parent.id;
   if (parent?.kind === 'group' && kind === 'event') {
     queryParams['eventGroupId'] = parent.id;
-    if (parent.majorEventId) queryParams['majorEventId'] = parent.majorEventId;
+    const majorEventId = parent.majorEventId ?? (parent.parent?.kind === 'major-event' ? parent.parent.id : null);
+    if (majorEventId) queryParams['majorEventId'] = majorEventId;
   }
   return { commands: adminEventWorkspaceCreationRoute(kind), ...(Object.keys(queryParams).length ? { queryParams } : {}) };
 }

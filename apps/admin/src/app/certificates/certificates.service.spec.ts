@@ -154,7 +154,7 @@ describe('CertificatesService', () => {
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
-        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
         {
           provide: PermissionsService,
           useValue: permissions,
@@ -439,6 +439,7 @@ describe('CertificatesService', () => {
   });
 
   it('searches folders and creates standalone manual certificate configs', async () => {
+    await service.selectTarget(createAdminEvent({ id: 'event-1' }));
     await service.onScopeChanged('OTHER');
 
     expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
@@ -471,6 +472,20 @@ describe('CertificatesService', () => {
       expect.objectContaining({ scope: 'OTHER', folderId: 'folder-1', issuedTo: 'OTHER' }),
     );
     expect(api.issueMissedCertificates).toHaveBeenCalledWith('config-1');
+  });
+
+  it('keeps certificate edits and the current scope while the scope selector is guarded', async () => {
+    const currentScope = service.targetFiltersForm.controls.scope.value;
+    service.certificateConfigForm.name().value.set('Edição não salva');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValueOnce(false);
+
+    await service.onScopeChanged('EVENT_GROUP');
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(service.targetFiltersForm.controls.scope.value).toBe(currentScope);
+    expect(service.certificateConfigForm.name().value()).toBe('Edição não salva');
+    expect(service.unsavedChanges()).toBe(true);
+    expect(api.listCertificateIssuableEventGroups).not.toHaveBeenCalled();
   });
 
   it('searches manual certificate people as the query changes', async () => {

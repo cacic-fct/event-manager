@@ -20,6 +20,7 @@ import {
   canPersonAnswerLink,
   canPersonViewPublicResults,
   canStartPublicSubscriptionForLink,
+  eventSubscriberWhere,
 } from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
@@ -241,12 +242,7 @@ export class EventFormListingsService {
             event: {
               deletedAt: null,
               endDate: { gt: now },
-              subscriptions: {
-                some: {
-                  personId: person.id,
-                  deletedAt: null,
-                },
-              },
+              ...eventSubscriberWhere(person.id),
             },
           },
           {

@@ -153,13 +153,12 @@ export class EventInterestsService {
       select: INTEREST_SELECT,
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
+    const subscribedInterestIds = await this.findCurrentUserSubscribedInterestIds(personId, interests);
 
-    return Promise.all(
-      interests.map(async (interest) => ({
-        ...this.toModel(interest),
-        isSubscribed: Boolean(await this.findExistingSubscription(interest)),
-      })),
-    );
+    return interests.map((interest) => ({
+      ...this.toModel(interest),
+      isSubscribed: subscribedInterestIds.has(interest.id),
+    }));
   }
 
   async setCurrentUserInterest(
@@ -250,7 +249,10 @@ export class EventInterestsService {
       take: Math.min(Math.max(1, options.take ?? 50), 100),
     });
 
-    const subscribedPersonIds = await this.findSubscribedPersonIdsForTarget(normalizedTarget, interests.map(({ personId }) => personId));
+    const personIds = interests.map(({ personId }) => personId);
+    const subscribedPersonIds = normalizedTarget.targetType === InterestTargetType.EVENT_GROUP
+      ? await this.findFullySubscribedPersonIdsForEventGroup(normalizedTarget.targetId, personIds)
+      : await this.findSubscribedPersonIdsForTarget(normalizedTarget, personIds);
     return interests.map((interest) => ({
       ...this.toModel(interest),
       isSubscribed: subscribedPersonIds.has(interest.personId),
@@ -272,6 +274,216 @@ export class EventInterestsService {
         ...(personQuery ? { person: personQuery } : {}),
       },
     });
+  }
+
+  private async findCurrentUserSubscribedInterestIds(
+    personId: string,
+    interests: EventInterestRecord[],
+  ): Promise<Set<string>> {
+    if (interests.length === 0) {
+      return new Set();
+    }
+
+    const eventIds = [...new Set(interests.flatMap(({ eventId }) => eventId ? [eventId] : []))];
+    const eventGroupIds = [...new Set(interests.flatMap(({ eventGroupId }) => eventGroupId ? [eventGroupId] : []))];
+    const majorEventIds = [...new Set(interests.flatMap(({ majorEventId }) => majorEventId ? [majorEventId] : []))];
+    const eventFilters: Prisma.EventWhereInput[] = [
+      ...(eventIds.length > 0 ? [{ id: { in: eventIds } }] : []),
+      ...(eventGroupIds.length > 0 ? [{ eventGroupId: { in: eventGroupIds } }] : []),
+    ];
+    const events = eventFilters.length > 0
+      ? await this.prisma.event.findMany({
+          where: { deletedAt: null, OR: eventFilters },
+          select: { id: true, eventGroupId: true, majorEventId: true, autoSubscribe: true },
+        })
+      : [];
+    const eventIdsToCheck = [...new Set([...eventIds, ...events.map(({ id }) => id)])];
+    const relevantMajorEventIds = [...new Set([
+      ...majorEventIds,
+      ...events.flatMap(({ majorEventId }) => majorEventId ? [majorEventId] : []),
+    ])];
+    const inactiveStatuses = this.inactiveMajorSubscriptionStatuses();
+
+    const [majorSubscriptions, eventSubscriptions, eventGroupSubscriptions, selections] = await Promise.all([
+      relevantMajorEventIds.length > 0
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId: { in: relevantMajorEventIds },
+              personId,
+              deletedAt: null,
+              subscriptionStatus: { notIn: inactiveStatuses },
+            },
+            select: { majorEventId: true },
+          })
+        : Promise.resolve([]),
+      eventIdsToCheck.length > 0
+        ? this.prisma.eventSubscription.findMany({
+            where: { personId, eventId: { in: eventIdsToCheck }, deletedAt: null },
+            select: { eventId: true },
+          })
+        : Promise.resolve([]),
+      eventGroupIds.length > 0
+        ? this.prisma.eventGroupSubscription.findMany({
+            where: { personId, eventGroupId: { in: eventGroupIds }, deletedAt: null },
+            select: { eventGroupId: true },
+          })
+        : Promise.resolve([]),
+      eventIdsToCheck.length > 0
+        ? this.prisma.majorEventSubscriptionEventSelection.findMany({
+            where: {
+              eventId: { in: eventIdsToCheck },
+              deletedAt: null,
+              subscription: {
+                personId,
+                deletedAt: null,
+                subscriptionStatus: { notIn: inactiveStatuses },
+              },
+            },
+            select: { eventId: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const activeMajorEventIds = new Set(majorSubscriptions.map(({ majorEventId }) => majorEventId));
+    const subscribedEventIds = new Set([
+      ...eventSubscriptions.map(({ eventId }) => eventId),
+      ...selections.map(({ eventId }) => eventId),
+    ]);
+    const subscribedEventGroupIds = new Set(eventGroupSubscriptions.map(({ eventGroupId }) => eventGroupId));
+    const eventsById = new Map(events.map((event) => [event.id, event]));
+    const eventsByGroupId = new Map<string, typeof events>();
+    for (const event of events) {
+      if (!event.eventGroupId) {
+        continue;
+      }
+      const groupEvents = eventsByGroupId.get(event.eventGroupId) ?? [];
+      groupEvents.push(event);
+      eventsByGroupId.set(event.eventGroupId, groupEvents);
+    }
+
+    const subscribedInterestIds = new Set<string>();
+    for (const interest of interests) {
+      if (interest.majorEventId && activeMajorEventIds.has(interest.majorEventId)) {
+        subscribedInterestIds.add(interest.id);
+        continue;
+      }
+      if (interest.eventId) {
+        const event = eventsById.get(interest.eventId);
+        if (
+          subscribedEventIds.has(interest.eventId) ||
+          (event?.autoSubscribe === true && event.majorEventId && activeMajorEventIds.has(event.majorEventId))
+        ) {
+          subscribedInterestIds.add(interest.id);
+        }
+        continue;
+      }
+      if (interest.eventGroupId) {
+        const groupEvents = eventsByGroupId.get(interest.eventGroupId) ?? [];
+        const hasMajorEvent = groupEvents.some((event) => event.majorEventId !== null);
+        if (
+          (!hasMajorEvent && subscribedEventGroupIds.has(interest.eventGroupId)) ||
+          groupEvents.some((event) =>
+            subscribedEventIds.has(event.id) ||
+            (event.autoSubscribe && event.majorEventId && activeMajorEventIds.has(event.majorEventId)),
+          )
+        ) {
+          subscribedInterestIds.add(interest.id);
+        }
+      }
+    }
+
+    return subscribedInterestIds;
+  }
+
+  private async findFullySubscribedPersonIdsForEventGroup(eventGroupId: string, personIds: string[]): Promise<Set<string>> {
+    const fullySubscribed = new Set<string>();
+    const uniquePersonIds = [...new Set(personIds)];
+    if (uniquePersonIds.length === 0) {
+      return fullySubscribed;
+    }
+
+    const group = await this.prisma.eventGroup.findUnique({
+      where: { id: eventGroupId },
+      select: {
+        majorEventId: true,
+        events: {
+          where: { deletedAt: null, sportsMatch: { is: null } },
+          select: { id: true, majorEventId: true, autoSubscribe: true },
+        },
+      },
+    });
+    const events = group?.events ?? [];
+    const eventIds = events.map(({ id }) => id);
+    const autoSubscribeMajorEventIds = [...new Set(
+      events.flatMap(({ autoSubscribe, majorEventId }) => autoSubscribe && majorEventId ? [majorEventId] : []),
+    )];
+
+    const [groupSubscriptions, eventSubscriptions, selections, automaticSubscriptions] = await Promise.all([
+      this.prisma.eventGroupSubscription.findMany({
+        where: { eventGroupId, personId: { in: uniquePersonIds }, deletedAt: null },
+        select: { personId: true },
+      }),
+      eventIds.length > 0
+        ? this.prisma.eventSubscription.findMany({
+            where: { eventId: { in: eventIds }, personId: { in: uniquePersonIds }, deletedAt: null },
+            select: { personId: true, eventId: true },
+          })
+        : Promise.resolve([]),
+      eventIds.length > 0
+        ? this.prisma.majorEventSubscriptionEventSelection.findMany({
+            where: {
+              eventId: { in: eventIds },
+              deletedAt: null,
+              subscription: {
+                personId: { in: uniquePersonIds },
+                deletedAt: null,
+                subscriptionStatus: { notIn: this.inactiveMajorSubscriptionStatuses() },
+              },
+            },
+            select: { eventId: true, subscription: { select: { personId: true } } },
+          })
+        : Promise.resolve([]),
+      autoSubscribeMajorEventIds.length > 0
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId: { in: autoSubscribeMajorEventIds },
+              personId: { in: uniquePersonIds },
+              deletedAt: null,
+              subscriptionStatus: { notIn: this.inactiveMajorSubscriptionStatuses() },
+            },
+            select: { personId: true, majorEventId: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const groupSubscriptionPersonIds = new Set(
+      group?.majorEventId ? [] : groupSubscriptions.map(({ personId }) => personId),
+    );
+    const coveredEventIdsByPerson = new Map(uniquePersonIds.map((personId) => [personId, new Set<string>()]));
+    for (const subscription of eventSubscriptions) {
+      coveredEventIdsByPerson.get(subscription.personId)?.add(subscription.eventId);
+    }
+    for (const selection of selections) {
+      coveredEventIdsByPerson.get(selection.subscription.personId)?.add(selection.eventId);
+    }
+    for (const subscription of automaticSubscriptions) {
+      for (const event of events) {
+        if (event.autoSubscribe && event.majorEventId === subscription.majorEventId) {
+          coveredEventIdsByPerson.get(subscription.personId)?.add(event.id);
+        }
+      }
+    }
+
+    for (const personId of uniquePersonIds) {
+      const coveredEventIds = coveredEventIdsByPerson.get(personId);
+      if (
+        groupSubscriptionPersonIds.has(personId) ||
+        (eventIds.length > 0 && eventIds.every((eventId) => coveredEventIds?.has(eventId)))
+      ) {
+        fullySubscribed.add(personId);
+      }
+    }
+    return fullySubscribed;
   }
 
   private async publishTargetInvalidations(target: InterestTarget): Promise<void> {

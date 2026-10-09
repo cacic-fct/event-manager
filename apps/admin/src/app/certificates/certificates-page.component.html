@@ -123,7 +123,10 @@
       <form [formGroup]="workspace.targetFiltersForm" class="compact-form">
         <mat-form-field>
           <mat-label>Escopo</mat-label>
-          <mat-select formControlName="scope" (selectionChange)="workspace.onScopeChanged($event.value)">
+          <mat-select
+            [value]="workspace.targetFiltersForm.controls.scope.value"
+            [disabled]="workspace.unsavedChanges()"
+            (selectionChange)="workspace.onScopeChanged($event.value)">
             <mat-option value="EVENT">Evento</mat-option>
             <mat-option value="EVENT_GROUP">Grupo</mat-option>
             <mat-option value="MAJOR_EVENT">Grande evento</mat-option>

@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  Optional,
   Logger,
   MessageEvent,
   OnModuleDestroy,
@@ -150,7 +149,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     private readonly mapper: CurrentUserEventMapperService,
     private readonly prisma: PrismaService,
     private readonly publicEvents: PublicEventsResolver,
-    @Optional() private readonly audienceInvitations?: AudienceInvitationService,
+    private readonly audienceInvitations: AudienceInvitationService,
   ) {}
 
   onModuleDestroy(): void {
@@ -408,9 +407,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
       majorEventSubscriptions.map((subscription) => [subscription.majorEventId, subscription]),
     );
 
-    const invitationFacts = this.audienceInvitations
-      ? await this.audienceInvitations.getEventInvitationFacts(events, [personId], this.prisma)
-      : new Map();
+    const invitationFacts = await this.audienceInvitations.getEventInvitationFacts(events, [personId]);
 
     return events.flatMap((event) => {
       const policy = eventAttendanceEligibility(event);

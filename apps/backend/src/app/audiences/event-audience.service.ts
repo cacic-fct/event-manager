@@ -101,24 +101,27 @@ export class EventAudienceService {
       return directIdentity;
     }
 
+    const signedCourseTuple = {
+      enrollment_number: user.claims['enrollment_number'] ?? user.claims['enrollmentNumber'],
+      unesp_role: user.claims['unesp_role'] ?? user.claims['unespRole'],
+      unesp_role_verified: user.claims['unesp_role_verified'] ?? user.claims['unespRoleVerified'],
+    };
+    const hasCompleteSignedCourseTuple =
+      hasEnrollmentClaim(signedCourseTuple.enrollment_number) &&
+      hasRoleClaim(signedCourseTuple.unesp_role) &&
+      hasVerificationClaim(signedCourseTuple.unesp_role_verified);
     const claims: Record<string, unknown> = {
-      ...user.claims,
       email: accountProfile.email ?? email,
       secondary_emails: accountProfile.secondaryEmails ?? user.claims['secondary_emails'],
+      ...(hasCompleteSignedCourseTuple
+        ? signedCourseTuple
+        : {
+            enrollment_number: accountProfile.enrollmentNumber,
+            unesp_role: accountProfile.unespRole,
+            unesp_role_verified: accountProfile.unespRoleVerified,
+          }),
     };
-    const hasAnySignedCourseClaim =
-      user.claims['enrollment_number'] !== undefined ||
-      user.claims['enrollmentNumber'] !== undefined ||
-      user.claims['unesp_role'] !== undefined ||
-      user.claims['unespRole'] !== undefined ||
-      user.claims['unesp_role_verified'] !== undefined ||
-      user.claims['unespRoleVerified'] !== undefined;
-    if (!hasAnySignedCourseClaim) {
-      claims.enrollment_number = accountProfile.enrollmentNumber;
-      claims.unesp_role = accountProfile.unespRole;
-      claims.unesp_role_verified = accountProfile.unespRoleVerified;
-    }
-    return resolveAudienceIdentity({ email: user.email ?? email, claims }, verificationDisabled);
+    return resolveAudienceIdentity({ email: accountProfile.email ?? email, claims }, verificationDisabled);
   }
 
   private async lookupAccountProfile(email: string, expectedUserId: string): Promise<M2MUserIdentifierLookupMatch | null> {
@@ -158,4 +161,19 @@ export class EventAudienceService {
       return null;
     }
   }
+}
+
+function hasEnrollmentClaim(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'string') return value.trim().length > 0;
+  return false;
+}
+
+function hasRoleClaim(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0;
+  return Array.isArray(value) && value.some((role) => typeof role === 'string' && role.trim().length > 0);
+}
+
+function hasVerificationClaim(value: unknown): boolean {
+  return typeof value === 'boolean' || (typeof value === 'string' && value.trim().length > 0);
 }

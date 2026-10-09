@@ -3,7 +3,10 @@ import { SubscriptionStatus } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 
 describe('CertificateEligibilityService', () => {
-  const createService = (overrides: Record<string, unknown> = {}) =>
+  const createService = (
+    overrides: Record<string, unknown> = {},
+    audienceInvitations = { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) },
+  ) =>
     new CertificateEligibilityService(
       {
         eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
@@ -11,6 +14,8 @@ describe('CertificateEligibilityService', () => {
         priceTier: { findMany: jest.fn().mockResolvedValue([]) },
         ...overrides,
       } as never,
+      { resolve: jest.fn() } as never,
+      audienceInvitations as never,
     );
 
   const majorEventId = 'major-event-1';
@@ -126,6 +131,29 @@ describe('CertificateEligibilityService', () => {
         attendeeEligibility: 'ANYONE',
       } as never),
     ).resolves.toEqual([{ person, events: [registeredEvent] }]);
+  });
+
+  it.each([true, false])('evaluates INVITED_ONLY certificate eligibility from invite facts (invited=%s)', async (invited) => {
+    const walkInEvent = { ...event, majorEventId: null, majorEvent: null };
+    const audienceInvitations = {
+      getEventInvitationFacts: jest.fn().mockResolvedValue(new Map([
+        [`${person.id}:${walkInEvent.id}`, { event: invited, eventGroup: false, majorEvent: false }],
+      ])),
+    };
+    const service = createService({
+      event: { findFirst: jest.fn().mockResolvedValue(walkInEvent) },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: walkInEvent.id, person }]),
+      },
+    }, audienceInvitations);
+
+    await expect(service.resolveEligibleRecipients({
+      ...config,
+      scope: CertificateScope.EVENT,
+      eventId: walkInEvent.id,
+      attendeeEligibility: 'INVITED_ONLY',
+    } as never)).resolves.toEqual(invited ? [{ person, events: [walkInEvent] }] : []);
+    expect(audienceInvitations.getEventInvitationFacts).toHaveBeenCalledWith([walkInEvent], [person.id]);
   });
 
   it('requires confirmed major registration for an APPROVED certificate even when the event is free', async () => {
@@ -326,7 +354,8 @@ describe('CertificateEligibilityService', () => {
         people: { findFirst: jest.fn().mockResolvedValue(person) },
         eventLecturer: { findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: event.id, person }]) },
         majorEventSubscription,
-      } as never, { resolve: jest.fn().mockResolvedValue(recipients) } as never);
+      } as never, { resolve: jest.fn().mockResolvedValue(recipients) } as never,
+      { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never);
       await expect(
         service.resolveEligibleRecipients({
           ...config,

@@ -59,4 +59,43 @@ describe('audience principals', () => {
     await service.principalForUser(user as never);
     expect(accountManager.lookupUsersByEmail).toHaveBeenCalledTimes(1003);
   });
+
+  it('uses the full Account Manager course tuple when signed course claims are incomplete', async () => {
+    const { service, accountManager, user } = setup();
+    accountManager.lookupUsersByEmail.mockResolvedValueOnce([{
+      userId: user.sub,
+      email: 'student@unesp.br',
+      secondaryEmails: [],
+      enrollmentNumber: '00123456',
+      unespRole: 'aluno-graduacao',
+      unespRoleVerified: true,
+    }] as never);
+
+    await expect(service.principalForUser({
+      ...user,
+      claims: { unesp_role: 'aluno-graduacao' },
+    } as never)).resolves.toMatchObject({ isUnesp: true, verifiedCourseCode: '12' });
+  });
+
+  it('preserves a complete signed course tuple when the profile disagrees', async () => {
+    const { service, accountManager, user } = setup();
+    accountManager.lookupUsersByEmail.mockResolvedValueOnce([{
+      userId: user.sub,
+      email: 'student@unesp.br',
+      secondaryEmails: [],
+      enrollmentNumber: '00123456',
+      unespRole: 'aluno-graduacao',
+      unespRoleVerified: true,
+    }] as never);
+
+    await expect(service.principalForUser({
+      ...user,
+      email: 'student@unesp.br',
+      claims: {
+        enrollment_number: '00123456',
+        unesp_role: 'docente',
+        unesp_role_verified: true,
+      },
+    } as never)).resolves.toMatchObject({ isUnesp: true, verifiedCourseCode: null });
+  });
 });
