@@ -2,17 +2,32 @@ import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AdminEventContextKind } from './event-context.models';
 import { EventContextService } from './event-context.service';
+import { ANONYMOUS_AUDIENCE, audienceContext, eventAudienceWhere, groupAudienceWhere, majorEventAudienceWhere } from '../audiences/audience-context';
 
 describe('EventContextService', () => {
   it('orders initial parents by start date before pagination and leaves empty groups last', async () => {
     const harness = createHarness([Permission.Event.Read, Permission.EventGroup.Read]);
     const now = new Date();
     const earlier = new Date(now.getTime() - 86400000);
-    harness.prisma.eventGroup.findMany.mockResolvedValue([
-      { id: 'empty', name: 'Empty', emoji: '📚', majorEventId: null, updatedAt: now, events: [] },
-      { id: 'older', name: 'Older', emoji: '📚', majorEventId: null, updatedAt: now, events: [{ startDate: earlier }] },
-      { id: 'newer', name: 'Newer', emoji: '📚', majorEventId: null, updatedAt: earlier, events: [{ startDate: now }] },
-    ]);
+    const groups = [
+      { id: 'newer', name: 'Newer', emoji: '📚', majorEventId: null, updatedAt: earlier },
+      { id: 'older', name: 'Older', emoji: '📚', majorEventId: null, updatedAt: now },
+      { id: 'empty', name: 'Empty', emoji: '📚', majorEventId: null, updatedAt: now },
+    ];
+    harness.prisma.event.groupBy.mockImplementation(async ({ skip, take }: { skip: number; take: number }) =>
+      [
+        { eventGroupId: 'newer', _min: { startDate: now } },
+        { eventGroupId: 'older', _min: { startDate: earlier } },
+      ].slice(skip, skip + take),
+    );
+    harness.prisma.eventGroup.count.mockResolvedValue(2);
+    harness.prisma.eventGroup.findMany.mockImplementation(async ({ where, skip = 0, take }: {
+      where: unknown; skip?: number; take?: number;
+    }) => {
+      const ids = idsFromWhere(where);
+      if (ids.length) return groups.filter((group) => ids.includes(group.id));
+      return groups.filter((group) => group.id === 'empty').slice(skip, skip + (take ?? 0));
+    });
     harness.prisma.event.findMany.mockImplementation(async (options: { skip?: number; select: { name?: boolean } }) =>
       options.select.name && !options.skip ? [eventRecord({ id: 'standalone', startDate: new Date(now.getTime() + 86400000) })] : [],
     );
@@ -27,13 +42,14 @@ describe('EventContextService', () => {
     } while (cursor);
 
     expect(ids).toEqual(['standalone', 'newer', 'older', 'empty']);
-    const options = harness.prisma.eventGroup.findMany.mock.calls[0][0];
-    expect(options.skip).toBeUndefined();
-    expect(options.take).toBeUndefined();
-    expect(options.select.events).toEqual(expect.objectContaining({
-      where: { deletedAt: null }, select: { startDate: true },
-      orderBy: [{ startDate: 'asc' }, { id: 'asc' }], take: 1,
+    expect(harness.prisma.event.groupBy).toHaveBeenCalledWith(expect.objectContaining({
+      by: ['eventGroupId'], _min: { startDate: true }, skip: 0, take: 2,
+      orderBy: [{ _min: { startDate: 'desc' } }, { eventGroupId: 'asc' }],
     }));
+    for (const [options] of harness.prisma.eventGroup.findMany.mock.calls) {
+      expect(options.take).toBeGreaterThan(0);
+      expect(options.take).toBeLessThanOrEqual(2);
+    }
   });
 
   it('restricts group start dates to readable, non-deleted child events', async () => {
@@ -44,9 +60,62 @@ describe('EventContextService', () => {
 
     await harness.service.getPage({} as never, { childKind: AdminEventContextKind.EVENT_GROUP });
 
-    expect(harness.prisma.eventGroup.findMany.mock.calls[0][0].select.events.where).toEqual({ AND: [
+    const readableEvents = { AND: [
       { deletedAt: null }, { OR: [{ id: { in: ['readable-child'] } }, { eventGroupId: { in: ['group'] } }] },
-    ] });
+    ] };
+    expect(harness.prisma.event.groupBy.mock.calls[0][0].where.AND[0]).toEqual(readableEvents);
+    expect(harness.prisma.eventGroup.findMany.mock.calls[0][0].where.AND).toContainEqual({
+      events: { none: readableEvents },
+    });
+  });
+
+  it('keeps groups with no readable children in a bounded, ID-ordered page', async () => {
+    const harness = createHarness([Permission.EventGroup.Read]);
+    harness.prisma.eventGroup.findMany.mockResolvedValueOnce([
+      { id: 'empty-1', name: 'Empty', emoji: '📚', majorEventId: null, updatedAt: new Date() },
+      { id: 'empty-2', name: 'Empty', emoji: '📚', majorEventId: null, updatedAt: new Date() },
+    ]);
+    const first = await harness.service.getPage({} as never, { take: 1 });
+    expect(first.nodes[0].startDate).toBeNull();
+    await harness.service.getPage({} as never, { take: 1, cursor: first.nextCursor ?? undefined });
+    expect(harness.prisma.eventGroup.findMany.mock.calls[1][0]).toEqual(expect.objectContaining({
+      skip: 1, take: 2, orderBy: { id: 'asc' },
+    }));
+    expect(harness.prisma.event.groupBy.mock.calls[0][0].where.AND[0].AND).toContainEqual({ id: { in: [] } });
+  });
+
+  it.each([null, new Set(['readable-major']), new Set<string>()])(
+    'excludes legacy root groups only when a live child points to a readable major: %p',
+    async (majors) => {
+      const harness = createHarness();
+      harness.authorization.accessibleMajorEventIds.mockResolvedValue(majors);
+      await harness.service.getPage({} as never, { childKind: AdminEventContextKind.EVENT_GROUP });
+      const hierarchy = harness.prisma.eventGroup.findMany.mock.calls[0][0].where.AND[0].AND[1];
+      expect(hierarchy.OR[0]).toEqual({
+        majorEventId: null,
+        events: { none: {
+          deletedAt: null,
+          majorEventId: { not: null },
+          majorEvent: { is: majors === null
+            ? { deletedAt: null }
+            : { AND: [{ deletedAt: null }, { id: { in: [...majors] } }] } },
+        } },
+      });
+    },
+  );
+
+  it('applies audience restrictions to date aggregates, hydration and legacy membership', async () => {
+    const harness = createHarness();
+    await audienceContext.run(ANONYMOUS_AUDIENCE, () => harness.service.getPage({} as never, {
+      childKind: AdminEventContextKind.EVENT_GROUP,
+    }));
+    const aggregateWhere = harness.prisma.event.groupBy.mock.calls[0][0].where;
+    expect(aggregateWhere.AND[0].AND).toContainEqual(eventAudienceWhere(ANONYMOUS_AUDIENCE));
+    const groupWhere = aggregateWhere.AND[1].eventGroup.is;
+    expect(groupWhere.AND).toContainEqual(groupAudienceWhere(ANONYMOUS_AUDIENCE));
+    const hierarchy = groupWhere.AND.find((part: { OR?: unknown[] }) => part.OR);
+    expect(hierarchy.OR[0].events.none.majorEvent.is.AND).toContainEqual(majorEventAudienceWhere(ANONYMOUS_AUDIENCE));
+    expect(harness.prisma.eventGroup.findMany.mock.calls[0][0].where.AND[0]).toEqual(groupWhere);
   });
 
   it('filters the complete event inventory before pagination, preserving access restrictions', async () => {
@@ -310,8 +379,8 @@ describe('EventContextService', () => {
 
 function createHarness(granted = [Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read]) {
   const prisma = {
-    event: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
-    eventGroup: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
+    event: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null), groupBy: jest.fn().mockResolvedValue([]) },
+    eventGroup: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null), count: jest.fn().mockResolvedValue(0) },
     majorEvent: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
   };
   const authorization = {

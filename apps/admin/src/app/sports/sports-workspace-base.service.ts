@@ -600,14 +600,20 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     }
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
-    this.eventForms.set(
-      this.permissions.has(Permission.EventForm.Read)
-        ? await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId }))
-        : [],
-    );
-    if (loadRevision !== this.tournamentLoadRevision) {
-      return;
+    const forms: EventForm[] = [];
+    if (this.permissions.has(Permission.EventForm.Read)) {
+      const take = 50;
+      let page: EventForm[];
+      do {
+        page = await firstValueFrom(this.eventFormsApi.listForms({
+          majorEventId: read.tournament.majorEventId, skip: forms.length, take,
+        }));
+        if (loadRevision !== this.tournamentLoadRevision) return;
+        forms.push(...page);
+      } while (page.length === take);
     }
+    if (loadRevision !== this.tournamentLoadRevision) return;
+    this.eventForms.set(forms);
     this.tournamentForm.patchValue({
       ...read.tournament,
       registrationScheduleMode:

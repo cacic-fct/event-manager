@@ -246,3 +246,30 @@ describe('ticket audit subject anonymization', () => {
     });
   });
 });
+
+describe('invitation audit privacy', () => {
+  const dataSubject = { people: [], personIds: ['person-1'], userIds: [], emails: [] };
+
+  it('selects ID lists and older embedded invitee snapshots for erasure', () => {
+    expect(buildAuditLogSubjectWhere(dataSubject).OR).toEqual(expect.arrayContaining([
+      { before: { path: ['invitationPersonIds'], array_contains: ['person-1'] } },
+      { after: { path: ['audienceInvitations'], array_contains: [{ personId: 'person-1' }] } },
+      { changes: { array_contains: [{ field: 'invitationPersonIds', before: ['person-1'] }] } },
+    ]));
+  });
+
+  it('recognizes and anonymizes invitation IDs in snapshots and change arrays', () => {
+    const identities = new Set(['person-1']);
+    const snapshot = {
+      invitationPersonIds: ['person-1', 'person-2'],
+      changes: [{ field: 'invitationPersonIds', before: ['person-1'], after: ['person-2'] }],
+      audienceInvitations: [{ personId: 'person-1', person: { name: 'Old Name', email: 'old@example.com' } }],
+    };
+    expect(containsAuditIdentity(snapshot, identities, false)).toBe(true);
+    expect(anonymizeAuditJson(snapshot, new Set(), identities, 'erased-person', [], false)).toEqual({
+      invitationPersonIds: ['erased-person', 'person-2'],
+      changes: [{ field: 'invitationPersonIds', before: ['erased-person'], after: ['person-2'] }],
+      audienceInvitations: [{ personId: 'erased-person', person: { name: ANONYMIZED_AUDIT_VALUE, email: ANONYMIZED_AUDIT_VALUE } }],
+    });
+  });
+});

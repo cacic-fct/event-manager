@@ -1,3 +1,4 @@
+import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
 import {
   DeletionResult,
   Event,
@@ -570,7 +571,10 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      if (publishAfterUpdate) assertAudiencePublicationReady(updatedAudit);
+      if (publishAfterUpdate) {
+        const publicationTarget = await tx.event.findUniqueOrThrow({ where: { id }, select: PUBLICATION_EVENT_SELECT });
+        assertAudiencePublicationReady(publicationTarget);
+      }
       await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {

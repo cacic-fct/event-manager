@@ -1,8 +1,26 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { CertificateTargetsService } from './certificate-targets.service';
 
 describe('CertificateTargetsService', () => {
+  it('uses SQL pagination for all targets when an audience principal is scoped', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch({ available: true, ids: ['hidden-target'] });
+    const service = new CertificateTargetsService(prisma as never, typesenseSearch as never);
+    await audienceContext.run(ANONYMOUS_AUDIENCE, async () => {
+      await service.listIssuableEvents('aula', 1, 2);
+      await service.listIssuableEventGroups('grupo', 1, 2);
+      await service.listIssuableMajorEvents('evento', 1, 2);
+    });
+    expect(typesenseSearch.searchEvents).not.toHaveBeenCalled();
+    expect(typesenseSearch.searchEventGroups).not.toHaveBeenCalled();
+    expect(typesenseSearch.searchMajorEvents).not.toHaveBeenCalled();
+    for (const model of [prisma.event, prisma.eventGroup, prisma.majorEvent]) {
+      expect(model.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 1, take: 2 }));
+    }
+  });
+
   it('uses Typesense rank for issuable event searches before applying pagination', async () => {
     const prisma = createPrisma();
     prisma.event.findMany.mockResolvedValue([{ id: 'event-b' }]);

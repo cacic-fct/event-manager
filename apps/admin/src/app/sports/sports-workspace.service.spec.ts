@@ -1,3 +1,5 @@
+import { Permission } from '@cacic-fct/shared-permissions';
+import { createAdminEventForm } from '../testing/admin-entity-fixtures';
 import { FormBuilder } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -24,7 +26,14 @@ import { flushAsync } from '../testing/async-test-helpers';
 describe('SportsWorkspaceService', () => {
   let workspace: SportsWorkspaceService;
   let workspaceEvents: Subject<void>;
-  let sportsApi: { tournaments: ReturnType<typeof vi.fn> };
+  let sportsApi: {
+    tournaments: ReturnType<typeof vi.fn>;
+    tournament: ReturnType<typeof vi.fn>;
+    applicationQueue: ReturnType<typeof vi.fn>;
+    matchActionReviewQueue: ReturnType<typeof vi.fn>;
+    watchTournamentReview: ReturnType<typeof vi.fn>;
+  };
+  let eventFormApi: { listForms: ReturnType<typeof vi.fn> };
   let majorEventApi: { listMajorEvents: ReturnType<typeof vi.fn> };
   let placePresetApi: { listPlacePresets: ReturnType<typeof vi.fn> };
   const permissions = {
@@ -36,7 +45,14 @@ describe('SportsWorkspaceService', () => {
     permissions.has.mockImplementation((permission: string) => permission.startsWith('sports-'));
     permissions.hasAll.mockReturnValue(true);
     workspaceEvents = new Subject<void>();
-    sportsApi = { tournaments: vi.fn(() => of([])) };
+    sportsApi = {
+      tournaments: vi.fn(() => of([])),
+      tournament: vi.fn(() => of(createAdminSportsTournamentRead())),
+      applicationQueue: vi.fn(() => of([])),
+      matchActionReviewQueue: vi.fn(() => of([])),
+      watchTournamentReview: vi.fn(() => EMPTY),
+    };
+    eventFormApi = { listForms: vi.fn(() => of([])) };
     majorEventApi = { listMajorEvents: vi.fn(() => of([])) };
     placePresetApi = { listPlacePresets: vi.fn(() => of([])) };
     TestBed.configureTestingModule({
@@ -45,7 +61,7 @@ describe('SportsWorkspaceService', () => {
         SportsWorkspaceService,
         { provide: SportsApiService, useValue: sportsApi },
         { provide: MajorEventApiService, useValue: majorEventApi },
-        { provide: EventFormApiService, useValue: {} },
+        { provide: EventFormApiService, useValue: eventFormApi },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: placePresetApi },
         { provide: PermissionsService, useValue: permissions },
@@ -55,6 +71,46 @@ describe('SportsWorkspaceService', () => {
       ],
     });
     workspace = TestBed.inject(SportsWorkspaceService);
+  });
+
+  it.each([51, 100])('loads all %i registration forms, including fields beyond the first page', async (count) => {
+    permissions.has.mockReturnValue(true);
+    const forms = Array.from({ length: count }, (_, index) => createAdminEventForm({ id: `form-${index}` }));
+    eventFormApi.listForms.mockImplementation(({ skip, take }: { skip: number; take: number }) =>
+      of(forms.slice(skip, skip + take)),
+    );
+
+    await workspace.loadTournament('tournament-1');
+
+    expect(workspace.eventForms()).toEqual(forms);
+    expect(workspace.eventForms().at(-1)?.elementsJson).toEqual(forms.at(-1)?.elementsJson);
+    expect(eventFormApi.listForms.mock.calls.map(([filters]) => filters)).toEqual(
+      Array.from({ length: Math.floor(count / 50) + 1 }, (_, index) => ({
+        majorEventId: workspace.tournamentRead()?.tournament.majorEventId, skip: index * 50, take: 50,
+      })),
+    );
+  });
+
+  it('does not fetch registration forms without read permission', async () => {
+    permissions.has.mockImplementation((permission) => permission !== Permission.EventForm.Read);
+    await workspace.loadTournament('tournament-1');
+    expect(eventFormApi.listForms).not.toHaveBeenCalled();
+    expect(workspace.eventForms()).toEqual([]);
+  });
+
+  it('does not replace forms after the tournament route is reset during pagination', async () => {
+    permissions.has.mockReturnValue(true);
+    const nextPage = new Subject<ReturnType<typeof createAdminEventForm>[]>();
+    eventFormApi.listForms
+      .mockReturnValueOnce(of(Array.from({ length: 50 }, (_, index) => createAdminEventForm({ id: `form-${index}` }))))
+      .mockReturnValueOnce(nextPage);
+    const pending = workspace.loadTournament('tournament-1');
+    await flushAsync();
+    workspace.resetWorkspaceRoute();
+    nextPage.next([createAdminEventForm({ id: 'stale-form' })]);
+    await pending;
+    expect(workspace.eventForms()).toEqual([]);
+    expect(eventFormApi.listForms).toHaveBeenCalledTimes(2);
   });
 
   it('translates operational states into concise Portuguese labels', () => {
