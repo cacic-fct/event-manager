@@ -45,6 +45,7 @@ describe('AuthService', () => {
     auth.clearSession();
     window.sessionStorage.clear();
     httpTesting.verify();
+    vi.useRealTimers();
   });
 
   it('does not block local logout on tracking cookie clearing', async () => {
@@ -57,6 +58,34 @@ describe('AuthService', () => {
     await expect(logout).resolves.toBeUndefined();
     expect(auth.user()).toBeNull();
     expect(clearTrackingCookies).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the authenticated session when server logout fails', async () => {
+    vi.useFakeTimers();
+    const expiresAt = Date.now() + 65_000;
+    const initialization = auth.initialize();
+    httpTesting.expectOne('/api/auth/me').flush({
+      sub: 'user-id',
+      claims: { exp: Math.floor(expiresAt / 1_000) },
+    });
+    await initialization;
+    const user = auth.user();
+    expect(user).not.toBeNull();
+
+    const logout = auth.logout();
+    const request = httpTesting.expectOne('/api/auth/logout');
+    expect(request.request.body).not.toHaveProperty('refreshToken');
+    expect(request.request.body).not.toHaveProperty('idTokenHint');
+    request.flush({ message: 'Keycloak unavailable' }, { status: 503, statusText: 'Service Unavailable' });
+
+    await expect(logout).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(auth.user()).toEqual(user);
+    expect(clearTrackingCookies).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    const refreshRequest = httpTesting.expectOne('/api/auth/refresh');
+    refreshRequest.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(auth.user()).toBeNull();
   });
 
   it('waits for registered local cleanup before making the logout request', async () => {

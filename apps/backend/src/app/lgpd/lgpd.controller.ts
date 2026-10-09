@@ -46,7 +46,8 @@ export class LgpdController {
       'User lookup payload identifying the data subject whose Event Manager data should be grouped for LGPD access/export workflows.',
   })
   @ApiOkResponse({
-    description: 'Event Manager user data grouped by category for privacy export or access-request processing.',
+    description:
+      'Event Manager user data grouped by category for privacy export or access-request processing. lecturerProfiles.records includes profile identity, biography, picture preferences, contact details, LinkedIn username, and creation/update metadata for all resolved people.',
     schema: {
       type: 'object',
       additionalProperties: true,
@@ -54,6 +55,19 @@ export class LgpdController {
         identity: {
           userId: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ad',
           personId: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ae',
+        },
+        lecturerProfiles: {
+          records: [{
+            id: 'lecturer-profile-id',
+            personId: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ae',
+            displayName: 'Nome do palestrante',
+            biography: null,
+            publishGoogleUserPicture: false,
+            googleUserPicture: null,
+            email: null,
+            whatsapp: null,
+            linkedin: 'nome-do-palestrante',
+          }],
         },
         subscriptions: [],
         attendances: [],

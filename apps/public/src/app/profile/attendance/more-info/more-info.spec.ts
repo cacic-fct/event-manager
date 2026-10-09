@@ -72,33 +72,17 @@ describe('MoreInfo', () => {
     component = fixture.componentInstance;
   });
 
-  afterEach(() => {
-    try {
-      httpTesting.verify();
-    } catch {
-      // Ignore verification errors if no requests match
-    }
-  });
+  afterEach(() => httpTesting.verify());
 
   it('renders the event name in the page body instead of the toolbar', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
-    const requests = httpTesting.match(() => true);
+    const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
+    const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
+    const organizerRequest = expectGraphqlRequest(httpTesting, 'CurrentUserOrganizerInfo');
+    const publicEventRequest = expectGraphqlRequest(httpTesting, 'PublicEventForAttendanceDetails');
 
-    const detailsRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserEventDetails'),
-    );
-    const certificatesRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserCertificates'),
-    );
-    const organizerRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserOrganizerInfo'),
-    );
-    const publicEventRequest = requests.find((request) =>
-      String(request.request.body.query).includes('PublicEventForAttendanceDetails'),
-    );
-
-    detailsRequest?.flush({
+    detailsRequest.flush({
       data: {
         currentUserEventSubscription: {
           eventId: 'event-1',
@@ -166,36 +150,26 @@ describe('MoreInfo', () => {
         },
       },
     });
-    certificatesRequest?.flush({
+    certificatesRequest.flush({
       data: {
         currentUserCertificates: [],
       },
     });
-    organizerRequest?.flush({
+    organizerRequest.flush({
       data: {
         currentUserOrganizerInfo: null,
       },
     });
-    publicEventRequest?.flush({
+    publicEventRequest.flush({
       data: {
         publicEvent: null,
       },
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const formsRequest = httpTesting.match((request) =>
-      String(request.body.query).includes('CurrentUserEventForms'),
-    )[0];
-    formsRequest?.flush({
+    const formsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventForms');
+    formsRequest.flush({
       data: {
         currentUserEventForms: [],
-      },
-    });
-    const prizeDrawAvailabilityRequest = httpTesting.match((request) =>
-      String(request.body.query).includes('PublicPrizeDrawAvailability'),
-    )[0];
-    prizeDrawAvailabilityRequest?.flush({
-      data: {
-        publicPrizeDrawAvailability: [],
       },
     });
     await fixture.whenStable();
@@ -246,21 +220,12 @@ describe('MoreInfo', () => {
 
     fixture.detectChanges();
     await fixture.whenStable();
-    const requests = httpTesting.match(() => true);
-    const detailsRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserEventDetails'),
-    );
-    const certificatesRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserCertificates'),
-    );
-    const organizerRequest = requests.find((request) =>
-      String(request.request.body.query).includes('CurrentUserOrganizerInfo'),
-    );
-    const publicEventRequest = requests.find((request) =>
-      String(request.request.body.query).includes('PublicEventForAttendanceDetails'),
-    );
+    const detailsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventDetails');
+    const certificatesRequest = expectGraphqlRequest(httpTesting, 'CurrentUserCertificates');
+    const organizerRequest = expectGraphqlRequest(httpTesting, 'CurrentUserOrganizerInfo');
+    const publicEventRequest = expectGraphqlRequest(httpTesting, 'PublicEventForAttendanceDetails');
 
-    detailsRequest?.flush({
+    detailsRequest.flush({
       data: {
         currentUserEventSubscription: {
           eventId: 'event-1',
@@ -276,14 +241,12 @@ describe('MoreInfo', () => {
         currentUserEventAttendance: null,
       },
     });
-    certificatesRequest?.flush({ data: { currentUserCertificates: [] } });
-    organizerRequest?.flush({ data: { currentUserOrganizerInfo: null } });
-    publicEventRequest?.flush({ data: { publicEvent: null } });
+    certificatesRequest.flush({ data: { currentUserCertificates: [] } });
+    organizerRequest.flush({ data: { currentUserOrganizerInfo: null } });
+    publicEventRequest.flush({ data: { publicEvent: null } });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const formsRequest = httpTesting.match((request) =>
-      String(request.body.query).includes('CurrentUserEventForms'),
-    )[0];
-    formsRequest?.flush({ data: { currentUserEventForms: [] } });
+    const formsRequest = expectGraphqlRequest(httpTesting, 'CurrentUserEventForms');
+    formsRequest.flush({ data: { currentUserEventForms: [] } });
     await fixture.whenStable();
 
     expect(component.detailState()).toEqual(expect.objectContaining({ status: 'ready', hasPrizeDraws: false }));
@@ -305,4 +268,11 @@ describe('MoreInfo', () => {
 async function waitForDrawRefresh(fixture: ComponentFixture<MoreInfo>): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 120));
   await fixture.whenStable();
+}
+
+function expectGraphqlRequest(httpTesting: HttpTestingController, operationName: string) {
+  return httpTesting.expectOne(
+    (request) => request.url === '/api/graphql' && String(request.body?.query).includes(`query ${operationName}`),
+    `Expected exactly one /api/graphql request for ${operationName}`,
+  );
 }

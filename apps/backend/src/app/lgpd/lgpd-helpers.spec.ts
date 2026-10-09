@@ -232,6 +232,7 @@ describe('LGPD helper modules', () => {
     const dataSubject = dataSubjectResolution();
     const anonymizedSubjectId = buildAnonymizedAuditSubjectId(' request 1 ');
     const tx = {
+      lecturerProfile: { findMany: jest.fn().mockResolvedValue([]) },
       auditLogEntry: {
         findMany: jest.fn().mockResolvedValue([
           {

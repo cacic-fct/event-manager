@@ -272,6 +272,27 @@ describe('SseReplayService', () => {
     await expect(redis.lrange(`sse-replay:v1:${scope}:events`, 0, -1)).resolves.toHaveLength(1);
   });
 
+  it('delivers already recorded scoped events without repeating Redis publication for each subscriber', async () => {
+    const redis = new InMemoryRedisClient();
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('shared');
+    const source = new Subject<Awaited<ReturnType<SseReplayService['record']>>>();
+    const firstEvents: unknown[] = [];
+    const secondEvents: unknown[] = [];
+    const first = service.replay(scope, undefined, source).subscribe((event) => firstEvents.push(event));
+    const second = service.replay(scope, undefined, source).subscribe((event) => secondEvents.push(event));
+    await flushPromises();
+    const evalSpy = jest.spyOn(redis, 'eval');
+    const event = await service.record(scope, { data: { revision: 1 } });
+    source.next(event);
+    await flushPromises();
+    expect(evalSpy).toHaveBeenCalledTimes(1);
+    expect(firstEvents).toEqual([event]);
+    expect(secondEvents).toEqual([event]);
+    first.unsubscribe();
+    second.unsubscribe();
+  });
+
   it('does not persist heartbeat events', async () => {
     const redis = new InMemoryRedisClient();
     const lpush = jest.spyOn(redis, 'lpush');

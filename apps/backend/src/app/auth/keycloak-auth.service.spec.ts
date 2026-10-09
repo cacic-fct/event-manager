@@ -41,6 +41,8 @@ describe('KeycloakAuthService', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     jest.clearAllMocks();
+    mockedAxios.post.mockReset();
+    mockedAxios.post.mockResolvedValue({ data: { active: true } });
     fetchMock = jest.fn().mockResolvedValue(jwksResponse([publicJwk]));
     global.fetch = fetchMock;
     process.env.KEYCLOAK_REALM_URL = `${TEST_ISSUER}/`;
@@ -196,7 +198,7 @@ describe('KeycloakAuthService', () => {
     ).toThrow('KEYCLOAK_CLIENT_SECRET must be set for production authentication.');
   });
 
-  it('exchanges, refreshes, and revokes tokens through Keycloak form endpoints', async () => {
+  it('exchanges, refreshes, and logs out through Keycloak form endpoints', async () => {
     mockedAxios.post
       .mockResolvedValueOnce({ data: { access_token: 'access-token' } })
       .mockResolvedValueOnce({ data: { access_token: 'refreshed-token' } })
@@ -214,12 +216,12 @@ describe('KeycloakAuthService', () => {
     await expect(
       service.logout({
         refreshToken: 'refresh-token',
-        idTokenHint: 'id-token',
+        postLogoutRedirectUri: 'https://app.example/',
       }),
     ).resolves.toEqual({
       refreshTokenRevoked: true,
       logoutUrl:
-        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&id_token_hint=id-token&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
+        'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',
     });
 
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
@@ -238,18 +240,17 @@ describe('KeycloakAuthService', () => {
     );
     expect(mockedAxios.post).toHaveBeenNthCalledWith(
       3,
-      'https://keycloak.example/realms/cacic/protocol/openid-connect/revoke',
-      expect.stringContaining('token_type_hint=refresh_token'),
-      expect.any(Object),
-    );
-    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('client_secret');
-    expect(mockedAxios.post.mock.calls[2][2]).toEqual(
+      'https://keycloak.example/realms/cacic/protocol/openid-connect/logout',
+      expect.stringContaining('refresh_token=refresh-token'),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Basic ZXZlbnQtbWFuYWdlcjpzZWNyZXQ=',
         }),
       }),
     );
+    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('token_type_hint');
+    expect(mockedAxios.post.mock.calls[2][1]).not.toContain('client_secret');
+    expect(new URL(String(mockedAxios.post.mock.calls[2][0])).searchParams.has('id_token_hint')).toBe(false);
   });
 
   it('can authenticate the Keycloak client with client_secret_post when configured', async () => {
@@ -681,10 +682,23 @@ describe('KeycloakAuthService', () => {
     });
     await expect(service.getSessionLogoutInput(sessionId)).resolves.toEqual({
       refreshToken,
-      idTokenHint: 'id-token',
     });
     await service.clearSession(sessionId);
     expect(sessions.delete).toHaveBeenCalledWith(sessionId);
+  });
+
+  it('surfaces upstream Keycloak logout failures', async () => {
+    mockedAxios.post.mockRejectedValueOnce(new Error('provider unavailable'));
+
+    await expect(service.logout({ refreshToken: 'refresh-token' })).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://keycloak.example/realms/cacic/protocol/openid-connect/logout',
+      expect.stringContaining('refresh_token=refresh-token'),
+      expect.any(Object),
+    );
   });
 
   it('uses the session ID token identity when the access token omits the subject claim', async () => {
@@ -777,11 +791,60 @@ describe('KeycloakAuthService', () => {
     expect(principal.permissionSet.size).toBe(0);
     await service.authenticateAccessToken(accessToken, { roles: ['access'] });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/protocol/openid-connect/token/introspect'),
-      expect.any(String),
-      expect.any(Object),
+      new URLSearchParams({ token: accessToken, token_type_hint: 'access_token' }).toString(),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${Buffer.from('event-manager:secret').toString('base64')}`,
+        }),
+        timeout: 5_000,
+      }),
     );
+  });
+
+  it.each([{ active: false }, {}, { active: 'true' }, null])(
+    'rejects signed, unexpired tokens without an explicit active introspection result: %p',
+    async (data) => {
+      const accessToken = jwt({ sub: 'revoked-user' });
+      mockedAxios.post.mockResolvedValueOnce({ data });
+
+      await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(service['userCache'].has(accessToken)).toBe(false);
+    },
+  );
+
+  it('rechecks active state after the principal cache expires and rejects a revoked token', async () => {
+    const accessToken = jwt({ sub: 'revoked-user' });
+    await service.authenticateAccessToken(accessToken);
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: false } });
+    jest.advanceTimersByTime(5_001);
+
+    await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+    expect(service['userCache'].has(accessToken)).toBe(false);
+  });
+
+  it('fails closed without caching a principal when introspection is unavailable', async () => {
+    const accessToken = jwt({ sub: 'user-1' });
+    mockedAxios.post.mockRejectedValueOnce(new Error('provider unavailable'));
+
+    await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(service['userCache'].has(accessToken)).toBe(false);
+    await expect(service.authenticateAccessToken(accessToken)).resolves.toEqual(
+      expect.objectContaining({ sub: 'user-1' }),
+    );
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a tampered signature before introspection even when Keycloak would return active', async () => {
+    const accessToken = jwt({ sub: 'user-1' });
+    const [header, payload] = accessToken.split('.');
+    const tamperedToken = `${header}.${payload}.${Buffer.alloc(256).toString('base64url')}`;
+
+    await expect(service.authenticateAccessToken(tamperedToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
   it('rejects expired tokens, not-yet-active tokens, and forbidden role requirements', async () => {

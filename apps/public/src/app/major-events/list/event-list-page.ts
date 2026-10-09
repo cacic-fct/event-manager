@@ -290,7 +290,7 @@ export class MajorEvent {
             const targetIds = events.filter((event) => !this.isEventFinished(event)).map((event) => event.id);
             return forkJoin({
               states: this.interestApi.getStates('MAJOR_EVENT', targetIds).pipe(catchError(() => of({}))),
-              forms: this.formsApi.listCurrentUserForms({ targetType: 'MAJOR_EVENT' }).pipe(catchError(() => of([]))),
+              forms: this.formsApi.listCurrentUserFormsForMajorEvents(events.map((event) => event.id)).pipe(catchError(() => of([]))),
             });
           }),
         );

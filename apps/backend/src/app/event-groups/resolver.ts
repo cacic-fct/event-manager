@@ -362,6 +362,7 @@ export class EventGroupsResolver {
       audienceCourseCodes: source.audienceCourseCodes,
       emoji: source.emoji,
       requiresImageLicenseAgreement: source.requiresImageLicenseAgreement,
+      interestEnabled: source.interestEnabled,
       attendanceEligibility: source.attendanceEligibility,
       ...(shouldCopyCertificateConfig
         ? {
@@ -411,6 +412,13 @@ export class EventGroupsResolver {
       if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
       await this.sportsBackingLifecycle.assertEventGroupDeleteAllowed(tx, id);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      const events = await tx.event.findMany({
+        where: { eventGroupId: id, deletedAt: null },
+        select: { id: true },
+      });
+      for (const event of events) {
+        await this.attendanceCategories.refreshForEvent(event.id, tx);
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT_GROUP,
@@ -428,6 +436,7 @@ export class EventGroupsResolver {
       );
     });
     await this.postCommitEffects.deleteEventGroup(id);
+    await this.attendanceRealtime.notifyAllConnectedPeople();
     return {
       deleted: true,
       id,

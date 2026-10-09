@@ -93,6 +93,7 @@ describe('RealtimeInvalidationService', () => {
     const second = service.watch('event:event-1').subscribe((event) => secondValues.push(event));
 
     expect(getChannels(service).get('event:event-1')).toEqual(expect.objectContaining({ subscribers: 2 }));
+    expect(jest.getTimerCount()).toBe(1);
     jest.advanceTimersByTime(25_000);
     expect(firstValues).toEqual([{ data: { type: 'heartbeat', timestamp: expect.any(Number) } }]);
     expect(secondValues).toEqual([{ data: { type: 'heartbeat', timestamp: expect.any(Number) } }]);

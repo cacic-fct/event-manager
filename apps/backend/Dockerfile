@@ -47,7 +47,7 @@ COPY certificate-templates ./certificate-templates
 RUN find ./apps/backend -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.json" \) \
     -exec sed -i "s/APP_VERSION_PLACEHOLDER/${APP_VERSION}/g" {} +
-RUN bun x nx run backend:build:production
+RUN bun x nx run backend:build
 
 FROM base AS production-deps
 ENV NODE_ENV=production

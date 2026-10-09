@@ -118,6 +118,34 @@ export class InMemoryRedisClient implements OnModuleDestroy {
     const keys = args.slice(0, keyCount).map(String);
     const values = args.slice(keyCount);
 
+    if (script.includes('-- sse-lease-acquire')) {
+      const now = Date.now();
+      const ttlMs = Number(values[1]);
+      const buckets = keys.map((key) => {
+        this.deleteIfExpired(key);
+        const bucket = this.hashes.get(key) ?? new Map<string, string>();
+        for (const [token, expiresAt] of bucket) {
+          if (Number(expiresAt) <= now) bucket.delete(token);
+        }
+        return bucket;
+      });
+      if (buckets.some((bucket, index) => bucket.size >= Number(values[index + 2]))) return 0;
+      buckets.forEach((bucket, index) => {
+        bucket.set(String(values[0]), String(now + ttlMs));
+        this.hashes.set(keys[index], bucket);
+        this.expirations.set(keys[index], now + ttlMs);
+      });
+      return 1;
+    }
+
+    if (script.includes('-- sse-lease-release')) {
+      for (const key of keys) {
+        this.deleteIfExpired(key);
+        this.hashes.get(key)?.delete(String(values[0]));
+      }
+      return 1;
+    }
+
     if (script.includes('-- auth-session-set-if-current')) {
       const key = keys[0];
       const expected = String(values[0]);

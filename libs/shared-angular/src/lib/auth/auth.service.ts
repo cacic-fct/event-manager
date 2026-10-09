@@ -41,6 +41,7 @@ export class AuthService {
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+  private refreshExpiresAt: number | null = null;
   private readonly beforeLogoutCleanups = new Set<() => void | Promise<void>>();
 
   readonly user = signal<AuthenticatedUser | null>(null);
@@ -145,6 +146,7 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
+    const refreshExpiresAt = this.refreshExpiresAt;
     this.clearRefreshTimer();
     if (this.beforeLogoutCleanups.size > 0) {
       await this.runBeforeLogoutCleanups();
@@ -173,13 +175,11 @@ export class AuthService {
         return;
       } catch (error) {
         this.logUnexpectedAuthError('Logout failed', error);
+        if (refreshExpiresAt !== null) {
+          this.scheduleRefresh(refreshExpiresAt);
+        }
+        throw error;
       }
-
-      this.clearSession();
-      this.markPostLogoutRedirect();
-      this.clearAccountTrackingCookiesBestEffort();
-      window.location.assign(postLogoutRedirectUri);
-      return;
     }
 
     this.clearSession();
@@ -254,6 +254,7 @@ export class AuthService {
 
   clearSession(): void {
     this.clearRefreshTimer();
+    this.refreshExpiresAt = null;
     this.user.set(null);
   }
 
@@ -362,6 +363,7 @@ export class AuthService {
   }
 
   private scheduleRefresh(expiresAt: number): void {
+    this.refreshExpiresAt = expiresAt;
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
