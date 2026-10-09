@@ -649,9 +649,30 @@ export class KeycloakAuthService {
   }
 
   private async verifyAccessTokenClaims(accessToken: string): Promise<TokenClaims> {
+    const claims = await this.verifyJwtClaims(accessToken);
+    const payload = new URLSearchParams({ token: accessToken, token_type_hint: 'access_token' });
+    const headers = this.createFormHeaders();
+    this.addClientAuthentication(payload, headers);
+
+    let introspection: unknown;
+    try {
+      introspection = await this.postKeycloakForm<unknown>(
+        `${this.realmUrl}/protocol/openid-connect/token/introspect`,
+        payload.toString(),
+        headers,
+      );
+    } catch (error) {
+      this.logKeycloakFailure('token introspection', error);
+      throw new ServiceUnavailableException('Keycloak authentication is temporarily unavailable.');
+    }
+
+    if (!isRecord(introspection) || introspection['active'] !== true) {
+      throw new UnauthorizedException('Token is not active.');
+    }
+
     return {
-      ...(await this.verifyJwtClaims(accessToken)),
-      active: true,
+      ...claims,
+      ...introspection,
     };
   }
 

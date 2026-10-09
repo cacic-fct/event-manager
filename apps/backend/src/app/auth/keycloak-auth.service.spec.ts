@@ -41,6 +41,8 @@ describe('KeycloakAuthService', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     jest.clearAllMocks();
+    mockedAxios.post.mockReset();
+    mockedAxios.post.mockResolvedValue({ data: { active: true } });
     fetchMock = jest.fn().mockResolvedValue(jwksResponse([publicJwk]));
     global.fetch = fetchMock;
     process.env.KEYCLOAK_REALM_URL = `${TEST_ISSUER}/`;
@@ -777,11 +779,60 @@ describe('KeycloakAuthService', () => {
     expect(principal.permissionSet.size).toBe(0);
     await service.authenticateAccessToken(accessToken, { roles: ['access'] });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(mockedAxios.post).not.toHaveBeenCalledWith(
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/protocol/openid-connect/token/introspect'),
-      expect.any(String),
-      expect.any(Object),
+      new URLSearchParams({ token: accessToken, token_type_hint: 'access_token' }).toString(),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${Buffer.from('event-manager:secret').toString('base64')}`,
+        }),
+        timeout: 5_000,
+      }),
     );
+  });
+
+  it.each([{ active: false }, {}, { active: 'true' }, null])(
+    'rejects signed, unexpired tokens without an explicit active introspection result: %p',
+    async (data) => {
+      const accessToken = jwt({ sub: 'revoked-user' });
+      mockedAxios.post.mockResolvedValueOnce({ data });
+
+      await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(service['userCache'].has(accessToken)).toBe(false);
+    },
+  );
+
+  it('rechecks active state after the principal cache expires and rejects a revoked token', async () => {
+    const accessToken = jwt({ sub: 'revoked-user' });
+    await service.authenticateAccessToken(accessToken);
+    mockedAxios.post.mockResolvedValueOnce({ data: { active: false } });
+    jest.advanceTimersByTime(5_001);
+
+    await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+    expect(service['userCache'].has(accessToken)).toBe(false);
+  });
+
+  it('fails closed without caching a principal when introspection is unavailable', async () => {
+    const accessToken = jwt({ sub: 'user-1' });
+    mockedAxios.post.mockRejectedValueOnce(new Error('provider unavailable'));
+
+    await expect(service.authenticateAccessToken(accessToken)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(service['userCache'].has(accessToken)).toBe(false);
+    await expect(service.authenticateAccessToken(accessToken)).resolves.toEqual(
+      expect.objectContaining({ sub: 'user-1' }),
+    );
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a tampered signature before introspection even when Keycloak would return active', async () => {
+    const accessToken = jwt({ sub: 'user-1' });
+    const [header, payload] = accessToken.split('.');
+    const tamperedToken = `${header}.${payload}.${Buffer.alloc(256).toString('base64url')}`;
+
+    await expect(service.authenticateAccessToken(tamperedToken)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
   it('rejects expired tokens, not-yet-active tokens, and forbidden role requirements', async () => {
