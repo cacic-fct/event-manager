@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { Body, Controller, Post, Req, UsePipes } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -92,7 +93,7 @@ export class LgpdController {
       requiredRoles: ['lgpd:read'],
     });
 
-    return this.lgpdService.collectUserData(body);
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.lgpdService.collectUserData(body));
   }
 
   @Post('deletion/schedule')
@@ -135,7 +136,7 @@ export class LgpdController {
       requiredRoles: ['lgpd:delete'],
     });
 
-    return this.lgpdService.scheduleDeletion(body);
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.lgpdService.scheduleDeletion(body));
   }
 
   @Post('deletion/delete')
@@ -178,6 +179,6 @@ export class LgpdController {
       requiredRoles: ['lgpd:delete'],
     });
 
-    return this.lgpdService.hardDelete(body);
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.lgpdService.hardDelete(body));
   }
 }

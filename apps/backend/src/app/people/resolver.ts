@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   DeletionResult,
   Person,
@@ -535,6 +536,12 @@ export class PeopleResolver {
           `Person ${id} has linked app data and cannot be deleted. Review linked resources before deleting.`,
         );
       }
+      // Remove invitations to every target, including targets outside the actor's audience.
+      await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+        await tx.eventAudienceInvitation.deleteMany({ where: { personId: id } });
+        await tx.eventGroupAudienceInvitation.deleteMany({ where: { personId: id } });
+        await tx.majorEventAudienceInvitation.deleteMany({ where: { personId: id } });
+      });
       await tx.people.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {

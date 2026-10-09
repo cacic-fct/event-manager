@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { BadRequestException, ForbiddenException, UnauthorizedException, type ArgumentMetadata } from '@nestjs/common';
 import { LgpdController } from './lgpd.controller';
 import { LgpdDeletionRequestDto, LgpdUserRequestDto } from './dto';
@@ -26,6 +27,18 @@ describe('LgpdController', () => {
       hardDelete: jest.fn(),
     };
     controller = new LgpdController(keycloakAuthService as never, lgpdService as never);
+  });
+
+  it.each(['userData', 'scheduleDeletion', 'hardDelete'] as const)('runs %s in system scope after M2M authorization', async (operation) => {
+    const method = operation === 'userData' ? 'collectUserData' : operation;
+    lgpdService[method].mockImplementation(async () => {
+      await Promise.resolve();
+      return audienceContext.getStore();
+    });
+    const body = { userId: 'subject-1', event: 'account-deletion.delete', requestId: 'request-1' };
+    const result = await audienceContext.run(ANONYMOUS_AUDIENCE, () => controller[operation]({ user: authenticatedUser() } as never, body));
+    expect(result).toEqual({ ...ANONYMOUS_AUDIENCE, bypass: true });
+    expect(audienceContext.getStore()).toBeUndefined();
   });
 
   it('declares the non-onboarded internal boundary and exact privacy roles', () => {

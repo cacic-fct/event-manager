@@ -40,9 +40,9 @@ import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
-import { AUDIENCE_ADMIN_SELECT, applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import { AUDIENCE_AUDIT_SELECT, applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
-import { assertAudiencePublicationReady } from '../audiences/audience-publication';
+import { AUDIENCE_PUBLICATION_SELECT, assertAudiencePublicationReady } from '../audiences/audience-publication';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -74,7 +74,7 @@ const MAJOR_EVENT_PRICE_SELECT = {
 } satisfies Prisma.MajorEventPriceSelect;
 
 const MAJOR_EVENT_SELECT = {
-  ...AUDIENCE_ADMIN_SELECT,
+  ...AUDIENCE_AUDIT_SELECT,
   id: true,
   name: true,
   emoji: true,
@@ -430,7 +430,10 @@ export class MajorEventsResolver {
         },
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
-      if (publishAfterUpdate) assertAudiencePublicationReady(updated);
+      if (publishAfterUpdate) {
+        const publicationTarget = await tx.majorEvent.findUniqueOrThrow({ where: { id }, select: AUDIENCE_PUBLICATION_SELECT });
+        assertAudiencePublicationReady(publicationTarget);
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT,

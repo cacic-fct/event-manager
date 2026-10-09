@@ -981,6 +981,26 @@ describe('MajorEventsResolver', () => {
     expect(tx.majorEventPrice.deleteMany).toHaveBeenCalled();
   });
 
+  it('rejects inline publication when invited attendance has no active invitee', async () => {
+    const { resolver, tx, auditLog, prisma } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ attendanceEligibility: 'INVITED_ONLY' }));
+    await expect(resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never)).rejects.toThrow('confirmar presença');
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('selects only invitation IDs for major-event mutation audit snapshots', async () => {
+    const { resolver, tx, prisma } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord());
+    await resolver.updateMajorEvent('major-1', { name: 'Novo nome' }, context() as never);
+    const expectedSelect = expect.objectContaining({ audienceInvitations: { select: { personId: true } } });
+    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+    expect(tx.majorEvent.findUniqueOrThrow).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+  });
+
   it('throws when updating a missing major event', async () => {
     const { resolver, prisma } = createResolver();
     prisma.majorEvent.findFirst.mockResolvedValue(null);
