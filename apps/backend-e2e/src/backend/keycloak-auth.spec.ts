@@ -84,6 +84,7 @@ describeKeycloak('Keycloak-backed authentication', () => {
     });
 
     expect(meResponse.status).toBe(200);
+    expect(asArray(meResponse.data.claims?.aud)).toContain('cacic-event-manager');
     expect(meResponse.data).toEqual(
       expect.objectContaining({
         email: 'aluno@unesp.br',
