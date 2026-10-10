@@ -29,7 +29,7 @@ interface CurrentUserSubscribedItem {
 export class CalendarApiService {
   private readonly http = inject(HttpClient);
 
-  getCalendarEvents(filters: CalendarEventFilters): Observable<PublicEvent[]> {
+  getCalendarEvents(filters: CalendarEventFilters, anonymousOnly = false): Observable<PublicEvent[]> {
     const variables: PublicCalendarEventsQueryVariables = {
       query: filters.query || null,
       eventType: filters.eventType === 'ALL' ? null : filters.eventType,
@@ -37,7 +37,7 @@ export class CalendarApiService {
       startDateUntil: filters.startDateUntil ?? null,
     };
 
-    return this.query<PublicCalendarEventsQuery>(PUBLIC_CALENDAR_EVENTS_QUERY, variables).pipe(
+    return this.query<PublicCalendarEventsQuery>(PUBLIC_CALENDAR_EVENTS_QUERY, variables, anonymousOnly).pipe(
       map((data) => data.publicCalendarEvents),
     );
   }
@@ -93,19 +93,25 @@ export class CalendarApiService {
     );
   }
 
-  private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {
-    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
-      map((response) => {
-        if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
-        }
+  private query<TData>(query: string, variables?: GraphqlVariables, anonymousOnly = false): Observable<TData> {
+    return this.http
+      .post<GraphqlResponse<TData>>(
+        '/api/graphql',
+        { query, variables },
+        anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {},
+      )
+      .pipe(
+        map((response) => {
+          if (response.errors?.length) {
+            throw new Error(response.errors.map((error) => error.message).join('\n'));
+          }
 
-        if (!response.data) {
-          throw new Error('Resposta GraphQL sem dados.');
-        }
+          if (!response.data) {
+            throw new Error('Resposta GraphQL sem dados.');
+          }
 
-        return response.data;
-      }),
-    );
+          return response.data;
+        }),
+      );
   }
 }

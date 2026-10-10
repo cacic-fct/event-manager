@@ -1,10 +1,19 @@
-import { AttendanceEligibility } from './enums';
+import { AttendanceEligibility, EventAudience } from './enums';
 import { Field, Float, InputType, Int } from '@nestjs/graphql';
 
 import { EventType } from './enums';
 
 @InputType()
 export class EventCreateInput {
+  @Field(() => EventAudience, { nullable: true })
+  audience?: EventAudience;
+
+  @Field(() => [String], { nullable: true })
+  audienceCourseCodes?: string[];
+
+  @Field(() => [String], { nullable: true })
+  invitationPersonIds?: string[];
+
   @Field(() => Boolean, { nullable: true })
   interestEnabled?: boolean;
 
@@ -128,6 +137,15 @@ export class EventCreateInput {
 
 @InputType()
 export class EventUpdateInput {
+  @Field(() => EventAudience, { nullable: true })
+  audience?: EventAudience;
+
+  @Field(() => [String], { nullable: true })
+  audienceCourseCodes?: string[];
+
+  @Field(() => [String], { nullable: true })
+  invitationPersonIds?: string[];
+
   @Field(() => Boolean, { nullable: true })
   interestEnabled?: boolean;
 

@@ -1,4 +1,4 @@
-import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import type { AttendanceEligibility, EventAudience } from '@cacic-fct/shared-event-participation';
 export * from './dashboard.types';
 export * from './frontend-current-user.types';
 export * from './frontend-public-event.types';
@@ -60,6 +60,8 @@ export interface PaymentInfo {
 }
 
 export interface MajorEvent {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;
@@ -91,6 +93,8 @@ export interface MajorEvent {
 }
 
 export interface EventGroup {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;
@@ -170,6 +174,8 @@ export interface CertificateDownload {
 }
 
 export interface Event {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;

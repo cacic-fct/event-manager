@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import {
   sportsPublicMatchRecord,
   sportsPublicOfficialAssignmentRecord,
@@ -347,5 +348,27 @@ describe('SportsReadPublicService', () => {
     expect(result.selfSubscriptionEnabled).toBe(false);
     expect(result.startDate).toEqual((tournament.majorEvent as { startDate: Date }).startDate);
     expect(prisma.sportsCategory.findMany).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse a shared tournament projection for an audience-scoped principal', async () => {
+    prisma.sportsTournament.findFirst.mockResolvedValue(sportsPublicTournamentRecord());
+    const redis = {
+      mget: jest.fn().mockResolvedValue([
+        JSON.stringify({ version: '2', tournament: { id: 'tournament-1' } }),
+        '2',
+      ]),
+      get: jest.fn().mockResolvedValue('2'),
+      eval: jest.fn().mockResolvedValue(1),
+    };
+
+    const result = await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, userId: 'audience-user', isUnesp: true },
+      () => new SportsReadPublicService(prisma as never, redis as never).publicTournament({ tournamentId: 'tournament-1' }),
+    );
+
+    expect(result.id).toBe('tournament-1');
+    expect(redis.mget).not.toHaveBeenCalled();
+    expect(prisma.sportsCategory.findMany).toHaveBeenCalled();
+    expect(redis.eval).not.toHaveBeenCalled();
   });
 });

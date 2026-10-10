@@ -1,5 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
+import { EventAudience } from '@cacic-fct/shared-event-participation';
 import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { dateRangeValidator } from '../shared/date-range-validator';
 
@@ -36,6 +37,8 @@ export class EventFormStateService {
         locationPresetId: ['PERSONALIZADO'],
         majorEventId: [''],
         eventGroupId: [''],
+        audience: this.formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+        audienceCourseCodes: this.formBuilder.nonNullable.control<string[]>([]),
         allowSubscription: [false],
         interestEnabled: [false],
         attendanceEligibility: this.formBuilder.control<AttendanceEligibility | null>(null),

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStats } from './models';
 
 export const PUBLIC_PLATFORM_STATS_QUEUE = 'public-platform-stats';
-const CACHE_KEY = 'public:platform-stats:v3';
+const CACHE_KEY = 'public:platform-stats:v4';
 const CACHE_TTL_SECONDS = 48 * 60 * 60;
 const PUBLIC_STATS_DELAY_DAYS = 14;
 const TIME_ZONE = 'America/Sao_Paulo';
@@ -36,7 +37,10 @@ export class PublicPlatformStatsService {
       return this.inFlightRefresh;
     }
 
-    const refresh = this.generateAndCacheStats();
+    // This cache is shared by every caller. Generate it with the anonymous
+    // principal so a public request carrying an authenticated session cannot
+    // seed it with audience-scoped event or major-event counts.
+    const refresh = audienceContext.run(ANONYMOUS_AUDIENCE, () => this.generateAndCacheStats());
     this.inFlightRefresh = refresh;
 
     try {

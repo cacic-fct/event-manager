@@ -669,6 +669,19 @@ describe('offline public data access integration', () => {
     });
     await service.replaceAttendanceFeed('user-1', feed);
     await service.replaceAttendanceDetail('user-1', 'event-1', detail);
+    await service.upsertCalendarEvents([event('public-calendar-event', fixtureDate(30))]);
+    await service.replacePublicMapEvents([
+      {
+        id: 'public-map-event',
+        name: 'Evento público no mapa',
+        startDate: fixtureDate(30),
+        endDate: fixtureDate(30, 1),
+        emoji: '📍',
+        latitude: -22.12,
+        longitude: -51.4,
+        locationDescription: null,
+      },
+    ]);
 
     await expect(service.getLatestUserSnapshot('user-1')).resolves.toEqual(
       expect.objectContaining({
@@ -686,6 +699,8 @@ describe('offline public data access integration', () => {
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toEqual(detail);
     await service.purgeUserData();
 
+    await expect(database.calendarEvents.toArray()).resolves.toEqual([]);
+    await expect(database.publicMapEvents.toArray()).resolves.toEqual([]);
     await expect(service.getLatestUserSnapshot('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceFeed('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();

@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { Logger, NotFoundException } from '@nestjs/common';
 import { Args, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
@@ -23,6 +24,7 @@ export class WeatherResolver {
   })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicWeather)
+  @IncludePastParticipation()
   async publicEventWeather(
     @Args('eventId', {
       type: () => String,

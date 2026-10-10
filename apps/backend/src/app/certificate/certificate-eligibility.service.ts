@@ -17,6 +17,7 @@ import { CertificateSportsEligibility } from './certificate-sports-eligibility';
 import { isAutomaticSportsCertificateIssuedTo, isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { isApprovedAttendance, isRegisteredAttendanceEvidence } from '../events/attendance-eligibility';
 import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 
 const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   majorEventId: true,
@@ -59,6 +60,7 @@ type CertificateAttendanceFact = {
   majorEventSubscriptionStatus: SubscriptionStatus | null;
   paymentTier: string | null;
   tierEligible: boolean;
+  invited: boolean;
 };
 
 type AttendanceMajorEventSubscription = Prisma.MajorEventSubscriptionGetPayload<{
@@ -88,6 +90,7 @@ export class CertificateEligibilityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sportsEligibility: CertificateSportsEligibility,
+    private readonly audienceInvitations: AudienceInvitationService,
   ) {}
 
   async getConfigById(configId: string): Promise<CertificateConfigRecord> {
@@ -693,7 +696,7 @@ export class CertificateEligibilityService {
     const tierIds = [
       ...new Set(events.flatMap((event) => event.regularAttendancePriceTierIds ?? [])),
     ];
-    const [eventSubscriptions, majorSubscriptions, priceTiers] = await Promise.all([
+    const [eventSubscriptions, majorSubscriptions, priceTiers, invitationFacts] = await Promise.all([
       this.prisma.eventSubscription.findMany({
         where: {
           eventId: { in: uniqueEventIds },
@@ -734,6 +737,7 @@ export class CertificateEligibilityService {
             select: ATTENDANCE_PRICE_TIER_SELECT,
           })
         : Promise.resolve([] as AttendancePriceTier[]),
+      this.audienceInvitations.getEventInvitationFacts(events, uniquePersonIds),
     ]);
 
     const eventSubscriptionKeys = new Set(
@@ -760,6 +764,7 @@ export class CertificateEligibilityService {
         };
         const paymentTier = normalizeAttendancePriceTier(majorSubscription?.paymentTier);
         const regularAttendancePriceTierIds = event.regularAttendancePriceTierIds ?? [];
+        const invitations = invitationFacts.get(this.attendanceFactKey(personId, event.id));
         facts.set(this.attendanceFactKey(personId, event.id), {
           registered: isRegisteredAttendanceEvidence(event, registrationEvidence),
           approved: isApprovedAttendance(event, registrationEvidence),
@@ -779,6 +784,7 @@ export class CertificateEligibilityService {
                   );
                 }),
             ),
+          invited: invitations?.event === true || invitations?.eventGroup === true || invitations?.majorEvent === true,
         });
       }
     }

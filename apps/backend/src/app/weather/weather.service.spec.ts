@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { WeatherService } from './weather.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 
@@ -150,6 +151,48 @@ describe('WeatherService', () => {
     await requests;
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks visibility separately before sharing an in-flight forecast across audiences', async () => {
+    const event = weatherEventFixture();
+    prisma.event.findFirst.mockImplementation(async () => {
+      const principal = audienceContext.getStore();
+      return principal?.isUnesp ? event : null;
+    });
+    let releaseFetch!: (response: Response) => void;
+    let reportFetchStarted!: () => void;
+    const fetchStarted = new Promise<void>((resolve) => { reportFetchStarted = resolve; });
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          releaseFetch = resolve;
+          reportFetchStarted();
+        }),
+    );
+
+    const allowed = audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true },
+      () => service.getPublicEventWeather('event-1'),
+    );
+    await fetchStarted;
+    await expect(
+      audienceContext.run(ANONYMOUS_AUDIENCE, () => service.getPublicEventWeather('event-1')),
+    ).rejects.toThrow(NotFoundException);
+
+    releaseFetch(
+      {
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          hourly: {
+            time: ['2026-05-22T09:00'],
+            temperature_2m: [21.6],
+            weather_code: [61],
+            uv_index: [4.26],
+          },
+        }),
+      } as unknown as Response,
+    );
+    await expect(allowed).resolves.toEqual(expect.objectContaining({ eventId: 'event-1' }));
   });
 
   it('updates one stable event scheduler as the forecast refresh cadence changes', async () => {

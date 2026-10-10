@@ -183,7 +183,7 @@
                 type="button"
                 matTooltip="Salva como rascunho e abre o painel de publicação para escolher data, pré-visualizar ou revisar eventos vinculados."
                 (click)="workspace.saveEventGroup('SCHEDULE')"
-                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
+                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid || workspace.audiencePublicationBlocked()">
                 <mat-icon>schedule</mat-icon>
                 Salvar e agendar
               </button>
@@ -201,7 +201,7 @@
                 type="button"
                 [matTooltip]="publishGroupActionTooltip()"
                 (click)="workspace.saveEventGroup('PUBLISH')"
-                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid">
+                [disabled]="workspace.savingEventGroup() || workspace.eventGroupForm.invalid || workspace.audiencePublicationBlocked()">
                 <mat-icon>{{ publishGroupActionIcon() }}</mat-icon>
                 {{ publishGroupActionLabel() }}
               </button>
@@ -211,6 +211,18 @@
       </div>
 
       <form [formGroup]="workspace.eventGroupForm" class="surface field-group">
+        <app-audience-editor
+          [audience]="workspace.eventGroupForm.controls.audience.value"
+          [courseCodes]="workspace.eventGroupForm.controls.audienceCourseCodes.value"
+          [invitedPeople]="workspace.eventGroupAudienceInvitations()"
+          [parentRestrictions]="workspace.audienceParentRestrictions()"
+          [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
+          [publicationError]="workspace.audiencePublicationError()"
+          [readOnly]="!canEditGroup(workspace.selectedEventGroup())"
+          (audienceChange)="workspace.eventGroupForm.controls.audience.setValue($event)"
+          (courseCodesChange)="workspace.eventGroupForm.controls.audienceCourseCodes.setValue($event)"
+          (invitedPeopleChange)="workspace.setEventGroupAudienceInvitations($event)" />
+
         <h4>Detalhes</h4>
         <div class="field-grid">
           <mat-form-field>

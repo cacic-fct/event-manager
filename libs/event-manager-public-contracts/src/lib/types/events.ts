@@ -1,4 +1,4 @@
-import type { AttendanceEligibility, EventInterest } from './participation';
+import type { AttendanceEligibility, EventAudience, EventInterest } from './participation';
 import type { ContactType, DateTimeString, EventType } from './common';
 
 export interface PublicPaymentInfo {
@@ -42,6 +42,8 @@ export interface PublicSportsMatchMarker {
 }
 
 export interface PublicMajorEvent {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;
@@ -74,6 +76,8 @@ export interface PublicMajorEvent {
 }
 
 export interface PublicEventGroup {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   majorEventId?: string | null;
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
@@ -100,6 +104,8 @@ export interface PublicLecturerProfile {
 }
 
 export interface PublicEvent {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;

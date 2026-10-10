@@ -1,3 +1,4 @@
+import { audienceContext } from '../audiences/audience-context';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { EventGroupsResolver } from './resolver';
@@ -443,7 +444,7 @@ describe('EventGroupsResolver authorization', () => {
     expect(typesenseSearch.deleteEventGroup).toHaveBeenCalledWith('group-1');
   });
 
-  it('refreshes stored attendance categories when the group eligibility policy changes', async () => {
+  it.each(['policy', 'invitations'] as const)('refreshes stored attendance categories when the group %s changes', async (change) => {
     const previous = {
       id: 'group-1',
       name: 'Grupo',
@@ -453,12 +454,14 @@ describe('EventGroupsResolver authorization', () => {
     const updated = { ...previous, attendanceEligibility: 'ANYONE' };
     const tx = {
       eventGroup: {
+        update: jest.fn().mockResolvedValue({ id: 'target' }),
         findFirst: jest.fn().mockResolvedValue(previous),
-        update: jest.fn(),
         findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
       },
       event: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
+          ? [{ id: 'event-1' }, { id: 'event-2' }]
+          : [{ id: 'event-1' }]),
       },
     };
     const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
@@ -474,12 +477,13 @@ describe('EventGroupsResolver authorization', () => {
       undefined,
       attendanceCategories as never,
       attendanceRealtime as never,
+      { notifyInvited: jest.fn().mockResolvedValue(undefined), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } as never,
     );
 
     await expect(
       resolver.updateEventGroup(
         'group-1',
-        { attendanceEligibility: 'ANYONE' } as never,
+        (change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }) as never,
         { req: { user: { sub: 'admin-1' } } } as never,
       ),
     ).resolves.toBe(updated);

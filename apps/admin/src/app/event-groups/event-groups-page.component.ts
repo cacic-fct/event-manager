@@ -18,6 +18,7 @@ import { isFrozenEventGroup } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { EventGroupsService } from './event-groups.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { AudienceEditorComponent } from '../shared/audience-editor/audience-editor.component';
 import { DatePipe } from '@angular/common';
 import {
   attendanceEligibilityOptionsFor,
@@ -42,6 +43,7 @@ import {
     MatTooltipModule,
     TwemojiComponent,
     DatePipe,
+    AudienceEditorComponent,
   ],
   templateUrl: './event-groups-page.component.html',
   styleUrls: [

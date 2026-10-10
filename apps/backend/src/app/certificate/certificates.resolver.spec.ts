@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
@@ -526,6 +527,25 @@ describe('CertificatesResolver authorization', () => {
       scope: CertificateScope.OTHER,
       targetId: 'folder-1',
     });
+  });
+
+  it('bypasses audience restrictions only during public certificate capabilities', async () => {
+    const { publicValidationService, downloadService, resolver } = createResolver();
+    const scope = jest.fn(async () => {
+      await Promise.resolve();
+      expect(audienceContext.getStore()?.bypass).toBe(true);
+      return { id: 'restricted-certificate' };
+    });
+    publicValidationService.validateCertificate.mockImplementation(scope);
+    downloadService.downloadPublicCertificate.mockImplementation(scope);
+    await audienceContext.run(ANONYMOUS_AUDIENCE, async () => {
+      await resolver.publicCertificateValidation('restricted-certificate', 'token', { req: {} } as never);
+      expect(audienceContext.getStore()).toBe(ANONYMOUS_AUDIENCE);
+      await resolver.downloadPublicCertificate('restricted-certificate');
+      expect(audienceContext.getStore()).toBe(ANONYMOUS_AUDIENCE);
+    });
+    expect(scope).toHaveBeenCalledTimes(2);
+    expect(audienceContext.getStore()).toBeUndefined();
   });
 
   it('verifies Turnstile before public certificate validation lookup', async () => {

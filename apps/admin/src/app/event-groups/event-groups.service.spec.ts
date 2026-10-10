@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,7 +8,12 @@ import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { EventGroupInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../graphql/publishing-api.service';
-import { createAdminEvent, createAdminEventGroup, createAdminEventSummary } from '../testing/admin-entity-fixtures';
+import {
+  createAdminEvent,
+  createAdminEventGroup,
+  createAdminEventSummary,
+  createAdminMajorEvent,
+} from '../testing/admin-entity-fixtures';
 import { EventGroupsService } from './event-groups.service';
 import { EventsService } from '../events/events.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -32,6 +38,7 @@ describe('EventGroupsService', () => {
   let eventsService: {
     loadEvents: ReturnType<typeof vi.fn>;
     eventGroupLookupForm: { reset: ReturnType<typeof vi.fn> };
+    majorEvents: ReturnType<typeof signal>;
   };
   let router: {
     navigate: ReturnType<typeof vi.fn>;
@@ -62,6 +69,7 @@ describe('EventGroupsService', () => {
     eventsService = {
       loadEvents: vi.fn(() => Promise.resolve()),
       eventGroupLookupForm: { reset: vi.fn() },
+      majorEvents: signal([]),
     };
     router = {
       navigate: vi.fn(),
@@ -133,6 +141,73 @@ describe('EventGroupsService', () => {
       interestEnabled: true,
       attendanceEligibility: null,
     });
+  });
+
+  it('preserves invitation IDs when the API hides invitee details', async () => {
+    const group = createAdminEventGroup({ audienceInvitations: [{ personId: 'private-person', person: null }] });
+    await service.pickEventGroup(group);
+    expect(service.eventGroupAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    await service.saveEventGroup('DRAFT');
+    expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
+  });
+
+  it('serializes selected invitees for invitation-only groups', async () => {
+    service.eventGroupForm.patchValue({ audience: 'PUBLIC' });
+    service.setEventGroupAudienceInvitations([{ id: 'person-1', name: 'Ana', email: 'ana@example.com' }]);
+
+    await service.saveEventGroup('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      audience: 'PUBLIC',
+      audienceCourseCodes: [],
+      invitationPersonIds: ['person-1'],
+    });
+  });
+
+  it('keeps invitation-only attendance visible independently of access audience', async () => {
+    service.eventGroupForm.patchValue({
+      audience: 'PUBLIC',
+      attendanceEligibility: 'INVITED_ONLY',
+    });
+
+    expect(service.shouldManageAttendanceInvitations()).toBe(true);
+    expect(service.audiencePublicationBlocked()).toBe(true);
+    await service.saveEventGroup('PUBLISH');
+    expect(api.createEventGroup).not.toHaveBeenCalled();
+
+    await service.saveEventGroup('DRAFT');
+    expect(api.createEventGroup).toHaveBeenCalled();
+  });
+
+  it('reports an unavailable parent rule instead of assuming public access', () => {
+    service.selectedEventGroup.set(createAdminEventGroup({ majorEventId: 'major-event-1' }));
+
+    expect(service.audienceParentRestrictions()).toEqual([
+      expect.objectContaining({
+        audience: null,
+        unavailable: true,
+      }),
+    ]);
+  });
+
+  it('uses linked event metadata to resolve an inherited parent rule', async () => {
+    const majorEvent = createAdminMajorEvent({
+      id: 'major-event-1',
+      audience: 'UNESP_ONLY',
+      attendanceEligibility: 'INVITED_ONLY',
+    });
+    const group = createAdminEventGroup({ majorEventId: majorEvent.id });
+    eventApi.listEvents.mockReturnValueOnce(
+      of([createAdminEvent({ eventGroupId: group.id, majorEventId: majorEvent.id, majorEvent })]),
+    );
+
+    await service.pickEventGroup(group);
+    await Promise.resolve();
+
+    expect(service.audienceParentRestrictions()).toEqual([
+      expect.objectContaining({ audience: 'UNESP_ONLY', attendanceEligibility: 'INVITED_ONLY' }),
+    ]);
+    expect(service.shouldManageAttendanceInvitations()).toBe(true);
   });
 
   it('moves linked events back to draft when saving an existing group as draft', async () => {

@@ -21,6 +21,7 @@ import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { AudienceEditorComponent } from '../shared/audience-editor/audience-editor.component';
 import {
   attendanceEligibilityOptionsFor,
   displayAttendanceEligibility,
@@ -45,6 +46,7 @@ import {
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
+    AudienceEditorComponent,
   ],
   templateUrl: './major-events-page.component.html',
   styleUrls: [

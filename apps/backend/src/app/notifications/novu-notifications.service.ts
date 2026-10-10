@@ -12,6 +12,7 @@ import {
 import { NovuNotificationTransport } from './novu-notification-transport';
 import type {
   CertificateAvailableNotification,
+  AudienceInvitationNotification,
   EventFormAvailableNotification,
   MajorEventSubscriptionNotificationRecord,
   NotificationRecipient,
@@ -46,6 +47,10 @@ export class NovuNotificationsService {
   private readonly eventFormAvailableWorkflowIdentifier = this.config.get<string>(
     'NOVU_EVENT_FORM_AVAILABLE_WORKFLOW_IDENTIFIER',
     'event-form-available',
+  );
+  private readonly audienceInvitationWorkflowIdentifier = this.config.get<string>(
+    'NOVU_AUDIENCE_INVITATION_WORKFLOW_IDENTIFIER',
+    'audience-invitation',
   );
 
   constructor(private readonly config: ConfigService) {
@@ -333,6 +338,52 @@ export class NovuNotificationsService {
       overrides: {
         fcm: { data: { url: actionUrl, eventId: input.eventId } },
         webPush: { data: { url: actionUrl, eventId: input.eventId } },
+      },
+    });
+  }
+
+  async notifyAudienceInvitation(input: AudienceInvitationNotification): Promise<boolean> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey) {
+      return false;
+    }
+
+    const title = 'Convite para atividade';
+    const body = `Você foi convidado para ${input.targetName}.`;
+    const transactionId = `audience-invitation:${input.targetType}:${input.targetId}:${input.recipient.subscriberId}:${
+      input.invitationCreatedAt?.toISOString() ?? 'legacy'
+    }`;
+    return this.transport.trigger(secretKey, {
+      name: this.audienceInvitationWorkflowIdentifier,
+      to: input.recipient,
+      transactionId,
+      payload: {
+        title,
+        subject: title,
+        body,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        targetName: input.targetName,
+        actionLabel: 'Ver atividade',
+        actionUrl: input.actionUrl,
+        redirectUrl: input.actionUrl,
+        subscriberId: input.recipient.subscriberId,
+      },
+      overrides: {
+        fcm: {
+          data: {
+            url: input.actionUrl,
+            targetType: input.targetType,
+            targetId: input.targetId,
+          },
+        },
+        webPush: {
+          data: {
+            url: input.actionUrl,
+            targetType: input.targetType,
+            targetId: input.targetId,
+          },
+        },
       },
     });
   }

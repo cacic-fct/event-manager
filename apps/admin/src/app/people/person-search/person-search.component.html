@@ -1,7 +1,9 @@
 <div class="person-search-control">
   <mat-form-field subscriptSizing="dynamic">
     <mat-label>{{ label() }}</mat-label>
-    <mat-icon matPrefix>person_search</mat-icon>
+    @if (!disabled()) {
+      <mat-icon matPrefix aria-hidden="true">person_search</mat-icon>
+    }
     <input
       matInput
       type="search"
@@ -17,7 +19,7 @@
     type="button"
     [disabled]="disabled() || loading() || queryControl.value.trim().length < minimumQueryLength()"
     (click)="searchNow()">
-    <mat-icon>search</mat-icon>
+    <mat-icon aria-hidden="true">search</mat-icon>
     Buscar
   </button>
 </div>

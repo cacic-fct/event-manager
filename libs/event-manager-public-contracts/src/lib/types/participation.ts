@@ -7,6 +7,8 @@ export const AttendanceEligibility = {
 
 export type AttendanceEligibility = (typeof AttendanceEligibility)[keyof typeof AttendanceEligibility];
 
+export type EventAudience = 'PUBLIC' | 'UNESP_ONLY' | 'COURSE_ONLY' | 'INVITATION_ONLY';
+
 export const InterestTargetType = {
   EVENT: 'EVENT',
   EVENT_GROUP: 'EVENT_GROUP',

@@ -1,8 +1,18 @@
-import { AttendanceEligibility } from './enums';
+import { AttendanceEligibility, EventAudience } from './enums';
 import { Field, ObjectType } from '@nestjs/graphql';
+import { EventAudienceInvitation } from './event-audience';
 
 @ObjectType()
 export class EventGroup {
+  @Field(() => EventAudience)
+  audience?: EventAudience;
+
+  @Field(() => [String])
+  audienceCourseCodes?: string[];
+
+  @Field(() => [EventAudienceInvitation])
+  audienceInvitations?: EventAudienceInvitation[];
+
   @Field(() => String, { nullable: true })
   majorEventId?: string | null;
   @Field(() => Boolean)

@@ -1,3 +1,4 @@
+import { IncludePastParticipation } from '../../audiences/past-participation.decorator';
 import { Certificate, CertificateDownload, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { NotFoundException } from '@nestjs/common';
@@ -20,6 +21,7 @@ export class CurrentUserCertificatesResolver {
   ) {}
 
   @Query(() => [Certificate], { name: 'currentUserCertificates' })
+  @IncludePastParticipation()
   async currentUserCertificates(
     @Args('scope', { type: () => CertificateScope }) scope: CertificateScope,
     @Args('targetId', { type: () => String }) targetId: string,
@@ -119,6 +121,7 @@ export class CurrentUserCertificatesResolver {
   @Query(() => CertificateDownload, {
     name: 'downloadCurrentUserCertificate',
   })
+  @IncludePastParticipation()
   async downloadCurrentUserCertificate(
     @Args('certificateId', { type: () => String }) certificateId: string,
     @Context() context: GraphqlContext,

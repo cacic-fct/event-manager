@@ -30,6 +30,18 @@ export class PublicMapDataCacheService {
     });
   }
 
+  async clear(): Promise<void> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return;
+    }
+
+    await database.transaction('rw', database.publicMapEvents, database.syncMetadata, async () => {
+      await database.publicMapEvents.clear();
+      await database.syncMetadata.delete(PUBLIC_MAP_EVENTS_METADATA_KEY);
+    });
+  }
+
   async getEvents(maxAgeMs: number): Promise<PublicMapEvent[] | null> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {

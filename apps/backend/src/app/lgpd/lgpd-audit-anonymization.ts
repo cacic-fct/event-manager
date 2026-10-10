@@ -7,6 +7,7 @@ export const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
 
 const AUDIT_IDENTITY_FIELDS = new Set([
   'personId',
+  'invitationPersonIds',
   'personAId',
   'personBId',
   'sourcePersonId',
@@ -56,6 +57,17 @@ export function buildAuditLogSubjectWhere(
       { metadata: { path: ['offlineAttendanceAuthor', field], equals: identifier } },
     ]),
   );
+  const invitationConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap((personId) => [
+    ...(['before', 'after', 'metadata'] as const).flatMap((payload) => [
+      { [payload]: { path: ['invitationPersonIds'], array_contains: [personId] } },
+      // Older major-event snapshots also embedded invitee names and emails.
+      { [payload]: { path: ['audienceInvitations'], array_contains: [{ personId }] } },
+    ]),
+    ...(['before', 'after'] as const).flatMap((value) => [
+      { changes: { array_contains: [{ field: 'invitationPersonIds', [value]: [personId] }] } },
+      { changes: { array_contains: [{ field: 'audienceInvitations', [value]: [{ personId }] }] } },
+    ]),
+  ]);
   const emailConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.emails.flatMap((email) => [
     ...(includeActorEmail ? [{ actorEmail: { equals: email, mode: Prisma.QueryMode.insensitive } }] : []),
     { before: { path: ['email'], equals: email } },
@@ -90,6 +102,7 @@ export function buildAuditLogSubjectWhere(
         : []),
       ...eventAttendanceEntityConditions,
       ...jsonIdentityConditions,
+      ...invitationConditions,
       ...emailConditions,
     ],
   };

@@ -1,3 +1,5 @@
+import { EventAudienceService } from '../audiences/event-audience.service';
+import { ANONYMOUS_AUDIENCE, audienceContext, eventAudienceWhere, majorEventAudienceWhere } from '../audiences/audience-context';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventFormResponseMode, EventFormTargetType, Prisma, SubscriptionStatus } from '@prisma/client';
 import { EventFormAudience, matchesEventFormAudience } from '@cacic-fct/shared-event-participation';
@@ -41,6 +43,7 @@ export class EventFormNotificationService {
     private readonly prisma: PrismaService,
     private readonly notifications: NovuNotificationsService,
     private readonly featureFlags: BackendFeatureFlagService,
+    private readonly audiences: EventAudienceService,
   ) {}
 
   async notifyEligiblePeople(form: EventFormNotificationRecord): Promise<number> {
@@ -69,13 +72,13 @@ export class EventFormNotificationService {
       }
 
       const requiredRecipients = requiresExistingSubscriberResponse && requiredNotificationsEnabled
-        ? await this.findRequiredSubscriptionRecipients(form, link)
+        ? await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.findRequiredSubscriptionRecipients(form, link))
         : [];
       const audienceRecipients = requiresExistingSubscriberResponse
         ? otherAudiences.length > 0
-          ? await this.findNotificationRecipients({ ...link, audiences: otherAudiences })
+          ? await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.findNotificationRecipients({ ...link, audiences: otherAudiences }))
           : []
-        : await this.findNotificationRecipients(link);
+        : await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.findNotificationRecipients(link));
       const recipients = [...new Map(
         [...requiredRecipients, ...audienceRecipients].map((recipient) => [recipient.subscriberId, recipient]),
       ).values()];
@@ -251,7 +254,7 @@ export class EventFormNotificationService {
       }
     }
 
-    return [...people.values()].map((person) => this.notifications.mapPersonToRecipient(person));
+    return this.filterAudienceRecipients([...people.values()], link);
   }
 
   private async findRequiredSubscriptionRecipients(form: EventFormNotificationRecord, link: EventFormNotificationLink) {
@@ -291,9 +294,28 @@ export class EventFormNotificationService {
       },
     });
     const answeredPeople = new Set(answered.map((response) => response.personId));
-    return people
-      .filter((person) => !answeredPeople.has(person.id))
-      .map((person) => this.notifications.mapPersonToRecipient(person));
+    return this.filterAudienceRecipients(people.filter((person) => !answeredPeople.has(person.id)), link);
+  }
+
+  private async filterAudienceRecipients(people: EventFormNotificationPerson[], link: EventFormNotificationLink) {
+    const recipients = [];
+    const principals = new Map<string, Awaited<ReturnType<EventAudienceService['principalForStoredUser']>>>();
+    for (const person of people) {
+      let principal = { ...ANONYMOUS_AUDIENCE, personIds: [person.id] };
+      if (person.userId) {
+        let stored = principals.get(person.userId);
+        if (!stored) {
+          stored = await this.audiences.principalForStoredUser(person.userId);
+          principals.set(person.userId, stored);
+        }
+        principal = stored;
+      }
+      const visible = await audienceContext.run(principal, () => link.eventId
+        ? this.prisma.event.count({ where: { AND: [{ id: link.eventId, deletedAt: null }, eventAudienceWhere(principal)] } })
+        : this.prisma.majorEvent.count({ where: { AND: [{ id: link.majorEventId ?? '', deletedAt: null }, majorEventAudienceWhere(principal)] } }));
+      if (visible > 0) recipients.push(this.notifications.mapPersonToRecipient(person));
+    }
+    return recipients;
   }
 
   private responseScopeForRequiredSubscriptionLink(

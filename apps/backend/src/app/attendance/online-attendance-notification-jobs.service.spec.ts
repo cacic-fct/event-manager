@@ -272,6 +272,151 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
   });
 
+  it('filters registered recipients against a restricted audience before mapping notifications', async () => {
+    const audiences = {
+      principalForStoredUser: jest.fn(async (userId: string) => ({
+        userId,
+        personIds: [`person-${userId}`],
+        isUnesp: userId === 'user-1',
+        verifiedCourseCode: null,
+        bypass: false,
+      })),
+    };
+    const { notifications, prisma, service } = createService({ audiences });
+    const event = {
+      ...onlineAttendanceEvent({
+        audience: 'UNESP_ONLY',
+        eventGroupId: null,
+        majorEventId: null,
+      }),
+      name: 'Evento reservado',
+      attendanceEligibility: 'REGISTERED_ONLY',
+      subscriptions: [{ person: person('person-1', 'user-1') }, { person: person('person-2', 'user-2') }],
+      majorEvent: null,
+      eventGroup: null,
+    };
+    prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
+      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
+    });
+    notifications.mapPersonToRecipient.mockImplementation((value) => ({
+      subscriberId: value.userId,
+      email: value.email,
+    }));
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(audiences.principalForStoredUser).toHaveBeenCalledTimes(2);
+    expect(notifications.mapPersonToRecipient).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: [{ subscriberId: 'user-1', email: 'user-1@example.com' }],
+      }),
+    );
+  });
+
+  it('caches one stored audience principal for recipients sharing an account', async () => {
+    const audiences = {
+      principalForStoredUser: jest.fn(async (userId: string) => ({
+        userId,
+        personIds: ['person-1', 'person-2'],
+        isUnesp: true,
+        verifiedCourseCode: null,
+        bypass: false,
+      })),
+    };
+    const { notifications, prisma, service } = createService({ audiences });
+    const event = {
+      ...onlineAttendanceEvent({ audience: 'UNESP_ONLY', eventGroupId: null, majorEventId: null }),
+      attendanceEligibility: 'REGISTERED_ONLY',
+      subscriptions: [{ person: person('person-1', 'user-1') }, { person: person('person-2', 'user-1') }],
+      majorEvent: null,
+      eventGroup: null,
+    };
+    prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
+      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
+    });
+    notifications.mapPersonToRecipient.mockImplementation((value) => ({
+      subscriberId: value.userId,
+      email: value.email,
+    }));
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(audiences.principalForStoredUser).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({ recipients: [{ subscriberId: 'user-1', email: 'user-1@example.com' }] }),
+    );
+  });
+
+  it('uses the public hierarchy fast path without resolving recipient principals', async () => {
+    const audiences = {
+      principalForStoredUser: jest.fn(),
+    };
+    const { notifications, prisma, service } = createService({ audiences });
+    const event = {
+      ...onlineAttendanceEvent({ audience: 'PUBLIC', eventGroupId: 'group-1', majorEventId: 'major-1' }),
+      attendanceEligibility: 'REGISTERED_ONLY',
+      subscriptions: [{ person: person('person-1', 'user-1') }],
+      majorEvent: {
+        audience: 'PUBLIC',
+        attendanceEligibility: 'REGISTERED_ONLY',
+        subscriptions: [],
+      },
+      eventGroup: { audience: 'PUBLIC', attendanceEligibility: null, deletedAt: null },
+    };
+    prisma.event.findFirst.mockResolvedValue(event);
+    notifications.mapPersonToRecipient.mockImplementation((value) => ({
+      subscriberId: value.userId,
+      email: value.email,
+    }));
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(audiences.principalForStoredUser).not.toHaveBeenCalled();
+    expect(prisma.event.findFirst).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not notify an invited child when its parent audience excludes the recipient', async () => {
+    const audiences = {
+      principalForStoredUser: jest.fn(async () => ({
+        userId: 'user-1',
+        personIds: ['person-1'],
+        isUnesp: false,
+        verifiedCourseCode: null,
+        bypass: false,
+      })),
+    };
+    const audienceInvitations = {
+      listInvitedPeopleForAttendance: jest.fn().mockResolvedValue([
+        { personId: 'person-1', person: person('person-1', 'user-1') },
+      ]),
+    };
+    const { notifications, prisma, service } = createService({ audiences, audienceInvitations });
+    const event = {
+      ...onlineAttendanceEvent({
+        audience: 'INVITATION_ONLY',
+        eventGroupId: 'group-1',
+        majorEventId: null,
+      }),
+      attendanceEligibility: 'INVITED_ONLY',
+      subscriptions: [],
+      majorEvent: null,
+      eventGroup: { audience: 'UNESP_ONLY', attendanceEligibility: null, deletedAt: null },
+    };
+    prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
+      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
+    });
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
+    expect(notifications.mapPersonToRecipient).not.toHaveBeenCalled();
+  });
+
   it('ignores a soft-deleted event-group attendance policy when notifying', async () => {
     const { notifications, prisma, service } = createService();
     prisma.event.findFirst.mockResolvedValue({
@@ -307,7 +452,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
   });
 });
 
-function createService() {
+function createService(overrides: { audienceInvitations?: unknown; audiences?: unknown } = {}) {
   const prisma = {
     event: {
       findFirst: jest.fn(),
@@ -338,6 +483,8 @@ function createService() {
       notifications as never,
       queue as never,
       featureFlags as never,
+      overrides.audienceInvitations as never,
+      overrides.audiences as never,
     ),
   };
 }

@@ -5,7 +5,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareIsoDateAsc, compareIsoDateDesc } from '@cacic-fct/shared-utils';
-import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import {
+  AttendanceEligibility,
+  EventAudience,
+  resolveAttendanceEligibility,
+} from '@cacic-fct/shared-event-participation';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
@@ -24,6 +28,11 @@ import {
 import { bindLiveSearch } from '../search/live-search';
 import { EventsService } from '../events/events.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  normalizeAudienceCourseCodes,
+  type AudienceInvitationPerson,
+  type AudienceParentRestriction,
+} from '../shared/audience-editor/audience-editor.models';
 
 const DEFAULT_EVENT_GROUP_EMOJI = '❔';
 const DEFAULT_DRAFT_EVENT_GROUP_NAME = 'Grupo sem título';
@@ -49,6 +58,8 @@ export class EventGroupsService {
   readonly selectedEventGroup = signal<EventGroup | null>(null);
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
+  readonly eventGroupAudienceInvitations = signal<AudienceInvitationPerson[]>([]);
+  readonly selectedEventGroupMajorEventRestriction = signal<AudienceParentRestriction | null>(null);
   readonly savingEventGroup = signal(false);
   readonly sortedEventGroups = computed(() => {
     const groups = this.eventGroups();
@@ -84,6 +95,8 @@ export class EventGroupsService {
     emoji: [DEFAULT_EVENT_GROUP_EMOJI],
     interestEnabled: [false],
     attendanceEligibility: this.formBuilder.control<AttendanceEligibility | null>(null),
+    audience: this.formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+    audienceCourseCodes: this.formBuilder.nonNullable.control<string[]>([]),
     requiresImageLicenseAgreement: [false],
     shouldIssueCertificate: [false],
     shouldIssueCertificateForNonPayingAttendees: [false],
@@ -115,6 +128,52 @@ export class EventGroupsService {
     );
   }
 
+  setEventGroupAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
+    this.eventGroupAudienceInvitations.set([...people]);
+  }
+
+  shouldManageAttendanceInvitations(): boolean {
+    return (
+      this.eventGroupForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      this.resolveEffectiveAttendanceEligibility() === AttendanceEligibility.INVITED_ONLY
+    );
+  }
+
+  audiencePublicationError(): string | null {
+    return this.shouldManageAttendanceInvitations() && this.eventGroupAudienceInvitations().length === 0
+      ? 'Para publicar ou agendar, adicione ao menos uma pessoa convidada. O rascunho privado pode ser salvo sem convites.'
+      : null;
+  }
+
+  audiencePublicationBlocked(): boolean {
+    return this.audiencePublicationError() !== null;
+  }
+
+  audienceParentRestrictions(): AudienceParentRestriction[] {
+    const group = this.selectedEventGroup();
+    if (!group?.majorEventId) {
+      return [];
+    }
+
+    const restriction = this.selectedEventGroupMajorEventRestriction();
+    return [restriction ?? {
+      label: 'Grande evento associado (regra não carregada)',
+      audience: null,
+      audienceCourseCodes: [],
+      attendanceEligibility: null,
+      unavailable: true,
+    }];
+  }
+
+  private resolveEffectiveAttendanceEligibility(): AttendanceEligibility {
+    const parent = this.selectedEventGroupMajorEventRestriction();
+    return resolveAttendanceEligibility({
+      attendanceEligibility: this.eventGroupForm.controls.attendanceEligibility.value,
+      majorEventId: this.selectedEventGroup()?.majorEventId ?? null,
+      majorEvent: parent ? { attendanceEligibility: parent.attendanceEligibility } : null,
+    });
+  }
+
   async loadEventGroups(): Promise<void> {
     const query = this.eventGroupsSearchForm.controls.query.value.trim();
     const items = await firstValueFrom(
@@ -130,6 +189,7 @@ export class EventGroupsService {
       const refreshed = this.eventGroups().find((group) => group.id === selectedGroup.id);
       if (refreshed) {
         this.selectedEventGroup.set(refreshed);
+        this.refreshMajorEventRestriction(this.eventGroupEvents());
       }
     }
   }
@@ -162,6 +222,9 @@ export class EventGroupsService {
     }
 
     const raw = this.eventGroupForm.getRawValue();
+    if ((action === 'PUBLISH' || action === 'SCHEDULE') && this.audiencePublicationBlocked()) {
+      return;
+    }
     const payload = this.buildEventGroupPayload(action !== 'PUBLISH');
 
     this.savingEventGroup.set(true);
@@ -211,6 +274,8 @@ export class EventGroupsService {
         emoji: DEFAULT_EVENT_GROUP_EMOJI,
         interestEnabled: false,
         attendanceEligibility: null,
+        audience: EventAudience.PUBLIC,
+        audienceCourseCodes: [],
         requiresImageLicenseAgreement: false,
         shouldIssueCertificate: false,
         shouldIssueCertificateForNonPayingAttendees: false,
@@ -218,6 +283,8 @@ export class EventGroupsService {
         shouldIssueCertificateForEachEvent: false,
         shouldIssuePartialCertificate: false,
       });
+      this.eventGroupAudienceInvitations.set([]);
+      this.selectedEventGroupMajorEventRestriction.set(null);
       if (!raw.id && action !== 'SCHEDULE') {
         this.selectedEventGroup.set(null);
         this.eventGroupEvents.set([]);
@@ -250,7 +317,9 @@ export class EventGroupsService {
   startNewEventGroup(): void {
     void this.router.navigate(['/groups']);
     this.selectedEventGroup.set(null);
+    this.selectedEventGroupMajorEventRestriction.set(null);
     this.eventGroupEvents.set([]);
+    this.eventGroupAudienceInvitations.set([]);
     this.eventGroupEventSearchResults.set([]);
     this.eventGroupForm.reset({
       id: '',
@@ -258,6 +327,8 @@ export class EventGroupsService {
       emoji: DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: false,
       attendanceEligibility: null,
+      audience: EventAudience.PUBLIC,
+      audienceCourseCodes: [],
       requiresImageLicenseAgreement: false,
       shouldIssueCertificate: false,
       shouldIssueCertificateForNonPayingAttendees: false,
@@ -289,12 +360,15 @@ export class EventGroupsService {
 
   private populateEventGroupSelection(group: EventGroup): void {
     this.selectedEventGroup.set(group);
+    this.selectedEventGroupMajorEventRestriction.set(null);
     this.eventGroupForm.reset({
       id: group.id,
       name: group.name,
       emoji: group.emoji || DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: group.interestEnabled ?? false,
       attendanceEligibility: group.attendanceEligibility ?? null,
+      audience: group.audience ?? EventAudience.PUBLIC,
+      audienceCourseCodes: normalizeAudienceCourseCodes(group.audience),
       requiresImageLicenseAgreement: group.requiresImageLicenseAgreement ?? false,
       shouldIssueCertificate: group.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees: group.shouldIssueCertificateForNonPayingAttendees,
@@ -302,6 +376,9 @@ export class EventGroupsService {
       shouldIssueCertificateForEachEvent: group.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: group.shouldIssuePartialCertificate,
     });
+    this.eventGroupAudienceInvitations.set(
+      (group.audienceInvitations ?? []).map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }),
+    );
     this.eventGroupEventSearchForm.reset(
       {
         query: '',
@@ -409,13 +486,38 @@ export class EventGroupsService {
   }
 
   private async loadEventsForGroup(groupId: string): Promise<void> {
-    this.eventGroupEvents.set(
-      await firstValueFrom(
-        this.eventsApi.listEvents({
-          eventGroupId: groupId,
-          take: 200,
-        }),
-      ),
+    const events = await firstValueFrom(
+      this.eventsApi.listEvents({
+        eventGroupId: groupId,
+        take: 200,
+      }),
+    );
+    this.eventGroupEvents.set(events);
+    this.refreshMajorEventRestriction(events);
+  }
+
+  private refreshMajorEventRestriction(events: readonly Event[]): void {
+    const group = this.selectedEventGroup();
+    if (!group?.majorEventId) {
+      this.selectedEventGroupMajorEventRestriction.set(null);
+      return;
+    }
+
+    const majorEvents = typeof this.eventsService.majorEvents === 'function'
+      ? this.eventsService.majorEvents()
+      : [];
+    const majorEvent =
+      majorEvents.find((item) => item.id === group.majorEventId) ??
+      events.find((eventItem) => eventItem.majorEvent?.id === group.majorEventId)?.majorEvent;
+    this.selectedEventGroupMajorEventRestriction.set(
+      majorEvent
+        ? {
+            label: `Grande evento “${majorEvent.name}”`,
+            audience: majorEvent.audience,
+            audienceCourseCodes: majorEvent.audienceCourseCodes ?? [],
+            attendanceEligibility: majorEvent.attendanceEligibility,
+          }
+        : null,
     );
   }
 
@@ -437,6 +539,9 @@ export class EventGroupsService {
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: raw.interestEnabled,
       attendanceEligibility: raw.attendanceEligibility,
+      audience: raw.audience,
+      audienceCourseCodes: normalizeAudienceCourseCodes(raw.audience),
+      invitationPersonIds: this.eventGroupAudienceInvitations().map((person) => person.id),
       requiresImageLicenseAgreement: raw.requiresImageLicenseAgreement,
       shouldIssueCertificate: raw.shouldIssueCertificate,
       shouldIssueCertificateForNonPayingAttendees:

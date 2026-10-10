@@ -1,0 +1,105 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.audience-editor {
+  display: grid;
+  gap: 1rem;
+}
+
+.audience-editor-heading h4,
+.audience-invitations h5 {
+  margin: 0;
+}
+
+.audience-editor-heading p,
+.audience-invitations p,
+.audience-parent-hint,
+.audience-selected-hint,
+.audience-empty,
+.audience-error {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  margin: 0.4rem 0 0;
+  max-width: 72ch;
+}
+
+.audience-options {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.audience-option {
+  align-items: start;
+  min-height: 3rem;
+}
+
+.audience-option-copy {
+  display: grid;
+  gap: 0.125rem;
+  margin-block-start: 0.1rem;
+}
+
+.audience-option-copy small {
+  color: var(--mat-sys-on-surface-variant);
+  white-space: normal;
+}
+
+.audience-course-field {
+  max-width: 32rem;
+}
+
+.audience-invitations {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.audience-section-copy {
+  margin-block-end: 0.75rem !important;
+}
+
+.audience-error {
+  color: var(--mat-sys-error);
+}
+
+.audience-warning {
+  color: var(--mat-sys-on-surface);
+}
+
+.invited-people {
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.invited-person {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-height: 3.25rem;
+  padding: 0.45rem 0.65rem 0.45rem 0.8rem;
+}
+
+.invited-person > span {
+  display: grid;
+  min-width: 0;
+}
+
+.invited-person strong,
+.invited-person small {
+  overflow-wrap: anywhere;
+}
+
+.invited-person small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.invited-person button {
+  flex: 0 0 auto;
+}

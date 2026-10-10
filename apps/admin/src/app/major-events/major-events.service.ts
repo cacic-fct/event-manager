@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
-import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import { AttendanceEligibility, EventAudience } from '@cacic-fct/shared-event-participation';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -23,6 +23,11 @@ import {
 } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  normalizeAudienceCourseCodes,
+  type AudienceInvitationPerson,
+  type AudienceParentRestriction,
+} from '../shared/audience-editor/audience-editor.models';
 import { ShellUiService } from '../app-shell/ui.service';
 import { dateRangeValidator } from '../shared/date-range-validator';
 
@@ -51,6 +56,7 @@ export class MajorEventsService {
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
   readonly majorEventEventSearchResults = signal<Event[]>([]);
+  readonly majorEventAudienceInvitations = signal<AudienceInvitationPerson[]>([]);
 
   readonly majorEventForm = this.formBuilder.nonNullable.group(
     {
@@ -64,6 +70,8 @@ export class MajorEventsService {
       subscriptionEndDate: [''],
       interestEnabled: [false],
       attendanceEligibility: this.formBuilder.nonNullable.control<AttendanceEligibility>('APPROVED_REGISTRATIONS_ONLY'),
+      audience: this.formBuilder.nonNullable.control<EventAudience>(EventAudience.PUBLIC),
+      audienceCourseCodes: this.formBuilder.nonNullable.control<string[]>([]),
       requiresImageLicenseAgreement: [true],
       maxCoursesPerAttendee: [''],
       maxLecturesPerAttendee: [''],
@@ -114,6 +122,31 @@ export class MajorEventsService {
     this.majorEventForm.controls.priceType.valueChanges.subscribe((type) => this.syncPriceTierControls(type));
   }
 
+  setMajorEventAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
+    this.majorEventAudienceInvitations.set([...people]);
+  }
+
+  shouldManageAttendanceInvitations(): boolean {
+    return (
+      this.majorEventForm.controls.audience.value === EventAudience.INVITATION_ONLY ||
+      this.majorEventForm.controls.attendanceEligibility.value === AttendanceEligibility.INVITED_ONLY
+    );
+  }
+
+  audiencePublicationError(): string | null {
+    return this.shouldManageAttendanceInvitations() && this.majorEventAudienceInvitations().length === 0
+      ? 'Para publicar ou agendar, adicione ao menos uma pessoa convidada. O rascunho privado pode ser salvo sem convites.'
+      : null;
+  }
+
+  audiencePublicationBlocked(): boolean {
+    return this.audiencePublicationError() !== null;
+  }
+
+  audienceParentRestrictions(): AudienceParentRestriction[] {
+    return [];
+  }
+
   get priceTiers(): FormArray<ReturnType<MajorEventsService['createPriceTierGroup']>> {
     return this.majorEventForm.controls.priceTiers;
   }
@@ -155,6 +188,10 @@ export class MajorEventsService {
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
     if (this.hasInvalidDateRange()) {
       this.majorEventForm.markAllAsTouched();
+      return;
+    }
+
+    if ((action === 'PUBLISH' || action === 'SCHEDULE') && this.audiencePublicationBlocked()) {
       return;
     }
 
@@ -249,6 +286,7 @@ export class MajorEventsService {
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
     this.majorEventEventSearchResults.set([]);
+    this.majorEventAudienceInvitations.set([]);
     this.majorEventEventSearchForm.reset(
       {
         query: '',
@@ -266,6 +304,8 @@ export class MajorEventsService {
       subscriptionEndDate: '',
       interestEnabled: false,
       attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
+      audience: EventAudience.PUBLIC,
+      audienceCourseCodes: [],
       requiresImageLicenseAgreement: true,
       maxCoursesPerAttendee: '',
       maxLecturesPerAttendee: '',
@@ -331,6 +371,8 @@ export class MajorEventsService {
         majorEvent.subscriptionEndDate != null ? this.fromIsoToLocalInput(majorEvent.subscriptionEndDate) : '',
       interestEnabled: majorEvent.interestEnabled ?? false,
       attendanceEligibility: majorEvent.attendanceEligibility ?? 'APPROVED_REGISTRATIONS_ONLY',
+      audience: majorEvent.audience ?? EventAudience.PUBLIC,
+      audienceCourseCodes: normalizeAudienceCourseCodes(majorEvent.audience),
       requiresImageLicenseAgreement: majorEvent.requiresImageLicenseAgreement ?? true,
       maxCoursesPerAttendee: majorEvent.maxCoursesPerAttendee?.toString() ?? '',
       maxLecturesPerAttendee: majorEvent.maxLecturesPerAttendee?.toString() ?? '',
@@ -353,6 +395,9 @@ export class MajorEventsService {
       pixCity: majorEvent.paymentInfo?.pixCity ?? '',
       priceType,
     });
+    this.majorEventAudienceInvitations.set(
+      (majorEvent.audienceInvitations ?? []).map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }),
+    );
     this.resetPriceTiers(
       price?.tiers.length
         ? price.tiers.map((tier) =>
@@ -502,6 +547,9 @@ export class MajorEventsService {
       subscriptionEndDate: this.toOptionalIsoDateTime(raw.subscriptionEndDate),
       interestEnabled: raw.interestEnabled,
       attendanceEligibility: raw.attendanceEligibility,
+      audience: raw.audience,
+      audienceCourseCodes: normalizeAudienceCourseCodes(raw.audience),
+      invitationPersonIds: this.majorEventAudienceInvitations().map((person) => person.id),
       requiresImageLicenseAgreement: raw.requiresImageLicenseAgreement,
       maxCoursesPerAttendee: this.toOptionalNumber(raw.maxCoursesPerAttendee),
       maxLecturesPerAttendee: this.toOptionalNumber(raw.maxLecturesPerAttendee),

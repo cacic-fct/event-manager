@@ -9,6 +9,7 @@ import {
   SportsTournamentStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import {
   PublicSportsBracket,
   PublicSportsCategory,
@@ -145,7 +146,8 @@ export class SportsReadPublicService {
       }>;
     };
   }): Promise<PublicSportsTournamentDetail> {
-    const cached = await this.cache.getCachedPublicTournament(tournament.id);
+    const useSharedCache = this.canUseSharedPublicCache();
+    const cached = useSharedCache ? await this.cache.getCachedPublicTournament(tournament.id) : null;
     if (cached) {
       return {
         ...cached,
@@ -164,17 +166,18 @@ export class SportsReadPublicService {
       };
     }
 
-    const inFlight = this.publicTournamentRefreshes.get(tournament.id);
+    const refreshKey = this.publicTournamentRefreshKey(tournament.id);
+    const inFlight = this.publicTournamentRefreshes.get(refreshKey);
     if (inFlight) {
       return inFlight;
     }
 
-    const refresh = this.generateAndCachePublicTournament(tournament);
-    this.publicTournamentRefreshes.set(tournament.id, refresh);
+    const refresh = this.generateAndCachePublicTournament(tournament, useSharedCache);
+    this.publicTournamentRefreshes.set(refreshKey, refresh);
     try {
       return await refresh;
     } finally {
-      this.publicTournamentRefreshes.delete(tournament.id);
+      this.publicTournamentRefreshes.delete(refreshKey);
     }
   }
 
@@ -196,7 +199,7 @@ export class SportsReadPublicService {
         tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
       }>;
     };
-  }): Promise<PublicSportsTournamentDetail> {
+  }, useSharedCache: boolean): Promise<PublicSportsTournamentDetail> {
     const cacheVersion = await this.cache.readPublicTournamentCacheVersion(tournament.id);
     const [categories, teams, stages, matches, standings, placements, scoreEntries] = await Promise.all([
       this.prisma.sportsCategory.findMany({
@@ -446,8 +449,35 @@ export class SportsReadPublicService {
         (left, right) => right.points - left.points || left.team.name.localeCompare(right.team.name),
       ),
     };
-    await this.cache.cachePublicTournamentIfCurrent(tournament.id, cacheVersion, detail);
+    if (useSharedCache) {
+      await this.cache.cachePublicTournamentIfCurrent(tournament.id, cacheVersion, detail);
+    }
     return detail;
+  }
+
+  private canUseSharedPublicCache(): boolean {
+    const principal = audienceContext.getStore();
+    if (!principal) {
+      return true;
+    }
+    return (
+      principal.userId === undefined &&
+      principal.personIds.length === 0 &&
+      !principal.isUnesp &&
+      principal.verifiedCourseCode === null &&
+      !principal.bypass
+    );
+  }
+
+  private publicTournamentRefreshKey(tournamentId: string): string {
+    const principal = audienceContext.getStore() ?? ANONYMOUS_AUDIENCE;
+    return `${tournamentId}:${JSON.stringify({
+      userId: principal.userId ?? null,
+      personIds: [...principal.personIds].sort(),
+      isUnesp: principal.isUnesp,
+      verifiedCourseCode: principal.verifiedCourseCode,
+      bypass: principal.bypass,
+    })}`;
   }
 
   private sportsPaymentTiers(

@@ -20,6 +20,12 @@ describe('public event models', () => {
     });
 
     expect(mapPublicMajorEvent(majorEvent as never)).toEqual({
+      interestEnabled: false,
+      attendanceEligibility: undefined,
+      requiresImageLicenseAgreement: undefined,
+      sportsTournament: undefined,
+      hasEvents: undefined,
+      regularSubscriptionOpen: undefined,
       id: 'major-event-1',
       name: 'Semana da Computacao',
       emoji: '💻',
@@ -60,6 +66,7 @@ describe('public event models', () => {
               name: 'Lote 1',
               value: 2500,
               includesEventRegistration: true,
+              includesSportsRegistration: undefined,
             },
           ],
         },

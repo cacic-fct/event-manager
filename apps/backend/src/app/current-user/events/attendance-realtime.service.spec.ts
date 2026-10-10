@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { firstValueFrom, take } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from '../../auth/auth.constants';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
@@ -152,6 +153,33 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ AND: [PUBLIC_EVENT_WHERE] }),
     }));
+  });
+
+  it('lists invited-only events when the person is invited', async () => {
+    const event = {
+      id: 'invited-event',
+      majorEventId: null,
+      eventGroupId: null,
+      attendanceEligibility: 'INVITED_ONLY',
+      autoSubscribe: false,
+      eventGroup: null,
+      majorEvent: null,
+    };
+    const mappedEvent = { id: event.id };
+    const invitationFacts = new Map([
+      [`person-1:${event.id}`, { event: true, eventGroup: false, majorEvent: false }],
+    ]);
+    const { mapper, prisma, service, audienceInvitations } = createService({
+      getEventInvitationFacts: jest.fn().mockResolvedValue(invitationFacts),
+    });
+    prisma.event.findMany.mockResolvedValueOnce([event]);
+    prisma.eventSubscription.findMany.mockResolvedValueOnce([]);
+    mapper.mapPublicEvent.mockReturnValueOnce(mappedEvent);
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([
+      { eventId: event.id, event: mappedEvent },
+    ]);
+    expect(audienceInvitations.getEventInvitationFacts).toHaveBeenCalledWith([event], ['person-1']);
   });
 
   it('lists a pending selected major-event activity for REGISTERED_ONLY without a child subscription row', async () => {
@@ -376,6 +404,67 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     service.onModuleDestroy();
   });
 
+  it('evaluates subscription updates under each connected audience principal', async () => {
+    const { publicEvents, service } = createService();
+    let pollPhase = false;
+    publicEvents.getPublicEventSubscriptionPagePayload.mockImplementation(async () => {
+      const principal = audienceContext.getStore();
+      return {
+        subscriptionSummaries: [
+          {
+            eventId: principal?.isUnesp
+              ? pollPhase
+                ? 'unesp-visible-event-updated'
+                : 'unesp-visible-event'
+              : pollPhase
+                ? 'public-visible-event-updated'
+                : 'public-visible-event',
+            hasAvailableSlots: true,
+            availableSlots: 1,
+            projectedQueuePosition: null,
+          },
+        ],
+      };
+    });
+
+    const publicMessages = collectMessages(
+      audienceContext.run(ANONYMOUS_AUDIENCE, () => service.stream({ headers: {} } as Request, ['major-1'], [])),
+    );
+    const unespMessages = collectMessages(
+      audienceContext.run(
+        { ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true },
+        () => service.stream({ headers: { cookie: 'session=unesp' } } as Request, ['major-1'], []),
+      ),
+    );
+    await waitForMessages(publicMessages.messages, 1);
+    await waitForMessages(unespMessages.messages, 1);
+    publicMessages.messages.length = 0;
+    unespMessages.messages.length = 0;
+    pollPhase = true;
+
+    await notifyMajorEventSubscribers(service, 'major-1');
+
+    expect(publicEvents.getPublicEventSubscriptionPagePayload).toHaveBeenCalledTimes(4);
+    expect(publicMessages.messages[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { subscriptionSummaries: [expect.objectContaining({ eventId: 'public-visible-event-updated' })] },
+        }),
+      }),
+    );
+    expect(unespMessages.messages[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { subscriptionSummaries: [expect.objectContaining({ eventId: 'unesp-visible-event-updated' })] },
+        }),
+      }),
+    );
+
+    publicMessages.subscription.unsubscribe();
+    unespMessages.subscription.unsubscribe();
+    service.onModuleDestroy();
+  });
+
   it('notifies each connected person once when broadcasting pending attendances', async () => {
     const { auth, currentUserContext, mapper, prisma, service } = createService();
     auth.authenticateSession.mockResolvedValue({ sub: 'user-1' });
@@ -393,8 +482,8 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     const second = collectMessages(
       service.stream({ cookies: { [AUTH_SESSION_COOKIE_NAME]: 'session-2' }, headers: {} } as Request, [], []),
     );
-    await waitForMessages(first.messages, 2);
-    await waitForMessages(second.messages, 2);
+    await waitForMessages(first.messages, 1);
+    await waitForMessages(second.messages, 1);
     first.messages.length = 0;
     second.messages.length = 0;
     prisma.event.findMany.mockClear();
@@ -465,7 +554,7 @@ describe('CurrentUserRealtimeEventsController', () => {
   });
 });
 
-function createService() {
+function createService(audienceInvitations = { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) }) {
   const dependencies = {
     auth: {
       authenticateSession: jest.fn(),
@@ -499,10 +588,12 @@ function createService() {
     dependencies.mapper as never,
     dependencies.prisma as never,
     dependencies.publicEvents as never,
+    audienceInvitations as never,
   );
 
   return {
     ...dependencies,
+    audienceInvitations,
     service,
   };
 }

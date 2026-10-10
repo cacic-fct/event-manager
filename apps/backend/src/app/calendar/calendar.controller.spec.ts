@@ -11,7 +11,7 @@ describe('CalendarController', () => {
     }
   });
 
-  it('downloads public event calendars with the configured public origin and public cache headers', async () => {
+  it('downloads public event calendars with the configured public origin and private cache headers', async () => {
     process.env.PUBLIC_APP_ORIGIN = 'https://eventos.cacic.com.br/app';
     const calendars = {
       buildPublicEventCalendar: jest.fn().mockResolvedValue({
@@ -27,7 +27,7 @@ describe('CalendarController', () => {
     expect(calendars.buildPublicEventCalendar).toHaveBeenCalledWith('event-1', 'https://eventos.cacic.com.br');
     expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'text/calendar; charset=utf-8');
     expect(response.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="oficina.ics"');
-    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600');
+    expect(response.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, max-age=3600');
     expect(response.send).toHaveBeenCalledWith('BEGIN:VCALENDAR');
   });
 

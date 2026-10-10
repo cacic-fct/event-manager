@@ -596,6 +596,34 @@ describe('NovuNotificationsService', () => {
     });
   });
 
+  it('notifies an invited person with an idempotent invitation timestamp', async () => {
+    const invitationCreatedAt = new Date('2026-09-13T12:00:00.000Z');
+    await expect(
+      service.notifyAudienceInvitation({
+        targetType: 'EVENT',
+        targetId: 'event-1',
+        targetName: 'Evento reservado',
+        actionUrl: '/event/event-1',
+        invitationCreatedAt,
+        recipient: { subscriberId: 'user-1', email: 'ada@example.com' },
+      }),
+    ).resolves.toBe(true);
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toEqual(
+      expect.objectContaining({
+        name: 'audience-invitation',
+        transactionId: 'audience-invitation:EVENT:event-1:user-1:2026-09-13T12:00:00.000Z',
+        payload: expect.objectContaining({
+          targetType: 'EVENT',
+          targetId: 'event-1',
+          targetName: 'Evento reservado',
+          actionUrl: '/event/event-1',
+        }),
+      }),
+    );
+  });
+
   it.each([
     ['EVENT', 'event-1', '/app/draws/event/event-1#draw-draw-1'],
     ['MAJOR_EVENT', 'major-1', '/app/draws/major-event/major-1#draw-draw-1'],

@@ -58,6 +58,7 @@ describe('EventFormsService', () => {
       prisma as unknown as jest.Mocked<PrismaService>,
       notifications as unknown as jest.Mocked<NovuNotificationsService>,
       featureFlags as unknown as BackendFeatureFlagService,
+      { principalForStoredUser: jest.fn().mockResolvedValue({ personIds: ['person-1'], isUnesp: false, verifiedCourseCode: null, bypass: false }) } as never,
     );
     const resultEvents = new EventFormResultEventsService({
       scope: jest.fn((channel: string, formId: string) => `${channel}:${formId}`),
@@ -1957,11 +1958,15 @@ describe('EventFormsService', () => {
 function createPrisma() {
   const client = {
     event: {
+      count: jest.fn().mockResolvedValue(1),
       findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue({ majorEventId: null, autoSubscribe: false, eventGroupId: null }),
     },
-    majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+    majorEvent: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(1),
+    },
     $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(client)),
     $executeRaw: jest.fn(),
     eventForm: {

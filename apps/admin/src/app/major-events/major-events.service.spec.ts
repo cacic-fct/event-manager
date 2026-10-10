@@ -7,7 +7,7 @@ import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../graphql/publishing-api.service';
-import { createAdminEvent, createAdminMajorEventFromInput } from '../testing/admin-entity-fixtures';
+import { createAdminEvent, createAdminMajorEventFromInput, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
@@ -124,6 +124,51 @@ describe('MajorEventsService', () => {
       interestEnabled: true,
       attendanceEligibility: 'ANYONE',
     });
+  });
+
+  it('preserves invitation IDs when the API hides invitee details', async () => {
+    const majorEvent = createAdminMajorEvent({ audienceInvitations: [{ personId: 'private-person', person: null }] });
+    api.getMajorEvent.mockReturnValueOnce(of(majorEvent));
+    await service.pickMajorEventById(majorEvent.id);
+    expect(service.majorEventAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    await service.saveMajorEvent('DRAFT');
+    expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
+  });
+
+  it('serializes selected invitees for invitation-only major events', async () => {
+    service.majorEventForm.patchValue({ audience: 'PUBLIC' });
+    service.setMajorEventAudienceInvitations([{ id: 'person-1', name: 'Ana', email: 'ana@example.com' }]);
+
+    await service.saveMajorEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      audience: 'PUBLIC',
+      audienceCourseCodes: [],
+      invitationPersonIds: ['person-1'],
+    });
+  });
+
+  it('keeps invitation-only attendance independent of access audience and publication readiness', async () => {
+    service.majorEventForm.patchValue({
+      audience: 'PUBLIC',
+      attendanceEligibility: 'INVITED_ONLY',
+    });
+
+    expect(service.shouldManageAttendanceInvitations()).toBe(true);
+    expect(service.audiencePublicationBlocked()).toBe(true);
+    await service.saveMajorEvent('PUBLISH');
+    expect(api.createMajorEvent).not.toHaveBeenCalled();
+
+    await service.saveMajorEvent('DRAFT');
+    expect(api.createMajorEvent).toHaveBeenCalled();
+  });
+
+  it('repairs a malformed course-only form before saving', async () => {
+    service.majorEventForm.patchValue({ audience: 'COURSE_ONLY', audienceCourseCodes: [] });
+
+    await service.saveMajorEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({ audienceCourseCodes: ['12'] });
   });
 
   it('persists certificate exception flags and disables non-paying certificates for paid events', async () => {

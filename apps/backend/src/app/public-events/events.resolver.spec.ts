@@ -1,4 +1,5 @@
 import { PublicEventsResolver } from './events.resolver';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   PUBLIC_EVENT_WHERE,
   PUBLIC_MAJOR_EVENT_WHERE,
@@ -74,6 +75,41 @@ describe('PublicEventsResolver lecturer profiles', () => {
         },
         skip: 0,
         take: 1,
+      }),
+    );
+  });
+
+  it('uses SQL name filtering when an audience principal is active so hidden hits cannot consume the page', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const typesenseSearch = createTypesenseSearch({
+      available: true,
+      ids: ['hidden-event', 'visible-event'],
+    });
+    const resolver = new PublicEventsResolver(prisma as never, typesenseSearch as never);
+
+    await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, isUnesp: true },
+      () => resolver.publicEvents('aula', undefined, undefined, undefined, undefined, 0, 10),
+    );
+
+    expect(typesenseSearch.searchEvents).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            {
+              name: {
+                contains: 'aula',
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
       }),
     );
   });

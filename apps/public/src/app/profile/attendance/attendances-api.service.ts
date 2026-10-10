@@ -343,7 +343,7 @@ export class AttendancesApiService {
               eventId
               attendedAt
             }
-            publicEvents(majorEventId: $majorEventId) {
+            publicEvents: currentUserParticipationEvents(majorEventId: $majorEventId) {
               ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
             }
           }
@@ -380,7 +380,7 @@ export class AttendancesApiService {
     return forkJoin({
       details: this.query<{
         currentUserEventSubscription: CurrentUserEventSubscription | null;
-        currentUserEventAttendance: CurrentUserEventAttendance | null;
+        currentUserEventAttendance: (CurrentUserEventAttendance & { event?: PublicEvent | null }) | null;
       }>(
         `
           query CurrentUserEventDetails($eventId: String!) {
@@ -395,6 +395,9 @@ export class AttendancesApiService {
             currentUserEventAttendance(eventId: $eventId) {
               eventId
               attendedAt
+              event {
+                ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
+              }
             }
           }
         `,
@@ -409,7 +412,7 @@ export class AttendancesApiService {
           ? details.currentUserEventSubscription
           : null;
         const organizerEvent = organizerInfo?.events[0]?.event ?? null;
-        const fallbackEvent = this.resolveStandaloneEvent(publicEvent, organizerEvent);
+        const fallbackEvent = this.resolveStandaloneEvent(publicEvent ?? details.currentUserEventAttendance?.event ?? null, organizerEvent);
         const detailEvent = subscription?.event ?? fallbackEvent;
 
         return {
@@ -447,7 +450,7 @@ export class AttendancesApiService {
               eventId
               attendedAt
             }
-            publicEvents(eventGroupId: $eventGroupId) {
+            publicEvents: currentUserParticipationEvents(eventGroupId: $eventGroupId) {
               ${PUBLIC_ATTENDANCE_EVENT_FIELDS}
             }
           }

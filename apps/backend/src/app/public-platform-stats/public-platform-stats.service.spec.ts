@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStatsResolver } from './public-platform-stats.resolver';
 import { PublicPlatformStatsService } from './public-platform-stats.service';
@@ -69,7 +70,7 @@ describe('PublicPlatformStatsService', () => {
     expect(prisma.majorEvent.count).toHaveBeenCalledWith({ where: delayedCountWhere });
     expect(prisma.certificate.count).toHaveBeenCalledWith({ where: delayedCountWhere });
     expect(redis.set).toHaveBeenCalledWith(
-      'public:platform-stats:v3',
+      'public:platform-stats:v4',
       JSON.stringify({
         peopleCount: 10,
         eventsCount: 20,
@@ -80,6 +81,25 @@ describe('PublicPlatformStatsService', () => {
       'EX',
       172800,
     );
+  });
+
+  it('generates shared counts under the anonymous audience principal', async () => {
+    const { prisma, service } = createContext();
+    let observedPrincipal: unknown;
+    prisma.event.count.mockImplementation(async () => {
+      observedPrincipal = audienceContext.getStore();
+      return 20;
+    });
+    prisma.people.count.mockResolvedValue(10);
+    prisma.majorEvent.count.mockResolvedValue(3);
+    prisma.certificate.count.mockResolvedValue(40);
+
+    await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, isUnesp: true, verifiedCourseCode: '12' },
+      () => service.getPublicPlatformStats(),
+    );
+
+    expect(observedPrincipal).toEqual(ANONYMOUS_AUDIENCE);
   });
 
   it('refreshes stale prior-day stats on demand and exposes the result through GraphQL', async () => {

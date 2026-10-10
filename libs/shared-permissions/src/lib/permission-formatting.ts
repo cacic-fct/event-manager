@@ -48,6 +48,8 @@ export function parsePermission(permission: string): { resource: string; scope: 
 
 export function getPermissionScopeLabel(scope: string): string {
   switch (scope) {
+    case 'bypass':
+      return 'Acessar fora do público-alvo';
     case 'read':
       return 'Visualizar';
     case 'create':
@@ -97,6 +99,8 @@ export function getPermissionScopeLabel(scope: string): string {
 
 export function getPermissionResourceLabel(resource: string): string {
   switch (resource) {
+    case 'event-audience':
+      return 'Público-alvo de eventos';
     case 'certificate':
       return 'Certificado';
     case 'certificate-config':
@@ -156,6 +160,8 @@ export function getPermissionResourceLabel(resource: string): string {
 
 export function getPermissionResourceIcon(resource: string): string {
   switch (resource) {
+    case 'event-audience':
+      return 'visibility_lock';
     case 'certificate':
     case 'certificate-config':
       return 'workspace_premium';
@@ -213,6 +219,8 @@ export function getPermissionResourceIcon(resource: string): string {
 
 export function getPermissionScopeIcon(scope: string): string {
   switch (scope) {
+    case 'bypass':
+      return 'admin_panel_settings';
     case 'read':
       return 'visibility';
     case 'create':

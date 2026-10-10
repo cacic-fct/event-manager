@@ -23,6 +23,9 @@ import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
+import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -32,6 +35,8 @@ type GraphqlContext = {
 const DEFAULT_DRAFT_EVENT_GROUP_NAME = 'Grupo sem título';
 
 const EVENT_GROUP_CLONE_SOURCE_SELECT = {
+  audience: true,
+  audienceCourseCodes: true,
   id: true,
   name: true,
   emoji: true,
@@ -89,6 +94,7 @@ export class EventGroupsResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
       notifyAllConnectedPeople: async () => undefined,
     } as unknown as CurrentUserOnlineAttendanceRealtimeService,
+    private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
   ) {}
 
   @ResolveField(() => Boolean)
@@ -128,7 +134,7 @@ export class EventGroupsResolver {
     let prioritizedIds: string[] = [];
 
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled()) {
+      if (this.typesenseSearch.isEnabled() && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEventGroups(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -202,11 +208,14 @@ export class EventGroupsResolver {
     @Context() context: GraphqlContext,
   ) {
     const normalizedInput = this.normalizeEventGroupCertificateInput({
-      ...input,
+      ...withoutAudienceInput(input),
       name: input.name?.trim() || DEFAULT_DRAFT_EVENT_GROUP_NAME,
     });
+    let audienceChange: AudienceChange | undefined;
     const eventGroup = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.eventGroup.create({ data: normalizedInput });
+      let created = await tx.eventGroup.create({ data: normalizedInput });
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT_GROUP', targetId: created.id }, input, undefined, this.getUser(context)?.sub);
+      if (audienceChange) created = await tx.eventGroup.findUniqueOrThrow({ where: { id: created.id } });
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT_GROUP,
@@ -214,7 +223,7 @@ export class EventGroupsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: created,
+          after: withAudienceAudit(created, audienceChange),
           scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id },
           summary: 'Grupo de eventos criado.',
         },
@@ -226,6 +235,7 @@ export class EventGroupsResolver {
       id: eventGroup.id,
       name: eventGroup.name,
     });
+    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name }, audienceChange.personIds);
     return eventGroup;
   }
 
@@ -238,21 +248,26 @@ export class EventGroupsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'edit');
-    const normalizedInput = this.normalizeEventGroupCertificateInput(input);
+    const normalizedInput = this.normalizeEventGroupCertificateInput(withoutAudienceInput(input));
+    let audienceChange: AudienceChange | undefined;
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT_GROUP', targetId: id }, input, previous, this.getUser(context)?.sub);
       await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(tx, id, normalizedInput);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
-      if (normalizedInput.attendanceEligibility !== undefined) {
-        const events = await tx.event.findMany({
-          where: { eventGroupId: id, deletedAt: null },
-          select: { id: true },
+      if (normalizedInput.attendanceEligibility !== undefined || audienceChange?.invitationsChanged) {
+        // Reassess every descendant, including children outside the editor's audience.
+        await audienceContext.run({ ...(audienceContext.getStore() ?? ANONYMOUS_AUDIENCE), bypass: true }, async () => {
+          const events = await tx.event.findMany({
+            where: { eventGroupId: id, deletedAt: null },
+            select: { id: true },
+          });
+          for (const event of events) {
+            await this.attendanceCategories.refreshForEvent(event.id, tx);
+          }
         });
-        for (const event of events) {
-          await this.attendanceCategories.refreshForEvent(event.id, tx);
-        }
       }
 
       if (normalizedInput.shouldIssueCertificate === false) {
@@ -289,8 +304,8 @@ export class EventGroupsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: previous,
-          after: updated,
+          before: withAudienceAudit(previous, audienceChange, true),
+          after: withAudienceAudit(updated, audienceChange),
           scope: { permission: Permission.EventGroup.Update, eventGroupId: updated.id },
           summary: 'Grupo de eventos atualizado.',
         },
@@ -299,12 +314,13 @@ export class EventGroupsResolver {
       return updated;
     });
     if (eventGroup) {
+      if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name }, audienceChange.personIds);
       await this.postCommitEffects.upsertEventGroup({
         id: eventGroup.id,
         name: eventGroup.name,
       });
       await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
-      if (normalizedInput.attendanceEligibility !== undefined) {
+      if (normalizedInput.attendanceEligibility !== undefined || audienceChange?.invitationsChanged) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
     }
@@ -329,6 +345,7 @@ export class EventGroupsResolver {
     if (!source) {
       throw new NotFoundException(`Event group ${id} was not found.`);
     }
+    assertAudienceCloneAllowed(source.audience);
 
     await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create]);
     const shouldCopyCertificateConfig = Boolean(input?.parts?.certificateConfig);
@@ -341,6 +358,8 @@ export class EventGroupsResolver {
 
     const normalizedInput = this.normalizeEventGroupCertificateInput({
       name: this.buildCloneName(input?.name, source.name),
+      audience: source.audience,
+      audienceCourseCodes: source.audienceCourseCodes,
       emoji: source.emoji,
       requiresImageLicenseAgreement: source.requiresImageLicenseAgreement,
       interestEnabled: source.interestEnabled,
@@ -482,5 +501,10 @@ export class EventGroupsResolver {
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
+  }
+
+  private canUseAudienceUnscopedSearch(): boolean {
+    const principal = audienceContext.getStore();
+    return principal === undefined || principal.bypass;
   }
 }

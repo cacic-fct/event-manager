@@ -585,6 +585,21 @@ function createTransaction() {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
     },
+    eventAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    eventGroupAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    majorEventAudienceInvitation: {
+      findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     eventManagerRoleAssignment: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
@@ -686,6 +701,7 @@ function emptyMovedRelations() {
     movedEventSubscriptionIds: [],
     movedEventGroupSubscriptionIds: [],
     movedMajorEventSubscriptionIds: [],
+    movedAudienceInvitationSnapshots: [],
     movedSportsTeamRepresentativeIds: [],
     revokedSportsTeamRepresentativeIds: [],
     sportsTeamRepresentativeSnapshots: [],

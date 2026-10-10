@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AttendanceEligibility, interestedEventIds, isAttendanceEligible, matchesEventFormAudience, resolveAttendanceEligibility } from './shared-event-participation';
+import { AttendanceEligibility, EventAudience, interestedEventIds, isAttendanceEligible, matchesEventFormAudience, resolveAttendanceEligibility } from './shared-event-participation';
+
+describe('event audience', () => {
+  it('exports the four cumulative access restrictions', () => {
+    expect(Object.values(EventAudience)).toEqual(['PUBLIC', 'UNESP_ONLY', 'COURSE_ONLY', 'INVITATION_ONLY']);
+  });
+});
 
 describe('attendance eligibility', () => {
   it('preserves standalone and major event defaults', () => {

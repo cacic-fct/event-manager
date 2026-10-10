@@ -4,6 +4,7 @@ import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 
 describe('AuthSessionStoreService', () => {
   const now = new Date('2026-05-21T12:00:00.000Z').getTime();
+  const originalRefreshLockTtl = process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
 
   let redis: {
     del: jest.Mock;
@@ -15,6 +16,7 @@ describe('AuthSessionStoreService', () => {
   let service: AuthSessionStoreService;
 
   beforeEach(() => {
+    delete process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
     jest.useFakeTimers().setSystemTime(now);
     redis = {
       del: jest.fn().mockResolvedValue(1),
@@ -27,6 +29,8 @@ describe('AuthSessionStoreService', () => {
   });
 
   afterEach(() => {
+    if (originalRefreshLockTtl === undefined) delete process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
+    else process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS = originalRefreshLockTtl;
     jest.clearAllTimers();
     jest.useRealTimers();
   });

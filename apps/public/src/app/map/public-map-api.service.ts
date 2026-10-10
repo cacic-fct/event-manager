@@ -3,11 +3,13 @@ import { Service, inject, signal } from '@angular/core';
 import {
   CURRENT_USER_MAP_EVENT_IDS_QUERY,
   type GraphqlResponse,
+  type GraphqlVariables,
   type CurrentUserMapEventIdsQuery,
   type PublicMapEvent,
   type PublicMapEventsQuery,
   PUBLIC_MAP_EVENTS_QUERY,
 } from '@cacic-fct/event-manager-public-contracts';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, catchError, from, map, of, switchMap, tap, throwError } from 'rxjs';
 import { PublicMapCacheService } from './public-map-cache.service';
 
@@ -18,30 +20,36 @@ const MAP_OFFLINE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 export class PublicMapApiService {
   private readonly http = inject(HttpClient);
   private readonly cache = inject(PublicMapCacheService);
+  private readonly auth = inject(AuthService);
   readonly isUsingSavedData = signal(false);
 
   getEvents(force = false): Observable<PublicMapEvent[]> {
     this.isUsingSavedData.set(false);
-    const cached = force ? null : this.cache.read<PublicMapEvent[]>('events');
+    const canUseSharedCache = !this.auth.isAuthenticated();
+    const cached = force || !canUseSharedCache ? null : this.cache.read<PublicMapEvent[]>('events');
     if (cached) {
       return of(cached);
     }
 
-    return this.query<PublicMapEventsQuery>(PUBLIC_MAP_EVENTS_QUERY).pipe(
+    return this.query<PublicMapEventsQuery>(PUBLIC_MAP_EVENTS_QUERY, undefined, canUseSharedCache).pipe(
       map((data) => data.publicMapEvents),
       tap((events) => {
-        this.cache.writeEvents(events, MAP_CACHE_TTL_MS);
+        if (canUseSharedCache) {
+          this.cache.writeEvents(events, MAP_CACHE_TTL_MS);
+        }
       }),
       catchError((error) =>
-        from(this.cache.readOfflineEvents(MAP_OFFLINE_MAX_AGE_MS)).pipe(
-          switchMap((events) => {
-            if (events === null) {
-              return throwError(() => error);
-            }
-            this.isUsingSavedData.set(true);
-            return of(events);
-          }),
-        ),
+        canUseSharedCache
+          ? from(this.cache.readOfflineEvents(MAP_OFFLINE_MAX_AGE_MS)).pipe(
+              switchMap((events) => {
+                if (events === null) {
+                  return throwError(() => error);
+                }
+                this.isUsingSavedData.set(true);
+                return of(events);
+              }),
+            )
+          : throwError(() => error),
       ),
     );
   }
@@ -70,17 +78,23 @@ export class PublicMapApiService {
     );
   }
 
-  private query<TData>(query: string): Observable<TData> {
-    return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query }).pipe(
-      map((response) => {
-        if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
-        }
-        if (!response.data) {
-          throw new Error('Resposta GraphQL sem dados.');
-        }
-        return response.data;
-      }),
-    );
+  private query<TData>(query: string, variables?: GraphqlVariables, anonymousOnly = false): Observable<TData> {
+    return this.http
+      .post<GraphqlResponse<TData>>(
+        '/api/graphql',
+        variables === undefined ? { query } : { query, variables },
+        anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {},
+      )
+      .pipe(
+        map((response) => {
+          if (response.errors?.length) {
+            throw new Error(response.errors.map((error) => error.message).join('\n'));
+          }
+          if (!response.data) {
+            throw new Error('Resposta GraphQL sem dados.');
+          }
+          return response.data;
+        }),
+      );
   }
 }

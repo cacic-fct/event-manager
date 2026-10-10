@@ -1,6 +1,7 @@
 import { EventManagerPermissionGrantScope, Permission, type PermissionRequirement } from './permission-types';
 
 export const EVENT_MANAGER_PERMISSION_CATALOG = [
+  Permission.EventAudience.Bypass,
   Permission.Certificate.Read,
   Permission.Certificate.Issue,
   Permission.Certificate.Reissue,
@@ -121,6 +122,7 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
 export const EVENT_MANAGER_PERMISSION_SET = new Set<Permission>(EVENT_MANAGER_PERMISSION_CATALOG);
 
 export const EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS = [
+  Permission.EventAudience.Bypass,
   Permission.MergeCandidate.Read,
   Permission.MergeCandidate.Create,
   Permission.MergeCandidate.Update,

@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom } from 'rxjs';
 import { PublicMapApiService } from './public-map-api.service';
 import { PublicMapCacheService } from './public-map-cache.service';
@@ -16,6 +18,7 @@ describe('PublicMapApiService', () => {
     readOfflineEvents: ReturnType<typeof vi.fn>;
     readOfflineUserEventIds: ReturnType<typeof vi.fn>;
   };
+  let isAuthenticated: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     cache = {
@@ -25,8 +28,14 @@ describe('PublicMapApiService', () => {
       readOfflineEvents: vi.fn(() => Promise.resolve(null)),
       readOfflineUserEventIds: vi.fn(() => Promise.resolve(null)),
     };
+    isAuthenticated = signal(false);
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: PublicMapCacheService, useValue: cache }],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PublicMapCacheService, useValue: cache },
+        { provide: AuthService, useValue: { isAuthenticated } },
+      ],
     });
     api = TestBed.inject(PublicMapApiService);
     httpTesting = TestBed.inject(HttpTestingController);
@@ -41,6 +50,7 @@ describe('PublicMapApiService', () => {
 
     expect(request.request.method).toBe('POST');
     expect(request.request.body.query).toContain('query PublicMapEvents');
+    expect(request.request.headers.get('X-Event-Audience')).toBe('public');
     request.flush({ data: { publicMapEvents: [event] } });
 
     await expect(response).resolves.toEqual([event]);
@@ -123,6 +133,29 @@ describe('PublicMapApiService', () => {
     await expect(response).resolves.toEqual([event]);
     expect(api.isUsingSavedData()).toBe(true);
     expect(cache.readOfflineEvents).toHaveBeenCalledWith(604_800_000);
+  });
+
+  it('does not read or persist shared public map data for an authenticated audience', async () => {
+    isAuthenticated.set(true);
+    const event = eventFixture();
+    const response = firstValueFrom(api.getEvents());
+    const request = httpTesting.expectOne('/api/graphql');
+    expect(request.request.headers.has('X-Event-Audience')).toBe(false);
+    request.flush({ data: { publicMapEvents: [event] } });
+
+    await expect(response).resolves.toEqual([event]);
+    expect(cache.read).not.toHaveBeenCalled();
+    expect(cache.writeEvents).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to anonymous durable map data for an authenticated audience', async () => {
+    isAuthenticated.set(true);
+    cache.readOfflineEvents.mockResolvedValueOnce([eventFixture()]);
+    const response = firstValueFrom(api.getEvents());
+    httpTesting.expectOne('/api/graphql').flush({}, { status: 503, statusText: 'Unavailable' });
+
+    await expect(response).rejects.toMatchObject({ status: 503 });
+    expect(cache.readOfflineEvents).not.toHaveBeenCalled();
   });
 
   it('falls back to cached user associations and preserves the original error when none exist', async () => {

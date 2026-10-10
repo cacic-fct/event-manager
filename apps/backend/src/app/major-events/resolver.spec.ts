@@ -1,3 +1,4 @@
+import { audienceContext } from '../audiences/audience-context';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
@@ -1039,6 +1040,26 @@ describe('MajorEventsResolver', () => {
     expect(tx.majorEventPrice.deleteMany).toHaveBeenCalled();
   });
 
+  it('rejects inline publication when invited attendance has no active invitee', async () => {
+    const { resolver, tx, auditLog, prisma } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ attendanceEligibility: 'INVITED_ONLY' }));
+    await expect(resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never)).rejects.toThrow('confirmar presença');
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('selects only invitation IDs for major-event mutation audit snapshots', async () => {
+    const { resolver, tx, prisma } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord());
+    await resolver.updateMajorEvent('major-1', { name: 'Novo nome' }, context() as never);
+    const expectedSelect = expect.objectContaining({ audienceInvitations: { select: { personId: true } } });
+    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+    expect(tx.majorEvent.findUniqueOrThrow).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+  });
+
   it('throws when updating a missing major event', async () => {
     const { resolver, tx, prisma } = createResolver();
     tx.majorEvent.findFirst.mockResolvedValue(null);
@@ -1126,12 +1147,14 @@ describe('MajorEventsResolver', () => {
 
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
-  it('refreshes stored attendance categories when the major-event eligibility policy changes', async () => {
+  it.each(['policy', 'invitations'] as const)('refreshes stored attendance categories when the major-event %s changes', async (change) => {
     const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
     const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
     const tx = {
       event: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
+          ? [{ id: 'event-1' }, { id: 'event-2' }]
+          : [{ id: 'event-1' }]),
       },
       majorEvent: {
         update: jest.fn().mockResolvedValue({ id: 'major-1' }),
@@ -1155,12 +1178,13 @@ describe('MajorEventsResolver', () => {
       { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) } as never,
       attendanceCategories as never,
       attendanceRealtime as never,
+      { notifyInvited: jest.fn().mockResolvedValue(undefined), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } as never,
     );
 
     await expect(
       resolver.updateMajorEvent(
         'major-1',
-        { attendanceEligibility: 'ANYONE' } as never,
+        (change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }) as never,
         { req: { user: { sub: 'admin-1' } } } as never,
       ),
     ).resolves.toBe(updated);

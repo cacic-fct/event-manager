@@ -1,3 +1,4 @@
+import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
 import {
   DeletionResult,
   Event,
@@ -41,6 +42,10 @@ import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
 import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
+import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import { audienceContext } from '../audiences/audience-context';
+import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -96,6 +101,8 @@ const EVENT_GROUP_SELECT = {
 } satisfies Prisma.EventGroupSelect;
 
 const EVENT_BASE_SELECT = {
+  audience: true,
+  audienceCourseCodes: true,
   id: true,
   name: true,
   creditMinutes: true,
@@ -153,6 +160,9 @@ const EVENT_BASE_SELECT = {
 } satisfies Prisma.EventSelect;
 
 const EVENT_AUDIT_SELECT = {
+  audience: true,
+  audienceCourseCodes: true,
+  audienceInvitations: { select: { personId: true } },
   id: true,
   name: true,
   creditMinutes: true,
@@ -277,6 +287,7 @@ export class EventsResolver {
     private readonly sportsMutationEvents: SportsMutationEventsService = {
       publishForBackingEvent: async () => undefined,
     } as unknown as SportsMutationEventsService,
+    private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
   ) {}
 
   @ResolveField(() => Boolean)
@@ -349,7 +360,7 @@ export class EventsResolver {
 
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
-      if (this.typesenseSearch.isEnabled() && !accessibleTargets) {
+      if (this.typesenseSearch.isEnabled() && !accessibleTargets && this.canUseAudienceUnscopedSearch()) {
         const searchResult = await this.typesenseSearch.searchEvents(
           normalizedQuery,
           pagination.skip + pagination.take,
@@ -419,7 +430,8 @@ export class EventsResolver {
     await this.assertEventCreateRelationPermissions(input, user);
     await this.frozenResources.assertEventCreateTargetsMutable(input, user);
     const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(input));
-    const eventInput = { ...normalizedInput };
+    const eventInput = withoutAudienceInput(normalizedInput);
+    let audienceChange: AudienceChange | undefined;
     const lecturerPersonIds = eventInput.lecturerPersonIds;
     const attendanceCollectorPersonIds = eventInput.attendanceCollectorPersonIds;
     delete eventInput.lecturerPersonIds;
@@ -430,7 +442,7 @@ export class EventsResolver {
     const event = await this.prisma.$transaction(async (tx) => {
       await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, eventInput.eventGroupId);
       await validateAttendancePriceTiers(tx, eventInput);
-      const createdEvent = await tx.event.create({
+      let createdEvent = await tx.event.create({
         data: {
           ...eventInput,
           lecturers:
@@ -462,6 +474,8 @@ export class EventsResolver {
         },
         select: EVENT_DETAIL_SELECT,
       });
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: createdEvent.id }, input, undefined, actorId);
+      if (audienceChange) createdEvent = await tx.event.findUniqueOrThrow({ where: { id: createdEvent.id }, select: EVENT_DETAIL_SELECT });
       await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
@@ -470,7 +484,7 @@ export class EventsResolver {
           entityLabel: createdEvent.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: createdEvent,
+          after: withAudienceAudit(createdEvent, audienceChange),
           scope: {
             permission: Permission.Event.Create,
             eventId: createdEvent.id,
@@ -484,6 +498,7 @@ export class EventsResolver {
       return createdEvent;
     });
     await this.postCommitEffects.upsertEvent(event);
+    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
     return event;
   }
 
@@ -497,7 +512,8 @@ export class EventsResolver {
     const user = this.getUser(context);
     await this.assertEventUpdateRelationPermissions(id, input, user);
     await this.frozenResources.assertEventUpdateMutable(id, input, user);
-    const { publishAfterUpdate = false, ...eventInput } = input;
+    const { publishAfterUpdate = false, ...eventInput } = withoutAudienceInput(input);
+    let audienceChange: AudienceChange | undefined;
     const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
     const event = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
@@ -515,6 +531,7 @@ export class EventsResolver {
         publishAfterUpdate,
       });
       await validateAttendancePriceTiers(tx, normalizedInput, previousEvent);
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: id }, input, previousEvent, user?.sub);
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {
@@ -534,7 +551,8 @@ export class EventsResolver {
       if (
         attendancePriceTierPolicyChanged(normalizedInput, previousEvent) ||
         attendanceEligibilityChanged ||
-        attendanceTargetChanged
+        attendanceTargetChanged ||
+        audienceChange?.invitationsChanged
       ) {
         await this.attendanceCategories.refreshForEvent(id, tx);
       }
@@ -543,6 +561,10 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
+      if (publishAfterUpdate) {
+        const publicationTarget = await tx.event.findUniqueOrThrow({ where: { id }, select: PUBLICATION_EVENT_SELECT });
+        assertAudiencePublicationReady(publicationTarget);
+      }
       await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
@@ -551,8 +573,8 @@ export class EventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: omitPublicationAuditFields(previousEvent),
-          after: omitPublicationAuditFields(updatedAudit),
+          before: withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
+          after: withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange),
           scope: {
             permission: Permission.Event.Update,
             eventId: updatedAudit.id,
@@ -590,9 +612,10 @@ export class EventsResolver {
       return updated;
     });
     if (event) {
+      if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
       await this.postCommitEffects.upsertEvent(event);
       await this.sportsMutationEvents.publishForBackingEvent(event.id);
-      if (this.didChangeOnlineAttendanceWindow(input)) {
+      if (this.didChangeOnlineAttendanceWindow(input) || audienceChange?.invitationsChanged) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
     }
@@ -629,6 +652,7 @@ export class EventsResolver {
     if (!source) {
       throw new NotFoundException(`Event ${id} was not found.`);
     }
+    assertAudienceCloneAllowed(source.audience);
 
     const shouldCopyLecturers = Boolean(parts?.lecturers);
     const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
@@ -649,6 +673,8 @@ export class EventsResolver {
     }
 
     const cloneInput: EventCreateInput = {
+      audience: source.audience,
+      audienceCourseCodes: source.audienceCourseCodes,
       name: this.buildCloneName(input?.name, source.name),
       creditMinutes: source.creditMinutes ?? undefined,
       startDate: source.startDate,
@@ -1174,5 +1200,10 @@ export class EventsResolver {
 
   private isEmptyAccessibleEventTargets(targets: AccessibleEventGrantTargets): boolean {
     return targets.eventIds.size === 0 && targets.majorEventIds.size === 0 && targets.eventGroupIds.size === 0;
+  }
+
+  private canUseAudienceUnscopedSearch(): boolean {
+    const principal = audienceContext.getStore();
+    return principal === undefined || principal.bypass;
   }
 }

@@ -21,6 +21,10 @@ import { EventPostCommitEffectsService } from './event-post-commit-effects.servi
 import { AttendanceCategoryService } from './attendance-category.service';
 import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
+import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import { assertAudiencePublicationReady } from '../audiences/audience-publication';
+import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -157,6 +161,9 @@ const EVENT_DETAIL_SELECT = {
 type EventDraftAppliedEvent = Prisma.EventGetPayload<{ select: typeof EVENT_DETAIL_SELECT }>;
 
 const EVENT_AUDIT_SELECT = {
+  audience: true,
+  audienceCourseCodes: true,
+  audienceInvitations: { select: { personId: true } },
   id: true,
   name: true,
   creditMinutes: true,
@@ -240,6 +247,7 @@ export class EventDraftsService {
       assertEventUpdateAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
     private readonly attendanceCategories: AttendanceCategoryService = new AttendanceCategoryService(prisma),
+    private readonly audienceInvitations: AudienceInvitationService = new AudienceInvitationService(prisma),
   ) {}
 
   async listEventDrafts(
@@ -358,6 +366,7 @@ export class EventDraftsService {
     await this.assertCanWriteDraft(draft.sourceEventId, payload, user);
 
     const appliedAt = new Date();
+    let audienceChange: AudienceChange | undefined;
     const event = await this.prisma.$transaction(async (tx) => {
       const previousEvent = await tx.event.findFirst({
         where: { id: draft.sourceEventId, deletedAt: null },
@@ -369,10 +378,11 @@ export class EventDraftsService {
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, draft.sourceEventId, payload);
 
       await validateAttendancePriceTiers(tx, payload, previousEvent);
+      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: draft.sourceEventId }, payload, previousEvent, user?.sub);
       await tx.event.updateMany({
         where: { id: draft.sourceEventId, deletedAt: null },
         data: {
-          ...payload,
+          ...withoutAudienceInput(payload),
           publicationState: PrismaPublicationState.PUBLISHED,
           scheduledPublishAt: null,
           publicationScheduledBy: null,
@@ -390,7 +400,8 @@ export class EventDraftsService {
       if (
         attendancePriceTierPolicyChanged(payload, previousEvent) ||
         attendanceEligibilityChanged ||
-        attendanceTargetChanged
+        attendanceTargetChanged ||
+        audienceChange?.invitationsChanged
       ) {
         await this.attendanceCategories.refreshForEvent(draft.sourceEventId, tx);
       }
@@ -404,6 +415,11 @@ export class EventDraftsService {
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
+      const publicationTarget = await tx.event.findUniqueOrThrow({
+        where: { id: draft.sourceEventId, deletedAt: null },
+        select: PUBLICATION_EVENT_SELECT,
+      });
+      assertAudiencePublicationReady(publicationTarget);
       await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
@@ -412,8 +428,8 @@ export class EventDraftsService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: omitPublicationAuditFields(previousEvent),
-          after: omitPublicationAuditFields(updatedAudit),
+          before: withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
+          after: withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,
@@ -433,7 +449,8 @@ export class EventDraftsService {
       return updated;
     });
 
-    await this.runAppliedDraftSideEffects(event, payload, draft.id);
+    await this.runAppliedDraftSideEffects(event, payload, draft.id, audienceChange?.invitationsChanged);
+    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
     return event;
   }
 
@@ -718,6 +735,7 @@ export class EventDraftsService {
     event: EventDraftAppliedEvent,
     input: EventUpdateInput,
     draftId: string,
+    invitationsChanged = false,
   ): Promise<void> {
     const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [
       {
@@ -726,7 +744,7 @@ export class EventDraftsService {
       },
     ];
 
-    if (this.didChangeOnlineAttendanceWindow(input)) {
+    if (this.didChangeOnlineAttendanceWindow(input) || invitationsChanged) {
       tasks.push({
         name: 'attendance realtime notification',
         run: () => this.attendanceRealtime.notifyAllConnectedPeople(),

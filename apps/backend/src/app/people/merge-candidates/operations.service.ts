@@ -2,6 +2,7 @@ import { MergeCandidateMergeInput } from '@cacic-fct/shared-data-types';
 import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, EventManagerPermissionArchiveReason, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
@@ -11,6 +12,7 @@ import { collectCpfMatches, collectEmailMatches, collectNameMatches } from './op
 import { buildTargetMigrationData, normalizeMigrateFields } from './operations/migration';
 import { toAttendanceCreateData } from './operations/attendance';
 import { moveRelations } from './operations/relations';
+import { restoreAudienceInvitations } from './operations/audience-invitations';
 import { parseMovedRelations, parsePersonSnapshot, toPersonSnapshot, toPersonUpdateData } from './operations/snapshots';
 import { CandidateMatch } from './operations/types';
 
@@ -122,7 +124,8 @@ export class MergeCandidateOperationsService {
   async mergeCandidatePeople(input: MergeCandidateMergeInput, actorId: string | null) {
     const migrateFields = normalizeMigrateFields(input.migrateFields);
 
-    const mergeResult = await this.prisma.$transaction(async (tx) => {
+    const mergeResult = await this.runAsSystem(() =>
+      this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({
         where: {
           id: input.candidateId,
@@ -256,19 +259,23 @@ export class MergeCandidateOperationsService {
       );
 
       return updatedCandidate;
-    });
+      }),
+    );
 
-    await this.refreshCertificatesAfterMerge(
-      input.targetPersonId,
-      mergeResult.personAId === input.targetPersonId ? mergeResult.personBId : mergeResult.personAId,
-      actorId,
+    await this.runAsSystem(() =>
+      this.refreshCertificatesAfterMerge(
+        input.targetPersonId,
+        mergeResult.personAId === input.targetPersonId ? mergeResult.personBId : mergeResult.personAId,
+        actorId,
+      ),
     );
 
     return mergeResult;
   }
 
   async undoMergeCandidatePeople(candidateId: string, actorId: string | null) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.runAsSystem(() =>
+      this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({
         where: {
           id: candidateId,
@@ -364,6 +371,15 @@ export class MergeCandidateOperationsService {
             personId: sourcePerson.id,
           },
         });
+      }
+
+      if (movedRelations.movedAudienceInvitationSnapshots.length > 0) {
+        await restoreAudienceInvitations(
+          tx,
+          movedRelations.movedAudienceInvitationSnapshots,
+          sourcePerson.id,
+          targetPerson.id,
+        );
       }
 
       if (movedRelations.insertedAttendanceEventIds.length > 0) {
@@ -652,7 +668,8 @@ export class MergeCandidateOperationsService {
       );
 
       return updatedCandidate;
-    });
+      }),
+    );
   }
 
   private async resolveAuditActor(actorId: string | null, tx: Prisma.TransactionClient): Promise<AuditActor | undefined> {
@@ -686,5 +703,9 @@ export class MergeCandidateOperationsService {
         error instanceof Error ? error.stack : String(error),
       );
     }
+  }
+
+  private runAsSystem<T>(operation: () => Promise<T>): Promise<T> {
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, operation);
   }
 }

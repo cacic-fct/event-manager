@@ -78,6 +78,46 @@ describe('AccountManagerGrpcClient', () => {
     });
   });
 
+  it('looks up an account profile by email for audience identity resolution', async () => {
+    call.mockResolvedValue({
+      users: [
+        {
+          requestId: 'event-manager-audience-email',
+          userId: 'user-1',
+          name: 'Student',
+          email: 'student@unesp.br',
+          secondaryEmails: ['student@example.com'],
+          enrollmentNumber: '00123456',
+          unespRole: 'aluno-graduacao',
+          unespRoleVerified: true,
+        },
+      ],
+    });
+
+    await expect(client.lookupUsersByEmail(' Student@UNESP.BR ')).resolves.toEqual([
+      expect.objectContaining({ userId: 'user-1', unespRoleVerified: true }),
+    ]);
+    expect(call).toHaveBeenCalledWith(
+      'LookupUsersByIdentifier',
+      {
+        identifiers: [
+          {
+            requestId: 'event-manager-audience-email',
+            identifierType: 'email',
+            identifierValue: 'student@unesp.br',
+          },
+        ],
+      },
+      expect.anything(),
+      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
+    );
+  });
+
+  it('fails closed on malformed account profile lookup responses', async () => {
+    call.mockResolvedValue({ users: [{ userId: 'user-1' }] });
+    await expect(client.lookupUsersByEmail('student@unesp.br')).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
   it('rejects malformed privacy responses and maps gRPC failures to service unavailable', async () => {
     call.mockResolvedValueOnce({ settings: {} });
     await expect(client.getPrivacySettings('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);

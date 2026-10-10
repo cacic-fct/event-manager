@@ -1,4 +1,5 @@
-import type { AttendanceEligibility } from '@cacic-fct/event-manager-public-contracts';
+import type { AttendanceEligibility, EventAudience } from '@cacic-fct/event-manager-public-contracts';
+import type { Person } from './people.models';
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type PublicationState = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED';
 export type PublicationTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
@@ -17,6 +18,9 @@ export interface EventSummary {
 }
 
 export interface MajorEvent {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  audienceInvitations?: EventAudienceInvitation[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id: string;
@@ -81,6 +85,9 @@ export interface MajorEventPrice {
 }
 
 export interface EventGroup {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  audienceInvitations?: EventAudienceInvitation[];
   majorEventId?: string | null;
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
@@ -102,6 +109,9 @@ export interface EventGroup {
 }
 
 export interface Event {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  audienceInvitations?: EventAudienceInvitation[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   isSportsMatch?: boolean;
@@ -154,6 +164,11 @@ export interface Event {
   updatedById?: string | null;
 }
 
+export interface EventAudienceInvitation {
+  personId: string;
+  person: Pick<Person, 'id' | 'name' | 'email'> | null;
+}
+
 export interface EventDraft {
   id: string;
   sourceEventId: string;
@@ -184,6 +199,9 @@ export interface PlacePreset {
 }
 
 export interface MajorEventInput {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  invitationPersonIds?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   publishAfterUpdate?: boolean;
@@ -247,6 +265,9 @@ export interface MajorEventPriceInput {
 }
 
 export interface EventGroupInput {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  invitationPersonIds?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   id?: string;
@@ -270,6 +291,9 @@ export interface EventGroupCloneInput {
 }
 
 export interface EventInput {
+  audience?: EventAudience;
+  audienceCourseCodes?: string[];
+  invitationPersonIds?: string[];
   interestEnabled?: boolean;
   attendanceEligibility?: AttendanceEligibility | null;
   publishAfterUpdate?: boolean;

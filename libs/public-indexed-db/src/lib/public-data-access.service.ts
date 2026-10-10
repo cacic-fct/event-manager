@@ -20,6 +20,10 @@ export class PublicDataAccessService {
     await this.calendarData.upsertEvents(events);
   }
 
+  async clearPublicCaches(): Promise<void> {
+    await Promise.all([this.calendarData.clear(), this.publicMapData.clear()]);
+  }
+
   async getLastRefresh(datasetKey: string): Promise<number | null> {
     return this.calendarData.getLastRefresh(datasetKey);
   }
@@ -95,6 +99,6 @@ export class PublicDataAccessService {
   }
 
   async purgeUserData(): Promise<void> {
-    await this.userData.purgeUserData();
+    await Promise.all([this.userData.purgeUserData(), this.clearPublicCaches()]);
   }
 }

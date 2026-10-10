@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PublicationState } from '@prisma/client';
 import { AttendanceEligibility, isAttendanceEligible } from '@cacic-fct/shared-event-participation';
 import { Queue } from 'bullmq';
@@ -7,12 +7,16 @@ import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flag
 import { PrismaService } from '../prisma/prisma.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
+import { ANONYMOUS_AUDIENCE, audienceContext, eventAudienceWhere, type EventAudiencePrincipal } from '../audiences/audience-context';
+import { EventAudienceService } from '../audiences/event-audience.service';
+import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
   ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES,
   eventAttendanceEligibility,
   isApprovedAttendance,
   isRegisteredAttendanceEvidence,
 } from '../events/attendance-eligibility';
+import { AudienceInvitationService } from '../audiences/audience-invitation.service';
 
 export const ONLINE_ATTENDANCE_NOTIFICATION_QUEUE = 'online-attendance-notifications';
 export const ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB = 'notify-online-attendance-available';
@@ -50,6 +54,8 @@ export class OnlineAttendanceNotificationJobsService {
     @InjectQueue(ONLINE_ATTENDANCE_NOTIFICATION_QUEUE)
     private readonly queue: Queue<OnlineAttendanceAvailableNotificationJob>,
     private readonly featureFlags: BackendFeatureFlagService,
+    @Optional() private readonly audienceInvitations?: AudienceInvitationService,
+    @Optional() private readonly audiences?: EventAudienceService,
   ) {}
 
   async scheduleEvent(event: {
@@ -149,6 +155,7 @@ export class OnlineAttendanceNotificationJobsService {
     const now = new Date();
     const event = await this.prisma.event.findFirst({
       where: {
+        ...PUBLIC_EVENT_WHERE,
         id: input.eventId,
         deletedAt: null,
         endDate: { gte: now },
@@ -163,6 +170,8 @@ export class OnlineAttendanceNotificationJobsService {
       select: {
         id: true,
         name: true,
+        audience: true,
+        audienceCourseCodes: true,
         eventGroupId: true,
         majorEventId: true,
         autoSubscribe: true,
@@ -179,6 +188,8 @@ export class OnlineAttendanceNotificationJobsService {
         },
         majorEvent: {
           select: {
+            audience: true,
+            audienceCourseCodes: true,
             attendanceEligibility: true,
             deletedAt: true,
             subscriptions: {
@@ -199,8 +210,16 @@ export class OnlineAttendanceNotificationJobsService {
         },
         eventGroup: {
           select: {
+            audience: true,
+            audienceCourseCodes: true,
             attendanceEligibility: true,
             deletedAt: true,
+            majorEvent: {
+              select: {
+                audience: true,
+                audienceCourseCodes: true,
+              },
+            },
           },
         },
       },
@@ -216,29 +235,30 @@ export class OnlineAttendanceNotificationJobsService {
     }
 
     const eligibility = eventAttendanceEligibility(event);
-    if (eligibility === AttendanceEligibility.INVITED_ONLY) {
-      return;
-    }
-
     const directPeople = new Set(event.subscriptions.map(({ person }) => person.id));
-    const majorSubscriptions = new Map((event.majorEvent?.subscriptions ?? []).map((subscription) => [subscription.person.id, subscription]));
-    const candidates = new Map(event.subscriptions.map(({ person }) => [person.id, person]));
-    for (const subscription of majorSubscriptions.values()) {
-      if (event.autoSubscribe || subscription.selectedEvents.length) candidates.set(subscription.person.id, subscription.person);
+    const majorSubscriptions = new Map(
+      (event.majorEvent?.subscriptions ?? []).map((subscription) => [subscription.person.id, subscription]),
+    );
+    const candidates = new Map<string, Parameters<NovuNotificationsService['mapPersonToRecipient']>[0]>();
+    const invitedPersonIds = new Set<string>();
+    if (eligibility === AttendanceEligibility.INVITED_ONLY) {
+      const invitedPeople = this.audienceInvitations
+        ? await this.audienceInvitations.listInvitedPeopleForAttendance(event, this.prisma)
+        : [];
+      for (const invitation of invitedPeople) {
+        candidates.set(invitation.person.id, invitation.person);
+        invitedPersonIds.add(invitation.person.id);
+      }
+    } else {
+      for (const { person } of event.subscriptions) {
+        candidates.set(person.id, person);
+      }
+      for (const subscription of majorSubscriptions.values()) {
+        if (event.autoSubscribe || subscription.selectedEvents.length) {
+          candidates.set(subscription.person.id, subscription.person);
+        }
+      }
     }
-    const recipients = [...candidates.values()].filter((person) => {
-      const subscription = majorSubscriptions.get(person.id);
-      const evidence = {
-        hasEventSubscription: directPeople.has(person.id),
-        majorEventSubscriptionStatus: subscription?.subscriptionStatus,
-        hasSelectedEvent: Boolean(subscription?.selectedEvents.length),
-        autoSubscribe: event.autoSubscribe,
-      };
-      return isAttendanceEligible(eligibility, {
-        registered: isRegisteredAttendanceEvidence(event, evidence),
-        approved: isApprovedAttendance(event, evidence),
-      });
-    }).map((person) => this.notifications.mapPersonToRecipient(person));
     if (eligibility === AttendanceEligibility.ANYONE) {
       const interests = await this.prisma.eventInterest.findMany({
         where: {
@@ -253,8 +273,28 @@ export class OnlineAttendanceNotificationJobsService {
           person: { select: PERSON_SELECT },
         },
       });
-      recipients.push(...interests.map(({ person }) => this.notifications.mapPersonToRecipient(person)));
+      for (const { person } of interests) {
+        candidates.set(person.id, person);
+      }
     }
+
+    const attendanceEligiblePeople = [...candidates.values()].filter((person) => {
+      const subscription = majorSubscriptions.get(person.id);
+      const evidence = {
+        hasEventSubscription: directPeople.has(person.id),
+        majorEventSubscriptionStatus: subscription?.subscriptionStatus,
+        hasSelectedEvent: Boolean(subscription?.selectedEvents.length),
+        autoSubscribe: event.autoSubscribe,
+      };
+      return isAttendanceEligible(eligibility, {
+        registered: isRegisteredAttendanceEvidence(event, evidence),
+        approved: isApprovedAttendance(event, evidence),
+        invited:
+          eligibility === AttendanceEligibility.INVITED_ONLY ? invitedPersonIds.has(person.id) : undefined,
+      });
+    });
+    const visiblePeople = await this.filterAudienceCandidates(event, attendanceEligiblePeople);
+    const recipients = visiblePeople.map((person) => this.notifications.mapPersonToRecipient(person));
     const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.subscriberId, recipient])).values()];
     if (uniqueRecipients.length === 0) {
       return;
@@ -269,5 +309,92 @@ export class OnlineAttendanceNotificationJobsService {
     if (!delivered) {
       throw new Error(`Online attendance notification for event ${event.id} was not acknowledged.`);
     }
+  }
+
+  private async filterAudienceCandidates(
+    event: {
+      id: string;
+      audience?: string | null;
+      eventGroup?: { audience?: string | null; majorEvent?: { audience?: string | null } | null } | null;
+      majorEvent?: { audience?: string | null } | null;
+    },
+    people: readonly Parameters<NovuNotificationsService['mapPersonToRecipient']>[0][],
+  ): Promise<Parameters<NovuNotificationsService['mapPersonToRecipient']>[0][]> {
+    if (people.length === 0 || !this.hasRestrictedAudience(event)) {
+      return [...people];
+    }
+
+    // Keep optional for attendance-only unit fixtures; production wiring provides it.
+    const audiences = this.audiences;
+    if (!audiences) {
+      return [...people];
+    }
+
+    const principalCache = new Map<string, Promise<EventAudiencePrincipal>>();
+    const visiblePeople: Parameters<NovuNotificationsService['mapPersonToRecipient']>[0][] = [];
+    for (let offset = 0; offset < people.length; offset += SCHEDULING_CONCURRENCY) {
+      const batch = people.slice(offset, offset + SCHEDULING_CONCURRENCY);
+      const results = await Promise.all(
+        batch.map(async (person) => ({
+          person,
+          visible: await this.isAudienceVisibleForCandidate(event.id, person, principalCache, audiences),
+        })),
+      );
+      visiblePeople.push(...results.filter(({ visible }) => visible).map(({ person }) => person));
+    }
+    return visiblePeople;
+  }
+
+  private async isAudienceVisibleForCandidate(
+    eventId: string,
+    person: Parameters<NovuNotificationsService['mapPersonToRecipient']>[0],
+    principalCache: Map<string, Promise<EventAudiencePrincipal>>,
+    audiences: EventAudienceService,
+  ): Promise<boolean> {
+    try {
+      const personId = person.id;
+      const userId = person.userId ?? person.user?.id;
+      const principal = userId
+        ? await this.getCachedStoredPrincipal(userId, principalCache, audiences)
+        : { ...ANONYMOUS_AUDIENCE, personIds: [personId] };
+      const visible = await audienceContext.run(principal, () =>
+        this.prisma.event.findFirst({
+          where: { AND: [PUBLIC_EVENT_WHERE, { id: eventId }, eventAudienceWhere(principal)] },
+          select: { id: true },
+        }),
+      );
+      return Boolean(visible);
+    } catch {
+      return false;
+    }
+  }
+
+  private async getCachedStoredPrincipal(
+    userId: string,
+    principalCache: Map<string, Promise<EventAudiencePrincipal>>,
+    audiences: EventAudienceService,
+  ): Promise<EventAudiencePrincipal> {
+    const cached = principalCache.get(userId);
+    if (cached) {
+      return cached;
+    }
+    const principal = audiences.principalForStoredUser(userId);
+    principalCache.set(userId, principal);
+    return principal;
+  }
+
+  private hasRestrictedAudience(event: {
+    audience?: string | null;
+    eventGroup?: { audience?: string | null; majorEvent?: { audience?: string | null } | null } | null;
+    majorEvent?: { audience?: string | null } | null;
+  }): boolean {
+    return [
+      event.audience,
+      event.eventGroup?.audience,
+      event.eventGroup?.majorEvent?.audience,
+      event.majorEvent?.audience,
+    ].some(
+      (audience) => audience != null && audience !== 'PUBLIC',
+    );
   }
 }

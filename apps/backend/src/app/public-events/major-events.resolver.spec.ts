@@ -1,6 +1,7 @@
 import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { PublicMajorEventsResolver } from './major-events.resolver';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_REGULAR_EVENT_WHERE } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
@@ -91,6 +92,34 @@ describe('PublicMajorEventsResolver', () => {
         },
         skip: 0,
         take: 1,
+      }),
+    );
+  });
+
+  it('uses SQL name filtering when an audience principal is active so hidden hits cannot consume the page', async () => {
+    const prisma = {
+      majorEvent: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const typesenseSearch = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      searchMajorEvents: jest.fn().mockResolvedValue({ available: true, ids: ['hidden-major', 'visible-major'] }),
+    };
+    const resolver = new PublicMajorEventsResolver(prisma as never, typesenseSearch as never);
+
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, isUnesp: true }, () => resolver.publicMajorEvents('congresso'));
+
+    expect(typesenseSearch.searchMajorEvents).not.toHaveBeenCalled();
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...PUBLIC_MAJOR_EVENT_WHERE,
+          name: {
+            contains: 'congresso',
+            mode: 'insensitive',
+          },
+        },
       }),
     );
   });

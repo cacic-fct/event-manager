@@ -505,6 +505,48 @@ describe('AccountMergeService', () => {
     );
   });
 
+  it('moves audience invitations during account merges without resetting notification state', async () => {
+    const tx = createTransactionMock();
+    const createdAt = new Date('2026-01-01T10:00:00.000Z');
+    const notifiedAt = new Date('2026-01-02T10:00:00.000Z');
+    tx.eventAudienceInvitation.findMany
+      .mockResolvedValueOnce([
+        {
+          eventId: 'event-1',
+          personId: 'source-person',
+          createdAt,
+          createdById: 'creator-1',
+          notifiedAt,
+          notificationAttemptedAt: null,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    tx.eventGroupAudienceInvitation.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    tx.majorEventAudienceInvitation.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service['moveRelations'](tx as never, 'target-person', 'source-person');
+
+    expect(result.movedAudienceInvitationSnapshots).toEqual([
+      {
+        targetType: 'EVENT',
+        targetId: 'event-1',
+        personId: 'source-person',
+        createdAt: createdAt.toISOString(),
+        createdById: 'creator-1',
+        notifiedAt: notifiedAt.toISOString(),
+        notificationAttemptedAt: null,
+      },
+    ]);
+    expect(tx.eventAudienceInvitation.update).toHaveBeenCalledWith({
+      where: { eventId_personId: { eventId: 'event-1', personId: 'source-person' } },
+      data: { personId: 'target-person' },
+    });
+  });
+
   it('coalesces overlapping event and major-event subscriptions without moving duplicates', async () => {
     const tx = createTransactionMock();
     tx.eventGroupSubscription.findMany
@@ -863,6 +905,9 @@ function createTransactionMock() {
     eventSubscription: delegate(),
     eventGroupSubscription: delegate(),
     majorEventSubscription: delegate(),
+    eventAudienceInvitation: delegate(),
+    eventGroupAudienceInvitation: delegate(),
+    majorEventAudienceInvitation: delegate(),
     majorEventSubscriptionEventSelection: delegate(),
     majorEventReceipt: delegate(),
     majorEventReceiptValidationAction: delegate(),
