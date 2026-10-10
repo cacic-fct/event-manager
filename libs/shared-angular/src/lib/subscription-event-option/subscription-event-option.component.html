@@ -1,0 +1,54 @@
+<mat-list-item
+  class="event-row"
+  [class.event-row-disabled]="isSelectionDisabled()"
+  [class.event-row-readonly]="readOnly()"
+  [class.event-row-has-info]="showInfoButton()"
+  (click)="onItemClick()">
+  <div matListItemIcon class="emoji-frame">
+    <lib-twemoji [emoji]="option().emoji" />
+  </div>
+  <div matListItemTitle>{{ option().name }}</div>
+  @if (interested()) {
+    <div matListItemLine class="interest-label">Você marcou Quero ir</div>
+  }
+  <div matListItemLine>{{ option().description }}</div>
+  @if (option().startDate && option().endDate) {
+    @if (showFullDate()) {
+      <div matListItemLine>{{ option().startDate | date: 'short' }} às {{ option().endDate | date: 'HH:mm' }}</div>
+    } @else {
+      <div matListItemLine>{{ option().startDate | date: 'HH:mm' }} às {{ option().endDate | date: 'HH:mm' }}</div>
+    }
+  }
+  @if (option().locationDescription) {
+    <div matListItemLine>{{ option().locationDescription }}</div>
+  }
+  <div matListItemLine>{{ option().availabilityLine }}</div>
+  @if (disabledReason(); as reason) {
+    <div matListItemLine class="disabled-reason">{{ reason }}</div>
+  }
+  <div matListItemMeta class="row-actions">
+    @if (showInfoButton()) {
+      <button
+        mat-button
+        type="button"
+        class="info-button"
+        [attr.aria-label]="'Mais informações sobre ' + option().name"
+        (click)="$event.stopPropagation(); info.emit()">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        INFO
+      </button>
+    }
+    <mat-checkbox
+      [checked]="selected()"
+      [disabled]="isSelectionDisabled()"
+      [aria-label]="'Selecionar ' + option().name"
+      (click)="$event.stopPropagation()"
+      (change)="selectionChange.emit($event.checked)" />
+  </div>
+</mat-list-item>
+@if (warningReason(); as reason) {
+  <div class="warning-reason">
+    <mat-icon aria-hidden="true">warning</mat-icon>
+    <span>{{ reason }}</span>
+  </div>
+}

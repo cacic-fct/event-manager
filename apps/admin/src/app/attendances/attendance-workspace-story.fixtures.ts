@@ -9,6 +9,7 @@ import type {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { fn } from 'storybook/test';
+import { attendanceCurrentAssessmentLabel } from './attendance-labels';
 import { AttendancesService } from './attendances.service';
 
 export interface AttendanceWorkspaceStoryControls {
@@ -341,7 +342,7 @@ function categoryLabel(category: AttendanceCategory): string {
   return {
     REGULAR: 'Regulares',
     NON_REGULAR: 'Não regulares',
-    UNKNOWN: 'Indefinidas',
+    UNKNOWN: 'Sem classificação',
   }[category];
 }
 
@@ -354,25 +355,7 @@ function categoryDescription(category: AttendanceCategory): string {
 }
 
 function currentAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
-  switch (assessment) {
-    case 'ACTIVITY_SUBSCRIPTION_MISSING':
-      return 'Sem inscrição ativa na atividade.';
-    case 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT':
-      return 'Pagamento do grande evento aguardando comprovante.';
-    case 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW':
-      return 'Comprovante de pagamento do grande evento em análise.';
-    case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
-      return 'Pagamento do grande evento não confirmado.';
-    case 'TICKET_REQUIRED':
-      return 'Bilhete não disponível.';
-    case 'PRICE_TIER_NOT_ELIGIBLE':
-      return 'Faixa de preço não elegível';
-    case 'REQUIREMENTS_CURRENTLY_MET':
-      return 'Requisitos atuais atendidos.';
-    case null:
-    case undefined:
-      return null;
-  }
+  return attendanceCurrentAssessmentLabel(assessment);
 }
 
 function clamp(value: number, max: number): number {

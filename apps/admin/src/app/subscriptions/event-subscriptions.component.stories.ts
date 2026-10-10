@@ -61,6 +61,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Inscrições' })).toBeVisible();
+    await expect(await canvas.findByText('Criada pela administração')).toBeVisible();
   },
 };
 

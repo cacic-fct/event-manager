@@ -34,6 +34,13 @@ describe('PrizeDrawWorkspaceService', () => {
   let workspaceEvents: Subject<void>;
   let service: PrizeDrawWorkspaceService;
 
+  it('describes participation sources without exposing unknown enum values', () => {
+    expect(service.sourceLabel('ATTENDANCE')).toBe('Presença');
+    expect(service.sourceLabel('SUBSCRIPTION')).toBe('Inscrição');
+    expect(service.sourceLabel('MANUAL')).toBe('Manual');
+    expect(service.sourceLabel('UNKNOWN')).toBe('Origem da participação não informada');
+  });
+
   beforeEach(() => {
     api = apiMock();
     eventApi = { listEvents: vi.fn(() => of([{ id: 'event-1', name: 'Evento' }])), getEvent: vi.fn((id: string) => of(createAdminEvent({ id }))) };

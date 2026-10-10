@@ -8,7 +8,9 @@
 
   <header class="validation-header">
     <div>
-      <h1>Validação de comprovantes</h1>
+      @if (!inWorkspaceShell) {
+        <h1>Validação de comprovantes</h1>
+      }
       @if (activeFilterSummary(); as summary) {
         <p>{{ summary }}</p>
       } @else {
@@ -205,7 +207,7 @@
               @if (item.receipt) {
                 <span>Enviado em</span>
                 <time [attr.datetime]="item.receipt.uploadedAt">{{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</time>
-                <span>Situação: {{ item.receipt.processingStatus }}</span>
+                <span>Situação: {{ processingStatusLabel(item.receipt.processingStatus) }}</span>
               } @else {
                 Nenhum arquivo encontrado
               }

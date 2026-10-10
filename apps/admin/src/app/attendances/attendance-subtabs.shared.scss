@@ -9,7 +9,12 @@
 }
 
 .major-attendance-layout {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: start;
+}
+
+.major-attendance-layout > .major-selector {
+  min-width: 0;
 }
 
 .panel,
@@ -268,7 +273,6 @@
 
 @media (max-width: 1180px) {
   .event-attendance-layout,
-  .major-attendance-layout,
   .workbench-grid {
     grid-template-columns: 1fr;
   }
@@ -277,6 +281,12 @@
   .subscription-list,
   .attendance-list {
     max-height: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .major-attendance-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

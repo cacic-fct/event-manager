@@ -19,6 +19,8 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   WITHDRAWN: 'Desistiu',
   WAITING_APPROVAL: 'Aguardando aprovação',
   WAITING_PAYMENT: 'Aguardando pagamento',
+  ELIGIBLE: 'Apto para competir',
+  INELIGIBLE: 'Não apto para competir',
   UNDER_REVIEW: 'Pagamento em análise',
   PAID: 'Pago',
   NOT_REQUIRED: 'Pagamento não exigido',
@@ -29,15 +31,19 @@ const STATUS_LABELS: Readonly<Record<string, string>> = {
   PAUSED: 'Pausada',
   AWAITING_REVIEW: 'Em revisão',
   DRAW: 'Empate',
+  SUBMITTED: 'Enviado',
+  SUPERSEDED: 'Substituído',
 };
 
 export function sportsStatusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status;
+  return STATUS_LABELS[status] ?? 'Situação não informada';
 }
 
 export function sportsMatchStatusLabel(status: string): string {
   if (status === 'CANCELED') {
     return 'Cancelada, aguardando reagendamento';
   }
-  return SPORTS_MATCH_STATE_LABELS[status as keyof typeof SPORTS_MATCH_STATE_LABELS] ?? sportsStatusLabel(status);
+  return (
+    SPORTS_MATCH_STATE_LABELS[status as keyof typeof SPORTS_MATCH_STATE_LABELS] ?? 'Situação da partida não informada'
+  );
 }

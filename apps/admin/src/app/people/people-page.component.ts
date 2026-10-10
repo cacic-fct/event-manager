@@ -17,6 +17,7 @@ import { PeopleService } from './people.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
 import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { unespRoleListLabel, userRoleLabel } from './people-labels';
 
 @Component({
   selector: 'app-workspace-people-tab',
@@ -51,6 +52,8 @@ export class PeoplePageComponent {
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
   protected readonly isSuperAdmin = computed(() => this.auth.roles().includes(EventManagerKeycloakRole.SuperAdmin));
+  protected readonly userRoleLabel = userRoleLabel;
+  protected readonly unespRoleListLabel = unespRoleListLabel;
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

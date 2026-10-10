@@ -33,6 +33,7 @@ describe('SubscriptionsService', () => {
     countEventSubscriptions: ReturnType<typeof vi.fn>;
     createEventSubscription: ReturnType<typeof vi.fn>;
     listMajorEventSubscriptions: ReturnType<typeof vi.fn>;
+    listMajorEventSubscriptionEvents: ReturnType<typeof vi.fn>;
     countMajorEventSubscriptions: ReturnType<typeof vi.fn>;
     getMajorEventSubscription: ReturnType<typeof vi.fn>;
     createMajorEventSubscription: ReturnType<typeof vi.fn>;
@@ -66,6 +67,7 @@ describe('SubscriptionsService', () => {
       countEventSubscriptions: vi.fn(() => of(1)),
       createEventSubscription: vi.fn(() => of(eventSubscription)),
       listMajorEventSubscriptions: vi.fn(() => of([majorSubscription])),
+      listMajorEventSubscriptionEvents: vi.fn(() => of(majorSubscription.events)),
       countMajorEventSubscriptions: vi.fn(() => of(1)),
       getMajorEventSubscription: vi.fn(() => of(majorSubscription)),
       createMajorEventSubscription: vi.fn(() => of(majorSubscription)),
@@ -257,7 +259,7 @@ describe('SubscriptionsService', () => {
 
     api.listMajorEventSubscriptions.mockReturnValueOnce(of([]));
     await service.loadMajorEventSubscriptions();
-    expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 200 });
+    expect(api.listMajorEventSubscriptionEvents).toHaveBeenCalledWith(majorEvent.id);
   });
 
   it('stops the previous major-event stream before loading a new selection', async () => {

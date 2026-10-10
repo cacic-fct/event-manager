@@ -14,6 +14,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 import { EventInterestsComponent } from './event-interests.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 @Component({
   selector: 'app-workspace-subscriptions-tab',
@@ -29,6 +30,7 @@ import { EventInterestsComponent } from './event-interests.component';
   ],
 })
 export class SubscriptionsPageComponent implements OnDestroy {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(SubscriptionsService);

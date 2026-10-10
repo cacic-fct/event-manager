@@ -329,7 +329,15 @@ export interface WorkspaceEventSubscription {
 export interface WorkspaceMajorEventSubscriptionEvent {
   eventId: string;
   eventName: string;
+  eventEmoji?: string | null;
+  eventType?: EventType | null;
+  eventShortDescription?: string | null;
   eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  eventLocationDescription?: string | null;
+  eventSlots?: number | null;
+  availableSlots?: number | null;
+  projectedQueuePosition?: number | null;
   subscribed: boolean;
   isLecturerSubscription: boolean;
 }

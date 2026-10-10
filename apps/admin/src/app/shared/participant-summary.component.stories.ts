@@ -39,6 +39,7 @@ export const Playground: Story = {
     await expect(canvas.findByText('Ana Carolina de Oliveira Silva')).resolves.toBeVisible();
     await expect(canvas.findByText('RA 202612345')).resolves.toBeVisible();
     await expect(canvas.findByText('•••8901')).resolves.toBeVisible();
+    await expect(canvas.findByText('Aluno da Graduação')).resolves.toBeVisible();
   },
 };
 

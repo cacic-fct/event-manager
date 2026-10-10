@@ -277,3 +277,12 @@ export const ScopedEventOperations: Story = {
     await expect(await canvas.findByRole('navigation',{name:'Operações do evento'})).toBeVisible();
   },
 };
+
+export const ReceiptValidationTitle: Story = {
+  args: { activeUrl: '/subscriptions/major-event/major-event-1/validate-receipts' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Validação de comprovantes', level: 1 })).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Inscrições' })).not.toBeInTheDocument();
+  },
+};

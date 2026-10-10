@@ -91,7 +91,7 @@ export function getSubscriptionStatusLabel(status: string): string {
     case 'CANCELED':
       return 'Inscrição cancelada';
     default:
-      return status;
+      return 'Situação da inscrição não informada';
   }
 }
 

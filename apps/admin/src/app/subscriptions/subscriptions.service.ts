@@ -361,14 +361,7 @@ export class SubscriptionsService {
       ]),
     );
     const events =
-      subscriptions[0]?.events ??
-      (await firstValueFrom(this.eventApi.listEvents({ majorEventId, take: 200 }))).map((eventItem) => ({
-        eventId: eventItem.id,
-        eventName: eventItem.name,
-        eventStartDate: eventItem.startDate,
-        subscribed: false,
-        isLecturerSubscription: false,
-      }));
+      subscriptions[0]?.events ?? (await firstValueFrom(this.api.listMajorEventSubscriptionEvents(majorEventId)));
     if (
       request !== this.majorEventSubscriptionsRequest ||
       this.majorEventForm.controls.majorEventId.value !== majorEventId

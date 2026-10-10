@@ -1,4 +1,8 @@
-import { ForbiddenException, MessageEvent } from '@nestjs/common';
+import {
+  ForbiddenException,
+  MessageEvent,
+  NotFoundException,
+} from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom, NEVER, Observable, take, toArray } from 'rxjs';
 import { AdminTicketRealtimeController, CurrentUserTicketRealtimeController } from './tickets.controller';
@@ -24,7 +28,10 @@ describe('ticket realtime controllers', () => {
     expect(replay.replay).toHaveBeenCalledWith('user-scope', 'stale-cursor', expect.anything());
   });
 
-  it('accepts either event-scoped admin read grant and emits an event baseline', async () => {
+  it.each([
+    { denial: 'a missing grant', error: new ForbiddenException() },
+    { denial: 'an out-of-audience resource', error: new NotFoundException() },
+  ])('accepts either event-scoped admin read grant after $denial and emits an event baseline', async ({ error }) => {
     const source = { adminEventScope: jest.fn(() => 'admin-event-scope'), watchAdminEvent: jest.fn(() => NEVER) };
     const replay = {
       replay: jest.fn((_scope: string, _cursor: string | undefined, events: Observable<MessageEvent>) => events),
@@ -32,7 +39,7 @@ describe('ticket realtime controllers', () => {
     const auth = { authenticateAccessToken: jest.fn().mockResolvedValue({ sub: 'manager-1' }) };
     const authorization = {
       assertPermissions: jest.fn(async (_user, permissions: string[]) => {
-        if (permissions[0] === Permission.Ticket.Read) throw new ForbiddenException();
+        if (permissions[0] === Permission.Ticket.Read) throw error;
       }),
     };
     const controller = new AdminTicketRealtimeController(source as never, replay as never, auth as never, authorization as never);
@@ -54,5 +61,21 @@ describe('ticket realtime controllers', () => {
     );
     expect(event.data).toEqual(expect.objectContaining({ type: 'TICKETS_CHANGED', eventId: 'event-1' }));
     expect(source.adminEventScope).toHaveBeenCalledWith('event-1');
+  });
+
+  it('propagates unexpected permission failures without trying another read grant', async () => {
+    const source = { adminEventScope: jest.fn(() => 'admin-event-scope'), watchAdminEvent: jest.fn(() => NEVER) };
+    const replay = {
+      replay: jest.fn((_scope: string, _cursor: string | undefined, events: Observable<MessageEvent>) => events),
+    };
+    const auth = { authenticateAccessToken: jest.fn().mockResolvedValue({ sub: 'manager-1' }) };
+    const failure = new Error('Permission store unavailable.');
+    const authorization = { assertPermissions: jest.fn().mockRejectedValue(failure) };
+    const controller = new AdminTicketRealtimeController(source as never, replay as never, auth as never, authorization as never);
+    const request = { headers: { authorization: 'Bearer token' } } as never;
+
+    await expect(firstValueFrom(controller.stream('event-1', request, undefined).pipe(take(1)))).rejects.toBe(failure);
+    expect(authorization.assertPermissions).toHaveBeenCalledTimes(1);
+    expect(source.adminEventScope).not.toHaveBeenCalled();
   });
 });

@@ -64,6 +64,13 @@ describe('Home', () => {
     component.currentDate.set(new Date(adminFixtureDate));
   });
 
+  it('describes sports states without exposing unknown enum values', () => {
+    expect(component.sportsTournamentStatus('REGISTRATION_OPEN')).toBe('Inscrições abertas');
+    expect(component.sportsTournamentStatus('UNKNOWN')).toBe('Situação do torneio não informada');
+    expect(component.sportsMatchState('AWAITING_REVIEW')).toBe('Em revisão');
+    expect(component.sportsMatchState('FUTURE_STATE')).toBe('Situação da partida não informada');
+  });
+
   afterEach(() => {
     if (!fixtureDestroyed) fixture.destroy();
   });

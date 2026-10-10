@@ -385,7 +385,10 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     if (event.publicationState === 'UNPUBLISHED') {
       return 'Despublicado';
     }
-    return 'Rascunho';
+    if (event.publicationState === 'DRAFT') {
+      return 'Rascunho';
+    }
+    return 'Situação da publicação não informada';
   }
 
   isMatchPublic(match: SportsMatchSummary | null | undefined): boolean {

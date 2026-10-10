@@ -520,7 +520,7 @@ export class PrizeDrawWorkspaceService {
   }
 
   sourceLabel(source: string): string {
-    return { ATTENDANCE: 'Presença', SUBSCRIPTION: 'Inscrição', MANUAL: 'Manual' }[source] ?? source;
+    return { ATTENDANCE: 'Presença', SUBSCRIPTION: 'Inscrição', MANUAL: 'Manual' }[source] ?? 'Origem da participação não informada';
   }
 
   private patch(draw: PrizeDraw): void {

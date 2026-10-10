@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AttendancesService } from './attendances.service';
 import { EventAttendancesComponent } from './event-attendances.component';
 import { MajorEventAttendancesComponent } from './major-event-attendances.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 @Component({
   selector: 'app-workspace-attendances-tab',
@@ -23,6 +24,7 @@ import { MajorEventAttendancesComponent } from './major-event-attendances.compon
   ],
 })
 export class AttendancesPageComponent implements OnDestroy {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(AttendancesService);

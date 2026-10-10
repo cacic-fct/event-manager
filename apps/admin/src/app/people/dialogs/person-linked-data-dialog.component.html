@@ -89,7 +89,7 @@
 
                     <div class="resource-meta">
                       @if (item.status) {
-                        <span class="status-chip">{{ item.status }}</span>
+                        <span class="status-chip">{{ resourceStatusLabel(item.status) }}</span>
                       }
                       @if (item.occurredAt) {
                         <time [attr.datetime]="item.occurredAt">{{ item.occurredAt | date: 'short' }}</time>

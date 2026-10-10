@@ -6,6 +6,7 @@ import {
   SubscriptionStatus,
   WorkspaceEventSubscription,
   WorkspaceMajorEventSubscription,
+  WorkspaceMajorEventSubscriptionEvent,
 } from '@cacic-fct/event-manager-admin-contracts';
 import type { SportsTeamView } from '@cacic-fct/shared-frontend-types';
 import { PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
@@ -54,6 +55,22 @@ const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   }
 `;
 
+const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EVENT_FIELDS = `
+  eventId
+  eventName
+  eventEmoji
+  eventType
+  eventShortDescription
+  eventStartDate
+  eventEndDate
+  eventLocationDescription
+  eventSlots
+  availableSlots
+  projectedQueuePosition
+  subscribed
+  isLecturerSubscription
+`;
+
 const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   id
   majorEventId
@@ -74,11 +91,7 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
     ${PERSON_EXPORT_FIELDS}
   }
   events {
-    eventId
-    eventName
-    eventStartDate
-    subscribed
-    isLecturerSubscription
+    ${WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EVENT_FIELDS}
   }
 `;
 
@@ -245,6 +258,19 @@ export class SubscriptionApiService {
         { majorEventId, query: filters?.query, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.workspaceMajorEventSubscriptions));
+  }
+
+  listMajorEventSubscriptionEvents(majorEventId: string) {
+    return this.graphqlHttp
+      .request<{ workspaceMajorEventSubscriptionEvents: WorkspaceMajorEventSubscriptionEvent[] }>(
+        `query WorkspaceMajorEventSubscriptionEvents($majorEventId: String!) {
+          workspaceMajorEventSubscriptionEvents(majorEventId: $majorEventId) {
+            ${WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EVENT_FIELDS}
+          }
+        }`,
+        { majorEventId },
+      )
+      .pipe(map((data) => data.workspaceMajorEventSubscriptionEvents));
   }
 
   countMajorEventSubscriptions(majorEventId: string, query?: string) {

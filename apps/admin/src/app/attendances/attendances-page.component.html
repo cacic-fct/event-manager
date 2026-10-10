@@ -1,5 +1,7 @@
 <section class="section attendance-shell">
-  <h2>Presenças</h2>
+  @if (!inWorkspaceShell) {
+    <h1>Presenças</h1>
+  }
   <app-event-context-picker [hideInShell]="context() !== null" [context]="context()" (contextChange)="selectContext($event)" />
   @if (contextLoading()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando presenças" /> }
   @if (contextError()) { <p role="alert">{{ contextError() }}</p> }

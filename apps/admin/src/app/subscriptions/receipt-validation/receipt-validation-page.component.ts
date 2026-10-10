@@ -38,6 +38,8 @@ import {
   receiptValidationCategory,
   type ReceiptValidationFilters,
 } from './receipt-validation-filtering';
+import { ADMIN_SHELL_CONTEXT } from '../../shared/admin-shell-context';
+import { receiptProcessingStatusLabel } from '../subscription-labels';
 
 interface LastValidationAction {
   id: string;
@@ -80,6 +82,7 @@ interface EventDayGroup {
   ],
 })
 export class ReceiptValidationPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly api = inject(ReceiptValidationApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
@@ -317,6 +320,7 @@ export class ReceiptValidationPageComponent {
       this.selectedIndex.set(retainedIndex >= 0 ? retainedIndex : 0);
     });
   }
+  protected readonly processingStatusLabel = receiptProcessingStatusLabel;
 
   protected toggleEvent(event: ReceiptValidationEvent, checked: boolean): void {
     if (event.autoSubscribe) {

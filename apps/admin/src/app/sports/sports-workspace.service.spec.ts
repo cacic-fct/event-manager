@@ -117,7 +117,11 @@ describe('SportsWorkspaceService', () => {
     expect(workspace.statusLabel('AWAITING_REVIEW')).toBe('Em revisão');
     expect(workspace.statusLabel('REGISTRATION_OPEN')).toBe('Inscrições abertas');
     expect(workspace.statusLabel('PUBLISHED')).toBe('Publicado');
-    expect(workspace.statusLabel('UNKNOWN_STATE')).toBe('UNKNOWN_STATE');
+    expect(workspace.statusLabel('ELIGIBLE')).toBe('Apto para competir');
+    expect(workspace.statusLabel('INELIGIBLE')).toBe('Não apto para competir');
+    expect(workspace.statusLabel('SUBMITTED')).toBe('Enviado');
+    expect(workspace.statusLabel('SUPERSEDED')).toBe('Substituído');
+    expect(workspace.statusLabel('UNKNOWN_STATE')).toBe('Situação não informada');
   });
 
   it('defaults tournament registration dates to the parent and seeds independent overrides on demand', () => {
@@ -243,6 +247,17 @@ describe('SportsWorkspaceService', () => {
   it('explains canceled matches as pending rescheduling', () => {
     expect(workspace.statusLabel('CANCELED')).toBe('Cancelado');
     expect(workspace.matchStatusLabel('CANCELED')).toBe('Cancelada, aguardando reagendamento');
+    expect(workspace.matchStatusLabel('UNKNOWN_STATE')).toBe('Situação da partida não informada');
+  });
+
+  it('does not present an unknown match publication state as a draft', () => {
+    const match = createAdminSportsCategoryRead().matches.find((item) => item.id === 'match-1');
+    if (!match?.event) {
+      throw new Error('The fixture must include a match with a linked event.');
+    }
+    Object.assign(match.event, { publicationState: 'FUTURE_PUBLICATION_STATE' });
+
+    expect(workspace.matchPublicationLabel(match)).toBe('Situação da publicação não informada');
   });
 
   it('validates score rules through the structured controls', () => {
