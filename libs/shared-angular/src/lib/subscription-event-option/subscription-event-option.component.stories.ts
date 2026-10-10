@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SubscriptionEventOptionComponent } from './subscription-event-option.component';
 
 const meta: Meta<SubscriptionEventOptionComponent> = {
   component: SubscriptionEventOptionComponent,
-  title: 'Shared/Subscription Event Option',
+  title: 'CACiC Eventos/Subscriptions/Event selection/Subscription event option',
   tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [provideNoopAnimations()] })],
   args: {
@@ -27,12 +27,45 @@ const meta: Meta<SubscriptionEventOptionComponent> = {
     interested: false,
     readOnly: false,
     showInfoButton: false,
+    showFullDate: false,
+    selectionChange: fn(),
+    info: fn(),
+  },
+  argTypes: {
+    option: { control: 'object', description: 'Dados do evento exibidos na opção de inscrição.' },
+    selected: { control: 'boolean', description: 'Indica se a pessoa selecionou este evento.' },
+    disabled: { control: 'boolean', description: 'Impede a seleção do evento.' },
+    disabledReason: { control: 'text', description: 'Explica por que a seleção está indisponível.' },
+    warningReason: { control: 'text', description: 'Aviso associado à inscrição neste evento.' },
+    interested: { control: 'boolean', description: 'Indica se a pessoa já marcou Quero ir.' },
+    readOnly: { control: 'boolean', description: 'Exibe a opção sem permitir alterações.' },
+    showInfoButton: { control: 'boolean', description: 'Exibe a ação para consultar informações do evento.' },
+    showFullDate: { control: 'boolean', description: 'Exibe a data completa em vez de apenas os horários.' },
+    selectionChange: { table: { disable: true } },
+    info: { table: { disable: true } },
   },
   parameters: { layout: 'padded', a11y: { test: 'todo' } },
 };
 
 export default meta;
 type Story = StoryObj<SubscriptionEventOptionComponent>;
+
+export const Playground: Story = {
+  args: {
+    selectionChange: fn(),
+    info: fn(),
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const selection = canvas.getByRole('checkbox', {
+      name: 'Selecionar Arquitetura Angular para aplicações acadêmicas',
+    });
+
+    await expect(selection).toBeChecked();
+    await userEvent.click(selection);
+    await expect(args.selectionChange).toHaveBeenCalledWith(false);
+  },
+};
 
 export const Selected: Story = {};
 
@@ -46,9 +79,19 @@ export const LecturerOwnEventWarning: Story = {
 };
 
 export const PublicWithInfoAction: Story = {
-  args: { showInfoButton: true },
-  play: async ({ canvasElement }) => {
+  args: { showInfoButton: true, info: fn() },
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Mais informações sobre Arquitetura Angular para aplicações acadêmicas' }));
+    await expect(args.info).toHaveBeenCalledOnce();
   },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    selected: false,
+    interested: true,
+    showFullDate: true,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
