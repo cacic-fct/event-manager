@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts/types';
-import { expect, test } from './support/e2e-test';
+import { expect, test, waitForPublicLandingBootstrap } from './support/e2e-test';
 import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 
 test.beforeEach(async ({ page }) => {
@@ -23,20 +23,22 @@ test('public preferences remain available without starting backend login', async
 });
 
 test('public landing login starts backend auth with the public app return path', async ({ page }) => {
-  let loginRedirect: URL | null = null;
+  const loginRedirect: { url: URL | null } = { url: null };
   await mockPublicApi(page, {
     user: null,
     onLoginRedirect: (url) => {
-      loginRedirect = url;
+      loginRedirect.url = url;
     },
   });
 
+  const landingBootstrap = waitForPublicLandingBootstrap(page);
   await page.goto('/app/');
+  await landingBootstrap;
 
   await expect(page.getByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
   await page.getByRole('button', { name: 'Entrar com o Google' }).click();
-  await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
-  expect(loginRedirect?.searchParams.get('returnTo')).toBe('/app');
+  await expect.poll(() => loginRedirect.url?.pathname).toBe('/api/auth/login/redirect');
+  expect(loginRedirect.url?.searchParams.get('returnTo')).toBe('/app');
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {

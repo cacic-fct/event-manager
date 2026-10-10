@@ -141,7 +141,7 @@ test('redirects a one-shot check-in suggestion with its operation mode', async (
   expect(autorouteRequests.count).toBe(1);
 });
 
-test('renders a scheduled match view with location and private roster state', async ({ page }) => {
+test('renders a scheduled match view with location without exposing its roster before kickoff', async ({ page }) => {
   await mockSportsApi(page, { matchState: 'SCHEDULED' });
 
   await page.goto('/app/sports/match/match-1');
@@ -150,7 +150,8 @@ test('renders a scheduled match view with location and private roster state', as
   await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
   await expect(page.getByText('Agendada', { exact: true })).toBeVisible();
   await expect(page.getByText('Ginásio, Quadra 1, Ginásio principal', { exact: true })).toBeVisible();
-  await expect(page.getByText('Nenhuma escalação foi publicada para esta partida.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Escalações', exact: true })).toHaveCount(0);
+  await expect(page.getByText('Nenhuma escalação foi publicada para esta partida.', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Ao vivo', { exact: true })).toHaveCount(0);
 });
 

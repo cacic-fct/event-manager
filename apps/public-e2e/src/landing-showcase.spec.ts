@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './support/e2e-test';
+import { expect, test, waitForPublicLandingBootstrap } from './support/e2e-test';
 
 type AxeApi = typeof import('axe-core');
 
@@ -59,11 +59,16 @@ for (const scenario of [
       // when the public app server is unavailable locally. CI uses /app/.
       const storybookUrl = process.env['LANDING_STORYBOOK_URL'];
       const globals = `theme:${scenario.colorScheme};motion:${scenario.reducedMotion === 'reduce' ? 'reduced' : 'full'}`;
+      const landingBootstrap = storybookUrl ? Promise.resolve() : waitForPublicLandingBootstrap(page);
       await page.goto(storybookUrl
         ? `${storybookUrl}/iframe.html?id=public-landing-page--playground&viewMode=story&globals=${globals}`
         : '/app/');
+      await landingBootstrap;
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
+      const productShowcase = page.locator('app-landing-product-showcase');
+      await expect(productShowcase).toBeVisible({ timeout: 15_000 });
+      await productShowcase.locator('.audience-placeholder').first().scrollIntoViewIfNeeded();
       await expect(page.locator('app-landing-participant-showcase')).toBeVisible({ timeout: 15_000 });
     });
 
