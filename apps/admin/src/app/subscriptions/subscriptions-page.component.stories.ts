@@ -4,6 +4,7 @@ import { applicationConfig, type Decorator } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { WorkspacePermissionScope } from '../permissions/permissions.service';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 import { SubscriptionsPageComponent } from './subscriptions-page.component';
 import { createWorkspaceSubscriptionsStoryProviders } from './subscriptions-story-support';
 
@@ -16,6 +17,7 @@ interface SubscriptionsPageStoryArgs {
   selectedDetail: boolean;
   readOnly: boolean;
   longNames: boolean;
+  useAdminShell: boolean;
 }
 
 const defaultArgs: SubscriptionsPageStoryArgs = {
@@ -27,6 +29,7 @@ const defaultArgs: SubscriptionsPageStoryArgs = {
   selectedDetail: false,
   readOnly: false,
   longNames: false,
+  useAdminShell: false,
 };
 
 const withSubscriptionsProviders: Decorator<SubscriptionsPageStoryArgs> = (story, context) => {
@@ -49,6 +52,7 @@ const withSubscriptionsProviders: Decorator<SubscriptionsPageStoryArgs> = (story
           snapshot: { url: [] },
         },
       },
+      { provide: ADMIN_SHELL_CONTEXT, useValue: args.useAdminShell },
       ...createWorkspaceSubscriptionsStoryProviders({
         majorEventId: args.majorEventCount > 0 ? 'major-event-1' : null,
         selectedMajorEventSubscriptionId: subscriptionId,
@@ -78,6 +82,7 @@ const meta: Meta<SubscriptionsPageStoryArgs> = {
     selectedDetail: { control: 'boolean' },
     readOnly: { control: 'boolean' },
     longNames: { control: 'boolean' },
+    useAdminShell: { table: { disable: true } },
   },
   decorators: [withSubscriptionsProviders],
   parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
@@ -90,9 +95,20 @@ export const Playground: Story = {
 
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Inscrições e interesses', level: 1 })).toBeVisible();
     await expect(await canvas.findByRole('heading', { name: 'Inscritos' })).toBeVisible();
     await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
     await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
+  },
+};
+
+export const ShellEmbedded: Story = {
+  args: { useAdminShell: true },
+  render: () => ({ template: '<main><h1>Inscrições</h1><app-workspace-subscriptions-tab /></main>' }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Inscrições', level: 1 })).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Inscrições e interesses' })).not.toBeInTheDocument();
   },
 };
 

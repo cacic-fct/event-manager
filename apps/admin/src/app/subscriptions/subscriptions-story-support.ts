@@ -137,7 +137,26 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
 
     return [{ id: `selected-${selectedTier}`, name: selectedTier, value: 0 }, ...tiers];
   });
-  const majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(majorEventSubscriptions()[0]?.events ?? []);
+  const majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(
+    majorEventSubscriptions()[0]?.events ??
+      eventResults()
+        .filter((eventItem) => !eventItem.isSportsMatch)
+        .map((eventItem, index) => ({
+          eventId: eventItem.id,
+          eventName: eventItem.name,
+          eventEmoji: eventItem.emoji,
+          eventType: eventItem.type,
+          eventShortDescription: eventItem.shortDescription,
+          eventStartDate: eventItem.startDate,
+          eventEndDate: eventItem.endDate,
+          eventLocationDescription: eventItem.locationDescription,
+          eventSlots: eventItem.slots ?? null,
+          availableSlots: eventItem.slots == null ? null : Math.max(eventItem.slots - 8, 0),
+          projectedQueuePosition: index + 1,
+          subscribed: false,
+          isLecturerSubscription: false,
+        })),
+  );
   const eventSubscriptions = signal<WorkspaceEventSubscription[]>(
     Array.from({ length: eventSubscriptionCount }, (_, index) => ({
       id: `event-subscription-${index + 1}`,
@@ -432,14 +451,30 @@ function buildMajorEventSubscription(
       {
         eventId: 'major-event-item-1',
         eventName: 'Arquitetura Angular',
+        eventEmoji: '📐',
+        eventType: 'MINICURSO',
+        eventShortDescription: 'Projeto de interfaces para a comunidade acadêmica',
         eventStartDate: '2026-06-02T12:00:00.000Z',
+        eventEndDate: '2026-06-02T14:00:00.000Z',
+        eventLocationDescription: 'Laboratório 1',
+        eventSlots: 40,
+        availableSlots: 12,
+        projectedQueuePosition: 1,
         subscribed: true,
         isLecturerSubscription: false,
       },
       {
         eventId: 'major-event-item-2',
         eventName: 'GraphQL com NestJS',
+        eventEmoji: '📡',
+        eventType: 'PALESTRA',
+        eventShortDescription: 'Inscrições e consultas de dados com GraphQL',
         eventStartDate: '2026-06-03T12:00:00.000Z',
+        eventEndDate: '2026-06-03T13:00:00.000Z',
+        eventLocationDescription: 'Auditório principal',
+        eventSlots: 30,
+        availableSlots: 0,
+        projectedQueuePosition: 5,
         subscribed: true,
         isLecturerSubscription: true,
       },

@@ -17,6 +17,7 @@ import { AttendancesService } from './attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
 import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { attendanceCreationMethodLabel } from './attendance-labels';
 
 @Component({
   selector: 'app-workspace-event-attendances-subtab',
@@ -49,6 +50,7 @@ export class EventAttendancesComponent {
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
+  protected readonly attendanceCreationMethodLabel = attendanceCreationMethodLabel;
 
   protected canEditSelectedEventAttendances(): boolean {
     const event = this.workspace.selectedAttendanceEvent();

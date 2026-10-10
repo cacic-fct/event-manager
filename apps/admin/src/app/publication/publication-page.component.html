@@ -1,7 +1,9 @@
 <section class="section workspace-tab-shell publication-shell">
   <header class="tab-header publication-header">
     <div>
-      <h1>Publicação</h1>
+      @if (!inWorkspaceShell) {
+        <h1>Publicação</h1>
+      }
       <p>Orquestre rascunhos, agendamentos, pré-visualizações e publicação pública sem sair dos editores atuais.</p>
     </div>
     <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">

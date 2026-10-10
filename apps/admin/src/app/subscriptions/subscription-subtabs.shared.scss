@@ -13,8 +13,6 @@
 
 .major-subscription-layout {
   --major-subscription-transition: 180ms cubic-bezier(0.2, 0, 0, 1);
-  --major-selector-width: clamp(18rem, 22vw, 24rem);
-  --subscriber-rail-width: clamp(18rem, 20vw, 22rem);
 
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -27,6 +25,10 @@
 }
 
 .major-subscription-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: start;
+  gap: 1rem;
   position: relative;
   flex: 1 1 0;
   min-width: 0;
@@ -55,9 +57,6 @@
 }
 
 .major-subscription-layout.detail-active .major-subscription-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
   padding-left: 0;
 }
 
@@ -403,6 +402,7 @@
   .major-subscription-workspace,
   .major-subscription-layout.detail-active .major-subscription-workspace {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     padding-left: 0;
   }
 

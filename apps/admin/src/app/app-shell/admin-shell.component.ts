@@ -160,6 +160,7 @@ export class AdminShellComponent {
   protected readonly showPageHeader = computed(() => this.activeUrl() !== '/' && (!this.activeUrl().includes('/event-workspace') || !!eventContextFromUrl(this.activeUrl())));
   protected readonly routeContext = computed(() => eventContextFromUrl(this.activeUrl()));
   protected readonly pageTitle = computed(() => {
+    if (this.activeUrl().split(/[?#]/)[0].endsWith('/validate-receipts')) return 'Validação de comprovantes';
     const creationKind = this.activeUrl().split(/[?#]/)[0].match(/^\/event-workspace\/new\/(event|group|major-event)$/)?.[1];
     if (this.currentOperationId() === 'certificates' && this.routeContext()) return 'Certificados';
     if (creationKind) return ({ event: 'Novo evento', group: 'Novo grupo de eventos', 'major-event': 'Novo grande evento' } as Record<string, string>)[creationKind];

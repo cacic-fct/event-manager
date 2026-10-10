@@ -353,7 +353,7 @@ export class Home implements OnInit, OnDestroy {
         LIVE: 'Em andamento',
         FINISHED: 'Finalizado',
         CANCELED: 'Cancelado',
-      }[status] ?? status
+      }[status] ?? 'Situação do torneio não informada'
     );
   }
 
@@ -368,7 +368,7 @@ export class Home implements OnInit, OnDestroy {
         CANCELED: 'Cancelada',
         DRAW: 'Empate',
         FINISHED: 'Finalizada',
-      }[state] ?? state
+      }[state] ?? 'Situação da partida não informada'
     );
   }
 

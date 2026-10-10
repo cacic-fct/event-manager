@@ -88,7 +88,9 @@ type Story = StoryObj<AuditLogsStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Logs de auditoria')).toBeVisible();
+    await expect(
+      await canvas.findByText('Busca global por alterações, autores, entidades, datas e reversões.'),
+    ).toBeVisible();
     await expect(await canvas.findByText('Evento atualizado pelo painel administrativo.')).toBeVisible();
     await expect(await canvas.findByText('1-25 de 36')).toBeVisible();
   },
@@ -122,7 +124,9 @@ export const AllEntityTypesAndOperations: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Logs de auditoria')).toBeVisible();
+    await expect(
+      await canvas.findByText('Busca global por alterações, autores, entidades, datas e reversões.'),
+    ).toBeVisible();
     await expect(await canvas.findByText('1-25 de 54')).toBeVisible();
     const reversalRows = await canvas.findAllByText(/reversão no fluxo simulado/i);
     await expect(reversalRows[0]).toBeVisible();

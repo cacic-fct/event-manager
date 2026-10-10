@@ -6,6 +6,7 @@ import {
   WorkspaceEventSubscriptionCreateInput,
   WorkspaceMajorEventSubscription,
   WorkspaceMajorEventSubscriptionCreateInput,
+  WorkspaceMajorEventSubscriptionEvent,
   WorkspaceMajorEventSubscriptionUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -157,6 +158,28 @@ const EVENT_SELECT = {
   updatedAt: true,
   updatedById: true,
 } satisfies Prisma.EventSelect;
+
+const MAJOR_EVENT_SUBSCRIPTION_EVENT_SELECT = {
+  id: true,
+  name: true,
+  startDate: true,
+  endDate: true,
+  emoji: true,
+  type: true,
+  shortDescription: true,
+  locationDescription: true,
+  slots: true,
+  queueCount: true,
+  lecturers: {
+    select: {
+      personId: true,
+    },
+  },
+} satisfies Prisma.EventSelect;
+
+type MajorEventSubscriptionEventRecord = WorkspaceMajorEventSubscriptionEvent & {
+  lecturerPersonIds: string[];
+};
 
 @Resolver()
 export class EventSubscriptionsResolver {
@@ -376,6 +399,17 @@ export class EventSubscriptionsResolver {
     });
 
     return this.attachMajorEventSubscriptionEvents(majorEventId, subscriptions);
+  }
+
+  @Query(() => [WorkspaceMajorEventSubscriptionEvent], {
+    name: 'workspaceMajorEventSubscriptionEvents',
+    description: 'Returns all child events and current availability for a major-event subscription editor.',
+  })
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  async workspaceMajorEventSubscriptionEvents(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+  ): Promise<WorkspaceMajorEventSubscriptionEvent[]> {
+    return this.getMajorEventSubscriptionEventRecords(majorEventId);
   }
 
   @Query(() => Int, { name: 'workspaceMajorEventSubscriptionCount' })
@@ -721,27 +755,8 @@ export class EventSubscriptionsResolver {
       return [];
     }
 
-    const events = await prisma.event.findMany({
-      where: {
-        majorEventId,
-        deletedAt: null,
-        sportsMatch: { is: null },
-      },
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        lecturers: {
-          select: {
-            personId: true,
-          },
-        },
-      },
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
-    const eventIds = events.map((event) => event.id);
+    const events = await this.getMajorEventSubscriptionEventRecords(majorEventId, prisma);
+    const eventIds = events.map((event) => event.eventId);
     const subscriptionIds = subscriptions.map((subscription) => subscription.id);
     const eventSelections = await prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
@@ -764,13 +779,61 @@ export class EventSubscriptionsResolver {
 
     return subscriptions.map((subscription) => ({
       ...subscription,
-      events: events.map((event) => ({
-        eventId: event.id,
-        eventName: event.name,
-        eventStartDate: event.startDate,
-        subscribed: subscribedKeys.has(`${subscription.id}:${event.id}`),
-        isLecturerSubscription: event.lecturers.some((lecturer) => lecturer.personId === subscription.personId),
+      events: events.map(({ lecturerPersonIds, ...event }) => ({
+        ...event,
+        subscribed: subscribedKeys.has(`${subscription.id}:${event.eventId}`),
+        isLecturerSubscription: lecturerPersonIds.includes(subscription.personId),
       })),
+    }));
+  }
+
+  private async getMajorEventSubscriptionEventRecords(
+    majorEventId: string,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<MajorEventSubscriptionEventRecord[]> {
+    const events = await prisma.event.findMany({
+      where: {
+        majorEventId,
+        deletedAt: null,
+        sportsMatch: { is: null },
+      },
+      select: MAJOR_EVENT_SUBSCRIPTION_EVENT_SELECT,
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+    const eventIds = events.map((event) => event.id);
+    const activeSubscriptionCounts =
+      eventIds.length > 0
+        ? await prisma.eventSubscription.groupBy({
+            by: ['eventId'],
+            where: {
+              eventId: { in: eventIds },
+              deletedAt: null,
+            },
+            _count: { _all: true },
+          })
+        : [];
+    const activeCountByEventId = new Map(
+      activeSubscriptionCounts.map((item) => [item.eventId, item._count._all]),
+    );
+
+    return events.map((event) => ({
+      eventId: event.id,
+      eventName: event.name,
+      eventEmoji: event.emoji,
+      eventType: event.type,
+      eventShortDescription: event.shortDescription,
+      eventStartDate: event.startDate,
+      eventEndDate: event.endDate,
+      eventLocationDescription: event.locationDescription,
+      eventSlots: event.slots,
+      availableSlots:
+        event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
+      projectedQueuePosition: event.queueCount + 1,
+      subscribed: false,
+      isLecturerSubscription: false,
+      lecturerPersonIds: event.lecturers.map((lecturer) => lecturer.personId),
     }));
   }
 

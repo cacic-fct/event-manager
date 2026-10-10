@@ -1,5 +1,4 @@
 import {
-  AuditLogActorType,
   AuditLogEntityType,
   AuditLogExplorerRevertedStatus,
   AuditLogOperation,
@@ -58,15 +57,20 @@ export const AUDIT_LOG_REVERTED_STATUS_OPTIONS: readonly SelectOption<AuditLogEx
   { value: 'REVERTED', label: 'Desfeitos' },
 ];
 
-export function auditLogEntityTypeLabel(entityType: AuditLogEntityType): string {
-  return AUDIT_LOG_ENTITY_TYPE_OPTIONS.find((option) => option.value === entityType)?.label ?? entityType;
+export function auditLogEntityTypeLabel(entityType: string): string {
+  return (
+    AUDIT_LOG_ENTITY_TYPE_OPTIONS.find((option) => option.value === entityType)?.label ??
+    'Tipo de registro não identificado'
+  );
 }
 
-export function auditLogOperationLabel(operation: AuditLogOperation): string {
-  return AUDIT_LOG_OPERATION_OPTIONS.find((option) => option.value === operation)?.label ?? operation;
+export function auditLogOperationLabel(operation: string): string {
+  return (
+    AUDIT_LOG_OPERATION_OPTIONS.find((option) => option.value === operation)?.label ?? 'Ação não identificada'
+  );
 }
 
-export function auditLogActorTypeLabel(actorType: AuditLogActorType): string {
+export function auditLogActorTypeLabel(actorType: string): string {
   switch (actorType) {
     case 'USER':
       return 'Usuário';
@@ -74,6 +78,8 @@ export function auditLogActorTypeLabel(actorType: AuditLogActorType): string {
       return 'Serviço';
     case 'SYSTEM':
       return 'Sistema';
+    default:
+      return 'Tipo de autor não identificado';
   }
 }
 

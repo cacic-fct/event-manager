@@ -30,6 +30,8 @@ import { getErrorMessage } from '../../feedback/error-message';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { isFrozenMajorEvent } from '../../resource-state/frozen-resource';
 import { PermissionsService } from '../../permissions/permissions.service';
+import { ADMIN_SHELL_CONTEXT } from '../../shared/admin-shell-context';
+import { receiptProcessingStatusLabel } from '../subscription-labels';
 
 interface LastValidationAction {
   id: string;
@@ -73,6 +75,7 @@ interface EventDayGroup {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReceiptValidationPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly api = inject(ReceiptValidationApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
@@ -233,6 +236,8 @@ export class ReceiptValidationPageComponent {
   protected statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
   }
+
+  protected readonly processingStatusLabel = receiptProcessingStatusLabel;
 
   protected toggleEvent(event: ReceiptValidationEvent, checked: boolean): void {
     if (event.autoSubscribe) {

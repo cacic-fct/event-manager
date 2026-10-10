@@ -42,6 +42,7 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { buildSubscriberCsv } from '../subscriptions/subscriber-csv-export';
+import { attendanceCurrentAssessmentLabel } from './attendance-labels';
 
 type AttendanceListItem = {
   eventId: string;
@@ -91,7 +92,7 @@ const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; de
     description: 'Presenças esperadas para inscrição e pagamento atuais.',
   },
   UNKNOWN: {
-    label: 'Indefinidas',
+    label: 'Sem classificação',
     description: 'Registros anteriores à classificação automática. A situação atual aparece em cada presença.',
   },
 };
@@ -822,24 +823,8 @@ export class AttendancesService {
     return 'Registro anterior à classificação automática.';
   }
 
-  getAttendanceCurrentAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
-    switch (assessment) {
-      case 'ACTIVITY_SUBSCRIPTION_MISSING':
-        return 'Sem inscrição ativa na atividade.';
-      case 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT':
-        return 'Pagamento do grande evento aguardando comprovante.';
-      case 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW':
-        return 'Comprovante de pagamento do grande evento em análise.';
-      case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
-        return 'Pagamento do grande evento não confirmado.';
-      case 'PRICE_TIER_NOT_ELIGIBLE':
-        return 'Faixa de preço não elegível';
-      case 'REQUIREMENTS_CURRENTLY_MET':
-        return 'Requisitos atuais atendidos.';
-      case null:
-      case undefined:
-        return null;
-    }
+  getAttendanceCurrentAssessmentLabel(assessment: string | null | undefined): string | null {
+    return attendanceCurrentAssessmentLabel(assessment);
   }
 
   getMajorEventCurrentAssessmentLabel(attendance: MajorEventUserAttendance): string | null {

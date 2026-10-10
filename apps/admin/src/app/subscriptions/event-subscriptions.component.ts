@@ -18,6 +18,7 @@ import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { subscriptionCreationMethodLabel } from './subscription-labels';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
 import { RouterLink } from '@angular/router';
 import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
@@ -53,6 +54,8 @@ export class EventSubscriptionsComponent {
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
+
+  protected readonly subscriptionCreationMethodLabel = subscriptionCreationMethodLabel;
 
   protected subscriptionAuditEntityType(subscription: WorkspaceEventSubscription): AuditLogEntityType {
     if (subscription.eventGroupSubscriptionId) {

@@ -538,12 +538,13 @@ describe('AttendancesService', () => {
     await service.refreshMajorEventUserAttendancesFor('other-major');
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledTimes(calls);
     expect(service.getAttendanceCategoryLabel('NON_REGULAR')).toBe('Não regulares');
+    expect(service.getAttendanceCategoryLabel('UNKNOWN')).toBe('Sem classificação');
     expect(service.getAttendanceCategoryHistoricalExplanation('UNKNOWN')).toBe(
       'Registro anterior à classificação automática.',
     );
     expect(service.getAttendanceCategoryHistoricalExplanation('REGULAR')).toBeNull();
     expect(service.getAttendanceCurrentAssessmentLabel('ACTIVITY_SUBSCRIPTION_MISSING')).toBe(
-      'Sem inscrição ativa na atividade.',
+      'Sem inscrição ativa na atividade',
     );
     expect(
       service.getMajorEventCurrentAssessmentLabel({
@@ -558,7 +559,7 @@ describe('AttendancesService', () => {
           },
         ],
       }),
-    ).toBe('Pagamento do grande evento aguardando comprovante.');
+    ).toBe('Aguardando comprovante do grande evento');
   });
 
   it('loads bookmarked people outside the current page and preserves them when the list changes', async () => {

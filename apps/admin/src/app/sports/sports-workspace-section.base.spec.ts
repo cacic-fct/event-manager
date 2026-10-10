@@ -94,23 +94,25 @@ describe('SportsWorkspaceSection', () => {
 
   it('provides localized labels and safe fallbacks', () => {
     expect(section.format('SWISS')).toBe('Sistema suíço');
-    expect(section.format('UNKNOWN')).toBe('UNKNOWN');
+    expect(section.format('UNKNOWN_FORMAT')).toBe('Formato não informado');
     expect(section.categoryStatus('ACTIVE')).toBe('Ativa');
-    expect(section.categoryStatus('UNKNOWN')).toBe('UNKNOWN');
+    expect(section.categoryStatus('UNKNOWN_STATUS')).toBe('Situação da modalidade não informada');
     expect(section.lineupRole('PLAYER')).toBe('Atleta');
     expect(section.lineupRole('STAFF')).toBe('Apoio');
-    expect(section.lineupRole('UNKNOWN')).toBe('Integrante');
+    expect(section.lineupRole('UNKNOWN_ROLE')).toBe('Função no elenco não informada');
     expect(section.officialRole('REFEREE')).toBe('Árbitro');
-    expect(section.officialRole('UNKNOWN')).toBe('Função esportiva');
+    expect(section.officialRole('UNKNOWN_ROLE')).toBe('Função da equipe de arbitragem não informada');
     expect(section.personDocument('529.982.247-25')).toBe('•••.982.247-••');
     expect(section.personDocument('RG-SP-42.765.123')).toBe('RG-SP-42.765.123');
     expect(section.personDocument(null)).toBe('Documento não informado');
     expect(section.changeType('LOGO')).toBe('Escudo da equipe');
-    expect(section.changeType('UNKNOWN')).toBe('Alteração da equipe');
+    expect(section.changeType('UNKNOWN_TYPE')).toBe('Tipo de alteração da equipe não informado');
     expect(section.actionType('FINALIZE')).toBe('Finalização');
-    expect(section.actionType('UNKNOWN')).toBe('Ação da partida');
+    expect(section.actionType('TIMER_RECONCILE')).toBe('Ajuste do cronômetro');
+    expect(section.actionType('OCCURRENCE')).toBe('Registro de ocorrência');
+    expect(section.actionType('UNKNOWN_TYPE')).toBe('Ação da partida não informada');
     expect(section.scoreSource('PENALTY')).toBe('Penalidade');
-    expect(section.scoreSource('UNKNOWN')).toBe('Outra origem');
+    expect(section.scoreSource('UNKNOWN_SOURCE')).toBe('Origem da pontuação não informada');
     expect(section.emoji('FUTSAL')).not.toBe('');
   });
 

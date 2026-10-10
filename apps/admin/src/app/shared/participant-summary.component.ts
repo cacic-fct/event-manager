@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { formatUnespRole } from '@cacic-fct/shared-utils';
 export interface ParticipantIdentity {
   id?: string;
   name: string;
@@ -34,8 +35,8 @@ export interface ParticipantIdentity {
         @if (identityDocument(); as document) {
           <span><mat-icon aria-hidden="true">badge</mat-icon>{{ document }}</span>
         }
-        @if (person().user?.unespRole?.length) {
-          <span><mat-icon aria-hidden="true">account_balance</mat-icon>{{ person().user?.unespRole?.join(', ') }}</span>
+        @if (unespRoleLabels(); as roleLabels) {
+          <span><mat-icon aria-hidden="true">account_balance</mat-icon>{{ roleLabels }}</span>
         }
       </span>
     </div>
@@ -90,6 +91,15 @@ export class ParticipantSummaryComponent {
   readonly maskIdentityDocument = input(true);
 
   protected readonly primaryContact = computed(() => this.person().email || this.person().phone || null);
+  protected readonly unespRoleLabels = computed(() => {
+    const person = this.person();
+    return (
+      person.user?.unespRole
+        ?.map((role) => formatUnespRole(role, person.academicId))
+        .filter((label) => label.length > 0)
+        .join(', ') ?? ''
+    );
+  });
   protected readonly identityDocument = computed(() => {
     const document = this.person().identityDocument?.trim();
     if (!document) {

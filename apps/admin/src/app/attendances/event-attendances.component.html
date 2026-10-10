@@ -232,7 +232,7 @@
                 }
                 <span matListItemLine class="attendance-item-line">
                   {{ attendance.attendedAt | date: 'short' }} · por
-                  {{ attendance.createdByMethod }}
+                  {{ attendanceCreationMethodLabel(attendance.createdByMethod) }}
                 </span>
                 @if (
                   workspace.getAttendanceCategoryHistoricalExplanation(attendance.category);

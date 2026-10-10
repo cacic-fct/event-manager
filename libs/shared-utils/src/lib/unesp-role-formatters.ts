@@ -27,5 +27,5 @@ export function formatUnespRole(
     return UNESP_GRADUATION_COURSE_LABELS[courseCode ?? ''] ?? 'Aluno da Graduação';
   }
 
-  return UNESP_ROLE_LABELS[primaryRole] ?? primaryRole;
+  return UNESP_ROLE_LABELS[primaryRole] ?? 'Vínculo com a Unesp não informado';
 }

@@ -21,6 +21,12 @@ describe('EventSubscriptionsResolver', () => {
     expect(
       Reflect.getMetadata(
         REQUIRED_PERMISSIONS_KEY,
+        EventSubscriptionsResolver.prototype.workspaceMajorEventSubscriptionEvents,
+      ),
+    ).toEqual(requiredReadScopes);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
         EventSubscriptionsResolver.prototype.workspaceMajorEventSubscription,
       ),
     ).toEqual(requiredReadScopes);
@@ -222,7 +228,9 @@ describe('EventSubscriptionsResolver', () => {
   });
 
   it('attaches event selection and lecturer state to major-event subscriptions, including closed events', async () => {
-    const createdAt = new Date('2026-06-22T12:00:00.000Z');
+    const createdAt = new Date();
+    const firstEventStartDate = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+    const secondEventStartDate = new Date(firstEventStartDate.getTime() + 24 * 60 * 60 * 1000);
     const subscription = {
       id: 'major-subscription-1',
       majorEventId: 'major-1',
@@ -252,16 +260,33 @@ describe('EventSubscriptionsResolver', () => {
           {
             id: 'event-1',
             name: 'Abertura',
-            startDate: new Date('2026-06-23T12:00:00.000Z'),
+            startDate: firstEventStartDate,
+            endDate: new Date(firstEventStartDate.getTime() + 60 * 60 * 1000),
+            emoji: '🎓',
+            type: 'PALESTRA',
+            shortDescription: null,
+            locationDescription: null,
+            slots: 10,
+            queueCount: 2,
             lecturers: [],
           },
           {
             id: 'event-2',
             name: 'Workshop',
-            startDate: new Date('2026-06-24T12:00:00.000Z'),
+            startDate: secondEventStartDate,
+            endDate: new Date(secondEventStartDate.getTime() + 2 * 60 * 60 * 1000),
+            emoji: '🛠️',
+            type: 'MINICURSO',
+            shortDescription: 'Oficina',
+            locationDescription: 'Laboratório',
+            slots: null,
+            queueCount: 0,
             lecturers: [{ personId: 'person-1' }],
           },
         ]),
+      },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 4 } }]),
       },
       majorEventSubscriptionEventSelection: {
         findMany: jest.fn().mockResolvedValue([
@@ -319,6 +344,68 @@ describe('EventSubscriptionsResolver', () => {
         where: expect.not.objectContaining({ allowSubscription: true }),
       }),
     );
+    expect(prisma.eventSubscription.groupBy).toHaveBeenCalledTimes(1);
+    expect(prisma.eventSubscription.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventId: { in: ['event-1', 'event-2'] },
+          deletedAt: null,
+        }),
+      }),
+    );
+  });
+
+  it('returns full event presentation and live slot availability for new subscriptions', async () => {
+    const startDate = new Date();
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'event-1',
+            name: 'Abertura',
+            startDate,
+            endDate,
+            emoji: '🎓',
+            type: 'PALESTRA',
+            shortDescription: 'Recepção',
+            locationDescription: 'Auditório',
+            slots: 10,
+            queueCount: 3,
+            lecturers: [],
+          },
+        ]),
+      },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 4 } }]),
+      },
+    };
+    const resolver = new EventSubscriptionsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(resolver.workspaceMajorEventSubscriptionEvents('major-1')).resolves.toEqual([
+      expect.objectContaining({
+        eventId: 'event-1',
+        eventName: 'Abertura',
+        eventEmoji: '🎓',
+        eventType: 'PALESTRA',
+        eventShortDescription: 'Recepção',
+        eventStartDate: startDate,
+        eventEndDate: endDate,
+        eventLocationDescription: 'Auditório',
+        eventSlots: 10,
+        availableSlots: 6,
+        projectedQueuePosition: 4,
+        subscribed: false,
+        isLecturerSubscription: false,
+      }),
+    ]);
+    expect(prisma.eventSubscription.groupBy).toHaveBeenCalledTimes(1);
   });
 
   it('does not load major-event events when the subscription page is empty', async () => {
@@ -620,6 +707,9 @@ describe('EventSubscriptionsResolver', () => {
       event: {
         findMany: jest.fn().mockResolvedValue(majorEventEvents()),
       },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
     };
     const prisma = {
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
@@ -800,6 +890,9 @@ describe('EventSubscriptionsResolver', () => {
       },
       event: {
         findMany: jest.fn().mockResolvedValue(majorEventEvents(['event-1', 'event-2', 'event-3'])),
+      },
+      eventSubscription: {
+        groupBy: jest.fn().mockResolvedValue([]),
       },
     };
     const notificationRecord = {
@@ -1037,7 +1130,7 @@ function majorEventSubscriptionRecord(
     createdAt?: Date;
   } = {},
 ) {
-  const createdAt = overrides.createdAt ?? new Date('2026-06-22T12:00:00.000Z');
+  const createdAt = overrides.createdAt ?? new Date();
   return {
     id: overrides.id ?? 'major-subscription-1',
     majorEventId: overrides.majorEventId ?? 'major-1',
@@ -1061,10 +1154,19 @@ function majorEventSubscriptionRecord(
 }
 
 function majorEventEvents(eventIds = ['event-1', 'event-2']) {
+  const startDate = new Date();
+
   return eventIds.map((eventId, index) => ({
     id: eventId,
     name: `Evento ${index + 1}`,
-    startDate: new Date(`2026-06-2${index + 3}T12:00:00.000Z`),
+    startDate: new Date(startDate.getTime() + index * 24 * 60 * 60 * 1000),
+    endDate: new Date(startDate.getTime() + (index * 24 + 1) * 60 * 60 * 1000),
+    emoji: '📅',
+    type: 'OTHER',
+    shortDescription: null,
+    locationDescription: null,
+    slots: null,
+    queueCount: 0,
     lecturers: [],
   }));
 }

@@ -34,6 +34,14 @@ describe('EventContextPickerComponent paged hierarchy',()=>{
     fixture.detectChanges();await flushAsync();fixture.detectChanges();return fixture;
   }
 
+  it('labels event types and uses a contextual fallback for unsupported values', async () => {
+    const fixture = await render();
+    expect(fixture.componentInstance.eventTypeLabel('MINICURSO')).toBe('Minicurso');
+    expect(fixture.componentInstance.eventTypeLabel('UNKNOWN')).toBe('Tipo de evento não informado');
+    expect(fixture.componentInstance.publicationLabel('PUBLISHED')).toBe('Publicado');
+    expect(fixture.componentInstance.publicationLabel('UNKNOWN')).toBe('Situação da publicação não informada');
+  });
+
   it('browses older root pages without entering a search and restores the previous cursor',async()=>{
     const fixture=await render();const picker=fixture.componentInstance;
     expect(api.listPage).toHaveBeenCalledWith({take:20});
