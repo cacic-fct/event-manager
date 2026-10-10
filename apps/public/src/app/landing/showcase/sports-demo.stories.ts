@@ -12,11 +12,29 @@ const meta: Meta<SportsDemoComponent> = {
 export default meta;
 type Story = StoryObj<SportsDemoComponent>;
 
-export const Match: Story = {};
+export const Match: Story = {
+  globals: { theme: 'light', motion: 'full' },
+};
+
+export const Playground: Story = {
+  globals: { theme: 'light', motion: 'full' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Classificação' }));
+    await expect(canvas.getByRole('table', { name: 'Classificação' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Partida' }));
+    await expect(canvas.getByLabelText('2 a 1')).toBeVisible();
+  },
+};
+
 export const Standings: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Classificação' }));
     await expect(canvas.getByRole('table', { name: 'Classificação' })).toBeVisible();
   },
+};
+
+export const DarkReducedMotion: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
 };

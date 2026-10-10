@@ -12,8 +12,23 @@ const meta: Meta<FeedbackDemoComponent> = {
 export default meta;
 type Story = StoryObj<FeedbackDemoComponent>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  globals: { theme: 'light', motion: 'full' },
+};
+
+export const Playground: Story = {
+  globals: { theme: 'light', motion: 'full' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const rating = canvas.getByRole('button', { name: '4 estrelas' });
+    await userEvent.click(rating);
+    await expect(rating).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByRole('button', { name: 'Enviar avaliação' })).toBeEnabled();
+  },
+};
+
 export const Response: Story = {
+  globals: { theme: 'light', motion: 'full' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Enviar avaliação' })).toBeDisabled();
@@ -21,4 +36,8 @@ export const Response: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Enviar avaliação' }));
     await expect(canvas.getByText('Obrigado pela avaliação!')).toBeVisible();
   },
+};
+
+export const DarkReducedMotion: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
 };
