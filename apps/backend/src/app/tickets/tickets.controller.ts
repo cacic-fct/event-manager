@@ -1,4 +1,14 @@
-import { Controller, ForbiddenException, Headers, MessageEvent, Param, Req, Sse, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Headers,
+  MessageEvent,
+  NotFoundException,
+  Param,
+  Req,
+  Sse,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { Observable, defer, from, merge, of, switchMap } from 'rxjs';
 import { AuthenticatedRequest, authenticateHttpRequest } from '../auth/authenticated-request';
@@ -74,7 +84,10 @@ export class AdminTicketRealtimeController {
             await this.authorization.assertPermissions(user, [permission], { eventId });
             authorized = true;
             break;
-          } catch {
+          } catch (error) {
+            if (!(error instanceof ForbiddenException || error instanceof NotFoundException)) {
+              throw error;
+            }
             // Try the other read grant because event-ticket and config scopes are independent.
           }
         }

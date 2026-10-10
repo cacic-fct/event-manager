@@ -70,6 +70,8 @@ export function getPermissionScopeLabel(scope: string): string {
       return 'Desfazer';
     case 'issue':
       return 'Emitir';
+    case 'revoke':
+      return 'Revogar';
     case 'reissue':
       return 'Reemitir';
     case 'merge':
@@ -88,6 +90,8 @@ export function getPermissionScopeLabel(scope: string): string {
       return 'Revisar';
     case 'operate':
       return 'Operar';
+    case 'manage':
+      return 'Gerenciar';
     case 'contact-read':
       return 'Ver contato';
     case 'assign-representative':
@@ -137,6 +141,12 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Comprovante';
     case 'subscription':
       return 'Inscrição';
+    case 'ticket-config':
+      return 'Configuração de bilhete';
+    case 'ticket':
+      return 'Bilhete';
+    case 'ticket-transfer':
+      return 'Transferência de bilhete';
     case 'sports-tournament':
       return 'Torneio esportivo';
     case 'sports-category':
@@ -196,6 +206,11 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'receipt_long';
     case 'subscription':
       return 'how_to_reg';
+    case 'ticket-config':
+    case 'ticket':
+      return 'confirmation_number';
+    case 'ticket-transfer':
+      return 'swap_horiz';
     case 'sports-tournament':
       return 'emoji_events';
     case 'sports-category':
@@ -241,6 +256,8 @@ export function getPermissionScopeIcon(scope: string): string {
       return 'undo';
     case 'issue':
       return 'workspace_premium';
+    case 'revoke':
+      return 'block';
     case 'reissue':
       return 'sync';
     case 'merge':
@@ -259,6 +276,8 @@ export function getPermissionScopeIcon(scope: string): string {
       return 'rate_review';
     case 'operate':
       return 'sports_score';
+    case 'manage':
+      return 'swap_horiz';
     case 'contact-read':
       return 'contact_phone';
     case 'assign-representative':
