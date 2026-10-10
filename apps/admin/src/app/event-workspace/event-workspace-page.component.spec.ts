@@ -22,7 +22,10 @@ describe('event workspace child lists', () => {
     const workspace = { context: signal(null), canReadActivities: () => true };
     TestBed.configureTestingModule({ providers: [
       { provide: ADMIN_SHELL_CONTEXT, useValue: true },
-      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ targetType: 'group', targetId: 'group-1', ...(section ? { section } : {}) })) } },
+      { provide: ActivatedRoute, useValue: {
+        paramMap: of(convertToParamMap({ targetType: 'group', targetId: 'group-1', ...(section ? { section } : {}) })),
+        snapshot: { data: {} },
+      } },
       { provide: Router, useValue: { navigate } },
       { provide: MatDialog, useValue: {} },
       { provide: EventWorkspaceContextService, useValue: workspace },

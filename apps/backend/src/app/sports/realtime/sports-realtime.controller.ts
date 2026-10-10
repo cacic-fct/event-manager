@@ -142,16 +142,19 @@ export class SportsRealtimeController {
       switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
       // Shared channels can contain restricted child data, including retained events.
       // Reduce every payload after replay so all publisher paths use the same boundary.
-      map((event) => ({
-        ...event,
-        data: {
-          type:
-            typeof event.data === 'object' && event.data?.type === 'heartbeat'
-              ? 'heartbeat'
-              : 'SPORTS_TOURNAMENT_INVALIDATED',
-          tournamentId,
-        },
-      })),
+      map((event) => {
+        const data = event.data;
+        const isHeartbeat =
+          typeof data === 'object' && data !== null && 'type' in data && data.type === 'heartbeat';
+
+        return {
+          ...event,
+          data: {
+            type: isHeartbeat ? 'heartbeat' : 'SPORTS_TOURNAMENT_INVALIDATED',
+            tournamentId,
+          },
+        };
+      }),
     );
   }
 

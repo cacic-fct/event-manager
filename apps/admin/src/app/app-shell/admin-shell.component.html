@@ -88,7 +88,7 @@
                 [matTooltipDisabled]="isMobile()"
                 matTooltipPosition="right"
                 [disabled]="eventWorkspace.scopeSwitchBlocked()"
-                (click)="switchContext(parent)">
+                (click)="switchContext(parent, 'overview')">
                 <mat-icon>arrow_upward</mat-icon
                 ><span class="nav-label"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</span>
               </button>

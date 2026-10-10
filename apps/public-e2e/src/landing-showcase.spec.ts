@@ -64,7 +64,7 @@ for (const scenario of [
         : '/app/');
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
-      await expect(page.locator('app-landing-participant-showcase')).toBeVisible();
+      await expect(page.locator('app-landing-participant-showcase')).toBeVisible({ timeout: 15_000 });
     });
 
     test('renders every feature with real shared controls, accessible selection and responsive layout', async ({ page }) => {

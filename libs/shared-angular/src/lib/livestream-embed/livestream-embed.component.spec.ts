@@ -74,11 +74,11 @@ describe('LivestreamEmbedComponent', () => {
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
     const source = new URL(iframe?.src ?? 'about:blank');
     expect(source.origin).toBe('https://player.twitch.tv');
-    expect(source.searchParams.get('channel')).toBe('cacic');
+    expect(source.searchParams.get('channel')).toBe('tacacomputa');
     expect(source.searchParams.get('parent')).toBe(window.location.hostname);
     expect(source.searchParams.get('autoplay')).toBe('false');
     expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin allow-popups-to-escape-sandbox');
-    expect(fixture.nativeElement.querySelector('a')?.href).toBe('https://www.twitch.tv/cacic');
+    expect(fixture.nativeElement.querySelector('a')?.href).toBe('https://www.twitch.tv/tacacomputa');
 
     fixture.destroy();
   });

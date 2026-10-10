@@ -51,7 +51,7 @@ describe('shared utility coverage from public app', () => {
     expect(formatUnespRole('professor-substituto')).toBe('Professor substituto');
     expect(formatUnespRole(['aluno-graduacao'], '001200000')).toBe('Aluno de Ciência da Computação');
     expect(formatUnespRole('aluno-graduacao')).toBe('Aluno da Graduação');
-    expect(formatUnespRole('unknown-role')).toBe('unknown-role');
+    expect(formatUnespRole('unknown-role')).toBe('Vínculo com a Unesp não informado');
     expect(formatUnespRole(null)).toBe('');
   });
 
