@@ -112,7 +112,11 @@ export class AuthService {
     )
       .then(async () => {
         await this.redirectToOnboardingIfNeeded(options?.returnTo, true);
-        return this.isAuthenticated();
+        const authenticated = this.isAuthenticated();
+        // Only failed attempts are memoized. A successful recovery must not
+        // outlive the session if a later /me request clears the user.
+        if (authenticated) this.authenticationRecovery = null;
+        return authenticated;
       })
       .catch((error: unknown) => {
         if (this.isExpectedUnauthenticatedError(error)) return false;

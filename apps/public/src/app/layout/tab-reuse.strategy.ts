@@ -37,7 +37,8 @@ export class AppRouteReuseStrategy implements RouteReuseStrategy, OnDestroy {
   }
 
   shouldDetach(route: ActivatedRouteSnapshot): boolean {
-    if (route.data['reuseTab'] !== true) {
+    // Failed pages must be recreated on return so their initial request retries.
+    if (route.data['reuseTab'] !== true || this.navigationTargetUrl.split(/[?#]/, 1)[0].startsWith('/error/')) {
       return false;
     }
 

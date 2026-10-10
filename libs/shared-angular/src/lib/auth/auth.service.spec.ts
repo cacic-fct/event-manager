@@ -152,6 +152,24 @@ describe('AuthService silent SSO fallback', () => {
     await expect(nextRecovery).resolves.toBe(false);
   });
 
+  it('does not reuse successful recovery after refreshMe clears the user and refresh is denied', async () => {
+    const denied = new HttpErrorResponse({ status: 401, url: '/api/auth/refresh' });
+    const http = {
+      post: vi.fn()
+        .mockReturnValueOnce(of({ expiresAt: Date.now() + 60_000 }))
+        .mockReturnValue(throwError(() => denied)),
+      get: vi.fn().mockReturnValueOnce(of({ sub: 'restored-user' })).mockReturnValue(of(null)),
+    };
+    Reflect.set(service, 'http', http);
+
+    await expect(service.ensureAuthenticated()).resolves.toBe(true);
+    await service.refreshMe();
+    expect(service.isAuthenticated()).toBe(false);
+    await expect(service.ensureAuthenticated()).resolves.toBe(false);
+    await expect(service.ensureAuthenticated()).resolves.toBe(false);
+    expect(http.post).toHaveBeenCalledTimes(3);
+  });
+
   it('throws on an unexpected restoration outage and allows a later retry', async () => {
     const outage = new HttpErrorResponse({ status: 503, url: '/api/auth/refresh' });
     const refresh = vi
