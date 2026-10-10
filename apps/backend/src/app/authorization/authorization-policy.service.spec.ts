@@ -303,6 +303,36 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toEqual(new Set(['group-1']));
   });
 
+  it('keeps legacy groups visible for major-event scoped grants', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.EventGroup.Read,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+      }),
+    ]);
+    prisma.eventGroup.findMany.mockResolvedValue([{ id: 'legacy-group' }]);
+
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.Access]), Permission.EventGroup.Read),
+    ).resolves.toEqual(new Set(['legacy-group']));
+
+    expect(prisma.eventGroup.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [
+          {
+            OR: [
+              { majorEventId: 'major-1' },
+              { majorEventId: null, events: { some: { majorEventId: 'major-1', deletedAt: null } } },
+            ],
+          },
+          { deletedAt: null },
+        ],
+      },
+      select: { id: true },
+    });
+  });
+
   it('returns empty, unrestricted, and globally granted event-group scopes', async () => {
     await expect(service.accessibleEventGroupIds(undefined, Permission.EventGroup.Read)).resolves.toEqual(new Set());
     await expect(

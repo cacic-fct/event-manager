@@ -28,57 +28,6 @@ mat-list {
   z-index: 1;
 }
 
-.group-header {
-  align-items: center;
-  color: var(--mat-sys-on-surface-variant);
-  display: flex;
-  font: var(--mat-sys-label-large);
-  gap: 8px;
-  padding: 12px 16px 4px 72px;
-}
-
-.event-row {
-  cursor: pointer;
-  min-height: 116px;
-}
-
-.event-row-disabled {
-  opacity: 0.62;
-}
-
-.event-row-readonly {
-  cursor: default;
-}
-
-.emoji-frame {
-  align-items: center;
-  display: inline-flex;
-  height: 44px;
-  justify-content: center;
-  width: 44px;
-}
-
-.twemoji {
-  display: block;
-  height: 32px;
-  width: 32px;
-}
-
-.disabled-reason {
-  color: var(--mat-sys-error);
-}
-
-.row-actions {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  min-width: 144px;
-}
-
-.info-button {
-  min-width: 80px;
-}
-
 .empty-section {
   align-items: center;
   color: var(--mat-sys-on-surface-variant);
@@ -87,23 +36,4 @@ mat-list {
   justify-items: center;
   min-height: 220px;
   text-align: center;
-}
-
-@media (max-width: 720px) {
-  .group-header {
-    padding-left: 16px;
-  }
-
-  .event-row {
-    min-height: 144px;
-  }
-
-  .row-actions {
-    flex-direction: column;
-    min-width: 72px;
-  }
-
-  .info-button {
-    min-width: 64px;
-  }
 }

@@ -34,6 +34,10 @@
     margin-left: calc(var(--publication-level) * 0.75rem);
   }
 
+  .publication-tree-children {
+    --publication-indent-step: 0.75rem;
+  }
+
   .publication-filter {
     grid-template-columns: minmax(0, 1fr) auto auto;
   }

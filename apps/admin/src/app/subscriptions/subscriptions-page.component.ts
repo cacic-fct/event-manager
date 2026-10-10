@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -12,11 +14,11 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 import { EventInterestsComponent } from './event-interests.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 @Component({
   selector: 'app-workspace-subscriptions-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTabsModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
+  imports: [EventContextPickerComponent, RouterLink, MatButtonModule, MatProgressBarModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
   templateUrl: './subscriptions-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -28,6 +30,7 @@ import { EventInterestsComponent } from './event-interests.component';
   ],
 })
 export class SubscriptionsPageComponent implements OnDestroy {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(SubscriptionsService);
@@ -36,8 +39,11 @@ export class SubscriptionsPageComponent implements OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly selectedTabIndex = signal(0);
+  readonly context = signal<EventContextRef | null>(null);
+  readonly contextLoading = signal(false);
+  readonly contextError = signal('');
   protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
+  readonly interestsMode = signal(false);
   private majorEventRouteRequest = 0;
   private receiptQueueStream: Subscription | null = null;
   private receiptQueueTargetId: string | null = null;
@@ -56,37 +62,51 @@ export class SubscriptionsPageComponent implements OnDestroy {
     this.destroyRef.onDestroy(() => this.closeReceiptQueueStream());
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const routeRequest = ++this.majorEventRouteRequest;
+      const request = ++this.majorEventRouteRequest;
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
-      const majorEventSubscriptionId = params.get('subscriptionId');
-      const interestsRoute = this.route.snapshot.url.some((segment) => segment.path === 'interests');
-
-      if (interestsRoute) {
-        this.selectedTabIndex.set(2);
+      const groupId = params.get('groupId');
+      const interests = this.route.snapshot.url.some((segment) => segment.path === 'interests');
+      this.interestsMode.set(interests);
+      const context: EventContextRef | null = eventId ? { kind: 'event', id: eventId }
+        : majorEventId ? { kind: 'major-event', id: majorEventId }
+        : groupId && interests ? { kind: 'group', id: groupId } : null;
+      this.context.set(context);
+      this.contextError.set('');
+      this.contextLoading.set(false);
+      if (interests) {
+        this.workspace.closeLiveUpdates();
+        this.closeReceiptQueueStream();
         return;
       }
-
-      if (eventId) {
-        this.selectedTabIndex.set(0);
-        void this.workspace.selectEventById(eventId);
-        return;
+      if (!context) return;
+      if (context.kind === 'event') {
+        this.closeReceiptQueueStream();
+        this.selectedMajorEventPendingReceiptsCount.set(0);
       }
-
-      if (majorEventId) {
-        this.selectedTabIndex.set(1);
-        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId, routeRequest).catch(() => {
-          if (routeRequest !== this.majorEventRouteRequest) {
-            return;
-          }
-          this.snackBar.open('Inscrição não encontrada.', 'Fechar', { duration: 5000 });
-          void this.router.navigate(['/subscriptions']);
-        });
-        return;
-      }
-
-      this.selectedTabIndex.set(0);
+      this.contextLoading.set(true);
+      const load = context.kind === 'event' ? this.workspace.selectEventById(context.id)
+        : this.openMajorEventSubscriptionRoute(context.id, params.get('subscriptionId'), request);
+      void Promise.resolve(load).catch(() => {
+        if (request === this.majorEventRouteRequest) this.contextError.set('Não foi possível abrir as inscrições deste contexto. Escolha outro ou tente novamente.');
+      }).finally(() => {
+        if (request === this.majorEventRouteRequest) this.contextLoading.set(false);
+      });
     });
+  }
+
+  selectContext(context: EventContextRef): void {
+    void this.router.navigate(['/subscriptions', context.kind, context.id, ...(this.interestsMode() ? ['interests'] : [])]);
+  }
+
+  interestsLink(): string[] {
+    const context = this.context();
+    return context ? ['/subscriptions', context.kind, context.id, 'interests'] : ['/subscriptions', 'interests'];
+  }
+
+  subscriptionsLink(): string[] {
+    const context = this.context();
+    return context && context.kind !== 'group' ? ['/subscriptions', context.kind, context.id] : ['/subscriptions'];
   }
 
   private async openMajorEventSubscriptionRoute(
@@ -131,7 +151,7 @@ export class SubscriptionsPageComponent implements OnDestroy {
       return;
     }
 
-    if (!this.permissions.has(Permission.Receipt.Read)) {
+    if (this.context()?.kind === 'event' || this.interestsMode() || !this.permissions.has(Permission.Receipt.Read)) {
       this.closeReceiptQueueStream();
       this.selectedMajorEventPendingReceiptsCount.set(0);
       return;
@@ -231,18 +251,4 @@ export class SubscriptionsPageComponent implements OnDestroy {
     this.receiptQueueTerminal = false;
   }
 
-  protected onSelectedTabIndexChange(index: number): void {
-    this.selectedTabIndex.set(index);
-    if (index === 0) {
-      void this.router.navigate(['/subscriptions']);
-      return;
-    }
-
-    const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
-    if (index === 2) {
-      void this.router.navigate(['/subscriptions/interests']);
-      return;
-    }
-    void this.router.navigate(majorEventId ? ['/subscriptions/major-event', majorEventId] : ['/subscriptions']);
-  }
 }

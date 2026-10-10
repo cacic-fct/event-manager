@@ -59,7 +59,7 @@ const loadingContext = createStoryContext({ state: 'loading' });
 const errorContext = createStoryContext({ state: 'error' });
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   parameters: storyParameters(playgroundContext),
   render: (args) => renderStory(args, playgroundContext),
   play: async ({ canvasElement }) => {

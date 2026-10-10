@@ -1,5 +1,6 @@
+import type { EventContextRef } from '../shared/event-context-picker.component';
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { input, effect, Component, DestroyRef, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -43,6 +44,7 @@ import {
   type InterestEventSelectionItem,
   type InterestEventSelectionDialogResult,
 } from './interest-event-selection-dialog.component';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
 
 interface InterestTarget {
   targetType: InterestTargetTypeValue;
@@ -72,6 +74,7 @@ interface TargetEventResolution {
     MatProgressBarModule,
     MatTooltipModule,
     TwemojiComponent,
+    ParticipantSummaryComponent,
   ],
   templateUrl: './event-interests.component.html',
   styleUrls: [
@@ -82,6 +85,7 @@ interface TargetEventResolution {
   ],
 })
 export class EventInterestsComponent {
+  readonly context = input<EventContextRef | null>(null);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventApi = inject(EventApiService);
   private readonly eventGroupApi = inject(EventGroupApiService);
@@ -95,135 +99,78 @@ export class EventInterestsComponent {
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
-  readonly targetSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
-  readonly targetQuery = signal('');
-  readonly targets = signal<InterestTarget[]>([]);
   readonly selectedTarget = signal<InterestTarget | null>(null);
   readonly interests = signal<AdminEventInterest[]>([]);
+  readonly interestCount = signal(0);
+  readonly participantSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly targetEventIds = signal<string[]>([]);
   readonly targetEvents = signal<InterestEventSelectionItem[]>([]);
   readonly loadingTargets = signal(false);
   readonly loadingInterests = signal(false);
   readonly convertingInterestId = signal<string | null>(null);
   readonly interestsPagination = createWorkspaceListPagination();
-  readonly filteredTargets = computed(() => {
-    const query = this.targetQuery().trim().toLocaleLowerCase('pt-BR');
-    if (!query) {
-      return this.targets();
-    }
-
-    return this.targets().filter((target) =>
-      `${target.name} ${target.kindLabel}`.toLocaleLowerCase('pt-BR').includes(query),
-    );
-  });
   private targetsRequest = 0;
   private interestsRequest = 0;
   private targetRealtimeSubscriptions: Subscription[] = [];
   private targetRealtimeKey = '';
 
   constructor() {
-    this.targetSearchForm.controls.query.valueChanges
-      .pipe(debounceTime(150), distinctUntilChanged(), takeUntilDestroyed())
-      .subscribe((query) => this.targetQuery.set(query));
+    effect(() => {
+      const context = this.context();
+      untracked(() => void this.loadTargets(context));
+    });
+    this.participantSearchForm.controls.query.valueChanges
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe(() => {
+        resetPagination(this.interestsPagination);
+        void this.loadInterests();
+      });
     this.realtime
       .watchWorkspace()
       .pipe(auditTime(0), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.loadTargets());
     this.destroyRef.onDestroy(() => this.closeTargetRealtime());
-    void this.loadTargets();
   }
 
-  async loadTargets(): Promise<void> {
+  async loadTargets(context = this.context()): Promise<void> {
     const request = ++this.targetsRequest;
-    this.loadingTargets.set(true);
+    const current = this.selectedTarget();
+    const targetType = context?.kind === 'event' ? InterestTargetType.EVENT
+      : context?.kind === 'group' ? InterestTargetType.EVENT_GROUP : InterestTargetType.MAJOR_EVENT;
+    const sameTarget = context !== null && current?.targetType === targetType && current.targetId === context.id;
+    if (!sameTarget) {
+      ++this.interestsRequest;
+      this.selectedTarget.set(null);
+      this.interests.set([]);
+      this.interestCount.set(0);
+      this.targetEventIds.set([]);
+      this.targetEvents.set([]);
+      this.loadingInterests.set(false);
+      resetPagination(this.interestsPagination);
+      this.closeTargetRealtime();
+    }
+    this.loadingTargets.set(context !== null);
+    if (!context) return;
+
     try {
-      await this.permissions.evaluateWorkspacePermissions();
-      const results = await Promise.allSettled([
-        this.permissions.has(Permission.Event.Read)
-          ? this.loadAllTargetPages((page) => this.eventApi.listEvents(page))
-          : Promise.resolve([]),
-        this.permissions.has(Permission.EventGroup.Read)
-          ? this.loadAllTargetPages((page) => this.eventGroupApi.listEventGroups(page))
-          : Promise.resolve([]),
-        this.permissions.has(Permission.MajorEvent.Read)
-          ? this.loadAllTargetPages((page) => this.majorEventApi.listMajorEvents(page))
-          : Promise.resolve([]),
-      ]);
-      const [eventResult, groupResult, majorResult] = results;
-      const events = eventResult.status === 'fulfilled' ? eventResult.value : [];
-      const groups = groupResult.status === 'fulfilled' ? groupResult.value : [];
-      const majorEvents = majorResult.status === 'fulfilled' ? majorResult.value : [];
-      const failure = results.find((result) => result.status === 'rejected');
-      if (failure?.status === 'rejected' && request === this.targetsRequest) {
-        this.feedback.error(failure.reason, 'Não foi possível carregar alguns eventos ou grupos. Tente novamente.');
-      }
-      if (request !== this.targetsRequest) {
-        return;
-      }
-
-      const targets: InterestTarget[] = [
-        ...events
-          .map((event) => ({
-            interestEnabled: event.interestEnabled === true,
-            targetType: InterestTargetType.EVENT,
-            targetId: event.id,
-            name: event.name,
-            emoji: event.emoji,
-            kindLabel: 'Evento',
-            startDate: event.startDate,
-          })),
-        ...groups
-          .map((group) => ({
-            interestEnabled: group.interestEnabled === true,
-            targetType: InterestTargetType.EVENT_GROUP,
-            targetId: group.id,
-            name: group.name,
-            emoji: group.emoji,
-            kindLabel: 'Grupo de eventos',
-            startDate: null,
-          })),
-        ...majorEvents
-          .map((majorEvent) => ({
-            interestEnabled: majorEvent.interestEnabled === true,
-            targetType: InterestTargetType.MAJOR_EVENT,
-            targetId: majorEvent.id,
-            name: majorEvent.name,
-            emoji: majorEvent.emoji,
-            kindLabel: 'Grande evento',
-            startDate: majorEvent.startDate,
-          })),
-      ].sort((left, right) => {
-        if (!left.startDate && !right.startDate) {
-          return left.name.localeCompare(right.name, 'pt-BR');
-        }
-        if (!left.startDate) return 1;
-        if (!right.startDate) return -1;
-        return left.startDate.localeCompare(right.startDate);
+      const entity = context.kind === 'event' ? await firstValueFrom(this.eventApi.getEvent(context.id))
+        : context.kind === 'group' ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
+        : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
+      if (request !== this.targetsRequest) return;
+      this.selectedTarget.set({
+        targetType,
+        targetId: entity.id,
+        name: entity.name,
+        emoji: entity.emoji,
+        kindLabel: this.targetTypeLabel(targetType),
+        interestEnabled: entity.interestEnabled === true,
+        startDate: 'startDate' in entity ? entity.startDate : null,
       });
-
-      this.targets.set(targets);
-      const current = this.selectedTarget();
-      const next = current
-        ? targets.find((target) => this.targetKey(target) === this.targetKey(current))
-        : targets[0];
-      if (next) {
-        if (current && this.targetKey(current) === this.targetKey(next)) {
-          this.selectedTarget.set(next);
-          await this.loadInterests();
-        } else {
-          await this.selectTarget(next);
-        }
-      } else {
-        this.selectedTarget.set(null);
-        this.interests.set([]);
-        this.closeTargetRealtime();
-      }
+      await this.loadInterests();
     } catch (error) {
-      this.feedback.error(error, 'Não foi possível carregar os interesses.');
+      if (request === this.targetsRequest) this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
     } finally {
-      if (request === this.targetsRequest) {
-        this.loadingTargets.set(false);
-      }
+      if (request === this.targetsRequest) this.loadingTargets.set(false);
     }
   }
 
@@ -237,16 +184,22 @@ export class EventInterestsComponent {
     const target = this.selectedTarget();
     if (!target) {
       this.interests.set([]);
+      this.interestCount.set(0);
       this.targetEventIds.set([]);
       this.targetEvents.set([]);
       return;
     }
 
     const request = ++this.interestsRequest;
+    const query = this.participantSearchForm.controls.query.value.trim() || undefined;
     this.loadingInterests.set(true);
     try {
-      const [interests, targetEventResolution] = await Promise.all([
-        firstValueFrom(this.api.listInterests(target.targetType, target.targetId, pageVariables(this.interestsPagination.pageIndex()))),
+      const [interests, count, targetEventResolution] = await Promise.all([
+        firstValueFrom(this.api.listInterests(target.targetType, target.targetId, {
+          query,
+          ...pageVariables(this.interestsPagination.pageIndex()),
+        })),
+        firstValueFrom(this.api.countInterests(target.targetType, target.targetId, query)),
         this.resolveTargetEventIds(target),
       ]);
       if (request !== this.interestsRequest || this.selectedTarget() !== target) {
@@ -256,6 +209,7 @@ export class EventInterestsComponent {
       this.targetEvents.set(targetEventResolution.events);
       this.syncTargetRealtime(target, targetEventResolution.eventIds);
       this.interests.set(applyPagedResult(interests, this.interestsPagination));
+      this.interestCount.set(count);
     } catch (error) {
       if (request === this.interestsRequest) {
         this.feedback.error(error, 'Não foi possível carregar a lista de interessados.');
@@ -342,8 +296,8 @@ export class EventInterestsComponent {
   }
 
   interestCountLabel(): string {
-    const count = this.interests().length;
-    return `${count} ${count === 1 ? 'interesse' : 'interesses'} nesta página`;
+    const count = this.interestCount();
+    return `${count} ${count === 1 ? 'interesse' : 'interesses'}`;
   }
 
   interestPaginationLabel(): string {

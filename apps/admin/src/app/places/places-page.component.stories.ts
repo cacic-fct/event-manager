@@ -126,7 +126,7 @@ type Story = StoryObj<PlacesTabStoryArgs>;
 
 async function exerciseStory(canvasElement: HTMLElement): Promise<void> {
   const canvas = within(canvasElement);
-  await expect(await canvas.findByText('Novo local')).toBeVisible();
+  await expect(await canvas.findByRole('heading', { name: 'Novo local' })).toBeVisible();
   await userEvent.type(await canvas.findByLabelText(/buscar local/i), 'auditório');
 }
 
@@ -163,4 +163,16 @@ export const LongNamesMobile: Story = {
   args: { placeCount: 16, longNames: true, incompleteEvery: 3, latencyMs: 0 },
   parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const CoordinateDisclosure: Story = {
+  args: { placeCount: 2, latencyMs: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const coordinates = await canvas.findByRole('button', { name: 'Ajustar coordenadas' });
+    await expect(coordinates).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(coordinates);
+    await expect(canvas.getByLabelText('Latitude')).toBeVisible();
+    await expect(canvas.getByLabelText('Longitude')).toBeVisible();
+  },
 };

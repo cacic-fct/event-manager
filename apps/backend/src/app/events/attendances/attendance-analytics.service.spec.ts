@@ -101,6 +101,90 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
     });
     expect(result.scansPerMinute).toHaveLength(2);
   });
+
+  it('uses the sports tournament major-event scope in review links', async () => {
+    const prisma = {
+      attendanceReviewFlag: { findMany: jest.fn().mockResolvedValue([]) },
+      sportsMatchAction: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'action-1',
+            type: 'UPDATE_SCORE',
+            actorUserId: 'operator-1',
+            authoredAt: new Date('2026-08-16T18:00:00.000Z'),
+            offline: false,
+          },
+        ]),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'operator-1', name: 'Operador' }]) },
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'event-1',
+          name: 'Partida',
+          emoji: '🏆',
+          startDate: new Date('2026-08-16T18:00:00.000Z'),
+          latitude: null,
+          longitude: null,
+          allowSubscription: false,
+          majorEventId: 'major-1',
+          autoSubscribe: false,
+          attendanceEligibility: 'ANYONE',
+          eventGroup: null,
+          majorEvent: null,
+          sportsMatch: {
+            id: 'match-1',
+            category: {
+              tournamentId: 'tournament-1',
+              tournament: { majorEventId: 'major / 1' },
+            },
+          },
+        }),
+      },
+    };
+    const service = new AttendanceAnalyticsService(prisma as never, {} as never);
+
+    const findEvent = (service as unknown as { findEvent: (eventId: string) => Promise<unknown> }).findEvent;
+    await findEvent.call(service, 'event-1');
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          sportsMatch: {
+            select: {
+              id: true,
+              category: {
+                select: {
+                  tournamentId: true,
+                  tournament: { select: { majorEventId: true } },
+                },
+              },
+            },
+          },
+        }),
+      }),
+    );
+
+    const reviewItems = await (
+      service as unknown as {
+        reviewItems: (event: unknown) => Promise<ReadonlyArray<{ deepLink?: string }>>;
+      }
+    ).reviewItems({
+      id: 'event-1',
+      sportsMatch: {
+        id: 'match-1',
+        category: {
+          tournamentId: 'tournament-1',
+          tournament: { majorEventId: 'major / 1' },
+        },
+      },
+    });
+
+    expect(reviewItems).toEqual([
+      expect.objectContaining({
+        id: 'sports:action-1',
+        deepLink: '/sports/major-event/major%20%2F%201/reviews',
+      }),
+    ]);
+  });
 });
 
 describe('attendance analytics heatmap', () => {

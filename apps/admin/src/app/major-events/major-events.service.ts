@@ -1,4 +1,5 @@
-import { DestroyRef, Service, inject, signal } from '@angular/core';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -38,6 +39,9 @@ const DEFAULT_MAJOR_EVENT_DURATION_DAYS = 1;
 
 @Service()
 export class MajorEventsService {
+  private readonly workspaceContext = inject(EventWorkspaceContextService);
+  private selectionRequest = 0;
+  private loadedSelectionId: string | null = null;
   private readonly api = inject(MajorEventApiService);
   private readonly eventsApi = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);
@@ -53,6 +57,8 @@ export class MajorEventsService {
   readonly loading = this.ui.loading;
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly majorEventsPagination = createWorkspaceListPagination();
+  private majorEventListRequest = 0;
+  readonly majorEventsSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
   readonly majorEventEventSearchResults = signal<Event[]>([]);
@@ -109,8 +115,19 @@ export class MajorEventsService {
   readonly majorEventEventSearchForm = this.formBuilder.nonNullable.group({
     query: ['', [Validators.required]],
   });
+  private readonly editorRevision = signal(0);
+  private readonly editorBaseline = signal('');
+  readonly unsavedChanges = computed(() => {
+    this.editorRevision();
+    return this.editorBaseline() !== this.editorSignature();
+  });
 
   constructor() {
+    bindLiveSearch({
+      control: this.majorEventsSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchMajorEvents(),
+    });
     bindLiveSearch({
       control: this.majorEventEventSearchForm.controls.query,
       destroyRef: this.destroyRef,
@@ -120,6 +137,8 @@ export class MajorEventsService {
       this.syncCertificateExceptionControls(),
     );
     this.majorEventForm.controls.priceType.valueChanges.subscribe((type) => this.syncPriceTierControls(type));
+    this.majorEventForm.valueChanges.subscribe(() => this.editorRevision.update((revision) => revision + 1));
+    this.captureEditorBaseline();
   }
 
   setMajorEventAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
@@ -166,7 +185,13 @@ export class MajorEventsService {
   }
 
   async loadMajorEvents(): Promise<void> {
-    const items = await firstValueFrom(this.api.listMajorEvents(pageVariables(this.majorEventsPagination.pageIndex())));
+    const request = ++this.majorEventListRequest;
+    const query = this.majorEventsSearchForm.controls.query.value.trim();
+    const items = await firstValueFrom(this.api.listMajorEvents({
+      ...(query ? { query } : {}),
+      ...pageVariables(this.majorEventsPagination.pageIndex()),
+    }));
+    if (request !== this.majorEventListRequest) return;
     this.majorEvents.set(applyPagedResult(items, this.majorEventsPagination));
     const selectedMajorEvent = this.selectedMajorEvent();
     if (selectedMajorEvent) {
@@ -175,6 +200,11 @@ export class MajorEventsService {
         this.selectedMajorEvent.set(refreshed);
       }
     }
+  }
+
+  async searchMajorEvents(): Promise<void> {
+    this.majorEventsPagination.pageIndex.set(0);
+    await this.loadMajorEvents();
   }
 
   async previousMajorEventsPage(): Promise<void> {
@@ -186,6 +216,7 @@ export class MajorEventsService {
   }
 
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    const saveRequest = this.selectionRequest;
     if (this.hasInvalidDateRange()) {
       this.majorEventForm.markAllAsTouched();
       return;
@@ -214,8 +245,10 @@ export class MajorEventsService {
       } else {
         savedMajorEvent = await firstValueFrom(this.api.createMajorEvent(payload));
       }
-      this.majorEventForm.controls.id.setValue(savedMajorEvent.id, { emitEvent: false });
-      this.selectedMajorEvent.set(savedMajorEvent);
+      if (saveRequest === this.selectionRequest) {
+        this.majorEventForm.controls.id.setValue(savedMajorEvent.id, { emitEvent: false });
+        this.selectedMajorEvent.set(savedMajorEvent);
+      }
 
       if (action === 'PUBLISH') {
         if (!raw.id) {
@@ -242,16 +275,21 @@ export class MajorEventsService {
       }
 
       await this.loadMajorEvents();
+      if (saveRequest !== this.selectionRequest) return;
       if (action === 'SCHEDULE') {
+        this.captureEditorBaseline();
         void this.router.navigate(this.majorEventPublicationRoute(savedMajorEvent.id));
         return;
       }
 
-      if (raw.id) {
-        await this.pickMajorEvent(savedMajorEvent);
-      } else {
-        this.resetMajorEventForm();
-      }
+      if (saveRequest !== this.selectionRequest) return;
+      this.populateMajorEventSelection(savedMajorEvent);
+      this.workspaceContext.context.update((context) => context?.kind === 'major-event' && context.id === savedMajorEvent.id
+        ? {...context,name:savedMajorEvent.name,emoji:savedMajorEvent.emoji,startDate:savedMajorEvent.startDate,endDate:savedMajorEvent.endDate} : context);
+      await this.loadEventsForMajorEvent(savedMajorEvent.id, saveRequest);
+      if (saveRequest !== this.selectionRequest) return;
+      this.loadedSelectionId = savedMajorEvent.id;
+      void this.router.navigate(['/event-workspace', 'major-event', savedMajorEvent.id, 'settings']);
     } catch (error) {
       this.feedback.error(error, 'Não foi possível salvar o grande evento.');
     } finally {
@@ -281,8 +319,10 @@ export class MajorEventsService {
     void this.router.navigate(['/forms', 'major-event', selectedMajorEvent.id]);
   }
 
-  resetMajorEventForm(): void {
-    void this.router.navigate(['/major-events']);
+  resetMajorEventForm(navigate = true): void {
+    this.selectionRequest++;
+    this.loadedSelectionId = null;
+    if (navigate) void this.router.navigate(['/event-workspace/new/major-event']);
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
     this.majorEventEventSearchResults.set([]);
@@ -329,21 +369,25 @@ export class MajorEventsService {
       priceType: 'SINGLE',
     });
     this.resetPriceTiers([this.createPriceTierGroup(null, 'Preço único', '', false)]);
+    this.captureEditorBaseline();
   }
 
   async pickMajorEvent(majorEvent: MajorEvent): Promise<void> {
-    void this.router.navigate(['/major-events', majorEvent.id]);
-    const details = await firstValueFrom(this.api.getMajorEvent(majorEvent.id));
-    this.populateMajorEventSelection(details);
+    void this.router.navigate(['/event-workspace', 'major-event', majorEvent.id, 'settings']);
+    await this.pickMajorEventById(majorEvent.id);
   }
 
   async pickMajorEventById(majorEventId: string): Promise<void> {
-    if (this.selectedMajorEvent()?.id === majorEventId) {
+    const request = ++this.selectionRequest;
+    if (this.loadedSelectionId === majorEventId && this.selectedMajorEvent()?.id === majorEventId) {
       return;
     }
 
     const majorEvent = await firstValueFrom(this.api.getMajorEvent(majorEventId));
+    if (request !== this.selectionRequest) return;
     this.populateMajorEventSelection(majorEvent);
+    await this.loadEventsForMajorEvent(majorEventId, request);
+    if (request === this.selectionRequest) this.loadedSelectionId = majorEventId;
   }
 
   private populateMajorEventSelection(majorEvent: MajorEvent): void {
@@ -412,7 +456,18 @@ export class MajorEventsService {
         : [this.createPriceTierGroup(null, 'Preço único', '', false)],
     );
     this.syncCertificateExceptionControls();
-    void this.loadEventsForMajorEvent(majorEvent.id);
+    this.captureEditorBaseline();
+  }
+
+  private editorSignature(): string {
+    return JSON.stringify({
+      form: this.majorEventForm.getRawValue(),
+      audienceInvitations: this.majorEventAudienceInvitations().map((person) => person.id),
+    });
+  }
+
+  private captureEditorBaseline(): void {
+    this.editorBaseline.set(this.editorSignature());
   }
 
   async deleteMajorEvent(id: string): Promise<void> {
@@ -614,7 +669,7 @@ export class MajorEventsService {
     return ['/publication', 'major-event', majorEventId];
   }
 
-  private async loadEventsForMajorEvent(majorEventId: string): Promise<void> {
+  private async loadEventsForMajorEvent(majorEventId: string, request = this.selectionRequest): Promise<void> {
     const events = await firstValueFrom(
       this.eventsApi.listEvents({
         majorEventId,
@@ -622,6 +677,7 @@ export class MajorEventsService {
       }),
     );
 
+    if (request !== this.selectionRequest || this.selectedMajorEvent()?.id !== majorEventId) return;
     this.majorEventEvents.set([...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)));
   }
 

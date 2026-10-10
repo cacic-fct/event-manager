@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { NovuInboxComponent } from '@cacic-fct/shared-notifications-angular/inbox';
 
 @Component({
   selector: 'app-workspace-notifications-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NovuInboxComponent],
-  template: ` <lib-novu-inbox title="" /> `,
+  template: ` <lib-novu-inbox title="Caixa de entrada" [markReadOnOpen]="false" [showUnreadFilter]="true" /> `,
 })
 export class NotificationsPageComponent {}

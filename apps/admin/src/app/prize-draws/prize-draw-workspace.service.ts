@@ -24,6 +24,16 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { bindLiveSearch } from '../search/live-search';
+import type { EventTargetSelection } from '../shared/event-target-picker.component';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  pageVariables,
+  resetPagination,
+} from '../pagination/list-pagination';
 
 @Service()
 export class PrizeDrawWorkspaceService {
@@ -43,6 +53,8 @@ export class PrizeDrawWorkspaceService {
   private liveSubscription?: Subscription;
   private liveRefreshRunning = false;
   private liveRefreshQueued = false;
+  private listRequestGeneration = 0;
+  private targetRequestGeneration = 0;
 
   readonly loading = signal(false);
   readonly draws = signal<PrizeDraw[]>([]);
@@ -61,6 +73,23 @@ export class PrizeDrawWorkspaceService {
   readonly contactLoadingSpinId = signal<string | null>(null);
   readonly reducedMotion = signal(false);
   readonly unsavedChanges = signal(false);
+  readonly listFiltersForm = this.formBuilder.nonNullable.group({ query: [''] });
+  readonly targetSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
+  readonly scopeFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
+  readonly drawsPagination = createWorkspaceListPagination();
+  readonly targetSearchLoading = signal(false);
+  readonly scopeFilterId = computed(() => {
+    const filter = this.scopeFilter();
+    return filter?.eventId ? `event:${filter.eventId}` : filter?.majorEventId ? `major-event:${filter.majorEventId}` : null;
+  });
+  readonly scopeFilterLabel = computed(() => {
+    const filter = this.scopeFilter();
+    if (filter?.eventId) return this.events().find((event) => event.id === filter.eventId)?.name ?? 'Evento selecionado';
+    if (filter?.majorEventId) {
+      return this.majorEvents().find((event) => event.id === filter.majorEventId)?.name ?? 'Grande evento selecionado';
+    }
+    return 'Todos os sorteios';
+  });
 
   readonly form = this.formBuilder.nonNullable.group({
     title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(160)]],
@@ -81,6 +110,15 @@ export class PrizeDrawWorkspaceService {
   });
   private readonly formStatus = toSignal(this.form.statusChanges, { initialValue: this.form.status });
   private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  private readonly selectedTargetSummary = signal<EventTargetSelection | null>(null);
+  readonly targetSummary = computed(() => {
+    this.formValue();
+    const value = this.form.getRawValue();
+    const id = value.targetType === 'EVENT' ? value.eventId : value.majorEventId;
+    const summary = this.selectedTargetSummary();
+    if (summary?.id === id) return summary;
+    return (value.targetType === 'EVENT' ? this.events() : this.majorEvents()).find((target) => target.id === id) ?? null;
+  });
   readonly canSave = computed(() => {
     this.formStatus();
     this.formValue();
@@ -98,6 +136,16 @@ export class PrizeDrawWorkspaceService {
 
   constructor() {
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.unsavedChanges.set(true));
+    bindLiveSearch({
+      control: this.listFiltersForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.applyListFilters(),
+    });
+    bindLiveSearch({
+      control: this.targetSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.loadTargets(),
+    });
     if (isPlatformBrowser(this.platformId) && typeof matchMedia === 'function') {
       const query = matchMedia('(prefers-reduced-motion: reduce)');
       this.reducedMotion.set(query.matches);
@@ -110,18 +158,13 @@ export class PrizeDrawWorkspaceService {
   }
 
   async initialize(drawId?: string | null): Promise<void> {
+    const generation = ++this.selectionRequestGeneration;
     this.loading.set(true);
     try {
-      const [draws, events, majorEvents] = await Promise.all([
-        firstValueFrom(this.api.list()),
-        firstValueFrom(this.eventApi.listEvents({ take: 500 })),
-        firstValueFrom(this.majorEventApi.listMajorEvents({ take: 500 })),
-      ]);
-      this.draws.set(draws);
-      this.events.set(events);
-      this.majorEvents.set(majorEvents);
-      if (drawId) await this.selectById(drawId, false);
-      else if (!this.selected()) this.createNew(false);
+      await Promise.all([this.loadDraws(), this.loadTargets()]);
+      if (generation !== this.selectionRequestGeneration) return;
+      if (drawId && this.selected()?.id !== drawId) await this.selectById(drawId, false);
+      else if (!drawId && !this.unsavedChanges()) this.createNew(false);
     } catch (error) {
       this.feedback.error(error, 'Não foi possível carregar os sorteios.');
     } finally {
@@ -141,14 +184,9 @@ export class PrizeDrawWorkspaceService {
         const selectedId = this.selected()?.id;
         const selectionGeneration = this.selectionRequestGeneration;
         const hadUnsavedChanges = this.unsavedChanges();
-        const [draws, events, majorEvents] = await Promise.all([
-          firstValueFrom(this.api.list()),
-          firstValueFrom(this.eventApi.listEvents({ take: 500 })),
-          firstValueFrom(this.majorEventApi.listMajorEvents({ take: 500 })),
-        ]);
-        this.draws.set(draws);
-        this.events.set(events);
-        this.majorEvents.set(majorEvents);
+        if (!(await this.loadDraws())) {
+          throw new Error('Prize draw list refresh failed.');
+        }
         if (
           !selectedId ||
           hadUnsavedChanges ||
@@ -182,6 +220,7 @@ export class PrizeDrawWorkspaceService {
   }
 
   createNew(navigate = true): void {
+    this.selectedTargetSummary.set(null);
     this.selectionRequestGeneration += 1;
     this.selected.set(null);
     this.plannedSpins.set([]);
@@ -193,9 +232,9 @@ export class PrizeDrawWorkspaceService {
     this.form.reset({
       title: '',
       description: '',
-      targetType: 'EVENT',
-      eventId: '',
-      majorEventId: '',
+      targetType: this.scopeFilter()?.majorEventId ? 'MAJOR_EVENT' : 'EVENT',
+      eventId: this.scopeFilter()?.eventId ?? '',
+      majorEventId: this.scopeFilter()?.majorEventId ?? '',
       includePresent: true,
       includeSubscribers: false,
       includeManualEntries: false,
@@ -209,7 +248,13 @@ export class PrizeDrawWorkspaceService {
     });
     this.setEligibilityControlsDisabled(false);
     this.unsavedChanges.set(false);
-    if (navigate) void this.router.navigate(['/draws']);
+    if (navigate) this.navigateToDraw();
+  }
+
+  discardChanges(): void {
+    const saved = this.selected();
+    if (saved) this.patch(saved);
+    else this.createNew(false);
   }
 
   async select(draw: PrizeDraw): Promise<void> {
@@ -223,7 +268,7 @@ export class PrizeDrawWorkspaceService {
       const draw = await firstValueFrom(this.api.get(drawId));
       if (requestGeneration !== this.selectionRequestGeneration) return;
       this.patch(draw);
-      if (navigate) void this.router.navigate(['/draws', draw.id]);
+      if (navigate) this.navigateToDraw(draw.id);
       await this.loadEligibleEntries(requestGeneration);
     } catch (error) {
       if (requestGeneration === this.selectionRequestGeneration) {
@@ -235,8 +280,45 @@ export class PrizeDrawWorkspaceService {
   }
 
   updateTargetType(): void {
+    this.selectedTargetSummary.set(null);
     if (this.form.controls.targetType.value === 'EVENT') this.form.controls.majorEventId.setValue('');
     else this.form.controls.eventId.setValue('');
+  }
+
+  selectTarget(target: EventTargetSelection): void {
+    const type = this.form.controls.targetType.value;
+    if (this.form.controls[type === 'EVENT' ? 'eventId' : 'majorEventId'].disabled) return;
+    this.selectedTargetSummary.set(target);
+    this.form.patchValue(type === 'EVENT' ? { eventId: target.id, majorEventId: '' } : { eventId: '', majorEventId: target.id });
+  }
+
+  async selectAllDraws(): Promise<void> {
+    await this.changeScope(null);
+  }
+
+  async selectEventScope(event: Event): Promise<void> {
+    await this.changeScope({ eventId: event.id });
+  }
+
+  async selectMajorEventScope(majorEvent: MajorEvent): Promise<void> {
+    await this.changeScope({ majorEventId: majorEvent.id });
+  }
+
+  async applyListFilters(): Promise<void> {
+    resetPagination(this.drawsPagination);
+    await this.loadDraws();
+  }
+
+  async previousDrawsPage(): Promise<void> {
+    await loadPreviousPage(this.drawsPagination, async () => {
+      await this.loadDraws();
+    });
+  }
+
+  async nextDrawsPage(): Promise<void> {
+    await loadNextPage(this.drawsPagination, async () => {
+      await this.loadDraws();
+    });
   }
 
   updateSpinLimit(): void {
@@ -377,7 +459,7 @@ export class PrizeDrawWorkspaceService {
       this.patch(saved);
       await this.refreshList();
       await this.loadEligibleEntries();
-      void this.router.navigate(['/draws', saved.id]);
+      this.navigateToDraw(saved.id);
       this.snackbar.open('Configuração do sorteio salva.', 'Fechar', { duration: 3000 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível salvar o sorteio.');
@@ -438,11 +520,18 @@ export class PrizeDrawWorkspaceService {
   }
 
   sourceLabel(source: string): string {
-    return { ATTENDANCE: 'Presença', SUBSCRIPTION: 'Inscrição', MANUAL: 'Manual' }[source] ?? source;
+    return { ATTENDANCE: 'Presença', SUBSCRIPTION: 'Inscrição', MANUAL: 'Manual' }[source] ?? 'Origem da participação não informada';
   }
 
   private patch(draw: PrizeDraw): void {
+    this.selectedTargetSummary.set(null);
     this.selected.set(draw);
+    if (draw.target.type === 'EVENT' && !this.events().some((event) => event.id === draw.target.id)) {
+      this.events.update((events) => [{ id: draw.target.id, name: draw.target.name } as Event, ...events]);
+    }
+    if (draw.target.type === 'MAJOR_EVENT' && !this.majorEvents().some((event) => event.id === draw.target.id)) {
+      this.majorEvents.update((events) => [{ id: draw.target.id, name: draw.target.name } as MajorEvent, ...events]);
+    }
     this.plannedSpins.set(draw.plannedSpins.map((spin) => ({ ...spin })));
     this.manualEntries.set(draw.manualEntries.map((entry) => ({ ...entry })));
     this.weightOverrides.set(Object.fromEntries(draw.weightOverrides.map((entry) => [entry.personId, entry.weight])));
@@ -511,8 +600,121 @@ export class PrizeDrawWorkspaceService {
     }
   }
 
+  async loadTargets(): Promise<void> {
+    const requestGeneration = ++this.targetRequestGeneration;
+    this.targetSearchLoading.set(true);
+    try {
+      const query = this.targetSearchForm.controls.query.value.trim() || undefined;
+      const [events, majorEvents] = await Promise.all([
+        firstValueFrom(this.eventApi.listEvents({ query, take: 20 })),
+        firstValueFrom(this.majorEventApi.listMajorEvents({ query, take: 20 })),
+      ]);
+      const value = this.form.getRawValue();
+      const eventId = value.eventId || this.scopeFilter()?.eventId;
+      const majorEventId = value.majorEventId || this.scopeFilter()?.majorEventId;
+      const [scopedEvent, scopedMajorEvent] = await Promise.all([
+        eventId && !events.some((event) => event.id === eventId)
+          ? firstValueFrom(this.eventApi.getEvent(eventId)) : Promise.resolve(null),
+        majorEventId && !majorEvents.some((event) => event.id === majorEventId)
+          ? firstValueFrom(this.majorEventApi.getMajorEvent(majorEventId)) : Promise.resolve(null),
+      ]);
+      if (requestGeneration !== this.targetRequestGeneration) return;
+      if (scopedEvent) events.unshift(scopedEvent);
+      if (scopedMajorEvent) majorEvents.unshift(scopedMajorEvent);
+      const selected = this.selected();
+      const selectedEvent =
+        selected?.target.type === 'EVENT' ? ({ id: selected.target.id, name: selected.target.name } as Event) : null;
+      const selectedMajorEvent =
+        selected?.target.type === 'MAJOR_EVENT'
+          ? ({ id: selected.target.id, name: selected.target.name } as MajorEvent)
+          : null;
+      this.events.set(selectedEvent && !events.some((event) => event.id === selectedEvent.id) ? [selectedEvent, ...events] : events);
+      this.majorEvents.set(
+        selectedMajorEvent && !majorEvents.some((event) => event.id === selectedMajorEvent.id)
+          ? [selectedMajorEvent, ...majorEvents]
+          : majorEvents,
+      );
+    } catch (error) {
+      if (requestGeneration === this.targetRequestGeneration) {
+        this.feedback.error(error, 'Não foi possível buscar eventos para o sorteio.');
+      }
+    } finally {
+      if (requestGeneration === this.targetRequestGeneration) this.targetSearchLoading.set(false);
+    }
+  }
+
+  async loadDraws(): Promise<boolean> {
+    const requestGeneration = ++this.listRequestGeneration;
+    const context = this.listRequestContext();
+    try {
+      const draws = await firstValueFrom(this.api.list(context));
+      if (requestGeneration !== this.listRequestGeneration || !this.isCurrentListContext(context)) return false;
+      this.draws.set(applyPagedResult(draws, this.drawsPagination));
+      return true;
+    } catch (error) {
+      if (requestGeneration === this.listRequestGeneration && this.isCurrentListContext(context)) {
+        this.feedback.error(error, 'Não foi possível carregar os sorteios.');
+      }
+      return false;
+    }
+  }
+
   private async refreshList(): Promise<void> {
-    this.draws.set(await firstValueFrom(this.api.list()));
+    await this.loadDraws();
+  }
+
+  private navigateToDraw(drawId?: string): void {
+    const commands = drawId ? ['/draws', drawId] : ['/draws'];
+    const scope = this.scopeFilter();
+    if (scope) void this.router.navigate(commands, { queryParams: scope });
+    else void this.router.navigate(commands);
+  }
+
+  async setScopeFromRoute(filter: { eventId?: string; majorEventId?: string } | null): Promise<boolean> {
+    return this.changeScope(filter, false);
+  }
+
+  private async changeScope(filter: { eventId?: string; majorEventId?: string } | null, navigate = true): Promise<boolean> {
+    const current = this.scopeFilter();
+    if (current?.eventId === filter?.eventId && current?.majorEventId === filter?.majorEventId) return true;
+    if (this.unsavedChanges()) {
+      this.snackbar.open('Salve ou descarte as alterações antes de trocar o contexto.', 'Fechar', { duration: 3500 });
+      return false;
+    }
+    this.scopeFilter.set(filter);
+    this.draws.set([]);
+    resetPagination(this.drawsPagination);
+    this.createNew(false);
+    await this.loadDraws();
+    if (navigate) this.navigateToDraw();
+    return true;
+  }
+
+  private listRequestContext(): {
+    query?: string;
+    eventId?: string;
+    majorEventId?: string;
+    skip: number;
+    take: number;
+  } {
+    const filter = this.scopeFilter();
+    return {
+      query: this.listFiltersForm.controls.query.value.trim() || undefined,
+      eventId: filter?.eventId,
+      majorEventId: filter?.majorEventId,
+      ...pageVariables(this.drawsPagination.pageIndex()),
+    };
+  }
+
+  private isCurrentListContext(context: ReturnType<PrizeDrawWorkspaceService['listRequestContext']>): boolean {
+    const current = this.listRequestContext();
+    return (
+      current.query === context.query &&
+      current.eventId === context.eventId &&
+      current.majorEventId === context.majorEventId &&
+      current.skip === context.skip &&
+      current.take === context.take
+    );
   }
 
   private normalizeWeight(value: number): number {

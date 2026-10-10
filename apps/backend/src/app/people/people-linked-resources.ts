@@ -9,6 +9,7 @@ import {
   PersonLinkedResourcePrisma,
 } from './people-linked-resource-definitions';
 import { countPersonLinkedResourceGroups } from './people-linked-resource-counts';
+import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';
 
 export { personHasLinkedData } from './people-linked-resource-counts';
 
@@ -173,7 +174,7 @@ async function buildRequestedLinkedResourcePage(
                   id: subscription.id,
                   label: subscription.eventGroup.name,
                   description: 'Inscrição em grupo de eventos',
-                  route: `/groups/${subscription.eventGroupId}`,
+                  route: adminEventWorkspacePath({ kind: 'group', id: subscription.eventGroupId }),
                   occurredAt: subscription.createdAt,
                 })),
               ),
@@ -240,7 +241,7 @@ async function buildRequestedLinkedResourcePage(
                   id: `${lecture.eventId}:${lecture.personId}:lecturer`,
                   label: lecture.event.name,
                   description: 'Ministrante',
-                  route: `/events/${lecture.eventId}`,
+                  route: adminEventWorkspacePath({ kind: 'event', id: lecture.eventId }),
                   occurredAt: lecture.createdAt,
                 })),
               ),
@@ -260,7 +261,7 @@ async function buildRequestedLinkedResourcePage(
                   id: `${collector.eventId}:${collector.personId}:collector`,
                   label: collector.event.name,
                   description: 'Coletor de presença',
-                  route: `/events/${collector.eventId}`,
+                  route: adminEventWorkspacePath({ kind: 'event', id: collector.eventId }),
                   occurredAt: collector.createdAt,
                 })),
               ),

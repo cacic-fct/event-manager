@@ -1,6 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   PLATFORM_ID,
@@ -30,11 +29,11 @@ import { filter, firstValueFrom } from 'rxjs';
 import { NovuListNotificationsArgs, NovuNotificationsService } from './novu-notifications.service';
 import { NovuPushPermissionDialogComponent } from './novu-push-permission-dialog.component';
 
-type InboxTab = 'inbox' | 'archived' | 'preferences';
+type InboxTab = 'inbox' | 'unread' | 'archived' | 'preferences';
+type NotificationRedirectResult = 'opened' | 'failed' | 'invalid' | 'none';
 
 @Component({
   selector: 'lib-novu-inbox',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     MatButtonModule,
@@ -62,15 +61,23 @@ export class NovuInboxComponent {
 
   readonly title = input('Notificações');
 
-  protected readonly tabs: InboxTab[] = ['inbox', 'archived', 'preferences'];
+  readonly markReadOnOpen = input(true);
+  readonly showUnreadFilter = input(false);
+  protected readonly tabs = computed<InboxTab[]>(() => this.showUnreadFilter()
+    ? ['inbox', 'unread', 'archived', 'preferences']
+    : ['inbox', 'archived', 'preferences']);
+  protected readonly saving = signal(false);
+  private loadVersion = 0;
   protected readonly selectedTab = signal<InboxTab>('inbox');
   protected readonly notificationList = signal<Notification[]>([]);
   protected readonly preferences = signal<Preference[]>([]);
   protected readonly loading = signal(false);
   protected readonly hasMore = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly selectedIndex = computed(() => this.tabs.indexOf(this.selectedTab()));
+  protected readonly selectedIndex = computed(() => this.tabs().indexOf(this.selectedTab()));
   protected readonly showPushBanner = computed(() => this.notifications.shouldOfferPushPermission());
+  protected readonly actionPending = signal(false);
+  protected readonly busy = computed(() => this.saving() || this.actionPending());
   private readonly accessVersion = signal(0);
   private processedAccessVersion = 0;
   private markingAccessAsRead = false;
@@ -89,7 +96,7 @@ export class NovuInboxComponent {
     effect(() => {
       const client = this.notifications.client();
       const accessVersion = this.accessVersion();
-      if (!client || accessVersion === 0 || accessVersion === this.processedAccessVersion || this.markingAccessAsRead) {
+      if (!this.markReadOnOpen() || !client || accessVersion === 0 || accessVersion === this.processedAccessVersion || this.markingAccessAsRead) {
         return;
       }
 
@@ -107,45 +114,54 @@ export class NovuInboxComponent {
   }
 
   protected selectIndex(index: number): void {
-    this.selectedTab.set(this.tabs[index] ?? 'inbox');
+    this.selectedTab.set(this.tabs()[index] ?? 'inbox');
     void this.reload();
   }
 
   protected async reload(): Promise<void> {
+    const version = ++this.loadVersion;
     this.loading.set(true);
     this.error.set(null);
 
     try {
       if (this.selectedTab() === 'preferences') {
-        this.preferences.set(await this.notifications.listPreferences());
+        const preferences = await this.notifications.listPreferences();
+        if (version === this.loadVersion) this.preferences.set(preferences);
         return;
       }
 
       const { notifications, hasMore } = await this.fetchCurrentTab();
+      if (version !== this.loadVersion) return;
       this.notificationList.set(notifications);
       this.hasMore.set(hasMore);
     } catch {
-      this.error.set('Não foi possível carregar as notificações.');
+      if (version === this.loadVersion) this.error.set('Não foi possível carregar as notificações.');
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
   }
 
   protected async loadMore(): Promise<void> {
+    if (this.loading()) return;
+    const version = this.loadVersion;
     const lastNotification = this.notificationList().at(-1);
     if (!lastNotification) {
       return;
     }
 
+    this.loading.set(true);
     try {
       const result = await this.notifications.loadMoreNotifications(
         lastNotification.createdAt,
         this.filterForCurrentTab(),
       );
+      if (version !== this.loadVersion) return;
       this.notificationList.update((notifications) => [...notifications, ...result.notifications]);
       this.hasMore.set(result.hasMore);
     } catch {
-      this.error.set('Não foi possível carregar mais notificações.');
+      if (version === this.loadVersion) this.error.set('Não foi possível carregar mais notificações.');
+    } finally {
+      if (version === this.loadVersion) this.loading.set(false);
     }
   }
 
@@ -192,70 +208,110 @@ export class NovuInboxComponent {
     channel: 'in_app' | 'push',
     enabled: boolean,
   ): Promise<void> {
-    await this.notifications.updatePreferenceChannels(preference, {
+    await this.performMutation(() => this.notifications.updatePreferenceChannels(preference, {
       ...preference.channels,
       [channel]: enabled,
-    });
-    await this.reload();
+    }));
   }
 
   protected async markAsRead(notification: Notification): Promise<void> {
-    await this.notifications.markAsRead(notification);
-    await this.reload();
+    await this.performMutation(() => this.notifications.markAsRead(notification));
   }
 
   protected async markAsUnread(notification: Notification): Promise<void> {
-    await this.notifications.markAsUnread(notification);
-    await this.reload();
+    await this.performMutation(() => this.notifications.markAsUnread(notification));
   }
 
   protected async archive(notification: Notification): Promise<void> {
-    await this.notifications.archive(notification);
-    await this.reload();
+    await this.performMutation(() => this.notifications.archive(notification));
   }
 
   protected async unarchive(notification: Notification): Promise<void> {
-    await this.notifications.unarchive(notification);
-    await this.reload();
+    await this.performMutation(() => this.notifications.unarchive(notification));
   }
 
   protected async archiveAllRead(): Promise<void> {
-    await this.notifications.archiveAllRead();
-    await this.reload();
+    await this.performMutation(() => this.notifications.archiveAllRead());
   }
 
   protected async delete(notification: Notification): Promise<void> {
-    await this.notifications.delete(notification);
-    await this.reload();
+    await this.performMutation(() => this.notifications.delete(notification));
+  }
+
+  protected async markAllAsRead(): Promise<void> {
+    await this.performMutation(() => this.notifications.markAllAsRead());
+  }
+
+  private async performMutation(
+    action: () => Promise<unknown>,
+    failureMessage = 'Não foi possível concluir a ação. Tente novamente.',
+  ): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.error.set(null);
+    try {
+      await action();
+      await this.reload();
+    } catch {
+      this.error.set(failureMessage);
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected async runPrimaryAction(notification: Notification): Promise<void> {
-    this.openRedirect(
-      notification,
-      notification.primaryAction?.redirect?.url,
-      notification.primaryAction?.redirect?.target,
-    );
+    if (this.busy()) {
+      return;
+    }
+
+    this.actionPending.set(true);
     try {
-      await this.notifications.completePrimary(notification);
-    } catch {
-      this.error.set('A notificação foi aberta, mas não foi possível registrar a ação.');
+      const redirectResult = await this.openRedirect(
+        notification,
+        notification.primaryAction?.redirect?.url,
+        notification.primaryAction?.redirect?.target,
+      );
+      if (redirectResult !== 'opened' && redirectResult !== 'none') {
+        return;
+      }
+      await this.performMutation(
+        () => this.notifications.completePrimary(notification),
+        'A notificação foi aberta, mas não foi possível registrar a ação.',
+      );
+    } finally {
+      this.actionPending.set(false);
     }
   }
 
   protected async runSecondaryAction(notification: Notification): Promise<void> {
-    this.openRedirect(
-      notification,
-      notification.secondaryAction?.redirect?.url,
-      notification.secondaryAction?.redirect?.target,
-    );
+    if (this.busy()) {
+      return;
+    }
+
+    this.actionPending.set(true);
     try {
-      await this.notifications.completeSecondary(notification);
-    } catch {
-      this.error.set('A notificação foi aberta, mas não foi possível registrar a ação.');
+      const redirectResult = await this.openRedirect(
+        notification,
+        notification.secondaryAction?.redirect?.url,
+        notification.secondaryAction?.redirect?.target,
+      );
+      if (redirectResult !== 'opened' && redirectResult !== 'none') {
+        return;
+      }
+      await this.performMutation(
+        () => this.notifications.completeSecondary(notification),
+        'A notificação foi aberta, mas não foi possível registrar a ação.',
+      );
+    } finally {
+      this.actionPending.set(false);
     }
   }
 
   protected activateNotification(event: Event, notification: Notification): void {
+    if (this.busy()) {
+      return;
+    }
+
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, input, select, textarea, [role="button"]')) {
       return;
@@ -276,25 +332,45 @@ export class NovuInboxComponent {
     notification: Notification,
     fallbackUrl = this.notificationRedirect(notification),
     fallbackTarget = notification.redirect?.target,
-  ): void {
+  ): Promise<NotificationRedirectResult> {
     if (!fallbackUrl) {
-      return;
+      return Promise.resolve('none');
     }
 
     if (fallbackUrl.startsWith('/') && !fallbackUrl.startsWith('//')) {
-      void this.router.navigateByUrl(fallbackUrl);
-      return;
+      try {
+        const navigation = this.router.navigateByUrl(fallbackUrl);
+        return navigation.then(
+          (succeeded) => {
+            if (!succeeded) {
+              this.error.set('O link desta notificação não pôde ser aberto.');
+              return 'failed';
+            }
+            return 'opened';
+          },
+          () => {
+            this.error.set('O link desta notificação não pôde ser aberto.');
+            return 'failed';
+          },
+        );
+      } catch {
+        this.error.set('O link desta notificação não pôde ser aberto.');
+        return Promise.resolve('failed');
+      }
     }
 
     try {
       const url = new URL(fallbackUrl);
       if (url.protocol === 'https:' || url.protocol === 'http:') {
+        // noopener deliberately returns null even when a new tab opens successfully.
         window.open(url.toString(), fallbackTarget ?? '_self', 'noopener,noreferrer');
-        return;
+        return Promise.resolve('opened');
       }
       this.error.set('O link desta notificação é inválido.');
+      return Promise.resolve('invalid');
     } catch {
       this.error.set('O link desta notificação é inválido.');
+      return Promise.resolve('invalid');
     }
   }
 
@@ -308,6 +384,8 @@ export class NovuInboxComponent {
 
   private filterForCurrentTab(): NovuListNotificationsArgs {
     switch (this.selectedTab()) {
+      case 'unread':
+        return { archived: false, read: false };
       case 'archived':
         return { archived: true };
       default:

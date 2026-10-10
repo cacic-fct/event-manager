@@ -119,7 +119,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -150,7 +150,7 @@ export const ManyFailures: Story = {
 export const CustomMatchType: Story = {
   args: { inferredMatchType: 'CUSTOM', failedValueCount: 0, failedCount: 0 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('Tipo inferido: CUSTOM.')).toBeVisible();
+    await expect(within(canvasElement).getByText('Tipo inferido: campo personalizado.')).toBeVisible();
   },
 };
 

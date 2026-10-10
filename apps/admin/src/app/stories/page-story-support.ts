@@ -249,9 +249,19 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     });
   }
 
+  const majorEventsSearchForm = formBuilder.nonNullable.group({ query: [''] });
+  const majorEventsQuery = signal('');
+  majorEventsSearchForm.controls.query.valueChanges.subscribe((query) => majorEventsQuery.set(query));
+
   return {
+    unsavedChanges: signal(false),
     loading: signal(args.mode === 'loading'),
-    majorEvents: signal(majorEvents),
+    majorEvents: computed(() => {
+      const query = majorEventsQuery().trim().toLocaleLowerCase('pt-BR');
+      return majorEvents.filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query));
+    }),
+    majorEventsSearchForm,
+    searchMajorEvents: async () => majorEventsQuery.set(majorEventsSearchForm.controls.query.value),
     majorEventsPagination: createWorkspaceListPagination(),
     selectedMajorEvent: signal(selectedMajorEvent),
     majorEventEvents: signal(linkedEvents),
@@ -301,6 +311,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     : [];
   const eventGroupForm = formBuilder.nonNullable.group({
     id: [''],
+    majorEventId: [''],
     name: ['', [Validators.required]],
     emoji: ['❔'],
     interestEnabled: [false],
@@ -316,7 +327,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
   });
 
   if (selectedGroup) {
-    eventGroupForm.patchValue(selectedGroup);
+    eventGroupForm.patchValue({...selectedGroup, majorEventId: selectedGroup.majorEventId ?? ''});
   }
 
   const eventSummariesSignal = signal<EventSummary[]>(eventSummaries);
@@ -335,6 +346,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
   });
 
   return {
+    unsavedChanges: signal(false),
     eventGroups: eventGroupsSignal,
     eventGroupsPagination: createWorkspaceListPagination(),
     eventSummaries: eventSummariesSignal,
@@ -354,6 +366,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     searchEventGroups: async () => undefined,
     previousEventGroupsPage: async () => undefined,
     nextEventGroupsPage: async () => undefined,
+    initializeNewEventGroup: async () => [],
     startNewEventGroup: () => undefined,
     pickEventGroup: async () => undefined,
     pickEventGroupById: async () => undefined,
@@ -487,6 +500,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
   ];
 
   return {
+    unsavedChanges: signal(false),
     majorEvents: signal(majorEvents),
     loading: signal(args.mode === 'loading'),
     events: signal(events),
@@ -547,6 +561,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     selectEvent: async () => undefined,
     selectEventDraft: async () => undefined,
     selectEventById: async () => true,
+    initializeNewEvent: async () => [],
     resetEventForm: () => undefined,
     cloneEvent: async () => undefined,
     deleteEventFromList: async () => undefined,

@@ -1,7 +1,9 @@
 <section class="section workspace-tab-shell publication-shell">
   <header class="tab-header publication-header">
     <div>
-      <h1>Publicação</h1>
+      @if (!inWorkspaceShell) {
+        <h1>Publicação</h1>
+      }
       <p>Orquestre rascunhos, agendamentos, pré-visualizações e publicação pública sem sair dos editores atuais.</p>
     </div>
     <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">
@@ -20,7 +22,7 @@
             <mat-label>Buscar</mat-label>
             <input matInput formControlName="query" />
           </mat-form-field>
-          <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar">
+          <button mat-icon-button type="submit" [disabled]="loading()" matTooltip="Buscar" aria-label="Buscar itens publicáveis">
             <mat-icon>search</mat-icon>
           </button>
           <button
@@ -28,7 +30,7 @@
             type="button"
             (click)="clearSearch()"
             [disabled]="loading()"
-            matTooltip="Limpar busca">
+            matTooltip="Limpar busca" aria-label="Limpar busca">
             <mat-icon>close</mat-icon>
           </button>
         </form>
@@ -72,7 +74,7 @@
             </span>
           </button>
           @if ((node.children?.length ?? 0) > 0 && isExpanded(node)) {
-            <ul class="publication-tree-children">
+            <ul class="publication-tree-children" [style.--publication-level]="level">
               @for (child of node.children ?? []; track nodeKey(child)) {
                 <ng-container
                   [ngTemplateOutlet]="publicationTreeNode"

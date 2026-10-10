@@ -136,16 +136,20 @@ export class AttendanceApiService {
       .pipe(map((data) => data.importMajorEventSubscriptionsFromCsv));
   }
 
-  listEventAttendances(eventId?: string, filters?: { skip?: number; take?: number; status?: EventAttendanceStatus }) {
+  listEventAttendances(
+    eventId?: string,
+    filters?: { query?: string; skip?: number; take?: number; status?: EventAttendanceStatus },
+  ) {
     return this.graphqlHttp
       .request<{ eventAttendances: EventAttendance[] }>(
         `query ListEventAttendances(
           $eventId: String
           $status: EventAttendanceStatus
+          $query: String
           $skip: Int
           $take: Int
         ) {
-          eventAttendances(eventId: $eventId, status: $status, skip: $skip, take: $take) {
+          eventAttendances(eventId: $eventId, status: $status, query: $query, skip: $skip, take: $take) {
             eventId
             personId
             attendedAt
@@ -171,18 +175,18 @@ export class AttendanceApiService {
             }
           }
         }`,
-        { eventId, status: filters?.status, skip: filters?.skip, take: filters?.take },
+        { eventId, query: filters?.query, status: filters?.status, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.eventAttendances));
   }
 
-  getEventAttendanceCount(eventId: string, status?: EventAttendanceStatus) {
+  getEventAttendanceCount(eventId: string, status?: EventAttendanceStatus, query?: string) {
     return this.graphqlHttp
       .request<{ eventAttendanceCount: number }>(
-        `query EventAttendanceCount($eventId: String!, $status: EventAttendanceStatus) {
-          eventAttendanceCount(eventId: $eventId, status: $status)
+        `query EventAttendanceCount($eventId: String!, $status: EventAttendanceStatus, $query: String) {
+          eventAttendanceCount(eventId: $eventId, status: $status, query: $query)
         }`,
-        { eventId, status },
+        { eventId, status, query },
       )
       .pipe(map((data) => data.eventAttendanceCount));
   }
@@ -510,6 +514,7 @@ export class AttendanceApiService {
     majorEventId: string,
     filters?: {
       personId?: string;
+      query?: string;
       skip?: number;
       take?: number;
     },
@@ -519,12 +524,14 @@ export class AttendanceApiService {
         `query ListMajorEventUserAttendances(
           $majorEventId: String!
           $personId: String
+          $query: String
           $skip: Int
           $take: Int
         ) {
           majorEventUserAttendances(
             majorEventId: $majorEventId
             personId: $personId
+            query: $query
             skip: $skip
             take: $take
           ) {
@@ -534,10 +541,22 @@ export class AttendanceApiService {
         {
           majorEventId,
           personId: filters?.personId,
+          query: filters?.query,
           skip: filters?.skip,
           take: filters?.take,
         },
       )
       .pipe(map((data) => data.majorEventUserAttendances));
+  }
+
+  getMajorEventUserAttendanceCount(majorEventId: string, query?: string) {
+    return this.graphqlHttp
+      .request<{ majorEventUserAttendanceCount: number }>(
+        `query MajorEventUserAttendanceCount($majorEventId: String!, $query: String) {
+          majorEventUserAttendanceCount(majorEventId: $majorEventId, query: $query)
+        }`,
+        { majorEventId, query },
+      )
+      .pipe(map((data) => data.majorEventUserAttendanceCount));
   }
 }

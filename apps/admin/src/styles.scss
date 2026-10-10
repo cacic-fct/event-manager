@@ -97,6 +97,13 @@ body {
   font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
 }
+// Keep list typography from replacing Material Symbols or resetting local icon sizes.
+.mat-mdc-list-base .mat-mdc-list-item .mat-icon.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  line-height: 1;
+  letter-spacing: normal;
+}
+
 .mat-mdc-list-base .mat-mdc-list-item {
   height: auto;
   min-height: var(--mat-list-list-item-one-line-container-height, 48px);

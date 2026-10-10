@@ -177,6 +177,19 @@ export class CertificateApiService {
       .pipe(map((data) => data.certificateConfigs));
   }
 
+  getCertificateConfig(id: string) {
+    return this.graphqlHttp
+      .request<{ certificateConfig: CertificateConfig }>(
+        `query CertificateConfig($id: String!) {
+          certificateConfig(id: $id) {
+            ${CERTIFICATE_CONFIG_FIELDS}
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.certificateConfig));
+  }
+
   listCertificates(
     scope: CertificateScope,
     targetId: string,

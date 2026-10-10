@@ -25,6 +25,7 @@ import {
   offlineSubmissionActorNameMap,
   OfflineSubmissionResponseSource,
 } from './offline-submission-response';
+import { personSearchWhere } from '../../people/person-search-where';
 
 const OFFLINE_ATTENDANCE_SUBMISSION_LIST_LIMIT = 1000;
 
@@ -42,6 +43,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
     @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceWhereInput = {};
@@ -55,6 +57,10 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
     if (status) {
       where.status = status;
+    }
+    const personQuery = personSearchWhere(query);
+    if (personQuery) {
+      where.person = personQuery;
     }
 
     const attendances = await this.prisma.eventAttendance.findMany({
@@ -130,11 +136,14 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   eventAttendanceCount(
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ): Promise<number> {
+    const personQuery = personSearchWhere(query);
     return this.prisma.eventAttendance.count({
       where: {
         ...(eventId ? { eventId } : {}),
         ...(status ? { status } : {}),
+        ...(personQuery ? { person: personQuery } : {}),
       },
     });
   }
@@ -185,6 +194,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('personId', { type: () => String, nullable: true }) personId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
   ) {
     const pagination = resolvePagination(skip, take);
     const majorEvent = await this.prisma.majorEvent.findFirst({
@@ -240,21 +250,42 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     const eventIds = events.map((event) => event.id);
+    const normalizedQuery = query?.trim();
+    const searchPattern = normalizedQuery?.replace(/[\\%_]/g, '\\$&');
+    const participantSearchFilter = normalizedQuery && searchPattern
+      ? Prisma.sql`AND (
+          p."name" ILIKE ${`%${searchPattern}%`}
+          OR p."email" ILIKE ${`%${searchPattern}%`}
+          OR ${normalizedQuery} = ANY(p."secondaryEmails")
+          OR p."phone" ILIKE ${`%${searchPattern}%`}
+          OR p."identityDocument" LIKE ${`%${searchPattern}%`}
+          OR p."academicId" LIKE ${`%${searchPattern}%`}
+        )`
+      : Prisma.empty;
+
     // Page the union before hydrating people and resolving their assessments.
     // Registrations precede attendance-only participants.
     const page = await this.prisma.$queryRaw<{ personId: string }[]>(Prisma.sql`
       WITH participants AS (
-        SELECT "personId", MAX("createdAt") AS "registeredAt", NULL::timestamp AS "attendedAt"
-        FROM major_event_subscriptions
-        WHERE "majorEventId" = ${majorEventId} AND "deletedAt" IS NULL
-          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
-        GROUP BY "personId"
+        SELECT subscription."personId", MAX(subscription."createdAt") AS "registeredAt", NULL::timestamp AS "attendedAt"
+        FROM major_event_subscriptions AS subscription
+        JOIN people AS p ON p.id = subscription."personId"
+        WHERE subscription."majorEventId" = ${majorEventId}
+          AND subscription."deletedAt" IS NULL
+          AND p."deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND subscription."personId" = ${personId}` : Prisma.empty}
+          ${participantSearchFilter}
+        GROUP BY subscription."personId"
         UNION ALL
-        SELECT "personId", NULL::timestamp AS "registeredAt", MIN("attendedAt") AS "attendedAt"
-        FROM event_attendances
-        WHERE "eventId" IN (${Prisma.join(eventIds)}) AND status = 'PRESENT'
-          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
-        GROUP BY "personId"
+        SELECT attendance."personId", NULL::timestamp AS "registeredAt", MIN(attendance."attendedAt") AS "attendedAt"
+        FROM event_attendances AS attendance
+        JOIN people AS p ON p.id = attendance."personId"
+        WHERE attendance."eventId" IN (${Prisma.join(eventIds)})
+          AND attendance.status = 'PRESENT'
+          AND p."deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND attendance."personId" = ${personId}` : Prisma.empty}
+          ${participantSearchFilter}
+        GROUP BY attendance."personId"
       )
       SELECT "personId" FROM participants
       GROUP BY "personId"
@@ -304,8 +335,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     });
 
     const attendanceByKey = new Map(
-      attendances
-        .map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
+      attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
     const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(
       attendances.flatMap((attendance) => {
@@ -354,6 +384,49 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
           };
         }),
       };
+    });
+  }
+
+  @Query(() => Int, { name: 'majorEventUserAttendanceCount' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  async majorEventUserAttendanceCount(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    const majorEvent = await this.prisma.majorEvent.findFirst({
+      where: { id: majorEventId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!majorEvent) {
+      throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+    }
+    const eventCount = await this.prisma.event.count({ where: { majorEventId, deletedAt: null } });
+    if (eventCount === 0) {
+      return 0;
+    }
+    const search = personSearchWhere(query);
+    const participationWhere: Prisma.PeopleWhereInput = {
+      OR: [
+        {
+          majorEventSubscriptions: {
+            some: { majorEventId, deletedAt: null },
+          },
+        },
+        {
+          attendances: {
+            some: {
+              status: 'PRESENT',
+              event: { majorEventId, deletedAt: null },
+            },
+          },
+        },
+      ],
+    };
+    return this.prisma.people.count({
+      where: {
+        deletedAt: null,
+        AND: [...(search ? [search] : []), participationWhere],
+      },
     });
   }
 

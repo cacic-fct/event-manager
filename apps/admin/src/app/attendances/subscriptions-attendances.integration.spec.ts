@@ -1,5 +1,4 @@
 import { DOCUMENT } from '@angular/common';
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -21,7 +20,7 @@ import {
 } from '../testing/admin-entity-fixtures';
 import { AttendancePersonResolutionDialogComponent } from './dialogs/import/attendance-person-resolution-dialog.component';
 import { AttendancesService } from './attendances.service';
-import { MajorEventsService } from '../major-events/major-events.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 describe('workspace subscription and attendance management integration', () => {
@@ -29,8 +28,10 @@ describe('workspace subscription and attendance management integration', () => {
   let attendancesService: AttendancesService;
   let subscriptionApi: {
     listEventSubscriptions: ReturnType<typeof vi.fn>;
+    countEventSubscriptions: ReturnType<typeof vi.fn>;
     createEventSubscription: ReturnType<typeof vi.fn>;
     listMajorEventSubscriptions: ReturnType<typeof vi.fn>;
+    countMajorEventSubscriptions: ReturnType<typeof vi.fn>;
     createMajorEventSubscription: ReturnType<typeof vi.fn>;
     updateMajorEventSubscription: ReturnType<typeof vi.fn>;
   };
@@ -43,6 +44,7 @@ describe('workspace subscription and attendance management integration', () => {
     deleteEventAttendance: ReturnType<typeof vi.fn>;
     importEventAttendancesFromCsv: ReturnType<typeof vi.fn>;
     listMajorEventUserAttendances: ReturnType<typeof vi.fn>;
+    getMajorEventUserAttendanceCount: ReturnType<typeof vi.fn>;
     updateOfflineEventAttendanceSubmission: ReturnType<typeof vi.fn>;
   };
   let dialog: {
@@ -59,8 +61,10 @@ describe('workspace subscription and attendance management integration', () => {
     const majorEvent = createAdminMajorEvent({ id: 'major-event-1', name: 'Semana da Computação' });
     subscriptionApi = {
       listEventSubscriptions: vi.fn(() => of([])),
+      countEventSubscriptions: vi.fn(() => of(0)),
       createEventSubscription: vi.fn(() => of(null)),
       listMajorEventSubscriptions: vi.fn(() => of([])),
+      countMajorEventSubscriptions: vi.fn(() => of(0)),
       createMajorEventSubscription: vi.fn(() => of(createAdminWorkspaceMajorEventSubscription())),
       updateMajorEventSubscription: vi.fn((id: string, input: Record<string, unknown>) =>
         of(
@@ -94,6 +98,7 @@ describe('workspace subscription and attendance management integration', () => {
       listMajorEventUserAttendances: vi.fn(() =>
         of([createAdminMajorEventUserAttendance({ majorEventId: majorEvent.id })]),
       ),
+      getMajorEventUserAttendanceCount: vi.fn(() => of(1)),
       updateOfflineEventAttendanceSubmission: vi.fn(() => of(createAdminOfflineEventAttendanceSubmission())),
     };
     dialog = {
@@ -124,7 +129,7 @@ describe('workspace subscription and attendance management integration', () => {
         { provide: MatSnackBar, useValue: snackbar },
         { provide: Router, useValue: router },
         { provide: DOCUMENT, useValue: document },
-        { provide: MajorEventsService, useValue: { majorEvents: signal([majorEvent]) } },
+        { provide: MajorEventApiService, useValue: { getMajorEvent: vi.fn(() => of(majorEvent)) } },
       ],
     }).compileComponents();
 

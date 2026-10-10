@@ -8,6 +8,11 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { AdminPrizeDrawStoryState, createAdminPrizeDrawStoryHandlers } from './prize-draw-story.handlers';
 import { PRIZE_DRAW_STORY_ID, prizeDrawStoryFullNames, prizeDrawStoryWinnerContact } from './prize-draw-story.fixtures';
 import { PrizeDrawsPageComponent } from './prize-draws-page.component';
+import { signal } from '@angular/core';
+import { graphql, HttpResponse } from 'msw';
+import { createAdminEvent, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
 
 type StoryArgs = AdminPrizeDrawStoryState & {
   canEdit: boolean;
@@ -88,12 +93,75 @@ export const Playground: Story = {
   },
 };
 
+const historicalDate = new Date(Date.now() - 7 * 86400000).toISOString();
+const targetEvents = Array.from({ length: 50 }, (_, index) => createAdminEvent({
+  id: `target-event-${index + 1}`, name: `Evento ${index + 1}`, startDate: historicalDate, endDate: historicalDate,
+}));
+const targetMajors = Array.from({ length: 50 }, (_, index) => createAdminMajorEvent({
+  id: `target-major-${index + 1}`, name: `Grande evento ${index + 1}`, startDate: historicalDate, endDate: historicalDate,
+}));
+
+export const SearchableHistoricalTargets: Story = {
+  args: { empty: true },
+  decorators: [applicationConfig({ providers: [
+    { provide: ADMIN_SHELL_CONTEXT, useValue: true },
+    { provide: EventWorkspaceContextService, useValue: { scopeSwitchBlocked: signal(false) } },
+    { provide: ActivatedRoute, useValue: {
+      paramMap: of(convertToParamMap({})),
+      queryParamMap: of(convertToParamMap({ eventId: 'target-event-49' })),
+      snapshot: { paramMap: convertToParamMap({}) },
+    } },
+  ] })],
+  parameters: { msw: { handlers: { graphql: [
+    graphql.query('ListEvents', ({ variables }) => {
+      const skip = Number(variables['skip'] ?? 0);
+      const take = Number(variables['take'] ?? 20);
+      const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
+      return HttpResponse.json({ data: { events: targetEvents.filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query)).slice(skip, skip + take) } });
+    }),
+    graphql.query('ListMajorEvents', ({ variables }) => {
+      const skip = Number(variables['skip'] ?? 0);
+      const take = Number(variables['take'] ?? 20);
+      const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
+      return HttpResponse.json({ data: { majorEvents: targetMajors.filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query)).slice(skip, skip + take) } });
+    }),
+    graphql.query('GetEvent', ({ variables }) => HttpResponse.json({ data: { event: targetEvents.find((event) => event.id === variables['id']) } })),
+    ...createAdminPrizeDrawStoryHandlers(() => activeArgs),
+  ] } } },
+  play: async ({ canvasElement }) => {
+    if (new URL(canvasElement.ownerDocument.URL).searchParams.get('embed') === 'true') return;
+    const picker = canvasElement.querySelector('app-event-target-picker');
+    if (!picker) throw new Error('Expected a searchable draw target picker.');
+    const targets = within(picker as HTMLElement);
+    await expect(await targets.findByText('Evento 49')).toBeVisible();
+    await userEvent.click(targets.getByRole('button', { name: 'Trocar' }));
+    await userEvent.click(await targets.findByRole('button', { name: 'Próxima página' }));
+    await userEvent.click(await targets.findByRole('button', { name: 'Selecionar Evento 26' }));
+    await expect(targets.getByText('Evento 26')).toBeVisible();
+  },
+};
+
 export const WeightedFrozenList: Story = {
   args: { chanceMode: 'WEIGHTED', frozen: true, eligibleCount: 42 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Lista congelada')).toBeVisible();
     await expect(canvas.getByText('Lista da configuração salva')).toBeVisible();
+  },
+};
+
+export const ScopedEventInventory: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const contextHeader = await canvas.findByRole('button', { name: /Todos os sorteios/i });
+    await expect(contextHeader).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(contextHeader);
+    await userEvent.click(await canvas.findByRole('link', { name: 'Mostrar sorteios de Abertura da SECOMPP' }));
+    await expect(
+      canvas.getByRole('button', { name: /Abertura da SECOMPP/i }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByRole('heading', { name: 'Novo sorteio' })).toBeVisible();
+    await expect(canvasElement.querySelector('app-event-target-picker')).toHaveTextContent('Abertura da SECOMPP');
   },
 };
 

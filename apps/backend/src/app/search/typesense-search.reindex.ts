@@ -62,6 +62,9 @@ export async function reindexAllSearchDocuments(input: {
       select: {
         id: true,
         name: true,
+        emoji: true,
+        majorEventId: true,
+        majorEvent: { select: { name: true, deletedAt: true } },
       },
     }),
     input.prisma.people.findMany({
@@ -118,6 +121,9 @@ export async function reindexAllSearchDocuments(input: {
       documents: eventGroups.map((eventGroup) => ({
         id: eventGroup.id,
         name: eventGroup.name,
+        emoji: eventGroup.emoji,
+        majorEventId: eventGroup.majorEventId ?? undefined,
+        majorEventName: eventGroup.majorEvent?.deletedAt ? undefined : eventGroup.majorEvent?.name,
       })),
     }),
     replaceTypesenseCollectionDocuments<PersonSearchDocument>({
@@ -174,6 +180,41 @@ export async function reindexEventSearchDocuments(input: {
         logger: input.logger,
         collectionName: TYPESENSE_COLLECTIONS.events,
         document: toEventSearchDocument(event),
+      }),
+    ),
+  );
+}
+
+export async function reindexEventGroupSearchDocuments(input: {
+  client: TypesenseClient | null;
+  logger: Logger;
+  prisma: PrismaService;
+  where: Prisma.EventGroupWhereInput;
+}): Promise<void> {
+  if (!input.client) return;
+  const groups = await input.prisma.eventGroup.findMany({
+    where: { ...input.where, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      emoji: true,
+      majorEventId: true,
+      majorEvent: { select: { name: true, deletedAt: true } },
+    },
+  });
+  await Promise.all(
+    groups.map((group) =>
+      upsertTypesenseDocument<EventGroupSearchDocument>({
+        client: input.client,
+        logger: input.logger,
+        collectionName: TYPESENSE_COLLECTIONS.eventGroups,
+        document: {
+          id: group.id,
+          name: group.name,
+          emoji: group.emoji,
+          majorEventId: group.majorEventId ?? undefined,
+          majorEventName: group.majorEvent?.deletedAt ? undefined : group.majorEvent?.name,
+        },
       }),
     ),
   );

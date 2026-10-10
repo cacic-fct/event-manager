@@ -31,6 +31,9 @@ export class PlacePresetsService {
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly loadingPlaces = signal(false);
+  readonly placesError = signal<string | null>(null);
+  private placesRequestVersion = 0;
   readonly placePresets = signal<PlacePreset[]>([]);
   readonly placePresetsPagination = createWorkspaceListPagination();
   readonly selectedPlacePreset = signal<PlacePreset | null>(null);
@@ -60,14 +63,22 @@ export class PlacePresetsService {
   }
 
   async loadPlacePresets(): Promise<void> {
+    const version = ++this.placesRequestVersion;
     const query = this.filterForm.controls.query.value.trim();
-    const items = await firstValueFrom(
-      this.api.listPlacePresets({
+    this.loadingPlaces.set(true);
+    this.placesError.set(null);
+    try {
+      const items = await firstValueFrom(this.api.listPlacePresets({
         query: query || undefined,
         ...pageVariables(this.placePresetsPagination.pageIndex()),
-      }),
-    );
-    this.placePresets.set(applyPagedResult(items, this.placePresetsPagination));
+      }));
+      if (version !== this.placesRequestVersion) return;
+      this.placePresets.set(applyPagedResult(items, this.placePresetsPagination));
+    } catch {
+      if (version === this.placesRequestVersion) this.placesError.set('Não foi possível carregar os locais. Tente novamente.');
+    } finally {
+      if (version === this.placesRequestVersion) this.loadingPlaces.set(false);
+    }
   }
 
   async searchPlacePresets(query: string, take = 10): Promise<PlacePreset[]> {

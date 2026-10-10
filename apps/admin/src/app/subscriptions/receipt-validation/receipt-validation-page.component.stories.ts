@@ -69,8 +69,11 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+
+  play: async ({ canvasElement }) => {
+    await exerciseStory(canvasElement);
+    await expect(await within(canvasElement).findByText(/Texto extraído/)).toBeVisible();
+  },
 };
 
 export const EmptyQueue: Story = {
@@ -187,7 +190,7 @@ function buildQueue(args: ReceiptValidationStoryArgs): ReceiptValidationQueue {
           expiresAt: adminFixtureDateFromNow(6, 14),
           imageUrl:
             'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200"><rect width="900" height="1200" fill="white"/><text x="100" y="180" font-size="42">Comprovante Storybook</text></svg>',
-          processingStatus: 'PROCESSED',
+          processingStatus: 'OCR_DONE',
           ocrText: `Comprovante ${personName} Valor R$ ${(args.amountPaid / 100).toFixed(2)}`,
           amountMatched: args.ocrMatch === 'full' || args.ocrMatch === 'amount-only',
           matchedAmountText: `R$ ${(args.amountPaid / 100).toFixed(2)}`,

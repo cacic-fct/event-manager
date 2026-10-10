@@ -32,6 +32,9 @@ export type MajorEventSearchDocument = {
 export type EventGroupSearchDocument = {
   id: string;
   name: string;
+  emoji?: string;
+  majorEventId?: string;
+  majorEventName?: string;
 };
 
 export type PersonSearchDocument = {
@@ -101,10 +104,22 @@ export type TypesensePagedSearchResult = TypesenseSearchResult & {
   found: number;
 };
 
+export type TypesenseRankedSearchHit = {
+  id: string;
+  score: string;
+};
+
+export type TypesenseRankedSearchResult = {
+  available: boolean;
+  hits: TypesenseRankedSearchHit[];
+  found: number;
+};
+
 export type TypesenseSearchOptions = {
   filterBy?: string;
   limit?: number;
   offset?: number;
+  queryByWeights?: string;
   sortBy?: string;
 };
 

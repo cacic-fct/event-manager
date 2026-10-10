@@ -9,6 +9,7 @@ type NavigationLink = {
   icon: string;
   group: string;
   helpLink: string | undefined;
+  contextOnly?: true;
   visibleFor?: 'super-admin';
   requiredRoleLabel?: string;
 };
@@ -35,7 +36,7 @@ export const navigationItems = [
   {
     kind: 'divider',
     id: 'divider-dashboard-events',
-    label: 'Estrutura do evento',
+    label: 'Eventos',
   },
   {
     kind: 'link',
@@ -50,8 +51,9 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'groups',
+    contextOnly: true,
     path: 'groups',
-    label: 'Grupos',
+    label: 'Grupos de eventos',
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
     group: 'Estrutura do evento',
@@ -60,6 +62,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'major-events',
+    contextOnly: true,
     path: 'major-events',
     label: 'Grandes eventos',
     description: 'Organize eventos maiores compostos por várias atividades.',
@@ -70,6 +73,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'sports',
+    contextOnly: true,
     path: 'sports',
     label: 'Esportes',
     description: 'Organize torneios, equipes, tabelas, partidas e revisões esportivas.',
@@ -80,6 +84,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'publication',
+    contextOnly: true,
     path: 'publication',
     label: 'Publicação',
     description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
@@ -90,11 +95,12 @@ export const navigationItems = [
   {
     kind: 'divider',
     id: 'divider-events-participation',
-    label: 'Participação',
+    label: 'Ferramentas globais',
   },
   {
     kind: 'link',
     id: 'subscriptions',
+    contextOnly: true,
     path: 'subscriptions',
     label: 'Inscrições',
     description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
@@ -105,6 +111,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'attendances',
+    contextOnly: true,
     path: 'attendances',
     label: 'Presenças',
     description: 'Controle presença, check-ins e registros de participação.',
@@ -116,8 +123,8 @@ export const navigationItems = [
     kind: 'link',
     id: 'certificates',
     path: 'certificates',
-    label: 'Certificados',
-    description: 'Gerencie modelos, emissões e validações de certificados.',
+    label: 'Certificados avulsos',
+    description: 'Organize pastas e emita certificados sem vínculo com eventos.',
     icon: 'workspace_premium',
     group: 'Participação',
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Certificados',
@@ -125,6 +132,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'forms',
+    contextOnly: true,
     path: 'forms',
     label: 'Formulários',
     description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
@@ -135,6 +143,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'prize-draws',
+    contextOnly: true,
     path: 'draws',
     label: 'Sorteios',
     description: 'Configure, execute e audite sorteios vinculados a eventos.',
@@ -187,7 +196,7 @@ export const navigationItems = [
     id: 'places',
     path: 'places',
     label: 'Locais',
-    description: 'Gerencie presets de locais usados nos eventos.',
+    description: 'Cadastre locais para reutilizar nos eventos.',
     icon: 'place',
     group: 'Administração',
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Locais',
@@ -237,6 +246,8 @@ export const navigationItems = [
   },
 ] as const satisfies readonly NavigationItem[];
 
+export const globalNavigationItems = navigationItems.filter((item) => !('contextOnly' in item));
+
 export type NavigationLinkItem = Extract<(typeof navigationItems)[number], { kind: 'link' }>;
 export type NavigationLinkId = NavigationLinkItem['id'];
 
@@ -246,7 +257,11 @@ export function findNavigationItemForUrl(rawUrl: string): NavigationLinkItem {
   const url = rawUrl.split('?')[0].split('#')[0];
   const segments = url.split('/').filter(Boolean);
 
+  const workspaceIndex = segments.indexOf('event-workspace');
+  const kind = segments[workspaceIndex + (segments[workspaceIndex + 1] === 'new' ? 2 : 1)];
+  const workspaceTab = kind === 'group' ? 'groups' : kind === 'major-event' ? 'major-events' : 'events';
   return (
+    (workspaceIndex >= 0 ? navigationLinkItems.find((item) => item.id === workspaceTab) : undefined) ??
     navigationLinkItems.find((item) => item.path === '' && segments.length === 0) ??
     navigationLinkItems.find((item) => item.path !== '' && segments.includes(item.path)) ??
     navigationLinkItems[0]

@@ -57,25 +57,25 @@ export default meta;
 type Story = StoryObj<EventSubscriptionsStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByLabelText('Partida de torneio esportivo')).toBeVisible();
-    await expect(await canvas.findByRole('heading', { name: 'Inscritos' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Inscrições' })).toBeVisible();
+    await expect(await canvas.findByText('Criada pela administração')).toBeVisible();
   },
 };
 
 export const DenseWorkbench: Story = {
   args: { eventCount: 40, subscriptionCount: 60, sportsEvery: 2 },
   play: async ({ canvasElement }) => {
-    await expect((await within(canvasElement).findAllByLabelText('Partida de torneio esportivo')).length).toBe(20);
+    await expect(await within(canvasElement).findByText('60 registros')).toBeVisible();
   },
 };
 
 export const EmptyEvents: Story = {
   args: { eventCount: 0, subscriptionCount: 0 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Nenhum evento encontrado/i)).toBeVisible();
+    await expect(await within(canvasElement).findByRole('heading', { name: 'Selecione um evento' })).toBeVisible();
   },
 };
 
@@ -91,7 +91,7 @@ export const ReadOnly: Story = {
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await userEvent.tab();
-    await expect(await within(canvasElement).findByRole('heading', { name: 'Inscritos' })).toBeVisible();
+    await expect(await within(canvasElement).findByRole('heading', { name: 'Inscrições' })).toBeVisible();
   },
 };
 
@@ -100,6 +100,6 @@ export const LongNamesTablet: Story = {
   parameters: { viewport: { defaultViewport: 'tablet' } },
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
-    await expect((await within(canvasElement).findAllByText(/Atividade interdisciplinar/)).length).toBeGreaterThan(5);
+    await expect((await within(canvasElement).findAllByText(/Atividade interdisciplinar/)).length).toBeGreaterThan(0);
   },
 };

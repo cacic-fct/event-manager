@@ -1,6 +1,6 @@
 import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphql';
 import { Test } from '@nestjs/testing';
-import { printSchema } from 'graphql';
+import { parse, printSchema, validate } from 'graphql';
 import { PrizeDrawResolver } from './prize-draw.resolver';
 
 describe('prize draw GraphQL integration', () => {
@@ -11,7 +11,10 @@ describe('prize draw GraphQL integration', () => {
     const schema = await factory.create([PrizeDrawResolver]);
     const printed = printSchema(schema);
 
-    expect(printed).toContain('prizeDraws: [PrizeDraw!]!');
+    expect(printed).toContain(
+      'prizeDraws(query: String, eventId: String, majorEventId: String, skip: Int, take: Int): [PrizeDraw!]!',
+    );
+    expect(validate(schema, parse('query PrizeDrawsWithoutFilters { prizeDraws { id } }'))).toEqual([]);
     expect(printed).toContain('prizeDraw(drawId: String!): PrizeDraw!');
     expect(printed).toContain('prizeDrawEligibleEntries(drawId: String!): [PrizeDrawEligibleEntry!]!');
     expect(printed).toContain(

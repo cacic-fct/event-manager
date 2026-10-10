@@ -1,8 +1,10 @@
+import { signal } from '@angular/core';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
@@ -65,6 +67,7 @@ describe('MajorEventsService', () => {
     await TestBed.configureTestingModule({
       providers: [
         MajorEventsService,
+        { provide: EventWorkspaceContextService, useValue: { context: signal(null) } },
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: eventApi },
         { provide: PublicationApiService, useValue: publicationApi },
@@ -89,6 +92,47 @@ describe('MajorEventsService', () => {
     vi.useRealTimers();
   });
 
+  it('tracks semantic major-event editor changes from a clean baseline', () => {
+    service.resetMajorEventForm(false);
+    expect(service.unsavedChanges()).toBe(false);
+    service.majorEventForm.controls.name.setValue('Nome alterado');
+    expect(service.unsavedChanges()).toBe(true);
+    service.resetMajorEventForm(false);
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('keeps the newest selected major event when an earlier lookup completes later', async () => {
+    const delayed=new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
+    api.getMajorEvent.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminMajorEventFromInput({id:'b'})));
+    const first=service.pickMajorEventById('a');await service.pickMajorEventById('b');
+    delayed.next(createAdminMajorEventFromInput({id:'a'}));delayed.complete();await first;
+    expect(service.selectedMajorEvent()?.id).toBe('b');expect(service.majorEventForm.controls.id.value).toBe('b');
+  });
+
+  it('cancels pending selection when initializing a fresh major event without navigation', async () => {
+    const delayed=new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
+    api.getMajorEvent.mockReturnValueOnce(delayed);
+    const first=service.pickMajorEventById('a');service.resetMajorEventForm(false);
+    delayed.next(createAdminMajorEventFromInput({id:'a'}));delayed.complete();await first;
+    expect(service.selectedMajorEvent()).toBeNull();expect(service.majorEventForm.controls.id.value).toBe('');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate to a saved major event after its child list finishes for a newer selection', async () => {
+    const delayedEvents = new Subject<ReturnType<typeof createAdminEvent>[]>();
+    eventApi.listEvents.mockReturnValueOnce(delayedEvents);
+
+    const save = service.saveMajorEvent('DRAFT');
+    await vi.waitFor(() => expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: 'major-event-1', take: 200 }));
+    service.resetMajorEventForm(false);
+    delayedEvents.next([]);
+    delayedEvents.complete();
+    await save;
+
+    expect(router.navigate).not.toHaveBeenCalledWith(['/event-workspace', 'major-event', 'major-event-1', 'settings']);
+    expect(service.selectedMajorEvent()).toBeNull();
+  });
+
   it('keeps a reversed major-event range in the browser instead of sending it to the API', async () => {
     service.majorEventForm.patchValue({
       startDate: '2026-05-20T00:00',
@@ -99,6 +143,30 @@ describe('MajorEventsService', () => {
 
     expect(service.majorEventForm.hasError('majorEventDateRange')).toBe(true);
     expect(api.createMajorEvent).not.toHaveBeenCalled();
+  });
+
+  it('searches major events from the first page and retains the query during pagination', async () => {
+    service.majorEventsPagination.pageIndex.set(3);
+    service.majorEventsSearchForm.controls.query.setValue('  Semana  ', { emitEvent: false });
+    await service.searchMajorEvents();
+    expect(service.majorEventsPagination.pageIndex()).toBe(0);
+    expect(api.listMajorEvents).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'Semana', skip: 0 }));
+    service.majorEventsPagination.pageIndex.set(1);
+    await service.loadMajorEvents();
+    expect(api.listMajorEvents).toHaveBeenLastCalledWith(expect.objectContaining({ query: 'Semana' }));
+  });
+
+  it('keeps the latest search results when a previous request finishes later', async () => {
+    const oldResults = new Subject<ReturnType<typeof createAdminMajorEventFromInput>[]>();
+    api.listMajorEvents.mockReturnValueOnce(oldResults);
+    const oldRequest = service.searchMajorEvents();
+    const latest = createAdminMajorEventFromInput({ id: 'latest-major-event', name: 'Mais recente' });
+    api.listMajorEvents.mockReturnValueOnce(of([latest]));
+    await service.searchMajorEvents();
+    oldResults.next([createAdminMajorEventFromInput({ id: 'old-major-event' })]);
+    oldResults.complete();
+    await oldRequest;
+    expect(service.majorEvents().map((event) => event.id)).toEqual(['latest-major-event']);
   });
 
   it('posts a single price entered as a number input value', async () => {

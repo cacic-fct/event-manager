@@ -131,16 +131,16 @@ const REGISTRATION_FIELDS = `
   }
 `;
 
-@Service({ autoProvided: false })
+@Service()
 export class SportsApiService {
   private readonly graphql = inject(GraphqlHttpService);
   private readonly http = inject(HttpClient);
 
-  tournaments(filters?: { query?: string; skip?: number; take?: number }) {
+  tournaments(filters?: { query?: string; majorEventId?: string; skip?: number; take?: number }) {
     return this.graphql
       .request<{ adminSportsTournamentList: SportsTournamentListItem[] }>(
-        `query AdminSportsTournamentList($query: String, $skip: Int, $take: Int) {
-          adminSportsTournamentList(query: $query, skip: $skip, take: $take) {
+        `query AdminSportsTournamentList($query: String, $majorEventId: String, $skip: Int, $take: Int) {
+          adminSportsTournamentList(query: $query, majorEventId: $majorEventId, skip: $skip, take: $take) {
             tournament {
               id majorEventId status registrationStartDate registrationEndDate scoringMode selfSubscriptionEnabled
               selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory

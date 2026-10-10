@@ -3,6 +3,7 @@
     <a
       mat-tab-link
       [routerLink]="workspace.selected() ? ['/draws', workspace.selected()!.id] : ['/draws']"
+      [queryParams]="drawQueryParams()"
       routerLinkActive
       #setupActive="routerLinkActive"
       [active]="setupActive.isActive">
@@ -13,6 +14,7 @@
       [routerLink]="
         workspace.selected() && !workspace.unsavedChanges() ? ['/draws', workspace.selected()!.id, 'draw'] : null
       "
+      [queryParams]="drawQueryParams()"
       [disabled]="!workspace.selected() || workspace.unsavedChanges()">
       <span class="workspace-tab-label"><mat-icon>rewarded_ads</mat-icon>2. Sorteio</span>
     </a>
@@ -22,6 +24,67 @@
     @if (workspace.loading()) {
       <mat-progress-bar mode="indeterminate" aria-label="Carregando configuração do sorteio" />
     }
+
+    @if (!inWorkspaceShell || !workspace.scopeFilterId()) {
+<app-workspace-scope [emoji]="scopeEmoji()"
+      [scopeId]="workspace.scopeFilterId()"
+      [title]="workspace.scopeFilterLabel()"
+      [disabled]="workspace.unsavedChanges()"
+      description="Escolha o evento da operação ou mantenha a visão global de sorteios.">
+      <div class="scope-picker">
+        <app-workspace-record
+          title="Todos os sorteios"
+          label="Mostrar sorteios de todos os contextos"
+          [selected]="workspace.scopeFilterId() === null"
+          [link]="['/draws']" [disabled]="workspace.unsavedChanges()">
+          <mat-icon recordIcon>language</mat-icon>
+          <span recordDescription>Inclui todos os sorteios que você pode administrar.</span>
+        </app-workspace-record>
+        <form [formGroup]="workspace.targetSearchForm" class="scope-search" (submit)="$event.preventDefault()">
+          <mat-form-field>
+            <mat-label>Buscar evento ou grande evento</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+        </form>
+        @if (workspace.targetSearchLoading()) {
+          <mat-progress-bar mode="indeterminate" aria-label="Buscando contextos de sorteio" />
+        }
+        <div class="scope-results">
+          <section aria-labelledby="draw-event-scopes">
+            <h3 id="draw-event-scopes">Eventos</h3>
+            @for (event of workspace.events(); track event.id) {
+              <app-workspace-record
+                [title]="event.name"
+                [label]="'Mostrar sorteios de ' + event.name"
+                [selected]="workspace.scopeFilterId() === 'event:' + event.id"
+                [link]="['/draws']" [queryParams]="{ eventId: event.id }" [disabled]="workspace.unsavedChanges()">
+                <lib-twemoji recordIcon [emoji]="event.emoji" />
+                <span recordDescription>{{ event.startDate | date: 'dd/MM/yyyy' }}</span>
+              </app-workspace-record>
+            } @empty {
+              <p class="empty-note">Nenhum evento encontrado.</p>
+            }
+          </section>
+          <section aria-labelledby="draw-major-event-scopes">
+            <h3 id="draw-major-event-scopes">Grandes eventos</h3>
+            @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+              <app-workspace-record
+                [title]="majorEvent.name"
+                [label]="'Mostrar sorteios de ' + majorEvent.name"
+                [selected]="workspace.scopeFilterId() === 'major-event:' + majorEvent.id"
+                [link]="['/draws']" [queryParams]="{ majorEventId: majorEvent.id }" [disabled]="workspace.unsavedChanges()">
+                <lib-twemoji recordIcon [emoji]="majorEvent.emoji" />
+                <span recordDescription>{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
+              </app-workspace-record>
+            } @empty {
+              <p class="empty-note">Nenhum grande evento encontrado.</p>
+            }
+          </section>
+        </div>
+      </div>
+    </app-workspace-scope>
+}
 
     <div class="tab-grid tab-grid-wide draw-setup-grid">
       <aside class="panel saved-draws">
@@ -39,33 +102,48 @@
           </button>
         </div>
 
-        <mat-action-list class="result-list">
+        <form [formGroup]="workspace.listFiltersForm" class="draw-list-filter" (submit)="$event.preventDefault()">
+          <mat-form-field>
+            <mat-label>Buscar sorteio pelo título</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput formControlName="query" />
+          </mat-form-field>
+        </form>
+
+        <div class="result-list">
           @for (draw of workspace.draws(); track draw.id) {
-            <button
-              mat-list-item
-              type="button"
+            <app-workspace-record
+              [title]="draw.title"
+              [label]="'Abrir sorteio ' + draw.title"
               [disabled]="workspace.unsavedChanges()"
-              (click)="workspace.select(draw)"
-              [class.selected-list-item]="workspace.selected()?.id === draw.id">
-              <span matListItemTitle class="list-title"
-                ><mat-icon>rewarded_ads</mat-icon><span>{{ draw.title }}</span></span
-              >
-              <span matListItemLine>{{ draw.target.name }}</span>
-              <span matListItemLine
-                >{{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }} ·
-                {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span
-              >
-            </button>
+              [link]="['/draws', draw.id]" [queryParams]="workspace.scopeFilter()"
+              [selected]="workspace.selected()?.id === draw.id">
+              <mat-icon recordIcon>rewarded_ads</mat-icon>
+              <span recordDescription>{{ draw.target.name }} · {{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }} · {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span>
+            </app-workspace-record>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum sorteio salvo</span>
               <span matListItemLine>Crie a primeira configuração no painel ao lado.</span>
             </mat-list-item>
           }
-        </mat-action-list>
+        </div>
+        <div class="list-pager" role="group" aria-label="Paginação de sorteios">
+          <span>{{ workspace.drawsPagination.label() }}</span>
+          <div class="list-pager-actions">
+            <button matIconButton type="button" aria-label="Página anterior" [disabled]="!workspace.drawsPagination.hasPreviousPage() || workspace.unsavedChanges()" (click)="workspace.previousDrawsPage()"><mat-icon>chevron_left</mat-icon></button>
+            <button matIconButton type="button" aria-label="Próxima página" [disabled]="!workspace.drawsPagination.hasNextPage() || workspace.unsavedChanges()" (click)="workspace.nextDrawsPage()"><mat-icon>chevron_right</mat-icon></button>
+          </div>
+        </div>
       </aside>
 
       <main class="panel panel-stack setup-editor">
+        @if (workspace.unsavedChanges()) {
+          <div class="notice" role="status">
+            <span>Alterações não salvas. Salve para atualizar a lista de participantes.</span>
+            <button mat-button type="button" (click)="workspace.discardChanges()">Descartar alterações</button>
+          </div>
+        }
         <div class="panel-heading">
           <div>
             <h3>{{ workspace.selected() ? 'Configurar sorteio' : 'Novo sorteio' }}</h3>
@@ -76,7 +154,7 @@
               <button
                 mat-stroked-button
                 type="button"
-                [disabled]="!permissions.has(Permission.PrizeDraw.Update) || workspace.loading()"
+                [disabled]="!permissions.has(Permission.PrizeDraw.Update) || workspace.loading() || workspace.unsavedChanges()"
                 (click)="workspace.toggleFreeze()">
                 <mat-icon>{{ selected.frozenAt ? 'lock_open' : 'lock' }}</mat-icon>
                 {{ selected.frozenAt ? 'Descongelar lista' : 'Congelar lista' }}
@@ -100,7 +178,7 @@
               <a
                 mat-stroked-button
                 [routerLink]="['/draws', selected.id, 'draw']"
-                [queryParams]="{ demo: 'true' }"
+                [queryParams]="drawQueryParams(true)"
                 [disabled]="
                   workspace.unsavedChanges() ||
                   selected.eligibleEntrantCount === 0 ||
@@ -111,6 +189,7 @@
               <a
                 mat-flat-button
                 [routerLink]="['/draws', selected.id, 'draw']"
+                [queryParams]="drawQueryParams()"
                 [disabled]="
                   workspace.unsavedChanges() ||
                   selected.eligibleEntrantCount === 0 ||
@@ -171,25 +250,15 @@
                   <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
                 </mat-select>
               </mat-form-field>
-              @if (workspace.form.controls.targetType.value === 'EVENT') {
-                <mat-form-field
-                  ><mat-label>Evento</mat-label
-                  ><mat-select formControlName="eventId" required>
-                    @for (event of workspace.events(); track event.id) {
-                      <mat-option [value]="event.id">{{ event.name }}</mat-option>
-                    }
-                  </mat-select></mat-form-field
-                >
-              } @else {
-                <mat-form-field
-                  ><mat-label>Grande evento</mat-label
-                  ><mat-select formControlName="majorEventId" required>
-                    @for (event of workspace.majorEvents(); track event.id) {
-                      <mat-option [value]="event.id">{{ event.name }}</mat-option>
-                    }
-                  </mat-select></mat-form-field
-                >
-              }
+              <app-event-target-picker
+                [targetType]="workspace.form.controls.targetType.value"
+                [selectedId]="workspace.form.controls.targetType.value === 'EVENT' ? workspace.form.controls.eventId.value : workspace.form.controls.majorEventId.value"
+                [selectedName]="workspace.targetSummary()?.name ?? ''"
+                [selectedEmoji]="workspace.targetSummary()?.emoji"
+                [label]="workspace.form.controls.targetType.value === 'EVENT' ? 'Evento' : 'Grande evento'"
+                [disabled]="workspace.form.controls.targetType.value === 'EVENT' ? workspace.form.controls.eventId.disabled : workspace.form.controls.majorEventId.disabled"
+                [includePast]="true"
+                (targetChange)="workspace.selectTarget($event)" />
             </div>
             @if (workspace.selected(); as selected) {
               <small class="audit-id">ID do sorteio: {{ selected.id }}</small>
@@ -309,12 +378,7 @@
                     >
                   </div>
                 </div>
-                @if (workspace.unsavedChanges()) {
-                  <p class="unsaved-roster-note" role="status">
-                    <mat-icon aria-hidden="true">info</mat-icon>Salve as alterações para recalcular a lista antes de
-                    abrir o carretel.
-                  </p>
-                }
+
                 <mat-list>
                   @for (entry of workspace.includedEligibleEntries(); track entry.identityKey) {
                     <mat-list-item>

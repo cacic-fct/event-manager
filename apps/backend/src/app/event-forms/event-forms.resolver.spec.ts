@@ -66,7 +66,7 @@ describe('EventFormsResolver', () => {
   });
 
   it('maps every administrator query to the authenticated actor and exact arguments', () => {
-    resolver.eventForms(reqContext as never, 'pesquisa', 'event-1', 'major-1');
+    resolver.eventForms(reqContext as never, 'pesquisa', 'event-1', 'major-1', 50, 51);
     resolver.eventForm('form-1', requestContext as never);
     resolver.eventFormResults('form-1', reqContext as never);
     resolver.eventFormDrafts('form-1', requestContext as never);
@@ -77,6 +77,8 @@ describe('EventFormsResolver', () => {
       query: 'pesquisa',
       eventId: 'event-1',
       majorEventId: 'major-1',
+      skip: 50,
+      take: 51,
     });
     expect(forms.getAdminForm).toHaveBeenCalledWith(user, 'form-1');
     expect(forms.getAdminResults).toHaveBeenCalledWith(user, 'form-1');

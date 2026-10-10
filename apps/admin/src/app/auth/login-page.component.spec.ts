@@ -42,7 +42,7 @@ describe('LoginPageComponent', () => {
           useValue: {
             snapshot: {
               queryParamMap: convertToParamMap({
-                returnTo: '/admin/events',
+                returnTo: '/admin/event-workspace',
               }),
             },
           },
@@ -82,7 +82,7 @@ describe('LoginPageComponent', () => {
     await component.onSubmit();
 
     expect(authService.passwordLogin).toHaveBeenCalledWith('aluno@unesp.br', '1');
-    expect(navigateByUrl).toHaveBeenCalledWith('/admin/events');
+    expect(navigateByUrl).toHaveBeenCalledWith('/admin/event-workspace');
   });
 
   it('keeps invalid password login failures on the local form', async () => {
@@ -110,7 +110,7 @@ describe('LoginPageComponent', () => {
 
     await component.onSsoClick();
 
-    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/admin/events' });
+    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/admin/event-workspace' });
   });
 });
 

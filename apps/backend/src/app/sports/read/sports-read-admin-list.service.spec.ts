@@ -91,4 +91,27 @@ describe('SportsReadAdminListService', () => {
       team: { tournament: { majorEventId: { in: [] } } },
     });
   });
+
+  it('intersects a requested major-event scope with permission visibility', async () => {
+    authorization.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set<string>(),
+      eventGroupIds: new Set<string>(),
+      majorEventIds: new Set(['major-event-1']),
+    });
+
+    await new SportsReadAdminListService(prisma as never, authorization as never).adminTournamentList(undefined, {
+      majorEventId: '  major-event-1  ',
+      take: 1,
+    });
+
+    expect(prisma.sportsTournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          majorEventId: 'major-event-1',
+          OR: [{ majorEventId: { in: ['major-event-1'] } }],
+        }),
+        take: 1,
+      }),
+    );
+  });
 });

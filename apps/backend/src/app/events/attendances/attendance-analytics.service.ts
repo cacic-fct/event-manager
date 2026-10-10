@@ -19,6 +19,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { adminSportsWorkspacePath } from '@cacic-fct/shared-utils';
 
 const MIN_WINDOW_MINUTES = 15;
 const MAX_WINDOW_MINUTES = 240;
@@ -69,7 +70,7 @@ type EventAnalyticsRecord = Prisma.EventGetPayload<{
     sportsMatch: {
       select: {
         id: true;
-        category: { select: { tournamentId: true } };
+        category: { select: { tournamentId: true; tournament: { select: { majorEventId: true } } } };
       };
     };
   };
@@ -266,7 +267,12 @@ export class AttendanceAnalyticsService {
         attendanceEligibility: true,
         eventGroup: { select: { attendanceEligibility: true } },
         majorEvent: { select: { attendanceEligibility: true, isPaymentRequired: true } },
-        sportsMatch: { select: { id: true, category: { select: { tournamentId: true } } } },
+        sportsMatch: {
+          select: {
+            id: true,
+            category: { select: { tournamentId: true, tournament: { select: { majorEventId: true } } } },
+          },
+        },
       },
     });
     if (!event) throw new NotFoundException(`Event ${eventId} was not found.`);
@@ -502,7 +508,12 @@ export class AttendanceAnalyticsService {
             detectedAt: action.authoredAt,
             actorId: action.actorUserId ?? undefined,
             actorName: action.actorUserId ? actorNameById.get(action.actorUserId) : undefined,
-            deepLink: event.sportsMatch ? `/sports/${event.sportsMatch.category.tournamentId}` : undefined,
+            deepLink: event.sportsMatch?.category.tournament.majorEventId
+              ? adminSportsWorkspacePath({
+                  majorEventId: event.sportsMatch.category.tournament.majorEventId,
+                  area: 'reviews',
+                })
+              : undefined,
           }) satisfies AttendanceReviewItem,
       ),
     ].slice(0, MAX_REVIEW_ITEMS);

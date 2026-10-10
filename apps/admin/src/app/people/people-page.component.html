@@ -14,10 +14,11 @@
       </div>
 
       <form class="compact-form" [formGroup]="workspace.peopleSearchForm">
-        <mat-form-field>
+        <mat-form-field class="span-2">
           <mat-label>Buscar pessoa</mat-label>
           <mat-icon matPrefix>search</mat-icon>
           <input matInput formControlName="query" />
+          <mat-hint>Nome, e-mail principal ou secundário, telefone, documento ou RA</mat-hint>
         </mat-form-field>
         <mat-checkbox class="search-filter-checkbox" formControlName="hasLecturerProfile">
           Com perfil de ministrante
@@ -33,15 +34,13 @@
 
       <mat-list class="result-list">
         @for (person of workspace.people(); track person.id) {
-          <mat-list-item
-            (click)="workspace.selectPerson(person)"
-            [class.selected-list-item]="workspace.selectedPerson()?.id === person.id">
-            <span matListItemTitle>{{ person.name }}</span>
-            <span matListItemLine>
-              {{ person.email || person.phone || '-' }} ·
-              {{ person.identityDocument || '-' }}
-            </span>
-          </mat-list-item>
+          <app-workspace-record
+            [title]="person.name"
+            [label]="'Abrir cadastro de ' + person.name"
+            [selected]="workspace.selectedPerson()?.id === person.id"
+            [link]="['/people', person.id]">
+            <app-participant-summary recordDescription [person]="person" [showName]="false" />
+          </app-workspace-record>
         } @empty {
           <mat-list-item>
             <span matListItemTitle>Nenhuma pessoa encontrada</span>
@@ -119,6 +118,7 @@
               mat-flat-button
               type="button"
               [disabled]="
+                workspace.personForm.invalid ||
                 !permissions.canEdit(workspace.selectedPerson() ? Permission.Person.Update : Permission.Person.Create)
               "
               (click)="workspace.savePerson()">
@@ -206,9 +206,20 @@
                       {{ workspace.selectedPerson()?.user?.email }}
                     </p>
                     <p>
-                      <strong>Perfil:</strong>
-                      {{ workspace.selectedPerson()?.user?.role }}
+                      <strong>Perfil de acesso:</strong>
+                      {{ userRoleLabel(workspace.selectedPerson()?.user?.role) }}
                     </p>
+                    @if (workspace.selectedPerson()?.user?.unespRole?.length) {
+                      <p>
+                        <strong>Vínculos UNESP:</strong>
+                        {{
+                          unespRoleListLabel(
+                            workspace.selectedPerson()?.user?.unespRole,
+                            workspace.selectedPerson()?.academicId
+                          )
+                        }}
+                      </p>
+                    }
                   </div>
                 } @else {
                   <p class="empty-note">Nenhum usuário vinculado.</p>

@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { EventAttendanceCsvImportResult } from '@cacic-fct/event-manager-admin-contracts';
+import { attendanceImportMatchTypeLabel } from '../../attendance-labels';
 
 export interface AttendanceCsvImportResultDialogData extends EventAttendanceCsvImportResult {
   title?: string;
@@ -10,12 +11,6 @@ export interface AttendanceCsvImportResultDialogData extends EventAttendanceCsvI
   duplicateLabel?: string;
   failedInstruction?: string;
 }
-
-const MATCH_TYPE_LABELS: Record<string, string> = {
-  IDENTITY_DOCUMENT: 'documento ou telefone',
-  EMAIL: 'e-mail',
-  FULL_NAME: 'nome completo',
-};
 
 @Component({
   selector: 'app-attendance-csv-import-result-dialog',
@@ -51,6 +46,6 @@ export class AttendanceCsvImportResultDialogComponent {
   readonly data = inject<AttendanceCsvImportResultDialogData>(MAT_DIALOG_DATA);
 
   get matchTypeLabel(): string {
-    return MATCH_TYPE_LABELS[this.data.inferredMatchType] ?? this.data.inferredMatchType;
+    return attendanceImportMatchTypeLabel(this.data.inferredMatchType);
   }
 }

@@ -1,5 +1,4 @@
 import { DOCUMENT } from '@angular/common';
-import { signal } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -20,7 +19,7 @@ import { EventApiService } from '../graphql/event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
-import { MajorEventsService } from '../major-events/major-events.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
@@ -31,8 +30,11 @@ describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
   let api: {
     listEventSubscriptions: ReturnType<typeof vi.fn>;
+    countEventSubscriptions: ReturnType<typeof vi.fn>;
     createEventSubscription: ReturnType<typeof vi.fn>;
     listMajorEventSubscriptions: ReturnType<typeof vi.fn>;
+    listMajorEventSubscriptionEvents: ReturnType<typeof vi.fn>;
+    countMajorEventSubscriptions: ReturnType<typeof vi.fn>;
     getMajorEventSubscription: ReturnType<typeof vi.fn>;
     createMajorEventSubscription: ReturnType<typeof vi.fn>;
     updateMajorEventSubscription: ReturnType<typeof vi.fn>;
@@ -62,8 +64,11 @@ describe('SubscriptionsService', () => {
   beforeEach(() => {
     api = {
       listEventSubscriptions: vi.fn(() => of([eventSubscription])),
+      countEventSubscriptions: vi.fn(() => of(1)),
       createEventSubscription: vi.fn(() => of(eventSubscription)),
       listMajorEventSubscriptions: vi.fn(() => of([majorSubscription])),
+      listMajorEventSubscriptionEvents: vi.fn(() => of(majorSubscription.events)),
+      countMajorEventSubscriptions: vi.fn(() => of(1)),
       getMajorEventSubscription: vi.fn(() => of(majorSubscription)),
       createMajorEventSubscription: vi.fn(() => of(majorSubscription)),
       updateMajorEventSubscription: vi.fn(() => of(majorSubscription)),
@@ -108,7 +113,7 @@ describe('SubscriptionsService', () => {
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: AttendanceApiService, useValue: attendanceApi },
         { provide: AttendancesService, useValue: attendancesService },
-        { provide: MajorEventsService, useValue: { majorEvents: signal([majorEvent]) } },
+        { provide: MajorEventApiService, useValue: { getMajorEvent: vi.fn(() => of(majorEvent)) } },
         { provide: PermissionsService, useValue: permissions },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
@@ -129,18 +134,13 @@ describe('SubscriptionsService', () => {
     service = TestBed.inject(SubscriptionsService);
   });
 
-  it('searches and selects events, finds a person, creates a subscription, and refreshes attendance', async () => {
-    await service.searchEvents();
-    expect(eventApi.listEvents).toHaveBeenCalledWith({
-      query: undefined,
-      startDateFrom: undefined,
-      startDateUntil: undefined,
-      isInGroup: undefined,
-      isInMajorEvent: undefined,
-      skip: 0,
-      take: 51,
-    });
+  it('loads the selected major-event details without depending on an editor catalog preload', async () => {
+    await service.selectMajorEventById(majorEvent.id, false);
+    expect(TestBed.inject(MajorEventApiService).getMajorEvent).toHaveBeenCalledWith(majorEvent.id);
+    expect(service.selectedMajorEvent()).toEqual(majorEvent);
+  });
 
+  it('selects events, finds a person, creates a subscription, and refreshes attendance', async () => {
     await service.selectEvent(event);
     expect(router.navigate).toHaveBeenCalledWith(['/subscriptions/event', event.id]);
     expect(api.listEventSubscriptions).toHaveBeenCalledWith(event.id, { skip: 0, take: 51 });
@@ -259,7 +259,7 @@ describe('SubscriptionsService', () => {
 
     api.listMajorEventSubscriptions.mockReturnValueOnce(of([]));
     await service.loadMajorEventSubscriptions();
-    expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 200 });
+    expect(api.listMajorEventSubscriptionEvents).toHaveBeenCalledWith(majorEvent.id);
   });
 
   it('stops the previous major-event stream before loading a new selection', async () => {

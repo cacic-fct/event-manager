@@ -1,5 +1,4 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
@@ -10,12 +9,12 @@ describe('Help', () => {
   let component: Help;
   let fixture: ComponentFixture<Help>;
 
-  const openSpy = vi.fn();
+  const composeSpy = vi.fn(() => 'mailto:fctapp@googlegroups.com?subject=support');
 
   const userMock = vi.fn<() => { sub: string } | null>();
 
   beforeEach(async () => {
-    openSpy.mockReset();
+    composeSpy.mockClear();
     userMock.mockReset();
     userMock.mockReturnValue({ sub: 'user-123' });
 
@@ -26,7 +25,7 @@ describe('Help', () => {
         {
           provide: MailtoService,
           useValue: {
-            open: openSpy,
+            compose: composeSpy,
           },
         },
         {
@@ -66,11 +65,14 @@ describe('Help', () => {
     expect(link?.textContent).toContain('Reportar um bug');
   });
 
-  it('should open support email with current user id', () => {
-    component.mailto();
+  it('renders a support mail link with the current user id', () => {
+    const supportLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector(
+      'a[href^="mailto:fctapp@googlegroups.com"]',
+    );
 
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    expect(openSpy).toHaveBeenCalledWith(
+    expect(supportLink).not.toBeNull();
+    expect(supportLink?.textContent).toContain('Suporte ao usuário');
+    expect(composeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'fctapp@googlegroups.com',
         subject: '[FCT-App] Suporte ao usuário',
@@ -79,29 +81,16 @@ describe('Help', () => {
     );
   });
 
-  it('should open support email with fallback user id when user is null', () => {
+  it('uses a fallback user id when the current user is null', () => {
     userMock.mockReturnValue(null);
 
-    component.mailto();
+    component.mailtoHref();
 
-    expect(openSpy).toHaveBeenCalledWith(
+    expect(composeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.stringContaining('userId: Desconhecido'),
       }),
     );
   });
 
-  it('should call mailto when support item is clicked', () => {
-    const mailtoSpy = vi.spyOn(component, 'mailto');
-
-    const supportLink = fixture.debugElement
-      .queryAll(By.css('a[mat-list-item]'))
-      .find((el) => el.nativeElement.textContent.includes('Suporte ao usuário'));
-
-    expect(supportLink).toBeDefined();
-
-    supportLink?.nativeElement.click();
-
-    expect(mailtoSpy).toHaveBeenCalledTimes(1);
-  });
 });

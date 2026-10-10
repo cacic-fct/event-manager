@@ -15,6 +15,7 @@ import {
 import { PermissionsService } from '../permissions/permissions.service';
 import { CertificatesService } from './certificates.service';
 import { CertificatesPageComponent } from './certificates-page.component';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 describe('CertificatesPageComponent', () => {
   let workspace: ReturnType<typeof workspaceStub>;
@@ -24,6 +25,10 @@ describe('CertificatesPageComponent', () => {
     canDeleteConfig: (config: CertificateConfig) => boolean;
     canCloneConfig: (config: CertificateConfig) => boolean;
     canDeleteCertificate: (certificate: Certificate) => boolean;
+    startNewFolder: () => void;
+    cancelFolderEdit: () => void;
+    saveFolder: () => Promise<void>;
+    folderEditorMode: () => 'create' | 'edit' | null;
   };
 
   beforeEach(() => {
@@ -34,6 +39,10 @@ describe('CertificatesPageComponent', () => {
       providers: [
         FormBuilder,
         { provide: CertificatesService, useValue: workspace },
+        {
+          provide: WorkspacePendingChangesService,
+          useValue: { register: () => ({ set: vi.fn(), destroy: vi.fn() }) },
+        },
         {
           provide: PermissionsService,
           useValue: {
@@ -57,6 +66,27 @@ describe('CertificatesPageComponent', () => {
 
   it('loads route target and config selection through the workspace boundary', () => {
     expect(workspace.selectTargetByRoute).toHaveBeenCalledWith('event', 'event-1', 'config-1');
+  });
+
+  it('opens and cancels the dedicated folder editor without changing certificate selection', () => {
+    page.startNewFolder();
+    expect(workspace.startNewFolder).toHaveBeenCalledOnce();
+    expect(page.folderEditorMode()).toBe('create');
+
+    page.cancelFolderEdit();
+    expect(workspace.cancelFolderEdit).toHaveBeenCalledOnce();
+    expect(page.folderEditorMode()).toBeNull();
+  });
+
+  it('closes the folder editor only after a successful save', async () => {
+    page.startNewFolder();
+    workspace.saveCertificateFolder.mockResolvedValueOnce(false);
+    await page.saveFolder();
+    expect(page.folderEditorMode()).toBe('create');
+
+    workspace.saveCertificateFolder.mockResolvedValueOnce(true);
+    await page.saveFolder();
+    expect(page.folderEditorMode()).toBeNull();
   });
 
   it('allows edit operations only with relevant permission and unfrozen target', () => {
@@ -154,12 +184,16 @@ function workspaceStub() {
     eventGroup,
     majorEvent,
     selectedTarget: signal<{ id: string; name: string } | null>(event),
+    unsavedChanges: signal(false),
     selectedCertificateConfig: signal<CertificateConfig | null>(null),
     issuableEvents: signal([event]),
     issuableEventGroups: signal([eventGroup]),
     issuableMajorEvents: signal([majorEvent]),
     targetFiltersForm: formBuilder.nonNullable.group({ scope: ['EVENT'], query: [''] }),
     selectTargetByRoute: vi.fn(() => Promise.resolve()),
+    startNewFolder: vi.fn(),
+    cancelFolderEdit: vi.fn(),
+    saveCertificateFolder: vi.fn(() => Promise.resolve(true)),
   };
 }
 

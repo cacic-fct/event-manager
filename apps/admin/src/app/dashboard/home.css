@@ -249,3 +249,10 @@
     width: 100%;
   }
 }
+
+.dashboard-grid { align-items: start; }
+.dashboard-header, .section-title { flex-wrap: wrap; }
+.dashboard-header > div, .section-title > div, .list-title { min-width: 0; overflow-wrap: anywhere; }
+.dashboard-header h1 { font: var(--mat-sys-headline-small); }
+.dashboard-section h2 { font: var(--mat-sys-title-large); }
+.embedded-list { border: 0; }

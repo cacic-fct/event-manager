@@ -4,12 +4,12 @@ import type {
   AttendanceCurrentAssessment,
   Event,
   EventAttendanceScannerFeedItem,
-  MajorEvent,
   MajorEventUserAttendance,
   Person,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { fn } from 'storybook/test';
+import { attendanceCurrentAssessmentLabel } from './attendance-labels';
 import { AttendancesService } from './attendances.service';
 
 export interface AttendanceWorkspaceStoryControls {
@@ -94,16 +94,6 @@ function createAttendanceWorkspaceMock(
   const majorEventAttendanceForm = formBuilder.nonNullable.group({ majorEventId: ['major-event-story'] });
 
   const mock = {
-    majorEvents: () => [createMajorEvent()],
-    attendanceEventFiltersForm: formBuilder.group({
-      startDateFrom: formBuilder.control<Date | null>(null),
-      startDateUntil: formBuilder.control<Date | null>(null),
-      isInGroup: formBuilder.nonNullable.control('ALL'),
-      isInMajorEvent: formBuilder.nonNullable.control('ALL'),
-      query: formBuilder.nonNullable.control(''),
-    }),
-    attendanceEventResults: events,
-    attendanceEventResultsPagination: createPagination(() => events().length),
     selectedAttendanceEvent: selectedEvent,
     attendancePersonMatches: () => createPeople(3),
     attendances,
@@ -116,6 +106,7 @@ function createAttendanceWorkspaceMock(
         subscriptionStatus: index % 2 === 0 ? 'CONFIRMED' : 'WAITING_RECEIPT_UPLOAD',
       })),
     attendanceTotalCount: () => attendances().length + explicitAbsences().length,
+    attendanceSearchForm: formBuilder.nonNullable.group({ query: [''] }),
     attendancesPagination: createPagination(() => attendances().length),
     offlineAttendanceSubmissions: () => createOfflineSubmissions(getControls(), selectedEvent()),
     attendanceGroups: () =>
@@ -128,6 +119,8 @@ function createAttendanceWorkspaceMock(
         }))
         .filter((group) => group.attendances.length > 0),
     majorEventUserAttendances: majorAttendances,
+    majorEventUserAttendanceCount: () => majorAttendances().length,
+    majorEventAttendanceSearchForm: formBuilder.nonNullable.group({ query: [''] }),
     majorEventUserAttendancesPagination: createPagination(() => majorAttendances().length),
     majorEventUserAttendanceGroups: () =>
       categories
@@ -146,10 +139,6 @@ function createAttendanceWorkspaceMock(
     isImportingCsv: () => false,
     attendanceForm,
     majorEventAttendanceForm,
-    searchAttendanceEvents: fn(async () => undefined),
-    resetAttendanceEventFilters: fn(async () => undefined),
-    previousAttendanceEventResultsPage: fn(async () => undefined),
-    nextAttendanceEventResultsPage: fn(async () => undefined),
     selectAttendanceEvent: fn(async () => undefined),
     selectAttendanceEventById: fn(async () => undefined),
     findAttendancePerson: fn(async () => undefined),
@@ -339,23 +328,6 @@ function createPeople(count: number, longNames = false): Person[] {
   }));
 }
 
-function createMajorEvent(): MajorEvent {
-  const now = new Date();
-  return {
-    id: 'major-event-story',
-    name: 'CACiC Storybook',
-    emoji: '💻',
-    startDate: now.toISOString(),
-    endDate: new Date(now.getTime() + 3 * 24 * 60 * 60_000).toISOString(),
-    isPaymentRequired: true,
-    shouldIssueCertificateForNonPayingAttendees: false,
-    shouldIssueCertificateForNonSubscribedAttendees: false,
-    majorEventPrices: [],
-    publicationState: 'PUBLISHED',
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-  };
-}
 
 function createPagination(getCount: () => number) {
   return {
@@ -370,7 +342,7 @@ function categoryLabel(category: AttendanceCategory): string {
   return {
     REGULAR: 'Regulares',
     NON_REGULAR: 'Não regulares',
-    UNKNOWN: 'Indefinidas',
+    UNKNOWN: 'Sem classificação',
   }[category];
 }
 
@@ -383,23 +355,7 @@ function categoryDescription(category: AttendanceCategory): string {
 }
 
 function currentAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
-  switch (assessment) {
-    case 'ACTIVITY_SUBSCRIPTION_MISSING':
-      return 'Sem inscrição ativa na atividade.';
-    case 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT':
-      return 'Pagamento do grande evento aguardando comprovante.';
-    case 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW':
-      return 'Comprovante de pagamento do grande evento em análise.';
-    case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
-      return 'Pagamento do grande evento não confirmado.';
-    case 'PRICE_TIER_NOT_ELIGIBLE':
-      return 'Faixa de preço não elegível';
-    case 'REQUIREMENTS_CURRENTLY_MET':
-      return 'Requisitos atuais atendidos.';
-    case null:
-    case undefined:
-      return null;
-  }
+  return attendanceCurrentAssessmentLabel(assessment);
 }
 
 function clamp(value: number, max: number): number {

@@ -1,94 +1,19 @@
+@if (contextLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando configuração do contexto" />
+} @else if (contextError()) {
+  <div class="notice" role="alert"><span>{{ contextError() }}</span><button mat-button type="button" (click)="retryContext()">Tentar novamente</button></div>
+} @else if (contextReady()) {
+  @if (creationParents().length) {
+    <div class="creation-context" aria-label="Criar dentro do contexto">
+      <span>Dentro de</span>
+      @for (parent of creationParents(); track parent.id) {
+        <a mat-button [routerLink]="['/event-workspace', parent.kind, parent.id]"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</a>
+      }
+    </div>
+  }
 <section class="section workspace-tab-shell">
-  <div class="tab-grid">
-    <aside class="panel">
-      <div class="panel-heading">
-        <div>
-          <h3>Lista</h3>
-          <p>Eventos agregadores e seus períodos ativos.</p>
-        </div>
+  <div class="tab-grid context-editor">
 
-        <button mat-stroked-button type="button" (click)="workspace.resetMajorEventForm()">
-          <mat-icon>add</mat-icon>
-          Novo
-        </button>
-      </div>
-
-      <mat-list class="result-list">
-        @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-          <mat-list-item
-            (click)="workspace.pickMajorEvent(majorEvent)"
-            [class.selected-list-item]="workspace.selectedMajorEvent()?.id === majorEvent.id">
-            <span matListItemTitle class="list-title">
-              <lib-twemoji [emoji]="majorEvent.emoji" />
-              <span>{{ majorEvent.name }}</span>
-            </span>
-            <span matListItemLine>
-              {{ majorEvent.startDate | date: 'shortDate' }} -
-              {{ majorEvent.endDate | date: 'shortDate' }}
-            </span>
-            @if (canEditMajorEvent(majorEvent)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Editar grande evento"
-                matTooltip="Editar"
-                (click)="$event.stopPropagation(); workspace.pickMajorEvent(majorEvent)">
-                <mat-icon>edit</mat-icon>
-              </button>
-            }
-            @if (canCloneMajorEvent()) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Duplicar grande evento"
-                matTooltip="Duplicar"
-                (click)="$event.stopPropagation(); workspace.cloneMajorEvent(majorEvent)">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            }
-            @if (canDeleteMajorEvent(majorEvent)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Excluir grande evento"
-                matTooltip="Excluir"
-                (click)="$event.stopPropagation(); workspace.deleteMajorEvent(majorEvent.id)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            }
-          </mat-list-item>
-        } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum grande evento cadastrado</span>
-            <span matListItemLine>Crie o primeiro no painel ao lado.</span>
-          </mat-list-item>
-        }
-      </mat-list>
-
-      <div class="list-pager" aria-label="Paginação de grandes eventos">
-        <span>Itens {{ workspace.majorEventsPagination.label() }}</span>
-        <div class="list-pager-actions">
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Página anterior de grandes eventos"
-            matTooltip="Anterior"
-            [disabled]="!workspace.majorEventsPagination.hasPreviousPage()"
-            (click)="workspace.previousMajorEventsPage()">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Próxima página de grandes eventos"
-            matTooltip="Próxima"
-            [disabled]="!workspace.majorEventsPagination.hasNextPage()"
-            (click)="workspace.nextMajorEventsPage()">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-        </div>
-      </div>
-    </aside>
 
     <section class="panel panel-stack">
       <div class="panel-heading">
@@ -105,7 +30,21 @@
 
         <div class="panel-actions editor-action-row">
           <div class="editor-action-group">
+
+              @if (workspace.selectedMajorEvent(); as selectedForActions) {
+                @if (canCloneMajorEvent() || canDeleteMajorEvent(selectedForActions)) {
+                <button mat-stroked-button type="button" [matMenuTriggerFor]="resourceActions"><mat-icon>more_horiz</mat-icon>Mais ações</button>
+                <mat-menu #resourceActions="matMenu">
+                  @if (canCloneMajorEvent()) { <button mat-menu-item type="button" (click)="workspace.cloneMajorEvent(selectedForActions)"><mat-icon>content_copy</mat-icon>Duplicar</button> }
+                  @if (canDeleteMajorEvent(selectedForActions)) { <button mat-menu-item type="button" (click)="workspace.deleteMajorEvent(selectedForActions.id)"><mat-icon>delete</mat-icon>Excluir</button> }
+                </mat-menu>
+                }
+              }
+
+
             @if (workspace.selectedMajorEvent(); as selectedMajorEvent) {
+
+
               <button
                 mat-stroked-button
                 type="button"
@@ -113,36 +52,12 @@
                 <mat-icon>history</mat-icon>
                 Histórico
               </button>
-              @if (canCloneMajorEvent()) {
-                <button mat-stroked-button type="button" (click)="workspace.cloneMajorEvent(selectedMajorEvent)">
-                  <mat-icon>content_copy</mat-icon>
-                  Duplicar
-                </button>
-              }
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar este grande evento."
-                (click)="workspace.openMajorEventPublication()">
-                <mat-icon>campaign</mat-icon>
-                Gerenciar publicação
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Abrir os formulários vinculados a este grande evento."
-                (click)="workspace.openMajorEventForms()">
-                <mat-icon>list_alt</mat-icon>
-                Formulários
-              </button>
+
+
             }
           </div>
 
           <div class="editor-action-group editor-action-group--publication">
-            <button mat-button type="button" (click)="workspace.resetMajorEventForm()">
-              <mat-icon>restart_alt</mat-icon>
-              Limpar
-            </button>
             @if (canEditMajorEvent(workspace.selectedMajorEvent())) {
               <button
                 mat-stroked-button
@@ -177,19 +92,7 @@
       </div>
 
       <form [formGroup]="workspace.majorEventForm" class="panel-stack">
-        <section class="surface field-group">
-          <app-audience-editor
-            [audience]="workspace.majorEventForm.controls.audience.value"
-            [courseCodes]="workspace.majorEventForm.controls.audienceCourseCodes.value"
-            [invitedPeople]="workspace.majorEventAudienceInvitations()"
-            [parentRestrictions]="workspace.audienceParentRestrictions()"
-            [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
-            [publicationError]="workspace.audiencePublicationError()"
-            [readOnly]="!canEditMajorEvent(workspace.selectedMajorEvent())"
-            (audienceChange)="workspace.majorEventForm.controls.audience.setValue($event)"
-            (courseCodesChange)="workspace.majorEventForm.controls.audienceCourseCodes.setValue($event)"
-            (invitedPeopleChange)="workspace.setMajorEventAudienceInvitations($event)" />
-        </section>
+
 
         <section class="surface field-group">
           <h4>Identidade</h4>
@@ -252,9 +155,87 @@
               <mat-error class="span-2"> Texto e link do botão devem ser preenchidos juntos. </mat-error>
             }
           </div>
+        </section></form>
+      @if (workspace.selectedMajorEvent()) {
+        <section class="surface field-group">
+          <div class="surface-heading">
+            <h4>Atividades do grande evento</h4>
+            <span>{{ workspace.majorEventEvents().length }} vinculadas</span>
+          </div>
+
+          <mat-list class="detail-list">
+            @for (eventItem of workspace.majorEventEvents(); track eventItem.id) {
+              <app-workspace-record
+                [title]="eventItem.name"
+                [link]="['/event-workspace', 'event', eventItem.id, 'settings']"
+                [readonly]="!permissions.has(Permission.Event.Read)">
+                <lib-twemoji recordIcon [emoji]="eventItem.emoji" />
+                <span recordDescription>
+                  {{ eventItem.startDate | date: 'short' }} -
+                  {{ eventItem.endDate | date: 'short' }}
+                </span>
+                @if (canEditSelectedMajorEventEvents()) {
+                  <button
+                    recordActions
+                    matIconButton
+                    type="button"
+                    aria-label="Remover atividade do grande evento"
+                    matTooltip="Remover"
+                    (click)="workspace.removeEventFromSelectedMajorEvent(eventItem)">
+                    <mat-icon>link_off</mat-icon>
+                  </button>
+                }
+              </app-workspace-record>
+            } @empty {
+              <mat-list-item>
+                <span matListItemTitle>Nenhuma atividade vinculada</span>
+                <span matListItemLine>Busque abaixo para adicionar.</span>
+              </mat-list-item>
+            }
+          </mat-list>
         </section>
 
         <section class="surface field-group">
+          <h4>Adicionar atividades</h4>
+          <form [formGroup]="workspace.majorEventEventSearchForm" class="compact-form"
+            (submit)="$event.preventDefault(); workspace.searchEventsForSelectedMajorEvent()">
+            <mat-form-field>
+              <mat-label>Buscar atividades por nome</mat-label>
+              <input matInput formControlName="query" />
+            </mat-form-field>
+          </form>
+
+          <div class="inline-list">
+            @for (eventItem of workspace.majorEventEventSearchResults(); track eventItem.id) {
+              @if (canEditSelectedMajorEventEvents()) {
+                <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
+                  <lib-twemoji [emoji]="eventItem.emoji" />
+                  {{ eventItem.name }}
+                  {{ eventItem.startDate | date: 'shortDate' }}
+                </button>
+              }
+            } @empty {
+              <span class="empty-note">Nenhum resultado para adicionar.</span>
+            }
+          </div>
+        </section>
+      }
+<form [formGroup]="workspace.majorEventForm" class="panel-stack">
+<section class="surface field-group">
+          <app-audience-editor
+            [audience]="workspace.majorEventForm.controls.audience.value"
+            [courseCodes]="workspace.majorEventForm.controls.audienceCourseCodes.value"
+            [invitedPeople]="workspace.majorEventAudienceInvitations()"
+            [parentRestrictions]="workspace.audienceParentRestrictions()"
+            [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
+            [publicationError]="workspace.audiencePublicationError()"
+            [readOnly]="!canEditMajorEvent(workspace.selectedMajorEvent())"
+            (audienceChange)="workspace.majorEventForm.controls.audience.setValue($event)"
+            (courseCodesChange)="workspace.majorEventForm.controls.audienceCourseCodes.setValue($event)"
+            (invitedPeopleChange)="workspace.setMajorEventAudienceInvitations($event)" />
+        </section>
+
+        <section class="surface field-group" id="inscricao">
           <h4>Inscrições</h4>
           <div class="field-grid">
             <mat-form-field>
@@ -292,7 +273,27 @@
             </mat-form-field>
 
             <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
-            <mat-form-field class="span-2" subscriptSizing="dynamic">
+
+
+            <mat-checkbox formControlName="rankedSubscriptionEnabled"> Inscrição por voto preferencial </mat-checkbox>
+            <mat-checkbox formControlName="requiresImageLicenseAgreement">
+              Exigir concordância com o
+              <a
+                href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()">
+                contrato de licença de uso de imagem do CACiC
+              </a>
+            </mat-checkbox>
+
+
+
+          </div>
+        </section>
+<section class="surface field-group" id="presenca">
+<h4>Presença</h4>
+<mat-form-field subscriptSizing="dynamic">
               <mat-label>Quem pode confirmar presença on-line</mat-label>
               <mat-select
                 formControlName="attendanceEligibility"
@@ -307,46 +308,24 @@
                 }
               </mat-select>
               <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
-            </mat-form-field>
-
-            <mat-checkbox formControlName="rankedSubscriptionEnabled"> Inscrição por voto preferencial </mat-checkbox>
-            <mat-checkbox formControlName="requiresImageLicenseAgreement">
-              Exigir concordância com o
-              <a
-                href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
-                target="_blank"
-                rel="noopener noreferrer"
-                (click)="$event.stopPropagation()">
-                contrato de licença de uso de imagem do CACiC
-              </a>
-            </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
+            </mat-form-field><p class="empty-note">Esta regra é herdada pelas atividades que não definem uma regra própria.</p>
+</section>
+<section class="surface field-group" id="certificados">
+<h4>Certificados</h4>
+<div class="checkbox-grid">
+<mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
               Emitir para presentes não pagantes
             </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
+<mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
               Emitir para presentes não inscritos
             </mat-checkbox>
-            <mat-hint class="span-2">
-              O grande evento precisa permitir a emissão junto com a atividade e o grupo; a presença é independente
-              do certificado. Com pagamento obrigatório, não pagantes não recebem certificado e a inscrição confirmada
-              continua necessária.
-            </mat-hint>
-          </div>
-        </section>
+</div><p class="empty-note">As exceções também dependem das regras da atividade e do grupo. O pagamento obrigatório impede certificados para presentes não pagantes.</p>
+</section>
 
         <section class="surface field-group">
-          <h4>Contato e pagamento</h4>
-          <div class="checkbox-grid">
-            <mat-checkbox formControlName="isPaymentRequired"> Exigir pagamento </mat-checkbox>
-          </div>
-
-          <div class="field-grid">
-            <mat-form-field>
-              <mat-label>Contato</mat-label>
-              <input matInput formControlName="contactInfo" />
-            </mat-form-field>
-
-            <mat-form-field>
+<h4>Contato</h4>
+<div class="field-grid">
+<mat-form-field>
               <mat-label>Tipo de contato</mat-label>
               <mat-select formControlName="contactType">
                 <mat-option value="">Nenhum</mat-option>
@@ -356,6 +335,25 @@
                 <mat-option value="OTHER">Outro</mat-option>
               </mat-select>
             </mat-form-field>
+<mat-form-field>
+              <mat-label>Contato</mat-label>
+              <input matInput formControlName="contactInfo" />
+            </mat-form-field>
+</div>
+</section>
+<section class="surface field-group">
+          <h4>Pagamento</h4>
+          <div class="checkbox-grid">
+            <mat-checkbox formControlName="isPaymentRequired"> Exigir pagamento </mat-checkbox>
+          </div>
+
+          <p class="empty-note">Preços e instruções de pagamento podem ser mantidos mesmo quando o pagamento não é obrigatório.</p>
+          <mat-expansion-panel [expanded]="workspace.majorEventForm.controls.isPaymentRequired.value || workspace.majorEventForm.hasError('incompleteBankPaymentInfo') || workspace.majorEventForm.hasError('bankPaymentDocumentRequired')">
+            <mat-expansion-panel-header><mat-panel-title>Instruções e dados para pagamento</mat-panel-title></mat-expansion-panel-header>
+          <div class="field-grid">
+
+
+
 
             <mat-form-field class="span-2">
               <mat-label>Informações adicionais de pagamento</mat-label>
@@ -404,7 +402,8 @@
               <mat-error class="span-2"> Documento é obrigatório quando dados bancários forem preenchidos. </mat-error>
             }
           </div>
-        </section>
+        </mat-expansion-panel>
+</section>
 
         <section class="surface field-group">
           <h4>Preços</h4>
@@ -414,9 +413,9 @@
             <mat-radio-button value="TIERED">Preços por tipo de participante</mat-radio-button>
           </mat-radio-group>
 
-          <div formArrayName="priceTiers" class="field-grid">
+          <div formArrayName="priceTiers" class="panel-stack">
             @for (tier of workspace.priceTiers.controls; track $index) {
-              <ng-container [formGroupName]="$index">
+              <section class="surface field-grid" [formGroupName]="$index" [attr.aria-label]="'Preço ' + ($index + 1)">
                 <mat-form-field>
                   <mat-label>Nome do preço</mat-label>
                   <input matInput formControlName="name" />
@@ -453,7 +452,7 @@
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
-              </ng-container>
+              </section>
             }
           </div>
 
@@ -466,72 +465,8 @@
         </section>
       </form>
 
-      @if (workspace.selectedMajorEvent()) {
-        <section class="surface field-group">
-          <div class="surface-heading">
-            <h4>Atividades do grande evento</h4>
-            <span>{{ workspace.majorEventEvents().length }} vinculadas</span>
-          </div>
-
-          <mat-list class="detail-list">
-            @for (eventItem of workspace.majorEventEvents(); track eventItem.id) {
-              <mat-list-item>
-                <span matListItemTitle class="list-title">
-                  <lib-twemoji [emoji]="eventItem.emoji" />
-                  <span>{{ eventItem.name }}</span>
-                </span>
-                <span matListItemLine>
-                  {{ eventItem.startDate | date: 'short' }} -
-                  {{ eventItem.endDate | date: 'short' }}
-                </span>
-                @if (canEditSelectedMajorEventEvents()) {
-                  <button
-                    matIconButton
-                    type="button"
-                    aria-label="Remover atividade do grande evento"
-                    matTooltip="Remover"
-                    (click)="workspace.removeEventFromSelectedMajorEvent(eventItem)">
-                    <mat-icon>link_off</mat-icon>
-                  </button>
-                }
-              </mat-list-item>
-            } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhuma atividade vinculada</span>
-                <span matListItemLine>Busque abaixo para adicionar.</span>
-              </mat-list-item>
-            }
-          </mat-list>
-        </section>
-
-        <section class="surface field-group">
-          <h4>Adicionar atividades</h4>
-          <form [formGroup]="workspace.majorEventEventSearchForm" class="compact-form">
-            <mat-form-field>
-              <mat-label>Buscar atividades por nome</mat-label>
-              <input matInput formControlName="query" />
-            </mat-form-field>
-            <button mat-stroked-button type="button" (click)="workspace.searchEventsForSelectedMajorEvent()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
-          </form>
-
-          <div class="inline-list">
-            @for (eventItem of workspace.majorEventEventSearchResults(); track eventItem.id) {
-              @if (canEditSelectedMajorEventEvents()) {
-                <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
-                  <lib-twemoji [emoji]="eventItem.emoji" />
-                  {{ eventItem.name }}
-                  {{ eventItem.startDate | date: 'shortDate' }}
-                </button>
-              }
-            } @empty {
-              <span class="empty-note">Nenhum resultado para adicionar.</span>
-            }
-          </div>
-        </section>
-      }
     </section>
   </div>
 </section>
+
+}

@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { Component, input } from '@angular/core';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { Component, input, output } from '@angular/core';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
-import { NEVER, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
 import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../graphql/receipt-validation-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
@@ -15,6 +15,16 @@ import { flushAsync } from '../testing/async-test-helpers';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 import { EventInterestsComponent } from './event-interests.component';
+import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+
+@Component({ selector: 'app-event-context-picker', template: '' })
+class EventContextPickerStub {
+  readonly hideInShell = input(false);
+  readonly allowGroups = input(false);
+  readonly context = input<EventContextRef | null>(null);
+  readonly contextChange = output<EventContextRef>();
+}
 
 @Component({ selector: 'app-workspace-event-subscriptions-subtab', template: '' })
 class EventSubscriptionsTabStub {}
@@ -26,6 +36,7 @@ class MajorEventSubscriptionsTabStub {
 
 @Component({ selector: 'app-workspace-event-interests', template: 'Interesses' })
 class EventInterestsTabStub {
+  readonly context = input<EventContextRef | null>(null);
   static readonly initialize = vi.fn();
 
   constructor() {
@@ -33,15 +44,72 @@ class EventInterestsTabStub {
   }
 }
 
+async function createHeadingFixture(inWorkspaceShell: boolean) {
+  await TestBed.configureTestingModule({
+    imports: [SubscriptionsPageComponent],
+    providers: [
+      provideRouter([]),
+      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})), snapshot: { url: [] } } },
+      {
+        provide: SubscriptionsService,
+        useValue: {
+          majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
+          closeLiveUpdates: vi.fn(),
+        },
+      },
+      {
+        provide: PermissionsService,
+        useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false },
+      },
+      {
+        provide: ReceiptValidationApiService,
+        useValue: { watchQueue: () => NEVER, getQueue: () => of({ pendingCount: 0, items: [] }) },
+      },
+      { provide: ADMIN_SHELL_CONTEXT, useValue: inWorkspaceShell },
+      { provide: MatSnackBar, useValue: { open: vi.fn() } },
+    ],
+  })
+    .overrideComponent(SubscriptionsPageComponent, {
+      remove: {
+        imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
+      },
+      add: {
+        imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub],
+      },
+    })
+    .compileComponents();
+
+  const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+  fixture.detectChanges();
+  await fixture.whenStable();
+  return fixture;
+}
+
+describe('SubscriptionsPageComponent page heading', () => {
+  it('keeps its own heading when rendered without the admin shell', async () => {
+    const fixture = await createHeadingFixture(false);
+
+    expect(fixture.nativeElement.querySelector('h1')?.textContent?.trim()).toBe('Inscrições e interesses');
+  });
+
+  it('omits the duplicate heading when the admin shell provides one', async () => {
+    const fixture = await createHeadingFixture(true);
+
+    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
+  });
+});
+
 describe('SubscriptionsPageComponent lazy interest loading', () => {
-  it('initializes the interests tab only after it is selected', async () => {
+  it('loads interests only after the interests route is selected', async () => {
     EventInterestsTabStub.initialize.mockClear();
+    const paramMap = new BehaviorSubject(convertToParamMap({}));
+    const route = { paramMap, snapshot: { url: [] as Array<{ path: string }> } };
     await TestBed.configureTestingModule({
       imports: [SubscriptionsPageComponent],
       providers: [
         provideRouter([]),
         { provide: Router, useValue: { navigate: vi.fn(async () => true) } },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})), snapshot: { url: [] } } },
+        { provide: ActivatedRoute, useValue: route },
         { provide: SubscriptionsService, useValue: {
           majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
           closeLiveUpdates: vi.fn(),
@@ -50,21 +118,19 @@ describe('SubscriptionsPageComponent lazy interest loading', () => {
         { provide: ReceiptValidationApiService, useValue: {} },
       ],
     }).overrideComponent(SubscriptionsPageComponent, {
-      remove: { imports: [EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent] },
-      add: { imports: [EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub] },
+      remove: { imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent] },
+      add: { imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub] },
     }).compileComponents();
     const fixture = TestBed.createComponent(SubscriptionsPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     expect(EventInterestsTabStub.initialize).not.toHaveBeenCalled();
 
-    fixture.nativeElement.querySelectorAll('[role="tab"]')[2].click();
+    route.snapshot.url = [{ path: 'interests' }];
+    paramMap.next(convertToParamMap({ eventId: 'event-1' }));
     fixture.detectChanges();
     await fixture.whenStable();
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(EventInterestsTabStub.initialize).toHaveBeenCalledOnce();
-    });
+    expect(EventInterestsTabStub.initialize).toHaveBeenCalledOnce();
   });
 });
 
@@ -112,6 +178,43 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
     })
       .overrideComponent(SubscriptionsPageComponent, { set: { template: '', imports: [] } })
       .compileComponents();
+  });
+
+  it('starts with actual context selection and routes group interests without category tabs', () => {
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    expect(fixture.componentInstance.context()).toBeNull();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentInstance.selectContext({ kind: 'event', id: 'event-2' });
+    expect(navigate).toHaveBeenLastCalledWith(['/subscriptions', 'event', 'event-2']);
+    fixture.componentInstance.interestsMode.set(true);
+    fixture.componentInstance.selectContext({ kind: 'group', id: 'group-2' });
+    expect(navigate).toHaveBeenLastCalledWith(['/subscriptions', 'group', 'group-2', 'interests']);
+  });
+
+  it.each([
+    { parameter: 'eventId', kind: 'event' },
+    { parameter: 'groupId', kind: 'group' },
+    { parameter: 'majorEventId', kind: 'major-event' },
+  ])('restores the $kind interests scope from a deep link', ({ parameter, kind }) => {
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        paramMap: of(convertToParamMap({ [parameter]: 'linked-1' })),
+        snapshot: { url: [{ path: 'interests' }] },
+      },
+    });
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    expect(fixture.componentInstance.interestsMode()).toBe(true);
+    expect(fixture.componentInstance.context()).toEqual({ kind, id: 'linked-1' });
+    expect(workspace.closeLiveUpdates).toHaveBeenCalled();
+    expect(receiptApi.watchQueue).not.toHaveBeenCalled();
+  });
+
+  it.each(['event', 'major-event', 'group'] as const)('preserves the %s scope in the interests link', (kind) => {
+    const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+    fixture.componentInstance.context.set({ kind, id: 'selected-1' });
+    expect(fixture.componentInstance.interestsLink()).toEqual(['/subscriptions', kind, 'selected-1', 'interests']);
+    expect(fixture.componentInstance.subscriptionsLink()).toEqual(kind === 'group'
+      ? ['/subscriptions'] : ['/subscriptions', kind, 'selected-1']);
   });
 
   it('opens one stream for the selected major event and updates the badge to zero', async () => {

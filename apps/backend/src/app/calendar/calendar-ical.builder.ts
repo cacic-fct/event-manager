@@ -1,5 +1,6 @@
 import ical, { ICalCalendarMethod, ICalEventClass, ICalEventStatus, ICalEventTransparency } from 'ical-generator';
 import type { ICalLocation } from 'ical-generator';
+import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';
 import { PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE } from './calendar-feed.constants';
 import {
   AdminEventGroupRecord,
@@ -178,15 +179,15 @@ export function buildPublicEventUrl(publicAppOrigin: string, eventId: string): s
 }
 
 export function buildAdminEventUrl(publicAppOrigin: string, eventId: string): string {
-  return new URL(`/admin/events/${encodeURIComponent(eventId)}`, publicAppOrigin).toString();
+  return new URL(`/admin${adminEventWorkspacePath({ kind: 'event', id: eventId })}`, publicAppOrigin).toString();
 }
 
 export function buildAdminEventGroupUrl(publicAppOrigin: string, eventGroupId: string): string {
-  return new URL(`/admin/groups/${encodeURIComponent(eventGroupId)}`, publicAppOrigin).toString();
+  return new URL(`/admin${adminEventWorkspacePath({ kind: 'group', id: eventGroupId })}`, publicAppOrigin).toString();
 }
 
 export function buildAdminMajorEventUrl(publicAppOrigin: string, majorEventId: string): string {
-  return new URL(`/admin/major-events/${encodeURIComponent(majorEventId)}`, publicAppOrigin).toString();
+  return new URL(`/admin${adminEventWorkspacePath({ kind: 'major-event', id: majorEventId })}`, publicAppOrigin).toString();
 }
 
 export function slugifyFileName(value: string): string {

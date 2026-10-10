@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
@@ -45,7 +46,8 @@ describe('SportsWorkspaceService operations', () => {
   };
   const snackbar = { open: vi.fn() };
   const dialog = { open: vi.fn() };
-  const majorEventsApi = { listMajorEvents: vi.fn() };
+  const majorEventsApi = { getMajorEvent: vi.fn(), listMajorEvents: vi.fn() };
+  const router = { navigate: vi.fn(() => Promise.resolve(true)) };
   const permissions = {
     has: vi.fn<(permission: Permission) => boolean>(() => true),
     hasAny: vi.fn<(permissions: Permission[]) => boolean>(() => true),
@@ -62,6 +64,8 @@ describe('SportsWorkspaceService operations', () => {
     api.tournaments.mockReturnValue(of([]));
     api.watchTournamentReview.mockReturnValue(EMPTY);
     majorEventsApi.listMajorEvents.mockReturnValue(of([]));
+    majorEventsApi.getMajorEvent.mockReturnValue(of(createAdminMajorEvent()));
+    router.navigate.mockResolvedValue(true);
     dialog.open.mockReturnValue({ afterClosed: () => of(true) });
     TestBed.configureTestingModule({
       providers: [
@@ -73,6 +77,7 @@ describe('SportsWorkspaceService operations', () => {
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
         { provide: PermissionsService, useValue: permissions },
+        { provide: Router, useValue: router },
         { provide: MatSnackBar, useValue: snackbar },
         { provide: MatDialog, useValue: dialog },
       ],
@@ -82,6 +87,66 @@ describe('SportsWorkspaceService operations', () => {
   });
 
   describe('workspace entry', () => {
+    it('loads one exact major-event scope and its tournament', async () => {
+      const majorEvent = createAdminMajorEvent({ id: 'major-event-scoped', name: 'Jogos do contexto' });
+      const tournament = createAdminSportsTournamentRead().tournament;
+      tournament.majorEventId = majorEvent.id;
+      const tournamentListItem = {
+        tournament,
+        majorEvent: {
+          id: majorEvent.id,
+          name: majorEvent.name,
+          emoji: majorEvent.emoji,
+          startDate: majorEvent.startDate,
+          endDate: majorEvent.endDate,
+          isPaymentRequired: majorEvent.isPaymentRequired,
+        },
+        categoryCount: 2,
+        teamCount: 4,
+        pendingApplicationCount: 0,
+        pendingReviewCount: 0,
+      };
+      api.tournaments.mockReturnValue(of([tournamentListItem]));
+      vi.spyOn(workspace, 'loadTournament').mockResolvedValue();
+
+      await workspace.loadMajorEventScope(majorEvent.id);
+
+      expect(majorEventsApi.getMajorEvent).not.toHaveBeenCalled();
+      expect(api.tournaments).toHaveBeenCalledWith({ majorEventId: majorEvent.id, take: 1 });
+      expect(workspace.majorEventRouteScopeId()).toBe(majorEvent.id);
+      expect(workspace.tournaments()).toEqual([tournamentListItem]);
+      expect(workspace.majorEventRouteScopeSummary()).toEqual(tournamentListItem.majorEvent);
+      expect(workspace.loadTournament).toHaveBeenCalledWith(tournament.id);
+    });
+
+    it('hydrates an unconfigured scope from the general major-event API only when authorized', async () => {
+      const majorEvent = createAdminMajorEvent({ id: 'major-event-unconfigured', name: 'Jogos sem torneio' });
+      api.tournaments.mockReturnValue(of([]));
+      majorEventsApi.getMajorEvent.mockReturnValue(of(majorEvent));
+
+      await workspace.loadMajorEventScope(majorEvent.id);
+
+      expect(majorEventsApi.getMajorEvent).toHaveBeenCalledWith(majorEvent.id);
+      expect(workspace.majorEvents()).toEqual([majorEvent]);
+      expect(workspace.scopedMajorEventWorkspaceItems()).toEqual([
+        expect.objectContaining({ majorEvent: expect.objectContaining({ id: majorEvent.id }), tournament: undefined }),
+      ]);
+    });
+
+    it('keeps sports detail navigation inside the selected major-event scope', () => {
+      workspace.useMajorEventRouteScope('major-event-1');
+
+      workspace.navigateToArea('reviews', { teamId: 'team-1' });
+
+      expect(router.navigate).toHaveBeenCalledWith([
+        '/sports',
+        'major-event',
+        'major-event-1',
+        'reviews',
+        'team-1',
+      ]);
+    });
+
     it('merges configured and unconfigured major events into one list', () => {
       const configuredMajorEvent = createAdminMajorEvent({ id: 'major-event-1', name: 'Jogos configurados' });
       const unconfiguredMajorEvent = createAdminMajorEvent({ id: 'major-event-2', name: 'Jogos disponíveis' });
@@ -185,8 +250,28 @@ describe('SportsWorkspaceService operations', () => {
     });
 
     it('clears the deleted tournament before replacing the route with the list', async () => {
-      const tournaments = vi.spyOn(workspace, 'navigateToTournamentList').mockResolvedValue();
+      const tournaments = vi.spyOn(workspace, 'navigateToMajorEventScope').mockResolvedValue();
       workspace.error.set('Sports tournament tournament-1 was not found.');
+      workspace.majorEventRouteScopeId.set('major-event-1');
+      const currentTournament = workspace.tournamentRead();
+      if (!currentTournament) throw new Error('Expected a selected tournament fixture.');
+      workspace.tournaments.set([
+        {
+          tournament: currentTournament.tournament,
+          majorEvent: {
+            id: 'major-event-1',
+            name: 'Jogos universitários',
+            emoji: '🏆',
+            startDate: '2026-09-10T12:00:00.000Z',
+            endDate: '2026-09-12T12:00:00.000Z',
+            isPaymentRequired: false,
+          },
+          categoryCount: 1,
+          teamCount: 2,
+          pendingApplicationCount: 0,
+          pendingReviewCount: 0,
+        },
+      ]);
       api.tournaments.mockReturnValue(of([]));
 
       await workspace.deleteTournament();
@@ -196,6 +281,8 @@ describe('SportsWorkspaceService operations', () => {
       expect(workspace.tournamentRead()).toBeNull();
       expect(workspace.error()).toBeNull();
       expect(workspace.tournaments()).toEqual([]);
+      expect(workspace.majorEventRouteScopeId()).toBe('major-event-1');
+      expect(workspace.scopedMajorEventWorkspaceItems().map((item) => item.majorEvent.id)).toEqual(['major-event-1']);
     });
   });
 
@@ -977,6 +1064,25 @@ describe('SportsWorkspaceService operations', () => {
       });
       expect(workspace.isEditingOfficial()).toBe(false);
       expect(workspace.officialForm.controls.personId.value).toBe('');
+    });
+
+    it('disables official scope while editing and restores assignment scope when canceled', () => {
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'category-official-1',
+        categoryId: 'category-1',
+        matchId: null,
+      };
+
+      workspace.editOfficial(official);
+
+      expect(workspace.officialForm.controls.scope.disabled).toBe(true);
+      expect(workspace.officialForm.getRawValue().scope).toBe('CATEGORY');
+
+      workspace.cancelOfficialEdit();
+
+      expect(workspace.officialForm.controls.scope.enabled).toBe(true);
+      expect(workspace.officialForm.controls.scope.value).toBe('MATCH');
     });
 
     it('removes an official through the permissioned versioned delete mutation', async () => {

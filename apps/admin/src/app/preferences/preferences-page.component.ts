@@ -1,5 +1,5 @@
 import { DOCUMENT, DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -62,7 +62,6 @@ const STALE_ADMIN_ACCESS_DISABLED_REASON = 'STALE_ADMIN_ACCESS';
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PreferencesPageComponent {
   private readonly api = inject(AdminCalendarFeedSettingsApiService);

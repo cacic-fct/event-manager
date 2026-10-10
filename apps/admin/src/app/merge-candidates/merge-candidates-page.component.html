@@ -8,6 +8,12 @@
 
       <form [formGroup]="workspace.mergeFilterForm" class="compact-form">
         <mat-form-field>
+          <mat-label>Buscar pessoa</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput formControlName="query" />
+          <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
           <mat-label>Status</mat-label>
           <mat-select formControlName="status">
             <mat-option value="PENDING">Pendente</mat-option>
@@ -34,7 +40,7 @@
     <mat-list class="detail-list">
       @for (candidate of workspace.mergeCandidates(); track candidate.id) {
         <mat-list-item>
-          <span matListItemTitle> {{ candidate.personA?.name }} ↔ {{ candidate.personB?.name }} </span>
+          <span matListItemTitle>Comparar registros</span>
           <span matListItemLine>
             Método: {{ describeMergeMatchMethod(candidate.matchMethod) }}
             @if (candidate.matchValue) {
@@ -43,6 +49,12 @@
             · Pontuação: {{ candidate.score ?? '-' }} ·
             {{ describeMergeStatus(candidate.status) }}
           </span>
+          @if (candidate.personA) {
+            <app-participant-summary matListItemLine [person]="candidate.personA" />
+          }
+          @if (candidate.personB) {
+            <app-participant-summary matListItemLine [person]="candidate.personB" />
+          }
           @if (candidate.status === 'PENDING') {
             <button
               mat-flat-button
@@ -97,7 +109,7 @@
     </mat-list>
 
     <div class="list-pager" aria-label="Paginação de candidatos de unificação">
-      <span>Itens {{ workspace.mergeCandidatesPagination.label() }}</span>
+      <span>Itens {{ workspace.mergeCandidatesPagination.label() }} · {{ workspace.mergeCandidateCount() }} no total</span>
       <div class="list-pager-actions">
         <button
           mat-icon-button

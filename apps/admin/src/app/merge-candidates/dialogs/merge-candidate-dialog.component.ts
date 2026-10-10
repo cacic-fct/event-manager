@@ -390,6 +390,12 @@ export class MergeCandidateDialogComponent {
     for (const field of this.fieldOptions) {
       const sourceValue = field.valueAccessor(source)?.trim();
       const targetValue = field.valueAccessor(target)?.trim();
+      const control = this.form.controls[field.controlName];
+      if (!sourceValue || sourceValue === targetValue) {
+        control.disable({ emitEvent: false });
+      } else {
+        control.enable({ emitEvent: false });
+      }
       this.setFieldControl(field.controlName, !!sourceValue && !targetValue, false);
     }
   }

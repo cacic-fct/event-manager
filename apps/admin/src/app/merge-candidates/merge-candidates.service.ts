@@ -27,20 +27,26 @@ export class MergeCandidatesService {
   private readonly peopleService = inject(PeopleService);
 
   readonly mergeCandidates = signal<MergeCandidate[]>([]);
+  readonly mergeCandidateCount = signal(0);
   readonly mergeCandidatesPagination = createWorkspaceListPagination();
   readonly mergeFilterForm = this.formBuilder.nonNullable.group({
     status: ['PENDING'],
+    query: [''],
   });
 
   async refreshMergeCandidates(): Promise<void> {
     const status = this.mergeFilterForm.controls.status.value as MergeCandidateStatus;
-    const items = await firstValueFrom(
-      this.api.listMergeCandidates({
+    const query = this.mergeFilterForm.controls.query.value.trim() || undefined;
+    const [items, count] = await Promise.all([
+      firstValueFrom(this.api.listMergeCandidates({
         status,
+        ...(query ? { query } : {}),
         ...pageVariables(this.mergeCandidatesPagination.pageIndex()),
-      }),
-    );
+      })),
+      firstValueFrom(this.api.countMergeCandidates(status, query)),
+    ]);
     this.mergeCandidates.set(applyPagedResult(items, this.mergeCandidatesPagination));
+    this.mergeCandidateCount.set(count);
   }
 
   async applyMergeCandidateFilters(): Promise<void> {

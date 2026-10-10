@@ -171,6 +171,8 @@ import { PublicationSearchSyncService } from './publishing/publishing-search-syn
 import { PublicationService } from './publishing/publishing.service';
 import { PublicationStateWriterService } from './publishing/publishing-state-writer.service';
 import { PublicationTargetService } from './publishing/publishing-target.service';
+import { EventContextResolver } from './event-context/event-context.resolver';
+import { EventContextService } from './event-context/event-context.service';
 import { PublicationTransitionService } from './publishing/publishing-transition.service';
 import { getRedisConnectionOptions } from './weather/redis-connection';
 import { WeatherProcessor } from './weather/weather.processor';
@@ -438,6 +440,8 @@ const schedulerProviders = useInMemoryTestInfra
     CalendarService,
     PublicationResolver,
     PublicationService,
+    EventContextResolver,
+    EventContextService,
     PublicationTransitionService,
     PublicationPreviewService,
     PublicationJobsService,

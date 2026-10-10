@@ -126,6 +126,7 @@ describe('PeopleResolver', () => {
           OR: [
             { name: { contains: 'Ana', mode: 'insensitive' } },
             { email: { contains: 'Ana', mode: 'insensitive' } },
+            { secondaryEmails: { has: 'Ana' } },
             { phone: { contains: 'Ana', mode: 'insensitive' } },
             { identityDocument: { contains: 'Ana' } },
             { academicId: { contains: 'Ana' } },
@@ -197,6 +198,7 @@ describe('PeopleResolver', () => {
           OR: [
             { name: { contains: 'Ana', mode: 'insensitive' } },
             { email: { contains: 'Ana', mode: 'insensitive' } },
+            { secondaryEmails: { has: 'Ana' } },
             { phone: { contains: 'Ana', mode: 'insensitive' } },
             { identityDocument: { contains: 'Ana' } },
             { academicId: { contains: 'Ana' } },
@@ -485,7 +487,7 @@ describe('PeopleResolver', () => {
           id: 'event-1:person-1:lecturer',
           label: 'Arquitetura Angular com Signals',
           description: 'Ministrante',
-          route: '/events/event-1',
+          route: '/event-workspace/event/event-1',
         }),
       ]),
     );

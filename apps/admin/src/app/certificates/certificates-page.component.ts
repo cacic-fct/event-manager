@@ -1,10 +1,12 @@
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FormField } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,15 +26,18 @@ import {
 import { CertificatesService } from './certificates.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { WorkspaceScopeComponent } from '../shared/workspace-scope.component';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 @Component({
   selector: 'app-workspace-certificates-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     FormField,
     ReactiveFormsModule,
     MatButtonModule,
+    MatDialogModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -42,6 +47,8 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     MatTooltipModule,
     TwemojiComponent,
     PersonSearchComponent,
+    WorkspaceRecordComponent,
+    WorkspaceScopeComponent,
   ],
   templateUrl: './certificates-page.component.html',
   styleUrls: [
@@ -52,15 +59,52 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
   ],
 })
 export class CertificatesPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   readonly workspace = inject(CertificatesService);
+  private readonly pendingChanges = inject(WorkspacePendingChangesService);
+  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
+  protected readonly routeTargetType = signal<string | null>(null);
+  protected readonly folderEditorMode = signal<'create' | 'edit' | null>(null);
+  protected readonly isStandalonePage = computed(() => {
+    const targetType = this.routeTargetType();
+    return targetType === null || targetType === 'other' || targetType === 'folder';
+  });
+  protected readonly showGenericTargetPicker = computed(
+    () => !this.inWorkspaceShell && !this.isStandalonePage(),
+  );
 
   constructor() {
+    effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
+    this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      void this.workspace.selectTargetByRoute(params.get('targetType'), params.get('targetId'), params.get('configId'));
+      const targetType = params.get('targetType');
+      this.routeTargetType.set(targetType);
+      this.folderEditorMode.set(null);
+      void this.workspace.selectTargetByRoute(targetType, params.get('targetId'), params.get('configId'));
     });
+  }
+
+  protected startNewFolder(): void {
+    this.workspace.startNewFolder();
+    this.folderEditorMode.set('create');
+  }
+
+  protected startFolderEdit(): void {
+    this.workspace.cancelFolderEdit();
+    this.folderEditorMode.set('edit');
+  }
+
+  protected cancelFolderEdit(): void {
+    this.workspace.cancelFolderEdit();
+    this.folderEditorMode.set(null);
+  }
+
+  protected async saveFolder(): Promise<void> {
+    if (await this.workspace.saveCertificateFolder()) this.folderEditorMode.set(null);
   }
 
   protected canEditSelectedTarget(): boolean {

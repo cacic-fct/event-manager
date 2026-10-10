@@ -1,3 +1,5 @@
+import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
 import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -26,7 +28,8 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
-import { EventsService } from '../events/events.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
+import { EventsService, CreationParentError, type CreationParentSummary } from '../events/events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import {
   normalizeAudienceCourseCodes,
@@ -40,6 +43,10 @@ type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 
 @Service()
 export class EventGroupsService {
+  private readonly workspaceContext = inject(EventWorkspaceContextService);
+  private selectionRequest = 0;
+  private loadedSelectionId: string | null = null;
+  private readonly majorsApi = inject(MajorEventApiService);
   private readonly api = inject(EventGroupApiService);
   private readonly eventsApi = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);
@@ -91,6 +98,7 @@ export class EventGroupsService {
 
   readonly eventGroupForm = this.formBuilder.nonNullable.group({
     id: [''],
+    majorEventId: [''],
     name: ['', [Validators.required]],
     emoji: [DEFAULT_EVENT_GROUP_EMOJI],
     interestEnabled: [false],
@@ -111,6 +119,12 @@ export class EventGroupsService {
   readonly eventGroupsSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
   });
+  private readonly editorRevision = signal(0);
+  private readonly editorBaseline = signal('');
+  readonly unsavedChanges = computed(() => {
+    this.editorRevision();
+    return this.editorBaseline() !== this.editorSignature();
+  });
 
   constructor() {
     bindLiveSearch({
@@ -126,6 +140,8 @@ export class EventGroupsService {
     this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
       this.syncCertificateRuleControls(),
     );
+    this.eventGroupForm.valueChanges.subscribe(() => this.editorRevision.update((revision) => revision + 1));
+    this.captureEditorBaseline();
   }
 
   setEventGroupAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
@@ -150,8 +166,7 @@ export class EventGroupsService {
   }
 
   audienceParentRestrictions(): AudienceParentRestriction[] {
-    const group = this.selectedEventGroup();
-    if (!group?.majorEventId) {
+    if (!(this.eventGroupForm.controls.majorEventId.value || this.selectedEventGroup()?.majorEventId)) {
       return [];
     }
 
@@ -169,7 +184,7 @@ export class EventGroupsService {
     const parent = this.selectedEventGroupMajorEventRestriction();
     return resolveAttendanceEligibility({
       attendanceEligibility: this.eventGroupForm.controls.attendanceEligibility.value,
-      majorEventId: this.selectedEventGroup()?.majorEventId ?? null,
+      majorEventId: this.eventGroupForm.controls.majorEventId.value || null,
       majorEvent: parent ? { attendanceEligibility: parent.attendanceEligibility } : null,
     });
   }
@@ -212,6 +227,8 @@ export class EventGroupsService {
   }
 
   async saveEventGroup(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    const saveRequest = this.selectionRequest;
+    const hadLinkedEvents = this.eventGroupEvents().length > 0;
     if (this.savingEventGroup()) {
       return;
     }
@@ -235,11 +252,13 @@ export class EventGroupsService {
       } else {
         savedGroup = await firstValueFrom(this.api.createEventGroup(payload));
       }
-      this.eventGroupForm.controls.id.setValue(savedGroup.id, { emitEvent: false });
-      this.selectedEventGroup.set(savedGroup);
+      if (saveRequest === this.selectionRequest) {
+        this.eventGroupForm.controls.id.setValue(savedGroup.id, { emitEvent: false });
+        this.selectedEventGroup.set(savedGroup);
+      }
 
       if (action === 'PUBLISH') {
-        if (this.eventGroupEvents().length === 0) {
+        if (!hadLinkedEvents) {
           this.snackbar.open('Grupo salvo. Adicione eventos antes de publicar o conjunto.', 'Fechar', {
             duration: 4000,
           });
@@ -254,7 +273,7 @@ export class EventGroupsService {
           this.snackbar.open('Grupo publicado.', 'Fechar', { duration: 2500 });
         }
       } else {
-        if (this.eventGroupEvents().length > 0) {
+        if (hadLinkedEvents) {
           await firstValueFrom(
             this.publicationApi.setPublicationState({
               targetType: 'EVENT_GROUP',
@@ -268,36 +287,22 @@ export class EventGroupsService {
         });
       }
 
-      this.eventGroupForm.reset({
-        id: '',
-        name: '',
-        emoji: DEFAULT_EVENT_GROUP_EMOJI,
-        interestEnabled: false,
-        attendanceEligibility: null,
-        audience: EventAudience.PUBLIC,
-        audienceCourseCodes: [],
-        requiresImageLicenseAgreement: false,
-        shouldIssueCertificate: false,
-        shouldIssueCertificateForNonPayingAttendees: false,
-        shouldIssueCertificateForNonSubscribedAttendees: false,
-        shouldIssueCertificateForEachEvent: false,
-        shouldIssuePartialCertificate: false,
-      });
-      this.eventGroupAudienceInvitations.set([]);
-      this.selectedEventGroupMajorEventRestriction.set(null);
-      if (!raw.id && action !== 'SCHEDULE') {
-        this.selectedEventGroup.set(null);
-        this.eventGroupEvents.set([]);
-      }
+      if (saveRequest !== this.selectionRequest) return;
+      this.populateEventGroupSelection(savedGroup);
+      this.workspaceContext.context.update((context) => context?.kind === 'group' && context.id === savedGroup.id
+        ? {...context,name:savedGroup.name,emoji:savedGroup.emoji} : context);
       await this.loadEventGroups();
+      if (saveRequest !== this.selectionRequest) return;
       if (action === 'SCHEDULE') {
         void this.router.navigate(this.eventGroupPublicationRoute(savedGroup.id));
         return;
       }
-      const selectedGroup = this.selectedEventGroup();
-      if (selectedGroup) {
-        await this.loadEventsForGroup(selectedGroup.id);
-      }
+      await this.loadEventsForGroup(savedGroup.id, saveRequest);
+      if (saveRequest !== this.selectionRequest) return;
+      await this.loadMajorEventRestriction(savedGroup.majorEventId, saveRequest);
+      if (saveRequest !== this.selectionRequest) return;
+      this.loadedSelectionId = savedGroup.id;
+      void this.router.navigate(['/event-workspace', 'group', savedGroup.id, 'settings']);
     } catch (error) {
       this.feedback.error(error, 'Não foi possível salvar o grupo.');
     } finally {
@@ -314,8 +319,10 @@ export class EventGroupsService {
     void this.router.navigate(this.eventGroupPublicationRoute(selectedGroup.id));
   }
 
-  startNewEventGroup(): void {
-    void this.router.navigate(['/groups']);
+  startNewEventGroup(navigate = true): void {
+    this.selectionRequest++;
+    this.loadedSelectionId = null;
+    if (navigate) void this.router.navigate(['/event-workspace/new/group']);
     this.selectedEventGroup.set(null);
     this.selectedEventGroupMajorEventRestriction.set(null);
     this.eventGroupEvents.set([]);
@@ -323,6 +330,7 @@ export class EventGroupsService {
     this.eventGroupEventSearchResults.set([]);
     this.eventGroupForm.reset({
       id: '',
+      majorEventId: '',
       name: '',
       emoji: DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: false,
@@ -342,20 +350,59 @@ export class EventGroupsService {
       },
       { emitEvent: false },
     );
+    this.captureEditorBaseline();
+  }
+
+  async initializeNewEventGroup(majorEventId?: string | null): Promise<CreationParentSummary[]> {
+    this.startNewEventGroup(false);
+    const request = this.selectionRequest;
+    if (!majorEventId) return [];
+    const major = await firstValueFrom(this.majorsApi.getMajorEvent(majorEventId));
+    if (request !== this.selectionRequest) return [];
+    if (isFrozenMajorEvent(major) && !this.permissions.has(Permission.Frozen.Update)) {
+      throw new CreationParentError('Este grande evento está congelado. É necessária permissão para alterar recursos antigos.');
+    }
+    this.eventGroupForm.controls.majorEventId.setValue(major.id);
+    this.setMajorEventRestriction(major);
+    this.captureEditorBaseline();
+    return [{kind:'major-event',id:major.id,name:major.name,emoji:major.emoji}];
+  }
+
+  private async loadMajorEventRestriction(majorEventId: string | null | undefined, request: number): Promise<void> {
+    if (!majorEventId) return;
+    try {
+      const major = await firstValueFrom(this.majorsApi.getMajorEvent(majorEventId));
+      if (request === this.selectionRequest) this.setMajorEventRestriction(major);
+    } catch {
+      // Keep the explicit unavailable-parent warning when parent metadata cannot be read.
+    }
+  }
+
+  private setMajorEventRestriction(major: { name: string; audience?: EventAudience; audienceCourseCodes?: string[]; attendanceEligibility?: AttendanceEligibility | null }): void {
+    this.selectedEventGroupMajorEventRestriction.set({label:`Grande evento “${major.name}”`,audience:major.audience ?? EventAudience.PUBLIC,audienceCourseCodes:major.audienceCourseCodes ?? [],attendanceEligibility:major.attendanceEligibility});
   }
 
   async pickEventGroup(group: EventGroup): Promise<void> {
-    void this.router.navigate(['/groups', group.id]);
+    void this.router.navigate(['/event-workspace', 'group', group.id, 'settings']);
+    const request = ++this.selectionRequest;
     this.populateEventGroupSelection(group);
+    await this.loadEventsForGroup(group.id, request);
+    await this.loadMajorEventRestriction(group.majorEventId, request);
+    if (request === this.selectionRequest) this.loadedSelectionId = group.id;
   }
 
   async pickEventGroupById(groupId: string): Promise<void> {
-    if (this.selectedEventGroup()?.id === groupId) {
+    const request = ++this.selectionRequest;
+    if (this.loadedSelectionId === groupId && this.selectedEventGroup()?.id === groupId) {
       return;
     }
 
     const group = await firstValueFrom(this.api.getEventGroup(groupId));
+    if (request !== this.selectionRequest) return;
     this.populateEventGroupSelection(group);
+    await this.loadEventsForGroup(group.id, request);
+    await this.loadMajorEventRestriction(group.majorEventId, request);
+    if (request === this.selectionRequest) this.loadedSelectionId = group.id;
   }
 
   private populateEventGroupSelection(group: EventGroup): void {
@@ -363,6 +410,7 @@ export class EventGroupsService {
     this.selectedEventGroupMajorEventRestriction.set(null);
     this.eventGroupForm.reset({
       id: group.id,
+      majorEventId: group.majorEventId ?? '',
       name: group.name,
       emoji: group.emoji || DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: group.interestEnabled ?? false,
@@ -393,7 +441,18 @@ export class EventGroupsService {
       },
       { emitEvent: false },
     );
-    void this.loadEventsForGroup(group.id);
+    this.captureEditorBaseline();
+  }
+
+  private editorSignature(): string {
+    return JSON.stringify({
+      form: this.eventGroupForm.getRawValue(),
+      audienceInvitations: this.eventGroupAudienceInvitations().map((person) => person.id),
+    });
+  }
+
+  private captureEditorBaseline(): void {
+    this.editorBaseline.set(this.editorSignature());
   }
 
   async deleteEventGroup(id: string): Promise<void> {
@@ -454,17 +513,30 @@ export class EventGroupsService {
       return;
     }
 
-    await firstValueFrom(
-      this.eventsApi.updateEvent(eventItem.id, {
-      eventGroupId: selectedGroup.id,
-      shouldIssueCertificate: selectedGroup.shouldIssueCertificate ? eventItem.shouldIssueCertificate : false,
-      }),
-    );
-    await Promise.all([
-      this.eventsService.loadEvents(),
-      this.loadEventsForGroup(selectedGroup.id),
-      this.refreshEventSummaries(),
-    ]);
+    if (selectedGroup.majorEventId && eventItem.majorEventId && selectedGroup.majorEventId !== eventItem.majorEventId) {
+      this.feedback.error(
+        new Error('Um evento vinculado ao grupo pertence a outro grande evento.'),
+        'Não foi possível adicionar o evento ao grupo.',
+      );
+      return;
+    }
+
+    try {
+      await firstValueFrom(
+        this.eventsApi.updateEvent(eventItem.id, {
+          eventGroupId: selectedGroup.id,
+          ...(selectedGroup.majorEventId && !eventItem.majorEventId ? { majorEventId: selectedGroup.majorEventId } : {}),
+          shouldIssueCertificate: selectedGroup.shouldIssueCertificate ? eventItem.shouldIssueCertificate : false,
+        }),
+      );
+      await Promise.all([
+        this.eventsService.loadEvents(),
+        this.loadEventsForGroup(selectedGroup.id),
+        this.refreshEventSummaries(),
+      ]);
+    } catch (error) {
+      this.feedback.error(error, 'Não foi possível adicionar o evento ao grupo.');
+    }
   }
 
   async removeEventFromSelectedGroup(eventItem: Event): Promise<void> {
@@ -485,13 +557,14 @@ export class EventGroupsService {
     ]);
   }
 
-  private async loadEventsForGroup(groupId: string): Promise<void> {
+  private async loadEventsForGroup(groupId: string, request = this.selectionRequest): Promise<void> {
     const events = await firstValueFrom(
       this.eventsApi.listEvents({
         eventGroupId: groupId,
         take: 200,
       }),
     );
+    if (request !== this.selectionRequest || this.selectedEventGroup()?.id !== groupId) return;
     this.eventGroupEvents.set(events);
     this.refreshMajorEventRestriction(events);
   }
@@ -536,6 +609,7 @@ export class EventGroupsService {
     const raw = this.eventGroupForm.getRawValue();
     return {
       name: raw.name.trim() || (allowIncompleteDraft ? DEFAULT_DRAFT_EVENT_GROUP_NAME : ''),
+      majorEventId: raw.majorEventId || null,
       emoji: raw.emoji.trim() || DEFAULT_EVENT_GROUP_EMOJI,
       interestEnabled: raw.interestEnabled,
       attendanceEligibility: raw.attendanceEligibility,

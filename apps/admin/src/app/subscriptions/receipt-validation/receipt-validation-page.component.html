@@ -8,7 +8,9 @@
 
   <header class="validation-header">
     <div>
-      <h1>Validação de comprovantes</h1>
+      @if (!inWorkspaceShell) {
+        <h1>Validação de comprovantes</h1>
+      }
       <p>{{ pendingCount() }} pendente{{ pendingCount() === 1 ? '' : 's' }}</p>
     </div>
 
@@ -184,7 +186,7 @@
             <mat-card-subtitle>
               @if (item.receipt) {
                 Enviado em {{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }} ·
-                {{ item.receipt.processingStatus }}
+                {{ processingStatusLabel(item.receipt.processingStatus) }}
               } @else {
                 Nenhum arquivo encontrado
               }

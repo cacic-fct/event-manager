@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,18 +12,29 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import {
+  adminEventWorkspaceRoute,
+  adminSportsWorkspaceRoute,
+  getEventTypeLabel,
+  getSubscriptionStatusLabel,
+} from '@cacic-fct/shared-utils';
+import { SubscriptionEventOptionComponent, type SubscriptionEventOptionView } from '@cacic-fct/shared-angular';
 import { WorkspaceMajorEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
+import {
+  sportsParticipantSourceLabel,
+  sportsPaymentStatusLabel,
+  subscriptionCreationMethodLabel,
+} from './subscription-labels';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 
 @Component({
   selector: 'app-workspace-major-event-subscriptions-subtab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CurrencyPipe,
     DatePipe,
@@ -38,8 +49,10 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     MatSelectModule,
     MatTooltipModule,
     RouterLink,
-    TwemojiComponent,
     PersonSearchComponent,
+    ParticipantSummaryComponent,
+    WorkspaceRecordComponent,
+    SubscriptionEventOptionComponent,
   ],
   templateUrl: './major-event-subscriptions.component.html',
   styleUrls: [
@@ -56,6 +69,21 @@ export class MajorEventSubscriptionsComponent {
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
+  protected readonly subscriptionCreationMethodLabel = subscriptionCreationMethodLabel;
+  protected readonly sportsPaymentStatusLabel = sportsPaymentStatusLabel;
+  protected readonly sportsParticipantSourceLabel = sportsParticipantSourceLabel;
+
+  protected sportsWorkspaceRoute(majorEventId: string): string[] {
+    return majorEventId
+      ? adminSportsWorkspaceRoute({ majorEventId, area: 'reviews' })
+      : ['/sports'];
+  }
+
+  protected eventSettingsRoute(majorEventId: string): string[] {
+    return majorEventId
+      ? adminEventWorkspaceRoute({ kind: 'major-event', id: majorEventId, section: 'settings' })
+      : ['/event-workspace'];
+  }
 
   protected readonly statuses = [
     'WAITING_RECEIPT_UPLOAD',
@@ -70,12 +98,6 @@ export class MajorEventSubscriptionsComponent {
 
   protected hasSubscribedLecturer(subscription: WorkspaceMajorEventSubscription): boolean {
     return subscription.events.some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
-  }
-
-  protected hasSubscribedLecturerInSelection(): boolean {
-    return this.workspace
-      .selectedMajorEventEvents()
-      .some((eventItem) => eventItem.isLecturerSubscription && eventItem.subscribed);
   }
 
   protected isSelectedMajorEventFrozen(): boolean {
@@ -101,39 +123,13 @@ export class MajorEventSubscriptionsComponent {
     );
   }
 
-  protected sportsPaymentStatusLabel(status: string): string {
-    return (
-      {
-        NOT_REQUIRED: 'Pagamento não exigido',
-        NOT_AVAILABLE: 'Pagamento indisponível',
-        WAITING_APPROVAL: 'Aguardando aprovação',
-        WAITING_PAYMENT: 'Aguardando pagamento',
-        UNDER_REVIEW: 'Pagamento em análise',
-        PAID: 'Pagamento confirmado',
-        REJECTED: 'Pagamento rejeitado',
-      }[status] ?? status
-    );
-  }
-
-  protected sportsParticipantSourceLabel(source: string): string {
-    return (
-      {
-        ADMIN: 'Adicionada pela administração',
-        TEAM_ASSIGNMENT: 'Adicionada por equipe',
-        SELF_SUBSCRIPTION: 'Inscrição da própria pessoa',
-      }[source] ?? source
-    );
-  }
-
   protected receiptValidationLink(): string[] {
     const majorEventId = this.workspace.majorEventForm.controls.majorEventId.value;
     return majorEventId ? ['/subscriptions/major-event', majorEventId, 'validate-receipts'] : ['/subscriptions'];
   }
 
   protected canEditSelectedMajorEventSubscriptions(): boolean {
-    const majorEvent = this.workspace
-      .majorEvents()
-      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    const majorEvent = this.workspace.selectedMajorEvent();
     return (
       this.permissions.hasAny([
         Permission.Subscription.Create,
@@ -146,13 +142,41 @@ export class MajorEventSubscriptionsComponent {
   }
 
   protected canValidateSelectedMajorEventReceipts(): boolean {
-    const majorEvent = this.workspace
-      .majorEvents()
-      .find((item) => item.id === this.workspace.majorEventForm.controls.majorEventId.value);
+    const majorEvent = this.workspace.selectedMajorEvent();
     return (
       this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]) &&
       Boolean(majorEvent) &&
       (!isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Update))
     );
+  }
+
+  protected eventOption(
+    eventItem: WorkspaceMajorEventSubscription['events'][number],
+  ): SubscriptionEventOptionView {
+    return {
+      id: eventItem.eventId,
+      name: eventItem.eventName,
+      emoji: eventItem.eventEmoji ?? '❔',
+      description:
+        eventItem.eventShortDescription ||
+        (eventItem.eventType ? getEventTypeLabel(eventItem.eventType) : 'Evento'),
+      startDate: eventItem.eventStartDate ?? null,
+      endDate: eventItem.eventEndDate ?? null,
+      locationDescription: eventItem.eventLocationDescription,
+      availabilityLine: this.eventAvailabilityLine(eventItem),
+    };
+  }
+
+  private eventAvailabilityLine(eventItem: WorkspaceMajorEventSubscription['events'][number]): string {
+    const availability =
+      eventItem.eventSlots === null
+        ? 'Vagas ilimitadas'
+        : eventItem.availableSlots == null
+          ? 'Disponibilidade não informada'
+          : `${eventItem.availableSlots} ${eventItem.availableSlots === 1 ? 'vaga disponível' : 'vagas disponíveis'}`;
+
+    return eventItem.projectedQueuePosition == null
+      ? availability
+      : `${availability} · Próxima posição para nova inscrição na fila: ${eventItem.projectedQueuePosition}`;
   }
 }

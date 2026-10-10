@@ -1,48 +1,12 @@
 <section
   class="subtab-layout major-subscription-layout"
   [class.detail-active]="workspace.selectedMajorEventSubscription() || workspace.editMode()">
-  <aside class="panel major-selector">
-    <div class="panel-heading">
-      <div>
-        <h3>Grande evento</h3>
-        <p>Carregue inscrições e ajuste as atividades selecionadas.</p>
-      </div>
-    </div>
+  <aside class="major-selector">
 
-    <form [formGroup]="workspace.majorEventSearchForm" class="major-event-search">
-      <mat-form-field class="query-field">
-        <mat-label>Buscar grande evento</mat-label>
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput formControlName="query" />
-      </mat-form-field>
-    </form>
-
-    <mat-list class="major-event-result-list">
-      @for (majorEvent of workspace.filteredMajorEvents(); track majorEvent.id) {
-        <mat-list-item
-          (click)="workspace.selectMajorEventById(majorEvent.id)"
-          [class.selected-list-item]="workspace.majorEventForm.controls.majorEventId.value === majorEvent.id">
-          <span matListItemTitle class="list-title">
-            <lib-twemoji [emoji]="majorEvent.emoji" />
-            <span>{{ majorEvent.name }}</span>
-          </span>
-          <span matListItemLine>
-            {{ majorEvent.startDate | date: 'shortDate' }} -
-            {{ majorEvent.endDate | date: 'shortDate' }}
-          </span>
-        </mat-list-item>
-      } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhum grande evento encontrado</span>
-          <span matListItemLine>Ajuste a busca e tente novamente.</span>
-        </mat-list-item>
-      }
-    </mat-list>
-
-    <form [formGroup]="workspace.majorEventForm" class="major-event-form">
+<form [formGroup]="workspace.majorEventForm" class="major-event-form">
       <input type="hidden" formControlName="majorEventId" />
 
-      <button mat-flat-button type="button" (click)="workspace.loadMajorEventSubscriptions()">
+      <button mat-flat-button type="button" [disabled]="!workspace.majorEventForm.controls.majorEventId.value" (click)="workspace.loadMajorEventSubscriptions()">
         <mat-icon>groups</mat-icon>
         Carregar inscrições
       </button>
@@ -91,6 +55,7 @@
         </button>
       }
     </form>
+
   </aside>
 
   <div class="major-subscription-workspace">
@@ -99,7 +64,11 @@
         <div class="panel-heading">
           <div>
             <h3>Inscritos</h3>
-            <p>Busque e selecione uma inscrição para consultar os detalhes.</p>
+            <p>
+              {{ workspace.majorEventSubscriptionCount() }} registros ·
+              {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'Pagamento exigido' : 'Pagamento não exigido' }} ·
+              <a matButton="text" [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)">Editar política</a>
+            </p>
           </div>
         </div>
 
@@ -113,31 +82,28 @@
 
         <mat-list class="subscription-list">
           @for (subscription of workspace.majorEventSubscriptions(); track subscription.id) {
-            <mat-list-item
-              [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
-              <button
-                matListItemTitle
-                class="subscription-selection-button"
-                type="button"
-                [attr.aria-pressed]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
-                (click)="workspace.selectMajorEventSubscription(subscription)">
-                {{ subscription.person?.name ?? subscription.personId }}
-              </button>
-              <span matListItemLine>
+            <app-workspace-record
+              [title]="subscription.person?.name ?? subscription.personId"
+              [label]="'Abrir inscrição de ' + (subscription.person?.name ?? subscription.personId)"
+              [selected]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
+              [link]="['/subscriptions', 'major-event', workspace.majorEventForm.controls.majorEventId.value, 'subscription', subscription.id]">
+              @if (subscription.person) {
+                <app-participant-summary recordDescription [person]="subscription.person" [showName]="false" />
+              }
+              <span recordDescription>
                 {{ statusLabel(subscription.subscriptionStatus) }} ·
-                {{ subscription.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
                 @if (hasSubscribedLecturer(subscription)) {
                   · Palestrante inscrito no próprio evento
                 }
               </span>
-              <div matListItemMeta class="item-actions">
+              <div recordActions class="item-actions">
                 <button
                   mat-icon-button
                   type="button"
                   aria-label="Ver histórico da inscrição"
                   matTooltip="Histórico"
                   (click)="
-                    $event.stopPropagation();
                     auditLog.openHistory(
                       'MAJOR_EVENT_SUBSCRIPTION',
                       subscription.id,
@@ -150,7 +116,7 @@
                   <mat-icon class="warning-icon">warning</mat-icon>
                 }
               </div>
-            </mat-list-item>
+            </app-workspace-record>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum inscrito encontrado</span>
@@ -160,7 +126,7 @@
         </mat-list>
 
         <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
-          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}</span>
+          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }} · {{ workspace.majorEventSubscriptionCount() }} no total</span>
           <div class="list-pager-actions">
             <button
               mat-icon-button
@@ -199,7 +165,7 @@
               <h4 id="sports-subscriptions-title">Participações esportivas</h4>
               <p>Solicitações, modalidades de interesse e equipe são independentes da inscrição nas atividades.</p>
             </div>
-            <a mat-stroked-button [routerLink]="['/sports', sportsWorkspace.tournamentId, 'reviews']">
+            <a mat-stroked-button [routerLink]="sportsWorkspaceRoute(workspace.majorEventForm.controls.majorEventId.value)">
               <mat-icon>sports</mat-icon>
               Abrir gestão esportiva
             </a>
@@ -371,7 +337,7 @@
               @if (workspace.selectedMajorEventSubscription()) {
                 {{ workspace.selectedMajorEventSubscription()?.createdAt | date: 'short' }}
                 ·
-                {{ workspace.selectedMajorEventSubscription()?.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(workspace.selectedMajorEventSubscription()?.createdByMethod ?? 'UNKNOWN') }}
               } @else {
                 Selecione a pessoa e os eventos para criar a inscrição.
               }
@@ -466,7 +432,7 @@
           <fieldset class="form-fieldset" [disabled]="isSelectedMajorEventLocked()">
             <mat-form-field>
               <mat-label>Status</mat-label>
-              <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.editMode()">
+              <mat-select formControlName="subscriptionStatus">
                 @for (status of statuses; track status) {
                   <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
                 }
@@ -508,7 +474,7 @@
 
             <mat-form-field>
               <mat-label>Faixa de pagamento</mat-label>
-              <mat-select formControlName="paymentTier" [disabled]="!workspace.editMode()">
+              <mat-select formControlName="paymentTier">
                 <mat-option [value]="null">Não informado</mat-option>
                 @for (tier of workspace.majorEventPaymentTiers(); track tier.id) {
                   <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
@@ -516,7 +482,7 @@
               </mat-select>
             </mat-form-field>
 
-            <mat-checkbox formControlName="imageLicenseAgreementAccepted" [disabled]="!workspace.editMode()">
+            <mat-checkbox formControlName="imageLicenseAgreementAccepted">
               Concordou com o
               <a
                 href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
@@ -535,39 +501,27 @@
             <span>{{ workspace.selectedEventIds().size }} selecionados</span>
           </div>
 
-          @if (hasSubscribedLecturerInSelection()) {
-            <p class="warning-copy">
-              Esta inscrição inclui pessoa palestrante em um evento próprio. Revise antes de salvar.
-            </p>
-          }
-
-          <mat-selection-list [multiple]="true">
+          <mat-list>
             @for (eventItem of workspace.selectedMajorEventEvents(); track eventItem.eventId) {
-              <mat-list-option
-                checkboxPosition="before"
+              <lib-subscription-event-option
+                [option]="eventOption(eventItem)"
                 [selected]="workspace.selectedEventIds().has(eventItem.eventId)"
                 [disabled]="!workspace.editMode()"
-                [class.editable-list-item]="workspace.editMode()"
-                [class.warning-item]="eventItem.isLecturerSubscription && eventItem.subscribed"
-                (selectedChange)="workspace.setSelectedEvent(eventItem.eventId, $event)">
-                <span matListItemTitle>{{ eventItem.eventName }}</span>
-                <span matListItemLine>
-                  {{ eventItem.eventStartDate | date: 'short' }}
-                  @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                    · Palestrante inscrito no próprio evento
-                  }
-                </span>
-                @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                  <mat-icon matListItemMeta>warning</mat-icon>
-                }
-              </mat-list-option>
+                [readOnly]="!workspace.editMode()"
+                [showFullDate]="true"
+                [warningReason]="
+                  eventItem.isLecturerSubscription && workspace.selectedEventIds().has(eventItem.eventId)
+                    ? 'Palestrante inscrito no próprio evento'
+                    : null
+                "
+                (selectionChange)="workspace.setSelectedEvent(eventItem.eventId, $event)" />
             } @empty {
               <mat-list-item>
                 <span matListItemTitle>Nenhum evento carregado</span>
                 <span matListItemLine> Carregue uma inscrição existente para ver os eventos do grande evento. </span>
               </mat-list-item>
             }
-          </mat-selection-list>
+          </mat-list>
         </section>
       } @else {
         <div class="empty-state">

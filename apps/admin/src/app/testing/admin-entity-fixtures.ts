@@ -180,6 +180,7 @@ export function createAdminDashboardSportsMatch(overrides: Partial<DashboardSpor
   return {
     matchId: 'sports-match-1',
     tournamentId: 'sports-tournament-1',
+    majorEventId: 'sports-major-event-1',
     categoryName: 'Futsal aberto',
     eventName: 'Atlética FCT × Engenharia',
     startDate: adminFixtureDateFromNow(0, 14),

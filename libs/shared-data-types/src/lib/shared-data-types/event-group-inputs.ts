@@ -3,6 +3,9 @@ import { Field, InputType } from '@nestjs/graphql';
 
 @InputType()
 export class EventGroupCreateInput {
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
+
   @Field(() => EventAudience, { nullable: true })
   audience?: EventAudience;
 
@@ -45,6 +48,9 @@ export class EventGroupCreateInput {
 
 @InputType()
 export class EventGroupUpdateInput {
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
+
   @Field(() => EventAudience, { nullable: true })
   audience?: EventAudience;
 

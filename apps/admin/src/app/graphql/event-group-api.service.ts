@@ -13,11 +13,11 @@ import { EVENT_GROUP_FIELDS } from './graphql-query-fragments';
 export class EventGroupApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  listEventGroups(filters?: { query?: string; skip?: number; take?: number }) {
+  listEventGroups(filters?: { query?: string; majorEventId?: string; skip?: number; take?: number }) {
     return this.graphqlHttp
       .request<{ eventGroups: EventGroup[] }>(
-        `query ListEventGroups($query: String, $skip: Int, $take: Int) {
-          eventGroups(query: $query, skip: $skip, take: $take) {
+        `query ListEventGroups($query: String, $majorEventId: String, $skip: Int, $take: Int) {
+          eventGroups(query: $query, majorEventId: $majorEventId, skip: $skip, take: $take) {
             ${EVENT_GROUP_FIELDS}
           }
         }`,

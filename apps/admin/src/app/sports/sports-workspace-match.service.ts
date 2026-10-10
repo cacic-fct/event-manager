@@ -385,7 +385,10 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     if (event.publicationState === 'UNPUBLISHED') {
       return 'Despublicado';
     }
-    return 'Rascunho';
+    if (event.publicationState === 'DRAFT') {
+      return 'Rascunho';
+    }
+    return 'Situação da publicação não informada';
   }
 
   isMatchPublic(match: SportsMatchSummary | null | undefined): boolean {
@@ -484,6 +487,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
       role: official.role,
       scope: this.officialScope(official),
     });
+    this.officialForm.controls.scope.disable();
   }
 
   async assignOfficial(): Promise<void> {

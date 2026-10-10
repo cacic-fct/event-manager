@@ -39,58 +39,29 @@
                 <mat-icon>add</mat-icon>Novo cargo
               </button>
             </div>
+            <mat-form-field class="role-search">
+              <mat-label>Buscar cargo por nome ou descrição</mat-label>
+              <mat-icon matPrefix>search</mat-icon>
+              <input #roleQuery matInput type="search" [value]="roleSearch()" (input)="roleSearch.set(roleQuery.value)" />
+            </mat-form-field>
             <h4>Predefinidos</h4>
             <div class="entity-list">
-              @for (role of store.predefinedRoles(); track role.id) {
-                <button
-                  type="button"
-                  class="entity-row"
-                  [attr.aria-pressed]="store.selectedRoleId() === role.id"
-                  [class.entity-row--selected]="store.selectedRoleId() === role.id"
-                  (click)="store.selectRole(role)">
-                  <lib-twemoji [emoji]="role.emoji" />
-                  <span
-                    ><strong>{{ role.name }}</strong
-                    ><small>{{ role.description }}</small>
-                    <small>{{
-                      role.archivedAt
-                        ? 'Arquivado'
-                        : role.directPeopleCount +
-                          role.groupPeopleCount +
-                          ' pessoas · ' +
-                          role.directPeopleCount +
-                          ' diretas'
-                    }}</small></span
-                  >
-                </button>
+              @for (role of predefinedRoles(); track role.id) {
+                <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
+                  <lib-twemoji recordIcon [emoji]="role.emoji" />
+                  <span recordDescription>{{ role.description }} · {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                </app-workspace-record>
               }
             </div>
             <h4>Personalizados</h4>
             <div class="entity-list">
-              @for (role of store.customRoles(); track role.id) {
-                <button
-                  type="button"
-                  class="entity-row"
-                  [attr.aria-pressed]="store.selectedRoleId() === role.id"
-                  [class.entity-row--selected]="store.selectedRoleId() === role.id"
-                  (click)="store.selectRole(role)">
-                  <lib-twemoji [emoji]="role.emoji" />
-                  <span
-                    ><strong>{{ role.name }}</strong
-                    ><small>{{ role.description }}</small>
-                    <small>{{
-                      role.archivedAt
-                        ? 'Arquivado'
-                        : role.directPeopleCount +
-                          role.groupPeopleCount +
-                          ' pessoas · ' +
-                          role.directPeopleCount +
-                          ' diretas'
-                    }}</small></span
-                  >
-                </button>
+              @for (role of customRoles(); track role.id) {
+                <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
+                  <lib-twemoji recordIcon [emoji]="role.emoji" />
+                  <span recordDescription>{{ role.description }} · {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                </app-workspace-record>
               } @empty {
-                <p class="empty-note">Nenhum cargo personalizado.</p>
+                <p class="empty-note">Nenhum cargo personalizado encontrado.</p>
               }
             </div>
           </aside>
@@ -278,23 +249,11 @@
                     @if (store.groupAssignmentSearchActive()) {
                       <div class="group-search-results" aria-label="Grupos encontrados">
                         @for (group of store.groupAssignmentResults(); track group.id) {
-                          <button
-                            mat-stroked-button
-                            type="button"
-                            class="group-search-result"
-                            [attr.aria-label]="'Adicionar grupo ' + group.name"
-                            [disabled]="!store.canEditRole()"
-                            (click)="store.addGroupAssignment(group.id)">
-                            <lib-twemoji [emoji]="group.emoji" />
-                            <span>
-                              <strong>{{ group.name }}</strong>
-                              <small
-                                >{{ group.description || 'Sem descrição' }} ·
-                                {{ group.members.length }} integrantes</small
-                              >
-                            </span>
-                            <mat-icon aria-hidden="true">group_add</mat-icon>
-                          </button>
+                          <app-workspace-record [title]="group.name" [label]="'Adicionar grupo ' + group.name"
+                            [disabled]="!store.canEditRole()" (activate)="store.addGroupAssignment(group.id)">
+                            <lib-twemoji recordIcon [emoji]="group.emoji" />
+                            <span recordDescription>{{ group.description || 'Sem descrição' }} · {{ group.members.length }} integrantes</span>
+                          </app-workspace-record>
                         } @empty {
                           <p class="search-hint">Nenhum grupo encontrado para esta busca.</p>
                         }

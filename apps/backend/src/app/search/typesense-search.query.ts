@@ -4,6 +4,7 @@ import type { Client as TypesenseClient } from 'typesense';
 import { TYPESENSE_MAX_PER_PAGE } from './typesense-search.collections';
 import type {
   TypesensePagedSearchResult,
+  TypesenseRankedSearchResult,
   TypesenseSearchOptions,
   TypesenseSearchResult,
 } from './typesense-search.types';
@@ -42,7 +43,7 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
     return { available: false, ids: [], found: 0 };
   }
 
-  const { filterBy, limit, offset, sortBy } = normalizeSearchOptions(input.options);
+  const { filterBy, limit, offset, queryByWeights, sortBy } = normalizeSearchOptions(input.options);
   if (limit === 0) {
     return { available: false, ids: [], found: 0 };
   }
@@ -69,6 +70,9 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
       }
       if (sortBy) {
         searchParameters.sort_by = sortBy;
+      }
+      if (queryByWeights) {
+        searchParameters.query_by_weights = queryByWeights;
       }
 
       const result = await input.client
@@ -103,6 +107,57 @@ export async function searchTypesensePagedDocumentIds<T extends { id: string }>(
   }
 }
 
+export async function searchTypesenseRankedDocumentIds<T extends { id: string }>(input: {
+  client: TypesenseClient | null;
+  logger: Logger;
+  collectionName: string;
+  query: string;
+  queryBy: string;
+  options: TypesenseSearchOptions;
+}): Promise<TypesenseRankedSearchResult> {
+  const normalizedQuery = input.query.trim();
+  if (!input.client || !normalizedQuery) {
+    return { available: false, hits: [], found: 0 };
+  }
+
+  const { filterBy, limit, offset, queryByWeights, sortBy } = normalizeSearchOptions(input.options);
+  if (limit === 0) {
+    return { available: false, hits: [], found: 0 };
+  }
+
+  try {
+    const searchParameters: SearchParams<T & Record<string, unknown>> = {
+      q: normalizedQuery,
+      query_by: input.queryBy,
+      per_page: Math.min(TYPESENSE_MAX_PER_PAGE, limit),
+      limit_hits: TYPESENSE_MAX_RESULT_WINDOW,
+      ...(offset > 0 ? { offset } : {}),
+      ...(filterBy ? { filter_by: filterBy } : {}),
+      ...(queryByWeights ? { query_by_weights: queryByWeights } : {}),
+      ...(sortBy ? { sort_by: sortBy } : {}),
+    };
+    const result = await input.client
+      .collections<T & Record<string, unknown>>(input.collectionName)
+      .documents()
+      .search(searchParameters);
+    return {
+      available: true,
+      found: typeof result.found === 'number' ? result.found : 0,
+      hits: (result.hits ?? []).map((hit) => ({
+        id: hit.document.id,
+        score: hit.text_match_info?.score ?? (hit.text_match == null ? '0' : String(hit.text_match)),
+      })),
+    };
+  } catch (error) {
+    if (isTypesenseConfigurationError(error)) {
+      input.logger.error(`Typesense search request is invalid for collection ${input.collectionName}.`, error);
+      throw error;
+    }
+    input.logger.error(`Typesense search failed for collection ${input.collectionName}.`, error);
+    return { available: false, hits: [], found: 0 };
+  }
+}
+
 function normalizeSearchOptions(options: number | TypesenseSearchOptions): Required<TypesenseSearchOptions> {
   if (typeof options === 'number') {
     const offset = 0;
@@ -110,6 +165,7 @@ function normalizeSearchOptions(options: number | TypesenseSearchOptions): Requi
       filterBy: '',
       limit: normalizeSearchLimit(options, offset),
       offset,
+      queryByWeights: '',
       sortBy: '',
     };
   }
@@ -119,6 +175,7 @@ function normalizeSearchOptions(options: number | TypesenseSearchOptions): Requi
     filterBy: options.filterBy?.trim() ?? '',
     limit: normalizeSearchLimit(options.limit ?? 50, offset),
     offset,
+    queryByWeights: options.queryByWeights?.trim() ?? '',
     sortBy: options.sortBy?.trim() ?? '',
   };
 }

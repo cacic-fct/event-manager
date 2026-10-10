@@ -1,70 +1,5 @@
 <section class="subtab-layout event-subscription-layout">
-  <aside class="panel event-browser">
-    <div class="panel-heading">
-      <div>
-        <h3>Eventos</h3>
-        <p>Filtre eventos antes de consultar ou criar inscrições.</p>
-      </div>
-    </div>
 
-    <app-event-filter-panel
-      [form]="workspace.eventFiltersForm"
-      applyLabel="Buscar"
-      resetLabel="Limpar"
-      (applyFilters)="workspace.searchEvents()"
-      (resetFilters)="workspace.resetEventFilters()" />
-
-    <mat-list class="event-result-list">
-      @for (eventItem of workspace.eventResults(); track eventItem.id) {
-        <mat-list-item
-          (click)="workspace.selectEvent(eventItem)"
-          [class.selected-list-item]="workspace.selectedEvent()?.id === eventItem.id">
-          <span matListItemTitle class="list-title">
-            <lib-twemoji [emoji]="eventItem.emoji" />
-            <span>{{ eventItem.name }}</span>
-            @if (eventItem.isSportsMatch) {
-              <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo"
-                >sports</mat-icon
-              >
-            }
-          </span>
-          <span matListItemLine>
-            {{ eventItem.startDate | date: 'short' }} ·
-            {{ describeEventType(eventItem.type) }}
-          </span>
-        </mat-list-item>
-      } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhum evento encontrado</span>
-          <span matListItemLine>Ajuste os filtros e tente novamente.</span>
-        </mat-list-item>
-      }
-    </mat-list>
-
-    <div class="list-pager" aria-label="Paginação de eventos">
-      <span>Itens {{ workspace.eventResultsPagination.label() }}</span>
-      <div class="list-pager-actions">
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Página anterior de eventos"
-          matTooltip="Anterior"
-          [disabled]="!workspace.eventResultsPagination.hasPreviousPage()"
-          (click)="workspace.previousEventResultsPage()">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Próxima página de eventos"
-          matTooltip="Próxima"
-          [disabled]="!workspace.eventResultsPagination.hasNextPage()"
-          (click)="workspace.nextEventResultsPage()">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-    </div>
-  </aside>
 
   <section class="panel subscription-workbench">
     <div class="panel-heading">
@@ -80,6 +15,8 @@
         <p>
           @if (workspace.selectedEvent(); as selectedEvent) {
             {{ selectedEvent.startDate | date: 'medium' }}
+            · {{ selectedEvent.allowSubscription ? 'Inscrições públicas ativas' : 'Inscrições públicas desativadas' }}
+            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedEvent.id, 'settings']">Editar política</a>
           } @else {
             As inscrições do evento aparecem aqui.
           }
@@ -135,16 +72,27 @@
       <section class="surface">
         <div class="surface-heading">
           <h4>Inscrições</h4>
-          <span>{{ workspace.eventRegularSubscriptions().length }} registros</span>
+          <span>{{ workspace.eventSubscriptionCount() }} registros</span>
         </div>
+
+        <mat-form-field class="span-2">
+          <mat-label>Buscar participante</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="workspace.eventSubscriptionSearchForm.controls.query" />
+          <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+        </mat-form-field>
 
         <mat-list class="subscription-list">
           @for (subscription of workspace.eventRegularSubscriptions(); track subscription.id) {
             <mat-list-item>
-              <span matListItemTitle>{{ subscription.person?.name ?? subscription.personId }}</span>
+              @if (subscription.person) {
+                <app-participant-summary matListItemTitle [person]="subscription.person" />
+              } @else {
+                <span matListItemTitle>{{ subscription.personId }}</span>
+              }
               <span matListItemLine>
                 {{ subscription.createdAt | date: 'short' }} ·
-                {{ subscription.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
               </span>
               <div matListItemMeta class="item-actions">
                 <button

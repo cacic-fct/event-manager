@@ -24,6 +24,7 @@ import {
   EventInterestConversion,
   EventInterestPerson,
 } from './models';
+import { personSearchWhere } from '../people/person-search-where';
 
 type PrismaExecutor = PrismaService | PrismaClient | Prisma.TransactionClient;
 
@@ -235,16 +236,9 @@ export class EventInterestsService {
       deletedAt: null,
       ...this.targetWhere(normalizedTarget),
     };
-    const query = options.query?.trim();
-    if (query) {
-      where.person = {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-          { identityDocument: { contains: query, mode: 'insensitive' } },
-          { academicId: { contains: query, mode: 'insensitive' } },
-        ],
-      };
+    const personQuery = personSearchWhere(options.query);
+    if (personQuery) {
+      where.person = personQuery;
     }
 
     const interests = await this.prisma.eventInterest.findMany({
@@ -263,6 +257,23 @@ export class EventInterestsService {
       ...this.toModel(interest),
       isSubscribed: subscribedPersonIds.has(interest.personId),
     }));
+  }
+
+  async countAdminInterests(
+    user: AuthenticatedUser | undefined,
+    target: InterestTarget,
+    query?: string | null,
+  ): Promise<number> {
+    const normalizedTarget = this.normalizeTarget(target.targetType, target.targetId);
+    await this.assertTargetPermission(user, normalizedTarget, Permission.Subscription.Read);
+    const personQuery = personSearchWhere(query);
+    return this.prisma.eventInterest.count({
+      where: {
+        deletedAt: null,
+        ...this.targetWhere(normalizedTarget),
+        ...(personQuery ? { person: personQuery } : {}),
+      },
+    });
   }
 
   private async findCurrentUserSubscribedInterestIds(

@@ -1,8 +1,14 @@
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { combineLatest, of } from 'rxjs';
+import type { CreationParentSummary } from '../events/events.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, computed, effect, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink, type ParamMap } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -29,10 +35,16 @@ import {
   attendanceEligibilityLabel,
   type AttendanceEligibilityOption,
 } from '../shared/event-participation-policy';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 @Component({
   selector: 'app-workspace-major-events-tab',
   imports: [
+    WorkspaceRecordComponent,
+    MatProgressBarModule,
+    MatMenuModule,
+    MatExpansionModule,
+    RouterLink,
     DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
@@ -58,23 +70,50 @@ import {
 })
 export class MajorEventsPageComponent {
   readonly workspace = inject(MajorEventsService);
+  private readonly pendingChanges = inject(WorkspacePendingChangesService);
+  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
+  protected readonly Permission = Permission;
+
+  readonly contextLoading = signal(true);
+  readonly contextError = signal('');
+  readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
+  readonly creationParents = signal<CreationParentSummary[]>([]);
+  private contextRequest = 0;
+  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
 
   constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const majorEventId = params.get('majorEventId');
-      if (majorEventId) {
-        void this.workspace.pickMajorEventById(majorEventId);
-        return;
-      }
+    effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
+    this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
+    combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
+      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
+        this.lastContext = {params, query};
+        void this.initializeContext(params);
+      });
+  }
 
-      if (this.workspace.selectedMajorEvent()) {
-        this.workspace.resetMajorEventForm();
-      }
-    });
+  retryContext(): void {
+    if (this.lastContext) void this.initializeContext(this.lastContext.params);
+  }
+
+  private async initializeContext(params: ParamMap): Promise<void> {
+    const request = ++this.contextRequest;
+    const id = params.get('majorEventId') ?? (params.get('targetType') === 'major-event' ? params.get('targetId') : null);
+    this.contextLoading.set(true);
+    this.contextError.set('');
+    this.creationParents.set([]);
+    try {
+      if (id) { await this.workspace.pickMajorEventById(id); }
+      else { this.workspace.resetMajorEventForm(false); }
+    } catch {
+      if (request === this.contextRequest) this.contextError.set('Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+    } finally {
+      if (request === this.contextRequest) this.contextLoading.set(false);
+    }
   }
 
   protected previewDescription(): void {

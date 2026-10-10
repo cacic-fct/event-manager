@@ -7,6 +7,7 @@ import {
   normalizeLinkedResourceGroups,
   PersonLinkedResourcePrisma,
 } from './people-linked-resource-definitions';
+import { adminEventWorkspacePath } from '@cacic-fct/shared-utils';
 
 export async function buildPersonLinkedResourceGroups(
   prisma: PersonLinkedResourcePrisma,
@@ -232,7 +233,7 @@ export async function buildPersonLinkedResourceGroups(
         id: subscription.id,
         label: subscription.eventGroup.name,
         description: 'Inscrição em grupo de eventos',
-        route: `/groups/${subscription.eventGroupId}`,
+        route: adminEventWorkspacePath({ kind: 'group', id: subscription.eventGroupId }),
         occurredAt: subscription.createdAt,
       })),
       ...majorEventSubscriptions.map((subscription) => ({
@@ -262,14 +263,14 @@ export async function buildPersonLinkedResourceGroups(
         id: `${lecture.eventId}:${lecture.personId}:lecturer`,
         label: lecture.event.name,
         description: 'Ministrante',
-        route: `/events/${lecture.eventId}`,
+        route: adminEventWorkspacePath({ kind: 'event', id: lecture.eventId }),
         occurredAt: lecture.createdAt,
       })),
       ...attendanceCollectors.map((collector) => ({
         id: `${collector.eventId}:${collector.personId}:collector`,
         label: collector.event.name,
         description: 'Coletor de presença',
-        route: `/events/${collector.eventId}`,
+        route: adminEventWorkspacePath({ kind: 'event', id: collector.eventId }),
         occurredAt: collector.createdAt,
       })),
     ]),

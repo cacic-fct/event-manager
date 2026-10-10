@@ -1,70 +1,5 @@
 <section class="subtab-layout event-attendance-layout">
-  <aside class="panel event-browser">
-    <div class="panel-heading">
-      <div>
-        <h3>Eventos</h3>
-        <p>Filtre por nome, data e vínculo antes de registrar presenças.</p>
-      </div>
-    </div>
 
-    <app-event-filter-panel
-      [form]="workspace.attendanceEventFiltersForm"
-      applyLabel="Buscar"
-      resetLabel="Limpar"
-      (applyFilters)="workspace.searchAttendanceEvents()"
-      (resetFilters)="workspace.resetAttendanceEventFilters()" />
-
-    <mat-list class="event-result-list">
-      @for (eventItem of workspace.attendanceEventResults(); track eventItem.id) {
-        <mat-list-item
-          (click)="workspace.selectAttendanceEvent(eventItem)"
-          [class.selected-list-item]="workspace.selectedAttendanceEvent()?.id === eventItem.id">
-          <span matListItemTitle class="list-title">
-            <lib-twemoji [emoji]="eventItem.emoji" />
-            <span>{{ eventItem.name }}</span>
-            @if (eventItem.isSportsMatch) {
-              <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo"
-                >sports</mat-icon
-              >
-            }
-          </span>
-          <span matListItemLine>
-            {{ eventItem.startDate | date: 'short' }} ·
-            {{ describeEventType(eventItem.type) }}
-          </span>
-        </mat-list-item>
-      } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhum evento encontrado</span>
-          <span matListItemLine>Ajuste os filtros e tente novamente.</span>
-        </mat-list-item>
-      }
-    </mat-list>
-
-    <div class="list-pager" aria-label="Paginação de eventos">
-      <span>Itens {{ workspace.attendanceEventResultsPagination.label() }}</span>
-      <div class="list-pager-actions">
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Página anterior de eventos"
-          matTooltip="Anterior"
-          [disabled]="!workspace.attendanceEventResultsPagination.hasPreviousPage()"
-          (click)="workspace.previousAttendanceEventResultsPage()">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Próxima página de eventos"
-          matTooltip="Próxima"
-          [disabled]="!workspace.attendanceEventResultsPagination.hasNextPage()"
-          (click)="workspace.nextAttendanceEventResultsPage()">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-    </div>
-  </aside>
 
   <section class="panel attendance-workbench">
     <div class="panel-heading">
@@ -80,6 +15,7 @@
         <p>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
             {{ selectedAttendanceEvent.startDate | date: 'medium' }}
+            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }
@@ -203,8 +139,9 @@
                   {{ submission.personName }}
                 </span>
                 <span matListItemLine class="attendance-item-line">
-                  Coletada em {{ submission.collectedAt | date: 'short' }} · enviada por
-                  {{ submission.submittedByFullName || submission.submittedById }}
+                  Coletada em {{ submission.collectedAt | date: 'short' }} por
+                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }}
+                  · enviada por {{ submission.submittedByFullName || submission.submittedById }}
                 </span>
                 <span matListItemLine class="attendance-item-line review-line">
                   <span class="review-badge">{{
@@ -262,8 +199,15 @@
       <section class="surface event-presence-list">
         <div class="surface-heading">
           <h4>Presenças do evento</h4>
-          <span>{{ workspace.attendanceTotalCount() - workspace.explicitAbsences().length }} registros</span>
+          <span>{{ workspace.attendanceTotalCount() }} registros</span>
         </div>
+
+        <mat-form-field class="span-2">
+          <mat-label>Buscar participante</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="workspace.attendanceSearchForm.controls.query" />
+          <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+        </mat-form-field>
 
         <mat-list class="attendance-list categorized-list">
           @for (group of workspace.attendanceGroups(); track group.category) {
@@ -281,12 +225,14 @@
                 [class.category-REGULAR]="attendance.category === 'REGULAR'"
                 [class.category-NON_REGULAR]="attendance.category === 'NON_REGULAR'"
                 [class.category-UNKNOWN]="attendance.category === 'UNKNOWN'">
-                <span matListItemTitle class="attendance-item-title">
-                  {{ attendance.personName }}
-                </span>
+                @if (attendance.person) {
+                  <app-participant-summary matListItemTitle [person]="attendance.person" />
+                } @else {
+                  <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
+                }
                 <span matListItemLine class="attendance-item-line">
                   {{ attendance.attendedAt | date: 'short' }} · por
-                  {{ attendance.createdByMethod }}
+                  {{ attendanceCreationMethodLabel(attendance.createdByMethod) }}
                 </span>
                 @if (
                   workspace.getAttendanceCategoryHistoricalExplanation(attendance.category);

@@ -6,7 +6,7 @@ import { MAT_DATE_LOCALE } from '@angular/material/core';
 import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconRegistry } from '@angular/material/icon';
-import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
+import { provideRouter, withHashLocation, withDisabledInitialNavigation } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { EVENT_MANAGER_PERMISSION_CATALOG } from '@cacic-fct/shared-permissions';
@@ -35,10 +35,8 @@ initialize({
 const originalNavigatorOnline = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
 
 function ensureStorybookGlobalStyles(): void {
-  if (document.getElementById('storybook-app-global-styles')) {
-    return;
-  }
-  const style = document.createElement('style');
+  const fontBase = new URL('./material-symbols-outlined-files/', document.baseURI).href;
+  const style = document.getElementById('storybook-app-global-styles') ?? document.createElement('style');
   style.id = 'storybook-app-global-styles';
   style.textContent = `
     html, body, #storybook-root {
@@ -56,8 +54,8 @@ function ensureStorybookGlobalStyles(): void {
       font-display: swap;
       font-weight: 400;
       src:
-        url('./material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff2') format('woff2'),
-        url('./material-symbols-outlined-files/material-symbols-outlined-latin-400-normal.woff') format('woff');
+        url('${fontBase}material-symbols-outlined-latin-400-normal.woff2') format('woff2'),
+        url('${fontBase}material-symbols-outlined-latin-400-normal.woff') format('woff');
     }
 
     .material-symbols-outlined {
@@ -72,6 +70,8 @@ function ensureStorybookGlobalStyles(): void {
       white-space: nowrap;
       word-wrap: normal;
       direction: ltr;
+      font-feature-settings: 'liga';
+      -webkit-font-feature-settings: 'liga';
     }
 
     html[data-storybook-motion='reduced'] *,
@@ -83,7 +83,7 @@ function ensureStorybookGlobalStyles(): void {
       transition-duration: 0.01ms !important;
     }
   `;
-  document.head.append(style);
+  if (!style.isConnected) document.head.append(style);
 }
 
 const dialogRefMock = {
@@ -192,7 +192,7 @@ const preview: Preview = {
         provideDateFnsAdapter(),
         provideHttpClient(),
         provideNoopAnimations(),
-        provideRouter([], withDisabledInitialNavigation()),
+        provideRouter([], withHashLocation(), withDisabledInitialNavigation()),
         provideAppInitializer(() => {
           inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
         }),

@@ -36,6 +36,7 @@ import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manage
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationNodes,
@@ -74,6 +75,7 @@ import {
   encapsulation: ViewEncapsulation.None,
 })
 export class PublicationPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly api = inject(PublicationApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -136,10 +138,19 @@ export class PublicationPageComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const targetType = params.get('targetType');
       const targetId = params.get('targetId');
-      this.requestedNode.set(this.parseRequestedNode(targetType, targetId));
-      this.selectRequestedNode();
+      const requestedNode = this.parseRequestedNode(targetType, targetId);
+      const previousNode = this.requestedNode();
+      this.requestedNode.set(requestedNode);
+      if (
+        (previousNode?.targetType !== requestedNode?.targetType || previousNode?.id !== requestedNode?.id)
+      ) {
+        this.pageIndex.set(0);
+        this.workspace.set(null);
+        this.selectedNode.set(null);
+        this.expandedNodeKeys.set(new Set());
+      }
+      void this.refresh();
     });
-    void this.refresh();
     this.realtime
       .watchWorkspace()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -316,16 +327,16 @@ export class PublicationPageComponent {
     }
 
     if (selected.targetType === 'MAJOR_EVENT') {
-      void this.router.navigate(['/major-events', selected.id]);
+      void this.router.navigate(['/event-workspace', 'major-event', selected.id, 'settings']);
       return;
     }
 
     if (selected.targetType === 'EVENT_GROUP') {
-      void this.router.navigate(['/groups', selected.id]);
+      void this.router.navigate(['/event-workspace', 'group', selected.id, 'settings']);
       return;
     }
 
-    void this.router.navigate(['/events', selected.id]);
+    void this.router.navigate(['/event-workspace', 'event', selected.id, 'settings']);
   }
 
   targetIcon(targetType: PublicationTargetType): string {
@@ -403,18 +414,6 @@ export class PublicationPageComponent {
     }
 
     return null;
-  }
-
-  private selectRequestedNode(): void {
-    const workspace = this.workspace();
-    if (!workspace) {
-      return;
-    }
-
-    const requested = this.findRequestedNode(workspace);
-    if (requested) {
-      this.selectedNode.set(requested);
-    }
   }
 
   private findRequestedNode(workspace: PublicationWorkspace): PublicationNode | null {

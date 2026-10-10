@@ -1,27 +1,135 @@
 <section class="section workspace-tab-shell">
-  <div class="tab-grid">
-    <aside class="panel panel-stack">
+  @if (isStandalonePage()) {
+    <section class="panel-stack" aria-labelledby="certificate-folders-title">
       <div class="panel-heading">
         <div>
-          <h3>{{ workspace.isStandaloneScope() ? 'Pastas' : 'Alvos' }}</h3>
-          <p>
-            {{
-              workspace.isStandaloneScope()
-                ? 'Pastas usadas para organizar certificados avulsos.'
-                : 'Eventos, grupos e grandes eventos aptos à emissão.'
-            }}
-          </p>
+          @if (inWorkspaceShell) {
+            <h2 id="certificate-folders-title">Pastas</h2>
+          } @else {
+            <h1 id="certificate-folders-title">Certificados avulsos</h1>
+          }
+          <p>Organize certificados sem vínculo com eventos em pastas próprias.</p>
+        </div>
+        <div class="form-actions">
+          @if (workspace.selectedTarget() && permissions.has(Permission.CertificateConfig.Update)) {
+            <button mat-stroked-button type="button" [disabled]="workspace.unsavedChanges()" (click)="startFolderEdit()">
+              <mat-icon>edit</mat-icon>
+              Editar pasta
+            </button>
+          }
+          @if (permissions.has(Permission.CertificateConfig.Create)) {
+            <button mat-flat-button type="button" [disabled]="workspace.unsavedChanges()" (click)="startNewFolder()">
+              <mat-icon>create_new_folder</mat-icon>
+              Nova pasta
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (folderEditorMode(); as mode) {
+        <section class="surface field-group" aria-labelledby="folder-editor-title">
+          <div class="surface-heading">
+            <div>
+              <h3 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h3>
+              <p>Defina um nome claro e um emoji para identificar a pasta.</p>
+            </div>
+          </div>
+          <form [formGroup]="workspace.folderForm" class="compact-form" (ngSubmit)="saveFolder()">
+            <mat-form-field>
+              <mat-label>Emoji</mat-label>
+              <input matInput formControlName="emoji" maxlength="8" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Nome da pasta</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
+            <div class="form-actions">
+              <button mat-button type="button" (click)="cancelFolderEdit()">Cancelar</button>
+              <button mat-flat-button type="submit">
+                <mat-icon>{{ mode === 'create' ? 'create_new_folder' : 'save' }}</mat-icon>
+                {{ mode === 'create' ? 'Criar pasta' : 'Salvar alterações' }}
+              </button>
+            </div>
+          </form>
+        </section>
+      }
+
+      <app-workspace-scope
+        [emoji]="workspace.selectedTarget()?.emoji"
+        [scopeId]="workspace.selectedTargetScopeId()"
+        [title]="workspace.selectedTarget()?.name ?? ''"
+        emptyLabel="Escolher pasta"
+        changeLabel="Trocar pasta">
+        <form [formGroup]="workspace.targetFiltersForm" class="compact-form">
+          <mat-form-field>
+            <mat-label>Buscar pasta</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput type="search" formControlName="query" />
+          </mat-form-field>
+        </form>
+
+        @if (workspace.targetSearchLoading()) {
+          <p class="notice" role="status"><mat-icon>hourglass_top</mat-icon>Buscando pastas…</p>
+        }
+
+        <div class="result-list" aria-label="Pastas de certificados avulsos">
+          @for (folder of workspace.certificateFolders(); track folder.id) {
+            <app-workspace-record
+              [title]="folder.name"
+              [label]="'Abrir pasta ' + folder.name"
+              [selected]="workspace.selectedTarget()?.id === folder.id"
+              [disabled]="workspace.unsavedChanges()"
+              [link]="['/certificates', 'folder', folder.id]">
+              <lib-twemoji recordIcon [emoji]="folder.emoji" />
+              <span recordDescription>Certificados avulsos</span>
+            </app-workspace-record>
+          } @empty {
+            <div class="empty-state">
+              <mat-icon>folder_open</mat-icon>
+              <h3>Nenhuma pasta encontrada</h3>
+              <p>{{ workspace.targetFiltersForm.controls.query.value ? 'Tente outro termo de busca.' : 'Crie uma pasta para começar.' }}</p>
+            </div>
+          }
+        </div>
+
+        <div class="list-pager" role="group" aria-label="Paginação de pastas">
+          <span>Itens {{ workspace.targetsPagination.label() }}</span>
+          <div class="list-pager-actions">
+            <button mat-icon-button type="button" aria-label="Página anterior de pastas" matTooltip="Anterior"
+              [disabled]="!workspace.targetsPagination.hasPreviousPage() || workspace.unsavedChanges()" (click)="workspace.previousTargetsPage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button mat-icon-button type="button" aria-label="Próxima página de pastas" matTooltip="Próxima"
+              [disabled]="!workspace.targetsPagination.hasNextPage() || workspace.unsavedChanges()" (click)="workspace.nextTargetsPage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
+      </app-workspace-scope>
+    </section>
+  } @else if (showGenericTargetPicker()) {
+    <app-workspace-scope [emoji]="workspace.selectedTarget()?.emoji"
+      [scopeId]="workspace.selectedTargetScopeId()"
+      [title]="workspace.selectedTargetScopeLabel()"
+      description="Escolha um evento, grupo ou grande evento.">
+    <div class="panel-stack certificate-target-picker">
+      <div class="panel-heading">
+        <div>
+          <h3>Alvos</h3>
+          <p>Eventos, grupos e grandes eventos aptos à emissão.</p>
         </div>
       </div>
 
       <form [formGroup]="workspace.targetFiltersForm" class="compact-form">
         <mat-form-field>
           <mat-label>Escopo</mat-label>
-          <mat-select formControlName="scope" (selectionChange)="workspace.onScopeChanged($event.value)">
+          <mat-select
+            [value]="workspace.targetFiltersForm.controls.scope.value"
+            [disabled]="workspace.unsavedChanges()"
+            (selectionChange)="workspace.onScopeChanged($event.value)">
             <mat-option value="EVENT">Evento</mat-option>
             <mat-option value="EVENT_GROUP">Grupo</mat-option>
             <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
-            <mat-option value="OTHER">Certificados avulsos</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -31,76 +139,19 @@
           <input matInput formControlName="query" />
         </mat-form-field>
 
-        <button mat-flat-button type="button" (click)="workspace.searchTargets()">
-          <mat-icon>search</mat-icon>
-          Buscar
-        </button>
       </form>
 
-      @if (
-        workspace.isStandaloneScope() &&
-        permissions.hasAny([Permission.CertificateConfig.Create, Permission.CertificateConfig.Update])
-      ) {
-        <form [formGroup]="workspace.folderForm" class="compact-form">
-          <mat-form-field>
-            <mat-label>Emoji</mat-label>
-            <input matInput formControlName="emoji" maxlength="8" />
-          </mat-form-field>
-
-          <mat-form-field>
-            <mat-label>Nome da pasta</mat-label>
-            <input matInput formControlName="name" />
-          </mat-form-field>
-
-          @if (permissions.has(Permission.CertificateConfig.Create)) {
-            <button mat-stroked-button type="button" (click)="workspace.startNewFolder()">
-              <mat-icon>add</mat-icon>
-              Nova pasta
-            </button>
-          }
-          @if (
-            (workspace.folderForm.controls.id.value && permissions.has(Permission.CertificateConfig.Update)) ||
-            (!workspace.folderForm.controls.id.value && permissions.has(Permission.CertificateConfig.Create))
-          ) {
-            <button mat-flat-button type="button" (click)="workspace.saveCertificateFolder()">
-              <mat-icon>save</mat-icon>
-              Salvar pasta
-            </button>
-          }
-        </form>
+      @if (workspace.targetSearchLoading()) {
+        <p class="notice" role="status"><mat-icon>hourglass_top</mat-icon>Buscando contextos de certificado…</p>
       }
 
-      <mat-list class="result-list">
-        @if (workspace.targetFiltersForm.controls.scope.value === 'OTHER') {
-          @for (folder of workspace.certificateFolders(); track folder.id) {
-            <mat-list-item
-              (click)="workspace.selectTarget(folder)"
-              [class.selected-list-item]="workspace.selectedTarget()?.id === folder.id">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="folder.emoji" />
-                <span>{{ folder.name }}</span>
-              </span>
-              <span matListItemLine>Certificados avulsos</span>
-            </mat-list-item>
-          } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma pasta encontrada</span>
-              <span matListItemLine>Crie uma pasta para organizar certificados avulsos.</span>
-            </mat-list-item>
-          }
-        } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT') {
+      <div class="result-list">
+        @if (workspace.targetFiltersForm.controls.scope.value === 'EVENT') {
           @for (eventItem of workspace.issuableEvents(); track eventItem.id) {
-            <mat-list-item
-              (click)="workspace.selectTarget(eventItem)"
-              [class.selected-list-item]="workspace.selectedTarget()?.id === eventItem.id">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="eventItem.emoji" />
-                <span>{{ eventItem.name }}</span>
-              </span>
-              <span matListItemLine>
-                {{ eventItem.startDate | date: 'shortDate' }}
-              </span>
-            </mat-list-item>
+            <app-workspace-record [title]="eventItem.name" [label]="'Abrir certificados de ' + eventItem.name" [selected]="workspace.selectedTarget()?.id === eventItem.id" [disabled]="workspace.unsavedChanges()" [link]="['/certificates', 'event', eventItem.id]">
+              <lib-twemoji recordIcon [emoji]="eventItem.emoji" />
+              <span recordDescription>{{ eventItem.startDate | date: 'shortDate' }}</span>
+            </app-workspace-record>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum evento encontrado</span>
@@ -109,21 +160,16 @@
           }
         } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP') {
           @for (group of workspace.issuableEventGroups(); track group.id) {
-            <mat-list-item
-              (click)="workspace.selectTarget(group)"
-              [class.selected-list-item]="workspace.selectedTarget()?.id === group.id">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="group.emoji" />
-                <span>{{ group.name }}</span>
-              </span>
-              <span matListItemLine>
+            <app-workspace-record [title]="group.name" [label]="'Abrir certificados do grupo ' + group.name" [selected]="workspace.selectedTarget()?.id === group.id" [disabled]="workspace.unsavedChanges()" [link]="['/certificates', 'event-group', group.id]">
+              <lib-twemoji recordIcon [emoji]="group.emoji" />
+              <span recordDescription>
                 {{
                   group.shouldIssuePartialCertificate
                     ? 'Certificado parcial habilitado'
                     : 'Exige presença em todos os eventos'
                 }}
               </span>
-            </mat-list-item>
+            </app-workspace-record>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum grupo encontrado</span>
@@ -132,18 +178,13 @@
           }
         } @else {
           @for (majorEvent of workspace.issuableMajorEvents(); track majorEvent.id) {
-            <mat-list-item
-              (click)="workspace.selectTarget(majorEvent)"
-              [class.selected-list-item]="workspace.selectedTarget()?.id === majorEvent.id">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="majorEvent.emoji" />
-                <span>{{ majorEvent.name }}</span>
-              </span>
-              <span matListItemLine>
+            <app-workspace-record [title]="majorEvent.name" [label]="'Abrir certificados de ' + majorEvent.name" [selected]="workspace.selectedTarget()?.id === majorEvent.id" [disabled]="workspace.unsavedChanges()" [link]="['/certificates', 'major-event', majorEvent.id]">
+              <lib-twemoji recordIcon [emoji]="majorEvent.emoji" />
+              <span recordDescription>
                 {{ majorEvent.startDate | date: 'shortDate' }} -
                 {{ majorEvent.endDate | date: 'shortDate' }}
               </span>
-            </mat-list-item>
+            </app-workspace-record>
           } @empty {
             <mat-list-item>
               <span matListItemTitle>Nenhum grande evento encontrado</span>
@@ -151,7 +192,7 @@
             </mat-list-item>
           }
         }
-      </mat-list>
+      </div>
 
       <div class="list-pager" role="group" aria-label="Paginação de alvos de certificado">
         <span>Itens {{ workspace.targetsPagination.label() }}</span>
@@ -161,7 +202,7 @@
             type="button"
             aria-label="Página anterior de alvos"
             matTooltip="Anterior"
-            [disabled]="!workspace.targetsPagination.hasPreviousPage()"
+            [disabled]="!workspace.targetsPagination.hasPreviousPage() || workspace.unsavedChanges()"
             (click)="workspace.previousTargetsPage()">
             <mat-icon>chevron_left</mat-icon>
           </button>
@@ -170,49 +211,57 @@
             type="button"
             aria-label="Próxima página de alvos"
             matTooltip="Próxima"
-            [disabled]="!workspace.targetsPagination.hasNextPage()"
+            [disabled]="!workspace.targetsPagination.hasNextPage() || workspace.unsavedChanges()"
             (click)="workspace.nextTargetsPage()">
             <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
       </div>
 
+    </div>
+    </app-workspace-scope>
+  }
+
+  @if (workspace.unsavedChanges()) {
+    <p class="notice" role="status">
+      <mat-icon>edit_note</mat-icon>
+      Salve ou descarte as alterações antes de trocar o contexto ou a configuração.
+    </p>
+  }
+
+  @if (workspace.selectedTarget() || !isStandalonePage()) {
+    <div class="tab-grid">
+    <aside class="panel panel-stack">
       @if (workspace.selectedTarget()) {
         <section class="surface field-group">
           <div class="surface-heading">
             <h4>Configurações</h4>
             @if (canEditSelectedTarget()) {
-              <button mat-stroked-button type="button" (click)="workspace.startNewCertificateConfig()">
+              <button mat-stroked-button type="button" [disabled]="workspace.unsavedChanges()" (click)="workspace.startNewCertificateConfig()">
                 <mat-icon>add</mat-icon>
                 Nova
               </button>
             }
           </div>
 
-          <mat-list class="detail-list">
+          <div class="detail-list">
             @for (config of workspace.certificateConfigs(); track config.id) {
-              <mat-list-item
-                (click)="workspace.selectCertificateConfig(config)"
-                [class.selected-list-item]="workspace.selectedCertificateConfig()?.id === config.id">
-                <span matListItemTitle>{{ config.name }}</span>
-                <span matListItemLine>
+              <app-workspace-record
+                [title]="config.name"
+                [label]="'Abrir configuração ' + config.name"
+                [selected]="workspace.selectedCertificateConfig()?.id === config.id"
+                [disabled]="workspace.unsavedChanges()"
+                [link]="workspace.certificateConfigRoute(config.id)">
+                <span recordDescription>
                   {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
                   {{ config.certificateTemplate.name }}
                 </span>
-                @if (canEditSelectedTarget()) {
-                  <button
-                    matIconButton
-                    type="button"
-                    aria-label="Editar configuração"
-                    matTooltip="Editar"
-                    (click)="$event.stopPropagation(); workspace.selectCertificateConfig(config)">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                }
                 @if (canCloneConfig(config)) {
                   <button
+                    recordActions
                     matIconButton
                     type="button"
+                    [disabled]="workspace.unsavedChanges()"
                     aria-label="Duplicar configuração"
                     matTooltip="Duplicar"
                     (click)="$event.stopPropagation(); workspace.cloneCertificateConfig(config)">
@@ -221,22 +270,24 @@
                 }
                 @if (canDeleteConfig(config)) {
                   <button
+                    recordActions
                     matIconButton
                     type="button"
+                    [disabled]="workspace.unsavedChanges()"
                     aria-label="Excluir configuração"
                     matTooltip="Excluir"
                     (click)="$event.stopPropagation(); workspace.deleteCertificateConfig(config)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
-              </mat-list-item>
+              </app-workspace-record>
             } @empty {
               <mat-list-item>
                 <span matListItemTitle>Nenhuma configuração</span>
                 <span matListItemLine>Crie uma configuração para emitir.</span>
               </mat-list-item>
             }
-          </mat-list>
+          </div>
 
           <div class="list-pager" role="group" aria-label="Paginação de configurações de certificado">
             <span>Itens {{ workspace.certificateConfigsPagination.label() }}</span>
@@ -246,7 +297,7 @@
                 type="button"
                 aria-label="Página anterior de configurações"
                 matTooltip="Anterior"
-                [disabled]="!workspace.certificateConfigsPagination.hasPreviousPage()"
+                [disabled]="!workspace.certificateConfigsPagination.hasPreviousPage() || workspace.unsavedChanges()"
                 (click)="workspace.previousCertificateConfigsPage()">
                 <mat-icon>chevron_left</mat-icon>
               </button>
@@ -255,13 +306,19 @@
                 type="button"
                 aria-label="Próxima página de configurações"
                 matTooltip="Próxima"
-                [disabled]="!workspace.certificateConfigsPagination.hasNextPage()"
+                [disabled]="!workspace.certificateConfigsPagination.hasNextPage() || workspace.unsavedChanges()"
                 (click)="workspace.nextCertificateConfigsPage()">
                 <mat-icon>chevron_right</mat-icon>
               </button>
             </div>
           </div>
         </section>
+      } @else {
+        <div class="empty-state">
+          <mat-icon>folder_open</mat-icon>
+          <h3>Escolha um contexto</h3>
+          <p>O inventário de configurações aparecerá depois da seleção.</p>
+        </div>
       }
     </aside>
 
@@ -281,8 +338,8 @@
 
           <div class="panel-actions">
             <button mat-stroked-button type="button" (click)="workspace.startNewCertificateConfig()">
-              <mat-icon>restart_alt</mat-icon>
-              Limpar
+              <mat-icon>{{ workspace.unsavedChanges() ? 'undo' : 'restart_alt' }}</mat-icon>
+              {{ workspace.unsavedChanges() ? 'Descartar alterações' : 'Limpar' }}
             </button>
             @if (canEditSelectedTarget()) {
               <button
@@ -612,5 +669,6 @@
         </div>
       }
     </section>
-  </div>
+    </div>
+  }
 </section>

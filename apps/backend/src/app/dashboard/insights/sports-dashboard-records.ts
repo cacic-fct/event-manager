@@ -87,6 +87,7 @@ export async function loadSportsDashboardRecords(prisma: PrismaService, canReadS
               select: {
                 name: true,
                 tournamentId: true,
+                tournament: { select: { majorEventId: true } },
               },
             },
             homeRegistration: { select: { team: { select: { name: true } } } },

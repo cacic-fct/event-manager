@@ -73,6 +73,7 @@ describe('EventDraftsService', () => {
         findUniqueOrThrow: jest.fn(),
       },
       eventGroup: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'group-1', majorEventId: null }]),
         updateMany: jest.fn(),
       },
     };

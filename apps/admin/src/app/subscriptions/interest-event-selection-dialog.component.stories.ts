@@ -30,7 +30,7 @@ export default meta;
 type Story = StoryObj<SelectionStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Continuar' })).toBeDisabled();

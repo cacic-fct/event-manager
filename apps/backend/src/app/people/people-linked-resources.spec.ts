@@ -339,7 +339,7 @@ describe('people linked resources', () => {
           expect.objectContaining({
             id: 'event-group-subscription-1',
             label: 'Minicursos',
-            route: '/groups/group-1',
+            route: '/event-workspace/group/group-1',
           }),
           expect.objectContaining({
             id: 'major-event-subscription-1',
@@ -425,12 +425,12 @@ describe('people linked resources', () => {
           expect.objectContaining({
             id: 'event-1:person-1:lecturer',
             label: 'Palestra',
-            route: '/events/event-1',
+            route: '/event-workspace/event/event-1',
           }),
           expect.objectContaining({
             id: 'event-2:person-1:collector',
             label: 'Credenciamento',
-            route: '/events/event-2',
+            route: '/event-workspace/event/event-2',
           }),
         ],
       }),

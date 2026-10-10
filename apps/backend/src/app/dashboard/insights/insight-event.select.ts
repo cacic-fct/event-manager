@@ -43,7 +43,7 @@ export const EVENT_INSIGHT_SELECT = {
         select: {
           tournamentId: true,
           status: true,
-          tournament: { select: { status: true } },
+          tournament: { select: { status: true, majorEventId: true } },
         },
       },
     },

@@ -2,7 +2,6 @@
   <section class="panel panel-stack audit-shell">
     <div class="panel-heading">
       <div>
-        <h3>Logs de auditoria</h3>
         <p>Busca global por alterações, autores, entidades, datas e reversões.</p>
       </div>
     </div>
@@ -10,7 +9,7 @@
     <form class="audit-filter-grid" [formGroup]="filters" (ngSubmit)="applyFilters()">
       <mat-form-field appearance="outline" class="span-2">
         <mat-label>Busca geral</mat-label>
-        <input matInput formControlName="query" autocomplete="off" />
+        <input matInput type="search" formControlName="query" autocomplete="off" />
         <mat-icon matPrefix>search</mat-icon>
       </mat-form-field>
 
@@ -20,6 +19,12 @@
         <mat-icon matPrefix>person_search</mat-icon>
       </mat-form-field>
 
+      <mat-expansion-panel class="advanced-audit-filters">
+        <mat-expansion-panel-header>
+          <mat-panel-title><mat-icon>tune</mat-icon>Filtros avançados</mat-panel-title>
+          @if (advancedFilterCount()) { <mat-panel-description>{{ advancedFilterCount() }} ativos</mat-panel-description> }
+        </mat-expansion-panel-header>
+        <div class="audit-filter-grid">
       <mat-form-field appearance="outline">
         <mat-label>Item alterado</mat-label>
         <input matInput formControlName="entity" autocomplete="off" />
@@ -68,6 +73,9 @@
           }
         </mat-select>
       </mat-form-field>
+
+        </div>
+      </mat-expansion-panel>
 
       <div class="filter-actions">
         <button mat-stroked-button type="button" (click)="clearFilters()">
@@ -135,7 +143,7 @@
         @if (!explorer.typesenseAvailable) {
           <div class="search-source-note" role="status">
             <mat-icon>storage</mat-icon>
-            <span>Typesense indisponível; resultados carregados pela busca do banco de dados.</span>
+            <span>Busca básica ativa. A busca por relevância está temporariamente indisponível.</span>
           </div>
         }
 
@@ -149,17 +157,16 @@
                       <mat-icon>{{ operationIcon(entry.operation) }}</mat-icon>
                     </span>
                     <span class="entry-main">
-                      <span class="entry-title">{{ entry.summary || fallbackSummary(entry) }}</span>
-                      <span class="entry-subtitle">
-                        {{ entityTypeLabel(entry.entityType) }} · {{ entry.entityLabel || entry.entityId }}
+                      <span class="entry-text">
+                        <span class="entry-title">{{ entry.summary || fallbackSummary(entry) }}</span>
+                        <span class="entry-subtitle">{{ entityTypeLabel(entry.entityType) }} · {{ entry.entityLabel || entry.entityId }}</span>
+                      </span>
+                      <span class="entry-actor">
+                        <span>{{ entry.actorName }}</span>
+                        <time [attr.datetime]="entry.lastRecordedAt">{{ entry.lastRecordedAt | date: 'short' }}</time>
                       </span>
                     </span>
                   </mat-panel-title>
-
-                  <mat-panel-description>
-                    <span>{{ entry.actorName }}</span>
-                    <time [attr.datetime]="entry.lastRecordedAt">{{ entry.lastRecordedAt | date: 'short' }}</time>
-                  </mat-panel-description>
                 </mat-expansion-panel-header>
 
                 <div class="entry-compact-meta" aria-label="Resumo do registro">

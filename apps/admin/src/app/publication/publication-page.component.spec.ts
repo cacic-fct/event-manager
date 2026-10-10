@@ -1,10 +1,10 @@
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, type ParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError, type Observable } from 'rxjs';
 import type {
   PublicationActionResult,
   PublicationNode,
@@ -102,6 +102,24 @@ describe('PublicationPageComponent', () => {
     });
   });
 
+  it('refetches an exact publication target when the scoped route changes', async () => {
+    const params = new BehaviorSubject<ParamMap>(convertToParamMap({}));
+    const { component } = await createComponent(params);
+    api.getWorkspace.mockClear();
+
+    params.next(convertToParamMap({ targetType: 'event-group', targetId: 'group-1' }));
+    await flushAsync();
+
+    expect(api.getWorkspace).toHaveBeenCalledWith({
+      query: null,
+      skip: 0,
+      take: 10,
+      focusTargetType: 'EVENT_GROUP',
+      focusTargetId: 'group-1',
+    });
+    expect(component.selectedNode()?.id).toBe('group-1');
+  });
+
   it('trims searches, resets the page, clears searches, and guards pagination boundaries', async () => {
     api.getWorkspace.mockReturnValue(of(workspaceFixture({ hasMore: true })));
     const { component } = await createComponent();
@@ -164,6 +182,39 @@ describe('PublicationPageComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.publication-tree-node')).toHaveLength(3);
     expect(component.workspaceItems().map((node) => node.id)).toEqual(['major-1', 'group-1', 'event-1']);
+  });
+
+  it('reloads the scope when the route changes during the initial request', async () => {
+    const params = new BehaviorSubject(convertToParamMap({ targetType: 'event', targetId: 'old-event' }));
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params } });
+    const older = new Subject<PublicationWorkspace>();
+    const newer = new Subject<PublicationWorkspace>();
+    api.getWorkspace.mockReturnValueOnce(older).mockReturnValueOnce(newer);
+    const fixture = TestBed.createComponent(PublicationPageComponent);
+    params.next(convertToParamMap({ targetType: 'event', targetId: 'event-1' }));
+    expect(api.getWorkspace).toHaveBeenLastCalledWith(expect.objectContaining({ focusTargetId: 'event-1' }));
+    newer.next(workspaceFixture());
+    newer.complete();
+    await flushAsync();
+    older.next(workspaceFixture({ tree: [majorNode()], generatedAt: adminFixtureDateFromNow(-1) }));
+    older.complete();
+    await flushAsync();
+    expect(fixture.componentInstance.selectedNode()?.id).toBe('event-1');
+    fixture.destroy();
+  });
+
+  it('hides the previous tree immediately when changing the scope', async () => {
+    const params = new BehaviorSubject(convertToParamMap({ targetType: 'event', targetId: 'event-1' }));
+    const { component, fixture } = await createComponent(params);
+    const pending = new Subject<PublicationWorkspace>();
+    api.getWorkspace.mockReturnValueOnce(pending);
+    params.next(convertToParamMap({ targetType: 'event', targetId: 'new-event' }));
+    expect(component.workspaceItems()).toEqual([]);
+    expect(component.selectedNode()).toBeNull();
+    pending.next(workspaceFixture({ tree: [], items: [], totalCount: 0 }));
+    pending.complete();
+    await flushAsync();
+    fixture.destroy();
   });
 
   it('ignores an older workspace response after a newer refresh completes', async () => {
@@ -353,9 +404,9 @@ describe('PublicationPageComponent', () => {
     component.selectNode(majorNode());
     component.openEditor();
 
-    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/events', 'event-1']);
-    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/groups', 'group-1']);
-    expect(router.navigate).toHaveBeenNthCalledWith(3, ['/major-events', 'major-1']);
+    expect(router.navigate).toHaveBeenNthCalledWith(1, ['/event-workspace', 'event', 'event-1', 'settings']);
+    expect(router.navigate).toHaveBeenNthCalledWith(2, ['/event-workspace', 'group', 'group-1', 'settings']);
+    expect(router.navigate).toHaveBeenNthCalledWith(3, ['/event-workspace', 'major-event', 'major-1', 'settings']);
 
     component.selectedNode.set(null);
     component.openEditor();
@@ -364,11 +415,11 @@ describe('PublicationPageComponent', () => {
     expect(api.setPublicationState).not.toHaveBeenCalled();
   });
 
-  async function createComponent(): Promise<{
+  async function createComponent(paramMap: Observable<ParamMap> = of(routeParamMap)): Promise<{
     component: PublicationPageComponent;
     fixture: ComponentFixture<PublicationPageComponent>;
   }> {
-    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: of(routeParamMap) } });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap } });
     const fixture = TestBed.createComponent(PublicationPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();

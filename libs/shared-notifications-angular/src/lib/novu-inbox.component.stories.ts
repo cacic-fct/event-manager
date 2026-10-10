@@ -319,12 +319,13 @@ class MockNovuNotificationsService {
     MockNovuNotificationsService,
     { provide: NovuNotificationsService, useExisting: MockNovuNotificationsService },
   ],
-  template: `<lib-novu-inbox [title]="title()" />`,
+  template: `<lib-novu-inbox [title]="title()" [markReadOnOpen]="!adminMode()" [showUnreadFilter]="adminMode()" />`,
 })
 class NovuInboxStoryHostComponent {
   private readonly notifications = inject(MockNovuNotificationsService);
 
   readonly title = input('Notificações');
+  readonly adminMode = input(false);
   readonly configured = input(true);
   readonly permission = input<StoryPermission>('default');
   readonly pushPromptDismissed = input(false);
@@ -371,6 +372,7 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
     },
   },
   argTypes: {
+    adminMode: { control: 'boolean' },
     title: { control: 'text', description: 'Título apresentado na barra da central de notificações.' },
     configured: { control: 'boolean', description: 'Indica se o cliente Novu está disponível.' },
     permission: {
@@ -461,4 +463,18 @@ export const DarkReducedMotion: Story = {
     hasMore: false,
   },
   globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const AdminUnreadReview: Story = {
+  args: { ...defaultArgs, adminMode: true, pushPromptDismissed: true, permission: 'granted', showImages: false },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Não lidas' }));
+    await expect(canvas.getByRole('tab', { name: 'Não lidas' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(canvas.getByRole('button', { name: 'Mais ações' }));
+    const page = within(canvasElement.ownerDocument.body);
+    await expect(await page.findByRole('menuitem', { name: /Marcar todas como lidas/ })).toBeVisible();
+    await userEvent.keyboard('{Escape}');
+  },
 };

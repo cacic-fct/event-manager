@@ -26,12 +26,12 @@ export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Presenças no grande evento' })).toBeVisible();
     await expect(canvas.getByRole('list', { name: 'Atividades frequentadas' })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Carregar pessoas' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Atualizar presenças' }));
   },
 };
 

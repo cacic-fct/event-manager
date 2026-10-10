@@ -1,3 +1,5 @@
+import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
+import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
 import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -84,8 +86,14 @@ type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 type DraftSelectionResult = EventDraft | null | undefined;
 const AUDIENCE_PERSON_LOOKUP_BATCH_SIZE = 50;
+export class CreationParentError extends Error {}
+export interface CreationParentSummary { kind: 'group' | 'major-event'; id: string; name: string; emoji: string; }
+
 @Service()
 export class EventsService {
+  private readonly workspaceContext = inject(EventWorkspaceContextService);
+  private selectionRequest = 0;
+  private loadedSelectionId: string | null = null;
   private readonly api = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);
   private readonly eventGroupsApi = inject(EventGroupApiService);
@@ -139,6 +147,12 @@ export class EventsService {
   readonly eventGroupLookupForm = this.formState.createLookupForm();
   readonly lecturerLookupForm = this.formState.createLookupForm(true);
   readonly attendanceCollectorLookupForm = this.formState.createLookupForm(true);
+  private readonly editorRevision = signal(0);
+  private readonly editorBaseline = signal('');
+  readonly unsavedChanges = computed(() => {
+    this.editorRevision();
+    return this.editorBaseline() !== this.editorSignature();
+  });
 
   constructor() {
     bindLiveSearch({
@@ -178,6 +192,8 @@ export class EventsService {
     this.eventForm.controls.latitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.longitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
     this.eventForm.controls.locationDescription.valueChanges.subscribe(() => this.syncLocationPresetControl());
+    this.eventForm.valueChanges.subscribe(() => this.editorRevision.update((revision) => revision + 1));
+    this.captureEditorBaseline();
   }
 
   setEventAudienceInvitations(people: readonly AudienceInvitationPerson[]): void {
@@ -291,47 +307,60 @@ export class EventsService {
     await loadNextPage(this.eventsPagination, () => this.loadEvents());
   }
 
-  async selectEvent(eventItem: Event): Promise<void> {
+  async selectEvent(eventItem: Pick<Event, 'id'>): Promise<void> {
     if (await this.selectEventById(eventItem.id)) {
-      void this.router.navigate(['/events', eventItem.id]);
+      void this.router.navigate(['/event-workspace', 'event', eventItem.id, 'settings']);
     }
   }
 
   async selectEventDraft(eventItem: Event, draft: EventDraft): Promise<void> {
     if (await this.selectEventById(eventItem.id, { draftId: draft.id })) {
-      void this.router.navigate(['/events', eventItem.id]);
+      void this.router.navigate(['/event-workspace', 'event', eventItem.id, 'settings']);
     }
   }
 
   async selectEventById(eventId: string, options: EventSelectionOptions = {}): Promise<boolean> {
-    if (options.skipIfCurrent && this.selectedEvent()?.id === eventId && !options.draftId && !options.forceOriginal) {
+    const request = ++this.selectionRequest;
+    if (options.skipIfCurrent && this.loadedSelectionId === eventId && this.selectedEvent()?.id === eventId && !options.draftId && !options.forceOriginal) {
       return true;
     }
 
+    this.loadedSelectionId = null;
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
+    if (request !== this.selectionRequest) return false;
     const canLoadDrafts = this.permissions.canEdit(Permission.Event.Update);
     const drafts = canLoadDrafts ? await firstValueFrom(this.api.listEventDrafts({ sourceEventId: eventId })) : [];
+    if (request !== this.selectionRequest) return false;
     this.mergeDraftsForEvent(eventId, drafts);
 
     const selectedDraft = await this.resolveDraftSelection(eventDetails, drafts, options);
-    if (selectedDraft === undefined) {
+    if (selectedDraft === undefined || request !== this.selectionRequest) {
       return false;
     }
 
-    this.selectedEvent.set(eventDetails);
-    this.selectedEventDraft.set(selectedDraft);
     await this.populateEventForm(
       selectedDraft ? eventFromDraft(eventDetails, selectedDraft) : eventDetails,
       selectedDraft ? this.draftInvitationPersonIds(selectedDraft) : undefined,
+      request,
     );
+    if (request !== this.selectionRequest) return false;
+    this.selectedEvent.set(eventDetails);
+    this.selectedEventDraft.set(selectedDraft);
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
+    if (request !== this.selectionRequest) return false;
     await this.loadGroupLecturerSuggestions();
-    return true;
+    if (request === this.selectionRequest) {
+      this.loadedSelectionId = eventId;
+      this.captureEditorBaseline();
+    }
+    return request === this.selectionRequest;
   }
 
-  resetEventForm(): void {
-    void this.router.navigate(['/events']);
+  resetEventForm(navigate = true): void {
+    this.selectionRequest++;
+    this.loadedSelectionId = null;
+    if (navigate) void this.router.navigate(['/event-workspace/new/event']);
     this.selectedEvent.set(null);
     this.selectedEventDraft.set(null);
     this.selectedMajorEvent.set(null);
@@ -408,6 +437,35 @@ export class EventsService {
     });
     this.syncOnlineAttendanceControls();
     this.syncCertificateControl();
+    this.captureEditorBaseline();
+  }
+
+  async initializeNewEvent(parents: { majorEventId?: string | null; eventGroupId?: string | null } = {}): Promise<CreationParentSummary[]> {
+    this.resetEventForm(false);
+    const request = this.selectionRequest;
+    const group = parents.eventGroupId ? await firstValueFrom(this.eventGroupsApi.getEventGroup(parents.eventGroupId)) : null;
+    if (group?.majorEventId && parents.majorEventId && group.majorEventId !== parents.majorEventId) {
+      throw new CreationParentError('O grupo pertence a outro grande evento.');
+    }
+    const majorEventId = group?.majorEventId ?? parents.majorEventId;
+    const major = majorEventId ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId)) : null;
+    if (request !== this.selectionRequest) return [];
+    if (major && isFrozenMajorEvent(major) && !this.permissions.has(Permission.Frozen.Update)) {
+      throw new CreationParentError('Este grande evento está congelado. É necessária permissão para alterar recursos antigos.');
+    }
+    const summary: CreationParentSummary[] = [];
+    if (major) {
+      this.assignMajorEventToEvent(major);
+      this.majorEventSearchResults.set([major]);
+      summary.push({kind:'major-event',id:major.id,name:major.name,emoji:major.emoji});
+    }
+    if (group) {
+      this.assignEventGroupToEvent(group);
+      this.eventGroupSearchResults.set([group]);
+      summary.push({kind:'group',id:group.id,name:group.name,emoji:group.emoji});
+    }
+    this.captureEditorBaseline();
+    return summary;
   }
 
   randomizeOnlineAttendanceCode(): void {
@@ -415,6 +473,7 @@ export class EventsService {
   }
 
   async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    const saveRequest = this.selectionRequest;
     if (this.hasInvalidDateRange()) {
       this.eventForm.markAllAsTouched();
       return;
@@ -445,7 +504,7 @@ export class EventsService {
             input: payload,
           }),
         );
-        this.selectedEventDraft.set(savedDraft);
+        if (saveRequest === this.selectionRequest) this.selectedEventDraft.set(savedDraft);
         this.mergeDraftsForEvent(selectedEvent.id, [
           savedDraft,
           ...this.draftsForEvent(selectedEvent.id).filter((draft) => draft.id !== savedDraft.id),
@@ -459,13 +518,16 @@ export class EventsService {
           await firstValueFrom(this.api.applyEventDraft(savedDraft.id));
           this.snackbar.open('Rascunho aplicado à publicação.', 'Fechar', { duration: 2500 });
           await this.loadEvents();
-          await this.selectEventById(selectedEvent.id, { forceOriginal: true });
+          if (saveRequest === this.selectionRequest && await this.selectEventById(selectedEvent.id, { forceOriginal: true })) {
+            this.syncWorkspaceContext(this.selectedEvent());
+          }
           return;
         }
 
         this.snackbar.open('Rascunho salvo sem alterar a publicação.', 'Fechar', { duration: 3500 });
         await this.loadEvents();
-        if (action === 'SCHEDULE') {
+        if (saveRequest === this.selectionRequest) this.captureEditorBaseline();
+        if (action === 'SCHEDULE' && saveRequest === this.selectionRequest) {
           void this.router.navigate(this.eventPublicationRoute(selectedEvent.id));
         }
         return;
@@ -483,6 +545,7 @@ export class EventsService {
         savedEventId = created.id;
       }
 
+      if (saveRequest === this.selectionRequest) this.eventForm.controls.id.setValue(savedEventId, {emitEvent:false});
       if (manualPlace) {
         await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
       }
@@ -512,11 +575,16 @@ export class EventsService {
       }
 
       await this.loadEvents();
+      if (saveRequest !== this.selectionRequest) return;
       if (action === 'SCHEDULE') {
+        this.captureEditorBaseline();
         void this.router.navigate(this.eventPublicationRoute(savedEventId));
         return;
       }
-      this.resetEventForm();
+      if (saveRequest !== this.selectionRequest) return;
+      if (!(await this.selectEventById(savedEventId, {forceOriginal:true}))) return;
+      this.syncWorkspaceContext(this.selectedEvent());
+      void this.router.navigate(['/event-workspace', 'event', savedEventId, 'settings']);
     } catch (error) {
       this.feedback.error(error, 'Não foi possível salvar o evento.');
     } finally {
@@ -564,6 +632,7 @@ export class EventsService {
       selection.kind === 'draft' ? eventFromDraft(selectedEvent, selection.draft) : selectedEvent,
       selection.kind === 'draft' ? this.draftInvitationPersonIds(selection.draft) : undefined,
     );
+    this.captureEditorBaseline();
   }
 
   async deleteDraftsForSelectedEvent(): Promise<void> {
@@ -624,7 +693,9 @@ export class EventsService {
       );
       this.snackbar.open('Evento duplicado.', 'Fechar', { duration: 2500 });
       await this.loadEvents();
-      await this.selectEventById(created.id);
+      if (await this.selectEventById(created.id)) {
+        void this.router.navigate(['/event-workspace', 'event', created.id, 'settings']);
+      }
     } catch (error) {
       this.feedback.error(error, 'Não foi possível duplicar o evento.');
     } finally {
@@ -643,6 +714,7 @@ export class EventsService {
   }
 
   async searchMajorEventsForEvent(): Promise<void> {
+    const request = this.selectionRequest;
     if (!this.permissions.has(Permission.MajorEvent.Read)) {
       this.majorEventSearchResults.set([]);
       return;
@@ -655,7 +727,8 @@ export class EventsService {
           endDateFrom: new Date().toISOString(),
           take: 50,
         };
-    this.majorEventSearchResults.set(await firstValueFrom(this.majorEventsApi.listMajorEvents(filters)));
+    const results = await firstValueFrom(this.majorEventsApi.listMajorEvents(filters));
+    if (request === this.selectionRequest && this.majorEventLookupForm.controls.query.value.trim() === query) this.majorEventSearchResults.set(results);
   }
 
   assignMajorEventToEvent(majorEvent: MajorEvent): void {
@@ -676,6 +749,22 @@ export class EventsService {
   }
 
   assignEventGroupToEvent(group: EventGroup): void {
+    const currentMajorEventId = this.eventForm.controls.majorEventId.value;
+    if (group.majorEventId && currentMajorEventId && currentMajorEventId !== group.majorEventId) {
+      this.feedback.error(
+        new Error('Um grupo vinculado a um grande evento não pode ser associado a um evento de outro grande evento.'),
+        'Não foi possível vincular o grupo ao evento.',
+      );
+      return;
+    }
+
+    if (group.majorEventId && !currentMajorEventId) {
+      this.eventForm.controls.majorEventId.setValue(group.majorEventId);
+      const majorEvent = this.majorEvents().find((item) => item.id === group.majorEventId) ?? null;
+      this.applySelectedMajorEvent(majorEvent, { hasMajorEvent: true });
+      this.majorEventLookupForm.controls.query.setValue(majorEvent?.name ?? '', { emitEvent: false });
+    }
+
     this.eventForm.controls.eventGroupId.setValue(group.id);
     this.selectedEventGroup.set(group);
     this.applySelectedEventGroup(group, { hasEventGroup: true });
@@ -871,7 +960,9 @@ export class EventsService {
   }
 
   private async loadEventLecturers(eventId: string): Promise<void> {
-    this.eventLecturers.set(await this.eventPeople.listLecturers(eventId));
+    const request = this.selectionRequest;
+    const people = await this.eventPeople.listLecturers(eventId);
+    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) this.eventLecturers.set(people);
   }
 
   private async openCloneDialog(eventItem: Event): Promise<CloneAssetDialogResult | null | undefined> {
@@ -899,10 +990,14 @@ export class EventsService {
   }
 
   private async loadEventAttendanceCollectors(eventId: string): Promise<void> {
-    this.eventAttendanceCollectors.set(await this.eventPeople.listAttendanceCollectors(eventId));
+    const request = this.selectionRequest;
+    const people = await this.eventPeople.listAttendanceCollectors(eventId);
+    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) this.eventAttendanceCollectors.set(people);
   }
 
   private async loadGroupLecturerSuggestions(): Promise<void> {
+    const request = this.selectionRequest;
+    const eventId = this.eventForm.controls.id.value;
     const eventGroupId = this.eventForm.controls.eventGroupId.value;
     if (!eventGroupId) {
       this.groupLecturerSuggestions.set([]);
@@ -914,7 +1009,7 @@ export class EventsService {
       this.eventForm.controls.id.value,
     );
 
-    if (this.eventForm.controls.eventGroupId.value !== eventGroupId) {
+    if (request !== this.selectionRequest || this.eventForm.controls.id.value !== eventId || this.eventForm.controls.eventGroupId.value !== eventGroupId) {
       return;
     }
 
@@ -1122,6 +1217,12 @@ export class EventsService {
     );
   }
 
+  private syncWorkspaceContext(event: Event | null): void {
+    if (!event) return;
+    this.workspaceContext.context.update((context) => context?.kind === 'event' && context.id === event.id
+      ? {...context,name:event.name,emoji:event.emoji,startDate:event.startDate,endDate:event.endDate} : context);
+  }
+
   private buildManualPlacePresetPayload(): PlacePresetInput | null {
     const raw = this.eventForm.getRawValue();
     if (raw.locationPresetId !== CUSTOM_PLACE_PRESET_ID) {
@@ -1173,12 +1274,13 @@ export class EventsService {
     );
   }
 
-  private async populateEventForm(eventItem: Event, invitationPersonIds?: readonly string[]): Promise<void> {
+  private async populateEventForm(eventItem: Event, invitationPersonIds?: readonly string[], request = ++this.selectionRequest): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
     const selectedMajorEvent = this.resolveSelectedMajorEvent(eventItem);
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
-    const selectedPlacePreset = await this.resolvePlacePresetForEvent(eventItem);
+    const selectedPlacePreset = await this.resolvePlacePresetForEvent(eventItem, request);
     const audienceInvitations = await this.resolveAudienceInvitationPeople(eventItem, invitationPersonIds);
+    if (request !== this.selectionRequest) return;
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1242,6 +1344,19 @@ export class EventsService {
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
     this.syncLocationPresetControl();
+  }
+
+  private editorSignature(): string {
+    return JSON.stringify({
+      form: this.eventForm.getRawValue(),
+      lecturers: this.eventLecturers().map((lecturer) => lecturer.personId),
+      attendanceCollectors: this.eventAttendanceCollectors().map((collector) => collector.personId),
+      audienceInvitations: this.eventAudienceInvitations().map((person) => person.id),
+    });
+  }
+
+  private captureEditorBaseline(): void {
+    this.editorBaseline.set(this.editorSignature());
   }
 
   private draftInvitationPersonIds(draft: EventDraft): string[] | undefined {
@@ -1330,6 +1445,7 @@ export class EventsService {
 
   private async resolvePlacePresetForEvent(
     eventItem: Pick<Event, 'latitude' | 'longitude' | 'locationDescription'>,
+    request = this.selectionRequest,
   ): Promise<PlacePreset | null> {
     const localMatch = this.matchPlacePreset(eventItem);
     if (localMatch || !eventItem.locationDescription?.trim() || !this.permissions.has(Permission.PlacePreset.Read)) {
@@ -1337,6 +1453,7 @@ export class EventsService {
     }
 
     const suggestions = await this.placePresetsService.searchPlacePresets(eventItem.locationDescription, 8);
+    if (request !== this.selectionRequest) return null;
     this.placePresetSuggestions.set(suggestions);
     return this.matchPlacePreset(eventItem);
   }

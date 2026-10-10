@@ -26,7 +26,20 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('configures, freezes, and opens a prize draw with an auditable roster', async ({ page }) => {
+  const listRequest = page.waitForRequest((request) => {
+    const body = request.postDataJSON() as { query?: string } | null;
+    return request.url().includes('/api/graphql') && Boolean(body?.query?.includes('query PrizeDraws'));
+  });
   await page.goto('/admin/draws/draw-1');
+
+  const variables = (await listRequest).postDataJSON() as {
+    variables?: { skip?: number; take?: number };
+  };
+  expect(variables.variables).toMatchObject({ skip: 0, take: 51 });
+  const contextHeader = page.getByRole('button', { name: /Todos os sorteios/i });
+  await expect(contextHeader).toHaveAttribute('aria-expanded', 'false');
+  await contextHeader.click();
+  await expect(page.getByRole('button', { name: 'Mostrar sorteios de todos os contextos' })).toBeVisible();
 
   await expect(page.getByRole('heading', { name: 'Configurar sorteio' })).toBeVisible();
   await expect(page.getByLabel('Título')).toHaveValue('Kit CACiC');

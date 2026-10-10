@@ -75,7 +75,7 @@ export default meta;
 type Story = StoryObj<MajorEventSubscriptionsStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: /selecione um grande evento/i })).toBeVisible());
@@ -91,6 +91,7 @@ export const SubscriberBrowser: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
+    await expect(canvas.getByText('Criada pela administração')).toBeVisible();
     await userEvent.click(canvas.getByText('Ada Lovelace'));
     await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
@@ -107,9 +108,16 @@ export const SubscriberDetail: Story = {
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
+    await expect(canvasElement.querySelector('.warning-reason')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: /mais informações sobre/i })).not.toBeInTheDocument();
     await userEvent.click(await canvas.findByText('Grace Hopper'));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
     await expect(canvas.getByDisplayValue(/R\$\s*1,20/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Editar inscrição' }));
+    const lecturerEvent = canvas.getByRole('checkbox', { name: 'Selecionar GraphQL com NestJS' });
+    await expect(lecturerEvent).toBeChecked();
+    await userEvent.click(lecturerEvent);
+    await expect(canvasElement.querySelector('.warning-reason')).toBeNull();
   },
 };
 

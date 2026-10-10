@@ -91,7 +91,7 @@ test('workspace route falls back to the permission-denied view when evaluated ta
     permissions: [],
   });
 
-  await page.goto('/admin/events');
+  await page.goto('/admin/event-workspace/new/event');
 
   await expect(page).toHaveURL(/\/app\/?$/);
 });

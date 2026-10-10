@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import {
   PrizeDraw,
@@ -26,8 +26,15 @@ export class PrizeDrawResolver {
   @Query(() => [PrizeDraw], { name: 'prizeDraws' })
   @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.PrizeDraw.Read)
-  prizeDraws(@Context() context: GraphqlContext): Promise<PrizeDraw[]> {
-    return this.draws.listAdmin(this.user(context));
+  prizeDraws(
+    @Context() context: GraphqlContext,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ): Promise<PrizeDraw[]> {
+    return this.draws.listAdmin(this.user(context), { query, eventId, majorEventId, skip, take });
   }
 
   @Query(() => PrizeDraw, { name: 'prizeDraw' })

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { EventGroupsPageComponent } from './event-groups-page.component';
 import {
   defaultPageStoryArgs,
@@ -101,5 +101,16 @@ export const InvitationAudience: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Pessoas convidadas')).toBeVisible();
     await expect(canvas.getByText('Pessoa convidada 4')).toBeVisible();
+  },
+};
+
+export const CertificateDisclosure: Story = {
+  args: { certificateMode: 'none', sportsEvery: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole('checkbox', { name: 'Permitir certificado parcial' })).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Emitir certificado' }));
+    await expect(canvas.getByRole('checkbox', { name: 'Permitir certificado parcial' })).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Um certificado por evento' })).toBeVisible();
   },
 };

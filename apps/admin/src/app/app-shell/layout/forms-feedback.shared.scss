@@ -119,6 +119,14 @@ lib-twemoji[matPrefix] {
   .panel-heading,
   .surface-heading {
     flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .panel-heading > div:first-child,
+  .surface-heading > div:first-child,
+  .tab-header > div:first-child {
+    flex-basis: auto;
+    width: 100%;
   }
 
   .tab-actions,
@@ -131,6 +139,7 @@ lib-twemoji[matPrefix] {
 
   .editor-action-row {
     gap: 0.75rem;
+    flex: none;
   }
 
   .editor-action-group,
@@ -150,3 +159,6 @@ lib-twemoji[matPrefix] {
     flex: 1;
   }
 }
+
+.creation-context { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.creation-context a { height: auto; min-height: 40px; overflow-wrap: anywhere; }

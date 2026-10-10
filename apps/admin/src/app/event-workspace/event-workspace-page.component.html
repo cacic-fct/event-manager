@@ -1,0 +1,80 @@
+<section class="workspace-tab-shell event-workspace" [class.standalone]="!inShell">
+  @if (!selectedRef()) {
+    <header class="workspace-heading">
+      <div><h1>Eventos</h1><p>Escolha um contexto para organizar a programação e acompanhar a participação.</p></div>
+      <div class="actions" aria-label="Criar contexto">
+        @if (canCreate('event')) { <button mat-stroked-button type="button" (click)="create('event')">Novo evento</button> }
+        @if (canCreate('group')) { <button mat-stroked-button type="button" (click)="create('group')">Novo grupo</button> }
+        @if (canCreate('major-event')) { <button mat-stroked-button type="button" (click)="create('major-event')">Novo grande evento</button> }
+      </div>
+    </header>
+  }
+  <app-event-context-picker [hideInShell]="selectedRef() !== null" [searchOnly]="!selectedRef()" [context]="selectedRef()" [allowGroups]="true" (contextChange)="selectContext($event)" />
+  @if (workspace.loading()) { <mat-progress-bar mode="indeterminate" aria-label="Abrindo contexto" /> }
+  @if (workspace.error()) {
+    <div class="notice" role="alert"><span>{{ workspace.error() }}</span><button mat-button type="button" (click)="workspace.load(selectedRef())">Tentar novamente</button></div>
+  }
+  @if (workspace.context(); as context) {
+    <div class="context-workspace" [class.in-shell]="inShell">
+      @if (!inShell) {
+        <nav aria-label="Trabalhar neste contexto">
+          <mat-nav-list>
+            @for (operation of workspace.operations(); track operation.id) {
+              @if (operation.id !== 'overview') {
+                <a mat-list-item [routerLink]="operation.path" [queryParams]="operation.queryParams">
+                  <mat-icon matListItemIcon>{{ operation.icon }}</mat-icon><span matListItemTitle>{{ operation.label }}</span><mat-icon matListItemMeta>arrow_forward</mat-icon>
+                </a>
+              }
+            }
+          </mat-nav-list>
+        </nav>
+      }
+      <div class="scope-content">
+        @if (context.kind === 'event') {
+          <section class="context-overview" aria-label="Participação">
+            <dl class="participation-summary">
+              <div><dt>Inscrições</dt><dd>{{ summary()?.subscribers ?? '—' }}</dd></div>
+              <div><dt>Presentes</dt><dd>{{ summary()?.attended ?? '—' }}</dd></div>
+              <div><dt>Interessados</dt><dd>{{ summary()?.interested ?? '—' }}</dd></div>
+            </dl>
+          </section>
+        }
+        @if (settingsPage()) {
+          @switch (context.kind) {
+            @case ('event') { @defer (on immediate) { <app-workspace-events-tab /> } }
+            @case ('group') { @defer (on immediate) { <app-workspace-event-groups-tab /> } }
+            @case ('major-event') { @defer (on immediate) { <app-workspace-major-events-tab /> } }
+          }
+        } @else if (context.kind !== 'event') {
+          <section class="activities" aria-labelledby="context-activities">
+            <header class="panel-heading"><div><h2 id="context-activities">Programação</h2><p>Abra um grupo ou evento para trabalhar nesse contexto.</p></div></header>
+            <form class="scope-search" (submit)="$event.preventDefault(); applySearch()">
+              <mat-form-field><mat-label>Buscar na programação</mat-label><mat-icon matPrefix>search</mat-icon><input matInput type="search" [formControl]="query" /><mat-hint>Busca também os eventos dentro dos grupos.</mat-hint></mat-form-field>
+              <button mat-stroked-button type="submit">Buscar</button>
+            </form>
+            @if (activitiesLoading()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando programação" /> }
+            @if (activitiesError()) { <p role="alert">{{ activitiesError() }}</p><button mat-button type="button" (click)="loadActivities()">Tentar novamente</button> }
+            @if (context.kind === 'major-event' && permissions.has(Permission.EventGroup.Read)) {
+              <h3>Grupos de eventos</h3>
+              @for (group of groups(); track group.id) {
+                <app-workspace-record [title]="group.name" [link]="contextRoute({kind:'group', id:group.id})"><lib-twemoji recordIcon [emoji]="group.emoji" /></app-workspace-record>
+              } @empty {
+                @if (!activitiesLoading() && !activitiesError()) { <p class="empty-note">Nenhum grupo encontrado neste contexto.</p> }
+              }
+            }
+            @if (workspace.canReadActivities()) {
+              <h3>{{ context.kind === 'major-event' && !appliedQuery() ? 'Eventos fora de grupos' : 'Eventos' }}</h3>
+              @for (event of activities(); track event.id) {
+                <app-workspace-record [title]="event.name" [link]="contextRoute({kind:'event', id:event.id})">
+                  <lib-twemoji recordIcon [emoji]="event.emoji" /><span recordDescription>{{ event.startDate | date:'short' }} @if (appliedQuery() && event.eventGroup?.name) { · {{ event.eventGroup.name }} }</span>
+                </app-workspace-record>
+              } @empty {
+                @if (!activitiesLoading() && !activitiesError()) { <p class="empty-note">Nenhum evento encontrado neste contexto.</p> }
+              }
+            }
+          </section>
+        }
+      </div>
+    </div>
+  }
+</section>

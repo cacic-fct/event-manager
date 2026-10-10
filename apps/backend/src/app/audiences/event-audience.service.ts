@@ -1,5 +1,5 @@
 import { AccountMergeService } from '../account-merge/account-merge.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -27,6 +27,7 @@ export class EventAudienceService {
     private readonly authorization: AuthorizationPolicyService,
     private readonly featureFlags: BackendFeatureFlagService,
     private readonly accountManager: AccountManagerGrpcClient,
+    @Inject(forwardRef(() => AccountMergeService))
     private readonly accountMerge: AccountMergeService,
   ) {}
 

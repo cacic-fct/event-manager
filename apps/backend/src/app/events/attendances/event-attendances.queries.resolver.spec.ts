@@ -90,6 +90,7 @@ describe('EventAttendancesQueriesResolver', () => {
       { id: 'event-1', name: 'Opening', emoji: '🎉', startDate: new Date('2026-05-21T12:00:00.000Z') },
       { id: 'event-2', name: 'Workshop', emoji: '🛠️', startDate: new Date('2026-05-22T12:00:00.000Z') },
     ]);
+    prisma.people.findMany.mockResolvedValue([{ id: 'person-1' }, { id: 'person-2' }]);
     prisma.majorEventSubscription.findMany.mockResolvedValue([
       {
         id: 'subscription-1',
@@ -172,6 +173,17 @@ describe('EventAttendancesQueriesResolver', () => {
     await expect(resolver.majorEventUserAttendances('major-1')).resolves.toEqual([]);
   });
 
+  it('keeps major-event attendance count aligned with the list empty-state', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.count.mockResolvedValue(0);
+
+    await expect(resolver.majorEventUserAttendanceCount('major-1', 'Ada')).resolves.toBe(0);
+    expect(prisma.people.count).not.toHaveBeenCalled();
+
+    prisma.majorEvent.findFirst.mockResolvedValueOnce(null);
+    await expect(resolver.majorEventUserAttendanceCount('missing-major')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('loads and assesses only the selected attendance page, including attendees without subscriptions', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
     const event = { id: 'event-1', name: 'Opening' };
@@ -180,13 +192,18 @@ describe('EventAttendancesQueriesResolver', () => {
     prisma.$queryRaw.mockResolvedValue([{ personId: 'attendee-1' }]);
     prisma.eventAttendance.findMany.mockResolvedValue([attendance]);
 
-    await expect(resolver.majorEventUserAttendances('major-1', undefined, 50, 1)).resolves.toEqual([
+    await expect(resolver.majorEventUserAttendances('major-1', undefined, 50, 1, 'Ada %_')).resolves.toEqual([
       expect.objectContaining({ personId: 'attendee-1', subscriptionStatus: 'UNKNOWN' }),
     ]);
     const query = prisma.$queryRaw.mock.calls[0][0];
     expect(query.sql).toContain('UNION ALL');
+    expect(query.sql).toContain('JOIN people AS p');
+    expect(query.sql).toContain('p."deletedAt" IS NULL');
+    expect(query.sql).toContain('p."name" ILIKE');
+    expect(query.sql).toContain('p."identityDocument" LIKE');
     expect(query.sql).toContain('LIMIT ? OFFSET ?');
     expect(query.values.slice(-2)).toEqual([1, 50]);
+    expect(query.values).toContain('Ada %_');
     expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { majorEventId: 'major-1', deletedAt: null, personId: { in: ['attendee-1'] } },
     }));
@@ -234,6 +251,7 @@ function createFullPrisma() {
     event: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
+      count: jest.fn(),
     },
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -244,6 +262,7 @@ function createFullPrisma() {
     people: {
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn(),
       create: jest.fn(),
     },
   };

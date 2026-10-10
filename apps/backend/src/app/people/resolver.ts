@@ -33,6 +33,7 @@ import {
   buildPersonLinkedResourcePage,
   personHasLinkedData,
 } from './people-linked-resources';
+import { personSearchWhere } from './person-search-where';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -152,22 +153,10 @@ export class PeopleResolver {
           }
           where.id = { in: prioritizedIds };
         } else {
-          where.OR = [
-            { name: { contains: normalizedQuery, mode: 'insensitive' } },
-            { email: { contains: normalizedQuery, mode: 'insensitive' } },
-            { phone: { contains: normalizedQuery, mode: 'insensitive' } },
-            { identityDocument: { contains: normalizedQuery } },
-            { academicId: { contains: normalizedQuery } },
-          ];
+          Object.assign(where, personSearchWhere(normalizedQuery));
         }
       } else {
-        where.OR = [
-          { name: { contains: normalizedQuery, mode: 'insensitive' } },
-          { email: { contains: normalizedQuery, mode: 'insensitive' } },
-          { phone: { contains: normalizedQuery, mode: 'insensitive' } },
-          { identityDocument: { contains: normalizedQuery } },
-          { academicId: { contains: normalizedQuery } },
-        ];
+        Object.assign(where, personSearchWhere(normalizedQuery));
       }
     }
 

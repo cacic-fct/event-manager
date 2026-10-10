@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { EventsPageComponent } from './events-page.component';
 import {
   defaultPageStoryArgs,
@@ -102,5 +102,33 @@ export const InvitationAudience: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Pessoas convidadas')).toBeVisible();
     await expect(canvas.getByText('Pessoa convidada 4')).toBeVisible();
+  },
+};
+
+export const OnlineAttendanceControls: Story = {
+  args: { sportsEvery: 0, selectedIndex: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const online = canvas.getByRole('checkbox', { name: 'Presença on-line' });
+    if ((online as HTMLInputElement).checked) await userEvent.click(online);
+    await expect(canvas.queryByLabelText('Código da presença on-line')).not.toBeInTheDocument();
+    await userEvent.click(online);
+    const code = canvas.getByLabelText('Código da presença on-line');
+    await userEvent.clear(code);
+    await userEvent.type(code, 'EVENTO');
+    await userEvent.click(online);
+    await userEvent.click(online);
+    await expect(canvas.getByLabelText('Código da presença on-line')).toHaveValue('EVENTO');
+  },
+};
+
+export const ReadonlyLinkedPeople: Story = {
+  args: { mode: 'readonly', itemCount: 4 },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const linkedPeople = canvasElement.querySelectorAll('.linked-person');
+    await expect(linkedPeople).toHaveLength(2);
+    for (const person of linkedPeople) await expect(person).toBeVisible();
+    await expect(within(canvasElement).queryByRole('button', { name: 'Editar evento' })).not.toBeInTheDocument();
   },
 };

@@ -42,8 +42,14 @@ import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
 import { PermissionsService } from '../permissions/permissions.service';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { timeAwareGreeting } from '@cacic-fct/shared-utils';
+import {
+  adminEventWorkspaceCreationRoute,
+  adminEventWorkspaceRoute,
+  adminSportsWorkspaceRoute,
+  timeAwareGreeting,
+} from '@cacic-fct/shared-utils';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { canCreateEventContext, type CreatableEventContext } from '../shared/event-context-access';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -214,6 +220,30 @@ export class Home implements OnInit, OnDestroy {
   }
 
   routerLinkForAction(action: DashboardActionLink): string[] {
+    if (action.action === 'CREATE_EVENT') {
+      return adminEventWorkspaceCreationRoute('event');
+    }
+    if (action.action === 'CREATE_EVENT_GROUP') {
+      return adminEventWorkspaceCreationRoute('group');
+    }
+    if (action.action === 'CREATE_MAJOR_EVENT') {
+      return adminEventWorkspaceCreationRoute('major-event');
+    }
+    if (action.action === 'OPEN_EVENT' && action.targetId) {
+      return adminEventWorkspaceRoute({ kind: 'event', id: action.targetId, section: 'settings' });
+    }
+    if (action.action === 'OPEN_EVENT_GROUP' && action.targetId) {
+      return adminEventWorkspaceRoute({ kind: 'group', id: action.targetId, section: 'settings' });
+    }
+    if (action.action === 'OPEN_MAJOR_EVENT' && action.targetId) {
+      return adminEventWorkspaceRoute({ kind: 'major-event', id: action.targetId, section: 'settings' });
+    }
+    if (action.action === 'OPEN_SPORTS' && action.targetId) {
+      return adminSportsWorkspaceRoute({ majorEventId: action.targetId });
+    }
+    if (action.action === 'OPEN_SPORTS' && !action.targetId) {
+      return ['/sports'];
+    }
     const path = this.pathForAction(action.action);
     if (action.action === 'OPEN_ATTENDANCE' && action.targetId) {
       return [path, 'event', action.targetId];
@@ -224,6 +254,14 @@ export class Home implements OnInit, OnDestroy {
     }
 
     return [path];
+  }
+
+  creationRoute(kind: 'event' | 'group' | 'major-event'): string[] {
+    return adminEventWorkspaceCreationRoute(kind);
+  }
+
+  canCreateContext(kind: CreatableEventContext): boolean {
+    return canCreateEventContext(this.permissions, kind);
   }
 
   hasSuggestion(suggestions: DashboardActionLink[], action: DashboardInsightAction): boolean {
@@ -247,6 +285,18 @@ export class Home implements OnInit, OnDestroy {
         action === 'OPEN_SPORTS') &&
       targetId
     ) {
+      if (action === 'OPEN_EVENT') {
+        return adminEventWorkspaceRoute({ kind: 'event', id: targetId, section: 'settings' });
+      }
+      if (action === 'OPEN_EVENT_GROUP') {
+        return adminEventWorkspaceRoute({ kind: 'group', id: targetId, section: 'settings' });
+      }
+      if (action === 'OPEN_MAJOR_EVENT') {
+        return adminEventWorkspaceRoute({ kind: 'major-event', id: targetId, section: 'settings' });
+      }
+      if (action === 'OPEN_SPORTS') {
+        return adminSportsWorkspaceRoute({ majorEventId: targetId });
+      }
       return [path, targetId];
     }
 
@@ -282,7 +332,8 @@ export class Home implements OnInit, OnDestroy {
   }
 
   sportsTournamentLink(item: DashboardSportsTournament | DashboardSportsMatch): string[] {
-    return [this.navMap()['sports']?.path ?? 'sports', item.tournamentId];
+    const majorEventId = 'majorEventId' in item ? item.majorEventId : null;
+    return majorEventId ? adminSportsWorkspaceRoute({ majorEventId }) : ['/sports'];
   }
 
   receiptMajorEventSummary(count: number): string {
@@ -302,7 +353,7 @@ export class Home implements OnInit, OnDestroy {
         LIVE: 'Em andamento',
         FINISHED: 'Finalizado',
         CANCELED: 'Cancelado',
-      }[status] ?? status
+      }[status] ?? 'Situação do torneio não informada'
     );
   }
 
@@ -317,7 +368,7 @@ export class Home implements OnInit, OnDestroy {
         CANCELED: 'Cancelada',
         DRAW: 'Empate',
         FINISHED: 'Finalizada',
-      }[state] ?? state
+      }[state] ?? 'Situação da partida não informada'
     );
   }
 
@@ -369,13 +420,13 @@ export class Home implements OnInit, OnDestroy {
     switch (action) {
       case 'CREATE_EVENT':
       case 'OPEN_EVENT':
-        return this.navMap()['events']?.path ?? 'events';
+        return '/event-workspace';
       case 'CREATE_EVENT_GROUP':
       case 'OPEN_EVENT_GROUP':
-        return this.navMap()['groups']?.path ?? 'groups';
+        return '/event-workspace';
       case 'CREATE_MAJOR_EVENT':
       case 'OPEN_MAJOR_EVENT':
-        return this.navMap()['major-events']?.path ?? 'major-events';
+        return '/event-workspace';
       case 'OPEN_ATTENDANCE':
         return this.navMap()['attendances']?.path ?? 'attendances';
       case 'OPEN_CERTIFICATES':
@@ -385,7 +436,7 @@ export class Home implements OnInit, OnDestroy {
       case 'OPEN_PUBLICATION':
         return this.navMap()['publication']?.path ?? 'publication';
       case 'OPEN_SPORTS':
-        return this.navMap()['sports']?.path ?? 'sports';
+        return '/sports';
     }
   }
 

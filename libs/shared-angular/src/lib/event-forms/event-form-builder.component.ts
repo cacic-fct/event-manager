@@ -84,13 +84,20 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                 <h3>{{ element.title }}</h3>
               </div>
               <div class="item-actions">
-                <button mat-icon-button type="button" class="drag-handle" matTooltip="Arrastar item" cdkDragHandle>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="drag-handle"
+                  matTooltip="Arrastar item"
+                  [attr.aria-label]="'Arrastar item ' + (element.title || labels[element.type])"
+                  cdkDragHandle>
                   <mat-icon>drag_indicator</mat-icon>
                 </button>
                 <button
                   mat-icon-button
                   type="button"
                   matTooltip="Mover para cima"
+                  [attr.aria-label]="'Mover ' + (element.title || labels[element.type]) + ' para cima'"
                   [disabled]="index === 0"
                   (click)="move(index, -1)">
                   <mat-icon>arrow_upward</mat-icon>
@@ -99,14 +106,25 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                   mat-icon-button
                   type="button"
                   matTooltip="Mover para baixo"
+                  [attr.aria-label]="'Mover ' + (element.title || labels[element.type]) + ' para baixo'"
                   [disabled]="index === elements().length - 1"
                   (click)="move(index, 1)">
                   <mat-icon>arrow_downward</mat-icon>
                 </button>
-                <button mat-icon-button type="button" matTooltip="Duplicar" (click)="duplicate(index)">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Duplicar"
+                  [attr.aria-label]="'Duplicar item ' + (element.title || labels[element.type])"
+                  (click)="duplicate(index)">
                   <mat-icon>content_copy</mat-icon>
                 </button>
-                <button mat-icon-button type="button" matTooltip="Remover" (click)="remove(element.id)">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Remover"
+                  [attr.aria-label]="'Remover item ' + (element.title || labels[element.type])"
+                  (click)="remove(element.id)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>
@@ -217,6 +235,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                       mat-icon-button
                       type="button"
                       matTooltip="Remover opção"
+                      [attr.aria-label]="'Remover opção ' + option.label"
                       (click)="removeOption(element.id, 'options', option.id)">
                       <mat-icon>close</mat-icon>
                     </button>
@@ -246,6 +265,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                         mat-icon-button
                         type="button"
                         matTooltip="Remover linha"
+                        [attr.aria-label]="'Remover linha ' + row.label"
                         (click)="removeOption(element.id, 'gridRows', row.id)">
                         <mat-icon>close</mat-icon>
                       </button>
@@ -272,6 +292,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                         mat-icon-button
                         type="button"
                         matTooltip="Remover coluna"
+                        [attr.aria-label]="'Remover coluna ' + column.label"
                         (click)="removeOption(element.id, 'gridColumns', column.id)">
                         <mat-icon>close</mat-icon>
                       </button>
@@ -431,6 +452,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
                       mat-icon-button
                       type="button"
                       matTooltip="Remover janela"
+                      [attr.aria-label]="'Remover janela de ' + window.startTime + ' a ' + window.endTime"
                       (click)="removeOption(element.id, 'availability', window.id)">
                       <mat-icon>close</mat-icon>
                     </button>
@@ -448,6 +470,9 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     </div>
   `,
   styles: `
+    :host { display: block; min-width: 0; }
+    mat-form-field { min-width: 0; width: 100%; }
+    .form-builder, .builder-list, .builder-item, .option-editor, .image-editor { grid-template-columns: minmax(0, 1fr); min-width: 0; }
     .form-builder {
       display: grid;
       gap: 16px;
@@ -541,7 +566,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     .settings-grid,
     .grid-editor {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
       gap: 12px;
     }
 
@@ -571,7 +596,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     .image-row {
       display: grid;
       gap: 12px;
-      grid-template-columns: minmax(140px, 220px) 1fr;
+      grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
     }
 
     .image-row img {
@@ -594,6 +619,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     }
 
     @media (max-width: 720px) {
+      .image-fields mat-form-field, .option-row mat-form-field, .availability-row mat-form-field { flex: none; }
       header,
       .builder-toolbar,
       .option-row,

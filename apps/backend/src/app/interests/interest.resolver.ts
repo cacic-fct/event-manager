@@ -95,6 +95,18 @@ export class EventInterestsResolver {
     return this.interests.listAdminInterests(this.getUser(context), { targetType, targetId }, { query, skip, take });
   }
 
+  @Query(() => Int, { name: 'eventInterestCount' })
+  @AllowScopedCollectionPermissions()
+  @RequirePermissions(Permission.Subscription.Read)
+  eventInterestCount(
+    @Args('targetType', { type: () => InterestTargetType }) targetType: InterestTargetType,
+    @Args('targetId', { type: () => String }) targetId: string,
+    @Context() context: GraphqlContext,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+  ): Promise<number> {
+    return this.interests.countAdminInterests(this.getUser(context), { targetType, targetId }, query);
+  }
+
   @Mutation(() => EventInterestConversion, { name: 'convertEventInterestToSubscription' })
   @AllowScopedCollectionPermissions()
   @RequirePermissions(Permission.Subscription.Create)

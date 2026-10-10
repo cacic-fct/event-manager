@@ -38,6 +38,13 @@ const meta: Meta<AudienceEditorComponent> = {
       ],
     }),
   ],
+  argTypes: {
+    audience: { control: 'select', options: Object.values(EventAudience) },
+    readOnly: { control: 'boolean' },
+    courseCodes: { control: 'object' },
+    invitedPeople: { control: 'object' },
+    parentRestrictions: { control: 'object' },
+  },
   args: {
     audience: EventAudience.PUBLIC,
     courseCodes: [],
@@ -129,3 +136,9 @@ async function expectNoAxeViolations(canvasElement: HTMLElement): Promise<void> 
     throw error;
   }
 }
+
+export const Playground: Story = Public;
+export const DarkReducedMotion: Story = {
+  ...CourseOnly,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

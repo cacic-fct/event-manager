@@ -1056,6 +1056,19 @@ function graphqlData(
     return { eventGroup };
   }
 
+  if (query.includes('query WorkspaceEventSubscriptionCount')) {
+    return { workspaceEventSubscriptionCount: 1 };
+  }
+  if (query.includes('query WorkspaceMajorEventSubscriptionCount')) {
+    return { workspaceMajorEventSubscriptionCount: 1 };
+  }
+  if (query.includes('query EventInterestCount')) {
+    return { eventInterestCount: 1 };
+  }
+  if (query.includes('query MajorEventUserAttendanceCount')) {
+    return { majorEventUserAttendanceCount: 1 };
+  }
+
   if (query.includes('query WorkspaceEventSubscriptions')) {
     return { workspaceEventSubscriptions: [createAdminE2EEventSubscription()] };
   }

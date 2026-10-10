@@ -137,7 +137,26 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
 
     return [{ id: `selected-${selectedTier}`, name: selectedTier, value: 0 }, ...tiers];
   });
-  const majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(majorEventSubscriptions()[0]?.events ?? []);
+  const majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(
+    majorEventSubscriptions()[0]?.events ??
+      eventResults()
+        .filter((eventItem) => !eventItem.isSportsMatch)
+        .map((eventItem, index) => ({
+          eventId: eventItem.id,
+          eventName: eventItem.name,
+          eventEmoji: eventItem.emoji,
+          eventType: eventItem.type,
+          eventShortDescription: eventItem.shortDescription,
+          eventStartDate: eventItem.startDate,
+          eventEndDate: eventItem.endDate,
+          eventLocationDescription: eventItem.locationDescription,
+          eventSlots: eventItem.slots ?? null,
+          availableSlots: eventItem.slots == null ? null : Math.max(eventItem.slots - 8, 0),
+          projectedQueuePosition: index + 1,
+          subscribed: false,
+          isLecturerSubscription: false,
+        })),
+  );
   const eventSubscriptions = signal<WorkspaceEventSubscription[]>(
     Array.from({ length: eventSubscriptionCount }, (_, index) => ({
       id: `event-subscription-${index + 1}`,
@@ -165,15 +184,10 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventForm = new FormGroup({
     majorEventId: new FormControl(selectedMajorEventId ?? '', { nonNullable: true }),
   });
-  const majorEventSearchForm = new FormGroup({
-    query: new FormControl('', { nonNullable: true }),
-  });
   const majorEventSubscriptionSearchForm = new FormGroup({
     query: new FormControl('', { nonNullable: true }),
   });
   const selectedMajorEventIdSignal = signal(selectedMajorEventId ?? '');
-  const majorEventSearchQuery = signal('');
-  majorEventSearchForm.controls.query.valueChanges.subscribe((query) => majorEventSearchQuery.set(query));
   const editMode = signal(false);
   const majorEventEditForm = new FormGroup({
     subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
@@ -194,17 +208,12 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
 
   const service = {
     majorEvents,
-    eventFiltersForm: new FormGroup({
-      startDateFrom: new FormControl<Date | null>(null),
-      startDateUntil: new FormControl<Date | null>(null),
-      isInGroup: new FormControl('ALL', { nonNullable: true }),
-      isInMajorEvent: new FormControl('ALL', { nonNullable: true }),
-      query: new FormControl('', { nonNullable: true }),
-    }),
-    eventResults,
-    eventResultsPagination: createStoryPagination(eventResults().length),
     selectedEvent,
     eventSubscriptions,
+    eventSubscriptionCount: () => eventSubscriptions().length,
+    eventSubscriptionSearchForm: new FormGroup({
+      query: new FormControl('', { nonNullable: true }),
+    }),
     eventSubscriptionsPagination: createStoryPagination(eventSubscriptions().length),
     eventRegularSubscriptions: computed(() =>
       eventSubscriptions().filter((subscription) => !subscription.isLecturerSubscription),
@@ -219,26 +228,18 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       identifier: new FormControl('', { nonNullable: true }),
     }),
     majorEventForm,
-    majorEventSearchForm,
     majorEventSubscriptionSearchForm,
     selectedMajorEvent: computed(
       () => majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEventIdSignal()) ?? null,
     ),
     majorEventSportsWorkspace: signal(null),
-    filteredMajorEvents: computed(() => {
-      const query = majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
-      if (!query) {
-        return majorEvents();
-      }
-
-      return majorEvents().filter((majorEvent) => majorEvent.name.toLocaleLowerCase('pt-BR').includes(query));
-    }),
     majorEventPersonForm: new FormGroup({
       identifierType: new FormControl('email', { nonNullable: true }),
       identifier: new FormControl('', { nonNullable: true }),
     }),
     majorEventEditForm,
     majorEventSubscriptions,
+    majorEventSubscriptionCount: () => majorEventSubscriptions().length,
     majorEventSubscriptionsPagination: createStoryPagination(majorEventSubscriptions().length),
     majorEventEvents,
     selectedMajorEventSubscription,
@@ -249,10 +250,6 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectedEventIds,
     isImportingCsv: signal(false),
     selectedMajorEventEvents: computed(() => selectedMajorEventSubscription()?.events ?? majorEventEvents()),
-    searchEvents: () => Promise.resolve(),
-    resetEventFilters: () => Promise.resolve(),
-    previousEventResultsPage: () => Promise.resolve(),
-    nextEventResultsPage: () => Promise.resolve(),
     selectEvent: (event: Event) => {
       selectedEvent.set(event);
       return Promise.resolve();
@@ -454,14 +451,30 @@ function buildMajorEventSubscription(
       {
         eventId: 'major-event-item-1',
         eventName: 'Arquitetura Angular',
+        eventEmoji: '📐',
+        eventType: 'MINICURSO',
+        eventShortDescription: 'Projeto de interfaces para a comunidade acadêmica',
         eventStartDate: '2026-06-02T12:00:00.000Z',
+        eventEndDate: '2026-06-02T14:00:00.000Z',
+        eventLocationDescription: 'Laboratório 1',
+        eventSlots: 40,
+        availableSlots: 12,
+        projectedQueuePosition: 1,
         subscribed: true,
         isLecturerSubscription: false,
       },
       {
         eventId: 'major-event-item-2',
         eventName: 'GraphQL com NestJS',
+        eventEmoji: '📡',
+        eventType: 'PALESTRA',
+        eventShortDescription: 'Inscrições e consultas de dados com GraphQL',
         eventStartDate: '2026-06-03T12:00:00.000Z',
+        eventEndDate: '2026-06-03T13:00:00.000Z',
+        eventLocationDescription: 'Auditório principal',
+        eventSlots: 30,
+        availableSlots: 0,
+        projectedQueuePosition: 5,
         subscribed: true,
         isLecturerSubscription: true,
       },

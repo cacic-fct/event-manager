@@ -16,7 +16,7 @@
         </p>
       </div>
       <div class="header-actions">
-        <a mat-stroked-button [routerLink]="['/draws', selected.id]"><mat-icon>tune</mat-icon>Configuração</a>
+        <a mat-stroked-button [routerLink]="['/draws', selected.id]" [queryParams]="scopeQuery(selected)"><mat-icon>tune</mat-icon>Configuração</a>
       </div>
     </header>
 
@@ -33,7 +33,7 @@
       </small>
     </section>
 
-    @if (demoMode) {
+    @if (demoMode()) {
       <p class="demo-mode">
         <mat-icon aria-hidden="true">science</mat-icon>Demonstração · nenhum resultado será registrado.
       </p>
@@ -47,9 +47,9 @@
         type="button"
         [disabled]="!canDraw() || requesting() || !permissions.has(Permission.PrizeDraw.Operate)"
         [attr.aria-busy]="requesting()"
-        (click)="run(demoMode)">
+        (click)="run(demoMode())">
         <mat-icon>play_arrow</mat-icon>
-        {{ demoMode ? 'Iniciar demonstração' : 'Sortear agora' }}
+        {{ demoMode() ? 'Iniciar demonstração' : 'Sortear agora' }}
       </button>
     </section>
 

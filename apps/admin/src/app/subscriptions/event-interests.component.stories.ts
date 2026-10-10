@@ -48,10 +48,11 @@ const interest = {
   createdById: 'person-1',
 };
 
-const meta: Meta<typeof EventInterestsComponent> = {
+const meta: Meta<EventInterestsComponent> = {
   component: EventInterestsComponent,
   title: 'CACiC Eventos/Workspace/Subscriptions/Quero ir',
   tags: ['autodocs'],
+  args: { context: { kind: 'event', id: event.id } },
   decorators: [
     applicationConfig({
       providers: [
@@ -71,6 +72,7 @@ const meta: Meta<typeof EventInterestsComponent> = {
           provide: InterestApiService,
           useValue: {
             listInterests: () => of([interest]),
+            countInterests: () => of(1),
             convertInterestToSubscription: () => of({ interest, personId: interest.personId }),
           },
         },
@@ -99,7 +101,7 @@ const meta: Meta<typeof EventInterestsComponent> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof EventInterestsComponent>;
+type Story = StoryObj<EventInterestsComponent>;
 
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
@@ -127,10 +129,14 @@ export const DarkReducedMotion: Story = {
 export const CollectionDisabled: Story = {
   decorators: [applicationConfig({ providers: [{
     provide: EventApiService,
-    useValue: { listEvents: () => of([{ ...event, interestEnabled: false }]), getEvent: () => of(event) },
+    useValue: { listEvents: () => of([{ ...event, interestEnabled: false }]), getEvent: () => of({ ...event, interestEnabled: false }) },
   }] })],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.findByText(/Novos interesses desativados/)).resolves.toBeVisible();
   },
 };
+
+export const NoScope: Story = { args: { context: null } };
+export const GroupScope: Story = { args: { context: { kind: 'group', id: group.id } } };
+export const MajorEventScope: Story = { args: { context: { kind: 'major-event', id: majorEvent.id } } };

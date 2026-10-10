@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -12,6 +11,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -30,10 +32,12 @@ import {
 
 @Component({
   selector: 'app-workspace-places-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    WorkspaceRecordComponent,
+    MatExpansionModule,
+    MatProgressBarModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -201,8 +205,11 @@ export class PlacesPageComponent implements OnDestroy {
   }
 
   private location(): { latitude: number; longitude: number } | null {
-    const latitude = Number(this.workspace.placeForm.controls.latitude.value);
-    const longitude = Number(this.workspace.placeForm.controls.longitude.value);
+    const rawLatitude = this.workspace.placeForm.controls.latitude.value.trim();
+    const rawLongitude = this.workspace.placeForm.controls.longitude.value.trim();
+    if (!rawLatitude || !rawLongitude) return null;
+    const latitude = Number(rawLatitude);
+    const longitude = Number(rawLongitude);
 
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       return null;

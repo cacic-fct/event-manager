@@ -1,26 +1,11 @@
 <section class="section workspace-tab-shell">
   <section class="panel panel-stack">
-    <div class="panel-heading">
-      <div>
-        <h3>Preferências</h3>
-        <p>Ajustes administrativos da sua conta no Event Manager.</p>
-      </div>
-    </div>
-
-    <div class="two-columns">
-      <mat-nav-list aria-label="Preferências administrativas">
-        <mat-list-item aria-current="page">
-          <mat-icon matListItemIcon>calendar_month</mat-icon>
-          <span matListItemTitle>Calendário</span>
-          <span matListItemLine>Feeds privados de calendário</span>
-        </mat-list-item>
-      </mat-nav-list>
-
+    <div class="panel-stack">
       <section class="surface panel-stack">
         <div class="surface-heading">
           <div>
             <h4>Calendário</h4>
-            <span>Feeds iCal com eventos administrados por você.</span>
+            <span>Acompanhe seus eventos no aplicativo de calendário.</span>
           </div>
         </div>
 
@@ -85,15 +70,6 @@
               <mat-form-field appearance="outline">
                 <mat-label>Link privado</mat-label>
                 <input matInput readonly [value]="url" />
-                <button
-                  matIconButton
-                  matSuffix
-                  type="button"
-                  matTooltip="Copiar link"
-                  aria-label="Copiar link"
-                  (click)="copyFeedUrl(url)">
-                  <mat-icon>content_copy</mat-icon>
-                </button>
               </mat-form-field>
 
               <div class="actions">
@@ -117,7 +93,7 @@
                   [disabled]="isRotatingPersonal()"
                   (click)="rotatePersonalKey()">
                   <mat-icon>sync</mat-icon>
-                  Rotacionar chave
+                  Gerar novo link
                 </button>
               </div>
             } @else {

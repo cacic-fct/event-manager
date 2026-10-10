@@ -36,6 +36,8 @@ export interface EventPostCommitRecord {
 export interface EventGroupPostCommitRecord {
   id: string;
   name: string;
+  emoji?: string;
+  majorEventId?: string | null;
 }
 
 const EVENT_EFFECTS_SELECT = {
@@ -64,6 +66,8 @@ const EVENT_EFFECTS_SELECT = {
 const EVENT_GROUP_EFFECTS_SELECT = {
   id: true,
   name: true,
+  emoji: true,
+  majorEventId: true,
   deletedAt: true,
 } satisfies Prisma.EventGroupSelect;
 
@@ -184,7 +188,12 @@ export class EventPostCommitEffectsService {
             const eventGroup = eventGroupsById.get(eventGroupId);
             return !eventGroup || eventGroup.deletedAt
               ? this.typesenseSearch.deleteEventGroup(eventGroupId)
-              : this.typesenseSearch.upsertEventGroup({ id: eventGroup.id, name: eventGroup.name });
+              : this.typesenseSearch.upsertEventGroup({
+                  id: eventGroup.id,
+                  name: eventGroup.name,
+                  emoji: eventGroup.emoji,
+                  majorEventId: eventGroup.majorEventId,
+                });
           }),
         );
       });

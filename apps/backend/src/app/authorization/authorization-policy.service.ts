@@ -76,6 +76,7 @@ const ATTENDANCE_COLLECTION_PERMISSIONS = [
 
 import { SportsAuthorizationTargetService } from './sports-authorization-target.service';
 import { findActiveRolePermissionScopes } from './effective-role-scopes';
+import { eventGroupBelongsToMajorEventWhere } from '../event-groups/major-event-membership';
 
 @Injectable()
 export class AuthorizationPolicyService extends SportsAuthorizationTargetService {
@@ -298,7 +299,12 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       .map((grant) => grant.majorEventId as string);
     const descendantGroups = majorEventIds.length
       ? await this.prisma.eventGroup.findMany({
-          where: { majorEventId: { in: majorEventIds }, deletedAt: null },
+          where: {
+            AND: [
+              eventGroupBelongsToMajorEventWhere(majorEventIds),
+              { deletedAt: null },
+            ],
+          },
           select: { id: true },
         })
       : [];

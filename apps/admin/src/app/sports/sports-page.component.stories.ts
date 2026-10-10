@@ -1,5 +1,6 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { delay, HttpResponse, http } from 'msw';
+import { of } from 'rxjs';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsPageComponent } from './sports-page.component';
@@ -80,6 +81,9 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
         ],
       },
     });
+  }
+  if (query.includes('GetMajorEvent')) {
+    return HttpResponse.json({ data: { majorEvent: sportsStoryMajorEvent } });
   }
   if (query.includes('ListMajorEvents')) {
     return HttpResponse.json({
@@ -216,6 +220,7 @@ const meta: Meta<SportsStoryArgs> = {
             snapshot: {
               paramMap: convertToParamMap({}),
             },
+            paramMap: of(convertToParamMap({})),
           },
         },
       ],
@@ -264,6 +269,28 @@ async function openTournament(canvasElement: HTMLElement) {
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     await openTournament(canvasElement);
+  },
+};
+
+export const ScopedMajorEvent: Story = {
+  name: 'Grande evento selecionado',
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ majorEventId: sportsStoryMajorEvent.id }) },
+            paramMap: of(convertToParamMap({ majorEventId: sportsStoryMajorEvent.id })),
+          },
+        },
+      ],
+    }),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Regras gerais' })).toBeVisible();
+    expect(canvas.queryByRole('heading', { name: 'Lista de grandes eventos' })).toBeNull();
   },
 };
 

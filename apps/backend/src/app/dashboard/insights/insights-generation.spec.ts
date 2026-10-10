@@ -308,7 +308,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v7:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
+      'dashboard:workspace:v8:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
@@ -437,7 +437,11 @@ describe('DashboardInsightsService generation', () => {
         state: 'LIVE',
         scoreboard: { home: 2, away: 1 },
         event: { name: 'Atlética FCT × Engenharia', startDate: new Date('2026-05-21T14:00:00.000Z') },
-        category: { name: 'Futsal aberto', tournamentId: 'tournament-1' },
+        category: {
+          name: 'Futsal aberto',
+          tournamentId: 'tournament-1',
+          tournament: { majorEventId: 'major-event-1' },
+        },
         homeRegistration: { team: { name: 'Atlética FCT' } },
         awayRegistration: { team: { name: 'Engenharia' } },
       },
@@ -458,6 +462,7 @@ describe('DashboardInsightsService generation', () => {
     expect(result.sportsMatches).toEqual([
       expect.objectContaining({
         matchId: 'match-1',
+        majorEventId: 'major-event-1',
         state: 'LIVE',
         homeTeamName: 'Atlética FCT',
         awayTeamName: 'Engenharia',

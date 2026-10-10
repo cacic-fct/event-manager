@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,18 +10,17 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventType } from '@cacic-fct/event-manager-admin-contracts';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { AttendancesService } from './attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
-import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { attendanceCreationMethodLabel } from './attendance-labels';
 
 @Component({
   selector: 'app-workspace-event-attendances-subtab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -34,8 +33,8 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
-    EventFilterPanelComponent,
     PersonSearchComponent,
+    ParticipantSummaryComponent,
   ],
   templateUrl: './event-attendances.component.html',
   styleUrls: [
@@ -46,29 +45,12 @@ import { PersonSearchComponent } from '../people/person-search/person-search.com
     './attendance-subtabs.shared.scss',
   ],
 })
-export class EventAttendancesComponent implements OnInit {
+export class EventAttendancesComponent {
   readonly workspace = inject(AttendancesService);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
-
-  ngOnInit(): void {
-    if (this.workspace.attendanceEventResults().length === 0) {
-      void this.workspace.searchAttendanceEvents();
-    }
-  }
-
-  protected describeEventType(type: EventType | null | undefined): string {
-    if (type === 'MINICURSO') {
-      return 'Minicurso';
-    }
-
-    if (type === 'PALESTRA') {
-      return 'Palestra';
-    }
-
-    return 'Outro';
-  }
+  protected readonly attendanceCreationMethodLabel = attendanceCreationMethodLabel;
 
   protected canEditSelectedEventAttendances(): boolean {
     const event = this.workspace.selectedAttendanceEvent();

@@ -43,7 +43,7 @@ test('opens sports management from workspace navigation and lists configured tou
   await page.getByRole('link', { name: /Esportes/ }).click();
 
   await expect(page).toHaveURL(/\/admin\/sports$/);
-  await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Esportes' })).toBeVisible();
   await expect(page.getByText('Semana da Computação')).toBeVisible();
   await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
   await expect(page.getByText('3 pendências')).toBeVisible();
@@ -85,20 +85,20 @@ test('keeps the selected tournament workspace state on a deep link', async ({ pa
     });
   });
 
-  await page.goto('/admin/sports/tournament-1');
+  await page.goto('/admin/sports/major-event/major-event-1');
 
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1$/);
-  await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
+  await expect(page.getByRole('heading', { name: 'Esportes' })).toBeVisible();
   const matchesTab = page.getByRole('tab', { name: /Partidas e chaves/ });
   await expect(matchesTab).toBeVisible();
 
   await matchesTab.click();
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/matches$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1\/matches$/);
   await expect(matchesTab).toHaveAttribute('aria-selected', 'true');
 
   const categoriesTab = page.getByRole('tab', { name: /Modalidades/ });
   await categoriesTab.click();
-  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/categories$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1\/categories$/);
   await expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
 });
 
@@ -110,7 +110,7 @@ test('shows the unified empty state when no sports event is available', async ({
 
   await page.goto('/admin/sports');
 
-  await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Esportes' })).toBeVisible();
   await expect(page.getByText('Nenhum grande evento disponível')).toBeVisible();
 });
 

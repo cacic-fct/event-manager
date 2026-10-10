@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
+import type { EventAttendanceScannerFeedItem } from '@cacic-fct/event-manager-admin-contracts';
 import { Subject, of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
@@ -34,6 +35,7 @@ describe('AttendancesService', () => {
     listEventAttendanceScannerFeed: ReturnType<typeof vi.fn>;
     watchEventAttendanceScannerFeed: ReturnType<typeof vi.fn>;
     getEventAttendanceCount: ReturnType<typeof vi.fn>;
+    getMajorEventUserAttendanceCount: ReturnType<typeof vi.fn>;
     listOfflineEventAttendanceSubmissions: ReturnType<typeof vi.fn>;
     deleteEventAttendance: ReturnType<typeof vi.fn>;
     approveOfflineEventAttendanceSubmission: ReturnType<typeof vi.fn>;
@@ -74,6 +76,7 @@ describe('AttendancesService', () => {
       listEventAttendanceScannerFeed: vi.fn(() => of([{ personId: person.id, status: false }])),
       watchEventAttendanceScannerFeed: vi.fn(() => of([])),
       getEventAttendanceCount: vi.fn(() => of(1)),
+      getMajorEventUserAttendanceCount: vi.fn(() => of(1)),
       listOfflineEventAttendanceSubmissions: vi.fn(() => of([])),
       deleteEventAttendance: vi.fn(() => of({ deleted: true, id: person.id })),
       approveOfflineEventAttendanceSubmission: vi.fn(() => of({ id: 'offline-1', status: 'APPROVED' })),
@@ -120,18 +123,7 @@ describe('AttendancesService', () => {
     service = TestBed.inject(AttendancesService);
   });
 
-  it('searches, selects, finds people, registers, and deletes attendance with refetches', async () => {
-    await service.searchAttendanceEvents();
-    expect(eventApi.listEvents).toHaveBeenCalledWith({
-      query: undefined,
-      startDateFrom: undefined,
-      startDateUntil: undefined,
-      isInGroup: undefined,
-      isInMajorEvent: undefined,
-      skip: 0,
-      take: 51,
-    });
-
+  it('finds people, registers, and deletes attendance with refetches', async () => {
     service.attendanceForm.patchValue({ eventId: event.id, identifierType: 'email', identifier: 'ada@example.com' });
     await service.findAttendancePerson();
     expect(peopleApi.listPeopleSummaries).toHaveBeenCalledWith({ email: 'ada@example.com', take: 10 });
@@ -278,6 +270,43 @@ describe('AttendancesService', () => {
     await service.loadAttendances('');
     expect(service.attendances()).toEqual([]);
     expect(service.attendanceTotalCount()).toBe(0);
+  });
+
+  it('filters implicit absences by participant query without changing offline provenance', async () => {
+    const otherPerson = createAdminPerson({ id: 'person-2', name: 'Grace Hopper' });
+    const offline = createAdminOfflineEventAttendanceSubmission(
+      {
+        authorUserId: 'collector-1',
+        authorName: 'Coletor original',
+        authorEmail: 'collector@example.edu',
+        submittedById: 'uploader-1',
+        submittedByFullName: 'Uploader atual',
+      },
+      event,
+      person,
+    );
+    const roster: EventAttendanceScannerFeedItem[] = [
+      { personId: person.id, eventId: event.id, fullName: person.name, status: undefined },
+      { personId: otherPerson.id, eventId: event.id, fullName: otherPerson.name, status: undefined },
+    ];
+    api.listEventAttendanceScannerFeed.mockReturnValueOnce(of(roster));
+    api.listOfflineEventAttendanceSubmissions.mockReturnValueOnce(of([offline]));
+    service.selectedAttendanceEvent.set(event);
+    service.attendanceForm.controls.eventId.setValue(event.id);
+    service.attendanceSearchForm.controls.query.setValue('ada', { emitEvent: false });
+
+    await service.loadAttendances(event.id);
+
+    expect(service.implicitAbsences()).toEqual([roster[0]]);
+    expect(service.offlineAttendanceSubmissions()[0]).toEqual(
+      expect.objectContaining({
+        authorUserId: 'collector-1',
+        authorName: 'Coletor original',
+        authorEmail: 'collector@example.edu',
+        submittedById: 'uploader-1',
+        submittedByFullName: 'Uploader atual',
+      }),
+    );
   });
 
   it('coalesces event-feed invalidations, reloads the selected page, and closes the old stream on selection change', async () => {
@@ -503,18 +532,19 @@ describe('AttendancesService', () => {
     await service.selectMajorEventAttendancesById(majorEvent.id);
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledWith(majorEvent.id, { skip: 0, take: 51 });
     expect(router.navigate).toHaveBeenCalledWith(['/attendances/major-event', majorEvent.id]);
-    expect(service.selectedMajorEventUserAttendance()?.majorEventId).toBe(majorEvent.id);
+    expect(service.selectedMajorEventUserAttendance()).toBeNull();
 
     const calls = api.listMajorEventUserAttendances.mock.calls.length;
     await service.refreshMajorEventUserAttendancesFor('other-major');
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledTimes(calls);
     expect(service.getAttendanceCategoryLabel('NON_REGULAR')).toBe('Não regulares');
+    expect(service.getAttendanceCategoryLabel('UNKNOWN')).toBe('Sem classificação');
     expect(service.getAttendanceCategoryHistoricalExplanation('UNKNOWN')).toBe(
       'Registro anterior à classificação automática.',
     );
     expect(service.getAttendanceCategoryHistoricalExplanation('REGULAR')).toBeNull();
     expect(service.getAttendanceCurrentAssessmentLabel('ACTIVITY_SUBSCRIPTION_MISSING')).toBe(
-      'Sem inscrição ativa na atividade.',
+      'Sem inscrição ativa na atividade',
     );
     expect(
       service.getMajorEventCurrentAssessmentLabel({
@@ -529,7 +559,26 @@ describe('AttendancesService', () => {
           },
         ],
       }),
-    ).toBe('Pagamento do grande evento aguardando comprovante.');
+    ).toBe('Aguardando comprovante do grande evento');
+  });
+
+  it('loads bookmarked people outside the current page and preserves them when the list changes', async () => {
+    await service.selectMajorEventAttendancesById(majorEvent.id, false);
+    const otherPerson = createAdminPerson({ id: 'off-page-person' });
+    const detail = createAdminMajorEventUserAttendance({ personId: otherPerson.id, majorEventId: majorEvent.id }, otherPerson, majorEvent);
+    api.listMajorEventUserAttendances.mockReturnValueOnce(of([detail]));
+    await service.selectMajorEventUserAttendanceById(majorEvent.id, otherPerson.id);
+    expect(api.listMajorEventUserAttendances).toHaveBeenLastCalledWith(majorEvent.id, { personId: otherPerson.id, take: 1 });
+    await service.loadMajorEventUserAttendances();
+    expect(service.selectedMajorEventUserAttendance()).toEqual(detail);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not substitute a different participant for a missing bookmark', async () => {
+    await service.selectMajorEventAttendancesById(majorEvent.id, false);
+    api.listMajorEventUserAttendances.mockReturnValueOnce(of([]));
+    await expect(service.selectMajorEventUserAttendanceById(majorEvent.id, 'missing')).rejects.toThrow('Participante não encontrado');
+    expect(service.selectedMajorEventUserAttendance()).toBeNull();
   });
 
   it('validates event CSV exports before opening download flows and maps export dialog cancellation', async () => {

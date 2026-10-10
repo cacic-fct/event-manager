@@ -3,9 +3,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { Subject, of, throwError } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
+import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import {
   adminFixtureDate,
   adminFixtureDateFromNow,
@@ -23,7 +26,11 @@ describe('Home', () => {
   let dashboardApi: {
     getWorkspaceDashboardInsights: ReturnType<typeof vi.fn>;
   };
+  let attendanceApi: {
+    listAttendanceReviewEventSummaries: ReturnType<typeof vi.fn>;
+  };
   let workspaceEvents: Subject<void>;
+  let permissions: { has: ReturnType<typeof vi.fn> };
   let fixtureDestroyed = false;
   const user = signal(createAdminAuthenticatedUser());
 
@@ -31,7 +38,11 @@ describe('Home', () => {
     dashboardApi = {
       getWorkspaceDashboardInsights: vi.fn(() => of(createAdminWorkspaceDashboardInsights())),
     };
+    attendanceApi = {
+      listAttendanceReviewEventSummaries: vi.fn(() => of([])),
+    };
     workspaceEvents = new Subject<void>();
+    permissions = { has: vi.fn(() => true) };
     fixtureDestroyed = false;
     user.set(createAdminAuthenticatedUser());
 
@@ -42,13 +53,22 @@ describe('Home', () => {
         provideRouter([]),
         { provide: AuthService, useValue: { user } },
         { provide: DashboardApiService, useValue: dashboardApi },
+        { provide: AttendanceApiService, useValue: attendanceApi },
         { provide: RealtimeApiService, useValue: { watchWorkspace: vi.fn(() => workspaceEvents) } },
+        { provide: PermissionsService, useValue: permissions },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Home);
     component = fixture.componentInstance;
     component.currentDate.set(new Date(adminFixtureDate));
+  });
+
+  it('describes sports states without exposing unknown enum values', () => {
+    expect(component.sportsTournamentStatus('REGISTRATION_OPEN')).toBe('Inscrições abertas');
+    expect(component.sportsTournamentStatus('UNKNOWN')).toBe('Situação do torneio não informada');
+    expect(component.sportsMatchState('AWAITING_REVIEW')).toBe('Em revisão');
+    expect(component.sportsMatchState('FUTURE_STATE')).toBe('Situação da partida não informada');
   });
 
   afterEach(() => {
@@ -64,6 +84,36 @@ describe('Home', () => {
         targetId: 'event-1',
       }),
     ).toEqual(['attendances', 'event', 'event-1']);
+    expect(component.routerLinkForAction({ action: 'CREATE_EVENT', label: 'Novo evento' })).toEqual([
+      '/event-workspace',
+      'new',
+      'event',
+    ]);
+    expect(component.routerLinkForAction({ action: 'CREATE_EVENT_GROUP', label: 'Novo grupo' })).toEqual([
+      '/event-workspace',
+      'new',
+      'group',
+    ]);
+    expect(component.routerLinkForAction({ action: 'CREATE_MAJOR_EVENT', label: 'Novo grande evento' })).toEqual([
+      '/event-workspace',
+      'new',
+      'major-event',
+    ]);
+    expect(component.routerLinkForAction({ action: 'OPEN_EVENT', label: 'Abrir evento', targetId: 'event-1' })).toEqual([
+      '/event-workspace',
+      'event',
+      'event-1',
+      'settings',
+    ]);
+    expect(component.routerLinkForAction({ action: 'OPEN_EVENT', label: 'Abrir eventos' })).toEqual([
+      '/event-workspace',
+    ]);
+    expect(
+      component.routerLinkForAction({ action: 'OPEN_EVENT_GROUP', label: 'Abrir grupo', targetId: 'group-1' }),
+    ).toEqual(['/event-workspace', 'group', 'group-1', 'settings']);
+    expect(
+      component.routerLinkForAction({ action: 'OPEN_MAJOR_EVENT', label: 'Abrir grande evento', targetId: 'major-1' }),
+    ).toEqual(['/event-workspace', 'major-event', 'major-1', 'settings']);
     expect(
       component.routerLinkForAction({
         action: 'OPEN_CERTIFICATES',
@@ -86,21 +136,37 @@ describe('Home', () => {
           targetId: 'event-1',
         }),
       ),
-    ).toEqual(['events', 'event-1']);
+    ).toEqual(['/event-workspace', 'event', 'event-1', 'settings']);
     expect(
       component.routerLinkForAction({
         action: 'OPEN_SPORTS',
         label: 'Gerenciar esportes',
       }),
-    ).toEqual(['sports']);
+    ).toEqual(['/sports']);
     expect(
       component.routerLinkForInconsistency(
         createAdminDashboardInconsistency({
           action: 'OPEN_SPORTS',
-          targetId: 'tournament-1',
+          targetId: 'major-1',
         }),
       ),
-    ).toEqual(['sports', 'tournament-1']);
+    ).toEqual(['/sports', 'major-event', 'major-1']);
+    expect(
+      component.sportsTournamentLink({
+        tournamentId: 'tournament-1',
+        majorEventId: 'major-1',
+        name: 'Jogos universitários',
+        emoji: '🏆',
+        startDate: adminFixtureDate,
+        endDate: adminFixtureDate,
+        status: 'LIVE',
+        categoryCount: 2,
+        teamCount: 4,
+        pendingApplicationCount: 0,
+        pendingReviewCount: 0,
+        activeMatchCount: 1,
+      }),
+    ).toEqual(['/sports', 'major-event', 'major-1']);
   });
 
   it('derives today, queue, and system-health state from dashboard insights', () => {
@@ -145,6 +211,27 @@ describe('Home', () => {
     expect(component.hasActionQueue()).toBe(true);
     expect(component.hasSports()).toBe(true);
     expect(component.hasSystemHealth()).toBe(true);
+  });
+
+  it('hides suggested creation links when the editor requirements are not granted', () => {
+    permissions.has.mockImplementation((permission: Permission) => permission !== Permission.Event.Create);
+    fixture.detectChanges();
+    component.insights.set(
+      createAdminWorkspaceDashboardInsights({
+        suggestions: [
+          { action: 'CREATE_EVENT', label: 'Novo evento' },
+          { action: 'CREATE_EVENT_GROUP', label: 'Novo grupo' },
+          { action: 'CREATE_MAJOR_EVENT', label: 'Novo grande evento' },
+        ],
+      }),
+    );
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).not.toContain('Novo evento');
+    expect(text).toContain('Novo grupo de eventos');
+    expect(text).toContain('Novo grande evento');
   });
 
   it('updates the greeting when the component clock crosses an hour boundary', () => {

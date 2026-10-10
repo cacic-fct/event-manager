@@ -14,7 +14,7 @@ export class SportsReadAdminListService {
 
   async adminTournamentList(
     user: AuthenticatedUser | undefined,
-    input: { query?: string; skip?: number; take?: number },
+    input: { query?: string; majorEventId?: string; skip?: number; take?: number },
   ): Promise<AdminSportsTournamentListItem[]> {
     const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
       user,
@@ -23,6 +23,10 @@ export class SportsReadAdminListService {
     const where: Prisma.SportsTournamentWhereInput = {
       deletedAt: null,
     };
+    const majorEventId = input.majorEventId?.trim();
+    if (majorEventId) {
+      where.majorEventId = majorEventId;
+    }
 
     if (accessibleTargets) {
       const scopes: Prisma.SportsTournamentWhereInput[] = [];

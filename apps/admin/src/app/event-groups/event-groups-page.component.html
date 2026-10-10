@@ -1,130 +1,19 @@
+@if (contextLoading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando configuração do contexto" />
+} @else if (contextError()) {
+  <div class="notice" role="alert"><span>{{ contextError() }}</span><button mat-button type="button" (click)="retryContext()">Tentar novamente</button></div>
+} @else if (contextReady()) {
+  @if (creationParents().length) {
+    <div class="creation-context" aria-label="Criar dentro do contexto">
+      <span>Dentro de</span>
+      @for (parent of creationParents(); track parent.id) {
+        <a mat-button [routerLink]="['/event-workspace', parent.kind, parent.id]"><lib-twemoji [emoji]="parent.emoji" /> {{ parent.name }}</a>
+      }
+    </div>
+  }
 <section class="section workspace-tab-shell">
-  <div class="tab-grid">
-    <aside class="panel">
-      <div class="panel-heading">
-        <div>
-          <h3>Busca</h3>
-          <p>Nome do grupo.</p>
-        </div>
+  <div class="tab-grid context-editor">
 
-        <button mat-stroked-button type="button" (click)="workspace.startNewEventGroup()">
-          <mat-icon>add</mat-icon>
-          Novo
-        </button>
-      </div>
-
-      <form
-        class="compact-form"
-        [formGroup]="workspace.eventGroupsSearchForm"
-        (submit)="$event.preventDefault(); workspace.searchEventGroups()">
-        <mat-form-field>
-          <mat-label>Buscar grupo</mat-label>
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput formControlName="query" />
-        </mat-form-field>
-        <button mat-flat-button type="submit">
-          <mat-icon>search</mat-icon>
-          Buscar
-        </button>
-      </form>
-
-      <mat-list class="result-list">
-        @for (group of workspace.sortedEventGroups(); track group.id) {
-          <mat-list-item
-            (click)="workspace.pickEventGroup(group)"
-            [class.selected-list-item]="workspace.selectedEventGroup()?.id === group.id">
-            <span matListItemTitle class="list-title">
-              <lib-twemoji [emoji]="group.emoji" />
-              <span>{{ group.name }}</span>
-              @if (group.isSportsCategory) {
-                <mat-icon matTooltip="Modalidade de torneio esportivo" aria-label="Modalidade de torneio esportivo"
-                  >sports</mat-icon
-                >
-              }
-            </span>
-            <span matListItemLine>
-              @if (workspace.getFirstEventForGroupDisplay(group.id); as firstEvent) {
-                {{ firstEvent.startDate | date: 'short' }} · {{ firstEvent.majorEvent?.name || firstEvent.name }}
-              } @else {
-                <span class="empty-note">Nenhum evento vinculado</span>
-              }
-            </span>
-            <span matListItemLine>
-              @if (group.shouldIssueCertificate) {
-                {{
-                  group.shouldIssueCertificateForEachEvent
-                    ? 'Um certificado por evento'
-                    : group.shouldIssuePartialCertificate
-                      ? 'Certificado parcial permitido'
-                      : 'Exige todos os eventos'
-                }}
-              } @else {
-                Sem emissão de certificado
-              }
-            </span>
-            @if (canEditGroup(group)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Editar grupo"
-                matTooltip="Editar"
-                (click)="$event.stopPropagation(); workspace.pickEventGroup(group)">
-                <mat-icon>edit</mat-icon>
-              </button>
-            }
-            @if (canCloneGroup()) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Duplicar grupo"
-                matTooltip="Duplicar"
-                (click)="$event.stopPropagation(); workspace.cloneEventGroup(group)">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-            }
-            @if (canDeleteGroup(group)) {
-              <button
-                matIconButton
-                type="button"
-                aria-label="Excluir grupo"
-                matTooltip="Excluir"
-                (click)="$event.stopPropagation(); workspace.deleteEventGroup(group.id)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            }
-          </mat-list-item>
-        } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum grupo cadastrado</span>
-            <span matListItemLine>Crie um grupo para organizar eventos.</span>
-          </mat-list-item>
-        }
-      </mat-list>
-
-      <div class="list-pager" aria-label="Paginação de grupos de eventos">
-        <span>Itens {{ workspace.eventGroupsPagination.label() }}</span>
-        <div class="list-pager-actions">
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Página anterior de grupos"
-            matTooltip="Anterior"
-            [disabled]="!workspace.eventGroupsPagination.hasPreviousPage()"
-            (click)="workspace.previousEventGroupsPage()">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Próxima página de grupos"
-            matTooltip="Próxima"
-            [disabled]="!workspace.eventGroupsPagination.hasNextPage()"
-            (click)="workspace.nextEventGroupsPage()">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-        </div>
-      </div>
-    </aside>
 
     <section class="panel panel-stack">
       <div class="panel-heading">
@@ -140,13 +29,25 @@
             @if (workspace.selectedEventGroup()) {
               {{ workspace.selectedEventGroup()?.name }}
             } @else {
-              Configure o nome e as regras de certificado.
+              Defina o grupo e suas regras; após salvar, vincule os eventos.
             }
           </p>
         </div>
 
         <div class="panel-actions editor-action-row">
           <div class="editor-action-group">
+
+              @if (workspace.selectedEventGroup(); as selectedForActions) {
+                @if (canCloneGroup() || canDeleteGroup(selectedForActions)) {
+                <button mat-stroked-button type="button" [matMenuTriggerFor]="resourceActions"><mat-icon>more_horiz</mat-icon>Mais ações</button>
+                <mat-menu #resourceActions="matMenu">
+                  @if (canCloneGroup()) { <button mat-menu-item type="button" (click)="workspace.cloneEventGroup(selectedForActions)"><mat-icon>content_copy</mat-icon>Duplicar</button> }
+                  @if (canDeleteGroup(selectedForActions)) { <button mat-menu-item type="button" (click)="workspace.deleteEventGroup(selectedForActions.id)"><mat-icon>delete</mat-icon>Excluir</button> }
+                </mat-menu>
+                }
+              }
+
+
             @if (workspace.selectedEventGroup(); as selectedEventGroup) {
               <button
                 mat-stroked-button
@@ -155,28 +56,11 @@
                 <mat-icon>history</mat-icon>
                 Histórico
               </button>
-              @if (canCloneGroup()) {
-                <button mat-stroked-button type="button" (click)="workspace.cloneEventGroup(selectedEventGroup)">
-                  <mat-icon>content_copy</mat-icon>
-                  Duplicar
-                </button>
-              }
-              <button
-                mat-stroked-button
-                type="button"
-                matTooltip="Abrir o painel para pré-visualizar, agendar, publicar ou despublicar os eventos vinculados a este grupo."
-                (click)="workspace.openEventGroupPublication()">
-                <mat-icon>campaign</mat-icon>
-                Gerenciar publicação
-              </button>
+
             }
           </div>
 
           <div class="editor-action-group editor-action-group--publication">
-            <button mat-button type="button" (click)="workspace.startNewEventGroup()">
-              <mat-icon>restart_alt</mat-icon>
-              Limpar
-            </button>
             @if (canEditGroup(workspace.selectedEventGroup())) {
               <button
                 mat-stroked-button
@@ -210,72 +94,20 @@
         </div>
       </div>
 
-      <form [formGroup]="workspace.eventGroupForm" class="surface field-group">
-        <app-audience-editor
-          [audience]="workspace.eventGroupForm.controls.audience.value"
-          [courseCodes]="workspace.eventGroupForm.controls.audienceCourseCodes.value"
-          [invitedPeople]="workspace.eventGroupAudienceInvitations()"
-          [parentRestrictions]="workspace.audienceParentRestrictions()"
-          [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
-          [publicationError]="workspace.audiencePublicationError()"
-          [readOnly]="!canEditGroup(workspace.selectedEventGroup())"
-          (audienceChange)="workspace.eventGroupForm.controls.audience.setValue($event)"
-          (courseCodesChange)="workspace.eventGroupForm.controls.audienceCourseCodes.setValue($event)"
-          (invitedPeopleChange)="workspace.setEventGroupAudienceInvitations($event)" />
-
-        <h4>Detalhes</h4>
-        <div class="field-grid">
-          <mat-form-field>
+<form [formGroup]="workspace.eventGroupForm" class="panel-stack"><section class="surface field-group">
+<h4>Dados principais</h4>
+<div class="field-grid">
+<mat-form-field>
             <mat-label>Nome</mat-label>
             <input matInput formControlName="name" />
           </mat-form-field>
-
-          <mat-form-field>
+<mat-form-field>
             <mat-label>Emoji</mat-label>
             <lib-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
             <input matInput formControlName="emoji" maxlength="16" />
           </mat-form-field>
-        </div>
-        <div class="checkbox-grid">
-          <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
-        </div>
-        <div class="field-grid">
-          <mat-form-field class="span-2" subscriptSizing="dynamic">
-            <mat-label>Quem pode confirmar presença on-line</mat-label>
-            <mat-select
-              formControlName="attendanceEligibility"
-              [compareWith]="attendanceEligibilityCompareWith">
-              <mat-select-trigger>
-                {{ attendanceEligibilityLabel(attendanceEligibilityDisplayValue()) }}
-              </mat-select-trigger>
-              @for (policy of attendanceEligibilityOptions(); track policy.label) {
-                <mat-option [value]="policy.value" [disabled]="policy.disabled">
-                  {{ policy.label }}
-                </mat-option>
-              }
-            </mat-select>
-            <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
-          </mat-form-field>
-        </div>
-        <div class="checkbox-grid">
-          <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
-            Emitir para presentes não pagantes
-          </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
-            Emitir para presentes não inscritos
-          </mat-checkbox>
-          <mat-checkbox formControlName="requiresImageLicenseAgreement">
-            Exigir concordância com o contrato de licença de uso de imagem do CACiC
-          </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent"> Um certificado por evento </mat-checkbox>
-          <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
-          <mat-hint class="span-2">
-            A emissão exige o grupo e cada evento habilitados; a coleta de presença é independente do certificado.
-          </mat-hint>
-        </div>
-      </form>
-
+</div>
+</section></form>
       @if (workspace.selectedEventGroup()) {
         <section class="surface field-group">
           <div class="surface-heading">
@@ -285,17 +117,18 @@
 
           <mat-list class="detail-list">
             @for (eventItem of workspace.eventGroupEvents(); track eventItem.id) {
-              <mat-list-item>
-                <span matListItemTitle class="list-title">
-                  <lib-twemoji [emoji]="eventItem.emoji" />
-                  <span>{{ eventItem.name }}</span>
-                </span>
-                <span matListItemLine>
+              <app-workspace-record
+                [title]="eventItem.name"
+                [link]="['/event-workspace', 'event', eventItem.id, 'settings']"
+                [readonly]="!permissions.has(Permission.Event.Read)">
+                <lib-twemoji recordIcon [emoji]="eventItem.emoji" />
+                <span recordDescription>
                   {{ eventItem.startDate | date: 'short' }} -
                   {{ eventItem.endDate | date: 'short' }}
                 </span>
                 @if (canEditSelectedGroupEvents()) {
                   <button
+                    recordActions
                     matIconButton
                     type="button"
                     aria-label="Remover evento do grupo"
@@ -304,7 +137,7 @@
                     <mat-icon>link_off</mat-icon>
                   </button>
                 }
-              </mat-list-item>
+              </app-workspace-record>
             } @empty {
               <mat-list-item>
                 <span matListItemTitle>Nenhum evento vinculado</span>
@@ -316,15 +149,12 @@
 
         <section class="surface field-group">
           <h4>Adicionar eventos</h4>
-          <form [formGroup]="workspace.eventGroupEventSearchForm" class="compact-form">
+          <form [formGroup]="workspace.eventGroupEventSearchForm" class="compact-form"
+            (submit)="$event.preventDefault(); workspace.searchEventsForSelectedGroup()">
             <mat-form-field>
               <mat-label>Buscar eventos por nome</mat-label>
               <input matInput formControlName="query" />
             </mat-form-field>
-            <button mat-stroked-button type="button" (click)="workspace.searchEventsForSelectedGroup()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
           </form>
 
           <div class="inline-list">
@@ -348,6 +178,60 @@
           <p>Os eventos vinculados aparecem aqui.</p>
         </div>
       }
+<form [formGroup]="workspace.eventGroupForm" class="panel-stack"><section class="surface field-group" id="inscricao">
+<h4>Acesso e participação</h4>
+<app-audience-editor
+          [audience]="workspace.eventGroupForm.controls.audience.value"
+          [courseCodes]="workspace.eventGroupForm.controls.audienceCourseCodes.value"
+          [invitedPeople]="workspace.eventGroupAudienceInvitations()"
+          [parentRestrictions]="workspace.audienceParentRestrictions()"
+          [manageAttendanceInvitations]="workspace.shouldManageAttendanceInvitations()"
+          [publicationError]="workspace.audiencePublicationError()"
+          [readOnly]="!canEditGroup(workspace.selectedEventGroup())"
+          (audienceChange)="workspace.eventGroupForm.controls.audience.setValue($event)"
+          (courseCodesChange)="workspace.eventGroupForm.controls.audienceCourseCodes.setValue($event)"
+          (invitedPeopleChange)="workspace.setEventGroupAudienceInvitations($event)" /><div class="checkbox-grid">
+<mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
+<mat-checkbox formControlName="requiresImageLicenseAgreement">
+            Exigir concordância com o contrato de licença de uso de imagem do CACiC
+          </mat-checkbox>
+</div>
+</section><section class="surface field-group" id="presenca">
+<h4>Presença</h4>
+<mat-form-field subscriptSizing="dynamic">
+            <mat-label>Quem pode confirmar presença on-line</mat-label>
+            <mat-select
+              formControlName="attendanceEligibility"
+              [compareWith]="attendanceEligibilityCompareWith">
+              <mat-select-trigger>
+                {{ attendanceEligibilityLabel(attendanceEligibilityDisplayValue()) }}
+              </mat-select-trigger>
+              @for (policy of attendanceEligibilityOptions(); track policy.label) {
+                <mat-option [value]="policy.value" [disabled]="policy.disabled">
+                  {{ policy.label }}
+                </mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
+          </mat-form-field><p class="empty-note">Esta regra é herdada pelos eventos do grupo que não definem uma regra própria.</p>
+</section><section class="surface field-group" id="certificados">
+<h4>Certificados</h4>
+<mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>@if (workspace.eventGroupForm.controls.shouldIssueCertificate.value) {<div class="checkbox-grid">
+<mat-checkbox formControlName="shouldIssueCertificateForEachEvent"> Um certificado por evento </mat-checkbox>
+<mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
+<mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
+            Emitir para presentes não pagantes
+          </mat-checkbox>
+<mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
+            Emitir para presentes não inscritos
+          </mat-checkbox>
+</div><p class="empty-note">Um certificado por evento mantém a emissão individual. O certificado parcial considera apenas as atividades com presença válida.</p>
+<p class="empty-note">O grupo e cada evento precisam permitir a emissão. A coleta de presença é independente dos certificados.</p>
+}
+</section></form>
+
     </section>
   </div>
 </section>
+
+}

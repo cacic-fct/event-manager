@@ -12,6 +12,7 @@ import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import {
   Event,
+  MajorEvent,
   MajorEventPriceTier,
   Person,
   SubscriptionStatus,
@@ -27,7 +28,6 @@ import { SubscriberCsvExportDialogComponent } from './dialogs/export/subscriber-
 import { SubscriberBadgeExportErrorDialogComponent } from './dialogs/export/subscriber-badge-export-error-dialog.component';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { getErrorMessage } from '../feedback/error-message';
-import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
 import { buildPeopleCandidateLookupFilters, buildPeopleLookupFilters } from '../people/people-lookup';
 import {
@@ -39,7 +39,7 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { buildSubscriberCsv, SubscriberCsvExportDialogOptions } from './subscriber-csv-export';
-import { MajorEventsService } from '../major-events/major-events.service';
+import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { formatDateOnly, parseDateOnly } from '@cacic-fct/shared-utils';
@@ -62,7 +62,7 @@ export class SubscriptionsService {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
-  private readonly majorEventsService = inject(MajorEventsService);
+  private readonly majorEventApi = inject(MajorEventApiService);
   private readonly attendancesService = inject(AttendancesService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
@@ -80,19 +80,11 @@ export class SubscriptionsService {
   private majorEventSubscriptionsRequest = 0;
   private liveUpdatesRevision = 0;
 
-  readonly majorEvents = this.majorEventsService.majorEvents;
-  readonly eventFiltersForm = this.formBuilder.group({
-    startDateFrom: this.formBuilder.control<Date | null>(null),
-    startDateUntil: this.formBuilder.control<Date | null>(null),
-    isInGroup: this.formBuilder.nonNullable.control('ALL'),
-    isInMajorEvent: this.formBuilder.nonNullable.control('ALL'),
-    query: this.formBuilder.nonNullable.control(''),
-  });
-  readonly eventResults = signal<Event[]>([]);
-  readonly eventResultsPagination = createWorkspaceListPagination();
   readonly selectedEvent = signal<Event | null>(null);
   readonly eventSubscriptions = signal<WorkspaceEventSubscription[]>([]);
+  readonly eventSubscriptionCount = signal(0);
   readonly eventSubscriptionsPagination = createWorkspaceListPagination();
+  readonly eventSubscriptionSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly eventLecturerSubscriptions = computed(() =>
     this.eventSubscriptions().filter((subscription) => subscription.isLecturerSubscription),
   );
@@ -110,14 +102,9 @@ export class SubscriptionsService {
   readonly majorEventForm = this.formBuilder.nonNullable.group({
     majorEventId: ['', [Validators.required]],
   });
-  readonly majorEventSearchForm = this.formBuilder.nonNullable.group({
-    query: [''],
-  });
   readonly majorEventSubscriptionSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
   });
-  private readonly selectedMajorEventId = signal('');
-  private readonly majorEventSearchQuery = signal('');
   private majorEventSubscriptionSelectionRequest = 0;
   readonly majorEventPersonForm = this.formBuilder.nonNullable.group({
     identifierType: ['email'],
@@ -133,6 +120,7 @@ export class SubscriptionsService {
     imageLicenseAgreementAccepted: this.formBuilder.nonNullable.control(false),
   });
   readonly majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([]);
+  readonly majorEventSubscriptionCount = signal(0);
   readonly majorEventSubscriptionsPagination = createWorkspaceListPagination();
   readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
   readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
@@ -141,23 +129,10 @@ export class SubscriptionsService {
   private readonly sportsParticipantTeams = signal<Record<string, string | null>>({});
   private readonly dirtySportsAssignedTeams = new Set<string>();
   private readonly dirtySportsParticipantTeams = new Set<string>();
-  readonly selectedMajorEvent = computed(() => {
-    return this.majorEvents().find((item) => item.id === this.selectedMajorEventId()) ?? null;
-  });
-  readonly filteredMajorEvents = computed(() => {
-    const query = this.majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
-    if (!query) {
-      return this.majorEvents();
-    }
-
-    return this.majorEvents().filter((majorEvent) => {
-      const searchable = `${majorEvent.name} ${majorEvent.emoji ?? ''}`.toLocaleLowerCase('pt-BR');
-      return searchable.includes(query);
-    });
-  });
+  readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventPaymentTiers = computed<MajorEventPriceTier[]>(() => {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
-    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
+    const majorEvent = this.selectedMajorEvent()?.id === majorEventId ? this.selectedMajorEvent() : null;
     const tiers = majorEvent?.majorEventPrices[0]?.tiers ?? [];
     const selectedTier = this.selectedMajorEventSubscription()?.paymentTier?.trim();
     if (!selectedTier || tiers.some((tier) => tier.name === selectedTier)) {
@@ -185,16 +160,13 @@ export class SubscriptionsService {
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((majorEventId) => {
-        this.selectedMajorEventId.set(majorEventId);
+        if (this.selectedMajorEvent()?.id !== majorEventId) this.selectedMajorEvent.set(null);
         if (!majorEventId) this.stopMajorEventLiveUpdates();
       });
-    this.majorEventSearchForm.controls.query.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((query) => this.majorEventSearchQuery.set(query));
     bindLiveSearch({
-      control: this.eventFiltersForm,
+      control: this.eventSubscriptionSearchForm.controls.query,
       destroyRef: this.destroyRef,
-      search: () => this.searchEvents(),
+      search: () => this.searchEventSubscriptions(),
     });
     bindLiveSearch({
       control: this.majorEventSubscriptionSearchForm.controls.query,
@@ -205,34 +177,6 @@ export class SubscriptionsService {
       this.eventLiveSubscription?.unsubscribe();
       this.majorEventLiveSubscription?.unsubscribe();
     });
-  }
-
-  async searchEvents(): Promise<void> {
-    resetPagination(this.eventResultsPagination);
-    await this.loadEventResultsPage();
-  }
-
-  async previousEventResultsPage(): Promise<void> {
-    await loadPreviousPage(this.eventResultsPagination, () => this.loadEventResultsPage());
-  }
-
-  async nextEventResultsPage(): Promise<void> {
-    await loadNextPage(this.eventResultsPagination, () => this.loadEventResultsPage());
-  }
-
-  private async loadEventResultsPage(): Promise<void> {
-    const events = await firstValueFrom(
-      this.eventApi.listEvents({
-        ...buildEventListFilters(this.eventFiltersForm.value),
-        ...pageVariables(this.eventResultsPagination.pageIndex()),
-      }),
-    );
-    this.eventResults.set(applyPagedResult(events, this.eventResultsPagination));
-  }
-
-  async resetEventFilters(): Promise<void> {
-    resetEventFiltersForm(this.eventFiltersForm, { emitEvent: false });
-    await this.searchEvents();
   }
 
   async selectEvent(eventItem: Event): Promise<void> {
@@ -284,14 +228,20 @@ export class SubscriptionsService {
     const resolvedEventId = eventId || this.eventSubscriptionForm.controls.eventId.value;
     if (!resolvedEventId) {
       this.eventSubscriptions.set([]);
+      this.eventSubscriptionCount.set(0);
       return;
     }
     const request = ++this.eventSubscriptionsRequest;
-    const subscriptions = await firstValueFrom(
-      this.api.listEventSubscriptions(resolvedEventId, {
-        ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
-      }),
-    );
+    const query = this.eventSubscriptionSearchForm.controls.query.value.trim() || undefined;
+    const [subscriptions, count] = await Promise.all([
+      firstValueFrom(
+        this.api.listEventSubscriptions(resolvedEventId, {
+          ...(query ? { query } : {}),
+          ...pageVariables(this.eventSubscriptionsPagination.pageIndex()),
+        }),
+      ),
+      firstValueFrom(this.api.countEventSubscriptions(resolvedEventId, query)),
+    ]);
     if (
       request !== this.eventSubscriptionsRequest ||
       this.eventSubscriptionForm.controls.eventId.value !== resolvedEventId
@@ -299,6 +249,12 @@ export class SubscriptionsService {
       return;
     }
     this.eventSubscriptions.set(applyPagedResult(subscriptions, this.eventSubscriptionsPagination));
+    this.eventSubscriptionCount.set(count);
+  }
+
+  async searchEventSubscriptions(): Promise<void> {
+    resetPagination(this.eventSubscriptionsPagination);
+    await this.loadEventSubscriptions();
   }
 
   async previousEventSubscriptionsPage(): Promise<void> {
@@ -360,6 +316,7 @@ export class SubscriptionsService {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventSubscriptions.set([]);
+      this.majorEventSubscriptionCount.set(0);
       this.majorEventEvents.set([]);
       this.selectMajorEventSubscription(null, false);
       this.majorEventSportsWorkspace.set(null);
@@ -370,16 +327,19 @@ export class SubscriptionsService {
     }
     const request = ++this.majorEventSubscriptionsRequest;
     const selected = options.preserveSelection ? this.selectedMajorEventSubscription() : null;
-    const [subscriptions, sportsWorkspace] = await Promise.all([
+    const query = this.majorEventSubscriptionSearchForm.controls.query.value.trim() || undefined;
+    const [subscriptions, count, sportsWorkspace, majorEvent] = await Promise.all([
       firstValueFrom(
         this.api.listMajorEventSubscriptions(majorEventId, {
-          query: this.majorEventSubscriptionSearchForm.controls.query.value.trim() || undefined,
+          ...(query ? { query } : {}),
           ...pageVariables(this.majorEventSubscriptionsPagination.pageIndex()),
         }),
       ),
+      firstValueFrom(this.api.countMajorEventSubscriptions(majorEventId, query)),
       this.permissions.has(Permission.SportsRegistration.Read) && this.permissions.has(Permission.SportsTournament.Read)
         ? firstValueFrom(this.api.majorEventSportsWorkspace(majorEventId))
         : Promise.resolve(null),
+      firstValueFrom(this.majorEventApi.getMajorEvent(majorEventId)),
     ]);
     if (
       request !== this.majorEventSubscriptionsRequest ||
@@ -387,6 +347,7 @@ export class SubscriptionsService {
     ) {
       return;
     }
+    this.selectedMajorEvent.set(majorEvent);
     const assignedTeams = Object.fromEntries(
       (sportsWorkspace?.applications ?? []).map((application) => [
         application.id,
@@ -400,14 +361,7 @@ export class SubscriptionsService {
       ]),
     );
     const events =
-      subscriptions[0]?.events ??
-      (await firstValueFrom(this.eventApi.listEvents({ majorEventId, take: 200 }))).map((eventItem) => ({
-        eventId: eventItem.id,
-        eventName: eventItem.name,
-        eventStartDate: eventItem.startDate,
-        subscribed: false,
-        isLecturerSubscription: false,
-      }));
+      subscriptions[0]?.events ?? (await firstValueFrom(this.api.listMajorEventSubscriptionEvents(majorEventId)));
     if (
       request !== this.majorEventSubscriptionsRequest ||
       this.majorEventForm.controls.majorEventId.value !== majorEventId
@@ -434,6 +388,7 @@ export class SubscriptionsService {
     this.majorEventEvents.set(events);
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
+    this.majorEventSubscriptionCount.set(count);
     if (!options.preserveSelection) {
       this.selectMajorEventSubscription(null, false);
       return;
@@ -939,7 +894,7 @@ export class SubscriptionsService {
 
       const majorEventName =
         subscriptions[0]?.majorEvent?.name ??
-        this.majorEvents().find((item) => item.id === majorEventId)?.name ??
+        (this.selectedMajorEvent()?.id === majorEventId ? this.selectedMajorEvent()?.name : null) ??
         majorEventId;
       this.downloadCsv(`inscricoes-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(subscriptions, options));
     } catch (error) {

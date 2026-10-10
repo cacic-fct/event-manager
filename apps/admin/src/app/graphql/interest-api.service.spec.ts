@@ -21,6 +21,9 @@ describe('InterestApiService', () => {
             },
           });
         }
+        if (query.includes('EventInterestCount')) {
+          return of({ eventInterestCount: 12 });
+        }
         return of({ eventInterests: [interestFixture()] });
       }),
     };
@@ -46,6 +49,7 @@ describe('InterestApiService', () => {
       { targetType: 'EVENT', targetId: 'event-1', query: 'Ana', skip: 0, take: 51 },
     );
     expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('person { id name email }'), expect.anything());
+    await expect(firstValueFrom(service.countInterests(InterestTargetType.EVENT, 'event-1', 'Ana'))).resolves.toBe(12);
   });
 
   it('converts an interest while preserving selected event IDs', async () => {

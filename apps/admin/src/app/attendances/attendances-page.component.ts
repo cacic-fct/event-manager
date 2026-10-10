@@ -1,16 +1,18 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
 import { MatIconModule } from '@angular/material/icon';
 import { AttendancesService } from './attendances.service';
 import { EventAttendancesComponent } from './event-attendances.component';
 import { MajorEventAttendancesComponent } from './major-event-attendances.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 @Component({
   selector: 'app-workspace-attendances-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTabsModule, MatIconModule, EventAttendancesComponent, MajorEventAttendancesComponent],
+  imports: [EventContextPickerComponent, MatButtonModule, MatProgressBarModule, MatIconModule, EventAttendancesComponent, MajorEventAttendancesComponent],
   templateUrl: './attendances-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -22,45 +24,55 @@ import { MajorEventAttendancesComponent } from './major-event-attendances.compon
   ],
 })
 export class AttendancesPageComponent implements OnDestroy {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(AttendancesService);
 
-  protected readonly selectedTabIndex = signal(0);
+  readonly context = signal<EventContextRef | null>(null);
+  readonly contextLoading = signal(false);
+  readonly contextError = signal('');
+
+  private contextRequest = 0;
+  private contextLoad = Promise.resolve();
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const request = ++this.contextRequest;
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
-
-      if (eventId) {
-        this.selectedTabIndex.set(0);
-        void this.workspace.selectAttendanceEventById(eventId);
-        return;
-      }
-
-      if (majorEventId) {
-        this.selectedTabIndex.set(1);
-        void this.workspace.selectMajorEventAttendancesById(majorEventId);
-        return;
-      }
-
-      this.selectedTabIndex.set(0);
+      const context: EventContextRef | null = eventId ? { kind: 'event', id: eventId }
+        : majorEventId ? { kind: 'major-event', id: majorEventId } : null;
+      this.context.set(context);
+      this.contextError.set('');
+      this.contextLoading.set(Boolean(context));
+      this.contextLoad = this.contextLoad.catch(() => undefined).then(async () => {
+        if (request !== this.contextRequest) return;
+        this.workspace.closeAttendanceLiveStream();
+        if (!context) return;
+        try {
+          if (context.kind === 'event') await this.workspace.selectAttendanceEventById(context.id);
+          else {
+            await this.workspace.selectMajorEventAttendancesById(context.id, false);
+            if (request !== this.contextRequest) return;
+            const personId = params.get('personId');
+            if (personId) await this.workspace.selectMajorEventUserAttendanceById(context.id, personId);
+          }
+        } catch {
+          if (request === this.contextRequest) this.contextError.set('Não foi possível abrir as presenças deste contexto. Escolha outro ou tente novamente.');
+        } finally {
+          if (request === this.contextRequest) this.contextLoading.set(false);
+        }
+      });
     });
   }
 
-  protected onSelectedTabIndexChange(index: number): void {
-    this.selectedTabIndex.set(index);
-    if (index === 0) {
-      void this.router.navigate(['/attendances']);
-      return;
-    }
-
-    const majorEventId = this.workspace.majorEventAttendanceForm.controls.majorEventId.value;
-    void this.router.navigate(majorEventId ? ['/attendances/major-event', majorEventId] : ['/attendances']);
+  selectContext(context: EventContextRef): void {
+    void this.router.navigate(['/attendances', context.kind, context.id]);
   }
 
   ngOnDestroy(): void {
+    this.contextRequest++;
     this.workspace.closeAttendanceLiveStream();
   }
 }

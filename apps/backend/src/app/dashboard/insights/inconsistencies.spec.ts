@@ -233,6 +233,7 @@ describe('buildInconsistencies', () => {
           shortDescription: null,
           locationDescription: null,
           emoji: '❔',
+          majorEventId: 'major-event-1',
           lecturers: [],
           sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
         }),
@@ -244,12 +245,12 @@ describe('buildInconsistencies', () => {
         expect.objectContaining({
           type: 'SPORTS_MATCH_WITHOUT_PLACE',
           action: 'OPEN_SPORTS',
-          targetId: 'tournament-1',
+          targetId: 'major-event-1',
         }),
         expect.objectContaining({
           type: 'SPORTS_MATCH_PLACEHOLDER_EMOJI',
           action: 'OPEN_SPORTS',
-          targetId: 'tournament-1',
+          targetId: 'major-event-1',
         }),
       ]),
     );

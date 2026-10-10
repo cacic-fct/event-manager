@@ -645,6 +645,7 @@ export class DashboardInsightsService {
         return {
           matchId: match.id,
           tournamentId: match.category.tournamentId,
+          majorEventId: match.category.tournament.majorEventId,
           categoryName: match.category.name,
           eventName: match.event.name,
           startDate: match.event.startDate,

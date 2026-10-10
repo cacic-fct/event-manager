@@ -1,9 +1,9 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { TestBed } from '@angular/core/testing';
+import { EmojiService as SharedEmojiService } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { createPublicEvent } from '@cacic-fct/event-manager-public-testing';
-import { EmojiService } from '../../../shared/emoji.service';
 import { SubscriptionEventList } from './event-list';
 
 registerLocaleData(localePt);
@@ -12,7 +12,7 @@ describe('SubscriptionEventList', () => {
   it('signals prior interest without preselecting registration', async () => {
     await TestBed.configureTestingModule({
       imports: [SubscriptionEventList],
-      providers: [{ provide: EmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
+      providers: [{ provide: SharedEmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(SubscriptionEventList);
     const event = createPublicEvent({ id: 'event-1', eventGroupId: null });
@@ -30,7 +30,7 @@ describe('SubscriptionEventList', () => {
   it('shows the available slots and projected queue position', async () => {
     await TestBed.configureTestingModule({
       imports: [SubscriptionEventList],
-      providers: [{ provide: EmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
+      providers: [{ provide: SharedEmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(SubscriptionEventList);
@@ -52,7 +52,7 @@ describe('SubscriptionEventList', () => {
   it('does not allow selecting an event with no available slots', async () => {
     await TestBed.configureTestingModule({
       imports: [SubscriptionEventList],
-      providers: [{ provide: EmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
+      providers: [{ provide: SharedEmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(SubscriptionEventList);
