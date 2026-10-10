@@ -1,5 +1,7 @@
 <section class="workspace-tab">
-  <h2>Inscrições e interesses</h2>
+  @if (!inWorkspaceShell) {
+    <h1>Inscrições e interesses</h1>
+  }
   <app-event-context-picker [hideInShell]="context() !== null" [allowGroups]="interestsMode()" [context]="context()"
     (contextChange)="selectContext($event)" />
   @if (interestsMode()) {

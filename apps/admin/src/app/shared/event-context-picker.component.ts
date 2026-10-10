@@ -330,8 +330,24 @@ export class EventContextPickerComponent {
     this.selected.set({...ref,name:node.name,emoji:node.emoji});this.contextChange.emit(ref);
   }
   kindLabel(kind: AdminEventContextKind): string { return {EVENT:'Evento',EVENT_GROUP:'Grupo de eventos',MAJOR_EVENT:'Grande evento'}[kind]; }
-  eventTypeLabel(type: string): string { return ({MINICURSO:'Minicurso',PALESTRA:'Palestra',OTHER:'Outro'} as Record<string,string>)[type] ?? type; }
-  publicationLabel(state: string): string { return ({DRAFT:'Rascunho',PUBLISHED:'Publicado',SCHEDULED:'Agendado',UNPUBLISHED:'Fora do ar'} as Record<string,string>)[state] ?? state; }
+  eventTypeLabel(type: string): string {
+    const labels: Readonly<Record<string, string>> = {
+      MINICURSO: 'Minicurso',
+      PALESTRA: 'Palestra',
+      OTHER: 'Outro',
+    };
+    return labels[type] ?? 'Tipo de evento não informado';
+  }
+
+  publicationLabel(state: string): string {
+    const labels: Readonly<Record<string, string>> = {
+      DRAFT: 'Rascunho',
+      PUBLISHED: 'Publicado',
+      SCHEDULED: 'Agendado',
+      UNPUBLISHED: 'Fora do ar',
+    };
+    return labels[state] ?? 'Situação da publicação não informada';
+  }
 
   private async loadSelection(context: EventContextRef | null): Promise<void> {
     const request=++this.detailRequest;

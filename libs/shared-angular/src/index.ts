@@ -35,6 +35,8 @@ export * from './lib/security/trusted-types';
 export * from './lib/sports-bracket/sports-bracket.component';
 export * from './lib/sports-bracket/sports-bracket.models';
 export * from './lib/sports-team-logo/sports-team-logo.component';
+export * from './lib/subscription-event-option/subscription-event-option.component';
+export * from './lib/subscription-event-option/subscription-event-option.models';
 export * from './lib/sports-live-dot/sports-breathing-animation.service';
 export * from './lib/sports-live-dot/sports-live-dot.component';
 export * from './lib/sports-match-overlay/sports-match-overlay-builder.component';

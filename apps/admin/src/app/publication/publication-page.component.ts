@@ -36,6 +36,7 @@ import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manage
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationNodes,
@@ -74,6 +75,7 @@ import {
   encapsulation: ViewEncapsulation.None,
 })
 export class PublicationPageComponent {
+  protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly api = inject(PublicationApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);

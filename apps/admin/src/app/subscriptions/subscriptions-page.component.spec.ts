@@ -16,6 +16,7 @@ import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 import { EventInterestsComponent } from './event-interests.component';
 import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
+import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 
 @Component({ selector: 'app-event-context-picker', template: '' })
 class EventContextPickerStub {
@@ -42,6 +43,61 @@ class EventInterestsTabStub {
     EventInterestsTabStub.initialize();
   }
 }
+
+async function createHeadingFixture(inWorkspaceShell: boolean) {
+  await TestBed.configureTestingModule({
+    imports: [SubscriptionsPageComponent],
+    providers: [
+      provideRouter([]),
+      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})), snapshot: { url: [] } } },
+      {
+        provide: SubscriptionsService,
+        useValue: {
+          majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
+          closeLiveUpdates: vi.fn(),
+        },
+      },
+      {
+        provide: PermissionsService,
+        useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false },
+      },
+      {
+        provide: ReceiptValidationApiService,
+        useValue: { watchQueue: () => NEVER, getQueue: () => of({ pendingCount: 0, items: [] }) },
+      },
+      { provide: ADMIN_SHELL_CONTEXT, useValue: inWorkspaceShell },
+      { provide: MatSnackBar, useValue: { open: vi.fn() } },
+    ],
+  })
+    .overrideComponent(SubscriptionsPageComponent, {
+      remove: {
+        imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
+      },
+      add: {
+        imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub],
+      },
+    })
+    .compileComponents();
+
+  const fixture = TestBed.createComponent(SubscriptionsPageComponent);
+  fixture.detectChanges();
+  await fixture.whenStable();
+  return fixture;
+}
+
+describe('SubscriptionsPageComponent page heading', () => {
+  it('keeps its own heading when rendered without the admin shell', async () => {
+    const fixture = await createHeadingFixture(false);
+
+    expect(fixture.nativeElement.querySelector('h1')?.textContent?.trim()).toBe('Inscrições e interesses');
+  });
+
+  it('omits the duplicate heading when the admin shell provides one', async () => {
+    const fixture = await createHeadingFixture(true);
+
+    expect(fixture.nativeElement.querySelector('h1')).toBeNull();
+  });
+});
 
 describe('SubscriptionsPageComponent lazy interest loading', () => {
   it('loads interests only after the interests route is selected', async () => {

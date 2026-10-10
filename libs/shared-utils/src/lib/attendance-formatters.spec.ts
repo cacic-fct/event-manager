@@ -65,6 +65,10 @@ describe('attendance formatters', () => {
     expect(unformatCPF('529.982.247-25')).toBe('52998224725');
     expect(formatUnespRole('aluno-graduacao', '001234')).toBe('Aluno de Ciência da Computação');
     expect(formatUnespRole(['professor'])).toBe('Professor');
+    expect(formatUnespRole('aluno-graduacao')).toBe('Aluno da Graduação');
+    expect(formatUnespRole('UNKNOWN')).toBe('Vínculo com a Unesp não informado');
+    expect(formatUnespRole('future-role')).toBe('Vínculo com a Unesp não informado');
+    expect(formatUnespRole(null)).toBe('');
   });
 
   it('formats public labels and attendance maps from API records', () => {
@@ -83,7 +87,8 @@ describe('attendance formatters', () => {
     expect(getSubscriptionStatusLabel('REJECTED_GENERIC')).toBe('Inscrição rejeitada');
     expect(getSubscriptionStatusLabel('CONFIRMED')).toBe('Inscrição confirmada');
     expect(getSubscriptionStatusLabel('CANCELED')).toBe('Inscrição cancelada');
-    expect(getSubscriptionStatusLabel('CUSTOM')).toBe('CUSTOM');
+    expect(getSubscriptionStatusLabel('CUSTOM')).toBe('Situação da inscrição não informada');
+    expect(getSubscriptionStatusLabel('UNKNOWN')).toBe('Situação da inscrição não informada');
     expect(getSubscriptionStatusSummaryLabel('WAITING_RECEIPT_UPLOAD')).toBe('Comprovante pendente');
     expect(getSubscriptionStatusSummaryLabel('RECEIPT_UNDER_REVIEW')).toBe('Em análise');
     expect(getSubscriptionStatusSummaryLabel('CONFIRMED')).toBe('Inscrito');

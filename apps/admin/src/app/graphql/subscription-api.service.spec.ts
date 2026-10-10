@@ -50,6 +50,27 @@ describe('SubscriptionApiService', () => {
         if (query.includes('WorkspaceMajorEventSubscriptions')) {
           return of({ workspaceMajorEventSubscriptions: [majorSubscriptionFixture()] });
         }
+        if (query.includes('WorkspaceMajorEventSubscriptionEvents')) {
+          return of({
+            workspaceMajorEventSubscriptionEvents: [
+              {
+                eventId: 'event-1',
+                eventName: 'Abertura',
+                eventEmoji: '🎓',
+                eventType: 'PALESTRA',
+                eventShortDescription: null,
+                eventStartDate: adminFixtureDate,
+                eventEndDate: adminFixtureDateFromNow(0, 13),
+                eventLocationDescription: 'Auditório',
+                eventSlots: 40,
+                availableSlots: 12,
+                projectedQueuePosition: 1,
+                subscribed: false,
+                isLecturerSubscription: false,
+              },
+            ],
+          });
+        }
         if (query.includes('CreateWorkspaceMajorEventSubscription')) {
           return of({
             createWorkspaceMajorEventSubscription: majorSubscriptionFixture({ id: 'major-sub-created' }),
@@ -142,6 +163,9 @@ describe('SubscriptionApiService', () => {
     await expect(
       firstValueFrom(service.listMajorEventSubscriptions('major-1', { query: 'Ada', skip: 1, take: 10 })),
     ).resolves.toEqual([majorSubscriptionFixture()]);
+    await expect(firstValueFrom(service.listMajorEventSubscriptionEvents('major-1'))).resolves.toEqual([
+      expect.objectContaining({ eventId: 'event-1', availableSlots: 12 }),
+    ]);
     await expect(firstValueFrom(service.getMajorEventSubscription('major-1', 'major-sub-detail'))).resolves.toEqual(
       majorSubscriptionFixture({ id: 'major-sub-detail' }),
     );
@@ -175,6 +199,10 @@ describe('SubscriptionApiService', () => {
     expect(graphqlHttp.request).toHaveBeenCalledWith(
       expect.stringContaining('query WorkspaceMajorEventSubscriptions'),
       { majorEventId: 'major-1', query: 'Ada', skip: 1, take: 10 },
+    );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('query WorkspaceMajorEventSubscriptionEvents'),
+      { majorEventId: 'major-1' },
     );
     expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query WorkspaceMajorEventSubscription'), {
       majorEventId: 'major-1',

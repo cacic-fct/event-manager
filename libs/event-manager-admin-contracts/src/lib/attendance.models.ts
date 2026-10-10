@@ -1,4 +1,4 @@
-import type { Event, MajorEvent } from './event.models';
+import type { Event, EventType, MajorEvent } from './event.models';
 import type { Person } from './people.models';
 
 export type AttendanceCreationMethod =
@@ -167,6 +167,14 @@ export interface WorkspaceEventSubscription {
 export interface WorkspaceMajorEventSubscriptionEvent {
   eventId: string;
   eventName: string;
+  eventEmoji?: string | null;
+  eventType?: EventType | null;
+  eventShortDescription?: string | null;
+  eventEndDate?: string | null;
+  eventLocationDescription?: string | null;
+  eventSlots?: number | null;
+  availableSlots?: number | null;
+  projectedQueuePosition?: number | null;
   eventStartDate?: string | null;
   subscribed: boolean;
   isLecturerSubscription: boolean;

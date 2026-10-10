@@ -4,6 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { AttendanceCategory, AttendanceCurrentAssessment } from '@cacic-fct/event-manager-admin-contracts';
+import {
+  attendanceCategoryLabel,
+  attendanceCreationMethodLabel,
+  attendanceCurrentAssessmentLabel,
+} from '../../attendance-labels';
 import { AttendanceLocationMapComponent } from './attendance-location-map.component';
 
 type AttendanceInfoDialogData = {
@@ -176,10 +181,10 @@ export class AttendanceInfoDialogComponent {
     },
     { label: 'ID da Pessoa', value: this.data.personId },
     { label: 'ID do Evento', value: this.data.eventId },
-    { label: 'Categoria', value: this.getCategoryLabel(this.data.category) },
-    { label: 'Situação atual', value: this.getAssessmentLabel(this.data.currentAssessment) },
+    { label: 'Categoria', value: attendanceCategoryLabel(this.data.category) },
+    { label: 'Situação atual', value: attendanceCurrentAssessmentLabel(this.data.currentAssessment) },
     { label: 'Presença registrada em', value: this.formatDate(this.data.attendedAt) },
-    { label: 'Método', value: this.getMethodLabel(this.data.createdByMethod) },
+    { label: 'Método', value: attendanceCreationMethodLabel(this.data.createdByMethod) },
     { label: 'Coletado por', value: this.data.collectedByFullName },
     { label: 'Enviado por', value: this.data.committedByFullName },
     { label: 'ID do Coletor', value: this.data.createdById },
@@ -204,41 +209,4 @@ export class AttendanceInfoDialogComponent {
     }).format(new Date(value));
   }
 
-  private getAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
-    if (!assessment) return null;
-    const labels: Record<AttendanceCurrentAssessment, string> = {
-      ACTIVITY_SUBSCRIPTION_MISSING: 'Sem inscrição na atividade',
-      MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'Aguardando comprovante de pagamento',
-      MAJOR_EVENT_PAYMENT_NOT_CONFIRMED: 'Pagamento não confirmado',
-      MAJOR_EVENT_PAYMENT_UNDER_REVIEW: 'Comprovante em análise',
-      TICKET_REQUIRED: 'Bilhete não disponível',
-      PRICE_TIER_NOT_ELIGIBLE: 'Faixa de preço não elegível',
-      REQUIREMENTS_CURRENTLY_MET: 'Requisitos atuais atendidos',
-    };
-    return labels[assessment];
-  }
-
-  private getCategoryLabel(category: AttendanceCategory): string {
-    const labels: Record<AttendanceCategory, string> = {
-      NON_REGULAR: 'Não regular',
-      REGULAR: 'Regular',
-      UNKNOWN: 'Indefinida',
-    };
-
-    return labels[category] ?? category;
-  }
-
-  private getMethodLabel(method: string): string {
-    const labels: Record<string, string> = {
-      CSV_IMPORT: 'Importação CSV',
-      EVENT_DUPLICATION: 'Duplicação de evento',
-      MANUAL_INPUT: 'Manual',
-      ONLINE_CODE: 'Online',
-      ORAL_CALL: 'Chamada oral',
-      SCANNER: 'Scanner',
-      UNKNOWN: 'Desconhecido',
-    };
-
-    return labels[method] ?? method;
-  }
 }

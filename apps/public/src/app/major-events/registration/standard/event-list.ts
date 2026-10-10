@@ -1,14 +1,11 @@
-import { DatePipe, formatDate } from '@angular/common';
-import { Component, computed, inject, input, output } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import { formatDate } from '@angular/common';
+import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { SubscriptionEventOptionComponent, type SubscriptionEventOptionView } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc, getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
-import { EmojiService } from '../../../shared/emoji.service';
 import type { PublicEventSubscriptionSummary } from '../subscription-api.service';
 
 interface SubscriptionListMonth {
@@ -30,7 +27,7 @@ interface SubscriptionListGroup {
 
 @Component({
   selector: 'app-subscription-event-list',
-  imports: [DatePipe, MatButtonModule, MatCheckboxModule, MatIconModule, MatListModule, MatTooltipModule],
+  imports: [MatIconModule, MatListModule, SubscriptionEventOptionComponent],
   templateUrl: './event-list.html',
   styleUrl: './event-list.css',
 })
@@ -44,16 +41,10 @@ export class SubscriptionEventList {
   readonly toggleEvent = output<PublicEvent>();
   readonly openInfo = output<PublicEvent>();
 
-  readonly emoji = inject(EmojiService);
-
   readonly groupedEvents = computed(() => this.groupByMonthDayAndGroup());
 
   isSelected(event: PublicEvent): boolean {
     return this.selectedEventIds().has(event.id);
-  }
-
-  isDisabled(event: PublicEvent): boolean {
-    return this.disabledReasons().has(event.id);
   }
 
   isAutoSelected(event: PublicEvent): boolean {
@@ -77,12 +68,17 @@ export class SubscriptionEventList {
     return `${slots} · Posição ${summary.projectedQueuePosition} na fila`;
   }
 
-  onItemClick(event: PublicEvent): void {
-    if (this.isDisabled(event) || this.isAutoSelected(event)) {
-      return;
-    }
-
-    this.toggleEvent.emit(event);
+  eventOption(event: PublicEvent): SubscriptionEventOptionView {
+    return {
+      id: event.id,
+      name: event.name,
+      emoji: event.emoji,
+      description: event.shortDescription || this.eventTypeLabel(event),
+      startDate: event.startDate,
+      endDate: event.endDate,
+      locationDescription: event.locationDescription,
+      availabilityLine: this.slotsLine(event),
+    };
   }
 
   private groupByMonthDayAndGroup(): SubscriptionListMonth[] {

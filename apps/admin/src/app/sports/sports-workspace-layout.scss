@@ -8,7 +8,6 @@
   min-width: 0;
 }
 
-.sports-header,
 .panel-heading,
 .review-heading,
 .person-list > div,
@@ -18,18 +17,6 @@
   justify-content: space-between;
 }
 
-.sports-header {
-  gap: 2rem;
-  margin-block-end: 1.25rem;
-}
-
-.sports-header h2 {
-  font-size: clamp(1.45rem, 2.2vw, 2rem);
-  letter-spacing: -0.025em;
-  margin: 0 0 0.25rem;
-}
-
-.sports-header p,
 .panel p,
 .subsection-title p {
   color: var(--mat-sys-on-surface-variant);

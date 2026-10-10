@@ -92,7 +92,7 @@
               }
               <span matListItemLine>
                 {{ subscription.createdAt | date: 'short' }} ·
-                {{ subscription.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
               </span>
               <div matListItemMeta class="item-actions">
                 <button

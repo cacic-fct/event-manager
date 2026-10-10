@@ -91,7 +91,7 @@ export abstract class SportsWorkspaceSection {
   });
 
   protected formatLabel(value: string): string {
-    return this.formats.find((format) => format.value === value)?.label ?? value;
+    return this.formats.find((format) => format.value === value)?.label ?? 'Formato não informado';
   }
 
   protected sportEmoji(value: string): string {
@@ -103,7 +103,9 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected categoryStatusLabel(status: string): string {
-    return this.categoryStatuses.find((item) => item[0] === status)?.[1] ?? status;
+    return (
+      this.categoryStatuses.find((item) => item[0] === status)?.[1] ?? 'Situação da modalidade não informada'
+    );
   }
 
   protected teamLogoForRegistration(registrationId?: string | null): string | null {
@@ -115,7 +117,7 @@ export abstract class SportsWorkspaceSection {
   protected lineupRoleLabel(role: string): string {
     return (
       SPORTS_ROSTER_ROLE_LABELS[role as keyof typeof SPORTS_ROSTER_ROLE_LABELS] ??
-      (role === 'STAFF' ? 'Apoio' : 'Integrante')
+      (role === 'STAFF' ? 'Apoio' : 'Função no elenco não informada')
     );
   }
 
@@ -135,7 +137,7 @@ export abstract class SportsWorkspaceSection {
         REFEREE: 'Árbitro',
         INTERMEDIATOR: 'Intermediador',
         SCOREKEEPER: 'Mesário',
-      }[role] ?? 'Função esportiva'
+      }[role] ?? 'Função da equipe de arbitragem não informada'
     );
   }
 
@@ -154,7 +156,7 @@ export abstract class SportsWorkspaceSection {
         REPRESENTATIVE: 'Representante',
         CATEGORY_ROLE: 'Função na modalidade',
         LINEUP: 'Escalação',
-      }[type] ?? 'Alteração da equipe'
+      }[type] ?? 'Tipo de alteração da equipe não informado'
     );
   }
 
@@ -168,12 +170,14 @@ export abstract class SportsWorkspaceSection {
         SCORE_DELTA: 'Alteração de placar',
         SCORE_CORRECTION: 'Correção de placar',
         PERIOD_ROLL: 'Troca de período',
+        TIMER_RECONCILE: 'Ajuste do cronômetro',
+        OCCURRENCE: 'Registro de ocorrência',
         FINALIZE: 'Finalização',
         CANCEL: 'Cancelamento para reagendamento',
         RESCHEDULE: 'Reagendamento',
         FORFEIT: 'Desistência',
         RESET: 'Reinício administrativo',
-      }[type] ?? 'Ação da partida'
+      }[type] ?? 'Ação da partida não informada'
     );
   }
 
@@ -181,7 +185,7 @@ export abstract class SportsWorkspaceSection {
     return (
       { PLACEMENT: 'Colocação', MATCH: 'Resultado de partida', MANUAL: 'Ajuste manual', PENALTY: 'Penalidade' }[
         source
-      ] ?? 'Outra origem'
+      ] ?? 'Origem da pontuação não informada'
     );
   }
 

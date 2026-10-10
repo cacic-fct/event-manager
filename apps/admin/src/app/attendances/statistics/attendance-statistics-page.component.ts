@@ -28,6 +28,7 @@ import { firstValueFrom, Subscription } from 'rxjs';
 import { AttendanceApiService, type AttendanceAnalyticsTimeWindow } from '../../graphql/attendance-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
 import { observeEChartsTheme, readEChartsThemeColor } from '../../shared/echarts-theme-colors';
+import { attendanceCreationMethodLabel, attendanceReviewKindLabel } from '../attendance-labels';
 import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
 
 type ChartName = 'throughput' | 'hours' | 'collectors' | 'methods';
@@ -166,34 +167,11 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   methodLabel(method: string): string {
-    return (
-      (
-        {
-          CSV_IMPORT: 'Importação CSV',
-          EVENT_DUPLICATION: 'Duplicação',
-          MANUAL_INPUT: 'Entrada manual',
-          ORAL_CALL: 'Chamada oral',
-          SCANNER: 'Leitor de crachá',
-          ONLINE_CODE: 'Código on-line',
-          UNKNOWN: 'Não identificado',
-        } as Record<string, string>
-      )[method] ?? method
-    );
+    return attendanceCreationMethodLabel(method);
   }
 
   reviewKindLabel(kind: string): string {
-    return (
-      (
-        {
-          UNUSUAL_VOLUME: 'Volume incomum',
-          REPEATED_SCAN_ATTEMPTS: 'Leituras repetidas',
-          OFFLINE_BACKLOG: 'Fila off-line',
-          ATTENDANCE_REMOVAL: 'Remoção',
-          DISTANT_LOCATION: 'Localização',
-          IMPROBABLE_MATCH_OPERATION: 'Operação esportiva',
-        } as Record<string, string>
-      )[kind] ?? kind
-    );
+    return attendanceReviewKindLabel(kind);
   }
 
   methodSummary(methods: EventAttendanceAnalyticsSnapshot['collectors'][number]['methods']): string {

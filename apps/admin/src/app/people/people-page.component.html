@@ -207,12 +207,17 @@
                     </p>
                     <p>
                       <strong>Perfil de acesso:</strong>
-                      {{ workspace.selectedPerson()?.user?.role }}
+                      {{ userRoleLabel(workspace.selectedPerson()?.user?.role) }}
                     </p>
                     @if (workspace.selectedPerson()?.user?.unespRole?.length) {
                       <p>
                         <strong>Vínculos UNESP:</strong>
-                        {{ workspace.selectedPerson()?.user?.unespRole?.join(', ') }}
+                        {{
+                          unespRoleListLabel(
+                            workspace.selectedPerson()?.user?.unespRole,
+                            workspace.selectedPerson()?.academicId
+                          )
+                        }}
                       </p>
                     }
                   </div>

@@ -92,7 +92,7 @@
               }
               <span recordDescription>
                 {{ statusLabel(subscription.subscriptionStatus) }} ·
-                {{ subscription.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
                 @if (hasSubscribedLecturer(subscription)) {
                   · Palestrante inscrito no próprio evento
                 }
@@ -337,7 +337,7 @@
               @if (workspace.selectedMajorEventSubscription()) {
                 {{ workspace.selectedMajorEventSubscription()?.createdAt | date: 'short' }}
                 ·
-                {{ workspace.selectedMajorEventSubscription()?.createdByMethod }}
+                {{ subscriptionCreationMethodLabel(workspace.selectedMajorEventSubscription()?.createdByMethod ?? 'UNKNOWN') }}
               } @else {
                 Selecione a pessoa e os eventos para criar a inscrição.
               }
@@ -508,39 +508,27 @@
             <span>{{ workspace.selectedEventIds().size }} selecionados</span>
           </div>
 
-          @if (hasSubscribedLecturerInSelection()) {
-            <p class="warning-copy">
-              Esta inscrição inclui pessoa palestrante em um evento próprio. Revise antes de salvar.
-            </p>
-          }
-
-          <mat-selection-list [multiple]="true">
+          <mat-list>
             @for (eventItem of workspace.selectedMajorEventEvents(); track eventItem.eventId) {
-              <mat-list-option
-                checkboxPosition="before"
+              <lib-subscription-event-option
+                [option]="eventOption(eventItem)"
                 [selected]="workspace.selectedEventIds().has(eventItem.eventId)"
                 [disabled]="!workspace.editMode()"
-                [class.editable-list-item]="workspace.editMode()"
-                [class.warning-item]="eventItem.isLecturerSubscription && eventItem.subscribed"
-                (selectedChange)="workspace.setSelectedEvent(eventItem.eventId, $event)">
-                <span matListItemTitle>{{ eventItem.eventName }}</span>
-                <span matListItemLine>
-                  {{ eventItem.eventStartDate | date: 'short' }}
-                  @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                    · Palestrante inscrito no próprio evento
-                  }
-                </span>
-                @if (eventItem.isLecturerSubscription && eventItem.subscribed) {
-                  <mat-icon matListItemMeta>warning</mat-icon>
-                }
-              </mat-list-option>
+                [readOnly]="!workspace.editMode()"
+                [showFullDate]="true"
+                [warningReason]="
+                  eventItem.isLecturerSubscription && workspace.selectedEventIds().has(eventItem.eventId)
+                    ? 'Palestrante inscrito no próprio evento'
+                    : null
+                "
+                (selectionChange)="workspace.setSelectedEvent(eventItem.eventId, $event)" />
             } @empty {
               <mat-list-item>
                 <span matListItemTitle>Nenhum evento carregado</span>
                 <span matListItemLine> Carregue uma inscrição existente para ver os eventos do grande evento. </span>
               </mat-list-item>
             }
-          </mat-selection-list>
+          </mat-list>
         </section>
       } @else {
         <div class="empty-state">

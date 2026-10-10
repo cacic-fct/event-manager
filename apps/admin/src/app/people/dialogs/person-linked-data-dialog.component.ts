@@ -22,6 +22,7 @@ import {
 } from '../../app-shell/dialogs/confirmation-dialog.component';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { getErrorMessage } from '../../feedback/error-message';
+import { linkedResourceStatusLabel } from '../people-labels';
 
 export interface PersonLinkedDataDialogData {
   personId: string;
@@ -87,6 +88,10 @@ export class PersonLinkedDataDialogComponent {
 
   resourceDescription(item: PersonLinkedResource): string {
     return item.description || item.id;
+  }
+
+  resourceStatusLabel(status: string | null | undefined): string {
+    return linkedResourceStatusLabel(status);
   }
 
   groupPage(type: string): LinkedResourcePageState {

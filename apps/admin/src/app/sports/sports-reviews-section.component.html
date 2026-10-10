@@ -76,14 +76,14 @@
   <section class="panel panel-stack">
     <div>
       <h3>Alterações de equipes</h3>
-      <p>Deltas concorrentes permanecem explícitos; conflitos nunca são aprovados silenciosamente.</p>
+      <p>Antes de aprovar, confira se os dados atuais da equipe ainda correspondem à solicitação.</p>
     </div>
     @if (workspace.teamRead(); as read) {
       @for (request of pendingTeamChangeRequests(read.changeRequests); track request.id) {
         <article class="review-item">
           <div class="review-heading">
             <strong>{{ changeTypeLabel(request.type) }}</strong
-            ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
+            ><span class="state-label">{{ teamChangeRequestStatusLabel(request.status) }}</span>
           </div>
           @if (request.pendingLogoUrl; as pendingLogoUrl) {
             <div class="team-change-details">
