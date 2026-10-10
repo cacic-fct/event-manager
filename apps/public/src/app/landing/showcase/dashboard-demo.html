@@ -1,0 +1,38 @@
+<div class="dashboard-demo">
+  <h4>Boa tarde, equipe.</h4>
+  <p class="dashboard-subtitle">Acompanhe as atividades de hoje e as pendências do evento.</p>
+
+  <div class="dashboard-section-heading"><h5>Hoje</h5><span>2 atividades</span></div>
+  <div class="today-events">
+    <button class="today-event" type="button" (click)="openFeature.emit('attendance')">
+      <lib-twemoji emoji="♿" aria-hidden="true" />
+      <span><strong>Interfaces que incluem</strong><small>Às 14:00, no Auditório</small></span>
+      <span class="event-state">Coletar presença</span>
+      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </button>
+    <button class="today-event" type="button" (click)="openFeature.emit('events')">
+      <lib-twemoji emoji="🥽" aria-hidden="true" />
+      <span><strong>Realidade Virtual</strong><small>Às 16:00, no Auditório</small></span>
+      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </button>
+  </div>
+
+  <div class="dashboard-section-heading"><h5>Pendências</h5><mat-icon aria-hidden="true">priority_high</mat-icon></div>
+  <div class="action-queue">
+    <button class="action-row" type="button" (click)="openFeature.emit('attendance')">
+      <mat-icon aria-hidden="true">pending_actions</mat-icon>
+      <span><strong>Presenças off-line pendentes</strong><small>3 registros aguardam revisão da organização.</small></span>
+      <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+    </button>
+    <div class="action-row action-row--static">
+      <mat-icon aria-hidden="true">receipt_long</mat-icon>
+      <span><strong>Comprovantes pendentes</strong><small>4 comprovantes na Jornada de Inovação.</small></span>
+    </div>
+  </div>
+
+  <div class="dashboard-follow-up">
+    <mat-icon aria-hidden="true">verified</mat-icon>
+    <span><strong>Certificados pendentes</strong><small>2 participantes prontos para a emissão.</small></span>
+    <button matButton type="button" (click)="openFeature.emit('certificates')">Ver certificados</button>
+  </div>
+</div>

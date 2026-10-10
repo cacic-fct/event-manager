@@ -1,5 +1,5 @@
 import '../testing/observer-mocks';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
@@ -25,6 +25,7 @@ describe('LandingComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [LandingComponent],
+      deferBlockBehavior: DeferBlockBehavior.Manual,
       providers: [
         provideNoopAnimations(),
         provideRouter([]),
@@ -83,7 +84,7 @@ describe('LandingComponent', () => {
     const links = [...footer.querySelectorAll('a')];
 
     expect(links.map((link) => link.textContent?.trim())).toEqual([
-      'Homepage do CACiC',
+      'Site do CACiC',
       'Conta CACiC',
       'Validar certificado',
       'Política de privacidade',
@@ -91,5 +92,33 @@ describe('LandingComponent', () => {
     expect(links[0].href).toBe('https://cacic.com.br/');
     expect(links[1].href).toBe('https://account.cacic.com.br/');
     expect(links[2].getAttribute('href')).toBe('/validate');
+  });
+
+  it('loads each showcase section only when its landing defer block completes', async () => {
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const deferBlocks = await fixture.getDeferBlocks();
+
+    expect(deferBlocks).toHaveLength(2);
+    expect(element.querySelector('app-landing-product-showcase')).toBeNull();
+    expect(element.querySelector('app-landing-event-extras')).toBeNull();
+    expect(element.textContent).toContain('Explore as demonstrações ao continuar pela página.');
+    expect(element.textContent).toContain('Conheça os recursos para torneios e avaliações ao continuar pela página.');
+
+    await deferBlocks[0].render(DeferBlockState.Complete);
+
+    expect(element.querySelector('app-landing-product-showcase')).not.toBeNull();
+    expect(element.querySelector('app-landing-participant-showcase')).toBeNull();
+    expect(element.querySelector('app-landing-event-extras')).toBeNull();
+    expect(element.textContent).toContain('Carregando demonstração para participantes.');
+
+    await deferBlocks[1].render(DeferBlockState.Complete);
+
+    expect(element.querySelector('app-landing-event-extras')).not.toBeNull();
+    expect(element.querySelector('app-landing-sports-demo')).toBeNull();
+    expect(element.querySelector('app-landing-feedback-demo')).toBeNull();
+    expect(element.textContent).toContain('Carregando torneio.');
+    expect(element.textContent).toContain('Carregando avaliação.');
   });
 });

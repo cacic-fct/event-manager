@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.dashboard-demo {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  min-height: 27rem;
+  box-sizing: border-box;
+}
+
+h4 {
+  font-size: 1.375rem;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.dashboard-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0.5rem 0 1.5rem;
+}
+
+.dashboard-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1.5rem 0 0.75rem;
+}
+
+h5 {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.dashboard-section-heading > span {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.today-event,
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.875rem 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-event:hover,
+.action-row:not(.action-row--static):hover {
+  background: var(--mat-sys-surface-container-low);
+}
+
+.action-row--static {
+  cursor: default;
+}
+
+.today-event > span:first-of-type,
+.action-row > span,
+.dashboard-follow-up > span {
+  flex: 1;
+  min-width: 0;
+}
+
+strong,
+small {
+  display: block;
+  line-height: 1.5;
+}
+
+strong {
+  font-size: 0.875rem;
+}
+
+small {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin-top: 0.125rem;
+}
+
+.event-state {
+  font-size: 0.6875rem;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  padding: 0.375rem 0.625rem;
+  border-radius: 8px;
+}
+
+.action-row > mat-icon:first-child {
+  color: var(--mat-sys-primary);
+}
+
+.dashboard-follow-up {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  border-radius: 12px;
+}
+
+.dashboard-follow-up small {
+  color: inherit;
+}
+
+.dashboard-note {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.5;
+  margin: 1rem 0 0;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 4px;
+}
+
+@media (max-width: 30rem) {
+  .event-state {
+    display: none;
+  }
+}

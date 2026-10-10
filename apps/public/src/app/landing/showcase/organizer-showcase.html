@@ -1,0 +1,59 @@
+<div class="feature-picker" role="group" aria-label="Recursos para organizadores">
+  @for (item of features; track item.id) {
+    <button matButton type="button" [attr.aria-pressed]="feature() === item.id" (click)="feature.set(item.id)"><mat-icon>{{ item.icon }}</mat-icon>{{ item.label }}</button>
+  }
+</div>
+
+<app-landing-showcase-stage [feature]="activeFeature()" [organizer]="true">
+      @switch (feature()) {
+        @case ('roles') {
+          @defer (on immediate) {
+            <app-landing-role-demo />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando equipe.</p></div>
+          }
+        }
+        @case ('audit') {
+          @defer (on immediate) {
+            <app-landing-audit-log-demo />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando histórico.</p></div>
+          }
+        }
+        @case ('dashboard') {
+          @defer (on immediate) {
+            <app-landing-dashboard-demo (openFeature)="feature.set($event)" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando painel.</p></div>
+          }
+        }
+        @case ('events') {
+          @defer (on immediate) {
+            <app-landing-registration-demo [organizer]="true" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando eventos.</p></div>
+          }
+        }
+        @case ('attendance') {
+          @defer (on immediate) {
+            <app-landing-attendance-demo (exit)="feature.set('dashboard')" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando chamada oral.</p></div>
+          }
+        }
+        @case ('certificates') {
+          @defer (on immediate) {
+            <app-landing-certificate-demo />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando certificados.</p></div>
+          }
+        }
+        @case ('draws') {
+          @defer (on immediate) {
+            <app-landing-prize-draw-demo />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando sorteio.</p></div>
+          }
+        }
+      }
+</app-landing-showcase-stage>

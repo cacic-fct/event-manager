@@ -35,11 +35,11 @@
 
     @if (demoMode()) {
       <p class="demo-mode">
-        <mat-icon aria-hidden="true">science</mat-icon>Demonstração · nenhum resultado será registrado.
+        <mat-icon aria-hidden="true">science</mat-icon>Demonstração. Nenhum resultado será registrado.
       </p>
     }
 
-    <app-prize-draw-reel [names]="reelNames()" />
+    <lib-prize-draw-reel [names]="reelNames()" />
 
     <section class="draw-actions" aria-label="Ações do sorteio">
       <button

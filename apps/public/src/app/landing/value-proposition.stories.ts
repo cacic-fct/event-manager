@@ -1,4 +1,3 @@
-import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { PlatformStatsLoadState, ValuePropositionComponent } from './value-proposition';
@@ -11,20 +10,18 @@ interface ValuePropositionStoryArgs {
   certificatesCount: number;
 }
 
-faker.seed(20_260_717);
-
 const defaultArgs: ValuePropositionStoryArgs = {
   statsState: 'ready',
-  peopleCount: faker.number.int({ min: 100_000, max: 160_000 }),
-  eventsCount: faker.number.int({ min: 5_000, max: 9_000 }),
-  majorEventsCount: faker.number.int({ min: 250, max: 500 }),
-  certificatesCount: faker.number.int({ min: 250_000, max: 400_000 }),
+  peopleCount: 4_280,
+  eventsCount: 172,
+  majorEventsCount: 16,
+  certificatesCount: 8_940,
 };
 
 const meta: Meta<ValuePropositionStoryArgs> = {
   component: ValuePropositionComponent,
   title: 'CACiC Eventos/Landing/Value Proposition',
-  tags: ['autodocs'],
+  tags: ['autodocs', 'landing-showcase'],
   args: defaultArgs,
   argTypes: {
     statsState: { control: 'select', options: ['loading', 'ready', 'unavailable'] },
@@ -57,7 +54,7 @@ export const Playground: Story = {
   globals: { theme: 'light' },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('heading', { name: 'Eventos universitários facilitados' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Nossos números' })).toBeVisible();
     await expect(canvas.getByText(args.peopleCount.toLocaleString('pt-BR'))).toBeVisible();
   },
 };
@@ -69,11 +66,11 @@ export const ZeroedStatistics: Story = {
   },
 };
 
-export const VeryLargeStatistics: Story = {
-  args: { peopleCount: 999_999, eventsCount: 99_999, majorEventsCount: 9_999, certificatesCount: 1_999_900 },
+export const CuratedLargePlatform: Story = {
+  args: { peopleCount: 428_500, eventsCount: 27_140, majorEventsCount: 1_380, certificatesCount: 918_600 },
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('1.999.900')).toBeVisible();
+    await expect(await within(canvasElement).findByText('918.600')).toBeVisible();
   },
 };
 
@@ -81,7 +78,7 @@ export const Loading: Story = {
   args: { statsState: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByRole('status', { name: 'Carregando estatísticas da plataforma' }),
+      await within(canvasElement).findByRole('status'),
     ).toBeInTheDocument();
     await expect(canvasElement.querySelector('.value-proposition-stats-loading')).toHaveAttribute(
       'aria-hidden',
@@ -102,7 +99,7 @@ export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => {
     await expect(
-      await within(canvasElement).findByRole('heading', { name: 'Eventos universitários facilitados' }),
+      await within(canvasElement).findByRole('heading', { name: 'Nossos números' }),
     ).toBeVisible();
   },
 };

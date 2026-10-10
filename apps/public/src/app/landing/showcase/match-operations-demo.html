@@ -1,0 +1,94 @@
+<div class="match-operations">
+  <span class="match-operations__sr-only" role="status" aria-live="polite" aria-atomic="true">
+    {{ scoreAnnouncement() }}
+  </span>
+
+  <header class="match-operations__header">
+    <span class="match-operations__competition">
+      <mat-icon aria-hidden="true">sports_soccer</mat-icon>
+      Final de futsal
+    </span>
+    <span class="match-operations__state" role="status" aria-live="polite">{{ stateLabel() }}</span>
+  </header>
+
+  <section class="match-operations__scoreboard" aria-label="Placar da partida">
+    <div class="match-operations__team" role="group" aria-label="Placar de Compiladores">
+      <span class="match-operations__team-name">Compiladores</span>
+      <div class="match-operations__score-controls">
+        <button
+          matIconButton
+          type="button"
+          class="match-operations__score-button"
+          aria-label="Diminuir placar de Compiladores"
+          [disabled]="state() === 'ENDED' || score().home === 0"
+          (click)="adjustScore('home', -1)">
+          <mat-icon aria-hidden="true">remove</mat-icon>
+        </button>
+        <strong class="match-operations__score">{{ score().home }}</strong>
+        <button
+          matIconButton
+          type="button"
+          class="match-operations__score-button"
+          aria-label="Aumentar placar de Compiladores"
+          [disabled]="state() === 'ENDED'"
+          (click)="adjustScore('home', 1)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <span class="match-operations__versus" aria-hidden="true">×</span>
+
+    <div class="match-operations__team" role="group" aria-label="Placar de Algoritmos">
+      <span class="match-operations__team-name">Algoritmos</span>
+      <div class="match-operations__score-controls">
+        <button
+          matIconButton
+          type="button"
+          class="match-operations__score-button"
+          aria-label="Diminuir placar de Algoritmos"
+          [disabled]="state() === 'ENDED' || score().away === 0"
+          (click)="adjustScore('away', -1)">
+          <mat-icon aria-hidden="true">remove</mat-icon>
+        </button>
+        <strong class="match-operations__score">{{ score().away }}</strong>
+        <button
+          matIconButton
+          type="button"
+          class="match-operations__score-button"
+          aria-label="Aumentar placar de Algoritmos"
+          [disabled]="state() === 'ENDED'"
+          (click)="adjustScore('away', 1)">
+          <mat-icon aria-hidden="true">add</mat-icon>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="match-operations__clock" aria-label="Cronômetro da partida">
+    <div class="match-operations__clock-value">
+      <span>Tempo decorrido</span>
+      <strong>{{ elapsedLabel() }}</strong>
+    </div>
+    @if (state() !== 'ENDED') {
+      <button matButton="outlined" type="button" (click)="toggleClock()">
+        <mat-icon aria-hidden="true">{{ state() === 'LIVE' ? 'pause' : 'play_arrow' }}</mat-icon>
+        {{ state() === 'LIVE' ? 'Pausar cronômetro' : 'Retomar cronômetro' }}
+      </button>
+    }
+  </section>
+
+  <div class="match-operations__actions">
+    @if (state() === 'ENDED') {
+      <button matButton="filled" type="button" (click)="restartMatch()">
+        <mat-icon aria-hidden="true">restart_alt</mat-icon>
+        Recomeçar
+      </button>
+    } @else {
+      <button matButton="text" type="button" (click)="finishMatch()">
+        <mat-icon aria-hidden="true">sports_score</mat-icon>
+        Finalizar partida
+      </button>
+    }
+  </div>
+</div>

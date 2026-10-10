@@ -1,0 +1,25 @@
+        <div class="feedback-demo">
+          <div class="feedback-toolbar"><mat-icon aria-hidden="true">forum</mat-icon><strong>A sua experiência importa</strong></div>
+          <div class="feedback-content" aria-live="polite">
+            @if (responseSent()) {
+              <mat-icon class="feedback-success" aria-hidden="true">task_alt</mat-icon>
+              <h4>Obrigado pela avaliação!</h4>
+              <p>Sua avaliação ajuda a melhorar os próximos encontros.</p>
+              <button matButton type="button" (click)="resetResponse()">Responder novamente</button>
+            } @else {
+              <h4>Como foi a atividade?</h4><p>Escolha uma nota de 1 a 5 estrelas.</p>
+              <div class="rating" role="group" aria-label="Avaliação da atividade">
+                @for (value of ratings; track value) {
+                  <button matIconButton type="button"
+                    [attr.aria-label]="value + (value === 1 ? ' estrela' : ' estrelas')"
+                    [attr.aria-pressed]="rating() === value"
+                    [class.rating-selected]="rating() !== null && value <= rating()!"
+                    (click)="rating.set(value)">
+                    <mat-icon aria-hidden="true">{{ rating() !== null && value <= rating()! ? 'star' : 'star_outline' }}</mat-icon>
+                  </button>
+                }
+              </div>
+              <button matButton="filled" type="button" [disabled]="rating() === null" (click)="submitResponse()">Enviar avaliação</button>
+            }
+          </div>
+        </div>

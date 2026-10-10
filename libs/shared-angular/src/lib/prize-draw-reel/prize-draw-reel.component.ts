@@ -1,16 +1,16 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, OnDestroy, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
-import { ScannerSoundsService } from '@cacic-fct/shared-angular/aztec-scanner';
+import { ScannerSoundsService } from '../aztec-scanner/scanner-sounds.service';
+import type { PrizeDrawReelResult, PrizeDrawReelSpeed } from './models';
 import {
-  PrizeDrawReelMotionStage,
   concealedPrizeDrawWinnerIndex,
   prizeDrawReelMotionStage,
   prizeDrawReelPlannedTickCount,
   prizeDrawReelSoundCadence,
   prizeDrawReelTickIntervalMs,
-} from './prize-draw-reel-motion';
+} from './motion';
+import type { PrizeDrawReelMotionStage } from './motion';
 
 type ReelPhase = 'idle' | 'countdown' | 'spinning' | 'stopped' | 'complete' | 'reduced';
 type VisibleName = {
@@ -21,7 +21,7 @@ type VisibleName = {
 };
 
 @Component({
-  selector: 'app-prize-draw-reel',
+  selector: 'lib-prize-draw-reel',
   imports: [MatIconModule],
   templateUrl: './prize-draw-reel.component.html',
   styleUrl: './prize-draw-reel.component.scss',
@@ -30,6 +30,8 @@ export class PrizeDrawReelComponent implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly sounds = inject(ScannerSoundsService);
   readonly names = input<string[]>([]);
+  readonly soundEnabled = input(true);
+  readonly soundVolume = input(1);
   readonly phase = signal<ReelPhase>('idle');
   readonly countdown = signal<number | null>(null);
   private readonly displayedNames = signal<VisibleName[]>([]);
@@ -45,13 +47,14 @@ export class PrizeDrawReelComponent implements OnDestroy {
   private currentCenterIndex: number | null = null;
   private currentNames: string[] = [];
   private reduceMotionRequested = false;
+  private resultToneTimer: number | null = null;
 
-  async play(result: PrizeDrawSpinResult, reducedMotion: boolean): Promise<void> {
+  async play(result: PrizeDrawReelResult, reducedMotion: boolean): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
     const generation = ++this.generation;
     this.cancelFrame();
     this.reduceMotionRequested = reducedMotion;
-    const names = result.reelNames.length ? result.reelNames : [result.winnerReelName];
+    const names = result.reelNames.length ? [...result.reelNames] : [result.winnerReelName];
     const winnerIndex = this.normalizeIndex(names.length, result.winnerReelIndex);
     const concealedIndex = concealedPrizeDrawWinnerIndex(names.length, winnerIndex);
 
@@ -118,7 +121,7 @@ export class PrizeDrawReelComponent implements OnDestroy {
   private animate(
     names: string[],
     winnerIndex: number,
-    speed: PrizeDrawSpinResult['speed'],
+    speed: PrizeDrawReelSpeed,
     durationMs: number,
     generation: number,
   ): Promise<void> {
@@ -246,7 +249,7 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private createTickSchedule(
-    speed: PrizeDrawSpinResult['speed'],
+    speed: PrizeDrawReelSpeed,
     durationMs: number,
     tickCount: number,
     firstTickDelayMs = 0,
@@ -282,25 +285,41 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private tickTone(progress: number): void {
-    this.sounds.tone(380 + progress * 320, 0.03, 0.8, 'triangle');
+    this.playTone(380 + progress * 320, 0.03, 0.8, 'triangle');
   }
 
   private countdownStepTone(): void {
-    this.sounds.tone(420, 0.065, 0.8);
+    this.playTone(420, 0.065, 0.8);
   }
 
   private countdownCompleteTone(): void {
-    this.sounds.tone(560, 0.075, 0.9);
+    this.playTone(560, 0.075, 0.9);
   }
 
   private resultTone(): void {
-    this.sounds.tone(620, 0.09, 0.9);
-    if (isPlatformBrowser(this.platformId)) window.setTimeout(() => this.sounds.tone(840, 0.13, 0.9), 100);
+    this.playTone(620, 0.09, 0.9);
+    if (isPlatformBrowser(this.platformId)) {
+      this.resultToneTimer = window.setTimeout(() => {
+        this.resultToneTimer = null;
+        this.playTone(840, 0.13, 0.9);
+      }, 100);
+    }
+  }
+
+  private playTone(frequency: number, duration: number, volume: number, type?: OscillatorType): void {
+    if (!this.soundEnabled()) return;
+    const scaledVolume = volume * this.soundVolume();
+    if (type) this.sounds.tone(frequency, duration, scaledVolume, type);
+    else this.sounds.tone(frequency, duration, scaledVolume);
   }
 
   private cancelFrame(): void {
     if (this.frameId !== null && isPlatformBrowser(this.platformId)) cancelAnimationFrame(this.frameId);
     this.frameId = null;
+    if (this.resultToneTimer !== null && isPlatformBrowser(this.platformId)) {
+      window.clearTimeout(this.resultToneTimer);
+      this.resultToneTimer = null;
+    }
     const resolve = this.activeAnimationResolve;
     this.activeAnimationResolve = null;
     resolve?.();

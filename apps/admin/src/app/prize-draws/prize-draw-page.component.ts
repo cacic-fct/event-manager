@@ -14,7 +14,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
-import { PrizeDrawReelComponent } from './reel/prize-draw-reel.component';
+import { PrizeDrawReelComponent } from '@cacic-fct/shared-angular';
 import { PrizeDrawResultDialogComponent, PrizeDrawResultDialogData } from './result/prize-draw-result-dialog.component';
 
 @Component({

@@ -1,0 +1,136 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+}
+
+.sports-demo {
+  background: #153f38;
+  color: #f0fff7;
+  border-radius: 16px;
+  min-height: 20rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+
+  @include mat.button-overrides((
+    text-label-text-color: #f0fff7
+  ));
+}
+
+.sports-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.sports-toolbar strong {
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.sports-toolbar > span {
+  font-size: 0.6875rem;
+  color: #cae9dc;
+}
+
+.sports-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+}
+
+.sports-controls button[aria-pressed='true'] {
+  background: #d1f2de;
+  color: #10362e;
+}
+
+.scoreboard {
+  text-align: center;
+}
+
+.scoreboard > p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #cae9dc;
+  margin: 1.75rem 0;
+}
+
+.score-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.score-line > span {
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.score-line > strong {
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.score-line strong span[aria-hidden] > span {
+  color: #9dc6b4;
+  font-weight: 400;
+}
+
+.match-status {
+  display: block;
+  margin-top: 1.5rem;
+  font-size: 0.8125rem;
+  color: #cae9dc;
+}
+
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.standings caption {
+  text-align: left;
+  font-size: 0.75rem;
+  margin: 0.5rem 0 1rem;
+  color: #cae9dc;
+}
+
+.standings th,
+.standings td {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #4c7567;
+  text-align: right;
+}
+
+.standings th:first-child {
+  text-align: left;
+}
+
+.standings thead th {
+  color: #cae9dc;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 4px;
+}
+
+.sports-demo button:focus-visible {
+  outline-color: #f0fff7;
+}
+
+@media (max-width: 30rem) {
+  .sports-demo {
+    padding: 1rem;
+  }
+}

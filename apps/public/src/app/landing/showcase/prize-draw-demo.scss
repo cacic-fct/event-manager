@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.prize-draw-demo {
+  box-sizing: border-box;
+  color: var(--mat-sys-on-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  min-block-size: 27rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.prize-draw-demo__settings {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.prize-draw-demo__prize {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.prize-draw-demo__prize mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.prize-draw-demo__prize div {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.prize-draw-demo__field-label,
+.prize-draw-demo__eligible {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.prize-draw-demo__prize strong,
+.prize-draw-demo__eligible strong {
+  color: var(--mat-sys-on-surface);
+  font-weight: 650;
+}
+
+.prize-draw-demo__sound {
+  color: var(--mat-sys-primary);
+  flex: 0 0 auto;
+}
+
+.prize-draw-demo__eligible {
+  margin: 0;
+}
+
+.prize-draw-demo__eligible strong {
+  margin-left: 0.25rem;
+}
+
+.prize-draw-demo__draw {
+  align-self: flex-start;
+  min-height: 3rem;
+}
+
+.prize-draw-demo__status {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.prize-draw-demo button:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 3px;
+}
+
+@media (max-width: 28rem) {
+  .prize-draw-demo__draw {
+    width: 100%;
+  }
+}

@@ -1,0 +1,42 @@
+        <div class="sports-demo">
+          <div class="sports-toolbar">
+            <lib-twemoji emoji="⚽" aria-hidden="true" />
+            <strong>Copa do Campus</strong>
+          </div>
+          <div class="sports-controls" role="group" aria-label="Visualização do torneio">
+            <button matButton type="button" [attr.aria-pressed]="sportsView() === 'match'" (click)="selectSportsView('match')">Partida</button>
+            <button matButton type="button" [attr.aria-pressed]="sportsView() === 'standings'" (click)="selectSportsView('standings')">Classificação</button>
+            <button matButton type="button" [attr.aria-pressed]="sportsView() === 'operations'" (click)="selectSportsView('operations')">Operação</button>
+          </div>
+          @if (sportsView() === 'match') {
+            <div class="scoreboard">
+              <p><mat-icon aria-hidden="true">sports_soccer</mat-icon>Final de futsal</p>
+              <div class="score-line">
+                <span>Compiladores</span>
+                <strong>
+                  <span aria-hidden="true">{{ matchScore().home }} <span>:</span> {{ matchScore().away }}</span>
+                  <span class="cdk-visually-hidden">{{ matchScore().home }} a {{ matchScore().away }}</span>
+                </strong>
+                <span>Algoritmos</span>
+              </div>
+              <span class="match-status">{{ matchStatus() }}</span>
+            </div>
+          } @else if (sportsView() === 'standings') {
+            <table class="standings">
+              <caption>Classificação</caption>
+              <thead><tr><th scope="col">Equipe</th><th scope="col">Jogos</th><th scope="col">Pontos</th></tr></thead>
+              <tbody>
+                @for (team of teams; track team.name) {
+                  <tr><th scope="row">{{ team.name }}</th><td>{{ team.played }}</td><td>{{ team.points }}</td></tr>
+                }
+              </tbody>
+            </table>
+          }
+          <div [hidden]="sportsView() !== 'operations'">
+            @defer (when sportsView() === 'operations') {
+              <app-landing-match-operations-demo [(score)]="matchScore" [(state)]="matchState" />
+            } @placeholder {
+              <p>Carregando operação da partida.</p>
+            }
+          </div>
+        </div>

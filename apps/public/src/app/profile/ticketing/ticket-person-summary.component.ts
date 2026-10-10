@@ -13,12 +13,14 @@ import { Component, computed, input, linkedSignal } from '@angular/core';
           <span>{{ initials() }}</span>
         }
       </div>
-      <div class="person-copy">
-        <p class="person-name">{{ fullName() }}</p>
-        @if (showDocument()) {
-          <p class="person-document">{{ identityDocument() || 'Documento não informado' }}</p>
-        }
-      </div>
+      @if (!avatarOnly()) {
+        <div class="person-copy">
+          <p class="person-name">{{ fullName() }}</p>
+          @if (showDocument()) {
+            <p class="person-document">{{ identityDocument() || 'Documento não informado' }}</p>
+          }
+        </div>
+      }
     </div>
   `,
   styles: `
@@ -35,16 +37,16 @@ import { Component, computed, input, linkedSignal } from '@angular/core';
 
     .person-avatar {
       align-items: center;
-      background: var(--mat-sys-secondary-container);
+      background: var(--ticket-person-avatar-background, var(--mat-sys-secondary-container));
       border-radius: 50%;
-      color: var(--mat-sys-on-secondary-container);
+      color: var(--ticket-person-avatar-color, var(--mat-sys-on-secondary-container));
       display: flex;
-      flex: 0 0 3.5rem;
-      font: var(--mat-sys-title-medium);
-      height: 3.5rem;
+      flex: 0 0 var(--ticket-person-avatar-size, 3.5rem);
+      font: var(--ticket-person-avatar-font, var(--mat-sys-title-medium));
+      height: var(--ticket-person-avatar-size, 3.5rem);
       justify-content: center;
       overflow: hidden;
-      width: 3.5rem;
+      width: var(--ticket-person-avatar-size, 3.5rem);
     }
 
     .person-avatar img {
@@ -80,6 +82,7 @@ export class TicketPersonSummaryComponent {
   readonly avatarUrl = input<string | null>(null);
   readonly identityDocument = input<string | null>(null);
   readonly showDocument = input(true);
+  readonly avatarOnly = input(false);
   readonly avatarLoadFailed = linkedSignal({ source: this.avatarUrl, computation: () => false });
   readonly avatarSource = computed(() => this.avatarLoadFailed() ? null : this.avatarUrl());
 

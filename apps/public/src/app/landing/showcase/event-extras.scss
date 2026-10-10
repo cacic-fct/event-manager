@@ -1,0 +1,86 @@
+:host {
+  display: block;
+}
+
+.event-extras {
+  padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 4vw, 3rem);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+.extras-container {
+  max-width: 76rem;
+  margin: auto;
+}
+
+header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+header h2 {
+  font-size: clamp(2.25rem, 4.5vw, 4rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+header > p {
+  max-width: 27rem;
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--mat-sys-on-surface-variant);
+  text-wrap: pretty;
+}
+
+.extras-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 5vw, 5rem);
+}
+
+.extra-copy {
+  margin-bottom: 1.5rem;
+}
+
+.extra-copy h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.extra-copy p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0.75rem 0 0;
+  max-width: 42ch;
+}
+
+@media (max-width: 52rem) {
+  header {
+    display: block;
+  }
+
+  header > p {
+    margin-top: 1.5rem;
+  }
+
+  .extras-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+  }
+}
+
+.extra-demo-placeholder {
+  min-height: 24rem;
+  display: grid;
+  place-items: center;
+  color: var(--mat-sys-on-surface-variant);
+}

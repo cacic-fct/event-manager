@@ -1,0 +1,82 @@
+<section class="role-demo" aria-label="Gerenciar permissões da equipe">
+  @if (mode() === 'summary') {
+    @if (savedRole(); as role) {
+      <div class="role-summary">
+        <header class="role-summary__heading">
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          <div>
+            <p class="role-summary__status" role="status">
+              {{ lastSaveAction() === 'created' ? 'Cargo criado' : 'Alterações salvas' }}
+            </p>
+            <h3 id="role-summary-title" tabindex="-1">{{ role.name }}</h3>
+          </div>
+        </header>
+
+        <div class="role-summary__permissions">
+          <h4>Permissões incluídas</h4>
+          <ul>
+            @for (permission of savedPermissionChoices(); track permission.id) {
+              <li>
+                <mat-icon aria-hidden="true">check</mat-icon>
+                <span>{{ permission.label }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <footer class="role-summary__actions">
+          <button matButton="outlined" type="button" (click)="editRole()">Editar cargo</button>
+          <button matButton="filled" type="button" (click)="createAnotherRole()">Criar outro cargo</button>
+        </footer>
+      </div>
+    }
+  } @else {
+    <form class="role-form" (submit)="$event.preventDefault(); saveRole()">
+      <header class="role-form__heading">
+        <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+        <div>
+          <h3 id="role-form-title">{{ mode() === 'edit' ? 'Editar cargo' : 'Novo cargo' }}</h3>
+          <p>Reúna as permissões de quem ajuda a organizar o evento.</p>
+        </div>
+      </header>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Nome do cargo</mat-label>
+        <input id="role-name" matInput autocomplete="off" [formField]="roleForm.name" />
+        @if (
+          roleForm.name().touched() &&
+          (roleForm.name().invalid() || draft().name.trim().length < 3)
+        ) {
+          <mat-error>Informe um nome com pelo menos três caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <fieldset class="role-form__permission-fieldset" aria-describedby="role-permission-hint">
+        <legend>Permissões da equipe</legend>
+        <p id="role-permission-hint">Selecione o que este cargo pode fazer.</p>
+        <div class="role-form__permission-list">
+          @for (permission of permissions; track permission.id) {
+            <div class="role-form__permission" [attr.data-permission-id]="permission.id">
+              <mat-checkbox
+                [checked]="isSelected(permission.id)"
+                (change)="togglePermission(permission.id, $event.checked)">
+                <span class="role-form__permission-copy">
+                  <strong>{{ permission.label }}</strong>
+                  <small>{{ permission.description }}</small>
+                </span>
+              </mat-checkbox>
+            </div>
+          }
+        </div>
+        @if (selectedPermissionIds().length === 0) {
+          <p class="role-form__selection-hint">Escolha pelo menos uma permissão para continuar.</p>
+        }
+      </fieldset>
+
+      <footer class="role-form__actions">
+        <span>{{ selectedPermissionIds().length }} de {{ permissions.length }} selecionadas</span>
+        <button matButton="filled" type="submit" [disabled]="!canSave()">{{ saveButtonLabel() }}</button>
+      </footer>
+    </form>
+  }
+</section>

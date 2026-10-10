@@ -1,0 +1,168 @@
+@if (!organizer()) {
+  <app-landing-major-event-subscription-demo />
+} @else {
+  <section class="registration-demo" aria-label="Organização de eventos">
+    <header class="workspace-header">
+      <lib-twemoji class="major-event-emoji" [emoji]="'💻'" aria-hidden="true" />
+      <h2>Semana de Tecnologia</h2>
+    </header>
+
+    <mat-tab-group
+      class="workspace-tabs"
+      aria-label="Eventos e inscrições"
+      mat-stretch-tabs="true"
+      [selectedIndex]="selectedTabIndex()"
+      [dynamicHeight]="true"
+      animationDuration="0ms"
+      (selectedIndexChange)="selectedTabIndex.set($event)">
+      <mat-tab label="Eventos">
+        <div class="event-workspace">
+          <section class="event-browser" aria-labelledby="registration-demo-events-title">
+            <header class="panel-heading">
+              <div>
+                <h3 id="registration-demo-events-title">Programação</h3>
+                <p>Selecione um evento para editar os detalhes.</p>
+              </div>
+              <span>{{ events().length }} eventos</span>
+            </header>
+
+            <div
+              class="event-list"
+              role="group"
+              aria-label="Selecionar evento para editar">
+              @for (event of events(); track event.id) {
+                <button
+                  type="button"
+                  class="event-choice"
+                  [attr.aria-pressed]="selectedEventId() === event.id"
+                  [attr.aria-label]="'Selecionar evento ' + event.name"
+                  (click)="selectEvent(event.id)">
+                  <lib-twemoji [emoji]="event.emoji" aria-hidden="true" />
+                  <span class="event-copy">
+                    <strong>{{ event.name }}</strong>
+                    <small>{{ event.startTime }}, {{ event.locationDescription || 'Local a definir' }}</small>
+                  </span>
+                  <span class="capacity">{{ eventCapacitySummary(event) }}</span>
+                </button>
+              }
+            </div>
+          </section>
+
+          @if (selectedEvent(); as event) {
+            <section class="event-detail" aria-labelledby="registration-demo-event-title">
+              <header class="detail-heading">
+                <lib-twemoji [emoji]="event.emoji" aria-hidden="true" />
+                <div>
+                  <p>Evento</p>
+                  <h3 id="registration-demo-event-title">{{ event.name }}</h3>
+                </div>
+              </header>
+
+              <dl class="event-summary">
+                <div>
+                  <dt>Horário</dt>
+                  <dd>{{ event.startTime }}</dd>
+                </div>
+                <div>
+                  <dt>Local</dt>
+                  <dd>{{ event.locationDescription || 'Local a definir' }}</dd>
+                </div>
+              </dl>
+
+              <form class="event-form" (submit)="saveEventDetails(); $event.preventDefault()">
+                <div class="form-heading">
+                  <h4>Detalhes do evento</h4>
+                </div>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Nome do evento</mat-label>
+                  <input matInput [formField]="eventDetailsForm.name" autocomplete="off" />
+                  @if (eventDetailsForm.name().touched() && eventDetailsForm.name().invalid()) {
+                    <mat-error>Informe o nome do evento.</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Local</mat-label>
+                  <input matInput [formField]="eventDetailsForm.locationDescription" autocomplete="off" />
+                </mat-form-field>
+
+                <div class="form-actions">
+                  @if (eventSaved() && !hasUnsavedEventChanges()) {
+                    <p role="status">Alterações salvas.</p>
+                  }
+                  <button
+                    matButton="filled"
+                    type="submit"
+                    [disabled]="!hasUnsavedEventChanges() || eventDetailsForm().invalid()">
+                    Salvar alterações
+                  </button>
+                </div>
+              </form>
+            </section>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Inscrições">
+        @if (selectedEvent(); as event) {
+          <section class="subscriptions" aria-labelledby="registration-demo-subscriptions-title">
+            <header class="subscriptions-heading">
+              <div>
+                <h3 id="registration-demo-subscriptions-title">Inscrições</h3>
+                <p>{{ eventCapacitySummary(event) }}</p>
+              </div>
+              <mat-form-field appearance="outline" class="event-filter">
+                <mat-label>Evento</mat-label>
+                <mat-select [value]="event.id" (selectionChange)="selectEvent($event.value)">
+                  @for (option of events(); track option.id) {
+                    <mat-option [value]="option.id">
+                      <lib-twemoji [emoji]="option.emoji" aria-hidden="true" />
+                      {{ option.name }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </header>
+
+            <mat-form-field appearance="outline" class="subscription-search">
+              <mat-label>Buscar inscrito</mat-label>
+              <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+              <input matInput type="search" [formField]="subscriptionSearchForm.query" autocomplete="off" />
+            </mat-form-field>
+
+            <div class="table-wrap">
+              <table class="table">
+                <caption>Inscrições de {{ event.name }}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Participante</th>
+                    <th scope="col">Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (subscription of filteredSubscriptions(); track subscription.id) {
+                    <tr>
+                      <td>{{ subscription.personName }}</td>
+                      <td>
+                        <span
+                          class="subscription-status"
+                          [class.subscription-status--confirmed]="subscription.subscriptionStatus === 'CONFIRMED'">
+                          {{ subscriptionStatusLabel(subscription.subscriptionStatus) }}
+                        </span>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="2">Nenhum inscrito encontrado.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      </mat-tab>
+    </mat-tab-group>
+  </section>
+}

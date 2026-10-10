@@ -1,0 +1,133 @@
+<div class="certificate-demo">
+  @switch (step()) {
+    @case ('configuration') {
+      <section aria-labelledby="certificate-demo-setup-title">
+        <h3 #stepHeading id="certificate-demo-setup-title" tabindex="-1">Configurar certificado</h3>
+
+        <div class="certificate-demo__fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Nome público do certificado</mat-label>
+            <input
+              matInput
+              maxlength="60"
+              [value]="publicCertificateName()"
+              (input)="updatePublicCertificateName($event)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Emitir para</mat-label>
+            <mat-select
+              [value]="audience()"
+              (selectionChange)="selectAudience($event.value === 'speakers' ? 'speakers' : 'participants')">
+              <mat-option value="participants">Participantes</mat-option>
+              <mat-option value="speakers">Palestrantes</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <section class="certificate-demo__template" aria-labelledby="certificate-demo-template-title">
+          <span class="certificate-demo__section-label" id="certificate-demo-template-title">Prévia do modelo</span>
+          <h4>
+            {{ publicCertificateName() }}
+            <lib-twemoji emoji="♿" aria-hidden="true" />
+          </h4>
+          <p>{{ previewText() }}</p>
+        </section>
+
+        <div class="certificate-demo__eligible">
+          <p class="certificate-demo__eligible-count">{{ eligibleSummary() }}</p>
+          <ul aria-label="Pessoas elegíveis para emissão">
+            @for (certificate of eligibleCertificates(); track certificate.id) {
+              <li>
+                <strong>{{ certificate.personName }}</strong>
+                <span>{{ certificate.context }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <button matButton="filled" type="button" [disabled]="!canIssue()" (click)="simulateIssuance()">
+          <mat-icon aria-hidden="true">verified</mat-icon>
+          Emitir certificados pendentes
+        </button>
+      </section>
+    }
+
+    @case ('issued') {
+      <section aria-labelledby="certificate-demo-issued-title">
+        <h3 #stepHeading id="certificate-demo-issued-title" tabindex="-1">Certificados emitidos</h3>
+        <p class="certificate-demo__status" role="status" aria-live="polite" aria-atomic="true">
+          {{ statusMessage() }}
+        </p>
+        <p class="certificate-demo__issued-count">
+          {{ issuedCertificates().length }} certificados emitidos para {{ audienceLabel() }}
+        </p>
+        <ul class="certificate-demo__issued-list" aria-label="Certificados emitidos">
+          @for (certificate of issuedCertificates(); track certificate.id) {
+            <li>
+              <div>
+                <strong>{{ certificate.personName }}</strong>
+                <span>{{ certificate.context }}</span>
+              </div>
+              <button
+                matButton="text"
+                type="button"
+                [attr.aria-label]="'Visualizar certificado de ' + certificate.personName"
+                (click)="inspectCertificate(certificate)">
+                <mat-icon aria-hidden="true">visibility</mat-icon>
+                Visualizar
+              </button>
+            </li>
+          }
+        </ul>
+        <button matButton="outlined" type="button" (click)="resetDemo()">
+          <mat-icon aria-hidden="true">restart_alt</mat-icon>
+          Nova emissão
+        </button>
+      </section>
+    }
+
+    @case ('inspection') {
+      <section aria-labelledby="certificate-demo-inspection-title">
+        <button matButton="text" type="button" (click)="returnToIssuedList()">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          Voltar à lista
+        </button>
+        <h3 #stepHeading id="certificate-demo-inspection-title" tabindex="-1">Dados de validação</h3>
+        @if (selectedCertificate(); as certificate) {
+          <h4 class="certificate-demo__detail-title">
+            {{ publicCertificateName() }}
+            <lib-twemoji emoji="♿" aria-hidden="true" />
+          </h4>
+          <dl class="certificate-demo__details">
+            <div>
+              <dt>Nome</dt>
+              <dd>{{ certificate.personName }}</dd>
+            </div>
+            <div>
+              <dt>Evento</dt>
+              <dd>{{ certificate.target }}</dd>
+            </div>
+            <div>
+              <dt>Identificador do certificado</dt>
+              <dd>{{ certificate.id }}</dd>
+            </div>
+            <div>
+              <dt>Tipo</dt>
+              <dd>{{ certificate.type }}</dd>
+            </div>
+            <div class="certificate-demo__detail-text">
+              <dt>Texto</dt>
+              <dd>{{ selectedCertificateText() }}</dd>
+            </div>
+          </dl>
+        }
+
+        <button matButton="outlined" type="button" (click)="resetDemo()">
+          <mat-icon aria-hidden="true">restart_alt</mat-icon>
+          Nova emissão
+        </button>
+      </section>
+    }
+  }
+</div>

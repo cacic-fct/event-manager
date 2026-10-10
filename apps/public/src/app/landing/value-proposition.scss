@@ -5,7 +5,7 @@
 .value-proposition {
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
-  padding: clamp(4rem, 9vw, 7.5rem) 1.5rem;
+  padding: 1.5rem;
 }
 
 .value-proposition-container {
@@ -36,62 +36,8 @@
   text-wrap: pretty;
 }
 
-.value-proposition-audiences {
-  display: grid;
-  gap: clamp(2.5rem, 7vw, 6rem);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.value-proposition-audience-title {
-  align-items: center;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
-  display: flex;
-  font-size: 1.25rem;
-  gap: 0.625rem;
-  margin: 0;
-  padding-bottom: 0.875rem;
-}
-
-.value-proposition-audience-title-icon {
-  color: var(--mat-sys-primary);
-}
-
-.value-proposition-feature-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.value-proposition-feature {
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  padding: 1.25rem 0;
-}
-
-.value-proposition-feature-icon {
-  color: var(--mat-sys-on-surface-variant);
-  margin-top: 0.125rem;
-}
-
-.value-proposition-feature-title {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.35;
-  margin: 0;
-}
-
-.value-proposition-feature-description {
-  font-size: 1rem;
-  line-height: 1.55;
-  margin: 0.25rem 0 0;
-  text-wrap: pretty;
-}
-
 .value-proposition-stats {
   border-top: 1px solid var(--mat-sys-outline-variant);
-  margin-top: clamp(3rem, 7vw, 5rem);
   padding-top: 1.25rem;
 }
 
@@ -133,7 +79,7 @@
 }
 
 .value-proposition-stat-value {
-  font-family: 'Source Code Pro Variable', monospace;
+  font-weight: 650;
   font-size: clamp(1.25rem, 2vw, 1.75rem);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
@@ -167,10 +113,6 @@
 }
 
 @media (max-width: 48rem) {
-  .value-proposition-audiences {
-    grid-template-columns: 1fr;
-  }
-
   .value-proposition-stats-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: 1.5rem;
@@ -202,5 +144,30 @@
 
   .value-proposition-stats-loading {
     grid-template-columns: 1fr;
+  }
+}
+
+.community-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 1.5rem 0 0;
+}
+.community-detail mat-icon {
+  flex-shrink: 0;
+}
+.stats-note {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  margin: 1.5rem 0 0;
+}
+@media (max-width: 32rem) {
+  .community-detail {
+    align-items: start;
+    text-align: left;
   }
 }

@@ -4,14 +4,14 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import type { PublicPlatformStats } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { applicationConfig } from '@storybook/angular';
+import { applicationConfig, moduleMetadata } from '@storybook/angular';
 import { HttpResponse, delay, http } from 'msw';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { DefaultRedirectService } from './default-redirect.service';
 import { LandingComponent } from './landing-page';
+import { ProductShowcaseComponent } from './showcase/product-showcase';
 
 type LandingStatsState = 'ready' | 'loading' | 'unavailable';
 
@@ -29,10 +29,10 @@ interface LandingStoryArgs {
 
 const defaultArgs: LandingStoryArgs = {
   statsState: 'ready',
-  peopleCount: 128_540,
-  eventsCount: 7_430,
-  majorEventsCount: 382,
-  certificatesCount: 318_900,
+  peopleCount: 4_280,
+  eventsCount: 172,
+  majorEventsCount: 16,
+  certificatesCount: 8_940,
   latencyMs: 180,
   authenticated: false,
   prefersDarkScheme: false,
@@ -43,12 +43,10 @@ let activeArgs = defaultArgs;
 const loginMock = fn(async () => undefined);
 const navigateToDefaultMock = fn(async () => true);
 
-faker.seed(20_260_717);
-
 const meta: Meta<LandingStoryArgs> = {
   component: LandingComponent,
   title: 'CACiC Eventos/Landing/Page',
-  tags: ['autodocs'],
+  tags: ['autodocs', 'landing-showcase'],
   args: defaultArgs,
   argTypes: {
     statsState: { control: 'select', options: ['ready', 'loading', 'unavailable'] },
@@ -104,7 +102,7 @@ const meta: Meta<LandingStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: [platformStatsHandler()] } },
     docs: {
       description: {
@@ -122,22 +120,22 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: 'Validar certificado' })).toBeVisible();
-    await expect(await canvas.findByText('128.540')).toBeVisible();
+    await expect(await canvas.findByText('4.280')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Entrar com o Google' }));
     await expect(loginMock).toHaveBeenCalled();
   },
 };
 
-export const GeneratedLargePlatform: Story = {
+export const CuratedLargePlatform: Story = {
   args: {
-    peopleCount: faker.number.int({ min: 400_000, max: 500_000 }),
-    eventsCount: faker.number.int({ min: 20_000, max: 30_000 }),
-    majorEventsCount: faker.number.int({ min: 1_200, max: 2_000 }),
-    certificatesCount: faker.number.int({ min: 800_000, max: 1_000_000 }),
+    peopleCount: 428_500,
+    eventsCount: 27_140,
+    majorEventsCount: 1_380,
+    certificatesCount: 918_600,
     latencyMs: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/mil/)).toBeVisible();
+    await expect(await within(canvasElement).findByText('428.500')).toBeVisible();
   },
 };
 
@@ -175,7 +173,7 @@ export const DarkSystemPreference: Story = {
   args: { prefersDarkScheme: true },
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('CACiC Eventos')).toBeVisible();
+    await expect(await within(canvasElement).findByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
   },
 };
 
@@ -184,7 +182,9 @@ export const Mobile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Entrar com o Google' })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Explorar' })).toBeVisible();
+    await expect(
+      new URL(canvas.getByRole('link', { name: 'Explorar eventos' }).getAttribute('href') ?? '', window.location.origin).pathname,
+    ).toBe('/calendar');
   },
 };
 
@@ -193,7 +193,55 @@ export const Tablet: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Entrar com o Google' })).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Explorar' })).toBeVisible();
+    await expect(
+      new URL(canvas.getByRole('link', { name: 'Explorar eventos' }).getAttribute('href') ?? '', window.location.origin).pathname,
+    ).toBe('/calendar');
+  },
+};
+
+export const AttendeeJourney: Story = {
+  render: () => ({ props: {}, template: '<app-landing-product-showcase />' }),
+  decorators: [moduleMetadata({ imports: [ProductShowcaseComponent] })],
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const region = canvas.getByRole('region', { name: 'Você participa. Tudo se conecta.' });
+    region.scrollIntoView();
+    const participant = within(region);
+    await userEvent.click(await participant.findByRole('button', { name: 'Meu dia' }));
+    await userEvent.click(await participant.findByRole('button', { name: 'Ver no mapa' }));
+    await userEvent.click(participant.getByRole('button', { name: 'Carteira' }));
+    await userEvent.click(await participant.findByRole('button', { name: 'Bilhete para Kit de boas-vindas' }));
+    await userEvent.click(participant.getByRole('button', { name: 'Autorregistro' }));
+    const codeInput = participant.getByRole('textbox', { name: 'Código de presença' });
+    await userEvent.clear(codeInput);
+    await userEvent.type(codeInput, 'KC1C');
+    await userEvent.click(participant.getByRole('button', { name: 'Confirmar presença' }));
+    await expect(await participant.findByRole('heading', { name: 'Presença confirmada.' })).toBeVisible();
+  },
+};
+
+export const OrganizerJourney: Story = {
+  render: () => ({ props: {}, template: '<app-landing-product-showcase />' }),
+  decorators: [moduleMetadata({ imports: [ProductShowcaseComponent] })],
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  play: async ({ canvasElement }) => {
+    const region = within(canvasElement).getByRole('region', { name: /Você organiza\s*com tudo à mão\./ });
+    region.scrollIntoView();
+    const canvas = within(region);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Presenças' }));
+
+    await userEvent.click(await canvas.findByRole('button', { name: 'Marcar como presente' }));
+    await expect(canvas.getByRole('heading', { name: 'Rafael Almeida' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('radio', { name: 'Exibir lista' }));
+    await expect(canvas.getByRole('list', { name: 'Pessoas inscritas' })).toBeVisible();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Certificados' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Emitir certificados pendentes' }));
+    await expect(await canvas.findByText('Certificados disponíveis')).toBeVisible();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Sorteios' }));
+    await expect(await canvas.findByRole('button', { name: 'Sortear' })).toBeVisible();
   },
 };
 

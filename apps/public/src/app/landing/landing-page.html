@@ -9,8 +9,8 @@
           <span class="brand-highlight">CACiC Eventos</span>
         </h1>
         <h2 class="hero-subtitle">
-          <b>Faça login com o e&#8209;mail&nbsp;institucional</b>
-          se você possui vínculo com a Unesp.
+          <b>Entre com seu e&#8209;mail&nbsp;institucional</b>
+          se você tem vínculo com a Unesp.
         </h2>
 
         <div class="hero-actions">
@@ -20,7 +20,7 @@
           </button>
           <a mat-raised-button class="login-button" routerLink="/calendar">
             <mat-icon>calendar_month</mat-icon>
-            Explorar
+            Explorar eventos
           </a>
         </div>
       </div>
@@ -32,6 +32,20 @@
   </section>
 
   <section #nextSection>
+    @defer (on viewport) {
+      <app-landing-product-showcase />
+    } @placeholder {
+      <div class="showcase-placeholder"><p>Explore as demonstrações ao continuar pela página.</p></div>
+    } @error {
+      <p role="status">Não foi possível carregar as demonstrações. Recarregue a página para tentar novamente.</p>
+    }
+    @defer (on viewport) {
+      <app-landing-event-extras />
+    } @placeholder {
+      <div class="showcase-placeholder"><p>Conheça os recursos para torneios e avaliações ao continuar pela página.</p></div>
+    } @error {
+      <p role="status">Não foi possível carregar as demonstrações de torneios e avaliações. Recarregue a página para tentar novamente.</p>
+    }
     <app-value-proposition [stats]="platformStats().stats" [statsState]="platformStats().state" />
   </section>
 

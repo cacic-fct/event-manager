@@ -1,0 +1,24 @@
+<section class="receipt-demo" aria-labelledby="receipt-title">
+  <button matButton type="button" (click)="back.emit()"><mat-icon>arrow_back</mat-icon>Voltar ao Meu dia</button>
+  <header><lib-twemoji emoji="💡" aria-hidden="true" /><div><h4 id="receipt-title">Jornada de Inovação</h4><p>Pagamento da inscrição</p></div></header>
+  @if (submitted()) {
+    <div class="receipt-success" role="status">
+      <mat-icon aria-hidden="true">task_alt</mat-icon>
+      <h5>Comprovante enviado.</h5>
+      <p>A organização vai validar o pagamento. Você pode acompanhar a situação da sua inscrição.</p>
+      <span><mat-icon aria-hidden="true">hourglass_top</mat-icon>Aguardando validação</span>
+    </div>
+  } @else {
+    <div class="payment-summary"><span>Valor da inscrição</span><strong>R$ 35,00</strong></div>
+    <p class="receipt-instruction">Já fez o pagamento? Anexe o comprovante para a organização conferir.</p>
+    <input #receiptInput class="file-input" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" aria-label="Arquivo do comprovante" (change)="selectReceipt($event)" />
+    <div class="receipt-upload">
+      <mat-icon aria-hidden="true">{{ filename() ? 'description' : 'upload_file' }}</mat-icon>
+      <strong>{{ filename() || 'Seu comprovante fica aqui' }}</strong>
+      <span>Imagem ou PDF de até 15 MB</span>
+      <button matButton="outlined" type="button" (click)="receiptInput.click()">{{ filename() ? 'Trocar arquivo' : 'Escolher comprovante' }}</button>
+    </div>
+    @if (errorMessage()) { <p class="receipt-error" role="alert">{{ errorMessage() }}</p> }
+    <button class="receipt-send" matButton="filled" type="button" [disabled]="!filename()" (click)="sendReceipt()"><mat-icon>send</mat-icon>Enviar comprovante</button>
+  }
+</section>
