@@ -1,0 +1,36 @@
+<section class="event-extras" aria-labelledby="extras-title">
+  <div class="extras-container">
+    <header>
+      <h2 id="extras-title">Para todas as ocasiões.</h2>
+    </header>
+    <div class="extras-layout">
+      <article class="sports-showcase" aria-labelledby="sports-showcase-title">
+        <div class="extra-copy">
+          <h3 id="sports-showcase-title">A emoção também tem lugar.</h3>
+          <p>Gerencie inscrições, partidas, chaves e classificações de torneios esportivos.</p>
+        </div>
+        @defer (on viewport) {
+        <app-landing-sports-demo />
+        } @placeholder {
+        <div class="extra-demo-placeholder"><p>Carregando torneio.</p></div>
+        } @error {
+        <p role="status">Não foi possível carregar a demonstração. Recarregue a página para tentar novamente.</p>
+        }
+      </article>
+
+      <article class="feedback-showcase" aria-labelledby="feedback-showcase-title">
+        <div class="extra-copy">
+          <h3 id="feedback-showcase-title">Escutar faz o evento crescer.</h3>
+          <p>Crie formulários, receba respostas e consulte os resultados, da inscrição à avaliação do evento.</p>
+        </div>
+        @defer (on viewport) {
+        <app-landing-feedback-demo />
+        } @placeholder {
+        <div class="extra-demo-placeholder"><p>Carregando avaliação.</p></div>
+        } @error {
+        <p role="status">Não foi possível carregar a demonstração. Recarregue a página para tentar novamente.</p>
+        }
+      </article>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,82 @@
+<section class="subscription-demo" aria-label="Inscrição em grande evento">
+  @if (infoEvent(); as event) {
+    <div class="event-info">
+      <button matButton type="button" (click)="infoEventId.set(null)"><mat-icon>arrow_back</mat-icon>Voltar à inscrição</button>
+      <header class="event-info-header"><lib-twemoji [emoji]="event.emoji" aria-hidden="true" /><div><h4>{{ event.name }}</h4><p>{{ event.type }} da Semana de Tecnologia</p></div></header>
+      <p class="event-description">{{ event.description }}</p>
+      <p class="event-info-time"><mat-icon aria-hidden="true">schedule</mat-icon>{{ event.time }}, com duração de {{ event.minutes }} minutos</p>
+      <h5><mat-icon aria-hidden="true">location_on</mat-icon>{{ event.location }}</h5>
+      @defer (on viewport) {
+        <app-event-location-map class="event-location-map" [latitude]="mapLatitude()" [longitude]="mapLongitude()" [title]="event.location" />
+      } @placeholder {
+        <div class="map-placeholder"><mat-icon aria-hidden="true">map</mat-icon>Carregando mapa.</div>
+      }
+    </div>
+  } @else {
+  <header class="major-event-header">
+    <span class="major-emoji"><lib-twemoji emoji="💻" aria-hidden="true" /></span>
+    <div><h4>Semana de Tecnologia</h4><p>Ideias, pessoas e novas possibilidades.</p></div>
+    <span class="registration-state"><mat-icon aria-hidden="true">{{ step() === 'confirmed' ? 'check_circle' : 'event_available' }}</mat-icon>{{ step() === 'confirmed' ? 'Inscrição confirmada' : 'Inscrições abertas' }}</span>
+  </header>
+
+  <div class="subscription-context">
+    <span><mat-icon aria-hidden="true">confirmation_number</mat-icon>Modalidade completa e gratuita</span>
+    <mat-chip-set aria-label="Resumo da inscrição"><mat-chip>{{ courseCount() }} / 2 minicursos</mat-chip><mat-chip>{{ lectureCount() }} / 3 palestras</mat-chip></mat-chip-set>
+  </div>
+
+  <div class="subscription-layout">
+    <div class="activity-selection">
+      @if (step() === 'confirmed') {
+        <div class="subscription-success" role="status">
+          <mat-icon aria-hidden="true">task_alt</mat-icon>
+          <h5>Seu lugar está reservado.</h5>
+          <p>Marina, sua programação está pronta. Os próximos compromissos aparecem no Meu dia.</p>
+          <ul role="list">
+            @for (activity of selectedActivities(); track activity.id) {
+              <li><lib-twemoji [emoji]="activity.emoji" aria-hidden="true" /><span><strong>{{ activity.name }}</strong><small>{{ activity.time }}, no {{ activity.location }}</small></span><mat-icon aria-hidden="true">check</mat-icon></li>
+            }
+          </ul>
+          <button matButton="outlined" type="button" (click)="step.set('selection')">Recomeçar demonstração</button>
+        </div>
+      } @else if (step() === 'review') {
+        <h5>Revise sua inscrição</h5>
+        <p class="selection-description">Confira seus dados e os eventos escolhidos antes de confirmar.</p>
+        <div class="participant-identity"><span class="participant-avatar" aria-hidden="true">MC</span><span><strong>Marina Costa</strong><small>Dados da sua Conta CACiC</small></span><mat-icon aria-hidden="true">verified_user</mat-icon></div>
+        <ul class="review-activities" role="list">
+          @for (activity of selectedActivities(); track activity.id) {
+            <li><lib-twemoji [emoji]="activity.emoji" aria-hidden="true" /><span><strong>{{ activity.name }}</strong><small>{{ activity.time }}, no {{ activity.location }}</small></span></li>
+          }
+        </ul>
+        <button matButton type="button" (click)="step.set('selection')"><mat-icon>arrow_back</mat-icon>Voltar e editar</button>
+      } @else {
+        <h5>Escolha seus eventos</h5>
+        <p class="selection-description">Palestras para descobrir. Minicursos para colocar a mão na massa.</p>
+        <div class="day-label"><mat-icon aria-hidden="true">calendar_today</mat-icon>Programação do dia</div>
+        <div class="activity-list">
+          @for (activity of activities; track activity.id) {
+            <div class="activity-row" [class.activity-row--selected]="selectedIds().has(activity.id)">
+              <lib-twemoji [emoji]="activity.emoji" aria-hidden="true" />
+              <div class="activity-copy"><strong>{{ activity.name }}</strong><span>{{ activity.time }}, no {{ activity.location }}</span><small>{{ activity.type }}: {{ activity.slots }} vagas disponíveis</small></div>
+              <div class="activity-actions">
+                <button matIconButton type="button" [attr.aria-label]="'Informações sobre ' + activity.name" (click)="openInfo(activity.id)"><mat-icon>info</mat-icon></button>
+                <mat-checkbox [checked]="selectedIds().has(activity.id)" [aria-label]="'Selecionar ' + activity.name" (change)="toggleActivity(activity.id)" />
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="selection-actions" aria-label="Ações da seleção de eventos">
+      <span class="selection-count">{{ selectedActivities().length }} {{ selectedActivities().length === 1 ? 'evento selecionado' : 'eventos selecionados' }}</span>
+      @if (step() === 'selection') {
+        <button matButton="filled" type="button" [disabled]="selectedActivities().length === 0" (click)="review()">Revisar inscrição<mat-icon iconPositionEnd>arrow_forward</mat-icon></button>
+      } @else if (step() === 'review') {
+        <button matButton="filled" type="button" (click)="confirm()"><mat-icon>how_to_reg</mat-icon>Confirmar inscrição</button>
+      } @else {
+        <span class="summary-confirmed"><mat-icon aria-hidden="true">check_circle</mat-icon>Inscrição confirmada</span>
+      }
+    </div>
+  </div>
+  }
+</section>

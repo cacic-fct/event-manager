@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+.product-showcase {
+  padding: clamp(4rem, 8vw, 8rem) clamp(1rem, 4vw, 3rem) 4rem;
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+}
+
+.showcase-container {
+  max-width: 76rem;
+  margin: auto;
+}
+
+.showcase-introduction {
+  text-align: center;
+  max-width: 52rem;
+  margin: 0 auto 2.5rem;
+}
+
+.showcase-introduction h2 {
+  font-size: clamp(2.75rem, 6.5vw, 6rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+  margin: 0;
+  font-weight: 750;
+}
+
+.showcase-introduction p {
+  font-size: clamp(1rem, 1.75vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--mat-sys-on-surface-variant);
+  max-width: 43rem;
+  margin: 1.5rem auto 0;
+  text-wrap: pretty;
+}
+
+.organizer-section {
+  background: var(--mat-sys-surface);
+}
+
+.showcase-note {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  margin: 2rem 0 0;
+}
+
+@media (max-width: 30rem) {
+  .desktop-break {
+    display: none;
+  }
+}
+
+.audience-placeholder {
+  min-height: 36rem;
+  display: grid;
+  place-items: center;
+  color: var(--mat-sys-on-surface-variant);
+}

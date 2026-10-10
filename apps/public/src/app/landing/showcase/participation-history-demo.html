@@ -1,0 +1,134 @@
+<section class="history-demo" aria-label="Histórico de participações">
+  <header class="history-demo__toolbar">
+    <div>
+      <h4>Minhas participações</h4>
+    </div>
+    <button
+      matButton="filled"
+      type="button"
+      class="history-demo__archive-action"
+      [disabled]="isDownloadingAllCertificates()"
+      [attr.aria-busy]="isDownloadingAllCertificates()"
+      (click)="downloadAllCertificates()">
+      <mat-icon aria-hidden="true">download</mat-icon>
+      <span>{{ isDownloadingAllCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}</span>
+    </button>
+  </header>
+
+  @if (downloadStatus()) {
+    <p class="history-demo__feedback" role="status" aria-live="polite" aria-atomic="true">
+      <mat-icon aria-hidden="true">{{ isDownloadingAllCertificates() || downloadingCertificateId() ? 'hourglass_top' : 'check_circle' }}</mat-icon>
+      {{ downloadStatus() }}
+    </p>
+  }
+
+  <div class="history-demo__layout">
+    @if (!selectedParticipation()) {
+    <section class="history-demo__list" aria-labelledby="history-demo-list-title">
+      <div class="history-demo__section-heading">
+        <h3 id="history-demo-list-title" tabindex="-1">Participações</h3>
+        <span>{{ participations.length }}</span>
+      </div>
+
+      <div class="history-demo__items" role="group" aria-label="Abrir uma participação anterior">
+        @for (participation of participations; track participation.id) {
+          <button
+            type="button"
+            class="history-demo__participation"
+            [class.history-demo__participation--selected]="selectedId() === participation.id"
+            [attr.aria-pressed]="selectedId() === participation.id"
+            (click)="openParticipation(participation.id)">
+            <lib-twemoji [emoji]="participation.emoji" aria-hidden="true" />
+            <span class="history-demo__participation-copy">
+              <strong>{{ participation.title }}</strong>
+              <small>{{ participation.date | date: 'd MMM y': '': 'pt-BR' }}</small>
+              <span class="history-demo__registration-status">{{ participation.registrationStatus }}</span>
+            </span>
+            <mat-icon aria-hidden="true">chevron_right</mat-icon>
+          </button>
+        }
+      </div>
+    </section>
+    }
+
+    @if (selectedParticipation()) {
+    <section class="history-demo__detail" aria-label="Detalhes da participação" aria-live="polite">
+      @if (selectedParticipation(); as participation) {
+        <header class="history-demo__detail-heading">
+          <button matButton="text" type="button" class="history-demo__back" (click)="returnToHistory()">
+            <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            Voltar ao histórico
+          </button>
+          <div class="history-demo__event-title">
+            <lib-twemoji [emoji]="participation.emoji" aria-hidden="true" />
+            <div>
+              <p>{{ participation.date | date: 'd MMM y': '': 'pt-BR' }}</p>
+              <h3 id="history-demo-detail-title" tabindex="-1">{{ participation.title }}</h3>
+            </div>
+          </div>
+          <span class="history-demo__confirmed">
+            <mat-icon aria-hidden="true">event_available</mat-icon>
+            {{ participation.registrationStatus }}
+          </span>
+        </header>
+
+        <section class="history-demo__activities" aria-labelledby="history-demo-activities-title">
+          <h4 id="history-demo-activities-title">Atividades</h4>
+          <ul>
+            @for (activity of participation.activities; track activity.id) {
+              <li>
+                <lib-twemoji [emoji]="activity.emoji" aria-hidden="true" />
+                <span class="history-demo__activity-copy">
+                  <strong>{{ activity.name }}</strong>
+                  <small>{{ activity.attendedAt | date: 'd MMM y': '': 'pt-BR' }}</small>
+                </span>
+                <span class="history-demo__activity-status">
+                  <span><mat-icon aria-hidden="true">how_to_reg</mat-icon>{{ activity.status }}</span>
+                  @if (activity.certificateIssued) {
+                    <span><mat-icon aria-hidden="true">workspace_premium</mat-icon>Certificado emitido</span>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section class="history-demo__certificates" aria-labelledby="history-demo-certificates-title">
+          <h4 id="history-demo-certificates-title">Certificados emitidos</h4>
+          @if (participation.certificates.length > 0) {
+            <ul>
+              @for (certificate of participation.certificates; track certificate.id) {
+                <li>
+                  <span class="history-demo__certificate-copy">
+                    <strong>{{ certificate.activityName }}</strong>
+                    <small>Emitido em {{ certificate.issuedAt | date: 'd MMM y': '': 'pt-BR' }}</small>
+                  </span>
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="history-demo__certificate-action"
+                    [disabled]="!!downloadingCertificateId() || isDownloadingAllCertificates()"
+                    [attr.aria-busy]="downloadingCertificateId() === certificate.id"
+                    [attr.aria-label]="certificateButtonLabel(certificate) + ' de ' + certificate.activityName"
+                    (click)="downloadCertificate(certificate.id)">
+                    <mat-icon aria-hidden="true">{{ downloadingCertificateId() === certificate.id ? 'hourglass_top' : 'download' }}</mat-icon>
+                    <span>{{ certificateButtonLabel(certificate) }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="history-demo__empty-certificates">Nenhum certificado emitido</p>
+          }
+        </section>
+      } @else {
+        <div class="history-demo__empty-detail">
+          <mat-icon aria-hidden="true">event_note</mat-icon>
+          <h3>Abra uma participação</h3>
+          <p>Selecione um evento para ver a inscrição, as presenças e os certificados emitidos.</p>
+        </div>
+      }
+    </section>
+    }
+  </div>
+</section>

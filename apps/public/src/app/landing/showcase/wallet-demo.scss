@@ -1,0 +1,281 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.wallet-stack {
+  box-sizing: border-box;
+  height: 28rem;
+  overflow: hidden;
+}
+
+.wallet-stack--transfer {
+  height: 28rem;
+  overflow: auto;
+  padding: 1.25rem;
+  background: #23453e;
+  color: #f4fff9;
+  border-radius: 16px;
+}
+
+.wallet-stack--transfer app-landing-ticket-transfer-demo {
+  display: block;
+  max-width: 30rem;
+  margin: 0 auto;
+}
+
+.wallet-stage {
+  position: relative;
+  width: min(100%, 30rem);
+  margin: 0 auto;
+}
+
+.wallet-card {
+  position: absolute;
+  inset: 0 auto auto 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 304px;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 14px 28px rgb(12 29 52 / 26%);
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease-out,
+    filter 180ms ease-out;
+}
+
+.wallet-card--credential {
+  color: #fff;
+  background: #102e57;
+}
+
+.wallet-card--ticket {
+  color: #f4fff9;
+  background: #23453e;
+
+  @include mat.button-overrides((
+    filled-container-color: #d1f2de,
+    filled-label-text-color: #10362e,
+  ));
+}
+
+.wallet-card--offline {
+  color: #fff;
+  background: #403884;
+}
+
+.wallet-card--away {
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.wallet-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 56px;
+  padding: 0 1.125rem;
+  border: 0;
+  background: rgb(255 255 255 / 9%);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.wallet-card__header strong {
+  font-size: 0.875rem;
+  font-weight: 750;
+}
+
+.wallet-card__header lib-twemoji {
+  --twemoji-size: 1.5rem;
+}
+
+.wallet-card__header:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: -4px;
+}
+
+.wallet-card__body {
+  box-sizing: border-box;
+  height: calc(100% - 56px);
+  padding: 0.625rem 1.125rem 0.75rem;
+  overflow: hidden;
+}
+
+.credential-body,
+.offline-body {
+  display: grid;
+  align-content: start;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.ticket-body {
+  display: grid;
+  align-content: start;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.credential-holder {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.credential-holder__avatar {
+  --ticket-person-avatar-size: 2.5rem;
+  --ticket-person-avatar-background: rgb(255 255 255 / 15%);
+  --ticket-person-avatar-color: #fff;
+  --ticket-person-avatar-font: 650 1rem/1 'Inter', sans-serif;
+
+  flex: 0 0 auto;
+}
+
+.credential-holder strong,
+.credential-holder span,
+.ticket-event span,
+.offline-code span,
+.offline-email span {
+  display: block;
+}
+
+.credential-holder div > span,
+.ticket-event > p,
+.ticket-event > span,
+.offline-card-code span,
+.offline-email span {
+  color: #d4e2f5;
+  font-size: 0.75rem;
+}
+
+.credential-holder div > span {
+  margin-top: 0.25rem;
+}
+
+.wallet-card__barcode,
+.wallet-card__barcode-placeholder {
+  box-sizing: border-box;
+  width: 6rem;
+  height: 6rem;
+  margin: 0 auto;
+  padding: 0.5rem;
+  background: #fff;
+}
+
+.wallet-card__barcode {
+  display: block;
+}
+
+.credential-body > p,
+.ticket-body > p,
+.offline-body > p {
+  margin: 0;
+  color: #d4e2f5;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.ticket-event > p {
+  margin: 0 0 0.25rem;
+}
+
+.ticket-event h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ticket-event > span {
+  margin-top: 0.25rem;
+}
+
+.ticket-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ticket-actions > p {
+  flex: 1 1 auto;
+  margin: 0;
+  color: #d4e2f5;
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.ticket-actions button {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  padding-inline: 0.75rem;
+}
+
+.offline-email {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.offline-card-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  margin: 1rem 0 0.5rem;
+
+  @include mat.progress-spinner-overrides((active-indicator-color: #fff));
+}
+
+.offline-card-code strong {
+  font-family: 'Source Code Pro Variable', 'Source Code Pro', monospace;
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.offline-card-code span {
+  color: #fff;
+}
+
+.code-countdown {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.code-countdown > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.offline-email {
+  margin: 0.5rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(255 255 255 / 22%);
+}
+
+.offline-email strong {
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallet-card {
+    transition: none;
+  }
+}

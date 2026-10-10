@@ -1,0 +1,37 @@
+<div class="attendance-demo">
+  <header class="attendance-demo__event">
+    <lib-twemoji emoji="♿" aria-hidden="true" />
+    <div>
+      <strong>Interfaces que incluem</strong>
+      <span>Deslize ou use os botões para marcar presença ou falta.</span>
+    </div>
+  </header>
+
+  @if (finished()) {
+    <section class="attendance-demo__complete" aria-labelledby="call-complete-title">
+      <mat-icon aria-hidden="true">task_alt</mat-icon>
+      <h4 #completionHeading id="call-complete-title" tabindex="-1">Chamada concluída.</h4>
+      <p>Confira os registros de presença e falta no histórico da chamada.</p>
+      <button matButton="outlined" type="button" (click)="restartCall()">Recomeçar chamada</button>
+    </section>
+  } @else {
+  @for (generation of [componentGeneration()]; track generation) {
+    <lib-oral-attendance
+      title="Chamada oral"
+      [people]="people()"
+      [decisions]="decisions()"
+      (backRequested)="exit.emit()"
+      (decisionChanged)="registerDecision($event)"
+      (manualSubmitted)="registerManual($event)" />
+  }
+
+  @if (isComplete()) {
+    <div class="attendance-demo__restart">
+      <button matButton="outlined" type="button" (click)="restartCall()">
+        <mat-icon aria-hidden="true">restart_alt</mat-icon>
+        Recomeçar chamada
+      </button>
+    </div>
+  }
+  }
+</div>

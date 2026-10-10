@@ -1,0 +1,139 @@
+<div class="ticket-transfer-demo">
+  @switch (step()) {
+    @case ('sender') {
+      <section class="ticket-transfer-demo__stage ticket-transfer-demo__stage--sender" aria-labelledby="ticket-transfer-sender-title">
+        <h3 #stepHeading id="ticket-transfer-sender-title" tabindex="-1">Transferir bilhete</h3>
+        <div class="ticket-transfer-demo__ticket">
+          <lib-twemoji emoji="🎒" aria-hidden="true" />
+          <div>
+            <strong>{{ ticketName }}</strong>
+            <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__people">
+          <div>
+            <span>Quem envia</span>
+            <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+          <div>
+            <span>Quem recebe</span>
+            <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__actions">
+          <button matButton="text" type="button" (click)="returnToWallet()">Voltar à carteira</button>
+          <button matButton="filled" type="button" (click)="submitTransfer()">
+            <mat-icon aria-hidden="true">send</mat-icon>
+            Enviar bilhete
+          </button>
+        </div>
+      </section>
+    }
+
+    @case ('pending') {
+      <section class="ticket-transfer-demo__stage ticket-transfer-demo__stage--pending" aria-labelledby="ticket-transfer-pending-title">
+        <div class="ticket-transfer-demo__announcement">
+          <span class="ticket-transfer-demo__state-icon" aria-hidden="true">
+            <mat-icon>send</mat-icon>
+          </span>
+          <div>
+            <h3 #stepHeading id="ticket-transfer-pending-title" tabindex="-1">Pedido enviado</h3>
+            <p class="ticket-transfer-demo__status" role="status" aria-live="polite">Aguardando resposta.</p>
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__ticket">
+          <lib-twemoji emoji="🎒" aria-hidden="true" />
+          <div>
+            <strong>{{ ticketName }}</strong>
+            <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__people">
+          <div>
+            <span>Quem envia</span>
+            <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+          <div>
+            <span>Quem recebe</span>
+            <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__actions">
+          <button matButton="text" type="button" (click)="returnToWallet()">Voltar à carteira</button>
+          <button matButton="filled" type="button" (click)="viewReceipt()">
+            <mat-icon aria-hidden="true">forward_to_inbox</mat-icon>
+            Ver recebimento
+          </button>
+        </div>
+      </section>
+    }
+
+    @case ('recipient') {
+      <section class="ticket-transfer-demo__stage ticket-transfer-demo__stage--recipient" aria-labelledby="ticket-transfer-recipient-title">
+        <div class="ticket-transfer-demo__announcement">
+          <span class="ticket-transfer-demo__state-icon ticket-transfer-demo__state-icon--invitation" aria-hidden="true">
+            <mat-icon>forward_to_inbox</mat-icon>
+          </span>
+          <h3 #stepHeading id="ticket-transfer-recipient-title" tabindex="-1">
+            {{ senderName }} quer transferir este bilhete
+          </h3>
+        </div>
+        <div class="ticket-transfer-demo__ticket">
+          <lib-twemoji emoji="🎒" aria-hidden="true" />
+          <div>
+            <strong>{{ ticketName }}</strong>
+            <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__people">
+          <div>
+            <span>Quem envia</span>
+            <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+          <div>
+            <span>Quem recebe</span>
+            <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__actions">
+          <button matButton="text" type="button" (click)="returnToWallet()">Voltar à carteira</button>
+          <button matButton="filled" type="button" (click)="acceptTransfer()">
+            <mat-icon aria-hidden="true">check</mat-icon>
+            Receber bilhete
+          </button>
+        </div>
+      </section>
+    }
+
+    @case ('received') {
+      <section class="ticket-transfer-demo__stage ticket-transfer-demo__stage--received" aria-labelledby="ticket-transfer-received-title">
+        <div class="ticket-transfer-demo__announcement ticket-transfer-demo__announcement--success">
+          <span class="ticket-transfer-demo__state-icon ticket-transfer-demo__state-icon--success" aria-hidden="true">
+            <mat-icon>task_alt</mat-icon>
+          </span>
+          <h3 #stepHeading id="ticket-transfer-received-title" tabindex="-1">Bilhete recebido</h3>
+        </div>
+        <div class="ticket-transfer-demo__ticket ticket-transfer-demo__ticket--receipt">
+          <lib-twemoji emoji="🎒" aria-hidden="true" />
+          <div>
+            <strong>{{ ticketName }}</strong>
+            <span>{{ eventName }}, {{ eventTimeAndPlace }}</span>
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__people">
+          <div>
+            <span>Quem envia</span>
+            <app-ticket-person-summary [fullName]="senderName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+          <div>
+            <span>Quem recebe</span>
+            <app-ticket-person-summary [fullName]="recipientName" [avatarUrl]="null" [showDocument]="false" />
+          </div>
+        </div>
+        <div class="ticket-transfer-demo__actions">
+          <button matButton="filled" type="button" (click)="returnToWallet()">Voltar à carteira</button>
+        </div>
+      </section>
+    }
+  }
+</div>

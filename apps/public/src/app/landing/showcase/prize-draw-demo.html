@@ -1,0 +1,42 @@
+<div class="prize-draw-demo">
+  <div class="prize-draw-demo__settings">
+    <div class="prize-draw-demo__prize">
+      <mat-icon aria-hidden="true">redeem</mat-icon>
+      <div>
+        <span class="prize-draw-demo__field-label">Prêmio</span>
+        <strong>{{ prizeName }}</strong>
+      </div>
+    </div>
+    <button
+      matIconButton
+      type="button"
+      class="prize-draw-demo__sound"
+      [attr.aria-label]="soundMuted() ? 'Ativar sons do sorteio' : 'Silenciar sons do sorteio'"
+      [attr.aria-pressed]="soundMuted()"
+      (click)="toggleSound()">
+      <mat-icon aria-hidden="true">{{ soundMuted() ? 'volume_off' : 'volume_up' }}</mat-icon>
+    </button>
+  </div>
+
+  <p class="prize-draw-demo__eligible">Inscritos com presença <strong>{{ eligibleCount }}</strong></p>
+
+  <lib-prize-draw-reel
+    [names]="participants"
+    [soundEnabled]="!soundMuted()"
+    [soundVolume]="0.18" />
+
+  <button
+    matButton="filled"
+    type="button"
+    class="prize-draw-demo__draw"
+    aria-controls="prize-draw-demo-reel prize-draw-demo-status"
+    [disabled]="isSpinning()"
+    (click)="requestDraw()">
+    <mat-icon aria-hidden="true">{{ isSpinning() ? 'hourglass_top' : hasWinner() ? 'replay' : 'casino' }}</mat-icon>
+    {{ isSpinning() ? 'Sorteando…' : hasWinner() ? 'Sortear novamente' : 'Sortear' }}
+  </button>
+
+  <p class="prize-draw-demo__status" id="prize-draw-demo-status" role="status" aria-live="polite" aria-atomic="true">
+    {{ statusMessage() }}
+  </p>
+</div>

@@ -1,4 +1,4 @@
-import { PrizeDrawSpeed } from '@cacic-fct/event-manager-admin-contracts';
+import type { PrizeDrawReelSpeed } from './models';
 
 export type PrizeDrawReelMotionStage =
   | 'idle'
@@ -10,7 +10,7 @@ export type PrizeDrawReelMotionStage =
   | 'slow'
   | 'settling';
 
-export function prizeDrawReelMotionStage(speed: PrizeDrawSpeed, progress: number): PrizeDrawReelMotionStage {
+export function prizeDrawReelMotionStage(speed: PrizeDrawReelSpeed, progress: number): PrizeDrawReelMotionStage {
   const normalized = Math.min(Math.max(progress, 0), 1);
   if (normalized < 0.1) return 'warmup';
   if (normalized < 0.22) return 'accelerating-one';
@@ -21,7 +21,7 @@ export function prizeDrawReelMotionStage(speed: PrizeDrawSpeed, progress: number
   return 'settling';
 }
 
-export function prizeDrawReelTickIntervalMs(speed: PrizeDrawSpeed, progress: number): number {
+export function prizeDrawReelTickIntervalMs(speed: PrizeDrawReelSpeed, progress: number): number {
   const stage = prizeDrawReelMotionStage(speed, progress);
   if (speed === 'DRAMATIC') {
     return {
@@ -47,7 +47,7 @@ export function prizeDrawReelTickIntervalMs(speed: PrizeDrawSpeed, progress: num
   }[stage];
 }
 
-export function prizeDrawReelSoundCadence(speed: PrizeDrawSpeed, progress: number): number {
+export function prizeDrawReelSoundCadence(speed: PrizeDrawReelSpeed, progress: number): number {
   const stage = prizeDrawReelMotionStage(speed, progress);
   if (stage === 'fast' || stage === 'accelerating-two') return 3;
   if (stage === 'accelerating-one') return 2;
@@ -60,7 +60,7 @@ export function concealedPrizeDrawWinnerIndex(namesLength: number, winnerIndex: 
   return (normalizedWinner + Math.max(1, Math.floor(namesLength / 2))) % namesLength;
 }
 
-export function prizeDrawReelPlannedTickCount(speed: PrizeDrawSpeed, durationMs: number): number {
+export function prizeDrawReelPlannedTickCount(speed: PrizeDrawReelSpeed, durationMs: number): number {
   if (durationMs <= 0) return 0;
   let elapsed = 0;
   let ticks = 0;

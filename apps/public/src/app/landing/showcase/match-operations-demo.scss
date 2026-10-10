@@ -1,0 +1,163 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.match-operations {
+  color: inherit;
+  display: grid;
+  gap: 0.625rem;
+
+  @include mat.button-overrides((
+    outlined-label-text-color: #f0fff7,
+    outlined-outline-color: #b7d7cb,
+    text-label-text-color: #f0fff7,
+    filled-container-color: #d1f2de,
+    filled-label-text-color: #10362e,
+  ));
+}
+
+.match-operations__header,
+.match-operations__competition,
+.match-operations__clock,
+.match-operations__clock-value,
+.match-operations__actions {
+  align-items: center;
+  display: flex;
+}
+
+.match-operations__header {
+  gap: 0.5rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.match-operations__competition {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  gap: 0.375rem;
+}
+
+.match-operations__competition mat-icon {
+  color: #d1f2de;
+}
+
+.match-operations__state {
+  background: #d1f2de;
+  border-radius: 999px;
+  color: #10362e;
+  flex: 0 0 auto;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  padding: 0.25rem 0.5rem;
+}
+
+.match-operations__scoreboard {
+  align-items: center;
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.match-operations__team {
+  align-items: center;
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+}
+
+.match-operations__team-name {
+  color: #cae9dc;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  min-height: 1.25em;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.match-operations__score-controls {
+  align-items: center;
+  display: flex;
+  gap: 0.125rem;
+}
+
+.match-operations__score-button {
+  color: #f0fff7;
+  height: 2.25rem;
+  width: 2.25rem;
+}
+
+.match-operations__score {
+  color: #f0fff7;
+  font-size: clamp(2rem, 8vw, 2.5rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 1.1em;
+  text-align: center;
+}
+
+.match-operations__versus {
+  color: #9dc6b4;
+  font-size: 1.125rem;
+}
+
+.match-operations__clock {
+  border-block-start: 1px solid #4c7567;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding-block-start: 0.625rem;
+}
+
+.match-operations__clock-value {
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.match-operations__clock-value span {
+  color: #cae9dc;
+  font-size: 0.75rem;
+}
+
+.match-operations__clock-value strong {
+  color: #f0fff7;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.015em;
+}
+
+.match-operations__clock button,
+.match-operations__actions button {
+  min-height: 2.5rem;
+}
+
+.match-operations__actions {
+  justify-content: flex-end;
+}
+
+.match-operations button:focus-visible {
+  outline: 2px solid #f0fff7;
+  outline-offset: 2px;
+}
+
+.match-operations__sr-only {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+@media (max-width: 25rem) {
+  .match-operations__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .match-operations__clock {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

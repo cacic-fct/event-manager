@@ -21,8 +21,14 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: 'Documentação' })).toBeVisible();
-    await expect(canvas.getByText('publicEvents(take: 3)')).toBeVisible();
-    await expect(canvas.getByText("curl --request POST 'https://eventos.cacic.com.br/api/graphql'")).toBeVisible();
+    const graphqlExample = canvasElement.querySelector<HTMLElement>('.developer-api-query code');
+    if (!graphqlExample) {
+      throw new Error('O exemplo de consulta GraphQL não foi renderizado.');
+    }
+    await expect(graphqlExample).toHaveTextContent('publicEvents(take: 3)');
+    await expect(canvas.getByRole('region', { name: 'Exemplo em curl' })).toHaveTextContent(
+      "curl --request POST 'https://eventos.cacic.com.br/api/graphql'",
+    );
     await expect(canvas.getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
   },
 };

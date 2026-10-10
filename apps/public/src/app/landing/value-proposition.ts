@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { PublicPlatformStats } from '@cacic-fct/event-manager-public-contracts';
 
@@ -10,7 +10,6 @@ export type PlatformStatsLoadState = 'loading' | 'ready' | 'unavailable';
   imports: [MatIconModule, DecimalPipe],
   templateUrl: './value-proposition.html',
   styleUrl: './value-proposition.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ValuePropositionComponent {
   readonly stats = input<PublicPlatformStats | null>(null);

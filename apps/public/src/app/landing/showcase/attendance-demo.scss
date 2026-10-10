@@ -1,0 +1,105 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.attendance-demo {
+  color: var(--mat-sys-on-surface);
+  min-width: 0;
+}
+
+.attendance-demo__event {
+  align-items: center;
+  display: flex;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.attendance-demo__event lib-twemoji {
+  font-size: 1.25rem;
+}
+
+.attendance-demo__event div {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.attendance-demo__event div > span {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+.attendance-demo__restart {
+  border-block-start: 1px solid var(--mat-sys-outline-variant);
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+}
+
+.attendance-demo__complete {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 27rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.attendance-demo__complete > mat-icon {
+  color: var(--mat-sys-primary);
+  font-size: 3rem;
+  height: 3rem;
+  width: 3rem;
+}
+
+.attendance-demo__complete h4 {
+  font-size: 1.5rem;
+  margin: 1.5rem 0 0;
+}
+
+.attendance-demo__complete p {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.6;
+  margin: 1rem 0 1.5rem;
+  max-width: 36ch;
+}
+
+:host ::ng-deep .attendance-demo .oral-call {
+  margin: 0;
+  max-width: none;
+  padding-bottom: 0;
+}
+
+:host ::ng-deep .attendance-demo .oral-toolbar {
+  position: relative;
+  top: auto;
+}
+
+:host ::ng-deep .attendance-demo .card-stage {
+  gap: 1rem;
+  min-height: 27rem;
+  padding: 1rem;
+}
+
+@media (max-width: 38rem) {
+  .attendance-demo__event {
+    padding-inline: 0.75rem;
+  }
+
+  .attendance-demo__restart {
+    padding-inline: 0.75rem;
+  }
+
+  :host ::ng-deep .attendance-demo .oral-toolbar {
+    gap: 0.35rem;
+    padding-inline: 0.5rem;
+  }
+
+  :host ::ng-deep .attendance-demo .card-stage {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+}

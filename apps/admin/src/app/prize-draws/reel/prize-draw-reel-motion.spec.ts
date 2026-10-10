@@ -4,7 +4,7 @@ import {
   prizeDrawReelPlannedTickCount,
   prizeDrawReelSoundCadence,
   prizeDrawReelTickIntervalMs,
-} from './prize-draw-reel-motion';
+} from '@cacic-fct/shared-angular';
 
 describe('prize draw reel motion', () => {
   it('accelerates through explicit steps before reaching full speed', () => {

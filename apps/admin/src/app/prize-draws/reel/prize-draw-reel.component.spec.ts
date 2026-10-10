@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PrizeDrawSpinResult } from '@cacic-fct/event-manager-admin-contracts';
 import { ScannerSoundsService } from '@cacic-fct/shared-angular/aztec-scanner';
 import { vi } from 'vitest';
-import { PrizeDrawReelComponent } from './prize-draw-reel.component';
+import { PrizeDrawReelComponent } from '@cacic-fct/shared-angular';
 
 describe('PrizeDrawReelComponent', () => {
   let fixture: ComponentFixture<PrizeDrawReelComponent>;

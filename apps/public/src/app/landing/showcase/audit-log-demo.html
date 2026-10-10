@@ -1,0 +1,136 @@
+<section class="audit-log-demo" aria-label="Registros de auditoria">
+  <header class="audit-heading">
+    <div>
+      <p class="audit-eyebrow">Auditoria</p>
+      <h2>Atividade recente</h2>
+    </div>
+    <span class="audit-record-total">{{ recordCountLabel() }}</span>
+  </header>
+
+  <mat-form-field appearance="outline" class="audit-search">
+    <mat-label>Buscar por alteração, item ou autor</mat-label>
+    <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      [value]="searchQuery()"
+      (input)="updateSearch($event)" />
+    @if (searchQuery()) {
+      <button matIconButton matSuffix type="button" aria-label="Limpar busca" (click)="searchQuery.set('')">
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    }
+  </mat-form-field>
+
+  <div class="audit-filters" role="group" aria-label="Filtrar registros por categoria">
+    @for (filter of filters; track filter.id) {
+      <button
+        matButton="outlined"
+        type="button"
+        [class.audit-filter--selected]="selectedCategory() === filter.id"
+        [attr.aria-pressed]="selectedCategory() === filter.id"
+        (click)="setCategory(filter.id)">
+        {{ filter.label }}
+      </button>
+    }
+  </div>
+
+  @if (hasActiveFilters()) {
+    <button matButton="text" type="button" class="audit-clear" (click)="clearFilters()">
+      <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+      Limpar filtros
+    </button>
+  }
+
+  @if (selectedRecord(); as record) {
+    <section class="audit-detail" aria-label="Detalhes do registro" aria-live="polite">
+      <header class="audit-detail-heading">
+        <button matButton="text" type="button" class="audit-back" (click)="returnToList()">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          Voltar aos registros
+        </button>
+        <span class="audit-operation">
+          <mat-icon aria-hidden="true">{{ record.operationIcon }}</mat-icon>
+          {{ record.operationLabel }}
+        </span>
+        <h3 id="audit-log-detail-title" tabindex="-1">{{ record.summary }}</h3>
+        <p>{{ record.entityTypeLabel }}: {{ record.entityLabel }}</p>
+      </header>
+
+      <div class="audit-actor">
+        <span class="audit-avatar" aria-hidden="true">{{ actorInitials(record.actorName) }}</span>
+        <div>
+          <strong>{{ record.actorName }}</strong>
+          <span>
+            <time [attr.datetime]="record.recordedAt.toISOString()">
+              {{ relativeTimeLabel(record.recordedAt) }} ({{ record.recordedAt | date: 'd MMM y, HH:mm': '': 'pt-BR' }})
+            </time>
+          </span>
+        </div>
+      </div>
+
+      <section class="audit-changes" aria-labelledby="audit-log-demo-changes-title">
+        <h4 id="audit-log-demo-changes-title">Campos alterados</h4>
+        <ul>
+          @for (change of record.changes; track change.field) {
+            <li>
+              <strong>{{ change.field }}</strong>
+              <div class="audit-change-values">
+                <div>
+                  <span>Antes</span>
+                  <p>{{ change.beforeValue }}</p>
+                </div>
+                <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+                <div>
+                  <span>Depois</span>
+                  <p>{{ change.afterValue }}</p>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+    </section>
+  } @else {
+    <section class="audit-list" aria-labelledby="audit-log-list-title">
+      <div class="audit-list-heading">
+        <h3 id="audit-log-list-title" tabindex="-1">Registros</h3>
+        <span>{{ resultCountLabel() }}</span>
+      </div>
+
+      @if (visibleRecords().length > 0) {
+        <ul>
+          @for (record of visibleRecords(); track record.id) {
+            <li>
+              <button
+                type="button"
+                class="audit-record"
+                [attr.data-record-id]="record.id"
+                (click)="openRecord(record.id)">
+                <span class="audit-marker" aria-hidden="true">
+                  <mat-icon>{{ record.operationIcon }}</mat-icon>
+                </span>
+                <span class="audit-record-copy">
+                  <span class="audit-record-type">{{ record.operationLabel }}: {{ record.entityTypeLabel }}</span>
+                  <strong>{{ record.summary }}</strong>
+                  <span class="audit-entity">{{ record.entityLabel }}</span>
+                </span>
+                <span class="audit-record-actor">
+                  <span class="audit-avatar" aria-hidden="true">{{ actorInitials(record.actorName) }}</span>
+                  <span>
+                    <strong>{{ record.actorName }}</strong>
+                    <time [attr.datetime]="record.recordedAt.toISOString()">{{ relativeTimeLabel(record.recordedAt) }}</time>
+                  </span>
+                </span>
+                <mat-icon class="audit-chevron" aria-hidden="true">chevron_right</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="audit-empty" role="status">Nenhum registro corresponde aos filtros.</p>
+      }
+    </section>
+  }
+</section>

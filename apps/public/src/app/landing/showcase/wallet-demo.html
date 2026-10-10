@@ -1,0 +1,116 @@
+@if (view() === 'cards') {
+<div class="wallet-stack" role="group" aria-label="Cartões da carteira">
+  <div class="wallet-stage" [style.height.px]="stageHeight">
+    @for (card of cards; track card.id) {
+    <article
+      [id]="'wallet-card-' + card.id"
+      class="wallet-card"
+      [class.wallet-card--credential]="card.id === 'credential'"
+      [class.wallet-card--ticket]="card.id === 'ticket'"
+      [class.wallet-card--offline]="card.id === 'offline'"
+      [class.wallet-card--away]="isAwayCard(card.id)"
+      [style.transform]="'translateY(' + cardTranslateY(card.id) + 'px)'"
+      [style.z-index]="cardZIndex(card.id)"
+      [attr.inert]="isAwayCard(card.id) ? '' : null">
+      <button
+        class="wallet-card__header"
+        type="button"
+        [attr.aria-label]="cardLabel(card.id)"
+        [attr.aria-pressed]="isSelectedCard(card.id)"
+        [attr.aria-controls]="'wallet-card-body-' + card.id"
+        (click)="toggleCard(card.id)">
+        @if (card.id === 'ticket') {
+        <lib-twemoji emoji="🎒" aria-hidden="true" />
+        } @else {
+        <mat-icon aria-hidden="true">{{ card.id === 'credential' ? 'badge' : 'password' }}</mat-icon>
+        }
+        <strong>{{ card.brand }}</strong>
+      </button>
+
+      <div class="wallet-card__body" [id]="'wallet-card-body-' + card.id">
+        @switch (card.id) { @case ('credential') {
+        <section class="credential-body" aria-label="Credencial de Marina Costa">
+          <div class="credential-holder">
+            <app-ticket-person-summary
+              class="credential-holder__avatar"
+              fullName="Marina Costa"
+              [avatarUrl]="null"
+              [showDocument]="false"
+              [avatarOnly]="true" />
+            <div class="credential-holder__details">
+              <strong>Marina Costa</strong>
+              <span>Ciência da Computação na FCT-Unesp</span>
+            </div>
+          </div>
+          @defer (on immediate) {
+          <app-wallet-barcode
+            class="wallet-card__barcode"
+            value="CACIC-DEMONSTRACAO-SEM-VALIDADE"
+            payloadPrefix="demo:"
+            label="Código da credencial" />
+          } @placeholder {
+          <div class="wallet-card__barcode-placeholder" aria-hidden="true"></div>
+          }
+          <p>Apresente seu código para confirmar presença.</p>
+        </section>
+        } @case ('ticket') {
+        <section class="ticket-body" aria-label="Bilhete para Kit de boas-vindas">
+          <div class="ticket-event">
+            <p>{{ ticketTransferCompleted() ? 'Transferência concluída' : 'Bilhete ativo' }}</p>
+            <h3>Kit de boas-vindas</h3>
+            <span>Às 14:00, no Auditório</span>
+          </div>
+          @defer (on immediate) {
+          <app-wallet-barcode
+            class="wallet-card__barcode"
+            value="CACIC-DEMONSTRACAO-SEM-VALIDADE"
+            payloadPrefix="demo:"
+            label="Código do bilhete" />
+          } @placeholder {
+          <div class="wallet-card__barcode-placeholder" aria-hidden="true"></div>
+          } @if (isSelectedCard('ticket')) {
+          <div class="ticket-actions">
+            <p>Apresente este código para utilizar o bilhete.</p>
+            <button matButton="filled" type="button" (click)="openTransfer()">Transferir bilhete</button>
+          </div>
+          }
+        </section>
+        } @case ('offline') {
+        <section class="offline-body" aria-label="Código off-line">
+          <div class="offline-card-code">
+            <strong aria-live="polite" aria-atomic="true">{{ offlineCodePreview().displayCode }}</strong>
+            <div class="code-countdown">
+              <mat-progress-spinner
+                mode="determinate"
+                [value]="offlineCodePreview().progressValue"
+                diameter="48"
+                [attr.aria-label]="'Código expira em ' + offlineCodePreview().secondsRemaining + ' segundos'" />
+              <span aria-hidden="true">{{ offlineCodePreview().secondsRemaining }}s</span>
+            </div>
+          </div>
+          <div class="offline-email">
+            <span>E-mail principal</span>
+            <strong>marina@exemplo.com.br</strong>
+          </div>
+          <p>O código é atualizado automaticamente. Use-o quando solicitado pela organização.</p>
+        </section>
+        } }
+      </div>
+    </article>
+    }
+  </div>
+</div>
+} @else {
+<div class="wallet-stack wallet-stack--transfer">
+  @defer (on immediate) {
+  <app-landing-ticket-transfer-demo
+    [incoming]="view() === 'incoming'"
+    (back)="returnToWallet()"
+    (accepted)="completeTransfer()" />
+  } @placeholder {
+  <p role="status">Carregando transferência.</p>
+  } @error {
+  <p role="status">Não foi possível carregar a transferência. Recarregue a página para tentar novamente.</p>
+  }
+</div>
+}

@@ -21,7 +21,7 @@
     <span>{{ decidedCount() }} de {{ people().length }} pessoas classificadas</span>
     <strong>{{ progress() }}%</strong>
   </div>
-  <mat-progress-bar mode="determinate" [value]="progress()" />
+  <mat-progress-bar mode="determinate" [value]="progress()" aria-label="Progresso da chamada" />
 
   @if (shouldShowReminder()) {
     <section class="checkpoint" aria-labelledby="oral-reminder-title">
@@ -41,7 +41,7 @@
     <section class="manual-entry">
       <h2>Adicionar presença manual</h2>
       <p>Use documento, e-mail ou telefone. CPF e telefone serão verificados separadamente.</p>
-      <form (ngSubmit)="submitManual()">
+      <form (submit)="$event.preventDefault(); submitManual()">
         <mat-form-field>
           <mat-label>Documento, e-mail ou telefone</mat-label>
           <input matInput autocomplete="off" [formControl]="manualValue" />
@@ -121,7 +121,7 @@
   } @else {
     <div class="person-list" role="list" aria-label="Pessoas inscritas">
       @for (person of visiblePeople(); track person.personId) {
-        <article class="person-row" role="listitem">
+        <div class="person-row" role="listitem">
           <button
             mat-icon-button
             type="button"
@@ -151,7 +151,7 @@
               decisions().get(person.personId) === 'PRESENT' ? 'check_box' : 'check_box_outline_blank'
             }}</mat-icon>
           </button>
-        </article>
+        </div>
       }
     </div>
     @if (!reminderConfirmed()) {

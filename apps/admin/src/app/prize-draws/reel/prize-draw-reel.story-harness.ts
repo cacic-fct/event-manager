@@ -2,7 +2,7 @@ import { Component, computed, effect, input, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { PrizeDrawSpeed } from '@cacic-fct/event-manager-admin-contracts';
 import { createPrizeDrawSpinResultStory, prizeDrawStoryFullNames } from '../prize-draw-story.fixtures';
-import { PrizeDrawReelComponent } from './prize-draw-reel.component';
+import { PrizeDrawReelComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-prize-draw-reel-story-harness',
@@ -12,7 +12,7 @@ import { PrizeDrawReelComponent } from './prize-draw-reel.component';
       <section class="story-context" aria-label="Configuração desta demonstração">
         <strong>Lista simulada com {{ rosterSize() }} nomes</strong>
       </section>
-      <app-prize-draw-reel [names]="rosterNames()" />
+      <lib-prize-draw-reel [names]="rosterNames()" />
       <div class="story-actions">
         <button mat-flat-button type="button" [disabled]="rosterSize() < 1" (click)="play()">Sortear agora</button>
         <button mat-stroked-button type="button" (click)="reset()">Reiniciar</button>

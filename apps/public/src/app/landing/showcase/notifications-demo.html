@@ -1,0 +1,33 @@
+<section class="notifications-demo" aria-labelledby="notifications-demo-title">
+  <header>
+    <div><h4 id="notifications-demo-title">Sua caixa de entrada</h4><p>{{ unreadCount() }} não lidas</p></div>
+    <button matIconButton type="button" aria-label="Marcar todas como lidas" [disabled]="unreadCount() === 0" (click)="markAllRead()"><mat-icon>done_all</mat-icon></button>
+  </header>
+  <div class="notification-filters" role="group" aria-label="Filtrar notificações">
+    <button matButton type="button" [attr.aria-pressed]="!unreadOnly()" (click)="unreadOnly.set(false)">Todas</button>
+    <button matButton type="button" [attr.aria-pressed]="unreadOnly()" (click)="unreadOnly.set(true)">Não lidas</button>
+  </div>
+  <ul role="list">
+    @for (notification of visibleNotifications(); track notification.id) {
+      <li>
+        <button class="notification-item" type="button"
+          [class.notification-item--unread]="!notification.read"
+          [attr.aria-label]="notification.title"
+          [attr.aria-describedby]="notification.id + '-description ' + notification.id + '-state'"
+          (click)="openNotification(notification)">
+          <span class="notification-emoji"><lib-twemoji [emoji]="notification.emoji" aria-hidden="true" /></span>
+          <span class="notification-copy">
+            <strong>{{ notification.title }}</strong>
+            <span [id]="notification.id + '-description'">{{ notification.description }}</span>
+            <small>{{ notification.time }}</small>
+          </span>
+          <span class="notification-state" [id]="notification.id + '-state'">{{ notification.read ? 'Lida' : 'Não lida' }}</span>
+          @if (!notification.read) { <span class="unread-dot" aria-hidden="true"></span> }
+          <mat-icon aria-hidden="true">chevron_right</mat-icon>
+        </button>
+      </li>
+    } @empty {
+      <li class="notifications-empty"><p role="status"><mat-icon aria-hidden="true">done_all</mat-icon>Tudo em dia. Nenhuma notificação não lida.</p></li>
+    }
+  </ul>
+</section>

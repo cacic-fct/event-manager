@@ -1,0 +1,107 @@
+<div class="feature-picker" role="group" aria-label="Recursos para participantes">
+  @for (item of features; track item.id) {
+    <button matButton type="button" [attr.aria-pressed]="feature() === item.id" (click)="selectFeature(item.id)">
+      <mat-icon>{{ item.icon }}</mat-icon>{{ item.label }}
+    </button>
+  }
+</div>
+
+<app-landing-showcase-stage [feature]="activeFeature()">
+      @switch (feature()) {
+        @case ('day') {
+          @if (dayView() === 'receipt') {
+            @defer (on immediate) {
+              <app-landing-receipt-demo (back)="dayView.set('agenda')" (receiptSubmitted)="receiptPending.set(false)" />
+            } @placeholder {
+              <div class="demo-content"><p>Carregando pagamento.</p></div>
+            }
+          } @else {
+          <div class="demo-content demo-enter day-demo">
+            <h4>Boa tarde, Marina.</h4>
+            <p class="demo-muted">Seu dia na Semana de Tecnologia</p>
+            <div class="day-summary"><span><mat-icon aria-hidden="true">event_available</mat-icon>3 compromissos</span><span>Hoje</span></div>
+            <p class="demo-label">Próximo compromisso</p>
+            <div class="next-event">
+              <div class="event-heading"><span class="event-symbol"><lib-twemoji emoji="♿" aria-hidden="true" /></span><div><span class="event-time">14:00</span><h5>Interfaces que incluem</h5></div></div>
+              <p class="event-location"><mat-icon aria-hidden="true">location_on</mat-icon>Auditório</p>
+              <div class="countdown"><mat-progress-bar mode="determinate" [value]="dayProgress()" aria-label="Progresso até o compromisso" /><span>Em 20 min</span></div>
+              <div class="event-actions">
+                <button matButton="filled" type="button" (click)="feature.set('attendance')"><mat-icon>how_to_reg</mat-icon>Confirmar presença</button>
+                <button matButton="outlined" type="button" (click)="showNextEventMap()"><mat-icon>map</mat-icon>Ver no mapa</button>
+              </div>
+            </div>
+            <p class="demo-label">Atenção</p>
+            @if (receiptPending()) {
+            <button class="attention-warning" type="button" (click)="dayView.set('receipt')">
+              <mat-icon aria-hidden="true">receipt_long</mat-icon>
+              <span><strong>Envie seu comprovante</strong><small>Jornada de Inovação: pagamento da inscrição pendente.</small></span>
+              <mat-icon aria-hidden="true">chevron_right</mat-icon>
+            </button>
+            }
+            <p class="weather-note"><mat-icon aria-hidden="true">rainy</mat-icon><span><strong>Pode chover.</strong> Leve um guarda-chuva.</span></p>
+            <p class="demo-label">Depois</p>
+            <button class="later-event" type="button" (click)="showEventInfo('ai')"><lib-twemoji emoji="🥽" aria-hidden="true" /><span class="later-copy"><strong>Realidade Virtual</strong><span>Às 16:00, no Auditório</span></span><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+            <button class="later-event" type="button" (click)="showEventInfo('prototype')"><lib-twemoji emoji="🚀" aria-hidden="true" /><span class="later-copy"><strong>Do protótipo ao mundo</strong><span>Às 19:00, no Auditório</span></span><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+          </div>
+          }
+        }
+        @case ('events') {
+          @defer (on immediate) {
+            <app-landing-major-event-subscription-demo [initialEventId]="previewEventId()" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando eventos.</p></div>
+          }
+        }
+        @case ('wallet') {
+          @defer (on immediate) {
+            <app-landing-wallet-demo [initialView]="walletView()" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando carteira.</p></div>
+          }
+        }
+        @case ('notifications') {
+          @defer (on immediate) {
+            <app-landing-notifications-demo (openDestination)="openNotification($event)" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando notificações.</p></div>
+          }
+        }
+        @case ('history') {
+          @defer (on immediate) {
+            <app-landing-participation-history-demo [initialParticipation]="historyParticipation()" />
+          } @placeholder {
+            <div class="demo-content"><p>Carregando participações.</p></div>
+          }
+        }
+        @case ('attendance') {
+          <div class="demo-content demo-enter attendance-demo">
+            <span class="attendance-symbol">
+              @if (attendanceConfirmed()) {
+                <mat-icon aria-hidden="true">task_alt</mat-icon>
+              } @else {
+                <lib-twemoji emoji="♿" aria-hidden="true" />
+              }
+            </span>
+            <h4>{{ attendanceConfirmed() ? 'Presença confirmada.' : 'Interfaces que incluem' }}</h4>
+            <p class="demo-muted">{{ attendanceConfirmed() ? 'Interfaces que incluem, na Semana de Tecnologia' : 'Semana de Tecnologia: autorregistro' }}</p>
+            <div class="attendance-feedback" aria-live="polite" aria-atomic="true">
+              @if (attendanceConfirmed()) {
+                <p class="confirmation-message">Presença confirmada para Interfaces que incluem.</p>
+                <button matButton="outlined" type="button" (click)="resetAttendance()">Experimentar novamente</button>
+              } @else {
+                <form (submit)="confirmAttendance(); $event.preventDefault()">
+                  <p class="code-instruction">Experimente com o código <strong>{{ demoCode }}</strong>.</p>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Código de presença</mat-label>
+                    <input matInput [formField]="attendanceForm.code" autocomplete="off" spellcheck="false" aria-describedby="demo-code-help" (input)="attendanceTyping.set(true)" (pointerdown)="attendanceTyping.set(true)" />
+                    <mat-hint id="demo-code-help">4 caracteres fornecidos pela organização</mat-hint>
+                  </mat-form-field>
+                  @if (attendanceError()) { <p class="code-error" role="alert">{{ attendanceError() }}</p> }
+                  <button matButton="filled" type="submit" [disabled]="attendanceForm().invalid()"><mat-icon>how_to_reg</mat-icon>Confirmar presença</button>
+                </form>
+              }
+            </div>
+          </div>
+        }
+      }
+</app-landing-showcase-stage>

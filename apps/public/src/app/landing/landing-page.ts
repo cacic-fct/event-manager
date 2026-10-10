@@ -1,5 +1,4 @@
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
@@ -10,7 +9,6 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PlatformStatsLoadState, ValuePropositionComponent } from './value-proposition';
@@ -22,22 +20,24 @@ import { PlatformStatsApiService } from './platform-stats-api.service';
 import { catchError, map, of } from 'rxjs';
 import { LandingFooterComponent } from './footer';
 import { DefaultRedirectService } from './default-redirect.service';
+import { ProductShowcaseComponent } from './showcase/product-showcase';
+import { EventExtrasComponent } from './showcase/event-extras';
 
 @Component({
   selector: 'app-login-page',
   imports: [
     MatButtonModule,
-    MatCardModule,
     ValuePropositionComponent,
     MatIconModule,
     RouterLink,
     DoodlesComponent,
     Developer,
     LandingFooterComponent,
+    ProductShowcaseComponent,
+    EventExtrasComponent,
   ],
   templateUrl: './landing-page.html',
   styleUrls: ['./landing-page.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LandingComponent {
   private readonly authService = inject(AuthService);
