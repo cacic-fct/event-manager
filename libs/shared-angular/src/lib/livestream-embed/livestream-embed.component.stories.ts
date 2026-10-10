@@ -10,7 +10,7 @@ interface LivestreamStoryArgs {
 
 const meta: Meta<LivestreamStoryArgs> = {
   component: LivestreamEmbedComponent,
-  title: 'CACiC Eventos/Shared/Media/Livestream Embed',
+  title: 'Shared/Media/Livestream Embed',
   tags: ['autodocs'],
   args: {
     provider: 'YOUTUBE',
@@ -18,9 +18,13 @@ const meta: Meta<LivestreamStoryArgs> = {
     title: 'Transmissão da partida',
   },
   argTypes: {
-    provider: { control: 'select', options: ['YOUTUBE', 'TWITCH', 'GENERAL'] },
-    value: { control: 'text' },
-    title: { control: 'text' },
+    provider: {
+      control: { type: 'select', labels: { YOUTUBE: 'YouTube', TWITCH: 'Twitch', GENERAL: 'External stream' } },
+      options: ['YOUTUBE', 'TWITCH', 'GENERAL'],
+      description: 'Provider used to render or link to the stream.',
+    },
+    value: { control: 'text', description: 'Provider stream ID or external URL.' },
+    title: { control: 'text', description: 'Accessible title for the embedded stream.' },
   },
 };
 
@@ -52,12 +56,18 @@ export const Twitch: Story = {
       'https://www.twitch.tv/cacic',
     );
   },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
-export const TwitchOnMobile: Story = {
+export const NarrowScreenTwitch: Story = {
   args: { provider: 'TWITCH', value: 'cacic' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+  render: (args) => ({
+    props: args,
+    template: `
+      <div style="width: 320px">
+        <lib-livestream-embed [provider]="provider" [value]="value" [title]="title" />
+      </div>
+    `,
+  }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Em telas estreitas, abra a transmissão na Twitch.')).toBeVisible();

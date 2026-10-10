@@ -5,11 +5,17 @@ import { DisplayLicenses } from './display-licenses';
 
 const meta: Meta<DisplayLicenses> = {
   component: DisplayLicenses,
-  title: 'CACiC Eventos/About/Legal/Third-party Licenses',
+  title: 'Public/Support/Legal/Third Party Licenses',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        component: 'Third-party license page with separate loading and request-error stories.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -40,9 +46,8 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const LoadingDarkReducedMotion: Story = {
+export const Loading: Story = {
   ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
   parameters: {
     msw: {
       handlers: {

@@ -44,7 +44,7 @@
     @for (draw of current.draws; track draw.id) {
     <article class="draw-section" [id]="drawAnchorId(draw.id)">
       <header class="draw-heading">
-        <h2>{{ draw.title }}</h2>
+        <h2 [id]="'draw-title-' + draw.id">{{ draw.title }}</h2>
         @if (draw.description) {
         <p>{{ draw.description }}</p>
         }
@@ -122,7 +122,9 @@
         </section>
       </mat-expansion-panel>
 
-      <section class="results" [attr.aria-labelledby]="'results-title-' + draw.id">
+      <section
+        class="results"
+        [attr.aria-labelledby]="'draw-title-' + draw.id + ' results-title-' + draw.id">
         <h3 [id]="'results-title-' + draw.id">Resultados</h3>
         <mat-list aria-label="Resultados em ordem cronológica">
           @for (spin of draw.spins; track spin.id) {

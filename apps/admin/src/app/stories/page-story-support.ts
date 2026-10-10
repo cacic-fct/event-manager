@@ -13,6 +13,7 @@ import { EventAudience } from '@cacic-fct/shared-event-participation';
 import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type {
   Event,
   EventDraft,
@@ -125,17 +126,20 @@ export function createPageStoryProviders(args: PageStoryArgs): Provider[] {
 }
 
 export const withPageStoryProviders: Decorator<PageStoryArgs> = (story, context) =>
-  applicationConfig({
-    providers: createPageStoryProviders({
-      ...defaultPageStoryArgs,
-      ...context.args,
-    }),
-  })(story, context);
+  withScenarioControls<PageStoryArgs>()(
+    () => applicationConfig({
+      providers: createPageStoryProviders({
+        ...defaultPageStoryArgs,
+        ...context.args,
+      }),
+    })(story, context),
+    context,
+  );
 
 export async function exercisePageStory(canvasElement: HTMLElement): Promise<void> {
   const { expect, userEvent, within } = await import('storybook/test');
   const canvas = within(canvasElement);
-  await expect(canvas.getByRole('button', { name: /novo/i })).toBeVisible();
+  await expect(canvas.getByRole('heading', { name: /(?:novo|nova|editar) (?:evento|grupo|grande evento|rascunho)/i })).toBeVisible();
   await userEvent.tab();
   const enabledButton = canvas
     .queryAllByRole('button')

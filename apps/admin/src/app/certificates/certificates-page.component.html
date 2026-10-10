@@ -30,7 +30,11 @@
         <section class="surface field-group" aria-labelledby="folder-editor-title">
           <div class="surface-heading">
             <div>
-              <h3 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h3>
+              @if (inWorkspaceShell) {
+                <h3 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h3>
+              } @else {
+                <h2 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h2>
+              }
               <p>Defina um nome claro e um emoji para identificar a pasta.</p>
             </div>
           </div>
@@ -86,7 +90,7 @@
           } @empty {
             <div class="empty-state">
               <mat-icon>folder_open</mat-icon>
-              <h3>Nenhuma pasta encontrada</h3>
+              <h2>Nenhuma pasta encontrada</h2>
               <p>{{ workspace.targetFiltersForm.controls.query.value ? 'Tente outro termo de busca.' : 'Crie uma pasta para começar.' }}</p>
             </div>
           }
@@ -115,7 +119,7 @@
     <div class="panel-stack certificate-target-picker">
       <div class="panel-heading">
         <div>
-          <h3>Alvos</h3>
+          <h2>Alvos</h2>
           <p>Eventos, grupos e grandes eventos aptos à emissão.</p>
         </div>
       </div>
@@ -235,7 +239,7 @@
       @if (workspace.selectedTarget()) {
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Configurações</h4>
+            <h2>Configurações</h2>
             @if (canEditSelectedTarget()) {
               <button mat-stroked-button type="button" [disabled]="workspace.unsavedChanges()" (click)="workspace.startNewCertificateConfig()">
                 <mat-icon>add</mat-icon>
@@ -315,7 +319,7 @@
       } @else {
         <div class="empty-state">
           <mat-icon>folder_open</mat-icon>
-          <h3>Escolha um contexto</h3>
+          <h2>Escolha um contexto</h2>
           <p>O inventário de configurações aparecerá depois da seleção.</p>
         </div>
       }
@@ -325,7 +329,7 @@
       @if (workspace.selectedTarget()) {
         <div class="panel-heading">
           <div>
-            <h3>{{ workspace.selectedTarget()?.name }}</h3>
+            <h2>{{ workspace.selectedTarget()?.name }}</h2>
             <p>
               {{
                 workspace.isStandaloneScope()
@@ -408,7 +412,7 @@
         }
 
         <form class="surface field-group">
-          <h4>Configuração</h4>
+          <h3>Configuração</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Nome público do certificado</mat-label>
@@ -540,7 +544,7 @@
 
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Emissão manual</h4>
+            <h3>Emissão manual</h3>
             <div class="panel-actions">
               <span>{{ workspace.personSearchResults().length }} resultados</span>
               @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
@@ -594,7 +598,7 @@
 
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Certificados emitidos</h4>
+            <h3>Certificados emitidos</h3>
             <span>{{ workspace.certificates().length }} certificados</span>
           </div>
 
@@ -657,7 +661,7 @@
       } @else {
         <div class="empty-state">
           <mat-icon>workspace_premium</mat-icon>
-          <h3>{{ workspace.isStandaloneScope() ? 'Selecione uma pasta' : 'Selecione um alvo' }}</h3>
+        <h2>{{ workspace.isStandaloneScope() ? 'Selecione uma pasta' : 'Selecione um alvo' }}</h2>
           <p>
             {{
               workspace.isStandaloneScope()

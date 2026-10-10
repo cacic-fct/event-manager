@@ -4,12 +4,12 @@ import { expect } from 'storybook/test';
 import { CacicMiniatureComponent } from './cacic-miniature.component';
 
 const meta: Meta<CacicMiniatureComponent> = {
-  title: 'CACiC Eventos/Shared/Brand/CACiC miniature',
+  title: 'Shared/Brand/CACiC Miniature',
   component: CacicMiniatureComponent,
   tags: ['autodocs'],
   argTypes: {
-    width: { control: 'text', description: 'Largura CSS aplicada ao SVG.' },
-    height: { control: 'text', description: 'Altura CSS aplicada ao SVG.' },
+    width: { control: 'text', description: 'CSS width applied to the SVG.' },
+    height: { control: 'text', description: 'CSS height applied to the SVG.' },
   },
   args: {
     width: '240px',
@@ -30,14 +30,6 @@ export const Playground: Story = {
   },
 };
 
-export const CompactAppIcon: Story = {
-  args: {
-    width: '64px',
-    height: '88px',
-  },
-  render: Playground.render,
-};
-
 export const LightForeground: Story = {
   render: (args) => ({
     props: args,
@@ -47,13 +39,4 @@ export const LightForeground: Story = {
   play: async ({ canvasElement }) => {
     await expect(canvasElement.querySelector('svg')).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    width: '120px',
-    height: '170px',
-  },
-  render: LightForeground.render,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

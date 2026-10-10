@@ -3,7 +3,7 @@ import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { PublicationState } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { PUBLICATION_LIFECYCLE_AUDIT_METADATA } from './publishing-audit';
+import { PUBLICATION_LIFECYCLE_AUDIT_METADATA, publicationStateAuditSnapshot } from './publishing-audit';
 import { PublicationStateWriterService } from './publishing-state-writer.service';
 
 describe('PublicationStateWriterService', () => {
@@ -123,8 +123,8 @@ describe('PublicationStateWriterService', () => {
         entityLabel: 'Evento event-1',
         operation: AuditLogOperation.UPDATE,
         actor: user,
-        before: previous,
-        after: updated,
+        before: publicationStateAuditSnapshot(previous),
+        after: publicationStateAuditSnapshot(updated),
         scope: {
           permission: Permission.Event.Update,
           eventId: 'event-1',
@@ -155,6 +155,24 @@ describe('PublicationStateWriterService', () => {
     expect(auditLog.record).not.toHaveBeenCalled();
   });
 
+  it('keeps publication state without embedding event or audience records', () => {
+    const snapshot = publicationStateAuditSnapshot({
+      ...eventRecord(),
+      isPubliclyListed: true,
+      description: 'Long content',
+      majorEvent: { id: 'major-1', name: 'Grande evento', audience: { personIds: ['person-1'] } },
+      eventGroup: { id: 'group-1', name: 'Grupo' },
+    });
+
+    expect(snapshot).toEqual({
+      publicationState: PublicationState.DRAFT,
+      scheduledPublishAt: null,
+      publishedAt: null,
+      unpublishedAt: null,
+      isPubliclyListed: true,
+    });
+  });
+
   it('updates public-site visibility together with publication state when requested', async () => {
     const { auditLog, service, tx } = createService();
     const previous = { ...eventRecord(), publicationState: PublicationState.PUBLISHED, isPubliclyListed: false };
@@ -176,7 +194,13 @@ describe('PublicationStateWriterService', () => {
         data: expect.objectContaining({ isPubliclyListed: true }),
       }),
     );
-    expect(auditLog.record).toHaveBeenCalled();
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        before: expect.objectContaining({ isPubliclyListed: false }),
+        after: expect.objectContaining({ isPubliclyListed: true }),
+      }),
+      tx,
+    );
   });
 
   it('rejects scheduled publication without a future timestamp before opening a transaction', async () => {
@@ -302,8 +326,8 @@ describe('PublicationStateWriterService', () => {
       expect.objectContaining({
         entityType: AuditLogEntityType.MAJOR_EVENT,
         operation: AuditLogOperation.UPDATE,
-        before: previous,
-        after: updated,
+        before: publicationStateAuditSnapshot(previous),
+        after: publicationStateAuditSnapshot(updated),
         summary: 'Conteúdo publicado.',
         metadata: PUBLICATION_LIFECYCLE_AUDIT_METADATA,
       }),
@@ -345,8 +369,8 @@ describe('PublicationStateWriterService', () => {
         entityLabel: 'Grande evento major-1',
         operation: AuditLogOperation.UPDATE,
         actor: user,
-        before: previous,
-        after: updated,
+        before: publicationStateAuditSnapshot(previous),
+        after: publicationStateAuditSnapshot(updated),
         scope: {
           permission: Permission.MajorEvent.Update,
           majorEventId: 'major-1',

@@ -1270,6 +1270,8 @@ export class CertificatesService {
 
   private captureEditorBaseline(): void {
     this.editorBaseline.set(this.editorSignature());
+    // Silent reactive-form resets still need to invalidate the dirty-state computation.
+    this.editorRevision.update((revision) => revision + 1);
   }
 
   syncCertificateFieldsForm(

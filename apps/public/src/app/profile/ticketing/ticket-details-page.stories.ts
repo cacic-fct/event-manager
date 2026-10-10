@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { EMPTY, NEVER, of } from 'rxjs';
@@ -19,7 +20,7 @@ type TicketDetailsStoryArgs = {
 
 const meta: Meta<TicketDetailsStoryArgs> = {
   component: TicketDetailsPage,
-  title: 'CACiC Eventos/Tickets/Information',
+  title: 'Public/Ticketing/Tickets/Details',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: {
@@ -43,6 +44,7 @@ const meta: Meta<TicketDetailsStoryArgs> = {
     apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
+    withScenarioControls<TicketDetailsStoryArgs>(),
     (story, context) => {
       const ticketResponse = context.args.apiState === 'loading'
         ? NEVER
@@ -87,7 +89,6 @@ type Story = StoryObj<TicketDetailsStoryArgs>;
 
 export const Playground: Story = {
   args: { apiState: 'ready' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Festa de encerramento')).toBeVisible();
@@ -139,14 +140,6 @@ export const NotTransferable: Story = {
     await expect(await canvas.findByText('Festa de encerramento')).toBeVisible();
     await expect(canvas.getByText('Para pessoas inscritas no Congresso de Computação.')).toBeVisible();
     await expect(canvas.queryByRole('link', { name: 'Transferir bilhete' })).toBeNull();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { status: 'REVOKED', transferable: false },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Revogado')).toBeVisible();
   },
 };
 

@@ -95,7 +95,7 @@ const FIELD_OPTIONS: PlaceMergeField[] = [
         <section class="field-grid">
           @for (field of fieldOptions; track field.controlName) {
             <div class="field-row" [class.selected-field-row]="isFieldSelected(field)">
-              <mat-checkbox [formControlName]="field.controlName" />
+              <mat-checkbox [formControlName]="field.controlName" [aria-label]="field.label" />
               <span class="field-name">{{ field.label }}</span>
               <span>{{ displayValue(field.valueAccessor(kept)) }}</span>
               <span>{{ displayValue(field.valueAccessor(removed)) }}</span>

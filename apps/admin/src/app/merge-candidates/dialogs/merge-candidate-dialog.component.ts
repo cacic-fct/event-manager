@@ -138,7 +138,7 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 
           @for (field of fieldOptions; track field.key) {
             <div class="field-row" [class.selected-field-row]="isFieldSelected(field)">
-              <mat-checkbox [formControlName]="field.controlName" />
+              <mat-checkbox [formControlName]="field.controlName" [aria-label]="field.label" />
               <span class="field-name">{{ field.label }}</span>
               <span class="value kept-value">
                 {{ displayValue(field.valueAccessor(target)) }}

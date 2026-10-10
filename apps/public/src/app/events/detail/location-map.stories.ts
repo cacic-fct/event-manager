@@ -20,7 +20,7 @@ const defaultArgs: EventLocationMapStoryArgs = {
 
 const meta: Meta<EventLocationMapStoryArgs> = {
   component: EventLocationMap,
-  title: 'CACiC Eventos/Events/Location Map',
+  title: 'Public/Discovery/Map/Location',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -55,7 +55,6 @@ export const Playground: Story = {
 };
 
 export const NearbyCampusBuilding: Story = {
-  name: 'Outro ponto próximo no campus',
   args: {
     latitude: DEFAULT_MAP_CENTER[1] + 0.0011,
     longitude: DEFAULT_MAP_CENTER[0] - 0.0009,
@@ -65,19 +64,15 @@ export const NearbyCampusBuilding: Story = {
 };
 
 export const EquatorAndPrimeMeridian: Story = {
-  name: 'Coordenadas zero válidas',
   args: { latitude: 0, longitude: 0, title: 'Encontro entre o Equador e Greenwich' },
   play: async ({ canvasElement }) => expectRenderedMap(canvasElement),
 };
 
 export const LongLocationName: Story = {
-  name: 'Nome de localização extenso',
   args: {
     title:
       'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho, campus de Presidente Prudente',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => expectRenderedMap(canvasElement),
 };
 
@@ -91,7 +86,6 @@ export const MissingCoordinates: Story = {
 };
 
 export const PartialCoordinates: Story = {
-  name: 'Coordenadas incompletas',
   args: { latitude: DEFAULT_MAP_CENTER[1], longitude: null, title: 'Longitude ausente' },
   play: async ({ canvasElement }) => {
     await expect(canvasElement.querySelector('.map-target')).toBeEmptyDOMElement();

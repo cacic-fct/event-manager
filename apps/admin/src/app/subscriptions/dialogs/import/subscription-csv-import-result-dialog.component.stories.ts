@@ -94,7 +94,7 @@ class CsvImportResultStoryHost {
 
 const meta: Meta<CsvImportResultStoryArgs> = {
   component: CsvImportResultStoryHost,
-  title: 'CACiC Eventos/Workspace/Dialogs/Subscription Csv Import Result Dialog',
+  title: 'Admin/Registration/Import/Subscription Import Results',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -107,7 +107,7 @@ const meta: Meta<CsvImportResultStoryArgs> = {
     failedRowCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     longContent: { control: 'boolean' },
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -119,7 +119,7 @@ export const Playground: Story = {
     await expect(
       await canvas.findByText('10 inscrições criadas, 4 atualizadas, 2 duplicadas, 1 falhas.'),
     ).toBeVisible();
-    await expect(await canvas.findAllByRole('listitem')).toHaveLength(3);
+    await expect(canvasElement.querySelectorAll('mat-list-item')).toHaveLength(3);
   },
 };
 
@@ -173,8 +173,6 @@ export const DenseMixedImport: Story = {
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: { displayedPeopleCount: 12, failedRowCount: 12, longContent: true },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

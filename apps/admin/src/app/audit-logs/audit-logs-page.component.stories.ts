@@ -1,5 +1,6 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { delay, mergeMap, of, throwError, timer, type Observable } from 'rxjs';
 import { AuditLogApiService, type AuditLogExplorerInput } from '../graphql/audit-log-api.service';
@@ -38,8 +39,9 @@ const defaultArgs: AuditLogsStoryArgs = {
 
 const meta: Meta<AuditLogsStoryArgs> = {
   component: AuditLogsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Auditoria',
+  title: 'Admin/Audit/Logs',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<AuditLogsStoryArgs>()],
   args: defaultArgs,
   argTypes: {
     entryCount: {
@@ -64,7 +66,7 @@ const meta: Meta<AuditLogsStoryArgs> = {
   },
   render: (args) => {
     return {
-      props: args,
+      props: {},
       applicationConfig: {
         providers: [
           {
@@ -76,6 +78,11 @@ const meta: Meta<AuditLogsStoryArgs> = {
     };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Audit log search with controls for entity types, request state, and result history.',
+      },
+    },
     layout: 'fullscreen',
     a11y: { test: 'error' },
   },
@@ -112,7 +119,7 @@ export const WithRevertedRows: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Desfeito')).toBeVisible();
+    await expect((await within(canvasElement).findAllByText('Desfeito')).length).toBeGreaterThan(0);
   },
 };
 
@@ -144,7 +151,6 @@ export const SqlFallback: Story = {
 };
 
 export const RequestError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

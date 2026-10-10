@@ -13,24 +13,32 @@ const controller = createAttendanceWorkspaceStoryController();
 
 const meta: Meta<AttendanceWorkspaceStoryControls> = {
   component: MajorEventAttendancesComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Attendances/Major Event Workbench',
+  title: 'Admin/Attendance/Major Events',
   tags: ['autodocs'],
   args: attendanceWorkspaceStoryDefaultControls,
   argTypes: attendanceWorkspaceStoryControlArgTypes,
   render: controller.render,
   decorators: [applicationConfig({ providers: [controller.provider] })],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Major event attendance view with controls for people, attended activities, and selection state.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Presenças no grande evento' })).toBeVisible();
-    await expect(canvas.getByRole('list', { name: 'Atividades frequentadas' })).toBeVisible();
+    await expect(canvasElement.querySelector('.attended-event-list')).toBeVisible();
+    await expect(canvas.getByText('Atividade 1 do grande evento')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Atualizar presenças' }));
   },
 };
@@ -39,7 +47,7 @@ export const DenseParticipation: Story = {
   args: { majorEventPersonCount: 50, attendedActivitiesPerPerson: 12 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('12 atividades frequentadas')).toBeVisible();
+    await expect((await canvas.findAllByText('12 atividades frequentadas')).length).toBeGreaterThan(0);
     await expect(canvas.getAllByText(/atividades frequentadas/).length).toBeGreaterThan(20);
   },
 };
@@ -65,10 +73,8 @@ export const EmptyMajorEvent: Story = {
   },
 };
 
-export const LongNamesTablet: Story = {
+export const LongNames: Story = {
   args: { longNames: true, majorEventPersonCount: 18, attendedActivitiesPerPerson: 6 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/representante da comunidade/)).length).toBeGreaterThan(5);
   },

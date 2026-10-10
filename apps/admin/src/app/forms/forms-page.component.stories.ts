@@ -14,8 +14,9 @@ import {
 import { type FormElement, type FormImage } from '@cacic-fct/form-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { of } from 'rxjs';
 import {
   createAdminEvent,
@@ -84,7 +85,7 @@ const eventFormPermissions: PermissionScope[] = [
 
 const meta: Meta<FormsStoryArgs> = {
   component: FormsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Forms/Workspace Forms Tab',
+  title: 'Admin/Forms/Events',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -113,6 +114,7 @@ const meta: Meta<FormsStoryArgs> = {
     withImages: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<FormsStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: createFormsStoryProviders({
@@ -122,8 +124,13 @@ const meta: Meta<FormsStoryArgs> = {
       })(story, context),
   ],
   parameters: {
+    docs: {
+      description: {
+        component: 'Event form management with controls for form state, target, privacy, and response policy. Stories cover populated, empty, loading, and public result views.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -133,7 +140,6 @@ type Story = StoryObj<FormsStoryArgs>;
 
 export const Playground: Story = {
   args: {},
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const contextHeader = await canvas.findByRole('button', { name: /Todos os formulários/i });
@@ -148,13 +154,11 @@ export const Playground: Story = {
 
 export const Readonly: Story = {
   args: { mode: 'readonly' },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
 };
 
 export const Empty: Story = {
   args: { mode: 'empty', itemCount: 0 },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/nenhum formulário encontrado/i)).toBeVisible();
@@ -162,7 +166,6 @@ export const Empty: Story = {
 };
 
 export const Loading: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: { mode: 'loading' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
 };
@@ -174,7 +177,6 @@ export const PublicResults: Story = {
     resultsPublic: true,
     resultsLive: true,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/publicar resultados para público autorizado/i)).toBeVisible();
@@ -188,7 +190,6 @@ export const MajorEventFiltered: Story = {
     selectedIndex: 1,
     lecturerPublish: false,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement, { selectedFormPublished: false }),
 };
 
@@ -198,7 +199,6 @@ export const DenseEventInventory: Story = {
     itemCount: 50,
     selectedIndex: 24,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Vínculos' })).toBeVisible();
@@ -207,11 +207,11 @@ export const DenseEventInventory: Story = {
     if (!ownerPickerHost) throw new Error('Expected the owner target picker host.');
     const ownerCanvas = within(ownerPickerHost as HTMLElement);
     await userEvent.click(ownerPicker);
-    await expect(ownerCanvas.getByRole('button', { name: 'Próxima página' })).toBeEnabled();
+    await waitFor(() => expect(ownerCanvas.getByRole('button', { name: 'Próxima página' })).toBeEnabled());
     await userEvent.click(ownerCanvas.getByRole('button', { name: 'Próxima página' }));
     await expect(ownerCanvas.getByRole('button', { name: 'Selecionar Evento 26' })).toBeVisible();
     await userEvent.click(ownerCanvas.getByRole('button', { name: 'Selecionar Evento 26' }));
-    await expect(canvas.getByText('Evento 26')).toBeVisible();
+    await expect(ownerCanvas.getByText('Evento 26')).toBeVisible();
   },
 };
 
@@ -221,14 +221,12 @@ export const DenseTargetControls: Story = {
     itemCount: 50,
     selectedIndex: 24,
   },
-  globals: { theme: 'light' },
 };
 
 export const InterestAudience: Story = {
   args: {
     selectedIndex: 3,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Interessados ainda não inscritos')).toBeVisible();
@@ -240,7 +238,6 @@ export const PublishedFormDraftWithImages: Story = {
     withImages: true,
     selectedIndex: 0,
   },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByRole('img', { name: reusableStoryImage.altText })).toHaveLength(2);
@@ -484,6 +481,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     applyFormFilters: async () => undefined,
     previousFormsPage: async () => undefined,
     nextFormsPage: async () => undefined,
+    closeResultsStream: () => undefined,
     selectFormById: async () => true,
     selectForm: async (nextForm: EventForm) => {
       selectedFormSignal.set(nextForm);
@@ -607,25 +605,35 @@ function routeParams(target: FormsStoryTarget): Record<string, string> {
 }
 
 function buildEvents(count = 2): Event[] {
+  const dates = upcomingTargetDates();
   const events = [
-    createAdminEvent({ id: 'event-1', name: 'Oficina de Angular', emoji: 'computer' }),
-    createAdminEvent({ id: 'event-2', name: 'Mesa redonda de acessibilidade', emoji: 'accessibility_new' }),
+    createAdminEvent({ ...dates, id: 'event-1', name: 'Oficina de Angular', emoji: 'computer' }),
+    createAdminEvent({ ...dates, id: 'event-2', name: 'Mesa redonda de acessibilidade', emoji: 'accessibility_new' }),
   ];
   for (let index = events.length; index < count; index++) {
-    events.push(createAdminEvent({ id: `event-${index + 1}`, name: `Evento ${index + 1}`, emoji: 'event' }));
+    events.push(createAdminEvent({ ...dates, id: `event-${index + 1}`, name: `Evento ${index + 1}`, emoji: 'event' }));
   }
   return events;
 }
 
 function buildMajorEvents(count = 2): MajorEvent[] {
+  const dates = upcomingTargetDates();
   const majorEvents = [
-    createAdminMajorEvent({ id: 'major-event-1', name: 'Semana da Computação', emoji: 'school' }),
-    createAdminMajorEvent({ id: 'major-event-2', name: 'Jornada de Extensão', emoji: 'rocket_launch' }),
+    createAdminMajorEvent({ ...dates, id: 'major-event-1', name: 'Semana da Computação', emoji: 'school' }),
+    createAdminMajorEvent({ ...dates, id: 'major-event-2', name: 'Jornada de Extensão', emoji: 'rocket_launch' }),
   ];
   for (let index = majorEvents.length; index < count; index++) {
-    majorEvents.push(createAdminMajorEvent({ id: `major-event-${index + 1}`, name: `Grande evento ${index + 1}`, emoji: 'event' }));
+    majorEvents.push(createAdminMajorEvent({ ...dates, id: `major-event-${index + 1}`, name: `Grande evento ${index + 1}`, emoji: 'event' }));
   }
   return majorEvents;
+}
+
+function upcomingTargetDates(): Pick<Event, 'startDate' | 'endDate'> {
+  const start = Date.now() + 24 * 60 * 60 * 1000;
+  return {
+    startDate: new Date(start).toISOString(),
+    endDate: new Date(start + 2 * 60 * 60 * 1000).toISOString(),
+  };
 }
 
 function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEvent[]): EventForm[] {

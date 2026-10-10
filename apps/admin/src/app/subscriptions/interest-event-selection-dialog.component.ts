@@ -31,21 +31,21 @@ export interface InterestEventSelectionDialogResult {
       <p class="selection-note">
         A conversão não confirma pagamento nem aprovação; regras de vagas e análise continuam no fluxo de inscrições.
       </p>
-      <mat-selection-list aria-label="Atividades para a inscrição">
-        @for (event of data.events; track event.id) {
-          <mat-list-option
-            checkboxPosition="before"
-            [selected]="selectedEventIds().has(event.id)"
-            (selectedChange)="setSelected(event.id, $event)">
-            <span matListItemTitle>{{ event.name }}</span>
-            <span matListItemLine>{{ event.startDate | date: 'short' }}</span>
-          </mat-list-option>
-        } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhuma atividade disponível</span>
-          </mat-list-item>
-        }
-      </mat-selection-list>
+      @if (data.events.length) {
+        <mat-selection-list aria-label="Atividades para a inscrição">
+          @for (event of data.events; track event.id) {
+            <mat-list-option
+              checkboxPosition="before"
+              [selected]="selectedEventIds().has(event.id)"
+              (selectedChange)="setSelected(event.id, $event)">
+              <span matListItemTitle>{{ event.name }}</span>
+              <span matListItemLine>{{ event.startDate | date: 'short' }}</span>
+            </mat-list-option>
+          }
+        </mat-selection-list>
+      } @else {
+        <p role="status">Nenhuma atividade disponível</p>
+      }
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>

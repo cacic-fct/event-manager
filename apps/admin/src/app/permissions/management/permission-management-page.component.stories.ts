@@ -73,11 +73,17 @@ const group = {
 
 const meta: Meta<PermissionManagementPageComponent> = {
   component: PermissionManagementPageComponent,
-  title: 'CACiC Eventos/Workspace/Permissões/Gerenciamento',
+  title: 'Admin/Access/Permissions/Management',
   tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [{ provide: PermissionsService, useValue: { has: () => true } }] })],
   parameters: {
+    docs: {
+      description: {
+        component: 'Permission management workspace for assigning event access and reviewing scoped permissions.',
+      },
+    },
     layout: 'fullscreen',
+    controls: { disable: true },
     msw: {
       handlers: {
         graphql: [
@@ -127,10 +133,6 @@ export const UnsavedChanges: Story = {
   },
 };
 
-export const CompactDark: Story = {
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
-};
 
 export const RoleSearch: Story = {
   play: async ({ canvasElement }) => {

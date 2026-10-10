@@ -15,7 +15,7 @@ export interface DuplicatePersonWarningDialogData {
     <mat-dialog-content>
       <p>{{ data.message }}</p>
       @if (!canClose()) {
-        <mat-progress-bar mode="indeterminate" />
+        <mat-progress-bar mode="indeterminate" aria-label="Aguardando liberação para fechar o aviso" />
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">

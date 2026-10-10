@@ -32,7 +32,7 @@ export interface AuditLogDialogData {
   template: `
     <h2 mat-dialog-title>Histórico</h2>
 
-    <mat-dialog-content class="history-content">
+    <mat-dialog-content class="history-content" tabindex="0">
       <header class="history-header">
         <div>
           <span>Registro auditado</span>
@@ -189,7 +189,7 @@ export interface AuditLogDialogData {
     .entry-meta,
     .grouping-note,
     .reverted-note {
-      color: color-mix(in srgb, currentColor 68%, transparent);
+      color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-small);
     }
 

@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
@@ -33,7 +34,7 @@ type TicketTransferDetailsStoryArgs = {
 
 const meta: Meta<TicketTransferDetailsStoryArgs> = {
   component: TicketTransferDetailsPage,
-  title: 'CACiC Eventos/Tickets/Transfer Details',
+  title: 'Public/Ticketing/Transfers/Details',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: {
@@ -70,6 +71,7 @@ const meta: Meta<TicketTransferDetailsStoryArgs> = {
     apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
+    withScenarioControls<TicketTransferDetailsStoryArgs>(),
     (story, context) => {
       const baseTicket = createTicketStoryTransfer().ticket;
       const ticket = {
@@ -163,19 +165,10 @@ type Story = StoryObj<TicketTransferDetailsStoryArgs>;
 
 export const Playground: Story = {
   args: { mode: 'recipient', apiState: 'ready' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Receber bilhete' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Ignorar' })).toBeVisible();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { mode: 'system-ineligible', apiState: 'ready' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Você não era elegível/)).toBeVisible();
   },
 };
 

@@ -48,7 +48,12 @@ describe('LivestreamEmbedComponent', () => {
 
   it('keeps YouTube embeds on the privacy-enhanced host and canonicalizes the outbound link', async () => {
     const fixture = await configure();
-    setInputs(fixture, 'YOUTUBE', 'https://www.youtube.com/watch?v=event-video&utm_source=admin', 'Transmissão do evento');
+    setInputs(
+      fixture,
+      'YOUTUBE',
+      'https://www.youtube.com/watch?v=event-video&utm_source=admin',
+      'Transmissão do evento',
+    );
     fixture.detectChanges();
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
@@ -63,7 +68,7 @@ describe('LivestreamEmbedComponent', () => {
 
   it('embeds Twitch without chat, using the current browser hostname and fixed sandbox permissions', async () => {
     const fixture = await configure();
-    setInputs(fixture, 'TWITCH', 'https://www.twitch.tv/CaCiC');
+    setInputs(fixture, 'TWITCH', 'https://www.twitch.tv/tacacomputa');
     fixture.detectChanges();
 
     const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
@@ -72,9 +77,7 @@ describe('LivestreamEmbedComponent', () => {
     expect(source.searchParams.get('channel')).toBe('cacic');
     expect(source.searchParams.get('parent')).toBe(window.location.hostname);
     expect(source.searchParams.get('autoplay')).toBe('false');
-    expect(iframe?.getAttribute('sandbox')).toBe(
-      'allow-scripts allow-same-origin allow-popups-to-escape-sandbox',
-    );
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin allow-popups-to-escape-sandbox');
     expect(fixture.nativeElement.querySelector('a')?.href).toBe('https://www.twitch.tv/cacic');
 
     fixture.destroy();

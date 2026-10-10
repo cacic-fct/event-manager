@@ -1,5 +1,6 @@
 import { provideRouter } from '@angular/router';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
@@ -39,7 +40,7 @@ const withProviders: Decorator<EventSubscriptionsStoryArgs> = (story, context) =
 
 const meta: Meta<EventSubscriptionsStoryArgs> = {
   component: EventSubscriptionsComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Event Workbench',
+  title: 'Admin/Registration/Subscriptions/Events',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -49,19 +50,28 @@ const meta: Meta<EventSubscriptionsStoryArgs> = {
     longNames: { control: 'boolean' },
     readOnly: { control: 'boolean' },
   },
-  decorators: [withProviders],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  decorators: [withScenarioControls<EventSubscriptionsStoryArgs>(), withProviders],
+  parameters: {
+    docs: {
+      description: {
+        component: 'Event subscription management with controls for event count, subscriber volume, sports events, and read-only access.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<EventSubscriptionsStoryArgs>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Inscrições' })).toBeVisible();
-    await expect(await canvas.findByText('Criada pela administração')).toBeVisible();
+    const creationLabels = await canvas.findAllByText(/Criada pela administração/);
+    await expect(creationLabels.length).toBeGreaterThan(0);
+    await expect(creationLabels[0]).toBeVisible();
   },
 };
 
@@ -88,17 +98,14 @@ export const NoSubscriptions: Story = {
 
 export const ReadOnly: Story = {
   args: { readOnly: true },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await userEvent.tab();
     await expect(await within(canvasElement).findByRole('heading', { name: 'Inscrições' })).toBeVisible();
   },
 };
 
-export const LongNamesTablet: Story = {
+export const LongNames: Story = {
   args: { longNames: true, eventCount: 16, subscriptionCount: 24 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/Atividade interdisciplinar/)).length).toBeGreaterThan(0);
   },

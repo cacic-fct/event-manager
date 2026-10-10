@@ -1,4 +1,6 @@
+import { Component, input, linkedSignal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { moduleMetadata } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { type FormElement, type FormImage } from '@cacic-fct/form-contracts';
 import { EventFormBuilderComponent } from './event-form-builder.component';
@@ -10,6 +12,40 @@ type EventFormBuilderStoryArgs = {
   imageRemove: ReturnType<typeof fn>;
   uploadingImageTarget: string | null;
 };
+
+@Component({
+  selector: 'lib-storybook-event-form-builder-host',
+  imports: [EventFormBuilderComponent],
+  template: `
+    <lib-event-form-builder
+      [elements]="currentElements()"
+      [uploadingImageTarget]="uploadingImageTarget()"
+      (elementsChange)="updateElements($event)"
+      (imageUpload)="uploadImage($event)"
+      (imageRemove)="removeImage($event)" />
+  `,
+})
+class EventFormBuilderStoryHostComponent {
+  readonly elements = input<readonly FormElement[]>([]);
+  readonly elementsChange = input<EventFormBuilderStoryArgs['elementsChange']>(fn());
+  readonly imageUpload = input<EventFormBuilderStoryArgs['imageUpload']>(fn());
+  readonly imageRemove = input<EventFormBuilderStoryArgs['imageRemove']>(fn());
+  readonly uploadingImageTarget = input<string | null>(null);
+  readonly currentElements = linkedSignal(() => this.elements());
+
+  updateElements(elements: FormElement[]): void {
+    this.currentElements.set(elements);
+    this.elementsChange()(elements);
+  }
+
+  uploadImage(event: { elementId: string; file: File | null }): void {
+    this.imageUpload()(event);
+  }
+
+  removeImage(event: { elementId: string; image: FormImage }): void {
+    this.imageRemove()(event);
+  }
+}
 
 const landscapeImage = {
   id: 'form-image-landscape',
@@ -75,8 +111,8 @@ const elements: FormElement[] = [
 ];
 
 const meta: Meta<EventFormBuilderStoryArgs> = {
-  component: EventFormBuilderComponent,
-  title: 'CACiC Eventos/Shared/Event forms/Builder',
+  component: EventFormBuilderStoryHostComponent,
+  title: 'Shared/Forms/Form Builder',
   tags: ['autodocs'],
   args: {
     elements,
@@ -88,24 +124,33 @@ const meta: Meta<EventFormBuilderStoryArgs> = {
   argTypes: {
     elements: {
       control: 'object',
-      description: 'Estrutura editável do formulário, incluindo seções, perguntas e configurações avançadas.',
+      description: 'Editable form structure, including sections, questions, and advanced settings.',
     },
-    elementsChange: { table: { disable: true } },
-    imageUpload: { table: { disable: true } },
-    imageRemove: { table: { disable: true } },
-    uploadingImageTarget: { control: 'text' },
+    elementsChange: { action: 'elementsChange', control: false, table: { disable: true } },
+    imageUpload: { action: 'imageUpload', control: false, table: { disable: true } },
+    imageRemove: { action: 'imageRemove', control: false, table: { disable: true } },
+    uploadingImageTarget: { control: 'text', description: 'Question ID currently uploading an image.' },
   },
+  decorators: [moduleMetadata({ imports: [EventFormBuilderStoryHostComponent] })],
   render: (args) => ({
     props: args,
     template: `
-      <lib-event-form-builder
+      <lib-storybook-event-form-builder-host
         [elements]="elements"
-        [uploadingImageTarget]="uploadingImageTarget"
-        (elementsChange)="elementsChange($event)"
-        (imageUpload)="imageUpload($event)"
-        (imageRemove)="imageRemove($event)" />
+        [elementsChange]="elementsChange"
+        [imageUpload]="imageUpload"
+        [imageRemove]="imageRemove"
+        [uploadingImageTarget]="uploadingImageTarget" />
     `,
   }),
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'The story host echoes element changes back into the builder input, so add, edit, duplicate, reorder, and remove actions update the displayed form.',
+      },
+    },
+  },
 };
 
 export default meta;
@@ -120,6 +165,7 @@ export const Playground: Story = {
     await expect(args.elementsChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ type: 'shortText', title: '' })]),
     );
+    await expect(canvasElement.querySelectorAll('.builder-item')).toHaveLength(5);
   },
 };
 
@@ -175,14 +221,8 @@ export const UntitledQuestion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Informe o título da pergunta.')).toBeVisible();
-    await expect(canvas.getByLabelText('Título')).toHaveAttribute('aria-invalid', 'true');
+    const title = canvas.getByLabelText('Título');
+    await expect(title).toBeRequired();
+    await expect(title).toBeInvalid();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    elements: elements.slice(0, 3),
-    elementsChange: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

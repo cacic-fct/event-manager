@@ -1,5 +1,6 @@
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { of } from 'rxjs';
 import type { AdminTicketEligibility } from '@cacic-fct/shared-ticketing';
@@ -62,7 +63,7 @@ const transfer = createTicketTransfer({
 
 const meta: Meta<TicketActionStoryArgs> = {
   component: TicketAdminPersonActionDialogComponent,
-  title: 'CACiC Eventos/Workspace/Tickets/Admin Ticket Action',
+  title: 'Admin/Ticketing/Actions',
   tags: ['autodocs', 'ticketing'],
   args: { action: 'ISSUE', eligible: false, allowPeopleSearch: true },
   argTypes: {
@@ -71,6 +72,7 @@ const meta: Meta<TicketActionStoryArgs> = {
     allowPeopleSearch: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<TicketActionStoryArgs>(),
     (story, context) => applicationConfig({ providers: createProviders(context.args) })(story, context),
   ],
   parameters: { layout: 'centered', a11y: { test: 'error' } },
@@ -79,7 +81,7 @@ const meta: Meta<TicketActionStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketActionStoryArgs>;
 
-export const Playground: Story = {};
+export const Playground: Story = {  };
 
 export const ManualIssueWithEligibilityWarning: Story = {
   args: { action: 'ISSUE', eligible: false, allowPeopleSearch: true },
@@ -112,9 +114,10 @@ export const AdminTransferAwaitingReceiver: Story = {
 
 export const PersonSearchPermissionMissing: Story = {
   args: { action: 'ISSUE', eligible: true, allowPeopleSearch: false },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('Buscar pessoas exige a permissão de leitura de pessoas.')).toBeVisible();
+    await expect(
+      within(canvasElement).getByText('Buscar pessoas exige a permissão de leitura de pessoas relacionadas ao evento.'),
+    ).toBeVisible();
   },
 };
 

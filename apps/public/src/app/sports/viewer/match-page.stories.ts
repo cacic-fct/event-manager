@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { delay, HttpResponse, http } from 'msw';
 import { NEVER, Observable, of, throwError, timer } from 'rxjs';
@@ -85,7 +86,7 @@ function controlledMatch() {
 
 const meta: Meta<MatchStoryArgs> = {
   component: SportsMatchPage,
-  title: 'CACiC Eventos/Sports/Viewer/Match',
+  title: 'Public/Sports/Viewer/Match',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -116,6 +117,7 @@ const meta: Meta<MatchStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<MatchStoryArgs>(),
     applicationConfig({
       providers: [
         { provide: ActivatedRoute, useValue: route },
@@ -164,16 +166,14 @@ type Story = StoryObj<MatchStoryArgs>;
 export const Playground: Story = {};
 
 export const Scheduled: Story = {
-  name: 'Agendada',
   args: { state: 'SCHEDULED', homeScore: 0, awayScore: 0 },
 };
 
 export const AthleteCheckIn: Story = {
-  name: 'Check-in sem exposição do elenco',
   args: { state: 'CHECK_IN', homeScore: 0, awayScore: 0, provideRosterData: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Check-in')).toBeVisible();
+    await expect(await canvas.findByText('Credenciamento')).toBeVisible();
     await expect(canvas.queryByRole('heading', { name: 'Organização da partida' })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('heading', { name: 'Escalações' })).not.toBeInTheDocument();
     await expect(canvas.queryByText('Ana Souza')).not.toBeInTheDocument();
@@ -181,7 +181,6 @@ export const AthleteCheckIn: Story = {
 };
 
 export const Live: Story = {
-  name: 'Ao vivo',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -192,7 +191,6 @@ export const Live: Story = {
 };
 
 export const TwitchLivestream: Story = {
-  name: 'Transmissão na Twitch',
   args: { state: 'LIVE', livestream: 'TWITCH' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -203,31 +201,25 @@ export const TwitchLivestream: Story = {
       'https://www.twitch.tv/cacic',
     );
   },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const Paused: Story = {
-  name: 'Pausada',
   args: { state: 'PAUSED' },
 };
 
 export const AwaitingReview: Story = {
-  name: 'Resultado aguardando revisão',
   args: { state: 'AWAITING_REVIEW' },
 };
 
 export const Canceled: Story = {
-  name: 'Cancelada para remarcação',
   args: { state: 'CANCELED', homeScore: 0, awayScore: 0 },
 };
 
 export const DrawToBeRescheduled: Story = {
-  name: 'Empate com remarcação',
   args: { state: 'DRAW', homeScore: 2, awayScore: 2 },
 };
 
 export const FinishedWithPrivacySafeRoster: Story = {
-  name: 'Finalizada com elenco anonimizado',
   args: { state: 'FINISHED', provideRosterData: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -238,18 +230,15 @@ export const FinishedWithPrivacySafeRoster: Story = {
 };
 
 export const WithoutOfficialsOrPeriods: Story = {
-  name: 'Sem oficiais nem períodos',
   args: { showOfficials: false, showPeriods: false },
 };
 
 export const LargeScore: Story = {
-  name: 'Placar com números extensos',
   args: { state: 'LIVE', homeScore: 128, awayScore: 117 },
 };
 
 export const ReconnectingLiveData: Story = {
-  name: 'Atualização ao vivo interrompida',
-  args: { liveConnectionLost: true },
+  args: { liveConnectionLost: true, latencyMs: 0 },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/)).toBeVisible();
   },
@@ -259,7 +248,7 @@ export const Loading: Story = {
   args: { loadMode: 'loading', latencyMs: 0 },
 };
 
-export const LongTeamAndVenueNamesMobile: Story = {
+export const LongTeamAndVenueNames: Story = {
   args: {
     homeTeamName: 'Associação Atlética Acadêmica de Ciência e Tecnologia de Presidente Prudente',
     awayTeamName: 'Equipe Interdisciplinar de Computação, Estatística e Engenharia Ambiental',
@@ -267,14 +256,10 @@ export const LongTeamAndVenueNamesMobile: Story = {
     venueName: 'Complexo esportivo universitário e centro de convivência estudantil',
     courtLabel: 'Quadra poliesportiva principal - setor norte',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const LoadError: Story = {
-  name: 'Partida indisponível',
   args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('A partida não está disponível para visualização.')).toBeVisible();

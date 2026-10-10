@@ -45,7 +45,7 @@ class SubscriberCsvExportDialogStoryHostComponent {
 
 const meta: Meta<SubscriberCsvExportStoryArgs> = {
   component: SubscriberCsvExportDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Subscriber Csv Export Dialog',
+  title: 'Admin/Registration/Subscriptions/Export',
   tags: ['autodocs'],
   args: {
     title: 'Exportar inscritos confirmados',
@@ -57,7 +57,7 @@ const meta: Meta<SubscriberCsvExportStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -83,7 +83,6 @@ export const EmptySelection: Story = {
 };
 
 export const WithBadgeCodes: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByLabelText(/códigos para crachá/i));

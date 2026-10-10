@@ -3,6 +3,7 @@ import { LOCALE_ID } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { PublicationWorkspace } from '../graphql/publishing-api.service';
@@ -17,9 +18,10 @@ import {
 
 const meta: Meta<PublicationStoryArgs> = {
   component: PublicationPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Publicação',
+  title: 'Admin/Event Management/Publication',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<PublicationStoryArgs>(),
     applicationConfig({
       providers: [provideHttpClient(), provideRouter([]), { provide: LOCALE_ID, useValue: 'pt-BR' }],
     }),
@@ -37,8 +39,13 @@ const meta: Meta<PublicationStoryArgs> = {
     includeCriticalWarnings: { control: 'boolean' },
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Publication controls for event and group visibility. Use the state control to inspect loaded, empty, loading, and error responses.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -59,17 +66,15 @@ const loadingContext = createStoryContext({ state: 'loading' });
 const errorContext = createStoryContext({ state: 'error' });
 
 export const Playground: Story = {
-
   parameters: storyParameters(playgroundContext),
   render: (args) => renderStory(args, playgroundContext),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Publicação')).toBeVisible();
     await expect(await canvas.findByText('Itens publicáveis')).toBeVisible();
-    const buttons = await canvas.findAllByRole('button');
-    await userEvent.hover(buttons[0]);
     await userEvent.click(await canvas.findByRole('button', { name: /despublicar conjunto/i }));
-    await expect(await within(document.body).findByText(/Despublicar conjunto/)).toBeVisible();
+    const confirmation = await within(document.body).findByRole('dialog');
+    await expect(confirmation).toHaveTextContent(/Esta ação remove o item selecionado e os itens vinculados/);
   },
 };
 
@@ -82,7 +87,6 @@ export const Empty: Story = {
     includeCriticalWarnings: false,
     includeHiddenEvents: false,
   },
-  globals: { theme: 'light' },
   parameters: storyParameters(emptyContext),
   render: (args) => renderStory(args, emptyContext),
 };
@@ -91,13 +95,11 @@ export const Loading: Story = {
   args: {
     state: 'loading',
   },
-  globals: { theme: 'light' },
   parameters: storyParameters(loadingContext),
   render: (args) => renderStory(args, loadingContext),
 };
 
 export const ErrorState: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },

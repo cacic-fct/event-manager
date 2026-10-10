@@ -121,7 +121,10 @@ export const publicLecturerStoryDefaultControls: PublicLecturerStoryControls = {
 export const publicEventStoryControlArgTypes = {
   name: { control: 'text' },
   emoji: { control: 'text' },
-  type: { control: 'select', options: ['MINICURSO', 'PALESTRA', 'OTHER'] },
+  type: {
+    control: { type: 'select', labels: { MINICURSO: 'Course', PALESTRA: 'Lecture', OTHER: 'Other' } },
+    options: ['MINICURSO', 'PALESTRA', 'OTHER'],
+  },
   context: { control: 'select', options: ['major-event', 'event-group', 'short-description'] },
   majorEventName: { control: 'text' },
   eventGroupName: { control: 'text' },
@@ -138,7 +141,7 @@ export const publicEventCollectionStoryControlArgTypes = {
   ...publicEventStoryControlArgTypes,
   eventCount: {
     control: { type: 'range', min: 0, max: 30, step: 1 },
-    description: 'Quantidade de eventos gerados deterministicamente para listas e calendários.',
+    description: 'Number of deterministically generated events in lists and calendars.',
   },
 } as const;
 

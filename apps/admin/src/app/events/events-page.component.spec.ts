@@ -10,8 +10,16 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { LocationCoordinatePickerDialogComponent } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 import { createPageStoryProviders, defaultPageStoryArgs, type PageStoryMode } from '../stories/page-story-support';
 import { EventsPageComponent } from './events-page.component';
+import { EventsService } from './events.service';
 
 describe('EventsPageComponent', () => {
+  it('loads the existing event identified by workspace route metadata', async () => {
+    await configureComponent('populated', undefined,
+      { targetId: 'workspace-event' }, { targetType: 'event', section: 'settings' });
+    const select = vi.spyOn(TestBed.inject(EventsService), 'selectEventById');
+    await createComponent();
+    expect(select).toHaveBeenCalledWith('workspace-event', { skipIfCurrent: true });
+  });
   it('allows removing linked attendance collectors when delete permission is granted', async () => {
     await configureComponent('populated');
     const { element } = await createComponent();
@@ -206,6 +214,8 @@ describe('EventsPageComponent', () => {
   async function configureComponent(
     mode: PageStoryMode,
     dialog: Partial<MatDialog> = { open: vi.fn() },
+    params: Record<string, string> = {},
+    data: Record<string, string> = {},
   ): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],
@@ -220,7 +230,8 @@ describe('EventsPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({})),
+            paramMap: of(convertToParamMap(params)),
+            snapshot: { data },
           },
         },
       ],

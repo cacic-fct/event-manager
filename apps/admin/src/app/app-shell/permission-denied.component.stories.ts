@@ -1,5 +1,6 @@
 import { ActivatedRoute } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, within } from 'storybook/test';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PermissionDeniedComponent } from './permission-denied.component';
@@ -12,7 +13,7 @@ interface PermissionDeniedStoryArgs {
 
 const meta: Meta<PermissionDeniedStoryArgs> = {
   component: PermissionDeniedComponent,
-  title: 'CACiC Eventos/Workspace/Workspace Permission Denied',
+  title: 'Admin/Access/Permission Denied',
   tags: ['autodocs'],
   args: {
     sectionLabel: 'Certificados',
@@ -20,12 +21,13 @@ const meta: Meta<PermissionDeniedStoryArgs> = {
     missingPermissions: ['certificate:read', 'certificate-config:read'],
   },
   argTypes: {
-    sectionLabel: { control: 'text', description: 'Nome da seção protegida.' },
-    requiredRoleLabel: { control: 'text', description: 'Perfil obrigatório, quando a restrição é por função.' },
-    missingPermissions: { control: 'object', description: 'Permissões de leitura ausentes.' },
+    sectionLabel: { control: 'text', description: 'Name of the protected section.' },
+    requiredRoleLabel: { control: 'text', description: 'Required role when access is restricted by role.' },
+    missingPermissions: { control: 'object', description: 'Missing permissions required to read this section.' },
   },
   render: () => ({ props: {} }),
   decorators: [
+    withScenarioControls<PermissionDeniedStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -51,8 +53,13 @@ const meta: Meta<PermissionDeniedStoryArgs> = {
       })(story, context),
   ],
   parameters: {
+    docs: {
+      description: {
+        component: 'Permission boundary view for checking missing roles and permissions. Use the controls to change the protected section and required access.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -69,7 +76,7 @@ export const Playground: Story = {
 };
 
 export const RoleRestricted: Story = {
-  name: 'Restrita ao perfil de representante',
+  name: 'Role restricted',
   args: {
     sectionLabel: 'Operação esportiva',
     requiredRoleLabel: 'representante de equipe',
@@ -83,8 +90,7 @@ export const RoleRestricted: Story = {
 };
 
 export const ManyMissingPermissions: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  name: 'Muitas permissões ausentes',
+  name: 'Multiple missing permissions',
   args: {
     missingPermissions: [
       'event:read',

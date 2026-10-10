@@ -52,7 +52,7 @@ class CertificateFolderRenameConfirmationDialogStoryComponent {
 
 const meta: Meta<CertificateFolderRenameStoryArgs> = {
   component: CertificateFolderRenameConfirmationDialogStoryComponent,
-  title: 'CACiC Eventos/Workspace/Certificates/Rename Folder Confirmation',
+  title: 'Admin/Settings/Certificates/Rename',
   tags: ['autodocs'],
   args: {
     newFolderName: 'Atividades complementares',
@@ -62,7 +62,7 @@ const meta: Meta<CertificateFolderRenameStoryArgs> = {
   },
   parameters: {
     layout: 'centered',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -79,10 +79,6 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-};
 
 export const LongFolderName: Story = {
   args: {

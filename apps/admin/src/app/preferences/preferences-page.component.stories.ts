@@ -95,7 +95,7 @@ class WorkspacePreferencesTabStoryHostComponent {
 
 const meta: Meta<WorkspacePreferencesStoryArgs> = {
   component: WorkspacePreferencesTabStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Preferences/Workspace Preferences Tab',
+  title: 'Admin/Settings/Preferences',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -110,36 +110,36 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
     profile: {
       control: 'select',
       options: ['admin', 'super-admin'],
-      description: 'Perfil usado para alternar entre feed pessoal e feed compartilhado.',
+      description: 'Profile that switches between the personal and shared feeds.',
     },
     requestState: {
       control: 'select',
       options: ['success', 'loading', 'error'],
-      description: 'Resposta simulada pela API GraphQL.',
+      description: 'Simulated GraphQL API response state.',
     },
     personalEnabled: {
       control: 'boolean',
-      description: 'Estado inicial do feed administrativo pessoal.',
+      description: 'Initial state of the personal admin feed.',
       if: { arg: 'profile', eq: 'admin' },
     },
     includeFeedUrl: {
       control: 'boolean',
-      description: 'Retorna ou remove o link iCal privado.',
+      description: 'Whether to include the private iCal link.',
       if: { arg: 'requestState', eq: 'success' },
     },
     disabledAutomatically: {
       control: 'boolean',
-      description: 'Simula o motivo de desativação automática do feed pessoal.',
+      description: 'Simulates the reason the personal feed was automatically disabled.',
       if: { arg: 'profile', eq: 'admin' },
     },
     includeActivity: {
       control: 'boolean',
-      description: 'Exibe datas de leitura, rotação e alteração no feed compartilhado.',
+      description: 'Whether to show read, rotation, and update dates in the shared feed.',
       if: { arg: 'profile', eq: 'super-admin' },
     },
     responseDelay: {
       control: { type: 'range', min: 0, max: 1500, step: 100 },
-      description: 'Latência simulada pela API em milissegundos.',
+      description: 'Simulated API latency in milliseconds.',
     },
     renderKey: {
       table: { disable: true },
@@ -155,8 +155,13 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
     return { props: { ...args, renderKey: storyRenderKey } };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Feed and preference settings with controls for profile, feed state, API response, and optional links.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -274,7 +279,6 @@ export const LinkUnavailable: Story = {
 };
 
 export const RequestError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

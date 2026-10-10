@@ -71,7 +71,7 @@ class ConfirmationDialogStoryHostComponent {
 
 const meta: Meta<ConfirmationDialogStoryArgs> = {
   component: ConfirmationDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Confirmation Dialog',
+  title: 'Admin/Layout/Dialogs',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -87,7 +87,7 @@ const meta: Meta<ConfirmationDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -122,9 +122,4 @@ export const DefaultTone: Story = {
     confirmLabel: 'Salvar alterações',
   },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DarkReducedMotion: Story = {
-  ...DefaultTone,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

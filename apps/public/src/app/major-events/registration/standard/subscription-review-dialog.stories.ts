@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   createPublicEvent,
@@ -34,7 +35,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<SubscriptionReviewDialogStoryArgs> = {
   component: SubscriptionReviewDialog,
-  title: 'CACiC Eventos/Major Events/Registration/Standard/Review Dialog',
+  title: 'Public/Registration/Major Event/Review',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -50,6 +51,7 @@ const meta: Meta<SubscriptionReviewDialogStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<SubscriptionReviewDialogStoryArgs>(),
     applicationConfig({
       providers: [
         { provide: MAT_DIALOG_DATA, useFactory: () => createReviewData(activeArgs) },
@@ -91,15 +93,14 @@ export const StandaloneEvent: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Evento', { exact: true })).toBeVisible();
-    await expect(canvas.getByText('Atividade 1', { exact: true })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Atividade 1' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Eventos selecionados' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Confirmar inscrição' })).toBeVisible();
   },
 };
 
-export const DenseMobileDark: Story = {
+export const DenseCatalog: Story = {
   args: { eventCount: 8, longNames: true },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect((await canvas.findAllByText(/Atividade interdisciplinar/)).length).toBeGreaterThan(5);

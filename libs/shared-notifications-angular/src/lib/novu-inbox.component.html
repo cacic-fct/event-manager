@@ -12,7 +12,7 @@
 <section class="novu-inbox">
   @if (notifications.loadingConfig() || (loading() && notificationList().length === 0 && preferences().length === 0)) {
     <div class="loading-state">
-      <mat-spinner diameter="36"></mat-spinner>
+      <mat-spinner diameter="36" aria-label="Carregando notificações"></mat-spinner>
     </div>
   } @else if (!notifications.isConfigured()) {
     <mat-card appearance="outlined">

@@ -248,6 +248,27 @@ describe('ticket audit subject anonymization', () => {
 });
 
 describe('invitation audit privacy', () => {
+  it.each(['lecturerPersonIds', 'attendanceCollectorPersonIds'])(
+    'selects and anonymizes compact %s references in snapshots and changes',
+    (field) => {
+      const where = buildAuditLogSubjectWhere({ people: [], personIds: ['person-1'], userIds: [], emails: [] });
+      expect(where.OR).toEqual(expect.arrayContaining([
+        { after: { path: [field], array_contains: ['person-1'] } },
+        { changes: { array_contains: [{ field, before: ['person-1'] }] } },
+      ]));
+      const identities = new Set(['person-1']);
+      const snapshot = {
+        [field]: ['person-1', 'person-2'],
+        changes: [{ field, before: ['person-1'], after: ['person-2'] }],
+      };
+      expect(containsAuditIdentity(snapshot, identities, false)).toBe(true);
+      expect(anonymizeAuditJson(snapshot, new Set(), identities, 'erased-person', [], false)).toEqual({
+        [field]: ['erased-person', 'person-2'],
+        changes: [{ field, before: ['erased-person'], after: ['person-2'] }],
+      });
+    },
+  );
+
   const dataSubject = { people: [], personIds: ['person-1'], userIds: [], emails: [] };
 
   it('selects ID lists and older embedded invitee snapshots for erasure', () => {

@@ -18,7 +18,7 @@
     <section class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>
+          <h2>
             @if (workspace.selectedEvent()) {
               @if (workspace.selectedEventDraft()) {
                 Editar rascunho
@@ -28,7 +28,7 @@
             } @else {
               Novo evento
             }
-          </h3>
+          </h2>
           <p>
             @if (workspace.selectedEvent()) {
               @if (workspace.selectedEventDraft(); as selectedDraft) {
@@ -128,7 +128,7 @@
 
       <form [formGroup]="workspace.eventForm" class="panel-stack">
         <section class="surface field-group">
-          <h4>Identidade</h4>
+          <h3>Identidade</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Nome</mat-label>
@@ -178,7 +178,7 @@
           emptyLabel="Vincular a um grande evento" changeLabel="Alterar vínculo">
 
           <div class="surface-heading">
-            <h4>Grande evento</h4>
+            <h3>Grande evento</h3>
             @if (workspace.eventForm.controls.majorEventId.value && canEditEvent(workspace.selectedEvent())) {
               <button mat-button type="button" (click)="workspace.clearMajorEventFromEvent()">
                 <mat-icon>link_off</mat-icon>
@@ -234,7 +234,7 @@
           emptyLabel="Vincular a um grupo de eventos" changeLabel="Alterar vínculo">
 
           <div class="surface-heading">
-            <h4>Grupo do evento</h4>
+            <h3>Grupo do evento</h3>
             @if (workspace.eventForm.controls.eventGroupId.value && canEditEvent(workspace.selectedEvent())) {
               <button mat-button type="button" (click)="workspace.clearEventGroupFromEvent()">
                 <mat-icon>link_off</mat-icon>
@@ -280,7 +280,7 @@
 </section>
 
         <section class="surface field-group">
-          <h4>Datas e créditos</h4>
+          <h3>Datas e créditos</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Início</mat-label>
@@ -318,7 +318,7 @@
         </section>
 
         <section class="surface field-group">
-<h4>Local</h4>
+<h3>Local</h3>
 <div class="field-grid">
 <mat-form-field class="span-2">
               <mat-label>Local</mat-label>
@@ -428,7 +428,7 @@
         </section>
 
         <section class="surface field-group" id="inscricao">
-<h4>Inscrições</h4>
+<h3>Inscrições</h3>
 <div class="checkbox-grid">
 <mat-checkbox formControlName="allowSubscription"> Permitir inscrição </mat-checkbox>
 <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
@@ -462,7 +462,7 @@
 <p class="empty-note">A inscrição no grande evento pode incluir esta atividade automaticamente. O período de inscrição do grande evento também se aplica.</p>
 }
 </section><section class="surface field-group" id="presenca">
-<h4>Presença</h4>
+<h3>Presença</h3>
 <div class="checkbox-grid">
 <mat-checkbox formControlName="shouldCollectAttendance"> Coletar presença </mat-checkbox>
 <mat-checkbox formControlName="isOnlineAttendanceAllowed"> Presença on-line </mat-checkbox>
@@ -531,7 +531,7 @@
 }
 }
 </section><section class="surface field-group" id="certificados">
-<h4>Certificados</h4>
+<h3>Certificados</h3>
 <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>@if (workspace.eventForm.controls.shouldIssueCertificate.disabled) {
 <p class="empty-note">O grupo de eventos não permite a emissão. Altere as regras do grupo para habilitar certificados neste evento.</p>
 }
@@ -546,14 +546,14 @@
 <p class="empty-note">As regras do evento, do grupo e do grande evento se aplicam em conjunto. Opções desabilitadas são restritas pelo grupo.</p>
 }
 </section><section class="surface field-group">
-<h4>Exibição no site</h4>
+<h3>Exibição no site</h3>
 <mat-checkbox formControlName="isPubliclyListed"> Listar no site público </mat-checkbox>
 </section>
       </form>
 
       <section class="surface field-group">
         <div class="surface-heading">
-          <h4>Ministrantes</h4>
+          <h3>Ministrantes</h3>
           <span>{{ workspace.eventLecturers().length }} vinculados</span>
         </div>
 
@@ -629,7 +629,7 @@
 
       <section class="surface field-group">
         <div class="surface-heading">
-          <h4>Coletores de presença com permissões limitadas</h4>
+          <h3>Coletores de presença com permissões limitadas</h3>
           <span>{{ workspace.eventAttendanceCollectors().length }} vinculados</span>
         </div>
 

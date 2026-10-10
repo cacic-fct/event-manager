@@ -9,9 +9,14 @@ import { createPageStoryProviders, defaultPageStoryArgs } from '../stories/page-
 import { createAdminEvent } from '../testing/admin-entity-fixtures';
 import { PermissionsService } from '../permissions/permissions.service';
 import { EventGroupsPageComponent } from './event-groups-page.component';
+import { EventGroupsService } from './event-groups.service';
 
 describe('EventGroupsPageComponent', () => {
-  async function createFixture(permissions?: Partial<PermissionsService>) {
+  async function createFixture(
+    permissions?: Partial<PermissionsService>,
+    params: Record<string, string> = {},
+    data: Record<string, string> = {},
+  ) {
     await TestBed.configureTestingModule({
       imports: [EventGroupsPageComponent],
       providers: [
@@ -19,15 +24,21 @@ describe('EventGroupsPageComponent', () => {
         provideRouter([]),
         ...createPageStoryProviders(defaultPageStoryArgs),
         ...(permissions ? [{ provide: PermissionsService, useValue: permissions }] : []),
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(params)), snapshot: { data } } },
       ],
     }).compileComponents();
+    vi.spyOn(TestBed.inject(EventGroupsService), 'pickEventGroupById');
     const fixture = TestBed.createComponent(EventGroupsPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     return fixture;
   }
+
+  it('loads the existing group identified by workspace route metadata', async () => {
+    await createFixture(undefined, { targetId: 'workspace-group' }, { targetType: 'group', section: 'settings' });
+    expect(TestBed.inject(EventGroupsService).pickEventGroupById).toHaveBeenCalledWith('workspace-group');
+  });
 
   it('removes a linked activity without navigating or bubbling to the list', async () => {
     const fixture = await createFixture();
@@ -62,7 +73,7 @@ describe('EventGroupsPageComponent', () => {
   it('shows identity and linked activities before access and certificate rules', async () => {
     const fixture = await createFixture();
     const element = fixture.nativeElement as HTMLElement;
-    const headings = [...element.querySelectorAll('h4')].map((heading) => heading.textContent?.trim());
+    const headings = [...element.querySelectorAll('h3')].map((heading) => heading.textContent?.trim());
     expect(headings.indexOf('Dados principais')).toBeLessThan(headings.indexOf('Eventos do grupo'));
     expect(headings.indexOf('Eventos do grupo')).toBeLessThan(headings.indexOf('Acesso e participação'));
     expect(headings.indexOf('Presença')).toBeLessThan(headings.indexOf('Certificados'));

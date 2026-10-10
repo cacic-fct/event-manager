@@ -4,10 +4,10 @@ import { RegistrationDemoComponent } from './registration-demo';
 
 const meta: Meta<RegistrationDemoComponent> = {
   component: RegistrationDemoComponent,
-  title: 'CACiC Eventos/Landing/Registration Demo',
+  title: 'Public/Landing/Demos/Registration',
   tags: ['autodocs', 'landing-showcase'],
   args: { organizer: false },
-  argTypes: { organizer: { control: 'boolean' } },
+  argTypes: { organizer: { control: 'boolean', description: 'Show the organizer registration-management workspace.' } },
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
@@ -15,7 +15,6 @@ export default meta;
 type Story = StoryObj<RegistrationDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     await expect(
       within(canvasElement).getByRole('region', { name: 'Inscrição em grande evento' }),
@@ -23,9 +22,8 @@ export const Playground: Story = {
   },
 };
 
-export const OrganizerDarkReducedEditingAndSearch: Story = {
+export const OrganizerEditingAndSearch: Story = {
   args: { organizer: true },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const nameInput = canvas.getByRole('textbox', { name: 'Nome do evento' });
@@ -48,10 +46,8 @@ export const OrganizerDarkReducedEditingAndSearch: Story = {
   },
 };
 
-export const MobileSubscriptions: Story = {
+export const OrganizerSubscriptionSearch: Story = {
   args: { organizer: true },
-  globals: { theme: 'light', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('tab', { name: 'Inscrições' }));

@@ -80,7 +80,12 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
               <h3>Presenças registradas</h3>
               <p>{{ attendances().length }} registros recentes</p>
             </div>
-            <button matIconButton type="button" matTooltip="Atualizar lista" (click)="loadInitialFeed()">
+            <button
+              matIconButton
+              type="button"
+              aria-label="Atualizar lista"
+              matTooltip="Atualizar lista"
+              (click)="loadInitialFeed()">
               <mat-icon>refresh</mat-icon>
             </button>
           </div>

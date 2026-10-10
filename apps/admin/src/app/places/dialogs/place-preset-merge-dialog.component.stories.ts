@@ -76,7 +76,7 @@ class PlacePresetMergeDialogStoryHostComponent {
 
 const meta: Meta<PlacePresetMergeStoryArgs> = {
   component: PlacePresetMergeDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Place Preset Merge Dialog',
+  title: 'Admin/Event Management/Places/Dialogs',
   tags: ['autodocs'],
   args: {
     targetName: 'Auditório Discente',
@@ -92,7 +92,7 @@ const meta: Meta<PlacePresetMergeStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -116,9 +116,4 @@ export const MissingTargetCoordinates: Story = {
     sourceName: 'Laboratório de Software',
     targetHasCoordinates: false,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MissingTargetCoordinates,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

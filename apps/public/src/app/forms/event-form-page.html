@@ -20,6 +20,7 @@
   <lib-event-form-renderer
     [elements]="currentState.elements"
     [initialAnswers]="currentState.answers"
+    [questionHeadingLevel]="2"
     submitLabel="Salvar respostas"
     (formSubmitted)="submit(currentState, $event)" />
   } @else if (currentState.response) {
@@ -30,6 +31,7 @@
   <lib-event-form-renderer
     [elements]="currentState.elements"
     [initialAnswers]="currentState.answers"
+    [questionHeadingLevel]="2"
     [readOnly]="true"
     [showSubmit]="false" />
   } @else {

@@ -15,11 +15,12 @@
         <div matListItemMeta class="permission-action-icons">
           @for (action of permission.actions; track action.scope) {
             <span
+              role="img"
               [attr.aria-label]="permission.label + ': ' + action.label"
               [matTooltip]="action.label"
               matTooltipPosition="above"
               class="permission-icon">
-              <mat-icon>{{ action.icon }}</mat-icon>
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
             </span>
           }
         </div>

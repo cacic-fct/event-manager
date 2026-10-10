@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import {
@@ -14,14 +15,15 @@ const storyContext = createOnlineAttendanceStoryContext();
 
 const meta: Meta<OnlineAttendanceStoryControls> = {
   component: OnlineAttendanceListComponent,
-  title: 'CACiC Eventos/Attendance/Self-registration/Event List',
+  title: 'Public/Attendance/Self Registration/Event List',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<OnlineAttendanceStoryControls>()],
   args: onlineAttendanceStoryDefaultControls,
   argTypes: onlineAttendanceStoryControlArgTypes,
   render: (args) => renderOnlineAttendanceStory(args, storyContext),
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: onlineAttendanceStoryHandlers(storyContext) } },
   },
 };
@@ -37,7 +39,6 @@ const exerciseStory = async (canvasElement: HTMLElement, expectedCount: number) 
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args.eventCount),
 };
 
@@ -46,14 +47,13 @@ export const DenseList: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement, 12),
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     eventCount: 6,
     name: 'Encontro interdisciplinar de tecnologia, ciência, cultura e acessibilidade',
     majorEventName: 'Grande evento universitário de inovação e extensão para toda a comunidade',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement, 6),
 };
 
@@ -82,6 +82,6 @@ export const ApiError: Story = {
 
 export const OfflineFallback: Story = {
   args: { eventCount: 4 },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement, 4),
 };

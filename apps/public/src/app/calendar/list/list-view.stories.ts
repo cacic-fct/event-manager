@@ -16,7 +16,7 @@ type CalendarListViewStoryArgs = CalendarStoryCollectionControls & {
 
 const meta: Meta<CalendarListViewStoryArgs> = {
   component: CalendarListView,
-  title: 'CACiC Eventos/Calendar/List View',
+  title: 'Public/Discovery/Calendar/List',
   tags: ['autodocs'],
   args: {
     ...calendarStoryCollectionDefaultControls,
@@ -33,7 +33,7 @@ const meta: Meta<CalendarListViewStoryArgs> = {
   render: (args) => renderCalendarListView(args),
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -56,13 +56,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const LoadingOlder: Story = {
   args: { isLoadingOlder: true },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Carregando...' })).toBeDisabled();
@@ -87,7 +86,7 @@ export const Empty: Story = {
 export const OfflineFallback: Story = {
   args: { canLoadOlder: false },
   render: (args) => renderCalendarListView(args, []),
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();

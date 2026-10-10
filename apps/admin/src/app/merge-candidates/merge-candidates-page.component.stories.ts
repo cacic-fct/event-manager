@@ -3,6 +3,7 @@ import { inject, signal } from '@angular/core';
 import type { MergeCandidate, MergeCandidateStatus, MergeMatchMethod } from '@cacic-fct/event-manager-admin-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { PermissionsService } from '../permissions/permissions.service';
 import { createAdminPerson } from '../testing/admin-entity-fixtures';
@@ -136,7 +137,7 @@ function createMergeCandidatesStoryService() {
 
 const meta: Meta<MergeCandidatesPageStoryArgs> = {
   component: MergeCandidatesPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Merge Candidates/Workspace Merge Candidates Tab',
+  title: 'Admin/People/Merge Candidates/Queue',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -153,6 +154,7 @@ const meta: Meta<MergeCandidatesPageStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<MergeCandidatesPageStoryArgs>(),
     applicationConfig({
       providers: [
         { provide: MergeCandidatesService, useFactory: createMergeCandidatesStoryService },
@@ -170,7 +172,15 @@ const meta: Meta<MergeCandidatesPageStoryArgs> = {
     scanCandidates.mockClear();
     applyFilters.mockClear();
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Duplicate person review queue with controls for match method, candidate status, density, and editing permissions.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -181,7 +191,7 @@ export const Playground: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.findByRole('textbox', { name: 'Buscar pessoa' })).resolves.toBeVisible();
     await expect(canvas.findByRole('combobox', { name: 'Status' })).resolves.toBeVisible();
-    await expect((await canvas.findAllByRole('listitem')).length).toBeGreaterThan(10);
+    await expect(canvasElement.querySelectorAll('mat-list-item').length).toBeGreaterThan(10);
     await expect((await canvas.findAllByRole('button', { name: 'Unificar' })).length).toBeGreaterThan(0);
     await userEvent.click(canvas.getByRole('button', { name: 'Verificar' }));
     await expect(scanCandidates).toHaveBeenCalled();
@@ -215,8 +225,6 @@ export const ReadOnly: Story = {
   },
 };
 
-export const LongNamesMobile: Story = {
+export const LongNames: Story = {
   args: { candidateCount: 16, statusScenario: 'MIXED', longNames: true },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -71,7 +71,7 @@ class PersonLinkedDataDialogStoryHostComponent {
 
 const meta: Meta<PersonLinkedDataDialogStoryArgs> = {
   component: PersonLinkedDataDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Person Linked Data Dialog',
+  title: 'Admin/People/People/Linked Data',
   tags: ['autodocs'],
   args: {
     mode: 'linked',
@@ -93,7 +93,7 @@ const meta: Meta<PersonLinkedDataDialogStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -131,7 +131,6 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'error',
   },

@@ -41,18 +41,27 @@ export const myDayStoryDefaultControls: MyDayStoryControls = {
 };
 
 export const myDayStoryControlArgTypes = {
-  state: { control: 'select', options: ['ready', 'offline', 'empty', 'loading', 'error'] },
-  userName: { control: 'text' },
-  currentEvent: { control: 'boolean' },
-  nextEvent: { control: 'boolean' },
-  laterEventCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
-  attentionCount: { control: { type: 'range', min: 0, max: 9, step: 1 } },
-  weatherCount: { control: { type: 'range', min: 0, max: 8, step: 1 } },
-  collectorRole: { control: 'boolean' },
-  sportsOperatorRole: { control: 'boolean' },
-  eventNamePrefix: { control: 'text' },
-  locationDescription: { control: 'text' },
-  cooldownSeconds: { control: { type: 'range', min: 0, max: 120, step: 1 } },
+  state: {
+    control: 'select',
+    options: ['ready', 'offline', 'empty', 'loading', 'error'],
+    name: 'View State',
+    description: 'Selects the schedule state shown by the mock store.',
+  },
+  userName: { control: 'text', name: 'Participant Name' },
+  currentEvent: { control: 'boolean', name: 'Show Current Event' },
+  nextEvent: { control: 'boolean', name: 'Show Next Event' },
+  laterEventCount: {
+    control: { type: 'range', min: 0, max: 12, step: 1 },
+    name: 'Later Events',
+    description: 'Sets how many upcoming events the fixture generates.',
+  },
+  attentionCount: { control: { type: 'range', min: 0, max: 9, step: 1 }, name: 'Attention Items' },
+  weatherCount: { control: { type: 'range', min: 0, max: 8, step: 1 }, name: 'Weather Alerts' },
+  collectorRole: { control: 'boolean', name: 'Attendance Collector Role' },
+  sportsOperatorRole: { control: 'boolean', name: 'Sports Operator Role' },
+  eventNamePrefix: { control: 'text', name: 'Event Name Prefix' },
+  locationDescription: { control: 'text', name: 'Location' },
+  cooldownSeconds: { control: { type: 'range', min: 0, max: 120, step: 1 }, name: 'Refresh Cooldown' },
 } as const;
 
 export function createMyDayStoryState(controls: MyDayStoryControls): MyDayLoadState {

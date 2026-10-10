@@ -45,13 +45,13 @@
 }
 
 .wallet-ticket-academic-record {
-  color: #edf8ff;
-  background: #006ba6;
+  color: var(--mat-sys-on-primary);
+  background: var(--mat-sys-primary);
 }
 
 .wallet-ticket-academic-record app-wallet-card-header {
-  color: #fff;
-  background: #0093dd;
+  color: var(--mat-sys-on-primary-container);
+  background: var(--mat-sys-primary-container);
 }
 
 .ticket-details {

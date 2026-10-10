@@ -36,6 +36,7 @@ import { applyAuditLogRevertInvariants } from './audit-log.revert-invariants';
 import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import {
+  compactAuditSnapshots,
   diffAuditRecords,
   normalizeAuditSnapshot,
   readAuditSnapshot,
@@ -49,7 +50,6 @@ import {
   AuditPrismaClient,
   AuditRecordOptions,
   RevertEntityConfig,
-  StoredAuditChange,
 } from './audit-log.types';
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
@@ -102,6 +102,7 @@ export class AuditLogService {
     if (!options.force && changes.length === 0) {
       return;
     }
+    const snapshots = compactAuditSnapshots(before, after, changes);
 
     const actor = await this.resolveActor(options.actor, prisma);
     const now = new Date();
@@ -113,7 +114,7 @@ export class AuditLogService {
       !isPublicationLifecycleMetadata(options.metadata);
 
     if (canSquash) {
-      const squashed = await this.trySquashUpdate(options, actor, before, after, changes, now, squashWindowMs, prisma);
+      const squashed = await this.trySquashUpdate(options, actor, before, after, now, squashWindowMs, prisma);
       if (squashed) {
         return;
       }
@@ -134,8 +135,8 @@ export class AuditLogService {
         eventId: options.scope?.eventId ?? null,
         majorEventId: options.scope?.majorEventId ?? null,
         eventGroupId: options.scope?.eventGroupId ?? null,
-        before: toNullableAuditJsonInput(before),
-        after: toNullableAuditJsonInput(after),
+        before: toNullableAuditJsonInput(snapshots.before),
+        after: toNullableAuditJsonInput(snapshots.after),
         changes: toAuditJsonInput(changes),
         changedFields: changes.map((change) => change.field),
         firstRecordedAt: now,
@@ -281,7 +282,10 @@ export class AuditLogService {
       if (this.shouldRefreshEventAttendance(targetEntry.entityType, revertData)) {
         await this.attendanceCategories.refreshForEvent(targetEntry.entityId, tx);
       }
-      const changes = diffAuditRecords(normalizeAuditSnapshot(currentRecord), normalizeAuditSnapshot(updated));
+      const before = normalizeAuditSnapshot(currentRecord);
+      const after = normalizeAuditSnapshot(updated);
+      const changes = diffAuditRecords(before, after);
+      const snapshots = compactAuditSnapshots(before, after, changes);
       const revertLog = await tx.auditLogEntry.create({
         data: {
           entityType: targetEntry.entityType,
@@ -300,8 +304,8 @@ export class AuditLogService {
           eventId: targetEntry.eventId,
           majorEventId: targetEntry.majorEventId,
           eventGroupId: targetEntry.eventGroupId,
-          before: toNullableAuditJsonInput(normalizeAuditSnapshot(currentRecord)),
-          after: toNullableAuditJsonInput(normalizeAuditSnapshot(updated)),
+          before: toNullableAuditJsonInput(snapshots.before),
+          after: toNullableAuditJsonInput(snapshots.after),
           changes: toAuditJsonInput(changes),
           changedFields: changes.map((change) => change.field),
           firstRecordedAt: now,
@@ -393,7 +397,6 @@ export class AuditLogService {
     actor: AuditActor,
     before: Record<string, unknown>,
     after: Record<string, unknown>,
-    changes: StoredAuditChange[],
     now: Date,
     squashWindowMs: number,
     prisma: AuditPrismaClient,
@@ -412,11 +415,15 @@ export class AuditLogService {
       return false;
     }
 
-    const originalBefore = readAuditSnapshot(lastEntry.before) ?? before;
-    const squashedChanges = diffAuditRecords(originalBefore, after);
+    // A compact entry contains only previously changed roots. Fill the other
+    // original values from this edit's before state before calculating the net diff.
+    const originalBefore = { ...before, ...normalizeAuditSnapshot(readAuditSnapshot(lastEntry.before)) };
+    const latestAfter = { ...normalizeAuditSnapshot(readAuditSnapshot(lastEntry.after)), ...after };
+    const squashedChanges = diffAuditRecords(originalBefore, latestAfter);
     if (squashedChanges.length === 0) {
       return false;
     }
+    const snapshots = compactAuditSnapshots(originalBefore, latestAfter, squashedChanges);
 
     const updatedEntry = await prisma.auditLogEntry.update({
       where: {
@@ -425,7 +432,8 @@ export class AuditLogService {
       data: {
         entityLabel: options.entityLabel ?? lastEntry.entityLabel,
         summary: options.summary ?? lastEntry.summary,
-        after: toNullableAuditJsonInput(after),
+        before: toNullableAuditJsonInput(snapshots.before),
+        after: toNullableAuditJsonInput(snapshots.after),
         changes: toAuditJsonInput(squashedChanges),
         changedFields: squashedChanges.map((change) => change.field),
         groupedCount: {

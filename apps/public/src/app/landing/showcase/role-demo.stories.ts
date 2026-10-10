@@ -4,9 +4,10 @@ import { RoleDemoComponent } from './role-demo';
 
 const meta: Meta<RoleDemoComponent> = {
   component: RoleDemoComponent,
-  title: 'CACiC Eventos/Landing/Cargos da equipe',
+  title: 'Public/Landing/Demos/Team Roles',
   tags: ['autodocs', 'landing-showcase'],
   parameters: {
+    controls: { disable: true },
     layout: 'fullscreen',
     a11y: { test: 'error' },
   },
@@ -16,7 +17,6 @@ export default meta;
 type Story = StoryObj<RoleDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', motion: 'full' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -30,8 +30,7 @@ export const Playground: Story = {
   },
 };
 
-export const DarkEditRole: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const EditRole: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -50,7 +49,6 @@ export const DarkEditRole: Story = {
 };
 
 export const PermissionSelection: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -66,9 +64,7 @@ export const PermissionSelection: Story = {
   },
 };
 
-export const MobileCreateAnotherRole: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const CreateAnotherRole: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

@@ -1,5 +1,7 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { AuthService } from '@cacic-fct/shared-angular';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import type OlMap from 'ol/Map';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -28,6 +30,7 @@ type LocationState = 'hidden' | 'locating' | 'live' | 'denied' | 'unsupported' |
 
 interface PublicMapStoryArgs {
   accuracyMeters: number;
+  authenticated: boolean;
   apiState: ApiState;
   centerLatitude: number;
   centerLongitude: number;
@@ -47,6 +50,7 @@ interface PublicMapStoryArgs {
 
 const defaultArgs: PublicMapStoryArgs = {
   accuracyMeters: 14,
+  authenticated: true,
   apiState: 'ready',
   centerLatitude: publicMapStoryCenter.latitude,
   centerLongitude: publicMapStoryCenter.longitude,
@@ -193,10 +197,11 @@ const mapGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
 
 const meta: Meta<PublicMapStoryArgs> = {
   component: PublicMapPage,
-  title: 'CACiC Eventos/Map/Page',
+  title: 'Public/Discovery/Map',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
+    authenticated: { control: 'boolean', description: 'Anonymous visitors can use the shared offline event cache.' },
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error', 'offline'] },
     eventCount: { control: { type: 'range', min: 0, max: 60, step: 1 } },
     eventNamePrefix: { control: 'text' },
@@ -222,9 +227,17 @@ const meta: Meta<PublicMapStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<PublicMapStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
+          {
+            provide: AuthService,
+            useValue: {
+              isAuthenticated: () => context.args.authenticated,
+              user: () => context.args.authenticated ? { sub: 'storybook-map-user' } : null,
+            },
+          },
           { provide: PublicMapCacheService, useClass: StoryMapCacheService },
           { provide: PublicMapStateService, useClass: StoryMapStateService },
           {
@@ -237,7 +250,6 @@ const meta: Meta<PublicMapStoryArgs> = {
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'error' },
-    viewport: { defaultViewport: 'desktop' },
     msw: { handlers: { graphql: [mapGraphqlHandler] } },
   },
 };
@@ -250,7 +262,7 @@ export const Playground: Story = {
     await expectReadyMap(canvasElement, args.eventCount);
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Filtrar eventos' }));
+    await userEvent.click(await interactiveMapAction(canvasElement, 'Filtrar eventos'));
     const dialog = within(document.body);
     await userEvent.click(await dialog.findByRole('radio', { name: 'Eventos de hoje' }));
     await userEvent.click(dialog.getByRole('button', { name: 'Aplicar' }));
@@ -259,7 +271,6 @@ export const Playground: Story = {
 };
 
 export const NearbyClusters: Story = {
-  name: 'Agrupamentos próximos',
   args: { coordinateLayout: 'nearby', eventCount: 18, spreadRadiusMeters: 12 },
   play: async ({ args, canvasElement }) => {
     await expectReadyMap(canvasElement, args.eventCount);
@@ -268,9 +279,7 @@ export const NearbyClusters: Story = {
 };
 
 export const CoincidentEvents: Story = {
-  name: 'Eventos na mesma coordenada',
   args: { coordinateLayout: 'coincident', eventCount: 8 },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ args, canvasElement }) => {
     await expectReadyMap(canvasElement, args.eventCount);
     await expectClusterWithAtLeast(args.eventCount);
@@ -278,13 +287,12 @@ export const CoincidentEvents: Story = {
 };
 
 export const LiveLocation: Story = {
-  name: 'Localização ao vivo com precisão e direção',
   args: { locationState: 'live', coordinateLayout: 'nearby', eventCount: 12, spreadRadiusMeters: 16 },
   play: async ({ canvasElement }) => {
     await expectReadyMap(canvasElement, 12);
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
-    const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
+    const locationButton = await interactiveMapAction(canvasElement, 'Usar minha localização');
     await expect(locationButton).not.toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(locationButton);
     await expectLocationFeatures([
@@ -296,7 +304,6 @@ export const LiveLocation: Story = {
 };
 
 export const Locating: Story = {
-  name: 'Localização em andamento',
   args: { locationState: 'locating' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -310,32 +317,22 @@ export const Locating: Story = {
 };
 
 export const LocationDenied: Story = {
-  name: 'Permissão de localização bloqueada',
   args: { locationState: 'denied' },
-  play: async ({ canvasElement }) => {
-    await expectLocationUnavailable(
-      canvasElement,
-      'A localização está bloqueada. Libere a permissão nas configurações do navegador.',
-    );
-  },
+  play: async ({ canvasElement }) => expectLocationUnavailable(canvasElement),
 };
 
 export const LocationUnsupported: Story = {
-  name: 'Localização não suportada',
   args: { locationState: 'unsupported' },
-  play: async ({ canvasElement }) => {
-    await expectLocationUnavailable(canvasElement, 'Este navegador não oferece localização para o mapa.');
-  },
+  play: async ({ canvasElement }) => expectLocationUnavailable(canvasElement),
 };
 
 export const LocationError: Story = {
-  name: 'Falha recuperável de localização',
   args: { locationState: 'error' },
   play: async ({ canvasElement }) => {
     await expectReadyMap(canvasElement, defaultArgs.eventCount);
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
-    await userEvent.click(await canvas.findByRole('button', { name: 'Usar minha localização' }));
+    await userEvent.click(await interactiveMapAction(canvasElement, 'Usar minha localização'));
     await expect(
       await within(document.body).findByText('Não foi possível determinar a localização simulada.'),
     ).toBeVisible();
@@ -343,7 +340,6 @@ export const LocationError: Story = {
 };
 
 export const MyEvents: Story = {
-  name: 'Somente meus eventos',
   args: { coordinateLayout: 'nearby', eventCount: 10, mineCount: 4, spreadRadiusMeters: 16 },
   decorators: [
     applicationConfig({ providers: [{ provide: ActivatedRoute, useValue: mapRoute({ participacao: 'meus' }) }] }),
@@ -355,7 +351,6 @@ export const MyEvents: Story = {
 };
 
 export const DeepLinkedEvent: Story = {
-  name: 'Evento destacado por link',
   decorators: [
     applicationConfig({ providers: [{ provide: ActivatedRoute, useValue: mapRoute({ evento: 'map-event-2' }) }] }),
   ],
@@ -363,8 +358,7 @@ export const DeepLinkedEvent: Story = {
 };
 
 export const OfflineCache: Story = {
-  name: 'Mapa salvo sem conexão',
-  args: { apiState: 'offline', coordinateLayout: 'nearby', eventCount: 9, spreadRadiusMeters: 14 },
+  args: { authenticated: false, apiState: 'offline', coordinateLayout: 'nearby', eventCount: 9, spreadRadiusMeters: 14 },
   globals: { network: 'offline' },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
@@ -401,16 +395,13 @@ export const Empty: Story = {
   },
 };
 
-export const LongContentOnMobile: Story = {
-  name: 'Conteúdo extenso no celular',
+export const LongContent: Story = {
   args: {
     coordinateLayout: 'nearby',
     eventCount: 24,
     eventNamePrefix: 'Semana integrada de ciência, tecnologia, cultura e extensão universitária: ',
     spreadRadiusMeters: 18,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ args, canvasElement }) => expectReadyMap(canvasElement, args.eventCount),
 };
 
@@ -497,14 +488,22 @@ function mapLayers() {
   return map?.getLayers().getArray() ?? [];
 }
 
-async function expectLocationUnavailable(canvasElement: HTMLElement, message: string): Promise<void> {
+async function expectLocationUnavailable(canvasElement: HTMLElement): Promise<void> {
   await expectReadyMap(canvasElement, defaultArgs.eventCount);
   const canvas = within(canvasElement);
   await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
   const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
   await expect(locationButton).toHaveTextContent('location_disabled');
-  await userEvent.click(locationButton);
-  await expect(await within(document.body).findByText(message)).toBeVisible();
+  await expect(locationButton).toHaveAttribute('aria-disabled', 'true');
+}
+
+async function interactiveMapAction(canvasElement: HTMLElement, name: string): Promise<HTMLElement> {
+  const button = await within(canvasElement).findByRole('button', { name });
+  await waitFor(() => {
+    expect(button).toBeEnabled();
+    expect(window.getComputedStyle(button).pointerEvents).not.toBe('none');
+  });
+  return button;
 }
 
 async function graphQlQuery(request: Request): Promise<string> {

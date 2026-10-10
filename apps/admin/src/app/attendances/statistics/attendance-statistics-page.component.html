@@ -31,7 +31,10 @@
   }
 
   @if (loading() && !snapshot()) {
-    <div class="loading-state"><mat-spinner diameter="36" /><span>Preparando a central de presença...</span></div>
+    <div class="loading-state">
+      <mat-spinner diameter="36" aria-label="Preparando a central de presença" />
+      <span>Preparando a central de presença...</span>
+    </div>
   } @else if (snapshot(); as data) {
     <section class="status-strip" aria-label="Resumo geral de presença e destaque do período em foco">
       <div>
@@ -93,7 +96,7 @@
                     [disabled]="reviewingFlagId() === item.id"
                     (click)="review(item, 'DISMISSED')">
                     @if (reviewingFlagId() === item.id) {
-                      <mat-spinner diameter="18" />
+                      <mat-spinner diameter="18" aria-label="Revisando aviso de presença" />
                     } @else {
                       <mat-icon>done</mat-icon>
                     }
@@ -195,17 +198,21 @@
             aria-label="Gráfico de produtividade por pessoa coletora"></div>
           <div class="collector-table" role="table" aria-label="Detalhes das pessoas coletoras">
             <div class="collector-row collector-header" role="row">
-              <span>Coletor(a)</span><span>Primeira</span><span>Última</span><span>Métodos</span><span>Origem</span
-              ><span>Total</span>
+              <span role="columnheader">Coletor(a)</span>
+              <span role="columnheader">Primeira</span>
+              <span role="columnheader">Última</span>
+              <span role="columnheader">Métodos</span>
+              <span role="columnheader">Origem</span>
+              <span role="columnheader">Total</span>
             </div>
             @for (collector of data.collectors; track collector.actorId) {
               <div class="collector-row" role="row">
-                <strong>{{ collector.name }}</strong>
-                <span>{{ collector.firstScanAt | date: 'shortTime' }}</span>
-                <span>{{ collector.lastScanAt | date: 'shortTime' }}</span>
-                <span>{{ methodSummary(collector.methods) }}</span>
-                <span>{{ collector.onlineCount }} on-line e {{ collector.offlineCount }} off-line</span>
-                <strong>{{ collector.count }}</strong>
+                <strong role="cell">{{ collector.name }}</strong>
+                <span role="cell">{{ collector.firstScanAt | date: 'shortTime' }}</span>
+                <span role="cell">{{ collector.lastScanAt | date: 'shortTime' }}</span>
+                <span role="cell">{{ methodSummary(collector.methods) }}</span>
+                <span role="cell">{{ collector.onlineCount }} on-line e {{ collector.offlineCount }} off-line</span>
+                <strong role="cell">{{ collector.count }}</strong>
               </div>
             }
           </div>

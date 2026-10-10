@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { getAuditFieldLabel } from './audit-log.field-labels';
 import { StoredAuditChange } from './audit-log.types';
+import { AUDIT_SUBJECT_REFERENCE_FIELDS } from './audit-log.subject-references';
 
 const IGNORED_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'updatedById']);
 
@@ -47,9 +48,29 @@ export function normalizeAuditSnapshot(value: unknown): Record<string, unknown> 
 
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([, child]) => child !== undefined)
+      .filter(([key, child]) => child !== undefined && !IGNORED_AUDIT_FIELDS.has(key))
       .map(([key, child]) => [key, normalizeAuditValueForComparison(child)]),
   );
+}
+
+/** Keep changed roots intact for reversion and subject references for privacy exports/deletion. */
+export function compactAuditSnapshots(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  changes: readonly StoredAuditChange[],
+): { before: Record<string, unknown>; after: Record<string, unknown> } {
+  const fields = new Set(changes.map((change) => change.field.split('.')[0]));
+  for (const field of [...Object.keys(before), ...Object.keys(after)]) {
+    const hasScalarReference = AUDIT_SUBJECT_REFERENCE_FIELDS.has(field) &&
+      [before[field], after[field]].some((value) => typeof value === 'string');
+    if (hasScalarReference || field === 'sourceKey') {
+      fields.add(field);
+    }
+  }
+
+  const pickFields = (snapshot: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(snapshot).filter(([field]) => fields.has(field)));
+  return { before: pickFields(before), after: pickFields(after) };
 }
 
 export function normalizeAuditValueForComparison(value: unknown): unknown {

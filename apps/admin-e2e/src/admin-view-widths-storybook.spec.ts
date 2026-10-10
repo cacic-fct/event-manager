@@ -7,13 +7,13 @@ declare global {
 
 const storybookURL = process.env['STORYBOOK_URL'];
 const views = [
-  { story: 'cacic-eventos-workspace-tabs-preferences-workspace-preferences-tab--playground', selector: '.workspace-tab-shell', width: 840 },
-  { story: 'cacic-eventos-workspace-tabs-people-workspace-people-tab--playground', selector: '.workspace-tab-shell', width: 1280 },
-  { story: 'cacic-eventos-workspace-tabs-subscriptions-page--playground', selector: '.workspace-tab', width: 1280 },
-  { story: 'cacic-eventos-workspace-tabs-attendances-page--playground', selector: '.attendance-shell', width: 1280 },
-  { story: 'cacic-eventos-workspace-tabs-publicação--playground', selector: '.publication-shell', width: 1280 },
-  { story: 'cacic-eventos-workspace-tabs-sports-workspace-sports-tab--playground', selector: '.sports-workspace', width: 1280 },
-  { story: 'cacic-eventos-workspace-home-home--playground', selector: 'app-home', width: 1560 },
+  { story: 'admin-settings-preferences--playground', selector: '.workspace-tab-shell', width: 840 },
+  { story: 'admin-people-people--playground', selector: '.workspace-tab-shell', width: 1280 },
+  { story: 'admin-registration-subscriptions--playground', selector: '.workspace-tab', width: 1280 },
+  { story: 'admin-attendance-workspace--playground', selector: '.attendance-shell', width: 1280 },
+  { story: 'admin-event-management-publication--playground', selector: '.publication-shell', width: 1280 },
+  { story: 'admin-sports-tournaments--playground', selector: '.sports-workspace', width: 1280 },
+  { story: 'admin-dashboard-home--playground', selector: 'app-home', width: 1560 },
 ] as const;
 
 test.describe('admin view widths', () => {
@@ -21,7 +21,7 @@ test.describe('admin view widths', () => {
 
   test('permission management follows the active tab column count', async ({ page }) => {
     await page.setViewportSize({ width: 3440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-permissões-gerenciamento--playground&viewMode=story`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${storybookURL}/iframe.html?id=admin-access-permissions-management--playground&viewMode=story`, { waitUntil: 'domcontentloaded' });
     const container = page.locator('app-permission-management-page');
     await expect.poll(async () => (await container.boundingBox())?.width).toBe(1280);
     await page.getByRole('tab', { name: 'Pessoas', exact: true }).click();

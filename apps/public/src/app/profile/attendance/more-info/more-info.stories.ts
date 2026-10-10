@@ -1,7 +1,11 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import { PublicDataAccessService, type OfflineAttendanceDetail } from '@cacic-fct/public-indexed-db';
+import { RouteErrorService } from '@cacic-fct/shared-angular';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { applicationConfig } from '@storybook/angular';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
   PublicEventStoryControls,
   createPublicStoryEventFromControls,
@@ -26,6 +30,7 @@ interface MoreInfoStoryArgs extends PublicEventStoryControls {
 
 const defaultArgs: MoreInfoStoryArgs = {
   ...publicEventStoryDefaultControls,
+  context: 'short-description',
   apiState: 'ready',
   latencyMs: 120,
   hasAttendance: true,
@@ -44,14 +49,33 @@ interface MoreInfoStoryContext {
 }
 
 const onlineContext = createStoryContext();
+const navigateRouteError = fn(async () => true);
 
 const meta: Meta<MoreInfoStoryArgs> = {
   component: MoreInfo,
-  title: 'CACiC Eventos/Profile/Attendance/More Info',
+  title: 'Public/Profile/Attendance History/Details',
   tags: ['autodocs'],
+  decorators: [
+    withScenarioControls<MoreInfoStoryArgs>(),
+    (story, context) => applicationConfig({ providers: [
+      { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
+      { provide: PublicDataAccessService, useValue: {
+        replaceAttendanceDetail: async () => undefined,
+        getAttendanceDetail: async () => context.globals['network'] === 'offline'
+          ? cachedDetail(context.args)
+          : null,
+        getLatestUserSnapshot: async () => ({ userId: 'storybook-user' }),
+        purgeUserData: async () => undefined,
+      } },
+    ] })(story, context),
+  ],
+  beforeEach: () => { navigateRouteError.mockClear(); },
   args: defaultArgs,
   argTypes: {
     ...publicEventStoryControlArgTypes,
+    context: { control: false, table: { disable: true } },
+    majorEventName: { control: false, table: { disable: true } },
+    eventGroupName: { control: false, table: { disable: true } },
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     hasAttendance: { control: 'boolean' },
@@ -66,7 +90,7 @@ const meta: Meta<MoreInfoStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     ...storyParameters(onlineContext),
   },
   render: (args) => renderStory(args, onlineContext),
@@ -78,6 +102,7 @@ type Story = StoryObj<MoreInfoStoryArgs>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
+  await expect(await canvas.findByRole('heading', { level: 1 })).toBeVisible();
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
   const enabledButton = buttons.find(
@@ -94,7 +119,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -105,18 +129,18 @@ export const AttendanceOnly: Story = {
     hasIssuedCertificate: false,
     isLecturer: false,
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     await exerciseStory(canvasElement);
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(/Não inscrito/)).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Registrar presença' })).not.toBeInTheDocument();
     await expect(await canvas.findByText(/Presença registrada/)).toBeVisible();
   },
 };
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -144,10 +168,12 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
+  parameters: { docs: { description: { story: 'A failed request with no saved detail redirects to the not-found route.' } } },
+  play: async () => { await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404)); },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     name: 'Atividade interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
     shortDescription:
@@ -156,8 +182,6 @@ export const LongContentMobile: Story = {
     subscriberCount: 4_250,
     attendanceCount: 3_987,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function createStoryContext(args: Partial<MoreInfoStoryArgs> = {}): MoreInfoStoryContext {
@@ -199,6 +223,12 @@ function storyParameters(context: MoreInfoStoryContext) {
 
 function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
   const event = buildEvent(args);
+  if (query.includes('PublicPrizeDrawAvailability')) {
+    return { publicPrizeDrawAvailability: [] };
+  }
+  if (query.includes('CurrentUserEventForms')) {
+    return { currentUserEventForms: [] };
+  }
   if (query.includes('CurrentUserEventDetails')) {
     return {
       currentUserEventSubscription: args.isSubscribed
@@ -280,10 +310,28 @@ function buildEvent(args: MoreInfoStoryArgs): PublicEvent {
   });
 }
 
+function cachedDetail(args: MoreInfoStoryArgs): OfflineAttendanceDetail {
+  const event = buildEvent(args);
+  return {
+    eventType: 'event',
+    details: {
+      subscription: args.isSubscribed ? {
+        eventId: event.id, eventGroupSubscriptionId: null,
+        createdAt: event.subscriptionStartDate ?? event.startDate, event,
+      } : null,
+      event: args.isSubscribed ? null : event,
+      attendance: args.hasAttendance ? currentUserEventAttendance(event) : null,
+      hasIssuedCertificate: args.hasIssuedCertificate,
+      isLecturer: args.isLecturer,
+    },
+  };
+}
+
 function currentUserEventAttendance(event: PublicEvent) {
   return {
     eventId: event.id,
     attendedAt: event.onlineAttendanceStartDate ?? event.startDate,
     createdAt: event.onlineAttendanceStartDate ?? event.startDate,
+    event,
   };
 }

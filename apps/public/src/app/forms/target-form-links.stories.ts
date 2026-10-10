@@ -9,7 +9,7 @@ const form = createPublicEventForm({ name: 'Prepare sua visita', links: [
 ] });
 const meta: Meta<TargetFormLinks> = {
   component: TargetFormLinks,
-  title: 'CACiC Eventos/Forms/Target Links',
+  title: 'Public/Registration/Forms/Target Links',
   tags: ['autodocs'],
   args: { targetType: 'MAJOR_EVENT', targetId: 'major-1' },
   argTypes: { targetType: { control: 'select', options: ['EVENT', 'MAJOR_EVENT'] }, targetId: { control: 'text' } },
@@ -22,14 +22,10 @@ export default meta;
 type Story = StoryObj<TargetFormLinks>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('link', { name: 'Prepare sua visita' })).toBeVisible();
   },
 };
 export const NoEligibleForms: Story = {
   parameters: { msw: { handlers: { graphql: [http.post('/api/graphql', () => HttpResponse.json({ data: { currentUserEventForms: [] } }))] } } },
-};
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
 };

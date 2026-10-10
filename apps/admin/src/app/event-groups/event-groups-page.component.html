@@ -18,13 +18,13 @@
     <section class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>
+          <h2>
             @if (workspace.selectedEventGroup()) {
               Editar grupo
             } @else {
               Novo grupo
             }
-          </h3>
+          </h2>
           <p>
             @if (workspace.selectedEventGroup()) {
               {{ workspace.selectedEventGroup()?.name }}
@@ -95,7 +95,7 @@
       </div>
 
 <form [formGroup]="workspace.eventGroupForm" class="panel-stack"><section class="surface field-group">
-<h4>Dados principais</h4>
+<h3>Dados principais</h3>
 <div class="field-grid">
 <mat-form-field>
             <mat-label>Nome</mat-label>
@@ -111,7 +111,7 @@
       @if (workspace.selectedEventGroup()) {
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Eventos do grupo</h4>
+            <h3>Eventos do grupo</h3>
             <span>{{ workspace.eventGroupEvents().length }} vinculados</span>
           </div>
 
@@ -148,7 +148,7 @@
         </section>
 
         <section class="surface field-group">
-          <h4>Adicionar eventos</h4>
+          <h3>Adicionar eventos</h3>
           <form [formGroup]="workspace.eventGroupEventSearchForm" class="compact-form"
             (submit)="$event.preventDefault(); workspace.searchEventsForSelectedGroup()">
             <mat-form-field>
@@ -179,7 +179,7 @@
         </div>
       }
 <form [formGroup]="workspace.eventGroupForm" class="panel-stack"><section class="surface field-group" id="inscricao">
-<h4>Acesso e participação</h4>
+<h3>Acesso e participação</h3>
 <app-audience-editor
           [audience]="workspace.eventGroupForm.controls.audience.value"
           [courseCodes]="workspace.eventGroupForm.controls.audienceCourseCodes.value"
@@ -197,7 +197,7 @@
           </mat-checkbox>
 </div>
 </section><section class="surface field-group" id="presenca">
-<h4>Presença</h4>
+<h3>Presença</h3>
 <mat-form-field subscriptSizing="dynamic">
             <mat-label>Quem pode confirmar presença on-line</mat-label>
             <mat-select
@@ -215,7 +215,7 @@
             <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
           </mat-form-field><p class="empty-note">Esta regra é herdada pelos eventos do grupo que não definem uma regra própria.</p>
 </section><section class="surface field-group" id="certificados">
-<h4>Certificados</h4>
+<h3>Certificados</h3>
 <mat-checkbox formControlName="shouldIssueCertificate"> Emitir certificado </mat-checkbox>@if (workspace.eventGroupForm.controls.shouldIssueCertificate.value) {<div class="checkbox-grid">
 <mat-checkbox formControlName="shouldIssueCertificateForEachEvent"> Um certificado por evento </mat-checkbox>
 <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>

@@ -65,7 +65,7 @@ class AttendanceCsvImportResultDialogStoryHostComponent {
 
 const meta: Meta<ImportResultStoryArgs> = {
   component: AttendanceCsvImportResultDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Attendance Csv Import Result Dialog',
+  title: 'Admin/Attendance/Import/Import Results',
   tags: ['autodocs'],
   args: {
     createdCount: 42,
@@ -91,7 +91,7 @@ const meta: Meta<ImportResultStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -118,7 +118,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -126,7 +125,6 @@ export const LongContent: Story = {
   args: {
     longContent: true,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -142,7 +140,7 @@ export const AllSuccessful: Story = {
 export const ManyFailures: Story = {
   args: { createdCount: 80, duplicateCount: 25, failedCount: 50, failedValueCount: 50 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getAllByRole('listitem')).toHaveLength(50);
+    await expect(canvasElement.querySelectorAll('mat-list-item')).toHaveLength(50);
   },
 };
 
@@ -151,9 +149,4 @@ export const CustomMatchType: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Tipo inferido: campo personalizado.')).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...LongContent,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

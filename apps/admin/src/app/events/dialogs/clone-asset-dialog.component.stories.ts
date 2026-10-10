@@ -102,7 +102,7 @@ class CloneAssetDialogStoryHostComponent {
 
 const meta: Meta<CloneAssetDialogStoryArgs> = {
   component: CloneAssetDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Clone Asset Dialog',
+  title: 'Admin/Event Management/Events/Clone Asset',
   tags: ['autodocs'],
   args: {
     sourceName: 'Oficina de Git',
@@ -128,7 +128,7 @@ const meta: Meta<CloneAssetDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -158,18 +158,11 @@ export const NothingPreselected: Story = {
   args: { defaultSelected: false },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     title: 'Duplicar atividade interdisciplinar',
     sourceLabel: 'Evento acadêmico, cultural e esportivo existente',
     sourceName: 'Oficina interdisciplinar de tecnologia, acessibilidade e extensão universitária',
     copySuffix: '(cópia para revisão editorial e publicação futura)',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MissingCertificatePermission,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

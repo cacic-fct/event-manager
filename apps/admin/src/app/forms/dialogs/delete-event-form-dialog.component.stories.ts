@@ -42,7 +42,7 @@ class DeleteEventFormDialogStoryHostComponent {
 
 const meta: Meta<DeleteEventFormDialogStoryArgs> = {
   component: DeleteEventFormDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Forms/Delete Event Form Dialog',
+  title: 'Admin/Forms/Dialogs',
   tags: ['autodocs'],
   args: {
     name: 'Pesquisa de satisfação',
@@ -54,7 +54,7 @@ const meta: Meta<DeleteEventFormDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -78,7 +78,6 @@ export const SingleResponse: Story = {
 };
 
 export const NoResponses: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     name: 'Rascunho sem respostas',
     responseCount: 0,

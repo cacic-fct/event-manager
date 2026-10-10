@@ -159,12 +159,14 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
         },
         include: { event: true },
       });
-      await tx.event.update({
-        where: { id: event.id },
-        data: { youtubeCode, twitchChannel, updatedById: actorId },
-      });
-      match.event.youtubeCode = youtubeCode;
-      match.event.twitchChannel = twitchChannel;
+      if (input.livestreamProvider !== undefined || input.livestreamUrl !== undefined) {
+        await tx.event.update({
+          where: { id: event.id },
+          data: { youtubeCode, twitchChannel, updatedById: actorId },
+        });
+        match.event.youtubeCode = youtubeCode;
+        match.event.twitchChannel = twitchChannel;
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_MATCH,

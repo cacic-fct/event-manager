@@ -124,7 +124,7 @@ const personControl = { control: 'text' } as const;
 
 const meta: Meta<MergeCandidateDialogStoryArgs> = {
   component: MergeCandidateDialogStoryHost,
-  title: 'CACiC Eventos/Workspace/Dialogs/Merge Candidate Dialog',
+  title: 'Admin/People/Merge Candidates/Merge Dialog',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -144,7 +144,7 @@ const meta: Meta<MergeCandidateDialogStoryArgs> = {
   beforeEach: () => {
     closeDialog.mockClear();
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -193,13 +193,11 @@ export const SparseRecords: Story = {
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     personAName: 'Maria Aparecida de Souza Albuquerque dos Santos e Oliveira',
     personAEmail: 'maria.aparecida.souza.albuquerque@instituicao.example.br',
     personBName: 'Maria Aparecida Souza Albuquerque de Oliveira Santos',
     personBExternalRef: 'sistema-legado-interdisciplinar-de-eventos-universitarios-2026',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

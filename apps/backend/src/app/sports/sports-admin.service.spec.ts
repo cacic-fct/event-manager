@@ -360,6 +360,46 @@ describe('SportsAdminService', () => {
     });
   });
 
+  it.each([
+    ['video-1', null],
+    [null, 'mychannel'],
+    ['video-1', 'mychannel'],
+  ])('preserves existing Event streams when match creation omits livestream inputs (%s, %s)', async (youtubeCode, twitchChannel) => {
+    const event = { ...createEvent(), youtubeCode, twitchChannel };
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.event.findFirst.mockResolvedValue(event);
+    tx.event.update.mockResolvedValue({ ...event });
+    tx.sportsMatch.create.mockResolvedValue({ id: 'match-1', eventId: event.id, event: { ...event } });
+
+    const result = await service.createMatch({ categoryId: 'category-1', eventId: event.id }, actor);
+
+    expect(tx.event.update).toHaveBeenCalledTimes(1);
+    expect(tx.event.update.mock.calls[0][0].data).not.toHaveProperty('youtubeCode');
+    expect(tx.event.update.mock.calls[0][0].data).not.toHaveProperty('twitchChannel');
+    expect(result.event).toEqual(expect.objectContaining({ youtubeCode, twitchChannel }));
+  });
+
+  it('clears existing Event streams when match creation explicitly disables livestreams', async () => {
+    const event = { ...createEvent(), youtubeCode: 'video-1', twitchChannel: 'mychannel' };
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.event.findFirst.mockResolvedValue(event);
+    tx.event.update.mockResolvedValue({ ...event });
+    tx.sportsMatch.create.mockResolvedValue({ id: 'match-1', eventId: event.id, event: { ...event } });
+
+    const result = await service.createMatch(
+      { categoryId: 'category-1', eventId: event.id, livestreamProvider: null },
+      actor,
+    );
+
+    expect(tx.event.update).toHaveBeenLastCalledWith({
+      where: { id: event.id },
+      data: { youtubeCode: null, twitchChannel: null, updatedById: 'admin-1' },
+    });
+    expect(result.event).toEqual(expect.objectContaining({ youtubeCode: null, twitchChannel: null }));
+  });
+
   it('updates the backing Event name when a match name is edited', async () => {
     tx.sportsMatch.findFirst.mockResolvedValue({
       id: 'match-1',

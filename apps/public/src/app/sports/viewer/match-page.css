@@ -248,15 +248,11 @@ dd {
 
 .period-list .active-period {
   background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
+  color: var(--mat-sys-on-surface);
 }
 
 .period-list small {
   color: var(--mat-sys-on-surface-variant);
-}
-
-.active-period small {
-  color: color-mix(in srgb, var(--mat-sys-on-primary-container) 76%, transparent);
 }
 
 .result-section p {

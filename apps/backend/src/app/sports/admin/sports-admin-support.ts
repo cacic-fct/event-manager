@@ -16,6 +16,7 @@ import {
   SportsRegistrationStatus,
   SportsScoringMode,
   SportsScoreEntrySource,
+  SportsTeamMemberStatus,
   SportsTeamStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
@@ -243,6 +244,48 @@ export abstract class SportsAdminSupport {
       institution: team.institution,
       status: team.status,
       revision: team.revision,
+    };
+  }
+
+  protected teamMemberAuditSnapshot(member: {
+    id: string;
+    teamId: string;
+    participantId: string;
+    status: SportsTeamMemberStatus;
+    revision: number;
+    rejectionReason: string | null;
+  }) {
+    return {
+      id: member.id,
+      teamId: member.teamId,
+      participantId: member.participantId,
+      status: member.status,
+      revision: member.revision,
+      rejectionReason: member.rejectionReason,
+    };
+  }
+
+  protected venueAuditSnapshot(venue: {
+    id: string;
+    tournamentId: string;
+    placePresetId: string;
+    name: string;
+    courtLabel: string | null;
+    capacity: number | null;
+    notes: string | null;
+    parentVenueId: string | null;
+    revision: number;
+  }) {
+    return {
+      id: venue.id,
+      tournamentId: venue.tournamentId,
+      placePresetId: venue.placePresetId,
+      name: venue.name,
+      courtLabel: venue.courtLabel,
+      capacity: venue.capacity,
+      notes: venue.notes,
+      parentVenueId: venue.parentVenueId,
+      revision: venue.revision,
     };
   }
 

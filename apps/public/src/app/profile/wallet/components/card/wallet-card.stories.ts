@@ -16,7 +16,7 @@ type WalletCardStoryArgs = {
 
 const meta: Meta<WalletCardStoryArgs> = {
   component: WalletCard,
-  title: 'CACiC Eventos/Profile/Wallet/Card',
+  title: 'Public/Profile/Wallet/Card',
   tags: ['autodocs', 'ticketing'],
   parameters: {
     layout: 'centered',
@@ -69,7 +69,6 @@ export const LongName: Story = {
       enrollmentNumber: '',
     }),
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Ana Carolina de Almeida e Souza')).toBeVisible();
   },

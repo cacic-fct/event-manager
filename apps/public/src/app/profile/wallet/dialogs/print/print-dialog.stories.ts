@@ -5,12 +5,14 @@ import { PrintDialog } from './print-dialog';
 
 const meta: Meta<PrintDialog> = {
   component: PrintDialog,
-  title: 'CACiC Eventos/Profile/Wallet/Print Dialog',
+  title: 'Public/Profile/Wallet/Print',
   tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [{ provide: MatDialogRef, useValue: { close: () => undefined } }] })],
   parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static wallet printing dialog with offline and service worker stories.' } },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -37,18 +39,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineInstalled: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

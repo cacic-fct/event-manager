@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type {
   EventType,
   PublicEvent,
@@ -10,7 +11,7 @@ import { applicationConfig } from '@storybook/angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { HttpResponse, delay, http } from 'msw';
 import { NEVER } from 'rxjs';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import {
   createPublicEvent,
   createPublicEventForm,
@@ -62,7 +63,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<RankedStoryArgs> = {
   component: RankedMajorEventSubscription,
-  title: 'CACiC Eventos/Major Events/Registration/Ranked',
+  title: 'Public/Registration/Major Event/Ranked',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -84,6 +85,7 @@ const meta: Meta<RankedStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<RankedStoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -472,9 +474,17 @@ const goToRankingStep = async (canvasElement: HTMLElement) => {
   if (tierHeading) {
     const selectedTier = canvas.queryAllByRole('radio')[0];
     if (selectedTier && selectedTier.getAttribute('aria-checked') !== 'true') {
+      await waitFor(() => {
+        expect(selectedTier).toBeEnabled();
+        expect(selectedTier).toHaveStyle({ pointerEvents: 'auto' });
+      });
       await userEvent.click(selectedTier);
     }
     const continueButton = await canvas.findByRole('button', { name: /Continuar para eventos/i });
+    await waitFor(() => {
+      expect(continueButton).toBeEnabled();
+      expect(continueButton).toHaveStyle({ pointerEvents: 'auto' });
+    });
     await userEvent.click(continueButton);
   }
   await expectSelectionStep(canvasElement);
@@ -488,17 +498,16 @@ const goToRankingStep = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
   play: async ({ canvasElement }) => expectSelectionStep(canvasElement),
 };
 
 export const Ranking: Story = {
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => goToRankingStep(canvasElement),
 };
 
 export const RankingWithFormsFlow: Story = {
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);
@@ -513,12 +522,13 @@ export const RankingWithFormsFlow: Story = {
     await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
     await expect(await dialog.findByText('Precisa de recurso de acessibilidade?')).toBeVisible();
     await userEvent.click(await dialog.findByRole('button', { name: /Confirmar inscrição/i }));
+    await expect(await screen.findByText('Inscrição realizada.')).toBeVisible();
   },
 };
 
 export const PaymentRanking: Story = {
   args: { scenario: 'payment' },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);
@@ -528,7 +538,7 @@ export const PaymentRanking: Story = {
 
 export const AutomaticOnly: Story = {
   args: { scenario: 'auto-only' },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expectSelectionStep(canvasElement);
@@ -540,7 +550,7 @@ export const AutomaticOnly: Story = {
 
 export const ExistingSubscription: Story = {
   args: { scenario: 'existing' },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Comprovante em análise')).toBeVisible();
@@ -559,7 +569,7 @@ export const DenseCatalog: Story = {
     autoSubscribeEvery: 7,
     queueBase: 18,
   },
-  globals: { theme: 'light', network: 'online', viewport: { value: 'responsive' } },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Voto preferencial')).toBeVisible();
@@ -569,7 +579,7 @@ export const DenseCatalog: Story = {
 
 export const EmptyCatalog: Story = {
   args: { eventCount: 0, maxCourses: 0, maxLectures: 0, maxOther: 0 },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Voto preferencial')).toBeVisible();
@@ -579,7 +589,7 @@ export const EmptyCatalog: Story = {
 
 export const Loading: Story = {
   args: { apiState: 'loading', latencyMs: 0 },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Carregando inscrição...')).toBeVisible();
   },
@@ -587,7 +597,7 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText(/não foi possível carregar a inscrição preferencial/i),
@@ -600,5 +610,5 @@ export const LongContent: Story = {
     eventCount: 14,
     eventNamePrefix: 'Atividade interdisciplinar avançada com práticas inclusivas, observabilidade e segurança',
   },
-  globals: { theme: 'light', network: 'online', viewport: { value: 'mobile1' } },
+  globals: { network: 'online' },
 };

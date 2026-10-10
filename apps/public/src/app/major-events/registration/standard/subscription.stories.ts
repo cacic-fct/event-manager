@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { PublicEvent, PublicEventForm, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import {
   createPublicEvent,
@@ -10,7 +11,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { HttpResponse, delay, http } from 'msw';
 import { NEVER } from 'rxjs';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { MajorEventSubscription } from './subscription';
 
@@ -62,7 +63,7 @@ const now = new Date();
 
 const meta: Meta<SubscriptionStoryArgs> = {
   component: MajorEventSubscription,
-  title: 'CACiC Eventos/Major Events/Registration/Standard/Subscription',
+  title: 'Public/Registration/Major Event/Standard',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -96,6 +97,7 @@ const meta: Meta<SubscriptionStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<SubscriptionStoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -116,7 +118,6 @@ export default meta;
 type Story = StoryObj<SubscriptionStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => completeSubscriptionFlow(canvasElement),
 };
 
@@ -132,7 +133,7 @@ export const DenseActivityCatalog: Story = {
 export const Empty: Story = {
   args: { eventCount: 0, formMode: 'none', latencyMs: 0 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Nenhuma atividade/i)).toBeVisible();
+    await expect(await within(canvasElement).findByText('Nenhum evento disponível para inscrição.')).toBeVisible();
   },
 };
 
@@ -145,7 +146,6 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível carregar a inscrição.')).toBeVisible();
   },
@@ -168,8 +168,17 @@ export const TierFirstRegistration: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Escolha sua modalidade de inscrição' })).toBeVisible();
     await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
-    await userEvent.click(canvas.getByRole('radio', { name: /^Eventos R/ }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Continuar para eventos' }));
+    const eventsTier = canvas.getByRole('radio', { name: /^Eventos R/ });
+    await waitFor(() => expect(eventsTier).toBeEnabled());
+    const eventsTierLabel = eventsTier.closest('label');
+    if (!eventsTierLabel) {
+      throw new Error('A modalidade Eventos precisa ter um rótulo clicável.');
+    }
+    await userEvent.click(eventsTierLabel);
+    await expect(eventsTier).toBeChecked();
+    const continueButton = canvas.getByRole('button', { name: 'Continuar para eventos' });
+    await expect(continueButton).toBeEnabled();
+    await userEvent.click(continueButton);
     await expect(await canvas.findByRole('heading', { name: 'Escolha seus eventos' })).toBeVisible();
   },
 };
@@ -177,7 +186,7 @@ export const TierFirstRegistration: Story = {
 export const ReceiptUploadRequired: Story = {
   args: { existingSubscription: true, requiresPayment: true, subscriptionStatus: 'WAITING_RECEIPT_UPLOAD' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Aguardando envio do comprovante/i)).toBeVisible();
+    await expect(await within(canvasElement).findByText(/Aguardando envio de comprovante/i)).toBeVisible();
   },
 };
 
@@ -193,15 +202,24 @@ export const LicenseAgreementOnly: Story = {
   args: { formMode: 'none', eventCount: 4, requiresLicenseAgreement: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i }));
-    await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
-    await expect(
-      await canvas.findByRole('heading', { name: 'Contrato de concessão de licença de imagem' }),
-    ).toBeVisible();
+    const eventCheckbox = await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i });
+    await waitFor(() => expect(eventCheckbox).toHaveStyle({ pointerEvents: 'auto' }));
+    await userEvent.click(eventCheckbox);
+    const continueButton = await canvas.findByRole('button', { name: /Continuar/i });
+    await waitFor(() => {
+      expect(continueButton).toBeEnabled();
+      expect(continueButton).toHaveStyle({ pointerEvents: 'auto' });
+    });
+    await userEvent.click(continueButton);
+    await expect(await canvas.findByRole('heading', { name: 'Documentos legais' })).toBeVisible();
+    const agreementCheckbox = await canvas.findByRole('checkbox', {
+      name: /contrato de concessão de licença de uso de imagem/i,
+    });
+    await expect(agreementCheckbox.closest('mat-checkbox')).toBeVisible();
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     eventCount: 5,
     longEventNames: true,
@@ -209,8 +227,6 @@ export const LongContentMobile: Story = {
     description:
       'Programação detalhada para validar o fluxo de inscrição com títulos, descrições e opções significativamente maiores que o conteúdo habitual.',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/Atividade interdisciplinar/)).length).toBeGreaterThan(3);
   },
@@ -252,15 +268,6 @@ function subscriptionHandler() {
         },
       });
     }
-    if (query.includes('CurrentUserMajorEventSubscription')) {
-      return HttpResponse.json({
-        data: {
-          currentUserMajorEventSubscription: activeArgs.existingSubscription
-            ? buildExistingSubscription(storyData)
-            : null,
-        },
-      });
-    }
     if (query.includes('CurrentUserEventForms')) {
       const targetType = String(variables['targetType']);
       const targetId = targetType === 'EVENT' ? String(variables['eventId']) : String(variables['majorEventId']);
@@ -289,6 +296,15 @@ function subscriptionHandler() {
             majorEvent: storyData.majorEvent,
             selectedEvents: storyData.events.filter((event) => selectedEventIds.includes(event.id)),
           },
+        },
+      });
+    }
+    if (query.includes('CurrentUserMajorEventSubscription')) {
+      return HttpResponse.json({
+        data: {
+          currentUserMajorEventSubscription: activeArgs.existingSubscription
+            ? buildExistingSubscription(storyData)
+            : null,
         },
       });
     }
@@ -490,13 +506,14 @@ async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<voi
   await userEvent.click(await canvas.findByRole('radio', { name: 'Sim' }));
   await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
   await userEvent.click(
-    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de imagem/i }),
+    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de uso de imagem/i }),
   );
   await userEvent.click(await canvas.findByRole('button', { name: /Revisar inscrição/i }));
   const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));
   await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
   await expect(await dialog.findByText('Precisa de opção vegetariana?')).toBeVisible();
   await userEvent.click(await dialog.findByRole('button', { name: /Confirmar inscrição/i }));
+  await expect(await screen.findByText('Inscrição realizada.')).toBeVisible();
 }
 
 function isoDaysFromNow(days: number, hour: number): string {

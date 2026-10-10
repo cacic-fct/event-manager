@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
@@ -21,7 +22,7 @@ type TicketTransferStartStoryArgs = {
 
 const meta: Meta<TicketTransferStartStoryArgs> = {
   component: TicketTransferStartPage,
-  title: 'CACiC Eventos/Tickets/Transfer Start',
+  title: 'Public/Ticketing/Transfers/Start',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: {
@@ -43,6 +44,7 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
     apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
+    withScenarioControls<TicketTransferStartStoryArgs>(),
     (story, context) => {
       const ticket = createWalletStoryTicket(
         {
@@ -128,22 +130,10 @@ type Story = StoryObj<TicketTransferStartStoryArgs>;
 
 export const Playground: Story = {
   args: { mode: 'new', apiState: 'ready', identityKind: 'cpf' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('textbox', { name: 'CPF ou passaporte' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Enviar bilhete' })).toBeDisabled();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { mode: 'pending', apiState: 'ready', identityKind: 'passport' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Cancelar pedido' })).toBeDisabled();
-    await expect(canvas.getByText('XK7654321', { selector: '.pending-document' })).toBeVisible();
-    await expect(canvas.getByText('XK1234567', { selector: '.person-document' })).toBeVisible();
   },
 };
 
@@ -170,7 +160,6 @@ export const NewRequest: Story = {
 
 export const PendingRequest: Story = {
   args: { mode: 'pending' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const cancel = await canvas.findByRole('button', { name: 'Cancelar pedido' });

@@ -7,7 +7,7 @@ faker.seed(20260616);
 
 const meta: Meta<ExplanationCard> = {
   component: ExplanationCard,
-  title: 'CACiC Eventos/Components/Explanation Card',
+  title: 'Public/Support/Explanation Card',
   tags: ['autodocs'],
   args: {
     title: 'Funciona offline',
@@ -22,7 +22,7 @@ const meta: Meta<ExplanationCard> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -52,7 +52,6 @@ export const Playground: Story = {
 };
 
 export const SyncStatus: Story = {
-  name: 'Sincronização',
   args: {
     title: faker.helpers.arrayElement(['Dados salvos no dispositivo', 'Atualização manual necessária']),
     icon: 'system_update',
@@ -60,12 +59,10 @@ export const SyncStatus: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const LongTitleDarkReducedMotion: Story = {
+export const LongTitle: Story = {
   args: {
     title: 'Os dados continuam disponíveis neste dispositivo mesmo quando a conexão do evento estiver instável',
     icon: 'cloud_off',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

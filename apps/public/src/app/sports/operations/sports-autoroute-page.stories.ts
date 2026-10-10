@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of } from 'rxjs';
@@ -15,7 +16,7 @@ let activeState: AutorouteState = 'empty';
 
 const meta: Meta<AutorouteStoryArgs> = {
   component: SportsAutoroutePage,
-  title: 'CACiC Eventos/Sports/Operations/Autoroute',
+  title: 'Public/Sports/Operations/Auto Route',
   tags: ['autodocs'],
   args: { state: 'empty' },
   argTypes: {
@@ -26,6 +27,7 @@ const meta: Meta<AutorouteStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<AutorouteStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -43,20 +45,20 @@ const meta: Meta<AutorouteStoryArgs> = {
       ],
     }),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<AutorouteStoryArgs>;
 
-export const Loading: Story = {
-  args: { state: 'loading' },
-};
-
 export const Playground: Story = {
-  name: 'Nenhuma partida próxima',
   args: { state: 'empty' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nenhuma partida para operar agora')).toBeVisible();
   },
+};
+
+
+export const Loading: Story = {
+  args: { state: 'loading' },
 };

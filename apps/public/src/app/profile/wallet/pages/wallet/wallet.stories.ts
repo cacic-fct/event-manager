@@ -1,4 +1,5 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
@@ -54,16 +55,19 @@ const defaultArgs: WalletStoryArgs = {
 
 const meta: Meta<WalletStoryArgs> = {
   component: Wallet,
-  title: 'CACiC Eventos/Profile/Wallet/Page',
+  title: 'Public/Profile/Wallet',
   tags: ['autodocs', 'ticketing'],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   args: defaultArgs,
   argTypes: {
     fullName: { control: 'text' },
-    role: { control: 'select', options: ['aluno-graduacao', 'participant'] },
+    role: {
+      control: { type: 'select', labels: { 'aluno-graduacao': 'Undergraduate student', participant: 'Participant' } },
+      options: ['aluno-graduacao', 'participant'],
+    },
     enrollmentNumber: { control: 'text' },
     identityDocument: { control: 'text' },
     picture: { control: 'text' },
@@ -82,6 +86,7 @@ const meta: Meta<WalletStoryArgs> = {
     publiclyListed: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<WalletStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -106,7 +111,7 @@ const meta: Meta<WalletStoryArgs> = {
           },
           {
             provide: NetworkStatusService,
-            useValue: { isOnline: () => context.args.networkOnline },
+            useValue: { isOnline: () => context.globals['network'] !== 'offline' && context.args.networkOnline },
           },
           {
             provide: OfflineUserDataService,
@@ -191,22 +196,21 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineInstalled: Story = {
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoServiceWorker: Story = {
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const CardSelection: Story = {
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /registro acadêmico/i }));
@@ -218,7 +222,7 @@ export const CardSelection: Story = {
 
 export const EventTicketStack: Story = {
   args: { includeEventTicket: true, includeExpiredTicket: true },
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const backgrounds = await Promise.all(['CACiC Eventos', 'Código off-line', 'Registro Acadêmico'].map(async (name) => {
@@ -233,7 +237,7 @@ export const EventTicketStack: Story = {
 
 export const EventTicket: Story = {
   args: { includeEventTicket: true, includeExpiredTicket: true },
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: /festa de encerramento/i })).toBeVisible();
@@ -245,7 +249,7 @@ export const EventTicket: Story = {
 
 export const ExpiredTicket: Story = {
   args: { includeEventTicket: true, includeExpiredTicket: true, archivedTicketStatus: 'EXPIRED' },
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement, args }) => showArchivedPass(canvasElement, 'Prazo de validade encerrado', args.archivedTicketName),
 };
 
@@ -261,12 +265,12 @@ export const RevokedTicket: Story = {
 
 export const ParticipantOnly: Story = {
   args: { role: 'participant', enrollmentNumber: '' },
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
 };
 
 export const OfflineSnapshot: Story = {
   args: { authenticated: false, networkOnline: false, offlineSnapshotAvailable: true },
-  globals: { theme: 'dark', network: 'offline', serviceWorker: 'enabled', motion: 'reduced' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
 };
 
 export const NoIdentityAvailable: Story = {
@@ -277,7 +281,12 @@ export const NoIdentityAvailable: Story = {
     enrollmentNumber: '',
     identityDocument: '',
   },
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Participante')).toBeVisible();
+    await expect(await canvas.findByText('Não informado')).toBeVisible();
+  },
 };
 
 export const LongIdentityData: Story = {
@@ -285,8 +294,7 @@ export const LongIdentityData: Story = {
     fullName: 'Marina Aparecida de Souza e Silva Albuquerque dos Santos',
     enrollmentNumber: '202612345678901234',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
 };
 
 async function showArchivedPass(

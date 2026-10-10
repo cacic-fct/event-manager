@@ -26,7 +26,7 @@ const defaultArgs: SubscriptionFormFlowStoryArgs = {
 
 const meta: Meta<SubscriptionFormFlowStoryArgs> = {
   component: SubscriptionFormFlow,
-  title: 'CACiC Eventos/Major Events/Registration/Standard/Form Flow',
+  title: 'Public/Registration/Major Event/Form Flow',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -112,8 +112,9 @@ export const SubmittedReadOnly: Story = {
   args: { answerState: 'submitted-readonly', licenseAccepted: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(/Resposta já enviada/)).toBeVisible();
-    await expect(canvas.getByRole('radio', { name: 'M' })).toBeDisabled();
+    await expect(await canvas.findAllByText(/Resposta já enviada/)).toHaveLength(2);
+    await expect(await canvas.findByText('M', { selector: '.answer-preview' })).toBeVisible();
+    await expect(canvas.queryByRole('radio', { name: 'M' })).not.toBeInTheDocument();
   },
 };
 
@@ -121,15 +122,17 @@ export const ContractOnly: Story = {
   args: { formCount: 1, answerState: 'prefilled', requireLicenseAgreement: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /Continuar/i }));
-    await expect(canvas.getByRole('heading', { name: 'Contrato de concessão de licença de imagem' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+    await expect(await canvas.findByRole('heading', { name: 'Documentos legais' })).toBeVisible();
+    const agreementCheckbox = await canvas.findByRole('checkbox', {
+      name: /contrato de concessão de licença de uso de imagem/i,
+    });
+    await expect(agreementCheckbox.closest('mat-checkbox')).toBeVisible();
   },
 };
 
-export const LongContentMobileDark: Story = {
+export const LongContent: Story = {
   args: { longContent: true },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/Congresso interdisciplinar universitário/)).toBeVisible();

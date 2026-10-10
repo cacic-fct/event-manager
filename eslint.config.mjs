@@ -19,6 +19,8 @@ export default [
             '^@cacic-fct/backend/http-app$',
             '^@cacic-fct/backend/ticketing-testing$',
             '^@cacic-fct/admin/testing$',
+            // Storybook configuration shares repository-level discovery tooling.
+            '^\\.\\./\\.\\./\\.\\./tools/storybook-library-stories\\.mjs$',
           ],
           depConstraints: [
             {

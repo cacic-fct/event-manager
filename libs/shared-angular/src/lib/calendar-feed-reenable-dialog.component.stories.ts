@@ -3,6 +3,7 @@ import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { withScenarioControls } from './storybook/scenario-controls.decorator';
 import {
   CalendarFeedReenableChoice,
   CalendarFeedReenableDialogComponent,
@@ -16,7 +17,7 @@ type CalendarFeedReenableDialogStoryArgs = CalendarFeedReenableDialogData & {
 @Component({
   selector: 'lib-storybook-calendar-feed-reenable-dialog-host',
   imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  template: `<ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />`,
 })
 class CalendarFeedReenableDialogStoryHostComponent {
   private readonly injector = inject(Injector);
@@ -44,19 +45,20 @@ class CalendarFeedReenableDialogStoryHostComponent {
 
 const meta: Meta<CalendarFeedReenableDialogStoryArgs> = {
   component: CalendarFeedReenableDialogStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Dialogs/Calendar feed reactivation',
+  title: 'Shared/Dialogs/Calendar Feed Reactivation',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<CalendarFeedReenableDialogStoryArgs>()],
   args: {
     feedName: 'feed pessoal de calendário',
     closed: fn(),
   },
   argTypes: {
-    feedName: { control: 'text', description: 'Nome do feed exibido no aviso de segurança.' },
+    feedName: { control: 'text', description: 'Calendar feed name shown in the security warning.' },
     closed: { table: { disable: true } },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -77,12 +79,4 @@ export const SuperAdminFeed: Story = {
   args: {
     feedName: 'feed de super-admins',
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    feedName: 'feed da equipe de organização',
-    closed: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

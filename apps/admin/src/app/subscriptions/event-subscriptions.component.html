@@ -4,14 +4,14 @@
   <section class="panel subscription-workbench">
     <div class="panel-heading">
       <div>
-        <h3>
+        <h2>
           @if (workspace.selectedEvent(); as selectedEvent) {
             <lib-twemoji [emoji]="selectedEvent.emoji" />
             {{ selectedEvent.name }}
           } @else {
             Selecione um evento
           }
-        </h3>
+        </h2>
         <p>
           @if (workspace.selectedEvent(); as selectedEvent) {
             {{ selectedEvent.startDate | date: 'medium' }}.
@@ -42,7 +42,7 @@
 
     <div class="workbench-grid">
       <section class="surface">
-        <h4>Criação manual</h4>
+        <h3>Criação manual</h3>
         <form [formGroup]="workspace.eventSubscriptionForm" class="manual-form">
           <app-person-search
             label="Buscar pessoa para inscrever"
@@ -71,7 +71,7 @@
 
       <section class="surface">
         <div class="surface-heading">
-          <h4>Inscrições</h4>
+          <h3>Inscrições</h3>
           <span>{{ workspace.eventSubscriptionCount() }} registros</span>
         </div>
 
@@ -145,10 +145,10 @@
 
         @if (workspace.eventLecturerSubscriptions().length > 0) {
           <div class="warning-section">
-            <h4>
+            <h3>
               <mat-icon>warning</mat-icon>
               Palestrantes inscritos
-            </h4>
+            </h3>
             <mat-list>
               @for (subscription of workspace.eventLecturerSubscriptions(); track subscription.id) {
                 <mat-list-item>

@@ -63,7 +63,7 @@ class AttendanceInfoDialogStoryHostComponent {
 
 const meta: Meta<AttendanceInfoStoryArgs> = {
   component: AttendanceInfoDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Attendance Info Dialog',
+  title: 'Admin/Attendance/Scanning/Attendance Info',
   tags: ['autodocs'],
   args: {
     personName: 'Ana Clara Silva',
@@ -86,7 +86,7 @@ const meta: Meta<AttendanceInfoStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -108,9 +108,4 @@ export const WithoutLocation: Story = {
     createdByMethod: 'MANUAL_INPUT',
     collectedAccuracyMeters: 0,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...WithoutLocation,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

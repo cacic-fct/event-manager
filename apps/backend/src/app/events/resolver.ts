@@ -23,6 +23,7 @@ import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scope
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { eventContentAuditSnapshot } from './event-content-audit';
 import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { resolvePagination } from '../common/pagination';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -509,7 +510,7 @@ export class EventsResolver {
           entityLabel: createdEvent.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: withAudienceAudit(createdEvent, audienceChange),
+          after: eventContentAuditSnapshot(withAudienceAudit(createdEvent, audienceChange)),
           scope: {
             permission: Permission.Event.Create,
             eventId: createdEvent.id,
@@ -614,8 +615,8 @@ export class EventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
-          after: withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange),
+          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true)),
+          after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange)),
           scope: {
             permission: Permission.Event.Update,
             eventId: updatedAudit.id,
@@ -852,7 +853,7 @@ export class EventsResolver {
           entityLabel: createdEvent.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: createdEvent,
+          after: eventContentAuditSnapshot(createdEvent),
           scope: {
             permission: Permission.Event.Create,
             eventId: createdEvent.id,
@@ -899,8 +900,8 @@ export class EventsResolver {
           entityLabel: event.name,
           operation: AuditLogOperation.DELETE,
           actor: this.getUser(context),
-          before: event,
-          after: { ...event, deletedAt },
+          before: eventContentAuditSnapshot(event),
+          after: eventContentAuditSnapshot({ ...event, deletedAt }),
           scope: {
             permission: Permission.Event.Delete,
             eventId: id,

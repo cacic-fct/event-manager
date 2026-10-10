@@ -41,7 +41,7 @@ const defaultArgs: AttendanceStatisticsStoryArgs = {
 
 const meta: Meta<AttendanceStatisticsStoryArgs> = {
   component: AttendanceStatisticsPageComponent,
-  title: 'CACiC Eventos/Attendance/Statistics/Command Center',
+  title: 'Admin/Attendance/Statistics',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -64,7 +64,15 @@ const meta: Meta<AttendanceStatisticsStoryArgs> = {
     props: {},
     applicationConfig: { providers: createStoryProviders(args) },
   }),
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Attendance analytics dashboard with controls for request state, time range, and review permissions.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -80,7 +88,7 @@ export const Playground: Story = {
 };
 
 export const EmptyWindow: Story = {
-  name: 'Período sem coletas',
+  name: 'Empty time range',
   args: { collectorCount: 0, noShowCount: 84, pendingOfflineCount: 0, presentCount: 0, reviewCount: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -90,12 +98,12 @@ export const EmptyWindow: Story = {
 };
 
 export const DenseOperation: Story = {
-  name: 'Operação densa com muitas revisões',
+  name: 'High-volume review queue',
   args: { collectorCount: 16, pendingOfflineCount: 73, presentCount: 1_864, reviewCount: 12 },
 };
 
 export const ReadOnly: Story = {
-  name: 'Somente leitura',
+  name: 'Read only',
   args: { canReview: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -105,7 +113,7 @@ export const ReadOnly: Story = {
 };
 
 export const ReviewFailure: Story = {
-  name: 'Falha ao marcar aviso como revisado',
+  name: 'Review action error',
   args: { actionFails: true, responseDelay: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -124,7 +132,7 @@ export const Loading: Story = {
 };
 
 export const ConnectionError: Story = {
-  name: 'Atualização ao vivo interrompida',
+  name: 'Live update disconnected',
   args: { requestState: 'error', responseDelay: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -133,16 +141,14 @@ export const ConnectionError: Story = {
   },
 };
 
-export const LongContentOnMobile: Story = {
-  name: 'Conteúdo extenso no celular',
+export const LongContent: Story = {
+  name: 'Long content',
   args: {
     eventName:
       'Credenciamento integrado dos cursos de Ciência da Computação, Sistemas de Informação e comunidades convidadas',
     collectorCount: 8,
     reviewCount: 6,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };
 
 function createStoryProviders(args: AttendanceStatisticsStoryArgs) {

@@ -96,11 +96,11 @@
               </div>
               <div class="team-change-raw">
                 <span class="team-change-raw-label">Delta bruto</span>
-                <pre>{{ request.deltaJson }}</pre>
+                <pre tabindex="0">{{ request.deltaJson }}</pre>
               </div>
             </div>
           } @else {
-            <pre>{{ request.deltaJson }}</pre>
+            <pre tabindex="0">{{ request.deltaJson }}</pre>
           }
           @if (request.identityClaims.length) {
             <section class="identity-claim-list" aria-label="Identificações informadas pelo representante">

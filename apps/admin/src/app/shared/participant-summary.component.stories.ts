@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test';
 import { ParticipantSummaryComponent } from './participant-summary.component';
 
 const meta: Meta<ParticipantSummaryComponent> = {
-  title: 'CACiC Eventos/Workspace/Shared/Participant Summary',
+  title: 'Admin/Layout/Participant Summary',
   component: ParticipantSummaryComponent,
   tags: ['autodocs'],
   argTypes: {
@@ -52,10 +52,11 @@ export const MissingOptionalData: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const UnmaskedIdentityDocument: Story = {
   args: {
     maskIdentityDocument: false,
   },
-  play: Playground.play,
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('12345678901')).toBeVisible();
+  },
 };

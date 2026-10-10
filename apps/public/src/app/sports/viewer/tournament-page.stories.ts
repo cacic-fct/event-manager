@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -75,7 +76,7 @@ function controlledTournament() {
 
 const meta: Meta<TournamentStoryArgs> = {
   component: SportsTournamentPage,
-  title: 'CACiC Eventos/Sports/Viewer/Tournament',
+  title: 'Public/Sports/Viewer/Tournament',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -105,6 +106,7 @@ const meta: Meta<TournamentStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<TournamentStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -115,7 +117,9 @@ const meta: Meta<TournamentStoryArgs> = {
           useValue: {
             watchTournament: (): Observable<never> =>
               activeArgs.liveConnectionLost
-                ? timer(80).pipe(mergeMap(() => throwError(() => new Error('SSE disconnected'))))
+                ? timer(activeArgs.responseDelay + 250).pipe(
+                    mergeMap(() => throwError(() => new Error('SSE disconnected'))),
+                  )
                 : NEVER,
           },
         },
@@ -155,8 +159,7 @@ type Story = StoryObj<TournamentStoryArgs>;
 export const Playground: Story = {};
 
 export const MultiSportWithEveryFormat: Story = {
-  name: 'Multiesportivo com formatos variados',
-  args: { multiSport: true },
+  args: { multiSport: true, categoryCount: 7 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'InterFCT 2026' })).toBeVisible();
@@ -167,32 +170,29 @@ export const MultiSportWithEveryFormat: Story = {
 };
 
 export const LiveTournament: Story = {
-  name: 'Partida ao vivo e próximas partidas',
   args: { multiSport: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Ao vivo')).toBeVisible();
-    await expect(canvas.getByText('Próximas partidas')).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Agora' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Transmissões ao vivo' })).toBeVisible();
-    await expect(canvas.getByTitle(/Transmissão da partida 1: Atlética FCT × Ciência da Computação/)).toHaveAttribute(
-      'src',
-      expect.stringContaining('youtube-nocookie.com/embed/storybook-sports'),
+    await expect(canvas.getByRole('link', { name: /Atlética FCT.*2 × 1.*Ciência da Computação/ })).toBeVisible();
+    const livestream = canvasElement.querySelector<HTMLIFrameElement>(
+      'iframe[title="Transmissão da partida 1: Atlética FCT × Ciência da Computação"]',
     );
+    await expect(livestream).toBeInTheDocument();
+    await expect(livestream?.getAttribute('src')).toContain('youtube-nocookie.com/embed/storybook-sports');
   },
 };
 
 export const OverallAndPerSportScoring: Story = {
-  name: 'Pontuação geral e por modalidade',
   args: { showOverallScore: true },
 };
 
 export const WithoutOverallScoring: Story = {
-  name: 'Somente vencedores por modalidade',
   args: { showOverallScore: false },
 };
 
 export const WithoutPublishedMatches: Story = {
-  name: 'Sem partidas publicadas',
   parameters: {
     msw: {
       handlers: {
@@ -217,7 +217,6 @@ export const WithoutPublishedMatches: Story = {
 };
 
 export const SparsePublication: Story = {
-  name: 'Publicação parcial e esparsa',
   args: {
     categoryCount: 1,
     matchCount: 1,
@@ -227,7 +226,6 @@ export const SparsePublication: Story = {
 };
 
 export const DensePublication: Story = {
-  name: 'Publicação densa',
   args: {
     categoryCount: 12,
     matchCount: 24,
@@ -237,19 +235,16 @@ export const DensePublication: Story = {
 };
 
 export const WithoutTeams: Story = {
-  name: 'Sem equipes publicadas',
   args: { showTeams: false },
 };
 
 export const LongTournamentName: Story = {
-  name: 'Nome e conteúdo extensos',
   args: {
     name: 'Jogos Universitários Integrados de Ciência, Tecnologia, Cultura e Esportes da Região Oeste Paulista',
   },
 };
 
 export const ReconnectingLiveData: Story = {
-  name: 'Atualização ao vivo interrompida',
   args: { liveConnectionLost: true },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/)).toBeVisible();
@@ -261,12 +256,10 @@ export const Loading: Story = {
 };
 
 export const LoadError: Story = {
-  name: 'Erro recuperável',
   args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar o torneio')).toBeVisible();
+    await expect(await canvas.findByText('O torneio não está disponível para visualização.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
   },
 };

@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import type { Meta, StoryObj } from '@storybook/angular';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { http, HttpResponse } from 'msw';
@@ -157,6 +158,7 @@ class MockNovuNotificationsService {
   private readonly notifications = signal<MutableNotification[]>([]);
   private readonly preferences = signal<MutablePreference[]>([0, 1, 2].map((index) => createPreference(index)));
   private readonly moreAvailable = signal(false);
+  private readonly scenarioVersion = signal(0);
 
   readonly loadingConfig = signal(false);
   readonly notificationPermission = signal<StoryPermission>('default');
@@ -164,7 +166,9 @@ class MockNovuNotificationsService {
   readonly unreadCount = signal(0);
   readonly lastError = signal<string | null>(null);
   readonly isConfigured = computed(() => this.configured());
-  readonly client = computed(() => (this.configured() ? { storybook: true } : null));
+  readonly client = computed(() =>
+    this.configured() ? { storybook: true, scenarioVersion: this.scenarioVersion() } : null,
+  );
 
   configure(args: StoryArgs): void {
     faker.seed(20260518 + args.notificationCount + args.archivedCount + args.unreadCount);
@@ -190,6 +194,7 @@ class MockNovuNotificationsService {
       nextNotifications.filter((notification) => !notification.isRead && !notification.isArchived).length,
     );
     this.preferences.set([0, 1, 2].map((index) => createPreference(index)));
+    this.scenarioVersion.update((version) => version + 1);
   }
 
   ensureReady(): void {
@@ -357,10 +362,31 @@ class NovuInboxStoryHostComponent {
 
 const meta: Meta<NovuInboxStoryHostComponent> = {
   component: NovuInboxStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Notifications/Inbox',
+  title: 'Shared/Notifications/Inbox',
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              pathFromRoot: [{ url: [{ path: 'storybook-notifications' }] }],
+            },
+          },
+        },
+      ],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'A local Novu service mock supplies notifications and preference mutations. Changing a control reloads the inbox data; no live notification account is used.',
+      },
+    },
     msw: {
       handlers: {
         rest: [
@@ -371,22 +397,30 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
     },
   },
   argTypes: {
-    adminMode: { control: 'boolean' },
-    title: { control: 'text', description: 'Título apresentado na barra da central de notificações.' },
-    configured: { control: 'boolean', description: 'Indica se o cliente Novu está disponível.' },
+    adminMode: { control: 'boolean', description: 'Show the unread filter used by the administrative view.' },
+    title: { control: 'text', description: 'Title shown in the notification inbox toolbar.' },
+    configured: { control: 'boolean', description: 'Simulate whether the Novu client is available.' },
     permission: {
-      control: 'select',
+      control: {
+        type: 'select',
+        labels: {
+          default: 'Default',
+          granted: 'Granted',
+          denied: 'Denied',
+          unsupported: 'Unsupported',
+        },
+      },
       options: ['default', 'granted', 'denied', 'unsupported'],
-      description: 'Permissão de push simulada para o navegador.',
+      description: 'Simulated browser push permission state.',
     },
-    pushPromptDismissed: { control: 'boolean', description: 'Oculta o convite de notificações push.' },
-    notificationCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
-    unreadCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
-    archivedCount: { control: { type: 'range', min: 0, max: 10, step: 1 } },
-    hasMore: { control: 'boolean' },
-    showImages: { control: 'boolean' },
-    richBodies: { control: 'boolean' },
-    empty: { control: 'boolean' },
+    pushPromptDismissed: { control: 'boolean', description: 'Hide the push permission prompt.' },
+    notificationCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, description: 'Number of active notifications to generate.' },
+    unreadCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, description: 'Number of active notifications that start unread.' },
+    archivedCount: { control: { type: 'range', min: 0, max: 10, step: 1 }, description: 'Number of archived notifications to generate.' },
+    hasMore: { control: 'boolean', description: 'Show a next page with additional notifications.' },
+    showImages: { control: 'boolean', description: 'Include generated avatar images.' },
+    richBodies: { control: 'boolean', description: 'Include formatted HTML in notification bodies.' },
+    empty: { control: 'boolean', description: 'Return an empty notification and archive list.' },
   },
 };
 
@@ -450,30 +484,15 @@ export const DenseInbox: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  args: {
-    ...defaultArgs,
-    title: 'Atualizações do evento',
-    permission: 'granted',
-    pushPromptDismissed: true,
-    notificationCount: 6,
-    unreadCount: 2,
-    archivedCount: 3,
-    hasMore: false,
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
-};
-
 export const AdminUnreadReview: Story = {
   args: { ...defaultArgs, adminMode: true, pushPromptDismissed: true, permission: 'granted', showImages: false },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Não lidas' }));
     await expect(canvas.getByRole('tab', { name: 'Não lidas' })).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(canvas.getByRole('button', { name: 'Mais ações' }));
     const page = within(canvasElement.ownerDocument.body);
-    await expect(await page.findByRole('menuitem', { name: /Marcar todas como lidas/ })).toBeVisible();
-    await userEvent.keyboard('{Escape}');
+    await userEvent.click(await page.findByRole('menuitem', { name: /Marcar todas como lidas/ }));
+    await expect(await canvas.findByText('Nenhuma notificação')).toBeVisible();
   },
 };

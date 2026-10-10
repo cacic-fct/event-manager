@@ -10,6 +10,7 @@ import {
 import { addDays, isValid, parseISO, subDays } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { eventContentAuditSnapshot } from './event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
@@ -451,8 +452,8 @@ export class EventDraftsService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
-          after: withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange),
+          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true)),
+          after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange)),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,
@@ -893,10 +894,6 @@ export class EventDraftsService {
       draftId: draft.id,
       sourceEventId: draft.sourceEventId,
       name: draft.name,
-      createdByName: draft.createdByName,
-      updatedByName: draft.updatedByName,
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
       expiresAt: draft.expiresAt,
     };
   }

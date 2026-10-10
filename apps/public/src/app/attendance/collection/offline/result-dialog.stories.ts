@@ -61,7 +61,7 @@ class OfflineResultStoryHost {
 
 const meta: Meta<OfflineResultStoryArgs> = {
   component: OfflineResultStoryHost,
-  title: 'CACiC Eventos/Attendance/Collection/Offline Sync Result Dialog',
+  title: 'Public/Attendance/Collection/Sync Result',
   tags: ['autodocs'],
   args: {
     createdCount: 3,
@@ -81,7 +81,7 @@ const meta: Meta<OfflineResultStoryArgs> = {
     docs: {
       description: {
         component:
-          'Resumo da sincronização off-line, incluindo registros aceitos, itens enviados para revisão e falhas finais.',
+          'Offline sync summary showing accepted records, items sent for review, and final failures.',
       },
     },
   },
@@ -108,7 +108,6 @@ export const PartialFailure: Story = {
 
 export const FailuresOnly: Story = {
   args: { createdCount: 0, stagedCount: 0, failedCount: 12 },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const SuccessOnly: Story = {
@@ -127,7 +126,7 @@ export const DenseFailures: Story = {
   args: { createdCount: 120, stagedCount: 35, failedCount: 30 },
 };
 
-export const LongFailureContentMobile: Story = {
+export const LongFailureContent: Story = {
   args: {
     createdCount: 1,
     stagedCount: 1,
@@ -135,6 +134,4 @@ export const LongFailureContentMobile: Story = {
     failureNamePrefix: 'Atividade interdisciplinar de tecnologia, ciência e acessibilidade',
     failureMessage: 'A presença não pôde ser conciliada automaticamente e precisa de revisão administrativa detalhada.',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -1,6 +1,7 @@
 import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EMPTY, NEVER, of, throwError } from 'rxjs';
@@ -137,7 +138,7 @@ const transfer = createTicketTransfer({
 
 const meta: Meta<TicketAdminStoryArgs> = {
   component: TicketAdminPageComponent,
-  title: 'CACiC Eventos/Workspace/Tickets/Event Ticket Admin',
+  title: 'Admin/Ticketing/Tickets',
   tags: ['autodocs', 'ticketing'],
   args: {
     configExists: true,
@@ -166,27 +167,39 @@ const meta: Meta<TicketAdminStoryArgs> = {
     expirationMode: { control: 'inline-radio', options: ['EVENT_END', 'CUSTOM'] },
   },
   decorators: [
+    withScenarioControls<TicketAdminStoryArgs>(),
     (story, context) =>
       applicationConfig({ providers: createProviders(context.args) })(story, context),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Ticket configuration and holder management with controls for scope, sales state, eligibility, pricing, and expiration.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<TicketAdminStoryArgs>;
 
+export const Playground: Story = {  };
+
+
 export const LimitedSales: Story = {
   args: { purchaseEnabled: true, purchaseLimit: 100 },
 };
-
-export const Playground: Story = {};
 
 export const ConfiguredEvent: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Disponibilidade e identificação' })).toBeVisible();
     await expect(canvas.getByText('Compra de bilhetes adicionais')).toBeVisible();
-    await expect(canvas.getByText(/não substituem o cartão padrão da Carteira/i)).toBeVisible();
+    await expect(
+      canvas.getByText(/o bilhete é consumido mesmo que a pessoa apresente o cartão de usuário da carteira/i),
+    ).toBeVisible();
   },
 };
 
@@ -314,13 +327,8 @@ export const SaveFailure: Story = {
 
 export const ReadOnly: Story = {
   args: { readOnly: true, ticketsCount: 2 },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
-export const MobileConfiguration: Story = {
-  args: { configExists: true, ticketsCount: 2 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-};
 
 function createProviders(args: TicketAdminStoryArgs) {
   const hasMajorEvent = args.scope === 'major-event' || args.scope === 'major-overview';

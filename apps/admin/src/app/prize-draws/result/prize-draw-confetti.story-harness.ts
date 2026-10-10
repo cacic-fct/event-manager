@@ -1,4 +1,5 @@
-import { Component, input, viewChild } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, inject, input, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { PrizeDrawConfettiComponent } from './prize-draw-confetti.component';
 
@@ -10,12 +11,12 @@ import { PrizeDrawConfettiComponent } from './prize-draw-confetti.component';
       <app-prize-draw-confetti
         [particleCount]="particleCount()"
         [durationMs]="durationMs()"
-        [reducedMotion]="reducedMotion()" />
+        [reducedMotion]="prefersReducedMotion()" />
       <div class="confetti-copy">
         <h1>Confete da revelação</h1>
         <p>Explosão breve, restrita ao resultado em tela cheia.</p>
         <button mat-stroked-button type="button" (click)="restart()">
-          {{ reducedMotion() ? 'Recriar padrão de confete' : 'Repetir confete' }}
+          {{ prefersReducedMotion() ? 'Recriar padrão de confete' : 'Repetir confete' }}
         </button>
       </div>
     </main>
@@ -50,8 +51,19 @@ import { PrizeDrawConfettiComponent } from './prize-draw-confetti.component';
 export class PrizeDrawConfettiStoryHarness {
   readonly particleCount = input(110);
   readonly durationMs = input(2400);
-  readonly reducedMotion = input(false);
+  readonly prefersReducedMotion = signal(false);
   private readonly confetti = viewChild(PrizeDrawConfettiComponent);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => this.prefersReducedMotion.set(motionPreference.matches);
+    updatePreference();
+    motionPreference.addEventListener('change', updatePreference);
+    this.destroyRef.onDestroy(() => motionPreference.removeEventListener('change', updatePreference));
+  }
 
   restart(): void {
     this.confetti()?.restart();

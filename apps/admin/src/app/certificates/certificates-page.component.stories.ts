@@ -1,8 +1,11 @@
 import { Component, inject, provideAppInitializer } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, convertToParamMap, provideRouter, withDisabledInitialNavigation, withHashLocation } from '@angular/router';
 import { applicationConfig } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
+import type { CertificateFolder, CertificateTemplate } from '@cacic-fct/event-manager-admin-contracts';
 import { filter, map, of, startWith } from 'rxjs';
 import { CertificatesService } from './certificates.service';
+import { CertificateApiService } from '../graphql/certificate-api.service';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import {
@@ -27,6 +30,11 @@ function standaloneCertificateRoute() {
   ) };
 }
 
+function initializeStandaloneFolderStory(): Promise<void> {
+  const certificates = inject(CertificatesService);
+  return certificates.loadInitialData().then(() => certificates.selectTargetByRoute(null, null, null));
+}
+
 interface CertificatesPageStoryArgs extends CertificateTemplatesStoryOptions {
   longContent: boolean;
 }
@@ -40,12 +48,66 @@ const defaultArgs: CertificatesPageStoryArgs = {
   longContent: false,
 };
 
+const folderStoryTimestamp = new Date().toISOString();
+const standaloneCertificateFolder: CertificateFolder = {
+  id: 'certificate-folder-story',
+  name: 'Atividades complementares',
+  emoji: '🏅',
+  createdAt: folderStoryTimestamp,
+  createdById: 'storybook-admin',
+  updatedAt: folderStoryTimestamp,
+  updatedById: 'storybook-admin',
+  deletedAt: null,
+};
+const standaloneCertificateTemplate: CertificateTemplate = {
+  id: 'certificate-template-story',
+  name: 'Modelo de certificado',
+  description: 'Modelo para certificados avulsos.',
+  isActive: true,
+  certificateFieldsJson: '{}',
+  createdAt: folderStoryTimestamp,
+  createdById: 'storybook-admin',
+  updatedAt: folderStoryTimestamp,
+  updatedById: 'storybook-admin',
+  deletedAt: null,
+};
+const standaloneFolderCertificateApi = {
+  listCertificateIssuableEvents: () => of([]),
+  listCertificateIssuableEventGroups: () => of([]),
+  listCertificateIssuableMajorEvents: () => of([]),
+  listCertificateFolders: () => of([standaloneCertificateFolder]),
+  getCertificateFolder: () => of(standaloneCertificateFolder),
+  listCertificateTemplates: () => of([standaloneCertificateTemplate]),
+  listCertificateConfigs: () => of([]),
+  listCertificates: () => of([]),
+} satisfies Partial<CertificateApiService>;
+
 let activeArgs = defaultArgs;
+
+const selectedEventRoute = applicationConfig({
+  providers: [
+    {
+      provide: ActivatedRoute,
+      useValue: { paramMap: of(convertToParamMap({ targetType: 'event', targetId: 'event-1' })) },
+    },
+    {
+      provide: PermissionsService,
+      useValue: {
+        has: () => true,
+        hasAny: () => true,
+        hasAll: () => true,
+        canDelete: () => true,
+      },
+    },
+    provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+  ],
+});
 
 const meta: Meta<CertificatesPageStoryArgs> = {
   component: CertificatesPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Certificates/Workspace Certificates Tab',
+  title: 'Admin/Settings/Certificates',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<CertificatesPageStoryArgs>()],
   args: defaultArgs,
   argTypes: {
     state: { control: 'inline-radio', options: ['ready', 'empty', 'loading', 'error'] },
@@ -66,8 +128,13 @@ const meta: Meta<CertificatesPageStoryArgs> = {
     return { props: {} };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Certificate template and folder management with controls for loading, latency, and eligibility scenarios.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: [createCertificateTemplatesStoryHandler(() => activeArgs)] } },
   },
 };
@@ -95,29 +162,18 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-};
 
-export const CompactIssuanceWorkspace: Story = {
-  ...Playground,
-  name: 'Emissão em workspace compacto',
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-};
 
 export const NoRegisteredTemplates: Story = {
   ...Playground,
-  name: 'Sem templates registrados',
+  name: 'No registered templates',
   args: { state: 'empty', count: 0, latencyMs: 0 },
+  decorators: [selectedEventRoute],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const targets = await canvas.findAllByRole('listitem');
-    await userEvent.click(targets[0]);
     await expect(
       await canvas.findByText(
         'Nenhum modelo de certificado está disponível. Verifique o cadastro dos arquivos do ambiente.',
@@ -128,12 +184,11 @@ export const NoRegisteredTemplates: Story = {
 
 export const TemplateRegistryUnavailable: Story = {
   ...Playground,
-  name: 'Falha ao carregar modelos',
+  name: 'Template registry unavailable',
   args: { state: 'error', latencyMs: 0 },
+  decorators: [selectedEventRoute],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const targets = await canvas.findAllByRole('listitem');
-    await userEvent.click(targets[0]);
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'Não foi possível carregar os modelos de certificado.',
     );
@@ -153,10 +208,8 @@ export const LoadingTemplates: Story = {
   args: { state: 'loading', latencyMs: 0 },
 };
 
-export const LongTemplateNamesMobile: Story = {
+export const LongTemplateNames: Story = {
   args: { count: 12, longContent: true, latencyMs: 0 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const ParticipantPriceTiers: Story = {
@@ -195,11 +248,12 @@ export const ParticipantPriceTiers: Story = {
 };
 
 export const StandaloneCertificateFolder: Story = {
-  name: 'Pastas de certificados avulsos',
+  name: 'Standalone certificate folder',
   decorators: [
     applicationConfig({
       providers: [
         provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        { provide: CertificateApiService, useValue: standaloneFolderCertificateApi },
         {
           provide: ActivatedRoute,
           useFactory: standaloneCertificateRoute,
@@ -213,23 +267,24 @@ export const StandaloneCertificateFolder: Story = {
             canDelete: () => true,
           },
         },
-        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+        provideAppInitializer(initializeStandaloneFolderStory),
       ],
     }),
   ],
-  globals: { motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Certificados avulsos', level: 1 })).toBeVisible();
     await expect(canvas.queryByRole('combobox', { name: 'Escopo' })).not.toBeInTheDocument();
+    const folderPicker = await canvas.findByRole('button', { name: /Escolher pasta/ });
+    if (folderPicker.getAttribute('aria-expanded') === 'false') await userEvent.click(folderPicker);
     await expect(await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' })).toBeVisible();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Nova pasta' }));
-    await expect(canvas.getByRole('heading', { name: 'Nova pasta', level: 3 })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Nova pasta', level: 2 })).toBeVisible();
     await userEvent.type(canvas.getByRole('textbox', { name: 'Nome da pasta' }), 'Extensão universitária');
     await expect(canvas.getByRole('button', { name: 'Criar pasta' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }));
-    await expect(canvas.queryByRole('heading', { name: 'Nova pasta', level: 3 })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('heading', { name: 'Nova pasta', level: 2 })).not.toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole('link', { name: 'Abrir pasta Atividades complementares' }));
     await expect(await canvas.findByRole('button', { name: 'Editar pasta' })).toBeVisible();
@@ -240,11 +295,12 @@ export const StandaloneCertificateFolder: Story = {
 };
 
 export const StandaloneCertificateFoldersReadOnly: Story = {
-  name: 'Pastas avulsas somente leitura',
+  name: 'Standalone certificate folders read only',
   decorators: [
     applicationConfig({
       providers: [
         provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        { provide: CertificateApiService, useValue: standaloneFolderCertificateApi },
         { provide: ActivatedRoute, useFactory: standaloneCertificateRoute },
         {
           provide: PermissionsService,
@@ -255,25 +311,26 @@ export const StandaloneCertificateFoldersReadOnly: Story = {
             canDelete: () => false,
           },
         },
-        provideAppInitializer(() => inject(CertificatesService).loadCertificateTemplates()),
+        provideAppInitializer(initializeStandaloneFolderStory),
       ],
     }),
   ],
-  globals: { motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const folderPicker = await canvas.findByRole('button', { name: /Escolher pasta/ });
+    if (folderPicker.getAttribute('aria-expanded') === 'false') await userEvent.click(folderPicker);
     const folder = await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' });
     await expect(folder).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Nova pasta' })).not.toBeInTheDocument();
     await userEvent.click(folder);
-    await expect(await canvas.findByRole('heading', { name: 'Atividades complementares', level: 3 })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Atividades complementares', level: 2 })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Editar pasta' })).not.toBeInTheDocument();
   },
 };
 
 export const AttendeeCertificateEligibility: Story = {
   ...ParticipantPriceTiers,
-  name: 'Elegibilidade para certificado de participantes',
+  name: 'Attendee certificate eligibility',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(

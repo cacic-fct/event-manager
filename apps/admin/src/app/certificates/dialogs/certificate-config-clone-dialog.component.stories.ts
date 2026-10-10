@@ -77,7 +77,7 @@ class CertificateConfigCloneDialogStoryHostComponent {
 
 const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
   component: CertificateConfigCloneDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Certificate Config Clone Dialog',
+  title: 'Admin/Settings/Certificates/Clone',
   tags: ['autodocs'],
   args: {
     defaultName: 'Certificado de participação (cópia)',
@@ -106,7 +106,7 @@ const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -137,7 +137,6 @@ export const NoTargets: Story = {
 };
 
 export const TargetLoadError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     targetsMode: 'loading-error',
   },

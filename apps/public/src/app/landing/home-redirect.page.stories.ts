@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, fn, within } from 'storybook/test';
 import { HomeComponent } from './home-redirect.page';
 import { DefaultRedirectService } from './default-redirect.service';
@@ -16,7 +17,7 @@ const navigateOfflineReturningUser = fn(async () => undefined);
 
 const meta: Meta<HomeStoryArgs> = {
   component: HomeComponent,
-  title: 'CACiC Eventos/Landing/Home Redirect',
+  title: 'Public/Landing/Home Redirect',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -28,12 +29,13 @@ const meta: Meta<HomeStoryArgs> = {
         },
       ],
     }),
+    withScenarioControls<HomeStoryArgs>(),
   ],
   args: { authenticated: false },
   argTypes: {
     authenticated: {
       control: 'boolean',
-      description: 'Define se a rota inicial deve exibir a landing ou redirecionar.',
+      description: 'Choose whether the home route shows the landing page or starts an authenticated redirect.',
     },
   },
   render: (args) => {
@@ -42,7 +44,13 @@ const meta: Meta<HomeStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
+    docs: {
+      description: {
+        component:
+          'The authentication control reloads this constructor-driven route so the landing and redirect flows stay in sync with the selected scenario.',
+      },
+    },
   },
 };
 
@@ -64,10 +72,9 @@ export const AuthenticatedRedirect: Story = {
   },
 };
 
-export const OfflineGuestDarkReducedMotion: Story = {
+export const OfflineGuest: Story = {
   args: { authenticated: false },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
   },

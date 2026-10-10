@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { PackageCookieBannerComponent } from './package-cookie-banner.component';
 
 type CookieBannerStoryArgs = {
@@ -39,7 +39,7 @@ class AdminCookieBannerStoryHostComponent {
 
 const meta: Meta<CookieBannerStoryArgs> = {
   component: AdminCookieBannerStoryHostComponent,
-  title: 'CACiC Eventos/Privacy/Package Cookie Banner',
+  title: 'Admin/Layout/Cookie Banner',
   tags: ['autodocs'],
   args: {
     authenticated: true,
@@ -48,6 +48,9 @@ const meta: Meta<CookieBannerStoryArgs> = {
     text: 'Usamos cookies para manter sua sessão administrativa segura e lembrar suas preferências.',
     buttonText: 'Entendi',
     privacyPolicyUrl: '/legal/privacy-policy',
+  },
+  beforeEach: ({ args }) => {
+    window.localStorage.removeItem(args.storageKey);
   },
   argTypes: {
     authenticated: { control: 'boolean' },
@@ -59,7 +62,7 @@ const meta: Meta<CookieBannerStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -70,7 +73,9 @@ type Story = StoryObj<CookieBannerStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: /entendi/i })).toBeVisible();
+    const acceptButton = await canvas.findByRole('button', { name: 'Aceitar cookies' });
+    await waitFor(() => expect(acceptButton).toBeVisible(), { timeout: 1_500 });
+    await expect(canvas.getByText('Entendi')).toBeVisible();
   },
 };
 
@@ -80,9 +85,4 @@ export const GuestUser: Story = {
     storageKey: 'storybook-admin-cookie-banner-guest',
     text: 'Este aviso também aparece antes da autenticação quando a política de cookies exigir consentimento.',
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...GuestUser,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

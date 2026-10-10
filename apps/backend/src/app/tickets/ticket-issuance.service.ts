@@ -568,7 +568,6 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     context: 'ATTENDANCE' | 'BACKFILL',
   ): Promise<void> {
     if (ticket.issuedAt <= attendedAt) return;
-    const processedAt = new Date();
     const updated = await tx.eventTicket.updateMany({
       where: {
         id: ticket.id,
@@ -593,7 +592,7 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       majorEventId: event.majorEventId ?? event.eventGroup?.majorEventId,
       before: { status: EventTicketStatus.ACTIVE, holderPersonId: personId, issuedAt: ticket.issuedAt.toISOString() },
       after: { status: EventTicketStatus.ACTIVE, holderPersonId: personId, issuedAt: attendedAt.toISOString() },
-      metadata: { reconciliationContext: context, attendedAt: attendedAt.toISOString(), processedAt: processedAt.toISOString() },
+      metadata: { reconciliationContext: context },
     });
   }
 
@@ -712,7 +711,6 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           consumedByPersonId: personId,
           consumedAt: effectiveAt.toISOString(),
         },
-        metadata: { attendedByPersonId: personId, attendedAt: effectiveAt.toISOString(), processedAt: processedAt.toISOString() },
       });
       await this.realtime.enqueueForUsers(tx, [ticket.holder?.userId], {
         type: 'TICKETS_CHANGED',

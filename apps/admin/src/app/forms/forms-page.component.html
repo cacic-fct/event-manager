@@ -141,13 +141,13 @@
     <section class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>
+          <h2>
             @if (workspace.selectedForm()) {
               Editar formulário
             } @else {
               Novo formulário
             }
-          </h3>
+          </h2>
           <p>Campos, vínculo com eventos, sigilo e publicação.</p>
         </div>
 
@@ -236,7 +236,7 @@
 
       <form [formGroup]="workspace.form" class="panel-stack" (submit)="$event.preventDefault()">
         <section class="surface field-group">
-          <h4>Identidade e sigilo</h4>
+          <h3>Identidade e sigilo</h3>
           <div class="field-grid">
             <mat-form-field class="span-2">
               <mat-label>Nome</mat-label>
@@ -251,7 +251,7 @@
             <section class="form-image-editor span-2" aria-labelledby="form-images-title">
               <div class="surface-heading">
                 <div>
-                  <h5 id="form-images-title">Imagens da descrição</h5>
+                  <h4 id="form-images-title">Imagens da descrição</h4>
                   <span>Estas imagens aparecem antes das perguntas em tamanho amplo.</span>
                 </div>
                 <input
@@ -408,7 +408,7 @@
         <section class="surface field-group">
           <div class="surface-heading">
             <div>
-              <h4>Vínculos</h4>
+              <h3>Vínculos</h3>
               <span>Defina onde o formulário aparece e se entra no fluxo de inscrição.</span>
             </div>
             <div class="actions">

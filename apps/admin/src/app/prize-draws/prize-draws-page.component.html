@@ -90,7 +90,7 @@
       <aside class="panel saved-draws">
         <div class="panel-heading">
           <div>
-            <h3>Configurações salvas</h3>
+            <h2>Configurações salvas</h2>
             <p>Retome um sorteio ou prepare um novo.</p>
           </div>
           <button
@@ -137,7 +137,7 @@
         </div>
       </aside>
 
-      <main class="panel panel-stack setup-editor">
+      <section class="panel panel-stack setup-editor" aria-labelledby="prize-draw-editor-title">
         @if (workspace.unsavedChanges()) {
           <div class="notice" role="status">
             <span>Alterações não salvas. Salve para atualizar a lista de participantes.</span>
@@ -146,7 +146,7 @@
         }
         <div class="panel-heading">
           <div>
-            <h3>{{ workspace.selected() ? 'Configurar sorteio' : 'Novo sorteio' }}</h3>
+            <h2 id="prize-draw-editor-title">{{ workspace.selected() ? 'Configurar sorteio' : 'Novo sorteio' }}</h2>
             <p>Critérios, participantes, experiência de revelação e histórico.</p>
           </div>
           <div class="panel-actions">
@@ -231,7 +231,7 @@
           <section class="surface surface-stack">
             <div class="surface-heading">
               <div>
-                <h4>Identidade e vínculo</h4>
+                <h3>Identidade e vínculo</h3>
                 <span>O vínculo define onde a transparência pública será exibida.</span>
               </div>
             </div>
@@ -270,7 +270,7 @@
             [class.surface-locked]="!!workspace.selected()?.frozenAt">
             <div class="surface-heading">
               <div>
-                <h4>Quem participa</h4>
+                <h3>Quem participa</h3>
                 <span>As pessoas são unificadas por cadastro quando a identidade é conhecida.</span>
               </div>
             </div>
@@ -290,7 +290,7 @@
 
             @if (workspace.form.controls.includeManualEntries.value) {
               <section class="manual-entry-area" aria-labelledby="manual-entry-title">
-                <h5 id="manual-entry-title">Entradas manuais</h5>
+                <h4 id="manual-entry-title">Entradas manuais</h4>
                 <p>
                   Selecione um cadastro existente ou informe apenas um nome. Ao salvar, uma correspondência única será
                   vinculada automaticamente; nenhum cadastro novo será criado.
@@ -369,7 +369,7 @@
               <section class="roster-preview" aria-labelledby="roster-title">
                 <div class="surface-heading">
                   <div>
-                    <h5 id="roster-title">Lista da configuração salva</h5>
+                    <h4 id="roster-title">Lista da configuração salva</h4>
                     <span
                       >{{ workspace.includedEligibleEntries().length }} pessoa{{
                         workspace.includedEligibleEntries().length === 1 ? '' : 's'
@@ -379,7 +379,7 @@
                   </div>
                 </div>
 
-                <mat-list>
+                <mat-list tabindex="0">
                   @for (entry of workspace.includedEligibleEntries(); track entry.identityKey) {
                     <mat-list-item>
                       <span matListItemTitle>{{ entry.displayName }}</span>
@@ -423,7 +423,7 @@
                 @if (workspace.excludedPeople().length > 0) {
                   <section class="excluded-people" aria-labelledby="excluded-people-title">
                     <div>
-                      <h5 id="excluded-people-title">Pessoas excluídas</h5>
+                      <h4 id="excluded-people-title">Pessoas excluídas</h4>
                       <p>Mesmo com presença ou inscrição, estas pessoas não entram no sorteio.</p>
                     </div>
                     <mat-list>
@@ -451,7 +451,7 @@
           <section class="surface surface-stack">
             <div class="surface-heading">
               <div>
-                <h4>Giros e continuidade</h4>
+                <h3>Giros e continuidade</h3>
                 <span>Deixe sem limite para continuar enquanto houver pessoas elegíveis.</span>
               </div>
             </div>
@@ -523,7 +523,7 @@
             <section class="surface surface-stack">
               <div class="surface-heading">
                 <div>
-                  <h4>Apresentação</h4>
+                  <h3>Apresentação</h3>
                   <span>O ritmo encurta gradualmente nos giros repetidos, sem eliminar a pausa de revelação.</span>
                 </div>
               </div>
@@ -551,7 +551,7 @@
           <section class="surface surface-stack">
             <div class="surface-heading">
               <div>
-                <h4>Notificação</h4>
+                <h3>Notificação</h3>
                 <span>Se ativada, será enviada somente depois que a revelação terminar.</span>
               </div>
             </div>
@@ -563,7 +563,7 @@
           <section class="surface surface-stack results-history">
             <div class="surface-heading">
               <div>
-                <h4>Histórico de giros</h4>
+                <h3>Histórico de giros</h3>
                 <span>Resultados válidos e correções permanecem rastreáveis.</span>
               </div>
               <button
@@ -617,7 +617,7 @@
             </mat-list>
           </section>
         }
-      </main>
+      </section>
     </div>
   </mat-tab-nav-panel>
 </section>

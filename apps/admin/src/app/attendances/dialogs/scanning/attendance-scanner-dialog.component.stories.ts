@@ -124,7 +124,7 @@ class AttendanceScannerDialogStoryHostComponent {
 
 const meta: Meta<AttendanceScannerStoryArgs> = {
   component: AttendanceScannerDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Attendance Scanner Dialog',
+  title: 'Admin/Attendance/Scanning/Scanner',
   tags: ['autodocs'],
   decorators: [cameraDeniedDecorator],
   args: {
@@ -139,11 +139,11 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
   },
   render: (args) => {
     attendanceApi.configure(args);
-    return { props: args };
+    return { props: { eventId: args.eventId } };
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -163,9 +163,4 @@ export const EmptyFeed: Story = {
   args: {
     feedCount: 0,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...EmptyFeed,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

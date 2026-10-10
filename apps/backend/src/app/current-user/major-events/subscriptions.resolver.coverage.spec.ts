@@ -564,9 +564,16 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
         actor: harness.user,
         operation: AuditLogOperation.USER_CREATE,
         entityId: 'subscription-1',
+        after: expect.objectContaining({
+          id: 'subscription-1',
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          selectedEventIds: ['event-1'],
+        }),
       }),
       tx,
     );
+    expect(harness.auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(harness.eventForms.submitSubscriptionFlowResponses).toHaveBeenCalledWith(
       tx,
       'person-1',
@@ -917,6 +924,12 @@ function subscriptionRecord(majorEvent: ReturnType<typeof majorEventRecord>, ove
     paymentDate: new Date(publicFixtureDateFromNow(-2)),
     paymentTier: 'student',
     imageLicenseAgreementAccepted: false,
+    createdByMethod: 'SELF_SUBSCRIPTION',
+    subscriptionFlow: 'REGULAR',
+    desiredCourses: null,
+    desiredLectures: null,
+    desiredUncategorized: null,
+    receiptRejectionReason: null,
     majorEvent,
     ...overrides,
   };

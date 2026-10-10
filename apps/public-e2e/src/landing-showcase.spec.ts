@@ -58,9 +58,9 @@ for (const scenario of [
       // Allows the same browser contracts to run against the existing Storybook
       // when the public app server is unavailable locally. CI uses /app/.
       const storybookUrl = process.env['LANDING_STORYBOOK_URL'];
-      const storyId = scenario.colorScheme === 'dark' ? 'dark-system-preference' : 'playground';
+      const globals = `theme:${scenario.colorScheme};motion:${scenario.reducedMotion === 'reduce' ? 'reduced' : 'full'}`;
       await page.goto(storybookUrl
-        ? `${storybookUrl}/iframe.html?id=cacic-eventos-landing-page--${storyId}&viewMode=story`
+        ? `${storybookUrl}/iframe.html?id=public-landing-page--playground&viewMode=story&globals=${globals}`
         : '/app/');
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');

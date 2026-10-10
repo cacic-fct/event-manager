@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
@@ -62,7 +63,7 @@ const previewRoute = {
 
 const meta: Meta<MajorEventStoryArgs> = {
   component: MajorEvent,
-  title: 'CACiC Eventos/Major Events/List',
+  title: 'Public/Discovery/Major Events',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -97,18 +98,26 @@ const meta: Meta<MajorEventStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<MajorEventStoryArgs>(),
     applicationConfig({
       providers: [
         {
           provide: AuthService,
-          useValue: { isAuthenticated: () => activeArgs.authenticated, login: loginMock },
+          useValue: {
+            isAuthenticated: () => activeArgs.authenticated,
+            user: () =>
+              activeArgs.authenticated
+                ? { sub: 'major-event-story-user', claims: { name: 'Storybook User' } }
+                : null,
+            login: loginMock,
+          },
         },
       ],
     }),
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: [majorEventsHandler()] } },
   },
 };
@@ -117,10 +126,10 @@ export default meta;
 type Story = StoryObj<MajorEventStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ args, canvasElement }) => {
-    const cards = await within(canvasElement).findAllByRole('heading', { level: 2 });
-    await expect(cards).toHaveLength(args.eventCount);
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(args.name)).toBeVisible();
+    await expect(canvasElement.querySelectorAll('mat-card-title')).toHaveLength(args.eventCount);
   },
 };
 
@@ -128,7 +137,8 @@ export const DenseMixedCatalog: Story = {
   args: { eventCount: 30, subscribedCount: 12, sportsEvery: 2, eventlessTournamentEvery: 5, latencyMs: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findAllByRole('heading', { level: 2 })).toHaveLength(30);
+    await expect(await canvas.findByText('CACiC Storybook')).toBeVisible();
+    await expect(canvasElement.querySelectorAll('mat-card-title')).toHaveLength(30);
     await expect((await canvas.findAllByText('Ver torneio')).length).toBeGreaterThan(10);
   },
 };
@@ -143,7 +153,9 @@ export const Empty: Story = {
 export const Loading: Story = {
   args: { apiState: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByLabelText('Carregando grandes eventos')).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('progressbar', { name: 'Carregando grandes eventos' }),
+    ).toBeVisible();
   },
 };
 
@@ -169,21 +181,20 @@ export const ReceiptRequired: Story = {
     subscribedCount: 4,
     requiresPayment: true,
     subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+    sportsEvery: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findAllByText('Enviar comprovante')).toHaveLength(4);
+    await expect(await within(canvasElement).findAllByText('Aguardando envio de comprovante')).toHaveLength(4);
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     eventCount: 3,
     name: 'Congresso interdisciplinar universitário de tecnologia, ciência, cultura, extensão e acessibilidade',
     description:
       'Uma programação extensa criada para validar títulos, descrições e ações com conteúdo significativamente maior que o habitual.',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/Congresso interdisciplinar/)).toBeVisible();
   },
@@ -228,6 +239,18 @@ function majorEventsHandler() {
             .map((event, index) => buildSubscription(event, index)),
         },
       });
+    }
+    if (query.includes('PublicPrizeDrawAvailability')) {
+      return HttpResponse.json({ data: { publicPrizeDrawAvailability: [] } });
+    }
+    if (query.includes('CurrentUserMajorEventForms')) {
+      const targetAliases = [...query.matchAll(/\b(target\d+):\s*currentUserEventForms/g)].map((match) => match[1]);
+      return HttpResponse.json({ data: Object.fromEntries(targetAliases.map((alias) => [alias, []])) });
+    }
+    if (query.includes('CurrentUserInterestStates')) {
+      const stateAliases = [...query.matchAll(/\b(state\d+):\s*currentUserInterestState/g)].map((match) => match[1]);
+      const interestState = { interest: null, subscribed: false, endsAt: publicFixtureDateFromNow(1), enabled: false };
+      return HttpResponse.json({ data: Object.fromEntries(stateAliases.map((alias) => [alias, interestState])) });
     }
     if (query.includes('PublicMajorEvents')) {
       return HttpResponse.json({ data: { publicMajorEvents: events } });

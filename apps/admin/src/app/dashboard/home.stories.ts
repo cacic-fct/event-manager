@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
@@ -90,9 +91,10 @@ const storyUser = signal({
 
 const meta: Meta<HomeStoryArgs> = {
   component: Home,
-  title: 'CACiC Eventos/Workspace/Home/Home',
+  title: 'Admin/Dashboard/Home',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<HomeStoryArgs>(),
     applicationConfig({
       providers: [
         provideHttpClient(),
@@ -156,8 +158,13 @@ const meta: Meta<HomeStoryArgs> = {
     };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Workspace dashboard with deterministic event, action queue, and system health data. Use state, count, and section controls to explore populated, empty, loading, and error views.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -206,13 +213,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const AllStatesAtOnce: Story = {
-  globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -233,7 +234,6 @@ export const EmptyDashboard: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -254,7 +254,6 @@ export const UpcomingEventsWithRegistration: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Próximos 7 dias')).toBeVisible();
@@ -284,7 +283,6 @@ export const UpcomingEventsWithoutRegistration: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'dark' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Próximos 7 dias')).toBeVisible();
@@ -310,7 +308,6 @@ export const WeatherAlertsInEventRows: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Hoje')).toBeVisible();
@@ -337,7 +334,6 @@ export const SportsLiveOperations: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'dark' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Partidas em operação')).toBeVisible();
@@ -362,7 +358,6 @@ export const SportsReviewQueue: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Revisões esportivas pendentes')).toBeVisible();
@@ -387,11 +382,10 @@ export const SportsRegistrationOpen: Story = {
     duplicatePeopleCount: 0,
     inconsistencies: 0,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Inscrições abertas')).toBeVisible();
-    await expect(await canvas.findByText('Sem pendências operacionais')).toBeVisible();
+    await expect(await canvas.findByText(/Sem pendências operacionais/)).toBeVisible();
   },
 };
 
@@ -399,11 +393,9 @@ export const Loading: Story = {
   args: {
     state: 'loading',
   },
-  globals: { theme: 'light' },
 };
 
 export const ErrorState: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },

@@ -66,7 +66,7 @@ class AttendancePersonResolutionDialogStoryHostComponent {
 
 const meta: Meta<ResolutionDialogStoryArgs> = {
   component: AttendancePersonResolutionDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Attendance Person Resolution Dialog',
+  title: 'Admin/Attendance/Import/Person Resolution',
   tags: ['autodocs'],
   args: {
     title: 'Escolher pessoa correta',
@@ -86,7 +86,7 @@ const meta: Meta<ResolutionDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -137,9 +137,4 @@ export const NoCandidates: Story = {
     await expect(within(canvasElement).queryAllByRole('radio')).toHaveLength(0);
     await expect(within(canvasElement).getByRole('button', { name: /continuar importação/i })).toBeDisabled();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MultipleValues,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

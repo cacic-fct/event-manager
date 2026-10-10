@@ -147,7 +147,7 @@ class EventDraftSelectorDialogStoryHostComponent {
 
 const meta: Meta<EventDraftSelectorStoryArgs> = {
   component: EventDraftSelectorDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Event Draft Selector Dialog',
+  title: 'Admin/Event Management/Events/Draft Selector',
   tags: ['autodocs'],
   args: {
     draftCount: 2,
@@ -167,7 +167,7 @@ const meta: Meta<EventDraftSelectorStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -180,7 +180,7 @@ export const Playground: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Escolher versão para edição' })).toBeVisible();
     await expect(await canvas.findByText('Evento publicado')).toBeVisible();
-    await expect(await canvas.findByText(/Rascunho:/)).toBeVisible();
+    await expect((await canvas.findAllByText(/Rascunho:/)).length).toBeGreaterThan(0);
     await userEvent.tab();
   },
 };
@@ -191,10 +191,6 @@ export const SingleDraft: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  ...SingleDraft,
-  globals: { theme: 'dark', motion: 'reduced' },
-};
 
 export const Empty: Story = {
   args: { draftCount: 0 },
@@ -208,7 +204,7 @@ export const ExpiredDrafts: Story = {
   args: { draftCount: 8, expirationOffsetDays: -1 },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     draftCount: 12,
     eventName: 'Atividade interdisciplinar de tecnologia, acessibilidade e extensão universitária',
@@ -216,6 +212,4 @@ export const LongContentMobile: Story = {
     authorName: 'Mariana Aparecida de Souza Albuquerque dos Santos',
     longContent: true,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

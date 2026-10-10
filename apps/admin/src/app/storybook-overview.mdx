@@ -1,0 +1,51 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Admin/Overview" />
+
+# Admin catalog
+
+Explore organizer workflows by feature. Storybook navigation and documentation use English;
+the product preview uses Brazilian Portuguese.
+
+<table>
+  <thead><tr><th>Category</th><th>What to explore</th></tr></thead>
+  <tbody>
+    <tr><td>Layout and Dashboard</td><td>The organizer shell, event context, and operational overview</td></tr>
+    <tr><td>Event Management</td><td>Events, event groups, major events, places, and publication</td></tr>
+    <tr><td>Registration and Attendance</td><td>Registrations, interests, receipts, check-in, and attendance reports</td></tr>
+    <tr><td>Ticketing, People, and Forms</td><td>Ticket operations, participant records, imports, and form results</td></tr>
+    <tr><td>Sports and Prize Draws</td><td>Competition administration and draw operations</td></tr>
+    <tr><td>Access, Settings, and Audit</td><td>Permissions, preferences, and change history</td></tr>
+  </tbody>
+</table>
+
+## Working with stories
+
+Start with **Playground** and use **Controls** to adjust data and workflow states.
+Named examples focus on meaningful behavior, such as empty lists, errors, permissions, or complex operations.
+Use the toolbar for theme, reduced motion, network status, and viewport size.
+Data-driven scenario changes recreate the mock page and reset unfinished interactions;
+ordinary component input controls update in place.
+Documentation pages include one live example and its controls. Open additional workflows from
+the sidebar to keep their mock data and overlays isolated.
+
+Use the interaction tests and **Accessibility** panel to inspect real components against deterministic fixtures.
+In the published composition, **Public and Shared** contains participant journeys and reusable library components.
+
+## Adding stories
+
+Use `Admin/Feature/Surface` titles and English documentation, control labels, and story names.
+Keep component content and fixture data in Brazilian Portuguese. Put dialogs next to the feature they serve.
+Simple prop and appearance changes belong in controls; named examples should demonstrate distinct behavior.
+
+Library stories are discovered automatically. Nx tags `scope:admin`, `scope:backend`, and `storybook:admin`
+route a library to this catalog. All other library stories are included in public.
+For pages seeded through mock providers or initial requests, use `withScenarioControls` from
+`@cacic-fct/shared-angular/storybook` to make scenario changes visible.
+
+Run `bun run storybook:quality`, lint, and the affected Storybook build before handing off a change.
+Run browser interactions with `bunx nx run admin:test-storybook`. Override the running catalog URL
+with `--url=http://localhost:4402`, filter examples with `--grep=Attendance`, and write a JSON report
+with `--report=storybook-results.json`. Each example runs in a fresh Playwright browser context.
+Accessibility violations fail browser tests. Use `--strict-a11y` to also require a reported accessibility
+check for every example.

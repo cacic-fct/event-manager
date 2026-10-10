@@ -4,9 +4,9 @@ import { EventExtrasComponent } from './event-extras';
 
 const meta: Meta<EventExtrasComponent> = {
   component: EventExtrasComponent,
-  title: 'CACiC Eventos/Landing/Event Possibilities',
+  title: 'Public/Landing/Demos/Event Options',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -21,7 +21,6 @@ export const Playground: Story = {
 };
 
 export const FeedbackResponse: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     canvasElement.querySelector('.feedback-showcase')?.scrollIntoView();
     const canvas = within(canvasElement);
@@ -34,13 +33,7 @@ export const FeedbackResponse: Story = {
   },
 };
 
-export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light' },
-};
-
 export const MatchOperations: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Operação' }));
@@ -48,12 +41,11 @@ export const MatchOperations: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Finalizar partida' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Partida' }));
     await expect(canvasElement.querySelector('.match-status')).toBeVisible();
-    await expect(canvas.getByLabelText('3 a 1')).toBeVisible();
+    await expect(await canvas.findByText('3 a 1', { selector: '.cdk-visually-hidden' })).toBeInTheDocument();
   },
 };
 
 export const PersistentStopwatch: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Operação' }));

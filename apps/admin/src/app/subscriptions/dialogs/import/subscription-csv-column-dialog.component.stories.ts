@@ -99,7 +99,7 @@ class CsvColumnStoryHost {
 
 const meta: Meta<CsvColumnStoryArgs> = {
   component: CsvColumnStoryHost,
-  title: 'CACiC Eventos/Workspace/Dialogs/Subscription Csv Column Dialog',
+  title: 'Admin/Registration/Import/Subscription Column Mapping',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -112,7 +112,7 @@ const meta: Meta<CsvColumnStoryArgs> = {
     previewRowCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     longValues: { control: 'boolean' },
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -143,13 +143,11 @@ export const NoPreviewRows: Story = {
   args: { previewRowCount: 0 },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     fileName: 'inscricoes-interdisciplinares-universitarias-com-dados-complementares-2026.csv',
     extraColumnCount: 10,
     previewRowCount: 12,
     longValues: true,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

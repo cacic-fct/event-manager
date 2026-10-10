@@ -24,7 +24,7 @@
 
 @if (loading()) {
 <main class="center-state">
-  <mat-spinner diameter="42" />
+  <mat-spinner diameter="42" aria-label="Carregando partida" />
   <p>Preparando a mesa de controle…</p>
 </main>
 } @else if (match(); as currentMatch) {

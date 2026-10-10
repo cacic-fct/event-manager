@@ -20,9 +20,9 @@ interface SportsBracketStoryArgs {
   logoMode: LogoMode;
   editingMatchId: string | null;
   empty: boolean;
-  matchSelected: (matchId: string) => void;
 }
 
+const matchSelected = fn();
 const teamColors = ['#315da8', '#9b3f52', '#26735c', '#7653a6', '#a45c22', '#286b82', '#4d6632', '#7a4f35'];
 const familiarTeamNames = [
   'Atlética FCT',
@@ -33,7 +33,7 @@ const familiarTeamNames = [
 
 const meta: Meta<SportsBracketStoryArgs> = {
   component: SportsBracketComponent,
-  title: 'CACiC Eventos/Shared/Sports/Tournament bracket',
+  title: 'Shared/Sports/Bracket',
   tags: ['autodocs'],
   args: {
     format: 'SINGLE_ELIMINATION',
@@ -42,11 +42,20 @@ const meta: Meta<SportsBracketStoryArgs> = {
     logoMode: 'mixed',
     editingMatchId: 'single-r2-2',
     empty: false,
-    matchSelected: fn(),
   },
   argTypes: {
     format: {
-      control: 'select',
+      control: {
+        type: 'select',
+        labels: {
+          SINGLE_ELIMINATION: 'Single Elimination',
+          ROUND_ROBIN: 'Round Robin',
+          GROUP_STAGE_ELIMINATION: 'Groups and Knockout',
+          DOUBLE_ELIMINATION: 'Double Elimination',
+          SWISS: 'Swiss System',
+          CUSTOM: 'Custom Format',
+        },
+      },
       options: [
         'SINGLE_ELIMINATION',
         'ROUND_ROBIN',
@@ -55,23 +64,41 @@ const meta: Meta<SportsBracketStoryArgs> = {
         'SWISS',
         'CUSTOM',
       ],
+      description: 'Tournament format used to generate stages and matches.',
     },
-    teamCount: { control: { type: 'range', min: 4, max: 32, step: 1 } },
-    includeStandings: { control: 'boolean' },
-    logoMode: { control: 'inline-radio', options: ['all', 'mixed', 'none'] },
-    editingMatchId: { control: 'text' },
-    empty: { control: 'boolean' },
-    matchSelected: { table: { disable: true } },
+    teamCount: { control: { type: 'range', min: 4, max: 32, step: 1 }, description: 'Number of generated teams.' },
+    includeStandings: { control: 'boolean', description: 'Include a generated standings table.' },
+    logoMode: {
+      control: { type: 'inline-radio', labels: { all: 'All', mixed: 'Mixed', none: 'None' } },
+      options: ['all', 'mixed', 'none'],
+      description: 'Choose which generated teams have a logo.',
+    },
+    editingMatchId: { control: 'text', description: 'Match ID displayed in the editing state; clear for no active match.' },
+    empty: { control: 'boolean', description: 'Show the unpublished tournament state.' },
   },
   render: (args) => ({
     props: {
       ...createBracket(args),
-      matchSelected: args.matchSelected,
+      matchSelected,
     },
+    template: `
+      <lib-sports-bracket
+        [format]="format"
+        [emoji]="emoji"
+        [stages]="stages"
+        [standings]="standings"
+        [editingMatchId]="editingMatchId"
+        (matchSelected)="matchSelected($event)" />
+    `,
   }),
   parameters: {
     layout: 'padded',
-    viewport: { defaultViewport: 'responsive' },
+    docs: {
+      description: {
+        component:
+          'Controls generate deterministic tournament stages, team logos, and standings. The match callback records selection for interaction checks.',
+      },
+    },
     msw: {
       handlers: {
         rest: [
@@ -93,18 +120,18 @@ export default meta;
 type Story = StoryObj<SportsBracketStoryArgs>;
 
 export const Playground: Story = {
-  play: async ({ args, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const liveMatch = canvas.getByRole('button', {
       name: /Atlética FCT contra República Vento Norte. Ao vivo/i,
     });
     await userEvent.click(liveMatch);
-    await expect(args.matchSelected).toHaveBeenCalledWith('single-r2-1');
+    await expect(matchSelected).toHaveBeenCalledWith('single-r2-1');
   },
 };
 
 export const ManyTeamsWithControls: Story = {
-  name: 'Muitas equipes e controles',
+  name: 'Many Teams With Controls',
   args: {
     teamCount: 24,
     includeStandings: true,
@@ -112,36 +139,36 @@ export const ManyTeamsWithControls: Story = {
   },
 };
 
-export const EliminacaoSimplesComFolgaENomesLongos: Story = {
+export const SingleEliminationWithByesAndLongNames: Story = {
   args: { format: 'SINGLE_ELIMINATION', teamCount: 24, includeStandings: true },
 };
 
-export const TodosContraTodos: Story = {
+export const RoundRobin: Story = {
   args: { format: 'ROUND_ROBIN', teamCount: 12, includeStandings: true },
 };
 
-export const GruposEEliminatorias: Story = {
+export const GroupsAndKnockout: Story = {
   args: { format: 'GROUP_STAGE_ELIMINATION', teamCount: 16, includeStandings: true },
 };
 
-export const DuplaEliminacao: Story = {
+export const DoubleElimination: Story = {
   args: { format: 'DOUBLE_ELIMINATION', teamCount: 16 },
 };
 
-export const SistemaSuico: Story = {
+export const SwissSystem: Story = {
   args: { format: 'SWISS', teamCount: 20, includeStandings: true },
 };
 
-export const FormatoPersonalizado: Story = {
+export const CustomFormat: Story = {
   args: { format: 'CUSTOM', teamCount: 8, includeStandings: true },
 };
 
-export const SemLogosPublicados: Story = {
-  name: 'Sem logos publicados',
+export const NoPublishedLogos: Story = {
+  name: 'No Published Logos',
   args: { logoMode: 'none' },
 };
 
-export const Vazio: Story = {
+export const Empty: Story = {
   args: {
     empty: true,
     editingMatchId: null,
@@ -149,17 +176,6 @@ export const Vazio: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Estrutura ainda não publicada')).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    format: 'GROUP_STAGE_ELIMINATION',
-    teamCount: 16,
-    includeStandings: true,
-    logoMode: 'mixed',
-    editingMatchId: null,
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function createBracket(args: SportsBracketStoryArgs) {

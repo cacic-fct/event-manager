@@ -5,13 +5,13 @@
   </div>
 
   @if (loading() && insights()) {
-  <mat-spinner diameter="24" />
+  <mat-spinner diameter="24" aria-label="Atualizando painel" />
   }
 </header>
 
 @if (loading() && !insights()) {
 <section class="loading-state">
-  <mat-spinner diameter="32" />
+  <mat-spinner diameter="32" aria-label="Carregando insights do painel" />
   <span>Carregando insights...</span>
 </section>
 } @else if (error()) {
@@ -33,7 +33,7 @@
     </div>
 
     @if (dashboard.suggestions.length > 0) {
-    <div class="quick-actions" aria-label="Atalhos de criação">
+    <div class="quick-actions">
       @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP') && canCreateContext('group')) {
       <a matButton="outlined" [routerLink]="creationRoute('group')">
         <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>

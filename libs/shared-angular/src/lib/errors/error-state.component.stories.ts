@@ -5,27 +5,28 @@ import { ErrorStateComponent } from './error-state.component';
 import { expect, userEvent, within } from 'storybook/test';
 
 const meta: Meta<ErrorStateComponent> = {
-  title: 'Shared/Error state',
+  title: 'Shared/Feedback/Error State',
   component: ErrorStateComponent,
+  tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [provideRouter([])] })],
   args: { status: 403, actionLabel: 'Ir para a página inicial', actionUrl: '/' },
   argTypes: {
-    status: { control: 'select', options: [403, 404, 500, 503] },
-    title: { control: 'text' },
-    description: { control: 'text' },
-    actionLabel: { control: 'text' },
-    actionUrl: { control: 'text' },
-    actionHref: { control: 'text' },
-    technicalDetails: { control: 'text' },
-    retryLabel: { control: 'text' },
+    status: { control: 'select', options: [403, 404, 500, 503], description: 'HTTP status represented by the error state.' },
+    title: { control: 'text', description: 'Override the default error heading.' },
+    description: { control: 'text', description: 'Override the supporting error message.' },
+    actionLabel: { control: 'text', description: 'Label for the primary action.' },
+    actionUrl: { control: 'text', description: 'Router destination for the primary action.' },
+    actionHref: { control: 'text', description: 'External URL for the primary action.' },
+    technicalDetails: { control: 'text', description: 'Technical details available to the user.' },
+    retryLabel: { control: 'text', description: 'Label for a retry action.' },
   },
   parameters: { a11y: { test: 'error' }, msw: { handlers: { graphql: null, rest: null } } },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
 };
 export default meta;
 type Story = StoryObj<ErrorStateComponent>;
 
-export const Forbidden: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Você não tem acesso a esta página.' })).toBeVisible();
@@ -48,16 +49,11 @@ export const WorkspacePermission: Story = {
     technicalDetails: '{"statusCode":403,"code":"workspace_access_denied"}',
   },
 };
-export const DarkTheme: Story = { globals: { theme: 'dark', network: 'online' } };
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     title: 'Não foi possível abrir esta área de gestão com as permissões atuais da sua conta.',
     description: 'Volte para os eventos disponíveis para continuar. Caso precise acessar esta área, fale com a organização do evento.',
     actionLabel: 'Voltar para os eventos disponíveis',
     technicalDetails: JSON.stringify({ statusCode: 403, code: 'workspace_access_denied', requestId: 'storybook-example-request-reference' }, null, 2),
-  },
-  globals: { theme: 'light', network: 'online', viewport: { value: 'mobile', isRotated: false } },
-  parameters: {
-    viewport: { options: { mobile: { name: 'Mobile', styles: { width: '390px', height: '844px' }, type: 'mobile' } } },
   },
 };

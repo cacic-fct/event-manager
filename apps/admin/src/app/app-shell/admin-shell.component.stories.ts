@@ -7,6 +7,7 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { createAdminEvent, createAdminEventGroup, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { provideRouter, withHashLocation, withDisabledInitialNavigation } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -64,9 +65,10 @@ const defaultArgs: WorkspaceLayoutStoryArgs = {
 
 const meta: Meta<WorkspaceLayoutStoryArgs> = {
   component: AdminShellComponent,
-  title: 'CACiC Eventos/Workspace/Workspace Layout',
+  title: 'Admin/Layout/Shell',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<WorkspaceLayoutStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([{ path: '**', component: ShellStoryRoute }], withHashLocation(), withDisabledInitialNavigation()),
@@ -150,11 +152,13 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
     };
   },
   parameters: {
-    layout: 'fullscreen',
-    a11y: { test: 'todo' },
-    viewport: {
-      defaultViewport: 'desktop',
+    docs: {
+      description: {
+        component: 'Admin navigation shell with controls for sidebar density, current route, and active section.',
+      },
     },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
   },
 };
 
@@ -237,7 +241,6 @@ export const FullModeWithPermissionWarnings: Story = {
 };
 
 export const IconsOnlyLoading: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     navMode: 'icons',
     loading: true,

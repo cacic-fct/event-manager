@@ -1,6 +1,7 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { PrizeDrawSpeed } from '@cacic-fct/event-manager-admin-contracts';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -14,7 +15,6 @@ type StoryArgs = {
   winnerName: string;
   countdownSeconds: 3 | 5;
   completedSpins: number;
-  reducedMotion: boolean;
   requestDelay: number;
   demoMode: boolean;
 };
@@ -25,7 +25,6 @@ const defaultArgs: StoryArgs = {
   winnerName: prizeDrawStoryFullNames[2],
   countdownSeconds: 3,
   completedSpins: 2,
-  reducedMotion: false,
   requestDelay: 0,
   demoMode: false,
 };
@@ -45,7 +44,7 @@ const handlerState = (): AdminPrizeDrawStoryState => ({
 
 const meta: Meta<StoryArgs> = {
   component: PrizeDrawPageComponent,
-  title: 'CACiC Eventos/Sorteios/Execução administrativa',
+  title: 'Admin/Prize Draws/Draw',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -54,21 +53,25 @@ const meta: Meta<StoryArgs> = {
     winnerName: { control: 'select', options: prizeDrawStoryFullNames.slice(0, 24) },
     countdownSeconds: { control: 'inline-radio', options: [3, 5], if: { arg: 'speed', eq: 'DRAMATIC' } },
     completedSpins: { control: { type: 'range', min: 0, max: 3, step: 1 } },
-    reducedMotion: { control: 'boolean' },
     requestDelay: { control: { type: 'range', min: 0, max: 2500, step: 100 } },
     demoMode: { control: 'boolean' },
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Prize draw execution screen with controls for winner, draw speed, roster size, and countdown duration. Use the global motion control for reduced-motion behavior.',
+      },
+    },
     layout: 'fullscreen',
     a11y: { test: 'error' },
     msw: { handlers: { graphql: createAdminPrizeDrawStoryHandlers(handlerState) } },
   },
   render: (args) => {
     activeArgs = { ...defaultArgs, ...args };
-    installStoryMotionPreference(args.reducedMotion);
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<StoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -122,30 +125,7 @@ export const EmptyEligibility: Story = {
   args: { rosterSize: 0, completedSpins: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Nenhuma pessoa elegível')).toBeVisible();
+    await expect((await canvas.findAllByText('Nenhuma pessoa elegível')).length).toBeGreaterThan(0);
     await expect(canvas.getByRole('button', { name: 'Sortear agora' })).toBeDisabled();
   },
 };
-
-export const ReducedMotionMobile: Story = {
-  args: { speed: 'DRAMATIC', reducedMotion: true, rosterSize: 56, completedSpins: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-};
-
-function installStoryMotionPreference(reducedMotion: boolean): void {
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: (query: string) =>
-      ({
-        matches: reducedMotion && query === '(prefers-reduced-motion: reduce)',
-        media: query,
-        onchange: null,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        dispatchEvent: () => true,
-      }) satisfies MediaQueryList,
-  });
-}

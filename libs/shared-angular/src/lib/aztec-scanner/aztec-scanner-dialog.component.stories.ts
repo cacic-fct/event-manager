@@ -21,7 +21,11 @@ const dialogRefMock = {
 @Component({
   selector: 'lib-storybook-aztec-scanner-dialog-host',
   imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  template: `
+    <section role="dialog" aria-modal="true" aria-label="Leitor de código">
+      <ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />
+    </section>
+  `,
 })
 class AztecScannerDialogStoryHostComponent {
   private readonly injector = inject(Injector);
@@ -55,7 +59,7 @@ class AztecScannerDialogStoryHostComponent {
 
 const meta: Meta<AztecScannerDialogStoryArgs> = {
   component: AztecScannerDialogStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Scanning/Aztec scanner dialog',
+  title: 'Shared/Scanning/Aztec Scanner Dialog',
   tags: ['autodocs'],
   args: {
     title: 'Escanear carteira',
@@ -65,15 +69,21 @@ const meta: Meta<AztecScannerDialogStoryArgs> = {
     mode: ['Aztec'],
   },
   argTypes: {
-    title: { control: 'text' },
-    acceptedPrefixes: { control: 'object' },
-    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 } },
-    continuousMode: { control: 'boolean' },
-    mode: { control: 'object' },
+    title: { control: 'text', description: 'Instruction shown in the scanner dialog.' },
+    acceptedPrefixes: { control: 'object', description: 'Accepted barcode payload prefixes.' },
+    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 }, description: 'Pause the camera after a successful scan.' },
+    continuousMode: { control: 'boolean', description: 'Keep scanning after a successful result.' },
+    mode: { control: 'object', description: 'Barcode formats accepted by the dialog scanner.' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    docs: {
+      description: {
+        component:
+          'A dialog host supplies the scanner data and a close handler. Use the controls to review one-shot and continuous scan modes.',
+      },
+    },
+    a11y: { test: 'error' },
   },
 };
 
@@ -84,8 +94,9 @@ type Story = StoryObj<AztecScannerDialogStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('Escanear carteira')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /cancelar/i })).toBeVisible();
+    const dialog = canvas.getByRole('dialog', { name: 'Leitor de código' });
+    await expect(within(dialog).getByRole('heading', { name: 'Escanear carteira' })).toBeVisible();
+    await expect(within(dialog).getByRole('button', { name: /cancelar/i })).toBeVisible();
   },
 };
 
@@ -103,13 +114,4 @@ export const QrAndAztecCodes: Story = {
     acceptedPrefixes: ['ticket:', 'user:'],
     mode: ['Aztec', 'QRCode'],
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    title: 'Coleta noturna',
-    acceptedPrefixes: ['attendance:'],
-    continuousMode: true,
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

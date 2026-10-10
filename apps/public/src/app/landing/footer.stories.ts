@@ -4,13 +4,14 @@ import { LandingFooterComponent } from './footer';
 
 const meta: Meta<LandingFooterComponent> = {
   component: LandingFooterComponent,
-  title: 'CACiC Eventos/Landing/Footer',
+  title: 'Public/Landing/Footer',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Rodapé institucional reutilizado nas páginas públicas de apresentação do CACiC Eventos.',
+        component: 'Institutional footer reused across the public CACiC Eventos pages.',
       },
     },
   },
@@ -29,22 +30,5 @@ export const Playground: Story = {
       new URL(canvas.getByRole('link', { name: 'Validar certificado' }).getAttribute('href') ?? '', window.location.origin)
         .pathname,
     ).toBe('/validate');
-  },
-};
-
-export const MobileFooter: Story = {
-  ...Playground,
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'tablet' },
   },
 };

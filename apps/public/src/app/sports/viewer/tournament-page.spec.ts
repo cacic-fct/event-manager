@@ -96,7 +96,7 @@ describe('SportsTournamentPage', () => {
         id: 'twitch-channel',
         state: 'LIVE',
         livestreamProvider: 'TWITCH',
-        livestreamUrl: 'https://www.twitch.tv/CaCiC',
+        livestreamUrl: 'https://www.twitch.tv/tacacomputa',
       }),
       createSportsViewerMatch({ id: 'upcoming', state: 'SCHEDULED' }),
     ];

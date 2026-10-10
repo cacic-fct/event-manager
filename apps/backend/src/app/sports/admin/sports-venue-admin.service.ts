@@ -82,7 +82,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           entityLabel: venue.name,
           operation: AuditLogOperation.CREATE,
           actor,
-          after: venue,
+          after: this.venueAuditSnapshot(venue),
           summary: 'Local esportivo criado.',
           scope: {
             permission: Permission.SportsTournament.Update,
@@ -215,8 +215,8 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           entityLabel: result.name,
           operation: AuditLogOperation.UPDATE,
           actor,
-          before: existing,
-          after: result,
+          before: this.venueAuditSnapshot(existing),
+          after: this.venueAuditSnapshot(result),
           summary: 'Local esportivo atualizado.',
           scope: {
             permission: Permission.SportsTournament.Update,
@@ -286,8 +286,8 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           entityLabel: venue.name,
           operation: AuditLogOperation.DELETE,
           actor,
-          before: venue,
-          after: { ...venue, deletedAt },
+          before: { ...this.venueAuditSnapshot(venue), deleted: false },
+          after: { ...this.venueAuditSnapshot(venue), revision: venue.revision + 1, deleted: true },
           summary: 'Local esportivo excluído.',
           scope: {
             permission: Permission.SportsTournament.Update,

@@ -113,7 +113,7 @@ class OfflineAttendanceSubmissionDialogStoryHostComponent {
 
 const meta: Meta<OfflineSubmissionStoryArgs> = {
   component: OfflineAttendanceSubmissionDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Offline Attendance Submission Dialog',
+  title: 'Admin/Attendance/Offline Review/Submission',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -171,7 +171,6 @@ export const ReadOnly: Story = {
 };
 
 export const ResolutionError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     hasResolutionError: true,
     createdByMethod: 'MANUAL_INPUT',

@@ -32,6 +32,7 @@ import { CertificateTargetsService } from './certificate-targets.service';
 import { sportsCertificateTypeLabel } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';
 import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
+import { toCertificateConfigAuditSnapshot } from './certificate-audit-snapshots';
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
@@ -797,8 +798,8 @@ export class CertificateConfigsService {
         entityId: after.id,
         entityLabel: after.name,
         operation,
-        before,
-        after,
+        before: before ? toCertificateConfigAuditSnapshot(before) : null,
+        after: toCertificateConfigAuditSnapshot(after),
         summary:
           summary ??
           (operation === AuditLogOperation.CREATE

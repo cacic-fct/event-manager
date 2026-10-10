@@ -44,7 +44,11 @@ export type CurrentUserSubscribedItem =
       startDate: Date;
     };
 
-type EventGroupSubscriptionAuditSnapshot = EventGroupSubscriptionRecord & {
+type EventGroupSubscriptionAuditSnapshot = {
+  id: string;
+  eventGroupId: string;
+  personId: string;
+  imageLicenseAgreementAccepted: boolean;
   eventIds: string[];
 };
 
@@ -360,6 +364,7 @@ export class CurrentUserEventSubscriptionService {
             createdAt: true,
             createdById: true,
             createdByMethod: true,
+            imageLicenseAgreementAccepted: true,
           },
         });
         await this.ticketSubscriptions?.forEvent(tx, targetEvent.id, personId);
@@ -376,7 +381,13 @@ export class CurrentUserEventSubscriptionService {
                 ? AuditLogOperation.CREATE
                 : AuditLogOperation.USER_CREATE,
             actor,
-            after: createdSubscription,
+            after: {
+              id: createdSubscription.id,
+              eventId: createdSubscription.eventId,
+              personId: createdSubscription.personId,
+              createdByMethod: createdSubscription.createdByMethod,
+              imageLicenseAgreementAccepted: createdSubscription.imageLicenseAgreementAccepted,
+            },
             scope: { permission: Permission.Subscription.Create, eventId: createdSubscription.eventId },
             summary:
               createdByMethod === SubscriptionCreationMethod.ADMIN_DASHBOARD
@@ -492,6 +503,7 @@ export class CurrentUserEventSubscriptionService {
           createdAt: true,
           createdById: true,
           createdByMethod: true,
+          imageLicenseAgreementAccepted: true,
           deletedAt: true,
         },
       });
@@ -546,10 +558,10 @@ export class CurrentUserEventSubscriptionService {
             entityLabel: personId,
             operation: groupWasArchived ? AuditLogOperation.DELETE : AuditLogOperation.UPDATE,
             actor,
-            before: this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, previousGroupEventIds),
+            before: this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, personId, previousGroupEventIds),
             after: {
-              ...this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, currentGroupEventIds),
-              ...(groupWasArchived ? { deletedAt: now } : {}),
+              ...this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, personId, currentGroupEventIds),
+              ...(groupWasArchived ? { deleted: true } : {}),
             },
             scope: {
               permission: groupWasArchived ? Permission.Subscription.Delete : Permission.Subscription.Update,
@@ -570,8 +582,24 @@ export class CurrentUserEventSubscriptionService {
             entityLabel: personId,
             operation: AuditLogOperation.DELETE,
             actor,
-            before: existingSubscription,
-            after: { ...existingSubscription, deletedAt: now },
+            before: {
+              id: existingSubscription.id,
+              eventId: existingSubscription.eventId,
+              personId: existingSubscription.personId,
+              eventGroupSubscriptionId: existingSubscription.eventGroupSubscriptionId,
+              imageLicenseAgreementAccepted: existingSubscription.imageLicenseAgreementAccepted,
+              createdByMethod: existingSubscription.createdByMethod,
+              deleted: false,
+            },
+            after: {
+              id: existingSubscription.id,
+              eventId: existingSubscription.eventId,
+              personId: existingSubscription.personId,
+              eventGroupSubscriptionId: existingSubscription.eventGroupSubscriptionId,
+              imageLicenseAgreementAccepted: existingSubscription.imageLicenseAgreementAccepted,
+              createdByMethod: existingSubscription.createdByMethod,
+              deleted: true,
+            },
             scope: { permission: Permission.Subscription.Delete, eventId: existingSubscription.eventId },
             summary: 'Inscrição em evento cancelada pelo usuário.',
             force: true,
@@ -913,10 +941,11 @@ export class CurrentUserEventSubscriptionService {
       events: events.map((eventSubscription) => eventSubscription.event),
       createdGroupSubscription,
       previousAuditSnapshot: existingSubscription
-        ? this.buildEventGroupSubscriptionAuditSnapshot(existingSubscription, previousEventIds)
+        ? this.buildEventGroupSubscriptionAuditSnapshot(existingSubscription, personId, previousEventIds)
         : null,
       currentAuditSnapshot: this.buildEventGroupSubscriptionAuditSnapshot(
         subscription,
+        personId,
         events.map((eventSubscription) => eventSubscription.event.id),
       ),
     };
@@ -991,10 +1020,14 @@ export class CurrentUserEventSubscriptionService {
 
   private buildEventGroupSubscriptionAuditSnapshot(
     subscription: EventGroupSubscriptionRecord,
+    personId: string,
     eventIds: string[],
   ): EventGroupSubscriptionAuditSnapshot {
     return {
-      ...subscription,
+      id: subscription.id,
+      eventGroupId: subscription.eventGroupId,
+      personId,
+      imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
       eventIds: [...eventIds].sort(),
     };
   }

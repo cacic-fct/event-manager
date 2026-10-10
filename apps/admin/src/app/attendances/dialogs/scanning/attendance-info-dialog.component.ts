@@ -54,14 +54,14 @@ type AttendanceDetail = {
         </div>
       </section>
 
-      <section class="detail-grid" aria-label="Informações da presença">
+      <dl class="detail-grid" aria-label="Informações da presença">
         @for (detail of details(); track detail.label) {
           <div>
             <dt>{{ detail.label }}</dt>
             <dd>{{ detail.value || '-' }}</dd>
           </div>
         }
-      </section>
+      </dl>
 
       <section class="location-section">
         <div class="section-heading">
@@ -134,6 +134,7 @@ type AttendanceDetail = {
 
     .detail-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin: 0;
     }
 
     .section-heading {

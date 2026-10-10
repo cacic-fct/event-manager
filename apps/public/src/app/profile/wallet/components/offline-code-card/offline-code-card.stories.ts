@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
@@ -10,11 +11,12 @@ let state: OfflineCodeCardStoryArgs['state'] = 'ready';
 
 const meta: Meta<OfflineCodeCardStoryArgs> = {
   component: WalletOfflineCodeCard,
-  title: 'CACiC Eventos/Profile/Wallet/Offline Code Card',
+  title: 'Public/Profile/Wallet/Offline Code',
   tags: ['autodocs'],
   args: { state: 'ready' },
   argTypes: { state: { control: 'select', options: ['ready', 'unavailable', 'loading'] } },
   decorators: [
+    withScenarioControls<OfflineCodeCardStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -32,7 +34,7 @@ const meta: Meta<OfflineCodeCardStoryArgs> = {
         ],
       })(story, context),
   ],
-  parameters: { layout: 'centered', a11y: { test: 'todo' } },
+  parameters: { layout: 'centered', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -48,7 +50,7 @@ export const Playground: Story = {
 
 export const Unavailable: Story = {
   args: { state: 'unavailable' },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/Abra esta tela com internet/i)).toBeVisible();

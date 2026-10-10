@@ -1,5 +1,6 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import { of } from 'rxjs';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -70,7 +71,7 @@ const withSubscriptionsProviders: Decorator<SubscriptionsPageStoryArgs> = (story
 
 const meta: Meta<SubscriptionsPageStoryArgs> = {
   component: SubscriptionsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Page',
+  title: 'Admin/Registration/Subscriptions',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -84,15 +85,22 @@ const meta: Meta<SubscriptionsPageStoryArgs> = {
     longNames: { control: 'boolean' },
     useAdminShell: { table: { disable: true } },
   },
-  decorators: [withSubscriptionsProviders],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  decorators: [withScenarioControls<SubscriptionsPageStoryArgs>(), withSubscriptionsProviders],
+  parameters: {
+    docs: {
+      description: {
+        component: 'Subscription workspace with controls for event context, result volume, and subscription states.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<SubscriptionsPageStoryArgs>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Inscrições e interesses', level: 1 })).toBeVisible();
@@ -148,12 +156,17 @@ export const NoReceiptsToValidate: Story = {
 };
 
 export const DeepLinkedSubscriberDetail: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: { selectedDetail: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
-    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de eventos/i })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
+    const selectedSubscriber = canvasElement.querySelector<HTMLAnchorElement>(
+      'app-workspace-record a[aria-current="page"]',
+    );
+    await expect(selectedSubscriber).toBeVisible();
+    const selectedName = selectedSubscriber?.getAttribute('aria-label')?.replace(/^Abrir inscrição de /, '').trim() ?? '';
+    await expect(canvas.getByRole('heading', { name: selectedName })).toBeVisible();
   },
 };
 
@@ -166,10 +179,8 @@ export const ReadOnly: Story = {
   },
 };
 
-export const LongNamesTablet: Story = {
+export const LongNames: Story = {
   args: { longNames: true, majorSubscriptionCount: 24, eventSubscriptionCount: 24 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/participante/)).length).toBeGreaterThan(5);
   },

@@ -3,6 +3,7 @@ import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { withScenarioControls } from '../../storybook/scenario-controls.decorator';
 import { UpdateErrorDialogComponent } from './update-error.component';
 
 type UpdateErrorDialogStoryArgs = {
@@ -13,7 +14,7 @@ type UpdateErrorDialogStoryArgs = {
 @Component({
   selector: 'lib-storybook-update-error-dialog-host',
   imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  template: `<ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />`,
 })
 class UpdateErrorDialogStoryHostComponent {
   private readonly injector = inject(Injector);
@@ -38,19 +39,20 @@ class UpdateErrorDialogStoryHostComponent {
 
 const meta: Meta<UpdateErrorDialogStoryArgs> = {
   component: UpdateErrorDialogStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Service worker/Update error dialog',
+  title: 'Shared/Service Worker/Update Error Dialog',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<UpdateErrorDialogStoryArgs>()],
   args: {
     error: 'O pacote de atualização foi baixado, mas não pôde ser ativado.',
     closed: fn(),
   },
   argTypes: {
-    error: { control: 'text', description: 'Detalhe recuperável exibido quando a atualização falha.' },
+    error: { control: 'text', description: 'Recoverable detail shown when the update fails.' },
     closed: { table: { disable: true } },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -72,12 +74,4 @@ export const NetworkFailure: Story = {
     error: 'A conexão foi interrompida antes de concluir o download. Verifique sua rede e tente recarregar.',
     closed: fn(),
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    error: 'A nova versão não pôde ser ativada neste dispositivo.',
-    closed: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -13,8 +13,8 @@ import { OfflineCodeStateService } from './offline-code-state.service';
   template: `
     @switch (state().status) {
       @case ('loading') {
-        <div class="offline-card-loading" aria-label="Carregando código off-line">
-          <mat-spinner diameter="32"></mat-spinner>
+        <div class="offline-card-loading">
+          <mat-spinner diameter="32" aria-label="Carregando código off-line"></mat-spinner>
         </div>
       }
       @case ('ready') {

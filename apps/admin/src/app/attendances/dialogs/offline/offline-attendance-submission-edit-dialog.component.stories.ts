@@ -123,7 +123,7 @@ class OfflineAttendanceSubmissionEditDialogStoryHostComponent {
 
 const meta: Meta<EditDialogStoryArgs> = {
   component: OfflineAttendanceSubmissionEditDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Offline Attendance Submission Edit Dialog',
+  title: 'Admin/Attendance/Offline Review/Submission Edit',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -142,7 +142,7 @@ const meta: Meta<EditDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -202,7 +202,6 @@ export const CandidateSearch: Story = {
 };
 
 export const NoCandidates: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     hasCandidates: false,
   },
