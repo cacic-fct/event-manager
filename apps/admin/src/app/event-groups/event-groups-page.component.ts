@@ -100,7 +100,8 @@ export class EventGroupsPageComponent {
 
   private async initializeContext(params: ParamMap, query: ParamMap | null): Promise<void> {
     const request = ++this.contextRequest;
-    const id = params.get('groupId') ?? (params.get('targetType') === 'group' ? params.get('targetId') : null);
+    const targetType = params.get('targetType') ?? this.route.snapshot.data['targetType'];
+    const id = params.get('groupId') ?? (targetType === 'group' ? params.get('targetId') : null);
     this.contextLoading.set(true);
     this.contextError.set('');
     this.creationParents.set([]);

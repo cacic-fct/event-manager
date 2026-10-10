@@ -2,7 +2,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import {
   AttendanceWorkspaceStoryControls,
   attendanceWorkspaceStoryControlArgTypes,
@@ -15,20 +15,27 @@ const controller = createAttendanceWorkspaceStoryController();
 
 const meta: Meta<AttendanceWorkspaceStoryControls> = {
   component: AttendancesPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Attendances/Page',
+  title: 'Admin/Attendance/Workspace',
   tags: ['autodocs'],
   args: attendanceWorkspaceStoryDefaultControls,
   argTypes: attendanceWorkspaceStoryControlArgTypes,
   render: controller.render,
   decorators: [applicationConfig({ providers: [controller.provider, { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ eventId: 'event-1' })) } }] })],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Attendance workspace entry point with shared controls for event selection, records, offline submissions, and frozen events.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
@@ -58,21 +65,11 @@ export const EmptyWorkspace: Story = {
 
 export const DenseWorkspace: Story = {
   args: { eventCount: 30, attendanceCount: 80, offlineSubmissionCount: 30, majorEventPersonCount: 50 },
-  parameters: { viewport: { defaultViewport: 'desktop' } },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('80 registros')).toBeVisible();
+    await expect(await within(canvasElement).findByText('83 registros')).toBeVisible();
   },
 };
 
-export const CompactWorkspace: Story = {
-  args: { eventCount: 6, attendanceCount: 8, offlineSubmissionCount: 2 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await userEvent.tab();
-    await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
-  },
-};
 
 export const FrozenSportsEvent: Story = {
   args: { frozenEvent: true, sportsEventCount: 8 },

@@ -5,11 +5,11 @@ import { TwemojiComponent } from './twemoji.component';
 
 const meta: Meta<TwemojiComponent> = {
   component: TwemojiComponent,
-  title: 'CACiC Eventos/Shared/Content/Twemoji',
+  title: 'Shared/Content/Twemoji',
   tags: ['autodocs'],
   args: { emoji: '🏆' },
   argTypes: {
-    emoji: { control: 'text', description: 'Emoji Unicode renderizado com o conjunto Twemoji.' },
+    emoji: { control: 'text', description: 'Unicode emoji rendered with the Twemoji asset set.' },
   },
   parameters: {
     layout: 'centered',
@@ -55,11 +55,4 @@ export const EmptyValueFallback: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('img', { name: 'emoji' })).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    emoji: '🌙',
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

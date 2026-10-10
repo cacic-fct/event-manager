@@ -132,7 +132,7 @@ const answers: FormResponseAnswer[] = [
 
 const meta: Meta<EventFormRendererStoryArgs> = {
   component: EventFormRendererComponent,
-  title: 'CACiC Eventos/Shared/Event forms/Renderer',
+  title: 'Shared/Forms/Form Renderer',
   tags: ['autodocs'],
   args: {
     elements,
@@ -146,15 +146,15 @@ const meta: Meta<EventFormRendererStoryArgs> = {
   argTypes: {
     elements: {
       control: 'object',
-      description: 'Itens que compõem o formulário apresentado ao participante.',
+      description: 'Form items displayed to the participant.',
     },
     initialAnswers: {
       control: 'object',
-      description: 'Respostas existentes usadas para edição ou consulta.',
+      description: 'Existing answers used for editing or review.',
     },
-    readOnly: { control: 'boolean' },
-    showSubmit: { control: 'boolean' },
-    submitLabel: { control: 'text' },
+    readOnly: { control: 'boolean', description: 'Disable answer editing.' },
+    showSubmit: { control: 'boolean', description: 'Show the submit action.' },
+    submitLabel: { control: 'text', description: 'Label shown on the submit action.' },
     formSubmitted: { table: { disable: true } },
     answersChange: { table: { disable: true } },
   },
@@ -171,6 +171,14 @@ const meta: Meta<EventFormRendererStoryArgs> = {
         (answersChange)="answersChange($event)" />
     `,
   }),
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Answers stay local to the renderer while changes and submissions are captured by Storybook callbacks. Use the controls to review editable, read-only, and media-rich forms.',
+      },
+    },
+  },
 };
 
 export default meta;
@@ -181,7 +189,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByText('Salvar respostas'));
-    await expect(await canvas.findByText('Esta pergunta é obrigatória.')).toBeVisible();
+    await expect(await canvas.findAllByText('Esta pergunta é obrigatória.')).toHaveLength(3);
   },
 };
 
@@ -202,17 +210,6 @@ export const Empty: Story = {
     formSubmitted: fn(),
     answersChange: fn(),
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    initialAnswers: answers,
-    readOnly: true,
-    showSubmit: false,
-    formSubmitted: fn(),
-    answersChange: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const ResponsiveQuestionImages: Story = {
@@ -248,10 +245,4 @@ export const ResponsiveQuestionImages: Story = {
     await expect(canvas.getAllByRole('img', { name: sharedLandscapeImage.altText })).toHaveLength(2);
     await expect(canvas.getByText(/reutilizado sem duplicar/i)).toBeVisible();
   },
-};
-
-export const ResponsiveQuestionImagesMobile: Story = {
-  ...ResponsiveQuestionImages,
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

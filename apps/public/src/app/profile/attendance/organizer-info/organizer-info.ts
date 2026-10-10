@@ -1,5 +1,5 @@
-import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
+import { DOCUMENT, DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,18 +8,19 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
-import { toSVG } from '@bwip-js/browser';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { toCanvas, toSVG } from '@bwip-js/browser';
 import { parseEventTargetType } from '@cacic-fct/shared-utils';
 import { EMPTY, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { AttendancesApiService, OrganizerInfo } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
+import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
 
 type OrganizerInfoState =
   | { status: 'loading' }
-  | { status: 'ready'; info: OrganizerInfo }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; info: OrganizerInfo };
 
 @Component({
   selector: 'app-organizer-info',
@@ -35,15 +36,16 @@ type OrganizerInfoState =
   ],
   templateUrl: './organizer-info.html',
   styleUrl: './organizer-info.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrganizerInfoComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly api = inject(AttendancesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly document = inject(DOCUMENT);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly refresh = signal(0);
   private loadedOrganizerTarget: string | null = null;
@@ -75,34 +77,40 @@ export class OrganizerInfoComponent {
     return ['/profile', 'attendances', info.targetType, info.targetId];
   }
 
-  downloadOnlineAttendanceCode(eventId: string, code: string | null | undefined): void {
+  downloadOnlineAttendanceCode(eventId: string, code: string | null | undefined, format: 'svg' | 'png'): void {
     if (!isPlatformBrowser(this.platformId) || !code) {
       return;
     }
 
     try {
-      const svg = toSVG({
+      const options = {
         bcid: 'azteccode',
         text: `online-attendance:${eventId}:${code.trim()}`,
         height: 300,
         width: 300,
         includetext: false,
         textxalign: 'center',
-        // @ts-expect-error - bwip-js supports eclevel for azteccode.
         eclevel: '60',
-      });
-      const blob = new Blob([svg], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `codigo-presenca-${eventId}.svg`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      } as const;
+      const fileName = `codigo-presenca-${eventId}.${format}`;
+
+      if (format === 'svg') {
+        this.fileDownload.saveBlob(new Blob([toSVG(options)], { type: 'image/svg+xml' }), fileName);
+        return;
+      }
+
+      const canvas = this.document.createElement('canvas');
+      toCanvas(canvas, options);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          this.fileDownload.saveBlob(blob, fileName);
+        } else {
+          this.showOnlineAttendanceCodeDownloadError();
+        }
+      }, 'image/png');
     } catch (error) {
       console.error('Failed to render online attendance Aztec code:', error);
-      this.snackBar.open('Não foi possível gerar o código de barras.', 'OK', {
-        duration: 5000,
-      });
+      this.showOnlineAttendanceCodeDownloadError();
     }
   }
 
@@ -124,10 +132,8 @@ export class OrganizerInfoComponent {
 
     if (!targetType || !targetId) {
       this.loadedOrganizerTarget = null;
-      return of({
-        status: 'error',
-        message: 'Página de organizador inválida.',
-      } satisfies OrganizerInfoState);
+      void this.routeErrors.navigate(404);
+      return of({ status: 'loading' } satisfies OrganizerInfoState);
     }
 
     const targetKey = `${targetType}:${targetId}`;
@@ -138,20 +144,19 @@ export class OrganizerInfoComponent {
           this.loadedOrganizerTarget = targetKey;
           return { status: 'ready', info } satisfies OrganizerInfoState;
         }
-        return {
-          status: 'error',
-          message: 'Informações restritas aos ministrantes deste evento.',
-        } satisfies OrganizerInfoState;
+        void this.routeErrors.navigate(404);
+        return { status: 'loading' } satisfies OrganizerInfoState;
       }),
-      catchError((error: unknown) =>
-        this.loadedOrganizerTarget === targetKey
-          ? EMPTY
-          : of({
-              status: 'error',
-              message:
-                error instanceof Error ? error.message : 'Não foi possível carregar as informações do organizador.',
-            } satisfies OrganizerInfoState),
-      ),
+      catchError((error: unknown) => {
+        const status = privateResourceErrorStatus(error);
+        if (this.loadedOrganizerTarget === targetKey && status !== 404) return EMPTY;
+        void this.routeErrors.navigate(status);
+        return of({ status: 'loading' } satisfies OrganizerInfoState);
+      }),
     );
+  }
+
+  private showOnlineAttendanceCodeDownloadError(): void {
+    this.snackBar.open('Não foi possível gerar o código Aztec para presença.', 'OK', { duration: 5000 });
   }
 }

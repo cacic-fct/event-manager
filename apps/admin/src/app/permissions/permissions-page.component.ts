@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -7,7 +7,6 @@ import { PermissionsService } from './permissions.service';
 
 @Component({
   selector: 'app-workspace-permissions-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, RouterLinkActive, RouterOutlet, MatIconModule, MatTabsModule],
   templateUrl: './permissions-page.component.html',
   styleUrl: './permissions-page.component.scss',

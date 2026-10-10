@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -63,6 +63,7 @@ const eventFixture: Event = {
   publishedAt: adminFixtureDateFromNow(-1),
   unpublishedAt: null,
   youtubeCode: null,
+  twitchChannel: null,
   buttonText: null,
   buttonLink: null,
   deletedAt: null,
@@ -104,7 +105,6 @@ function draftFixture(index: number, args: EventDraftSelectorStoryArgs): EventDr
 
 @Component({
   selector: 'app-storybook-event-draft-selector-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -147,7 +147,7 @@ class EventDraftSelectorDialogStoryHostComponent {
 
 const meta: Meta<EventDraftSelectorStoryArgs> = {
   component: EventDraftSelectorDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Event Draft Selector Dialog',
+  title: 'Admin/Event Management/Events/Draft Selector',
   tags: ['autodocs'],
   args: {
     draftCount: 2,
@@ -167,7 +167,7 @@ const meta: Meta<EventDraftSelectorStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -180,7 +180,7 @@ export const Playground: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Escolher versão para edição' })).toBeVisible();
     await expect(await canvas.findByText('Evento publicado')).toBeVisible();
-    await expect(await canvas.findByText(/Rascunho:/)).toBeVisible();
+    await expect((await canvas.findAllByText(/Rascunho:/)).length).toBeGreaterThan(0);
     await userEvent.tab();
   },
 };
@@ -191,10 +191,6 @@ export const SingleDraft: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  ...SingleDraft,
-  globals: { theme: 'dark', motion: 'reduced' },
-};
 
 export const Empty: Story = {
   args: { draftCount: 0 },
@@ -208,7 +204,7 @@ export const ExpiredDrafts: Story = {
   args: { draftCount: 8, expirationOffsetDays: -1 },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     draftCount: 12,
     eventName: 'Atividade interdisciplinar de tecnologia, acessibilidade e extensão universitária',
@@ -216,6 +212,4 @@ export const LongContentMobile: Story = {
     authorName: 'Mariana Aparecida de Souza Albuquerque dos Santos',
     longContent: true,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

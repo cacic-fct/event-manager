@@ -758,6 +758,108 @@ describe('SportsWorkspaceService operations', () => {
       );
     });
 
+    it('stores YouTube and Twitch identifiers and preserves GENERAL URLs', async () => {
+      const category = createAdminSportsCategory(0);
+      workspace.tournamentRead.set(createAdminSportsTournamentRead());
+      workspace.selectedCategoryId.set(category.id);
+      vi.spyOn(workspace, 'selectCategory').mockResolvedValue();
+      const startDate = adminSportsRelativeDate(2, 14);
+      const endDate = adminSportsRelativeDate(2, 16);
+
+      workspace.newMatch(false);
+      workspace.matchForm.patchValue({
+        categoryId: category.id,
+        name: 'Final',
+        startDate,
+        endDate,
+        livestreamProvider: 'YOUTUBE',
+        livestreamUrl: 'https://www.youtube.com/watch?v=Video_123',
+      });
+      await workspace.saveMatch();
+      expect(api.mutate).toHaveBeenLastCalledWith(
+        'createSportsMatch',
+        'SportsMatchCreateInput',
+        expect.objectContaining({ livestreamProvider: 'YOUTUBE', livestreamUrl: 'Video_123' }),
+      );
+
+      workspace.newMatch(false);
+      workspace.matchForm.patchValue({
+        categoryId: category.id,
+        name: 'Semifinal',
+        startDate,
+        endDate,
+        livestreamProvider: 'TWITCH',
+        livestreamUrl: 'https://www.twitch.tv/CanalFct',
+      });
+      await workspace.saveMatch();
+      expect(api.mutate).toHaveBeenLastCalledWith(
+        'createSportsMatch',
+        'SportsMatchCreateInput',
+        expect.objectContaining({ livestreamProvider: 'TWITCH', livestreamUrl: 'canalfct' }),
+      );
+
+      workspace.newMatch(false);
+      const generalUrl = 'https://example.com/live?event=final';
+      workspace.matchForm.patchValue({
+        categoryId: category.id,
+        name: 'Disputa de terceiro lugar',
+        startDate,
+        endDate,
+        livestreamProvider: 'GENERAL',
+        livestreamUrl: generalUrl,
+      });
+      await workspace.saveMatch();
+      expect(api.mutate).toHaveBeenLastCalledWith(
+        'createSportsMatch',
+        'SportsMatchCreateInput',
+        expect.objectContaining({ livestreamProvider: 'GENERAL', livestreamUrl: generalUrl }),
+      );
+    });
+
+    it('keeps an invalid livestream visible and blocks match saving', async () => {
+      const category = createAdminSportsCategory(0);
+      workspace.selectedCategoryId.set(category.id);
+      workspace.newMatch(false);
+      const invalidUrl = 'https://example.com/not-a-twitch-channel';
+      workspace.matchForm.patchValue({
+        categoryId: category.id,
+        name: 'Final',
+        startDate: adminSportsRelativeDate(2, 14),
+        endDate: adminSportsRelativeDate(2, 16),
+        livestreamProvider: 'TWITCH',
+        livestreamUrl: invalidUrl,
+      });
+
+      await workspace.saveMatch();
+
+      expect(api.mutate).not.toHaveBeenCalled();
+      expect(workspace.matchForm.controls.livestreamUrl.value).toBe(invalidUrl);
+      expect(workspace.matchForm.controls.livestreamUrl.hasError('invalidLivestreamUrl')).toBe(true);
+      expect(workspace.matchForm.hasError('invalidLivestreamUrl')).toBe(true);
+    });
+
+    it('revalidates the livestream value when its provider changes', () => {
+      const { livestreamProvider, livestreamUrl } = workspace.matchForm.controls;
+      livestreamProvider.setValue('YOUTUBE');
+      livestreamUrl.setValue('https://www.youtube.com/watch?v=Video_123');
+      expect(livestreamUrl.valid).toBe(true);
+
+      livestreamProvider.setValue('TWITCH');
+      expect(livestreamUrl.hasError('invalidLivestreamUrl')).toBe(true);
+      livestreamUrl.setValue('https://www.twitch.tv/CanalFct');
+      expect(livestreamUrl.valid).toBe(true);
+
+      livestreamProvider.setValue('GENERAL');
+      expect(livestreamUrl.valid).toBe(true);
+      livestreamUrl.setValue('https://example.com/live');
+      expect(livestreamUrl.valid).toBe(true);
+
+      livestreamProvider.setValue('');
+      expect(livestreamUrl.hasError('incompleteLivestream')).toBe(true);
+      livestreamUrl.setValue('');
+      expect(livestreamUrl.valid).toBe(true);
+    });
+
     it('publishes a draft match and refreshes its public-site publication state', async () => {
       const review = createAdminSportsMatchReview();
       if (!review.match.event) {

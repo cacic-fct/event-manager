@@ -351,10 +351,13 @@ export class PermissionManagementService {
           entityLabel: after.name,
           operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
           actor,
-          before,
-          after,
+          before: toPermissionRoleAuditSnapshot(before),
+          after: toPermissionRoleAuditSnapshot(after),
           scope: { permission: existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create },
           summary: existing ? 'Cargo e atribuições atualizados.' : 'Cargo criado.',
+          ...(oldAssignmentIds.length
+            ? { metadata: { archivedReason: EventManagerPermissionArchiveReason.MANUAL } }
+            : {}),
         },
         tx,
       );
@@ -437,10 +440,13 @@ export class PermissionManagementService {
           entityLabel: after.name,
           operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
           actor,
-          before: existing,
-          after,
+          before: toPermissionGroupAuditSnapshot(existing),
+          after: toPermissionGroupAuditSnapshot(after),
           scope: { permission: existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create },
           summary: existing ? 'Grupo de permissões atualizado.' : 'Grupo de permissões criado.',
+          ...(existing?.members.some((member) => member.archivedAt === null)
+            ? { metadata: { archivedReason: EventManagerPermissionArchiveReason.MANUAL } }
+            : {}),
         },
         tx,
       );
@@ -477,10 +483,11 @@ export class PermissionManagementService {
           entityLabel: role.name,
           operation: AuditLogOperation.DELETE,
           actor,
-          before: role,
-          after: { ...role, archivedAt: now },
+          before: toPermissionRoleAuditSnapshot(role),
+          after: { ...toPermissionRoleAuditSnapshot(role), archivedAt: now, assignments: [] },
           scope: { permission: Permission.PermissionGrant.Delete },
           summary: 'Cargo arquivado.',
+          metadata: { archivedReason: EventManagerPermissionArchiveReason.ROLE_ARCHIVED },
           force: true,
         },
         tx,
@@ -513,10 +520,11 @@ export class PermissionManagementService {
           entityLabel: group.name,
           operation: AuditLogOperation.DELETE,
           actor,
-          before: group,
-          after: { ...group, archivedAt: now },
+          before: toPermissionGroupAuditSnapshot(group),
+          after: { ...toPermissionGroupAuditSnapshot(group), archivedAt: now, members: [] },
           scope: { permission: Permission.PermissionGrant.Delete },
           summary: 'Grupo de permissões arquivado.',
+          metadata: { archivedReason: EventManagerPermissionArchiveReason.GROUP_ARCHIVED },
           force: true,
         },
         tx,
@@ -1148,4 +1156,65 @@ export class PermissionManagementService {
       updatedAt: group.updatedAt,
     };
   }
+}
+
+export function toPermissionRoleAuditSnapshot(role: RoleRecord | null): Record<string, unknown> | null {
+  if (!role) return null;
+  return {
+    id: role.id,
+    systemKey: role.systemKey,
+    name: role.name,
+    description: role.description,
+    emoji: role.emoji,
+    position: role.position,
+    isSystem: role.isSystem,
+    version: role.version,
+    archivedAt: role.archivedAt,
+    permissions: role.permissions.map(({ permission }) => permission),
+    parentRoleIds: role.parentLinks.map(({ parentRoleId }) => parentRoleId),
+    assignments: role.assignments
+      .filter((assignment) => !assignment.archivedAt)
+      .map((assignment) => ({
+        id: assignment.id,
+        personId: assignment.personId,
+        groupId: assignment.groupId,
+        validFrom: assignment.validFrom,
+        validUntil: assignment.validUntil,
+        unlimited: assignment.unlimited,
+        scopes: assignment.scopes
+          .filter((scope) => !scope.archivedAt)
+          .map((scope) => ({
+            id: scope.id,
+            scope: scope.scope,
+            eventId: scope.eventId,
+            majorEventId: scope.majorEventId,
+            eventGroupId: scope.eventGroupId,
+            validFrom: scope.validFrom,
+            validUntil: scope.validUntil,
+            unlimited: scope.unlimited,
+          })),
+      })),
+  };
+}
+
+export function toPermissionGroupAuditSnapshot(group: GroupRecord | null): Record<string, unknown> | null {
+  if (!group) return null;
+  return {
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    emoji: group.emoji,
+    version: group.version,
+    archivedAt: group.archivedAt,
+    members: group.members
+      .filter((member) => !member.archivedAt)
+      .map((member) => ({
+        id: member.id,
+        personId: member.person.id,
+        validFrom: member.validFrom,
+        validUntil: member.validUntil,
+        unlimited: member.unlimited,
+      })),
+    assignedRoleIds: group.assignments.map(({ roleId }) => roleId),
+  };
 }

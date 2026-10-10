@@ -41,6 +41,32 @@
   margin-top: 8px;
 }
 
+.attendance-code-actions {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 8px;
+}
+
+.attendance-code-actions h3,
+.attendance-code-actions p {
+  margin: 0;
+}
+
+.attendance-code-actions h3 {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.attendance-code-actions p {
+  max-width: 65ch;
+}
+
+.attendance-code-download-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .small-emoji-frame {
   display: grid;
   width: 40px;

@@ -2,39 +2,9 @@ import { AuditLogEntityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { DataSubjectResolution } from './lgpd-records';
+import { AUDIT_SUBJECT_REFERENCE_FIELDS } from '../audit-log/audit-log.subject-references';
 
 export const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
-
-const AUDIT_IDENTITY_FIELDS = new Set([
-  'personId',
-  'holderPersonId',
-  'originalHolderPersonId',
-  'previousHolderPersonId',
-  'newHolderPersonId',
-  'senderPersonId',
-  'recipientPersonId',
-  'senderUserId',
-  'recipientUserId',
-  'initiatingAdminUserId',
-  'actorUserId',
-  'reviewedById',
-  'invitationPersonIds',
-  'personAId',
-  'personBId',
-  'sourcePersonId',
-  'targetPersonId',
-  'oldUserId',
-  'newUserId',
-  'userId',
-  'authorUserId',
-  'submittedById',
-  'createdById',
-  'committedById',
-  'updatedById',
-  'revertedById',
-  'receiptValidatedBy',
-  'undoneById',
-]);
 
 const PERSONAL_AUDIT_FIELDS = new Set([
   'name',
@@ -60,7 +30,7 @@ export function buildAuditLogSubjectWhere(
   const includeActorEmail = options.includeActorEmail ?? true;
   const identifiers = [...new Set([...dataSubject.userIds, ...dataSubject.personIds])];
   const jsonIdentityConditions: Prisma.AuditLogEntryWhereInput[] = identifiers.flatMap((identifier) =>
-    [...AUDIT_IDENTITY_FIELDS].flatMap((field) => [
+    [...AUDIT_SUBJECT_REFERENCE_FIELDS].flatMap((field) => [
       { before: { path: [field], equals: identifier } },
       { after: { path: [field], equals: identifier } },
       { changes: { path: [field], equals: identifier } },
@@ -68,14 +38,22 @@ export function buildAuditLogSubjectWhere(
       { metadata: { path: ['offlineAttendanceAuthor', field], equals: identifier } },
     ]),
   );
-  const invitationConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap((personId) => [
+  const personListConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap((personId) =>
+    ['invitationPersonIds', 'lecturerPersonIds', 'attendanceCollectorPersonIds'].flatMap((field) => [
+      ...(['before', 'after', 'metadata'] as const).map((payload) => ({
+        [payload]: { path: [field], array_contains: [personId] },
+      })),
+      ...(['before', 'after'] as const).map((value) => ({
+        changes: { array_contains: [{ field, [value]: [personId] }] },
+      })),
+    ]),
+  );
+  const legacyInvitationConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.personIds.flatMap((personId) => [
     ...(['before', 'after', 'metadata'] as const).flatMap((payload) => [
-      { [payload]: { path: ['invitationPersonIds'], array_contains: [personId] } },
       // Older major-event snapshots also embedded invitee names and emails.
       { [payload]: { path: ['audienceInvitations'], array_contains: [{ personId }] } },
     ]),
     ...(['before', 'after'] as const).flatMap((value) => [
-      { changes: { array_contains: [{ field: 'invitationPersonIds', [value]: [personId] }] } },
       { changes: { array_contains: [{ field: 'audienceInvitations', [value]: [{ personId }] }] } },
     ]),
   ]);
@@ -117,7 +95,8 @@ export function buildAuditLogSubjectWhere(
         { [snapshot]: { path: ['sourceKey'], string_ends_with: `:${identifier}` } },
         { [snapshot]: { path: ['sourceKey'], string_contains: `:${identifier}:` } },
       ])),
-      ...invitationConditions,
+      ...personListConditions,
+      ...legacyInvitationConditions,
       ...emailConditions,
     ],
   };
@@ -429,7 +408,7 @@ function isAuditIdentityPath(path: readonly string[], personRoot: boolean): bool
 
 function isAuditIdentityField(field: string, personRoot: boolean): boolean {
   const rootField = field.split('.')[0];
-  return AUDIT_IDENTITY_FIELDS.has(rootField) || (rootField === 'id' && personRoot);
+  return AUDIT_SUBJECT_REFERENCE_FIELDS.has(rootField) || (rootField === 'id' && personRoot);
 }
 
 function decodeAuditEntityIdSegment(segment: string): string {

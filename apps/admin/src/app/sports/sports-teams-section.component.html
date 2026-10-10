@@ -9,10 +9,11 @@
         <button mat-stroked-button type="button" (click)="workspace.newTeam()"><mat-icon>add</mat-icon>Nova</button>
       }
     </div>
-    <mat-list class="result-list">
+    <mat-action-list class="result-list">
       @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
-        <mat-list-item
+        <button mat-list-item type="button"
           [class.selected-list-item]="workspace.selectedTeamId() === team.id"
+          [attr.aria-pressed]="workspace.selectedTeamId() === team.id"
           (click)="workspace.selectTeam(team)">
           <lib-sports-team-logo matListItemAvatar [logoUrl]="team.logoUrl" [size]="40" />
           <span matListItemTitle>{{ team.name }}</span>
@@ -22,6 +23,7 @@
               @for (modality of modalities; track modality.id) {
                 <span
                   class="team-modality-icon"
+                  role="img"
                   [matTooltip]="modality.categoryName"
                   [attr.aria-label]="modality.categoryName">
                   <lib-twemoji [emoji]="modality.categoryEmoji" aria-hidden="true" />
@@ -33,14 +35,14 @@
               <span>Modalidades ainda não carregadas</span>
             }
           </span>
-        </mat-list-item>
+        </button>
       } @empty {
-        <mat-list-item
-          ><span matListItemTitle>Nenhuma equipe</span
-          ><span matListItemLine>Cadastre a primeira equipe do torneio.</span></mat-list-item
-        >
+        <div class="admin-list-empty">
+          <mat-icon aria-hidden="true">hide_source</mat-icon>
+          <p>Nenhuma equipe</p>
+        </div>
       }
-    </mat-list>
+    </mat-action-list>
   </aside>
 
   <section class="panel panel-stack">
@@ -339,7 +341,7 @@
               {{ workspace.approvedTeamMemberCount() }} atleta{{
                 workspace.approvedTeamMemberCount() === 1 ? '' : 's'
               }}
-              aprovado{{ workspace.approvedTeamMemberCount() === 1 ? '' : 's' }} ·
+              aprovado{{ workspace.approvedTeamMemberCount() === 1 ? '' : 's' }},
               {{ workspace.automaticTeamCategories().length }} modalidade{{
                 workspace.automaticTeamCategories().length === 1 ? '' : 's'
               }}

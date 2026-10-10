@@ -2,6 +2,54 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
   {
+    path: '',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'menu',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'calendar',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'notifications',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'about',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'about/legal',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'humans.txt',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'help',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'validate',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'validar',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'legal',
+    renderMode: RenderMode.Prerender,
+  },
+  {
+    path: 'licenses',
+    renderMode: RenderMode.Prerender,
+  },
+  {
     path: 'dev-tools',
     renderMode: RenderMode.Client,
   },
@@ -123,7 +171,7 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'auth/error',
-    renderMode: RenderMode.Client,
+    renderMode: RenderMode.Server,
   },
   {
     path: 'major-event',
@@ -186,6 +234,26 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'preferences/service-worker',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'error/403',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'error/404',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'error/500',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'error/503',
+    renderMode: RenderMode.Server,
+  },
+  {
     path: 'preview/:previewToken/event',
     renderMode: RenderMode.Client,
   },
@@ -199,6 +267,6 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: '**',
-    renderMode: RenderMode.Prerender,
+    renderMode: RenderMode.Server,
   },
 ];

@@ -10,11 +10,6 @@
 <main class="lecturer-profile-page">
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando perfil público"></mat-progress-bar>
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else {
   <section class="profile-header">
     <div>

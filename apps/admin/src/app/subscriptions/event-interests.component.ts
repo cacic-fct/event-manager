@@ -45,6 +45,7 @@ import {
   type InterestEventSelectionDialogResult,
 } from './interest-event-selection-dialog.component';
 import { ParticipantSummaryComponent } from '../shared/participant-summary.component';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 interface InterestTarget {
   targetType: InterestTargetTypeValue;
@@ -96,6 +97,7 @@ export class EventInterestsComponent {
   private readonly feedback = inject(AdminFeedbackService);
   private readonly realtime = inject(RealtimeApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
@@ -168,7 +170,9 @@ export class EventInterestsComponent {
       });
       await this.loadInterests();
     } catch (error) {
-      if (request === this.targetsRequest) this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
+      if (request === this.targetsRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
+      }
     } finally {
       if (request === this.targetsRequest) this.loadingTargets.set(false);
     }
@@ -212,7 +216,9 @@ export class EventInterestsComponent {
       this.interestCount.set(count);
     } catch (error) {
       if (request === this.interestsRequest) {
-        this.feedback.error(error, 'Não foi possível carregar a lista de interessados.');
+        if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+          this.feedback.error(error, 'Não foi possível carregar a lista de interessados.');
+        }
       }
     } finally {
       if (request === this.interestsRequest) {

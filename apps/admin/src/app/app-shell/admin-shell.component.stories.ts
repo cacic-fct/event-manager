@@ -1,12 +1,13 @@
 import { Component, computed, signal } from '@angular/core';
 import { of } from 'rxjs';
-import { EventWorkspaceContextService, contextOperations, type EventWorkspaceContext, type EventWorkspaceRef } from '../event-workspace/event-workspace-context.service';
+import { EventWorkspaceContextService, contextOperations, contextOperationGroups, type EventWorkspaceContext, type EventWorkspaceRef } from '../event-workspace/event-workspace-context.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { createAdminEvent, createAdminEventGroup, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { provideRouter, withHashLocation, withDisabledInitialNavigation } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -32,11 +33,12 @@ const contextService = {
   context: shellContext,
   loading: signal(false), error: signal(''), scopeSwitchBlocked: signal(false),
   operations: computed(() => { const context = shellContext(); return context ? contextOperations(context) : []; }),
+  operationGroups: computed(() => { const context = shellContext(); return context ? contextOperationGroups(contextOperations(context)) : []; }),
   load: async (ref: EventWorkspaceRef | null) => {
     shellContext.set(ref ? { ...ref, name: ref.kind === 'event' ? 'Oficina de acessibilidade' : 'Semana da Computação', emoji: ref.kind === 'event' ? '♿' : '🎓' } : null);
   },
   canReadActivities: () => true,
-} satisfies Pick<EventWorkspaceContextService, 'context' | 'loading' | 'error' | 'operations' | 'load' | 'canReadActivities' | 'scopeSwitchBlocked'>;
+} satisfies Pick<EventWorkspaceContextService, 'context' | 'loading' | 'error' | 'operations' | 'operationGroups' | 'load' | 'canReadActivities' | 'scopeSwitchBlocked'>;
 
 const storyUser = signal({
   sub: 'storybook-admin',
@@ -63,9 +65,10 @@ const defaultArgs: WorkspaceLayoutStoryArgs = {
 
 const meta: Meta<WorkspaceLayoutStoryArgs> = {
   component: AdminShellComponent,
-  title: 'CACiC Eventos/Workspace/Workspace Layout',
+  title: 'Admin/Layout/Shell',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<WorkspaceLayoutStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([{ path: '**', component: ShellStoryRoute }], withHashLocation(), withDisabledInitialNavigation()),
@@ -149,11 +152,13 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
     };
   },
   parameters: {
-    layout: 'fullscreen',
-    a11y: { test: 'todo' },
-    viewport: {
-      defaultViewport: 'desktop',
+    docs: {
+      description: {
+        component: 'Admin navigation shell with controls for sidebar density, current route, and active section.',
+      },
     },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
   },
 };
 
@@ -236,7 +241,6 @@ export const FullModeWithPermissionWarnings: Story = {
 };
 
 export const IconsOnlyLoading: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     navMode: 'icons',
     loading: true,

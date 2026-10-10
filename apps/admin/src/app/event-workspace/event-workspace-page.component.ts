@@ -43,7 +43,9 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
     '../app-shell/layout/forms-feedback.shared.scss', './event-workspace-page.component.scss'],
 })
 export class EventWorkspacePageComponent {
-  protected readonly contextRoute = adminEventWorkspaceRoute;
+  protected contextRoute(ref: EventWorkspaceRef): string[] {
+    return adminEventWorkspaceRoute({ ...ref, section: 'settings' });
+  }
   readonly workspace = inject(EventWorkspaceContextService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
@@ -87,11 +89,11 @@ export class EventWorkspacePageComponent {
     });
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      const kind = params.get('targetType');
+      const kind = params.get('targetType') ?? this.route.snapshot.data['targetType'];
       const id = params.get('targetId');
       const ref: EventWorkspaceRef | null = id && (kind === 'event' || kind === 'group' || kind === 'major-event') ? { kind, id } : null;
       this.selectedRef.set(ref);
-      this.settingsPage.set(kind === 'event' || params.get('section') === 'settings');
+      this.settingsPage.set(kind === 'event' || params.get('section') === 'settings' || this.route.snapshot.data['section'] === 'settings');
       this.query.setValue('');
       this.appliedQuery.set('');
       if (!this.inShell) void this.workspace.load(ref);
@@ -137,7 +139,7 @@ export class EventWorkspacePageComponent {
   }
 
   protected selectContext(ref: EventWorkspaceRef): void {
-    void this.pendingChanges.navigate(() => this.router.navigate(adminEventWorkspaceRoute(ref)));
+    void this.pendingChanges.navigate(() => this.router.navigate(this.contextRoute(ref)));
   }
 
   protected async loadActivities(): Promise<void> {

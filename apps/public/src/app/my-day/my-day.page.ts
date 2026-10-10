@@ -1,5 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
@@ -30,7 +30,6 @@ import { myDayCountdown, myDayDateKey, myDayTimeProgress } from './my-day-date';
   ],
   templateUrl: './my-day.page.html',
   styleUrl: './my-day.page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyDayPage {
   private readonly auth = inject(AuthService);

@@ -1,16 +1,20 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { DefaultUrlSerializer, Router, provideRouter, UrlSegment, type Route } from '@angular/router';
+import { Router, provideRouter, type Route } from '@angular/router';
 import { routes } from '../app-shell/admin-shell.routes';
 import { contextOperations } from './event-workspace-context.service';
 
 const children = routes[0].children ?? [];
-const serializer = new DefaultUrlSerializer();
 
 function matchingRoute(path: string): Route | undefined {
-  const segments = path.split('/').filter(Boolean).map((part) => new UrlSegment(part, {}));
-  return children.find((route) => route.matcher?.(segments, serializer.parse('/').root, route));
+  const segments = path.split('/').filter(Boolean);
+  return children.find((route) => {
+    const routeSegments = route.path?.split('/').filter(Boolean);
+    return routeSegments?.length === segments.length && routeSegments.every((segment, index) =>
+      segment.startsWith(':') || segment === segments[index],
+    );
+  });
 }
 
 @Component({ template: 'Resource' })
@@ -20,8 +24,8 @@ describe('canonical event workspace routes', () => {
   it.each(['event', 'group', 'major-event'] as const)('keeps the canonical %s entry and settings routes', (kind) => {
     const overview = `/event-workspace/${kind}/record-1`;
     const settings = `${overview}/settings`;
-    expect(matchingRoute(overview)).toBeDefined();
-    expect(matchingRoute(settings)).toBeDefined();
+    expect(matchingRoute(overview)?.data).toMatchObject({ targetType: kind });
+    expect(matchingRoute(settings)?.data).toMatchObject({ targetType: kind, section: 'settings' });
     expect(matchingRoute(`${overview}/unknown`)).toBeUndefined();
     const operations = contextOperations({ kind, id: 'record-1' });
     expect(operations.find((operation) => operation.id === 'settings')?.path.join('/')).toBe(settings);

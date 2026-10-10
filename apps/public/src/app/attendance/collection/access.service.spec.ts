@@ -1,106 +1,102 @@
-import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AttendanceCollectionAccessService } from './access.service';
+import { ActivatedRouteSnapshot, provideRouter, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
+import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { of, throwError } from 'rxjs';
+import { ForbiddenGraphqlError } from '../../shared/rate-limit-error';
+import {
+  AttendanceCollectionAccessService,
+  attendanceCollectionListGuard,
+  attendanceCollectionScannerGuard,
+} from './access.service';
+import { AttendanceCollectionApiService } from './attendance-collection-api.service';
 
-describe('AttendanceCollectionAccessService', () => {
-  const now = new Date('2026-05-21T12:00:00.000Z').getTime();
+describe('attendance collection guards', () => {
+  let api: { listCollectionEvents: ReturnType<typeof vi.fn> };
+  let auth: {
+    consumePostLogoutRedirect: ReturnType<typeof vi.fn>;
+    ensureAuthenticated: ReturnType<typeof vi.fn>;
+    evaluatePermissions: ReturnType<typeof vi.fn>;
+    isAuthenticated: ReturnType<typeof vi.fn>;
+    login: ReturnType<typeof vi.fn>;
+    user: ReturnType<typeof vi.fn>;
+  };
+  let errors: { guardRedirect: ReturnType<typeof vi.fn> };
+  let router: Router;
 
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(now);
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    TestBed.resetTestingModule();
-  });
-
-  it('opens collection from three hours before start until six hours after end', () => {
+    api = { listCollectionEvents: vi.fn(() => of([])) };
+    auth = {
+      consumePostLogoutRedirect: vi.fn(() => false),
+      ensureAuthenticated: vi.fn().mockResolvedValue(true),
+      evaluatePermissions: vi.fn(() => of([])),
+      isAuthenticated: vi.fn(() => false),
+      login: vi.fn().mockResolvedValue(undefined),
+      user: vi.fn(() => ({ sub: 'collector-user' })),
+    };
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
+      providers: [
+        provideRouter([]),
+        { provide: AttendanceCollectionApiService, useValue: api },
+        { provide: AttendanceOfflineQueueService, useValue: { getCollectionEvents: vi.fn(() => Promise.resolve([])), getCollectionEvent: vi.fn(() => Promise.resolve(null)) } },
+        { provide: AttendanceCollectionAccessService, useValue: { isCollectionOpen: vi.fn(() => true), getPreciseLocation: vi.fn(() => Promise.resolve({ latitude: 0, longitude: 0, accuracyMeters: 1 })) } },
+        { provide: AuthService, useValue: auth },
+        {
+          provide: RouteErrorService,
+          useValue: {
+            guardRedirect: vi.fn((status: number) => router.parseUrl(`/error/${status}`)),
+          },
+        },
+      ],
     });
-    const service = TestBed.inject(AttendanceCollectionAccessService);
-
-    expect(service.isCollectionOpen(collectionEvent('2026-05-21T15:00:00.000Z', '2026-05-21T16:00:00.000Z'))).toBe(
-      true,
-    );
-    expect(service.isCollectionOpen(collectionEvent('2026-05-21T16:00:01.000Z', '2026-05-21T17:00:00.000Z'))).toBe(
-      false,
-    );
-    expect(service.isCollectionOpen(collectionEvent('2026-05-21T01:00:00.000Z', '2026-05-21T06:00:00.000Z'))).toBe(
-      true,
-    );
+    router = TestBed.inject(Router);
+    errors = TestBed.inject(RouteErrorService) as unknown as typeof errors;
   });
 
-  it('resolves precise browser locations', async () => {
-    Object.defineProperty(navigator, 'geolocation', {
-      configurable: true,
-      value: {
-        getCurrentPosition: vi.fn((success: PositionCallback) =>
-          success({
-            coords: {
-              latitude: -22.12,
-              longitude: -51.4,
-              accuracy: 25,
-            },
-          } as GeolocationPosition),
-        ),
-      },
-    });
-    TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
-    });
+  it('shows shared 403 when the collector has no collection permissions or current event assignments', async () => {
+    const result = await runListGuard('/attendance/collect');
 
-    await expect(TestBed.inject(AttendanceCollectionAccessService).getPreciseLocation()).resolves.toEqual({
-      latitude: -22.12,
-      longitude: -51.4,
-      accuracyMeters: 25,
-    });
+    expect(auth.ensureAuthenticated).toHaveBeenCalledOnce();
+    expect(api.listCollectionEvents).toHaveBeenCalledOnce();
+    expect(auth.evaluatePermissions).toHaveBeenCalledWith([
+      Permission.EventAttendance.Collect,
+      Permission.EventAttendance.Import,
+      Permission.EventAttendance.Update,
+    ]);
+    expect(errors.guardRedirect).toHaveBeenCalledWith(403);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/error/403');
   });
 
-  it('rejects missing, imprecise, and denied browser locations', async () => {
-    TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
-    });
-    await expect(TestBed.inject(AttendanceCollectionAccessService).getPreciseLocation()).rejects.toThrow(
-      "Browser didn't provide location.",
+  it('starts Keycloak login with the requested scanner route before calling private APIs', async () => {
+    auth.ensureAuthenticated.mockResolvedValue(false);
+    const route = { paramMap: { get: () => 'event-private' } } as unknown as ActivatedRouteSnapshot;
+    const state = { url: '/attendance/collect/event-private/scanner' } as RouterStateSnapshot;
+
+    const result = await TestBed.runInInjectionContext(() => attendanceCollectionScannerGuard(route, state));
+
+    expect(result).toBe(false);
+    expect(auth.login).toHaveBeenCalledWith({ returnTo: state.url });
+    expect(api.listCollectionEvents).not.toHaveBeenCalled();
+  });
+
+  it('masks a denied or missing collector event id as shared not found', async () => {
+    api.listCollectionEvents.mockReturnValueOnce(throwError(() => new ForbiddenGraphqlError('forbidden')));
+    auth.evaluatePermissions.mockReturnValue(of([Permission.EventAttendance.Collect]));
+    const route = { paramMap: { get: () => 'event-private' } } as unknown as ActivatedRouteSnapshot;
+
+    const result = await TestBed.runInInjectionContext(() =>
+      attendanceCollectionScannerGuard(route, { url: '/attendance/collect/event-private' } as RouterStateSnapshot),
     );
 
-    TestBed.resetTestingModule();
-    Object.defineProperty(navigator, 'geolocation', {
-      configurable: true,
-      value: {
-        getCurrentPosition: vi.fn((success: PositionCallback) =>
-          success({
-            coords: {
-              latitude: -22.12,
-              longitude: -51.4,
-              accuracy: 150,
-            },
-          } as GeolocationPosition),
-        ),
-      },
-    });
-    TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
-    });
-    await expect(TestBed.inject(AttendanceCollectionAccessService).getPreciseLocation()).rejects.toThrow(
-      'Ative a localização precisa.',
-    );
+    expect(errors.guardRedirect).toHaveBeenCalledWith(404);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/error/404');
   });
+
+  async function runListGuard(url: string): Promise<unknown> {
+    return TestBed.runInInjectionContext(() =>
+      attendanceCollectionListGuard({} as ActivatedRouteSnapshot, { url } as RouterStateSnapshot),
+    );
+  }
 });
-
-function collectionEvent(startDate: string, endDate: string) {
-  return {
-    eventId: 'event-1',
-    event: {
-      id: 'event-1',
-      name: 'Evento',
-      startDate,
-      endDate,
-      emoji: '🎓',
-      type: 'OTHER' as const,
-      queueCount: 0,
-    },
-  };
-}

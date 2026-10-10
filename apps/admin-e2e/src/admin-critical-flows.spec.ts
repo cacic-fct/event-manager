@@ -147,7 +147,7 @@ test('forms workspace loads linked form preview and aggregated results', async (
   await expect(page.getByRole('heading', { name: 'Editar formulário' })).toBeVisible();
   await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('Pesquisa de camiseta');
   await expect(page.getByText('Oficina de Angular').first()).toBeVisible();
-  await expect(page.getByText('Publicado · 2 respostas')).toBeVisible();
+  await expect(page.getByText('Publicado, 2 respostas')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Prévia' }).click();
   await expect(page.getByRole('heading', { name: 'Tamanho da camiseta' })).toBeVisible();
@@ -155,7 +155,7 @@ test('forms workspace loads linked form preview and aggregated results', async (
 
   await page.getByRole('tab', { name: 'Resultados' }).click();
   await expect(page.getByRole('heading', { name: 'Resultados' })).toBeVisible();
-  await expect(page.getByText('2 respostas · respostas individuais visíveis')).toBeVisible();
+  await expect(page.getByText('2 respostas, respostas individuais visíveis')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tamanho da camiseta' })).toBeVisible();
 });
 

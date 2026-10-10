@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
 import { PlacePreset, PlacePresetInput } from '@cacic-fct/event-manager-admin-contracts';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import {
   PlacePresetMergeDialogComponent,
   PlacePresetMergeDialogResult,
@@ -30,6 +31,7 @@ export class PlacePresetsService {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
 
   readonly loadingPlaces = signal(false);
   readonly placesError = signal<string | null>(null);
@@ -136,7 +138,13 @@ export class PlacePresetsService {
       return;
     }
 
-    this.populatePlacePreset(await firstValueFrom(this.api.getPlacePreset(placeId)));
+    try {
+      this.populatePlacePreset(await firstValueFrom(this.api.getPlacePreset(placeId)));
+    } catch (error) {
+      if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.feedback.error(error, 'Não foi possível abrir este local.');
+      }
+    }
   }
 
   async savePlacePreset(): Promise<void> {

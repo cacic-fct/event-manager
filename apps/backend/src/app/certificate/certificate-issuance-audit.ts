@@ -1,7 +1,9 @@
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation } from '@prisma/client';
+import { isDeepStrictEqual } from 'node:util';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
 import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import { toCertificateAuditSnapshot } from './certificate-audit-snapshots';
 
 type CertificateWriteClient = AuditPrismaClient;
 
@@ -18,6 +20,7 @@ export class CertificateIssuanceAudit {
   ): Promise<void> {
     const resolvedActor = actor ?? (await this.resolveActor(actorId, prisma));
     const config = after.config;
+    const renderedDataChanged = before !== null && !isDeepStrictEqual(before.renderedData, after.renderedData);
     await this.auditLog.record(
       {
         entityType: AuditLogEntityType.CERTIFICATE,
@@ -25,9 +28,10 @@ export class CertificateIssuanceAudit {
         entityLabel: `${config.name} — ${after.person.name}`,
         operation,
         actor: resolvedActor,
-        before,
-        after,
-        force: operation !== AuditLogOperation.REISSUE,
+        before: before ? toCertificateAuditSnapshot(before) : null,
+        after: toCertificateAuditSnapshot(after),
+        force: operation !== AuditLogOperation.REISSUE || renderedDataChanged,
+        ...(operation === AuditLogOperation.REISSUE ? { metadata: { renderedDataChanged } } : {}),
         summary:
           operation === AuditLogOperation.ISSUE
             ? 'Certificado emitido.'

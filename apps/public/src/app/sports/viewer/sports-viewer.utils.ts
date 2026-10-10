@@ -25,8 +25,8 @@ export function publicOfficialName(name: string): string {
   return `${parts[0]} ${parts.at(-1)?.charAt(0).toLocaleUpperCase('pt-BR')}.`;
 }
 
-export function isRosterPublic(match: PublicSportsMatch): boolean {
-  return match.state === 'FINISHED' || match.state === 'DRAW';
+export function isMatchStarted(match: PublicSportsMatch): boolean {
+  return match.state === 'LIVE' || match.state === 'PAUSED' || match.state === 'FINISHED' || match.state === 'DRAW';
 }
 
 export function matchParticipantName(match: PublicSportsMatch, side: 'home' | 'away'): string {
@@ -37,7 +37,7 @@ export function matchLocation(match: PublicSportsMatch): string {
   const parts = [match.schedule.venueName, match.schedule.courtLabel, match.schedule.locationDescription].filter(
     (value): value is string => Boolean(value?.trim()),
   );
-  return [...new Set(parts)].join(' · ') || 'Local a definir';
+  return [...new Set(parts)].join(', ') || 'Local a definir';
 }
 
 export function compareSportsMatches(left: PublicSportsMatch, right: PublicSportsMatch): number {

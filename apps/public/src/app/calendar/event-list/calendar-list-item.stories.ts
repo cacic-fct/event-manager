@@ -9,7 +9,7 @@ type CalendarListItemStoryArgs = {
 
 const meta: Meta<CalendarListItemStoryArgs> = {
   component: CalendarListItem,
-  title: 'CACiC Eventos/Calendar/Shared List Item',
+  title: 'Public/Discovery/Calendar/Item',
   tags: ['autodocs', 'ticketing'],
   parameters: {
     layout: 'padded',
@@ -107,27 +107,5 @@ export const TransferMetadata: Story = {
       'Entrada principal',
     ]);
     await userEvent.hover(canvas.getByRole('link', { name: 'Abrir Kit de boas-vindas' }));
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  args: {
-    item: {
-      id: 'dark-hidden-event',
-      name: 'Entrega do kit de boas-vindas',
-      emoji: '🎁',
-      startDate: publicStoryDate(0, 14),
-      endDate: publicStoryDate(0, 18),
-      contextLine: 'CACiC Eventos',
-      secondaryLines: ['Disponível até 18h'],
-      route: null,
-    },
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Entrega do kit de boas-vindas')).toBeVisible();
-    await expect(canvas.queryByRole('link')).toBeNull();
   },
 };

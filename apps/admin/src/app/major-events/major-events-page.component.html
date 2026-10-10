@@ -18,13 +18,13 @@
     <section class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>
+          <h2>
             @if (workspace.majorEventForm.controls.id.value) {
               Editar grande evento
             } @else {
               Novo grande evento
             }
-          </h3>
+          </h2>
           <p>Dados públicos, regras de inscrição e pagamento.</p>
         </div>
 
@@ -95,7 +95,7 @@
 
 
         <section class="surface field-group">
-          <h4>Identidade</h4>
+          <h3>Identidade</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Nome</mat-label>
@@ -159,7 +159,7 @@
       @if (workspace.selectedMajorEvent()) {
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Atividades do grande evento</h4>
+            <h3>Atividades do grande evento</h3>
             <span>{{ workspace.majorEventEvents().length }} vinculadas</span>
           </div>
 
@@ -187,16 +187,16 @@
                 }
               </app-workspace-record>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhuma atividade vinculada</span>
-                <span matListItemLine>Busque abaixo para adicionar.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhuma atividade vinculada</p>
+              </div>
             }
           </mat-list>
         </section>
 
         <section class="surface field-group">
-          <h4>Adicionar atividades</h4>
+          <h3>Adicionar atividades</h3>
           <form [formGroup]="workspace.majorEventEventSearchForm" class="compact-form"
             (submit)="$event.preventDefault(); workspace.searchEventsForSelectedMajorEvent()">
             <mat-form-field>
@@ -236,7 +236,7 @@
         </section>
 
         <section class="surface field-group" id="inscricao">
-          <h4>Inscrições</h4>
+          <h3>Inscrições</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Início das inscrições</mat-label>
@@ -292,7 +292,7 @@
           </div>
         </section>
 <section class="surface field-group" id="presenca">
-<h4>Presença</h4>
+<h3>Presença</h3>
 <mat-form-field subscriptSizing="dynamic">
               <mat-label>Quem pode confirmar presença on-line</mat-label>
               <mat-select
@@ -311,7 +311,7 @@
             </mat-form-field><p class="empty-note">Esta regra é herdada pelas atividades que não definem uma regra própria.</p>
 </section>
 <section class="surface field-group" id="certificados">
-<h4>Certificados</h4>
+<h3>Certificados</h3>
 <div class="checkbox-grid">
 <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
               Emitir para presentes não pagantes
@@ -323,7 +323,7 @@
 </section>
 
         <section class="surface field-group">
-<h4>Contato</h4>
+<h3>Contato</h3>
 <div class="field-grid">
 <mat-form-field>
               <mat-label>Tipo de contato</mat-label>
@@ -342,7 +342,7 @@
 </div>
 </section>
 <section class="surface field-group">
-          <h4>Pagamento</h4>
+          <h3>Pagamento</h3>
           <div class="checkbox-grid">
             <mat-checkbox formControlName="isPaymentRequired"> Exigir pagamento </mat-checkbox>
           </div>
@@ -406,7 +406,7 @@
 </section>
 
         <section class="surface field-group">
-          <h4>Preços</h4>
+          <h3>Preços</h3>
 
           <mat-radio-group formControlName="priceType" class="checkbox-grid">
             <mat-radio-button value="SINGLE">Preço único</mat-radio-button>

@@ -120,7 +120,10 @@ export class EventCreateInput {
   displayLecturerProfile?: boolean;
 
   @Field(() => String, { nullable: true })
-  youtubeCode?: string;
+  youtubeCode?: string | null;
+
+  @Field(() => String, { nullable: true })
+  twitchChannel?: string | null;
 
   @Field(() => String, { nullable: true })
   buttonText?: string;
@@ -255,7 +258,10 @@ export class EventUpdateInput {
   displayLecturerProfile?: boolean;
 
   @Field(() => String, { nullable: true })
-  youtubeCode?: string;
+  youtubeCode?: string | null;
+
+  @Field(() => String, { nullable: true })
+  twitchChannel?: string | null;
 
   @Field(() => String, { nullable: true })
   buttonText?: string;

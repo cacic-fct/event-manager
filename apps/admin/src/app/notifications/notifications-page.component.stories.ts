@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import type { Notification } from '@novu/js';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular/service';
@@ -16,11 +17,11 @@ const change = async (id: string | null, patch: Partial<InboxFixture>) => {
 };
 const meta: Meta<StoryArgs> = {
   component: NotificationsPageComponent,
-  title: 'CACiC Eventos/Workspace/Notifications',
+  title: 'Admin/Notifications/Inbox',
   tags: ['autodocs'],
   args: activeArgs,
   argTypes: { count: { control: { type: 'range', min: 0, max: 20 } }, configured: { control: 'boolean' }, failActions: { control: 'boolean' } },
-  decorators: [applicationConfig({ providers: [{ provide: NovuNotificationsService, useValue: {
+  decorators: [withScenarioControls<StoryArgs>(), applicationConfig({ providers: [{ provide: NovuNotificationsService, useValue: {
     client: signal({}), isConfigured: configured, loadingConfig: signal(false), notificationPermission: signal('granted'),
     ensureReady: () => undefined, shouldOfferPushPermission: () => false,
     listNotificationPage: async (filter: { read?: boolean; archived?: boolean }) => ({ notifications: items().filter((item) =>
@@ -44,7 +45,15 @@ const meta: Meta<StoryArgs> = {
     })));
     return { props: {} };
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Admin notification inbox with controls for notification count, provider availability, and action failures.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 export default meta;
 type Story = StoryObj<StoryArgs>;
@@ -59,7 +68,6 @@ export const Playground: Story = {
     await expect(await canvas.findByText('Nenhuma notificação')).toBeVisible();
   },
 };
-export const DarkReducedMotion: Story = { globals: { theme: 'dark', motion: 'reduced' } };
 export const Empty: Story = { args: { count: 0 } };
 export const Unavailable: Story = { args: { configured: false } };
 export const ActionError: Story = { args: { failActions: true } };

@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -44,7 +44,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-offline-attendance-submission-edit-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -124,7 +123,7 @@ class OfflineAttendanceSubmissionEditDialogStoryHostComponent {
 
 const meta: Meta<EditDialogStoryArgs> = {
   component: OfflineAttendanceSubmissionEditDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Offline Attendance Submission Edit Dialog',
+  title: 'Admin/Attendance/Offline Review/Submission Edit',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -143,7 +142,7 @@ const meta: Meta<EditDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -203,7 +202,6 @@ export const CandidateSearch: Story = {
 };
 
 export const NoCandidates: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     hasCandidates: false,
   },

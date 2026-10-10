@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { Router, RouterLink } from '@angular/router';
@@ -18,7 +18,6 @@ import { parseISO, isValid, subHours, addHours } from 'date-fns';
   imports: [DatePipe, RouterLink, MatIconModule, MatListModule, MatToolbarModule, MatButtonModule, MatSnackBarModule],
   templateUrl: './event-list-page.html',
   styleUrl: './event-list-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScannerEventList implements OnInit {
   private readonly access = inject(AttendanceCollectionAccessService);

@@ -12,6 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import type { TicketPurchase, TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { toSVG } from '@bwip-js/browser';
@@ -26,6 +27,7 @@ import { TicketPurchaseApiService } from './ticket-purchase-api.service';
 import type { TicketPurchaseReceiptUploadResponse } from './ticket-purchase-api.service';
 import { TicketingApiService } from '../../profile/ticketing/ticketing-api.service';
 import { nextDeadlineDelay } from '../../profile/ticketing/ticket-expiration';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 registerLocaleData(localePt, 'pt-BR');
 
@@ -38,8 +40,7 @@ type PaymentState =
       ticketOption: TicketPurchaseOption | null;
       ticketPurchase: TicketPurchase | null;
       uploadedTicketPurchaseReceipt: TicketPurchaseReceiptUploadResponse | null;
-    }
-  | { status: 'error'; message: string };
+    };
 
 interface PaymentPageData {
   subscription: CurrentUserMajorEventSubscription | null;
@@ -81,6 +82,7 @@ interface ConfirmReceiptDialogData {
 })
 export class PaymentInfo {
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly analytics = inject(AnalyticsService);
   private readonly subscriptionApi = inject(MajorEventSubscriptionApiService);
   private readonly receiptApi = inject(PaymentReceiptApiService);
@@ -286,7 +288,7 @@ export class PaymentInfo {
 
   private loadPage(background = false): void {
     if (!this.majorEventId) {
-      this.state.set({ status: 'error', message: 'Página de pagamento inválida.' });
+      void this.routeErrors.navigate(404);
       return;
     }
 
@@ -299,12 +301,12 @@ export class PaymentInfo {
         next: ({ subscription, receipt, ticketOption, ticketPurchase, uploadedTicketPurchaseReceipt }) => {
           if (requestId !== this.pageRequestId) return;
           if (!subscription) {
-            this.state.set({ status: 'error', message: 'Inscrição não encontrada.' });
+            void this.routeErrors.navigate(404);
             return;
           }
 
           if (this.ticketPurchaseMode && !ticketOption && !ticketPurchase) {
-            this.state.set({ status: 'error', message: 'Este bilhete não está disponível para compra.' });
+            void this.routeErrors.navigate(404);
             return;
           }
 
@@ -328,11 +330,12 @@ export class PaymentInfo {
         },
         error: (error: unknown) => {
           if (requestId !== this.pageRequestId) return;
-          if (background && this.state().status === 'ready') return;
-          this.state.set({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Não foi possível carregar as informações de pagamento.',
-          });
+          const status = privateResourceErrorStatus(error);
+          if (background && this.state().status === 'ready') {
+            if (status === 404) void this.routeErrors.navigate(status);
+            return;
+          }
+          void this.routeErrors.navigate(status);
         },
       });
   }

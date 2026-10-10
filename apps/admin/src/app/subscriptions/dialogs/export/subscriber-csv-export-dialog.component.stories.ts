@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -16,7 +16,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-subscriber-csv-export-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -46,7 +45,7 @@ class SubscriberCsvExportDialogStoryHostComponent {
 
 const meta: Meta<SubscriberCsvExportStoryArgs> = {
   component: SubscriberCsvExportDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Subscriber Csv Export Dialog',
+  title: 'Admin/Registration/Subscriptions/Export',
   tags: ['autodocs'],
   args: {
     title: 'Exportar inscritos confirmados',
@@ -58,7 +57,7 @@ const meta: Meta<SubscriberCsvExportStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -84,7 +83,6 @@ export const EmptySelection: Story = {
 };
 
 export const WithBadgeCodes: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByLabelText(/códigos para crachá/i));

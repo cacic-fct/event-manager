@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { PackageCookieBannerComponent } from './package-cookie-banner.component';
 
 faker.seed(20260616);
@@ -17,7 +17,6 @@ type CookieBannerStoryArgs = {
 
 @Component({
   selector: 'app-storybook-cookie-banner-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PackageCookieBannerComponent],
   template: `<app-cookie-banner [config]="config()" />`,
 })
@@ -47,7 +46,7 @@ const defaultText = `Usamos cookies para ${faker.helpers.arrayElement([
 
 const meta: Meta<CookieBannerStoryArgs> = {
   component: CookieBannerStoryHostComponent,
-  title: 'CACiC Eventos/Privacy/Cookie Banner',
+  title: 'Public/Layout/Cookie Banner',
   tags: ['autodocs'],
   args: {
     authenticated: true,
@@ -63,9 +62,16 @@ const meta: Meta<CookieBannerStoryArgs> = {
     buttonText: { control: 'text' },
     privacyPolicyUrl: { control: 'text' },
   },
+  beforeEach: ({ args }) => {
+    try {
+      window.localStorage.removeItem(args.storageKey);
+    } catch {
+      return;
+    }
+  },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -73,14 +79,16 @@ export default meta;
 
 type Story = StoryObj<CookieBannerStoryArgs>;
 
-async function exerciseStory(canvasElement: HTMLElement): Promise<void> {
+async function exerciseStory(canvasElement: HTMLElement, args: CookieBannerStoryArgs): Promise<void> {
   const canvas = within(canvasElement);
-  await expect(await canvas.findByRole('button', { name: /aceitar|entendi/i })).toBeVisible();
+  const acceptButton = await canvas.findByRole('button', { name: /aceitar cookies/i });
+  await waitFor(() => expect(acceptButton).toBeVisible());
+  await expect(acceptButton).toHaveTextContent(args.buttonText);
   await userEvent.tab();
 }
 
 export const Playground: Story = {
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args),
 };
 
 export const GuestUser: Story = {
@@ -89,17 +97,15 @@ export const GuestUser: Story = {
     storageKey: 'storybook-cookie-banner-guest',
     buttonText: 'Continuar',
   },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args),
 };
 
-export const LongCopyDarkReducedMotion: Story = {
+export const LongCopy: Story = {
   args: {
     authenticated: true,
     storageKey: 'storybook-cookie-banner-long-copy',
     text: 'Usamos cookies essenciais para manter sua sessão segura, sincronizar preferências entre dispositivos compartilhados durante os eventos e respeitar as escolhas de privacidade registradas na sua conta.',
     buttonText: 'Entendi e desejo continuar',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args),
 };

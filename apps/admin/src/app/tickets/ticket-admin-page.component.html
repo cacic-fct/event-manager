@@ -71,18 +71,23 @@
       Bilhetes representam um direito específico de acesso que pode ser transferido quando a configuração permitir.
     </p>
     <mat-card appearance="outlined" class="purpose-note">
-      <mat-icon aria-hidden="true">info</mat-icon>
-      <p>
-        Bilhetes são apenas um recurso visual para os usuários e para possibilitar a transferência de direitos de
-        acesso.
-        <br />
+      <mat-card-content class="purpose-note-content">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>
+          Bilhetes são apenas um recurso visual para os usuários e para possibilitar a transferência de direitos de
+          acesso.
+          <br />
 
-        No scanner de presenças, o bilhete é consumido mesmo que a pessoa apresente o cartão de usuário da carteira.
-      </p>
+          No scanner de presenças, o bilhete é consumido mesmo que a pessoa apresente o cartão de usuário da carteira.
+        </p>
+      </mat-card-content>
     </mat-card>
 
-    <mat-tab-group animationDuration="0ms" aria-label="Seções de bilhetes">
-      <mat-tab label="Configuração">
+    <mat-tab-group class="ticket-tabs" animationDuration="0ms" aria-label="Seções de bilhetes">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon aria-hidden="true">settings</mat-icon>Configuração</span>
+        </ng-template>
         <form class="config-form" [formGroup]="configForm" (ngSubmit)="saveConfig()">
           <section class="workspace-region general-settings">
             <div class="section-heading">
@@ -100,7 +105,7 @@
             <fieldset [disabled]="!canEditConfig() || saving()">
               <mat-slide-toggle formControlName="enabled">Emitir bilhetes para este evento</mat-slide-toggle>
               <div class="identity-fields">
-                <mat-form-field appearance="outline">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline">
                   <mat-label>Nome do bilhete</mat-label>
                   <input matInput formControlName="displayName" required maxlength="120" />
                   @if (configForm.controls.displayName.hasError('required')) {
@@ -110,14 +115,14 @@
                     <mat-error>Use até 120 caracteres.</mat-error>
                   }
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline">
                   <mat-label>Emoji</mat-label>
                   <input matInput formControlName="displayEmoji" maxlength="16" aria-describedby="ticket-emoji-help" />
                   <span matTextSuffix><lib-twemoji [emoji]="configForm.controls.displayEmoji.value" /></span>
                   <mat-hint id="ticket-emoji-help">Por padrão, é usado o emoji do evento.</mat-hint>
                 </mat-form-field>
               </div>
-              <mat-form-field appearance="outline" class="full-width">
+              <mat-form-field subscriptSizing="dynamic" appearance="outline" class="full-width">
                 <mat-label>Descrição para quem possui o bilhete</mat-label>
                 <textarea matInput rows="3" formControlName="description"></textarea>
               </mat-form-field>
@@ -132,7 +137,7 @@
                     >Emitir junto com a inscrição confirmada no grande evento</mat-slide-toggle
                   >
                   @if (configForm.controls.issueOnMajorEventSubscription.value) {
-                    <mat-form-field appearance="outline" class="full-width">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline" class="full-width">
                       <mat-label>Lotes que incluem este bilhete</mat-label>
                       <mat-select formControlName="includedPriceTierIds" multiple>
                         @for (tier of priceTiers(); track tier.id) {
@@ -157,14 +162,14 @@
             <fieldset [disabled]="!canEditConfig() || saving()">
               <mat-slide-toggle formControlName="transferable">Permitir transferência pelo titular</mat-slide-toggle>
               @if (isTransferable()) {
-                <mat-form-field appearance="outline" class="full-width">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline" class="full-width">
                   <mat-label>Informação sobre quem pode receber</mat-label>
                   <textarea matInput rows="2" formControlName="transferEligibilityDescription"></textarea>
                   <mat-hint>Explique regras que ajudem o titular a escolher a pessoa destinatária.</mat-hint>
                 </mat-form-field>
 
                 <div class="policy-fields" formGroupName="recipientPolicy">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field subscriptSizing="dynamic" appearance="outline">
                     <mat-label>Inscrição no grande evento</mat-label>
                     <mat-select formControlName="subscriptionRequirement">
                       @for (option of subscriptionRequirementOptions; track option.value) {
@@ -173,7 +178,7 @@
                     </mat-select>
                   </mat-form-field>
                   @if (majorEventId()) {
-                    <mat-form-field appearance="outline">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline">
                       <mat-label>Lotes aceitos</mat-label>
                       <mat-select formControlName="allowedPriceTierIds" multiple>
                         @for (tier of priceTiers(); track tier.id) {
@@ -183,7 +188,7 @@
                       <mat-hint>Sem seleção, qualquer lote é aceito.</mat-hint>
                     </mat-form-field>
                   }
-                  <mat-form-field appearance="outline">
+                  <mat-form-field subscriptSizing="dynamic" appearance="outline">
                     <mat-label>Curso de graduação</mat-label>
                     <mat-select formControlName="requiredCourseCodes" multiple>
                       @for (course of courseOptions; track course.code) {
@@ -196,7 +201,7 @@
                   <mat-checkbox formControlName="requiresAccountManagerVerification"
                     >Exigir matrícula confirmada no Account Manager</mat-checkbox
                   >
-                  <mat-form-field appearance="outline" class="full-width">
+                  <mat-form-field subscriptSizing="dynamic" appearance="outline" class="full-width">
                     <mat-label>Prefixos adicionais de RA</mat-label>
                     <textarea matInput rows="2" formControlName="requiredAcademicIdPrefixes"></textarea>
                     <mat-hint>Use um prefixo por linha. O curso é selecionado separadamente acima.</mat-hint>
@@ -228,7 +233,7 @@
                     A oferta aparece apenas para quem tem inscrição no grande evento com pagamento aprovado.
                   </p>
                   <div class="policy-fields">
-                    <mat-form-field appearance="outline">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline">
                       <mat-label>Quantidade de bilhetes à venda</mat-label>
                       <mat-select formControlName="purchaseUnlimited">
                         <mat-option [value]="true">Ilimitada</mat-option>
@@ -236,7 +241,7 @@
                       </mat-select>
                     </mat-form-field>
                     @if (!configForm.controls.purchaseUnlimited.value) {
-                      <mat-form-field appearance="outline">
+                      <mat-form-field subscriptSizing="dynamic" appearance="outline">
                         <mat-label>Limite de bilhetes à venda</mat-label>
                         <input matInput type="number" inputmode="numeric" min="1" max="2147483647" step="1" formControlName="purchaseLimit" required />
                         <mat-hint>Compras em análise reservam bilhetes; compras recusadas liberam a reserva.</mat-hint>
@@ -245,7 +250,7 @@
                     }
                   </div>
                   <div class="policy-fields" formGroupName="purchaseVisibility">
-                    <mat-form-field appearance="outline">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline">
                       <mat-label>Curso de graduação</mat-label>
                       <mat-select formControlName="requiredCourseCodes" multiple>
                         @for (course of courseOptions; track course.code) {
@@ -254,7 +259,7 @@
                       </mat-select>
                       <mat-hint>Sem seleção, qualquer curso é aceito.</mat-hint>
                     </mat-form-field>
-                    <mat-form-field appearance="outline">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline">
                       <mat-label>Lotes que podem comprar</mat-label>
                       <mat-select formControlName="allowedPriceTierIds" multiple>
                         @for (tier of priceTiers(); track tier.id) {
@@ -267,7 +272,7 @@
                     <mat-checkbox formControlName="requiresAccountManagerVerification"
                       >Exigir matrícula confirmada no Account Manager.</mat-checkbox
                     >
-                    <mat-form-field appearance="outline" class="full-width">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline" class="full-width">
                       <mat-label>Prefixos adicionais de RA</mat-label>
                       <textarea matInput rows="2" formControlName="requiredAcademicIdPrefixes"></textarea>
                       <mat-hint>Use um prefixo por linha. O curso é selecionado separadamente acima.</mat-hint>
@@ -275,7 +280,7 @@
                   </div>
 
                   <div class="price-editor">
-                    <mat-form-field appearance="outline">
+                    <mat-form-field subscriptSizing="dynamic" appearance="outline">
                       <mat-label>Modelo de preço</mat-label>
                       <mat-select [formControl]="priceMode">
                         <mat-option value="SINGLE">Preço único</mat-option>
@@ -283,7 +288,7 @@
                       </mat-select>
                     </mat-form-field>
                     @if (priceMode.value === 'SINGLE') {
-                      <mat-form-field appearance="outline">
+                      <mat-form-field subscriptSizing="dynamic" appearance="outline">
                         <mat-label>Preço (R$)</mat-label>
                         <input
                           matInput
@@ -305,7 +310,7 @@
                       <div class="price-rows">
                         @for (row of priceRows.controls; track row.controls.id.value; let index = $index) {
                           <div class="price-row" [formGroup]="row">
-                            <mat-form-field appearance="outline">
+                            <mat-form-field subscriptSizing="dynamic" appearance="outline">
                               <mat-label>Lote</mat-label>
                               <mat-select formControlName="priceTierId">
                                 @for (tier of priceTiers(); track tier.id) {
@@ -317,7 +322,7 @@
                                 }
                               </mat-select>
                             </mat-form-field>
-                            <mat-form-field appearance="outline">
+                            <mat-form-field subscriptSizing="dynamic" appearance="outline">
                               <mat-label>Preço (R$)</mat-label>
                               <input
                                 matInput
@@ -363,7 +368,7 @@
           <section class="workspace-region expiry-settings">
             <h2>Validade do bilhete</h2>
             <fieldset [disabled]="!canEditConfig() || saving()">
-              <mat-form-field appearance="outline">
+              <mat-form-field subscriptSizing="dynamic" appearance="outline">
                 <mat-label>Expirar</mat-label>
                 <mat-select formControlName="expirationMode">
                   @for (option of expirationModeOptions; track option.value) {
@@ -372,7 +377,7 @@
                 </mat-select>
               </mat-form-field>
               @if (isCustomExpiry()) {
-                <mat-form-field appearance="outline">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline">
                   <mat-label>Data e hora de expiração</mat-label>
                   <input matInput type="datetime-local" formControlName="customExpiresAt" required />
                   @if (configForm.controls.customExpiresAt.hasError('required')) {
@@ -416,7 +421,10 @@
         </form>
       </mat-tab>
 
-      <mat-tab label="Bilhetes emitidos">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon aria-hidden="true">confirmation_number</mat-icon>Bilhetes emitidos</span>
+        </ng-template>
         <section class="issued-panel">
           @if (operationError()) {
             <p class="inline-error" role="alert">{{ operationError() }}</p>
@@ -447,12 +455,12 @@
               <p class="empty-state">Salve a configuração do evento antes de emitir bilhetes manualmente.</p>
             } @else {
               <div class="ticket-filters">
-                <mat-form-field appearance="outline">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline">
                   <mat-label>Buscar titular</mat-label>
                   <input matInput type="search" [formControl]="ticketSearch" />
                   <mat-icon matSuffix aria-hidden="true">search</mat-icon>
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field subscriptSizing="dynamic" appearance="outline">
                   <mat-label>Situação</mat-label>
                   <mat-select [formControl]="ticketStatus">
                     <mat-option value="ALL">Todas</mat-option>

@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { routePageErrorStatus } from '../../shared/route-error-handling';
 
 @Component({
   selector: 'app-sports-autoroute-page',
@@ -14,9 +16,8 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
         <h1>Encontrando sua próxima partida</h1>
       } @else {
         <mat-icon aria-hidden="true">sports</mat-icon>
-        <h1>{{ error() ? 'Não foi possível abrir a partida' : 'Nenhuma partida para operar agora' }}</h1>
-        <p>{{ error() || 'Quando uma partida estiver próxima, ela aparecerá aqui automaticamente.' }}</p>
-        <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
+        <h1>Nenhuma partida para operar agora</h1>
+        <p>Quando uma partida estiver próxima, ela aparecerá aqui automaticamente.</p>
         <a mat-button routerLink="/calendar">Ver calendário</a>
       }
     </main>
@@ -52,13 +53,12 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
       color: var(--mat-sys-primary);
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsAutoroutePage implements OnInit {
   private readonly api = inject(SportsOperationsApiService);
   private readonly router = inject(Router);
+  private readonly routeErrors = inject(RouteErrorService);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
   private requestId = 0;
 
   ngOnInit(): void {
@@ -68,7 +68,6 @@ export class SportsAutoroutePage implements OnInit {
   load(): void {
     const requestId = ++this.requestId;
     this.loading.set(true);
-    this.error.set(null);
     this.api.autoroute().subscribe({
       next: (route) => {
         if (requestId !== this.requestId) {
@@ -89,7 +88,7 @@ export class SportsAutoroutePage implements OnInit {
           return;
         }
         if (!route.matchId) {
-          this.error.set('O atalho da partida está incompleto. Tente novamente.');
+          void this.routeErrors.navigate(500);
           return;
         }
         const destination =
@@ -100,8 +99,7 @@ export class SportsAutoroutePage implements OnInit {
         if (requestId !== this.requestId) {
           return;
         }
-        this.loading.set(false);
-        this.error.set(error instanceof Error ? error.message : 'Tente novamente em instantes.');
+        void this.routeErrors.navigate(routePageErrorStatus(error));
       },
     });
   }

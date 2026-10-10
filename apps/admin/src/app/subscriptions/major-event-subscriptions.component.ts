@@ -177,6 +177,6 @@ export class MajorEventSubscriptionsComponent {
 
     return eventItem.projectedQueuePosition == null
       ? availability
-      : `${availability} · Próxima posição para nova inscrição na fila: ${eventItem.projectedQueuePosition}`;
+      : `${availability}. Próxima posição para nova inscrição na fila: ${eventItem.projectedQueuePosition}`;
   }
 }

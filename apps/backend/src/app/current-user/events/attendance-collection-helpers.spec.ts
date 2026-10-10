@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { AttendanceCreationMethod, UserRole } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus, UserRole } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 
 jest.mock('../../authorization/effective-role-scopes', () => ({
@@ -143,12 +143,24 @@ describe('attendance collection helpers', () => {
       getAuthenticatedUser: jest.fn(() => actor),
     };
     const tx = {};
+    const attendance = {
+      personId: 'person-1',
+      eventId: 'event-1',
+      status: EventAttendanceStatus.PRESENT,
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      attendedAt: new Date(),
+      category: null,
+      currentAssessment: null,
+      collectedLatitude: -22,
+      event: { name: 'Related event snapshot' },
+      person: { email: 'person@example.com' },
+    };
 
     await recordAttendanceCreate({
       auditLog: auditLog as never,
       currentUserContext: currentUserContext as never,
       context: {} as never,
-      attendance: { personId: 'person-1', eventId: 'event-1' },
+      attendance,
       summary: 'Presença coletada.',
       prisma: tx as never,
       metadata: { offlineClientId: 'client-1' },
@@ -159,6 +171,15 @@ describe('attendance collection helpers', () => {
         entityId: 'person-1:event-1',
         entityLabel: 'person-1',
         actor,
+        after: {
+          personId: 'person-1',
+          eventId: 'event-1',
+          status: EventAttendanceStatus.PRESENT,
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+          attendedAt: attendance.attendedAt.toISOString(),
+          category: null,
+          currentAssessment: null,
+        },
         scope: {
           permission: Permission.EventAttendance.Collect,
           eventId: 'event-1',
@@ -167,6 +188,9 @@ describe('attendance collection helpers', () => {
       }),
       tx,
     );
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('event');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('person');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('collectedLatitude');
   });
 
   it('notifies admins and scoped reviewers when an offline submission is queued', async () => {

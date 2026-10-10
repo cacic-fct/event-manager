@@ -155,6 +155,9 @@ export class Event {
   youtubeCode?: string | null;
 
   @Field(() => String, { nullable: true })
+  twitchChannel?: string | null;
+
+  @Field(() => String, { nullable: true })
   buttonText?: string | null;
 
   @Field(() => String, { nullable: true })

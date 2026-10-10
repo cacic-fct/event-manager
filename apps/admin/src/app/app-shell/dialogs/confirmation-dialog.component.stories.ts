@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -29,7 +29,6 @@ const defaultArgs: ConfirmationDialogStoryArgs = {
 
 @Component({
   selector: 'app-storybook-confirmation-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -72,7 +71,7 @@ class ConfirmationDialogStoryHostComponent {
 
 const meta: Meta<ConfirmationDialogStoryArgs> = {
   component: ConfirmationDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Confirmation Dialog',
+  title: 'Admin/Layout/Dialogs',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -88,7 +87,7 @@ const meta: Meta<ConfirmationDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -123,9 +122,4 @@ export const DefaultTone: Story = {
     confirmLabel: 'Salvar alterações',
   },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const DarkReducedMotion: Story = {
-  ...DefaultTone,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

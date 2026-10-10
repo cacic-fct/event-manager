@@ -1,5 +1,6 @@
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -23,9 +24,10 @@ let activeArgs: GlobalOperationsStoryArgs = {
 
 const meta: Meta<GlobalOperationsStoryArgs> = {
   component: GlobalOperationsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Global Operations/Workspace Global Operations Tab',
+  title: 'Admin/Settings/Global Operations',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<GlobalOperationsStoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -48,11 +50,16 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
   },
   render: (args) => {
     activeArgs = args;
-    return { props: args };
+    return { props: {} };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Global certificate operations with controls for permission, result volume, latency, and request state.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -120,11 +127,9 @@ export const OperationLoading: Story = {
 
 export const OperationError: Story = {
   args: { operationState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const WithoutPermission: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     canReissue: false,
   },

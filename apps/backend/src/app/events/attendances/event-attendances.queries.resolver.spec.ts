@@ -3,6 +3,7 @@ import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
 import { EventAttendancesQueriesResolver } from './event-attendances.queries.resolver';
+import { personSearchWhere } from '../../people/person-search-where';
 
 describe('EventAttendancesQueriesResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;
@@ -175,13 +176,44 @@ describe('EventAttendancesQueriesResolver', () => {
 
   it('keeps major-event attendance count aligned with the list empty-state', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
-    prisma.event.count.mockResolvedValue(0);
+    prisma.event.findMany.mockResolvedValue([]);
 
     await expect(resolver.majorEventUserAttendanceCount('major-1', 'Ada')).resolves.toBe(0);
     expect(prisma.people.count).not.toHaveBeenCalled();
 
     prisma.majorEvent.findFirst.mockResolvedValueOnce(null);
     await expect(resolver.majorEventUserAttendanceCount('missing-major')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it.each([
+    { access: 'audience-restricted reader', eventIds: ['public-event'] },
+    { access: 'reader with audience bypass', eventIds: ['public-event', 'restricted-event'] },
+  ])('counts attendance only in events readable by an $access', async ({ eventIds }) => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue(eventIds.map((id) => ({ id })));
+    prisma.people.count.mockResolvedValue(1);
+    const query = 'participant@example.com';
+
+    await expect(resolver.majorEventUserAttendanceCount('major-1', query)).resolves.toBe(1);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: { majorEventId: 'major-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.people.count).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        AND: [
+          personSearchWhere(query),
+          {
+            OR: [
+              { majorEventSubscriptions: { some: { majorEventId: 'major-1', deletedAt: null } } },
+              { attendances: { some: { status: 'PRESENT', eventId: { in: eventIds } } } },
+            ],
+          },
+        ],
+      },
+    });
   });
 
   it('loads and assesses only the selected attendance page, including attendees without subscriptions', async () => {

@@ -3,6 +3,8 @@
 -- in standalone groups, while leaving parent inheritance and new defaults intact.
 -- Keep policies set after the schema migration untouched, and avoid applying the
 -- legacy rule to events created after that migration ran.
+-- A group with an explicit policy keeps its children inheriting that policy,
+-- including ANYONE, so later group policy changes still reach those children.
 DO $$
 DECLARE
   legacy_backfill_cutoff TIMESTAMPTZ;
@@ -33,7 +35,10 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1 FROM "event_groups" AS event_group
       WHERE event_group."id" = event."eventGroupId"
-        AND event_group."majorEventId" IS NOT NULL
+        AND (
+          event_group."majorEventId" IS NOT NULL
+          OR event_group."attendanceEligibility" IS NOT NULL
+        )
     );
 END;
 $$;

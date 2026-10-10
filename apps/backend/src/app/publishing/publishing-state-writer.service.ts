@@ -12,7 +12,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolvePublicationActorId } from './publishing-auth';
 import { publicationSummary } from './publishing-labels';
-import { PUBLICATION_LIFECYCLE_AUDIT_METADATA } from './publishing-audit';
+import { PUBLICATION_LIFECYCLE_AUDIT_METADATA, publicationStateAuditSnapshot } from './publishing-audit';
 import { PUBLICATION_EVENT_SELECT, PUBLICATION_MAJOR_EVENT_SELECT } from './publishing.selects';
 import { TargetSync } from './publishing.types';
 import { assertAudiencePublicationReady, type AudiencePublicationTarget } from '../audiences/audience-publication';
@@ -59,8 +59,8 @@ export class PublicationStateWriterService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: previous,
-          after: updated,
+          before: publicationStateAuditSnapshot(previous),
+          after: publicationStateAuditSnapshot(updated),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,
@@ -134,8 +134,8 @@ export class PublicationStateWriterService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: previous,
-          after: updated,
+          before: publicationStateAuditSnapshot(previous),
+          after: publicationStateAuditSnapshot(updated),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,
@@ -193,8 +193,8 @@ export class PublicationStateWriterService {
             entityLabel: updated.name,
             operation: AuditLogOperation.UPDATE,
             actor: input.user,
-            before: previous,
-            after: updated,
+            before: publicationStateAuditSnapshot(previous),
+            after: publicationStateAuditSnapshot(updated),
             scope: {
               permission: Permission.Event.Update,
               eventId: updated.id,
@@ -233,8 +233,8 @@ export class PublicationStateWriterService {
             entityLabel: updated.name,
             operation: AuditLogOperation.UPDATE,
             actor: input.user,
-            before: previous,
-            after: updated,
+            before: publicationStateAuditSnapshot(previous),
+            after: publicationStateAuditSnapshot(updated),
             scope: {
               permission: Permission.MajorEvent.Update,
               majorEventId: updated.id,
@@ -283,8 +283,8 @@ export class PublicationStateWriterService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: previous,
-          after: updated,
+          before: publicationStateAuditSnapshot(previous),
+          after: publicationStateAuditSnapshot(updated),
           scope: {
             permission: Permission.MajorEvent.Update,
             majorEventId: updated.id,
@@ -355,8 +355,8 @@ export class PublicationStateWriterService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: previous,
-          after: updated,
+          before: publicationStateAuditSnapshot(previous),
+          after: publicationStateAuditSnapshot(updated),
           scope: {
             permission: Permission.MajorEvent.Update,
             majorEventId: updated.id,

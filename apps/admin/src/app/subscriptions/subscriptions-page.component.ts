@@ -15,6 +15,7 @@ import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 import { EventInterestsComponent } from './event-interests.component';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 @Component({
   selector: 'app-workspace-subscriptions-tab',
@@ -38,6 +39,7 @@ export class SubscriptionsPageComponent implements OnDestroy {
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
 
   readonly context = signal<EventContextRef | null>(null);
   readonly contextLoading = signal(false);
@@ -87,8 +89,10 @@ export class SubscriptionsPageComponent implements OnDestroy {
       this.contextLoading.set(true);
       const load = context.kind === 'event' ? this.workspace.selectEventById(context.id)
         : this.openMajorEventSubscriptionRoute(context.id, params.get('subscriptionId'), request);
-      void Promise.resolve(load).catch(() => {
-        if (request === this.majorEventRouteRequest) this.contextError.set('Não foi possível abrir as inscrições deste contexto. Escolha outro ou tente novamente.');
+      void Promise.resolve(load).catch((error: unknown) => {
+        if (request === this.majorEventRouteRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+          this.contextError.set('Não foi possível abrir as inscrições deste contexto. Escolha outro ou tente novamente.');
+        }
       }).finally(() => {
         if (request === this.majorEventRouteRequest) this.contextLoading.set(false);
       });

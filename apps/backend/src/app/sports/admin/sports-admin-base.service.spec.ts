@@ -90,7 +90,7 @@ describe('SportsAdminBaseService', () => {
           allowSubscription: false,
           latitude: -22.12,
           longitude: -51.4,
-          locationDescription: 'Campus universitário · Ginásio Universitário · Quadra principal',
+          locationDescription: 'Campus universitário, Ginásio Universitário, Quadra principal',
           updatedById: 'admin-1',
         },
       });

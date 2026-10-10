@@ -30,6 +30,31 @@ describe('SportsReadPublicCache', () => {
     expect(result?.categories[0]?.brackets[0]?.matches[0]?.timerPausedAt).toBeInstanceOf(Date);
   });
 
+  it('removes pre-match participants from every cached match location', async () => {
+    const cached = sportsCachedPublicTournament();
+    const matches = [
+      ...cached.matches,
+      ...cached.categories.flatMap((category) => [
+        ...category.matches,
+        ...category.brackets.flatMap((bracket) => bracket.matches),
+      ]),
+    ];
+    for (const match of matches) {
+      Object.assign(match, {
+        state: 'CHECK_IN',
+        rosters: [{ entries: [{ name: 'Ana Souza' }] }],
+        officials: [{ name: 'Carlos S.', role: 'REFEREE' }],
+      });
+    }
+    redis.mget.mockResolvedValue([JSON.stringify({ version: '7', tournament: cached }), '7']);
+
+    const result = await new SportsReadPublicCache(redis as never).getCachedPublicTournament('tournament-1');
+
+    expect(result?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
+    expect(result?.categories[0]?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
+    expect(result?.categories[0]?.brackets[0]?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
+  });
+
   it.each([
     [null, '7'],
     ['not-json', '7'],

@@ -1,0 +1,16 @@
+@use 'sass:map';
+
+// Count primary workspace columns, not fields, table cells, or summary items.
+$widths: (1: 840px, 2: 1280px, 3: 1560px);
+
+@function width($columns) {
+  @return map.get($widths, $columns);
+}
+
+@mixin view($columns: 1) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: width($columns);
+  min-width: 0;
+  margin-inline: auto;
+}

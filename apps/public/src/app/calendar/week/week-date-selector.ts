@@ -1,5 +1,5 @@
 import { DatePipe, formatDate } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type { CalendarWeekDay } from './week-view';
@@ -9,7 +9,6 @@ import type { CalendarWeekDay } from './week-view';
   imports: [DatePipe, MatButtonModule, MatIconModule],
   templateUrl: './week-date-selector.html',
   styleUrl: './week-date-selector.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarWeekDateSelector {
   readonly weekDays = input.required<CalendarWeekDay[]>();

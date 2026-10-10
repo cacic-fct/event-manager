@@ -1,7 +1,8 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { Calendar } from './calendar-page';
 import {
   CalendarStoryCollectionControls,
@@ -33,8 +34,9 @@ const onlineContext = createStoryContext();
 
 const meta: Meta<CalendarPageStoryArgs> = {
   component: Calendar,
-  title: 'CACiC Eventos/Calendar/Page',
+  title: 'Public/Discovery/Calendar',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<CalendarPageStoryArgs>()],
   args: defaultArgs,
   argTypes: {
     ...calendarStoryCollectionControlArgTypes,
@@ -45,7 +47,7 @@ const meta: Meta<CalendarPageStoryArgs> = {
   render: (args) => renderStory(args, onlineContext),
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     ...storyParameters(onlineContext),
   },
 };
@@ -70,12 +72,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expectCalendarEventVisible(canvasElement);
 
   await expect(await canvas.findByText('Acessibilidade em produtos digitais')).toBeVisible();
-  await expect(await canvas.findByText('Inscrito')).toBeVisible();
+  await expect(canvas.getAllByText('Inscrito').length).toBeGreaterThan(0);
 
   const searchInput = canvas.getByRole('searchbox', { name: 'Buscar eventos' });
   await expect(canvas.queryByLabelText('Tipo')).not.toBeInTheDocument();
   await userEvent.click(canvas.getByRole('button', { name: 'Mostrar filtros' }));
-  await expect(canvas.getByLabelText('Tipo')).toBeVisible();
+  await expect(canvas.getByRole('button', { name: 'Ocultar filtros' })).toHaveAttribute('aria-expanded', 'true');
+  await waitFor(() => expect(canvas.getByLabelText('Tipo')).toBeVisible(), { timeout: 1_000 });
   await userEvent.clear(searchInput);
   await userEvent.type(searchInput, 'sem resultado storybook');
   await userEvent.click(canvas.getByRole('button', { name: 'Buscar eventos' }));
@@ -84,22 +87,21 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await userEvent.click(canvas.getByRole('button', { name: 'Buscar eventos' }));
   await expectCalendarEventVisible(canvasElement);
 
-  await userEvent.click(await canvas.findByRole('button', { name: 'Visualização semanal' }));
+  await userEvent.click(await canvas.findByRole('radio', { name: 'Visualização semanal' }));
   await expect(await canvas.findByRole('button', { name: 'Próxima semana' })).toBeVisible();
   await userEvent.click(await canvas.findByRole('button', { name: 'Ir para hoje' }));
   await expectCalendarEventVisible(canvasElement);
-  await userEvent.click(await canvas.findByRole('button', { name: 'Visualização em lista' }));
+  await userEvent.click(await canvas.findByRole('radio', { name: 'Visualização em lista' }));
   await expectCalendarEventVisible(canvasElement);
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineFallback: Story = {
   args: { eventCount: 0 },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Calendário')).toBeVisible();

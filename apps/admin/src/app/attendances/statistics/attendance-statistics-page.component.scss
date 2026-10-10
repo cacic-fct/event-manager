@@ -1,9 +1,16 @@
+@use '../../app-shell/layout/admin-view-widths' as view-widths;
+
 .command-center {
   display: grid;
   gap: 16px;
+  @include view-widths.view(2);
   padding: 20px;
-  max-width: 1560px;
-  margin: 0 auto;
+}
+
+@media (max-width: 980px) {
+  .command-center {
+    @include view-widths.view();
+  }
 }
 .command-header,
 .command-title,

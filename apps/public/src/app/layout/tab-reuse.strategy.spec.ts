@@ -43,6 +43,19 @@ describe('AppRouteReuseStrategy', () => {
     expect(strategy.retrieve(route)).toBeNull();
   });
 
+  it.each([403, 404, 500, 503])('does not cache the failed major-events tab when navigating to error %i', (status) => {
+    const route = routeSnapshot(['tabs', 'major-events'], true);
+    router.url = '/tabs/major-events';
+    router.events.next(new NavigationStart(1, `/error/${status}?source=major-events`));
+
+    expect(strategy.shouldDetach(route)).toBe(false);
+    expect(strategy.shouldAttach(route)).toBe(false);
+
+    router.events.next(new NavigationStart(2, '/tabs/major-events'));
+    expect(strategy.shouldAttach(route)).toBe(false);
+    expect(strategy.shouldDetach(route)).toBe(true);
+  });
+
   it('reuses routes only when their route config object is identical', () => {
     const current = routeSnapshot(['tabs', 'menu'], false);
     const future = routeSnapshot(['tabs', 'menu'], false, current.routeConfig);

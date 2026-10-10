@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,7 +19,6 @@ import { RankedSubscriptionStore } from './registration.store';
   ],
   templateUrl: './select-step.html',
   styleUrls: ['../standard/subscription.css', './ranked-subscription.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RankedSubscriptionSelectStep {
   readonly store = inject(RankedSubscriptionStore);

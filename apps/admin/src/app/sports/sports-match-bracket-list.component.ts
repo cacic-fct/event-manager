@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,7 +20,6 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
 
 @Component({
   selector: 'app-sports-match-bracket-list',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'bracket-panel',
     role: 'region',
@@ -78,7 +77,7 @@ export class SportsMatchBracketListComponent extends SportsWorkspaceSection {
       return 'A partida ficará fora da chave até uma fase ser definida.';
     }
 
-    return `${stage.name} · Rodada ${this.numberValue(value.roundNumber, 1)} · Posição ${this.numberValue(
+    return `${stage.name}, rodada ${this.numberValue(value.roundNumber, 1)}, posição ${this.numberValue(
       value.bracketPosition,
       1,
     )}`;

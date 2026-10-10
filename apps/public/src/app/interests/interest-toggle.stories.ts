@@ -5,7 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { InterestToggle } from './interest-toggle';
 
 const meta: Meta<InterestToggle> = {
-  title: 'CACiC Eventos/Events/Quero ir',
+  title: 'Public/Discovery/Events/Interest',
   component: InterestToggle,
   tags: ['autodocs'],
   args: { targetType: 'EVENT', targetId: 'event-1', targetName: 'Palestra aberta' },
@@ -23,7 +23,6 @@ export default meta;
 type Story = StoryObj<InterestToggle>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   parameters: mockInterest(false),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -37,13 +36,13 @@ export const Playground: Story = {
 };
 
 export const Interested: Story = {
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   parameters: mockInterest(true),
 };
 
 export const ExistingInterestAfterDisablement: Story = {
   args: { interestEnabled: false },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   parameters: mockInterest(true, false, false, false),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -56,7 +55,7 @@ export const ExistingInterestAfterDisablement: Story = {
 };
 
 export const SaveError: Story = {
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   parameters: mockInterest(false, true),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -68,29 +67,19 @@ export const SaveError: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', motion: 'reduced', network: 'online' },
-  parameters: mockInterest(true),
-  play: async ({ canvasElement }) => {
-    const toggle = await within(canvasElement).findByRole('button', { name: 'Quero ir: Palestra aberta' });
-    await waitFor(() => expect(toggle).toBeEnabled());
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  },
-};
-
 export const Offline: Story = {
-  globals: { theme: 'light', network: 'offline' },
+  globals: { network: 'offline' },
   parameters: mockInterest(false),
 };
 
 export const AlreadySubscribed: Story = {
   args: { subscribed: true },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   parameters: mockInterest(false),
 };
 
 export const Finished: Story = {
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
   parameters: mockInterest(true, false, true),
 };
 

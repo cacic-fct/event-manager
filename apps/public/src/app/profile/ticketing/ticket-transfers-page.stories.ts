@@ -1,26 +1,28 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { provideRouter } from '@angular/router';
-import { EMPTY, NEVER, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 import { expect, within } from 'storybook/test';
 import { createTicketStoryTransfer, createTicketStoryTransferLists } from './ticketing-story-fixtures';
 import { TicketingApiService } from './ticketing-api.service';
 import { TicketTransfersPage } from './ticket-transfers-page';
 
 type TicketTransfersStoryArgs = {
-  mode: 'all' | 'empty' | 'system-ineligible' | 'system-duplicate' | 'admin' | 'loading' | 'error';
+  mode: 'all' | 'empty' | 'system-ineligible' | 'system-duplicate' | 'admin' | 'loading';
 };
 
 const meta: Meta<TicketTransfersStoryArgs> = {
   component: TicketTransfersPage,
-  title: 'CACiC Eventos/Tickets/Transfer Attempts',
+  title: 'Public/Ticketing/Transfers/List',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: { mode: 'all' },
   argTypes: {
-    mode: { control: 'select', options: ['all', 'empty', 'system-ineligible', 'system-duplicate', 'admin', 'loading', 'error'] },
+    mode: { control: 'select', options: ['all', 'empty', 'system-ineligible', 'system-duplicate', 'admin', 'loading'] },
   },
   decorators: [
+    withScenarioControls<TicketTransfersStoryArgs>(),
     (story, context) => {
       const pending = createTicketStoryTransfer({ id: 'incoming-pending' });
       const ignored = createTicketStoryTransfer({
@@ -60,9 +62,7 @@ const meta: Meta<TicketTransfersStoryArgs> = {
       });
       const apiResult = context.args.mode === 'loading'
         ? NEVER
-        : context.args.mode === 'error'
-          ? throwError(() => new Error('Falha ao carregar transferências.'))
-          : of(transfers);
+        : of(transfers);
 
       return applicationConfig({
         providers: [
@@ -84,7 +84,6 @@ type Story = StoryObj<TicketTransfersStoryArgs>;
 
 export const Playground: Story = {
   args: { mode: 'all' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Aguardando sua resposta' })).toBeVisible();
@@ -141,22 +140,5 @@ export const Loading: Story = {
   args: { mode: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando transferências' })).toBeVisible();
-  },
-};
-
-export const LoadError: Story = {
-  args: { mode: 'error' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar suas transferências.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { mode: 'system-duplicate' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Este bilhete já estava na sua carteira')).toBeVisible();
   },
 };

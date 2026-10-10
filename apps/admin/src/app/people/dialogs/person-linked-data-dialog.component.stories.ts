@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -38,7 +38,6 @@ const snackBarMock = {
 
 @Component({
   selector: 'app-storybook-person-linked-data-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -72,7 +71,7 @@ class PersonLinkedDataDialogStoryHostComponent {
 
 const meta: Meta<PersonLinkedDataDialogStoryArgs> = {
   component: PersonLinkedDataDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Person Linked Data Dialog',
+  title: 'Admin/People/People/Linked Data',
   tags: ['autodocs'],
   args: {
     mode: 'linked',
@@ -94,7 +93,7 @@ const meta: Meta<PersonLinkedDataDialogStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -132,7 +131,6 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'error',
   },

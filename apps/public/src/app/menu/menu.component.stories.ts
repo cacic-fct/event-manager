@@ -1,8 +1,10 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
+import { AttendanceCollectionApiService } from '../attendance/collection/attendance-collection-api.service';
 import { DefaultRedirectApiService } from '../landing/default-redirect-api.service';
 import { MenuComponent } from './menu.component';
 
@@ -24,7 +26,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<MenuStoryArgs> = {
   component: MenuComponent,
-  title: 'CACiC Eventos/Menu/Page',
+  title: 'Public/Layout/Menu',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -34,6 +36,7 @@ const meta: Meta<MenuStoryArgs> = {
     sportsRedirect: { control: 'select', options: ['operate', 'view', 'none', 'loading', 'error'] },
   },
   decorators: [
+    withScenarioControls<MenuStoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -61,16 +64,20 @@ const meta: Meta<MenuStoryArgs> = {
             },
           },
         },
+        {
+          provide: AttendanceCollectionApiService,
+          useValue: { listCollectionEvents: () => of([]) },
+        },
       ],
     }),
   ],
   render: (args) => {
     activeArgs = { ...defaultArgs, ...args };
-    return { props: {} };
+    return { props: {}, template: '<app-menu class="component"></app-menu>' };
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -97,35 +104,32 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineInstalled: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const SportsAccessPoint: Story = {
-  name: 'Atalho para operações esportivas',
   args: { sportsRedirect: 'operate' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const link = await canvas.findByRole('link', { name: /Minha próxima partida/ });
-    await expect(link).toHaveAttribute('href', '/sports');
+    await expect(new URL(link.getAttribute('href') ?? '', window.location.origin).pathname).toBe('/sports');
     await expect(canvas.getByText('Atleta, equipe e arbitragem')).toBeVisible();
   },
 };
 
 export const WithoutSportsRedirect: Story = {
-  name: 'Sem atalho esportivo válido',
   args: { sportsRedirect: 'none' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -147,11 +151,10 @@ export const SportsRedirectLoading: Story = {
 
 export const SportsRedirectError: Story = {
   args: { sportsRedirect: 'error' },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
 };
 
-export const LongProfileNameMobile: Story = {
+export const LongProfileName: Story = {
   args: { displayName: 'Ana Beatriz de Souza Albuquerque dos Santos e Oliveira', sportsRedirect: 'operate' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'enabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
 };

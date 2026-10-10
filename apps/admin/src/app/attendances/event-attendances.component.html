@@ -4,18 +4,18 @@
   <section class="panel attendance-workbench">
     <div class="panel-heading">
       <div>
-        <h3>
+        <h2>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
             <lib-twemoji [emoji]="selectedAttendanceEvent.emoji" />
             {{ selectedAttendanceEvent.name }}
           } @else {
             Selecione um evento
           }
-        </h3>
+        </h2>
         <p>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
-            {{ selectedAttendanceEvent.startDate | date: 'medium' }}
-            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
+            Evento em {{ selectedAttendanceEvent.startDate | date: 'medium' }}.
+            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }
@@ -71,10 +71,10 @@
     <div class="workbench-grid">
       @if (isSelectedAttendanceEventFrozen()) {
         <section class="surface warning-section">
-          <h4>
+          <h3>
             <mat-icon>lock</mat-icon>
             Evento congelado
-          </h4>
+          </h3>
           <p>
             Este evento está congelado. Registros de presença só podem ser alterados por pessoas com permissão para
             editar recursos congelados.
@@ -83,7 +83,7 @@
       }
 
       <section class="surface manual-registration">
-        <h4>Registro manual</h4>
+        <h3>Registro manual</h3>
         <form [formGroup]="workspace.attendanceForm" class="manual-form">
           <app-person-search
             label="Buscar pessoa para registrar"
@@ -97,7 +97,7 @@
             "
             [disabledReason]="
               !permissions.has(Permission.Person.Read)
-                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                 : 'Registrar presenças exige permissão para editar este evento.'
             "
             resultActionLabel="Registrar presença de"
@@ -115,7 +115,7 @@
         <section class="surface offline-reconciliation">
           <div class="surface-heading">
             <div>
-              <h4>Presenças off-line em revisão</h4>
+              <h3>Presenças off-line em revisão</h3>
               <span>{{ workspace.offlineAttendanceSubmissions().length }} pendência(s)</span>
             </div>
             @if (canEditSelectedEventAttendances()) {
@@ -140,8 +140,8 @@
                 </span>
                 <span matListItemLine class="attendance-item-line">
                   Coletada em {{ submission.collectedAt | date: 'short' }} por
-                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }}
-                  · enviada por {{ submission.submittedByFullName || submission.submittedById }}
+                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }},
+                  enviada por {{ submission.submittedByFullName || submission.submittedById }}
                 </span>
                 <span matListItemLine class="attendance-item-line review-line">
                   <span class="review-badge">{{
@@ -198,7 +198,7 @@
 
       <section class="surface event-presence-list">
         <div class="surface-heading">
-          <h4>Presenças do evento</h4>
+          <h3>Presenças do evento</h3>
           <span>{{ workspace.attendanceTotalCount() }} registros</span>
         </div>
 
@@ -216,7 +216,7 @@
               [class.category-REGULAR]="group.category === 'REGULAR'"
               [class.category-NON_REGULAR]="group.category === 'NON_REGULAR'"
               [class.category-UNKNOWN]="group.category === 'UNKNOWN'">
-              <h4>{{ group.label }}</h4>
+              <h3>{{ group.label }}</h3>
               <span>{{ group.description }}</span>
             </div>
 
@@ -231,7 +231,7 @@
                   <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
                 }
                 <span matListItemLine class="attendance-item-line">
-                  {{ attendance.attendedAt | date: 'short' }} · por
+                  {{ attendance.attendedAt | date: 'short' }}, por
                   {{ attendanceCreationMethodLabel(attendance.createdByMethod) }}
                 </span>
                 @if (
@@ -285,10 +285,10 @@
               </mat-list-item>
             }
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma presença carregada</span>
-              <span matListItemLine>Selecione um evento para começar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhuma presença carregada</p>
+            </div>
           }
         </mat-list>
 
@@ -320,9 +320,9 @@
       @if (workspace.explicitAbsences().length || workspace.implicitAbsences().length) {
         <section class="surface event-presence-list">
           <div class="surface-heading">
-            <h4>Ausências do evento</h4>
+            <h3>Ausências do evento</h3>
             <span>
-              {{ workspace.explicitAbsences().length }} explícitas ·
+              {{ workspace.explicitAbsences().length }} explícitas e
               {{ workspace.implicitAbsences().length }} implícitas
             </span>
           </div>
@@ -332,7 +332,7 @@
               <mat-list-item>
                 <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
                 <span matListItemLine class="attendance-item-line">
-                  Ausência explícita · chamada oral em {{ attendance.attendedAt | date: 'short' }}
+                  Ausência explícita: chamada oral em {{ attendance.attendedAt | date: 'short' }}.
                 </span>
                 <div matListItemMeta class="attendance-item-actions">
                   <button
@@ -364,7 +364,7 @@
               <mat-list-item>
                 <span matListItemTitle class="attendance-item-title">{{ person.fullName }}</span>
                 <span matListItemLine class="attendance-item-line">
-                  Ausência implícita · nenhuma decisão registrada
+                  Ausência implícita: nenhuma decisão registrada.
                 </span>
               </mat-list-item>
             }

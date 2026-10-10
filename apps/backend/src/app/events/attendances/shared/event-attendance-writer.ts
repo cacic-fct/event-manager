@@ -32,7 +32,18 @@ export async function createOrRestoreEventAttendance(params: {
   attendanceCategories: AttendanceCategoryWriter;
   input: EventAttendanceWriteInput;
   refreshNonRegular?: boolean;
-  afterWrite?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
+  afterWrite?: (
+    attendance: {
+      personId: string;
+      eventId: string;
+      status: EventAttendanceStatus;
+      createdByMethod: AttendanceCreationMethod;
+      attendedAt: Date;
+      category: string | null;
+      currentAssessment: string | null;
+    },
+    tx: Prisma.TransactionClient,
+  ) => Promise<void>;
 }) {
   const { tx, attendanceCategories, input } = params;
   await assertScannerTicket(tx, input);

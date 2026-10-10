@@ -30,11 +30,11 @@ describe('PublicationPreviewService', () => {
       redis as never,
     );
 
-    return { prisma, redis, service };
+    return { prisma, redis, service, auditLog };
   }
 
   it('rotates preview tokens between issuances for the same actor and target', async () => {
-    const { prisma, redis, service } = createService();
+    const { prisma, redis, service, auditLog } = createService();
     const context = { req: { user: { sub: 'admin-1', email: 'admin@example.com' } } };
     const input = {
       targetType: PublicationTargetType.EVENT,
@@ -52,5 +52,13 @@ describe('PublicationPreviewService', () => {
     expect(firstUpsert.create.previewTokenHash).not.toEqual(secondUpsert.update.previewTokenHash);
     expect(firstUpsert.create.redisKey).not.toEqual(secondUpsert.update.redisKey);
     expect(redis.set.mock.calls[0][0]).not.toEqual(redis.set.mock.calls[1][0]);
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
+      entityId: 'event-1',
+      metadata: {
+        previewId: 'preview-1',
+        expiresAt: expect.any(String),
+        previewAt: expect.any(String),
+      },
+    }));
   });
 });

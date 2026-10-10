@@ -1,6 +1,6 @@
 import type { PublicSportsMatch } from './sports-viewer.types';
 import {
-  isRosterPublic,
+  isMatchStarted,
   matchLocation,
   publicOfficialName,
   publicPlayerName,
@@ -39,13 +39,14 @@ describe('sports viewer privacy and display utilities', () => {
   it.each([
     ['SCHEDULED', false],
     ['CHECK_IN', false],
-    ['LIVE', false],
+    ['LIVE', true],
+    ['PAUSED', true],
     ['AWAITING_REVIEW', false],
     ['FINISHED', true],
     ['DRAW', true],
     ['CANCELED', false],
-  ] as const)('publishes rosters for %s: %s', (state, expected) => {
-    expect(isRosterPublic({ state } as PublicSportsMatch)).toBe(expected);
+  ] as const)('makes match details public after match start for %s: %s', (state, expected) => {
+    expect(isMatchStarted({ state } as PublicSportsMatch)).toBe(expected);
   });
 
   it('deduplicates venue details and provides an explicit fallback', () => {
@@ -57,7 +58,7 @@ describe('sports viewer privacy and display utilities', () => {
           locationDescription: 'Ginásio central',
         },
       } as PublicSportsMatch),
-    ).toBe('Ginásio central · Quadra 1');
+    ).toBe('Ginásio central, Quadra 1');
     expect(matchLocation({ schedule: {} } as PublicSportsMatch)).toBe('Local a definir');
   });
 });

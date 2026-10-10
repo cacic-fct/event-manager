@@ -1,8 +1,12 @@
+import { inject, provideAppInitializer } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { delay, HttpResponse, http } from 'msw';
+import { delay, graphql, HttpResponse, http } from 'msw';
 import { of } from 'rxjs';
-import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { applicationConfig, type Decorator, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
+import { EVENT_MANAGER_PERMISSION_CATALOG } from '@cacic-fct/shared-permissions';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { PermissionsService } from '../permissions/permissions.service';
 import { SportsPageComponent } from './sports-page.component';
 import {
   createAdminSportsApplications,
@@ -39,6 +43,11 @@ const defaultArgs: SportsStoryArgs = {
 };
 
 let activeArgs = defaultArgs;
+
+const withSportsStoryArgs: Decorator<SportsStoryArgs> = (story, context) => {
+  activeArgs = { ...defaultArgs, ...context.args };
+  return story();
+};
 
 function tournamentRead() {
   return createAdminSportsTournamentRead({
@@ -118,6 +127,9 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
       },
     });
   }
+  if (query.includes('EventForms')) {
+    return HttpResponse.json({ data: { eventForms: [] } });
+  }
   if (query.includes('AdminSportsTournament(')) {
     return HttpResponse.json({
       data: { adminSportsTournamentRead: tournamentRead() },
@@ -141,7 +153,12 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
   }
   if (query.includes('AdminSportsMatchReview(')) {
     return HttpResponse.json({
-      data: { adminSportsMatchReviewRead: createAdminSportsMatchReview() },
+      data: {
+        adminSportsMatchReviewRead: createAdminSportsMatchReview({
+          livestreamProvider: 'TWITCH',
+          livestreamUrl: 'cacicfct',
+        }),
+      },
     });
   }
   if (query.includes('AdminSportsMatchActionReviewQueue')) {
@@ -191,7 +208,7 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
 
 const meta: Meta<SportsStoryArgs> = {
   component: SportsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Sports/Workspace Sports Tab',
+  title: 'Admin/Sports/Tournaments',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -207,13 +224,16 @@ const meta: Meta<SportsStoryArgs> = {
     loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
   },
   render: (args) => {
-    activeArgs = args;
+    activeArgs = { ...defaultArgs, ...args };
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<SportsStoryArgs>(),
+    withSportsStoryArgs,
     applicationConfig({
       providers: [
         provideRouter([]),
+        provideAppInitializer(() => inject(PermissionsService).evaluateWorkspacePermissions()),
         {
           provide: ActivatedRoute,
           useValue: {
@@ -227,12 +247,20 @@ const meta: Meta<SportsStoryArgs> = {
     }),
   ],
   parameters: {
+    docs: {
+      description: {
+        component: 'Sports tournament workspace with controls for tournament status, categories, teams, review queues, and loading behavior.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [sportsGraphqlHandler],
         rest: [
+          http.post('/api/auth/permissions/evaluate', () =>
+            HttpResponse.json({ permissions: [...EVENT_MANAGER_PERMISSION_CATALOG] }),
+          ),
           http.get(
             '/api/sports/admin/teams/:sportsTeamId/logo-review/:changeRequestId',
             () =>
@@ -261,7 +289,11 @@ async function openTournament(canvasElement: HTMLElement) {
   const tournament = await canvas.findByText('Jogos Universitários 2026');
   await userEvent.click(tournament);
   await expect(await canvas.findByRole('heading', { name: 'Regras gerais' })).toBeVisible();
-  await expect(await canvas.findByRole('checkbox', { name: 'Permitir autoinscrição de participantes' })).toBeVisible();
+  const automaticRegistration = await canvas.findByRole('checkbox', {
+    name: 'Permitir autoinscrição de participantes',
+  });
+  await expect(automaticRegistration).toBeEnabled();
+  await expect(canvas.getByText('Permitir autoinscrição de participantes')).toBeVisible();
   expect(canvas.queryByRole('switch', { name: 'Permitir autoinscrição de participantes' })).toBeNull();
   return canvas;
 }
@@ -273,7 +305,7 @@ export const Playground: Story = {
 };
 
 export const ScopedMajorEvent: Story = {
-  name: 'Grande evento selecionado',
+  name: 'Major event selected',
   decorators: [
     applicationConfig({
       providers: [
@@ -295,14 +327,14 @@ export const ScopedMajorEvent: Story = {
 };
 
 export const CategoriesAndBracketFormats: Story = {
-  name: 'Modalidades e formatos de chave',
+  name: 'Categories and bracket formats',
   play: async ({ canvasElement }) => {
     const canvas = await openTournament(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /modalidades/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /modalidades/i }));
     await userEvent.click(await canvas.findByText('Futebol feminino'));
-    await expect(await canvas.findByText('Grupos + eliminatórias')).toBeVisible();
-    await expect(await canvas.findByRole('checkbox', { name: 'Permitir resultado empatado' })).toBeVisible();
-    await expect(canvas.getByLabelText('Exemplo ilustrativo: Grupos + eliminatórias')).toBeVisible();
+    await expect(await canvas.findByText('Grupos e eliminatórias')).toBeVisible();
+    await expect(await canvas.findByRole('checkbox', { name: 'Permitir resultado empatado' })).toBeEnabled();
+    await expectFormatExample(canvasElement, 'Grupos e eliminatórias');
     await expect(canvas.getByText('Xadrez rápido')).toBeVisible();
     await expect(canvas.getByText('Natação 50 m livre')).toBeVisible();
     expect(canvas.getAllByText('Ativa').length).toBeGreaterThan(0);
@@ -314,50 +346,68 @@ export const CategoriesAndBracketFormats: Story = {
 
 async function openFormat(canvasElement: HTMLElement, categoryName: string, formatLabel: string) {
   const canvas = await openTournament(canvasElement);
-  await userEvent.click(canvas.getByRole('button', { name: /modalidades/i }));
+  await userEvent.click(canvas.getByRole('tab', { name: /modalidades/i }));
   await userEvent.click(await canvas.findByText(categoryName));
-  await expect(canvas.getByLabelText(`Exemplo ilustrativo: ${formatLabel}`)).toBeVisible();
+  await expectFormatExample(canvasElement, formatLabel);
+}
+
+async function expectFormatExample(canvasElement: HTMLElement, formatLabel: string): Promise<void> {
+  const accessibleName = `Exemplo ilustrativo: ${formatLabel}`;
+  await waitFor(
+    () => {
+      const preview = [...canvasElement.querySelectorAll<HTMLElement>('.dummy-bracket')].find(
+        (element) => element.getAttribute('aria-label') === accessibleName,
+      );
+      expect(preview).toBeInTheDocument();
+      expect(preview).toBeVisible();
+    },
+    { timeout: 8_000, interval: 100 },
+  );
 }
 
 export const SingleEliminationExample: Story = {
-  name: 'Exemplo: eliminação simples',
+  name: 'Single elimination example',
   play: ({ canvasElement }) => openFormat(canvasElement, 'Tênis individual', 'Eliminação simples'),
 };
 
 export const RoundRobinExample: Story = {
-  name: 'Exemplo: todos contra todos',
+  name: 'Round robin example',
   play: ({ canvasElement }) => openFormat(canvasElement, 'Basquete masculino', 'Todos contra todos'),
 };
 
 export const DoubleEliminationExample: Story = {
-  name: 'Exemplo: eliminação dupla',
+  name: 'Double elimination example',
   play: ({ canvasElement }) => openFormat(canvasElement, 'League of Legends', 'Eliminação dupla'),
 };
 
 export const SwissExample: Story = {
-  name: 'Exemplo: sistema suíço',
+  name: 'Swiss system example',
   play: ({ canvasElement }) => openFormat(canvasElement, 'Xadrez rápido', 'Sistema suíço'),
 };
 
 export const CustomFormatExample: Story = {
-  name: 'Exemplo: formato personalizado',
-  play: ({ canvasElement }) => openFormat(canvasElement, 'Natação 50 m livre', 'Personalizado'),
+  name: 'Custom format example',
+  play: ({ canvasElement }) => openFormat(canvasElement, 'Natação 50 m livre', 'Formato personalizado'),
 };
 
 export const TeamManagement: Story = {
-  name: 'Equipe, integrantes e representante',
+  name: 'Team roster',
   play: async ({ canvasElement }) => {
     const canvas = await openTournament(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /equipes/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /equipes/i }));
     await userEvent.click(await canvas.findByText('Atlética FCT'));
     await expect(await canvas.findByText('Escudo da equipe')).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getByText('Mariana Clara Santos')).toBeVisible();
-    await userEvent.type(canvas.getByRole('textbox', { name: 'Buscar pessoa para o elenco' }), 'Mariana');
-    await expect(canvas.getByText('mariana@example.com')).toBeVisible();
-    await expect(canvas.getByText('•••.982.247-••')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Adicionar pessoa Mariana Clara Santos' })).toBeVisible();
-    await expect(canvas.getByText('Vôlei misto')).toBeVisible();
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Buscar pessoa para o elenco' }), 'Mariana');
+    await expect(await canvas.findByText('mariana@example.com', {}, { timeout: 20_000 })).toBeVisible();
+    await expect(await canvas.findByText('529.982.247-25', {}, { timeout: 20_000 })).toBeVisible();
+    await expect(
+      await canvas.findByRole('button', { name: 'Selecionar para o elenco Mariana Clara Santos' }, { timeout: 20_000 }),
+    ).toBeVisible();
+    for (const modality of canvas.getAllByText('Vôlei misto')) {
+      await expect(modality).toBeVisible();
+    }
     await expect(
       canvas.getByRole('button', { name: 'Inscrição automática em modalidades com atletas suficientes' }),
     ).toBeVisible();
@@ -367,16 +417,17 @@ export const TeamManagement: Story = {
 };
 
 export const ReviewQueues: Story = {
-  name: 'Filas de revisão e conflito',
+  name: 'Review queues and conflicts',
   play: async ({ canvasElement }) => {
     const canvas = await openTournament(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /equipes/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /equipes/i }));
     await userEvent.click(await canvas.findByText('Atlética FCT'));
-    await userEvent.click(canvas.getByRole('button', { name: /revisões/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /revisões/i }));
     await expect(await canvas.findByText('Camila Rodrigues Pereira')).toBeVisible();
-    await expect(canvas.getByText('Conflito')).toBeVisible();
-    await expect(canvas.getByText('Prévia do novo escudo')).toBeVisible();
-    const logoPreview = canvas.getByText('Prévia do novo escudo').closest('.team-change-logo-preview');
+    await expect(await canvas.findByText('Equipe alterada desde o envio', {}, { timeout: 20_000 })).toBeVisible();
+    const previewHeading = await canvas.findByText('Prévia do novo escudo', {}, { timeout: 20_000 });
+    await expect(previewHeading).toBeVisible();
+    const logoPreview = previewHeading.closest('.team-change-logo-preview');
     expect(logoPreview?.querySelector('img')).toHaveAttribute(
       'src',
       '/api/sports/admin/teams/team-1/logo-review/change-logo-1',
@@ -386,23 +437,27 @@ export const ReviewQueues: Story = {
 };
 
 export const MatchBracketAndLineup: Story = {
-  name: 'Chave, partida e escalação',
+  name: 'Match bracket and lineup',
   play: async ({ canvasElement }) => {
     const canvas = await openTournament(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /modalidades/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /modalidades/i }));
     await userEvent.click(await canvas.findByText('Futebol feminino'));
-    await userEvent.click(canvas.getByRole('button', { name: /partidas e chaves/i }));
+    await userEvent.click(canvas.getByRole('tab', { name: /partidas e chaves/i }));
+    const matchListRegion = await canvas.findByRole('region', { name: 'Partidas da modalidade' }, { timeout: 20_000 });
+    const matchList = within(matchListRegion);
     await userEvent.click(
-      await canvas.findByRole('button', {
+      await matchList.findByRole('button', {
         name: /Atlética FCT contra .*Ao vivo/i,
       }),
     );
-    await expect(canvas.getByRole('region', { name: 'Chave da modalidade' })).toBeVisible();
-    await expect(canvas.getByRole('complementary', { name: 'Editar partida' })).toBeVisible();
+    await expect(await canvas.findByRole('region', { name: 'Chave da modalidade' }, { timeout: 20_000 })).toBeVisible();
+    await expect(await canvas.findByRole('complementary', { name: 'Editar partida' })).toBeVisible();
     await expect(await canvas.findByText('Escalação desta partida')).toBeVisible();
     await expect(
-      canvas.getByText(
-        'Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.',
+      await canvas.findByText(
+        /Marque quem poderá jogar e defina função e número para esta partida\. Integrantes sem vínculo nesta modalidade são associados automaticamente ao salvar\./,
+        {},
+        { timeout: 20_000 },
       ),
     ).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: /Editar escalação/i }));
@@ -416,27 +471,27 @@ export const MatchBracketAndLineup: Story = {
 };
 
 export const FinishedTournament: Story = {
-  name: 'Torneio finalizado',
+  name: 'Finished tournament',
   args: { status: 'FINISHED', pendingCount: 0 },
 };
 
 export const RegistrationOpen: Story = {
-  name: 'Inscrições abertas',
+  name: 'Registration open',
   args: { status: 'REGISTRATION_OPEN' },
 };
 
 export const RegistrationClosed: Story = {
-  name: 'Inscrições encerradas',
+  name: 'Registration closed',
   args: { status: 'REGISTRATION_CLOSED' },
 };
 
 export const CanceledTournament: Story = {
-  name: 'Torneio cancelado',
+  name: 'Canceled tournament',
   args: { status: 'CANCELED', pendingCount: 0 },
 };
 
 export const EmptyTournament: Story = {
-  name: 'Torneio sem modalidades nem equipes',
+  name: 'Empty tournament',
   args: {
     categoryCount: 0,
     teamCount: 0,
@@ -450,12 +505,43 @@ export const Loading: Story = {
 };
 
 export const LoadError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  name: 'Erro de carregamento',
+  name: 'Load error',
   args: { loadMode: 'error' },
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ majorEventId: sportsStoryMajorEvent.id }) },
+            paramMap: of(convertToParamMap({ majorEventId: sportsStoryMajorEvent.id })),
+          },
+        },
+      ],
+    }),
+  ],
+  parameters: {
+    msw: {
+      handlers: {
+        graphql: [
+          graphql.query('AdminSportsTournamentList', () =>
+            HttpResponse.json({ errors: [{ message: 'A gestão esportiva está temporariamente indisponível.' }] }),
+          ),
+        ],
+      },
+    },
+  },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('A gestão esportiva está temporariamente indisponível.'),
-    ).toBeVisible();
+    const documentBody = within(canvasElement.ownerDocument.body);
+    const errorDialog = await documentBody.findByRole(
+      'dialog',
+      { name: 'Não foi possível concluir a operação' },
+      { timeout: 20_000 },
+    );
+    await expect(errorDialog).toHaveTextContent('A gestão esportiva está temporariamente indisponível.');
+    await expect(within(errorDialog).getByRole('button', { name: 'Entendi' })).toBeEnabled();
+    // The error dialog owns focus while the page's persistent error banner remains behind it.
+    const alert = await within(canvasElement).findByRole('alert', { hidden: true }, { timeout: 20_000 });
+    await expect(alert).toHaveTextContent(/A gestão esportiva está temporariamente indisponível\./);
   },
 };

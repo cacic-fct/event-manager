@@ -1,5 +1,6 @@
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { TicketAdminReasonDialogComponent, type TicketAdminReasonDialogData } from './ticket-admin-reason-dialog.component';
 
@@ -9,7 +10,7 @@ interface TicketReasonStoryArgs extends TicketAdminReasonDialogData {
 
 const meta: Meta<TicketReasonStoryArgs> = {
   component: TicketAdminReasonDialogComponent,
-  title: 'CACiC Eventos/Workspace/Tickets/Revocation Reason',
+  title: 'Admin/Ticketing/Revocation',
   tags: ['autodocs', 'ticketing'],
   args: {
     title: 'Revogar bilhete',
@@ -24,6 +25,7 @@ const meta: Meta<TicketReasonStoryArgs> = {
     initialReason: { control: 'text' },
   },
   decorators: [
+    withScenarioControls<TicketReasonStoryArgs>(),
     (story, context) => applicationConfig({
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: context.args },
@@ -45,7 +47,7 @@ const meta: Meta<TicketReasonStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketReasonStoryArgs>;
 
-export const Playground: Story = {};
+export const Playground: Story = {  };
 
 export const BlankReason: Story = {
   args: { initialReason: '   ' },
@@ -55,10 +57,8 @@ export const CompletedReason: Story = {
   args: { initialReason: 'Cancelamento solicitado pelo titular.' },
 };
 
-export const LongReasonOnMobile: Story = {
+export const LongReason: Story = {
   args: {
     initialReason: 'O titular solicitou o cancelamento após a conferência de sua inscrição.\nA equipe manteve as movimentações anteriores no histórico para auditoria.',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

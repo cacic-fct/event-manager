@@ -21,7 +21,7 @@
           </mat-list-item>
         </mat-list>
       } @else {
-        <mat-nav-list>
+        <mat-nav-list aria-label="Acesso à conta">
           <mat-list-item
             role="button"
             tabindex="0"
@@ -48,7 +48,7 @@
       [attr.inert]="!isProfileAvailable() ? '' : null">
       <div class="menu-section-content">
         @if (isProfileAvailable()) {
-          <mat-nav-list>
+          <mat-nav-list aria-label="Navegação do perfil">
             <h3 matSubheader>Perfil</h3>
 
             <a mat-list-item routerLink="/profile/wallet">
@@ -85,7 +85,7 @@
       [attr.inert]="!hasCollaborationLinks() ? '' : null">
       <div class="menu-section-content">
         @if (hasCollaborationLinks()) {
-          <mat-nav-list>
+          <mat-nav-list aria-label="Ferramentas de colaboração">
             <h3 matSubheader>Colaboração</h3>
             <div class="menu-item-shell" [class.menu-item-shell-collapsed]="!canCollectAttendances()">
               @if (canCollectAttendances()) {
@@ -108,7 +108,7 @@
       </div>
     </div>
 
-    <mat-nav-list>
+    <mat-nav-list aria-label="Utilitários">
       <h3 matSubheader>Utilitários</h3>
       <a mat-list-item routerLink="/map">
         <mat-icon matListItemIcon>map</mat-icon>
@@ -137,7 +137,7 @@
 
     @if (isDevMode) {
       <mat-divider></mat-divider>
-      <mat-nav-list>
+      <mat-nav-list aria-label="Ferramentas de desenvolvimento">
         <h3 matSubheader>Desenvolvimento</h3>
 
         <a mat-list-item routerLink="/dev-tools">

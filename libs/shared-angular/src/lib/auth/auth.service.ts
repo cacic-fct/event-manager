@@ -1,6 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Service, PLATFORM_ID, REQUEST, RESPONSE_INIT, computed, inject, isDevMode, signal } from '@angular/core';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
 import {
@@ -44,12 +44,15 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly accountPrivacy = inject(CacicAccountPrivacyService);
   private readonly document = inject(DOCUMENT);
+  private readonly request = inject(REQUEST, { optional: true });
+  private readonly response = inject(RESPONSE_INIT, { optional: true });
   private readonly platformId = inject(PLATFORM_ID);
   private readonly onlineStatus = inject(AuthOnlineStatusService);
   private readonly isOnboardingEnforcementEnabled = inject(AUTH_ONBOARDING_ENFORCEMENT_ENABLED);
   private readonly silentSso = inject(SilentSsoService);
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
+  private authenticationRecovery: Promise<boolean> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
   private refreshExpiresAt: number | null = null;
   private readonly beforeLogoutCleanups = new Set<() => void | Promise<void>>();
@@ -84,12 +87,43 @@ export class AuthService {
 
   async login(options?: LoginOptions): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
+      if (this.request && this.response) {
+        const headers = new Headers(this.response.headers);
+        headers.set('Location', this.buildLoginRedirectUrl(options));
+        headers.set('Cache-Control', 'no-store, max-age=0');
+        this.response.headers = headers;
+        this.response.status = 302;
+      }
       return;
     }
 
     this.removeSessionStorageItem(this.postLogoutRedirectStorageKey);
     this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
     window.location.assign(this.buildLoginRedirectUrl(options));
+  }
+
+  /** Share one restoration attempt between guards for the same unauthenticated session. */
+  async ensureAuthenticated(options?: Pick<LoginOptions, 'returnTo'>): Promise<boolean> {
+    if (this.isAuthenticated()) return true;
+    if (!isPlatformBrowser(this.platformId)) return false;
+
+    this.authenticationRecovery ??= firstValueFrom(
+      this.refreshTokenSilently().pipe(timeout({ first: 10_000 })),
+    )
+      .then(async () => {
+        await this.redirectToOnboardingIfNeeded(options?.returnTo, true);
+        const authenticated = this.isAuthenticated();
+        // Only failed attempts are memoized. A successful recovery must not
+        // outlive the session if a later /me request clears the user.
+        if (authenticated) this.authenticationRecovery = null;
+        return authenticated;
+      })
+      .catch((error: unknown) => {
+        if (this.isExpectedUnauthenticatedError(error)) return false;
+        this.authenticationRecovery = null;
+        throw error;
+      });
+    return this.authenticationRecovery;
   }
 
   async passwordLogin(email: string, password: string): Promise<AuthenticatedUser> {
@@ -268,6 +302,9 @@ export class AuthService {
   }
 
   clearSession(): void {
+    // A failed refresh already clears an anonymous session. Keep its shared attempt
+    // so a subsequent guard cannot repeat the same restoration request.
+    if (this.isAuthenticated()) this.authenticationRecovery = null;
     this.clearRefreshTimer();
     this.refreshExpiresAt = null;
     this.user.set(null);
@@ -325,7 +362,7 @@ export class AuthService {
     }
   }
 
-  private async redirectToOnboardingIfNeeded(): Promise<void> {
+  private async redirectToOnboardingIfNeeded(returnTo?: string, sessionWasRestored = false): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
@@ -338,11 +375,13 @@ export class AuthService {
       return;
     }
 
-    const currentUrl = this.getCurrentAbsoluteUrl();
+    const currentUrl = returnTo
+      ? new URL(this.resolveReturnTo(returnTo), window.location.origin).toString()
+      : this.getCurrentAbsoluteUrl();
     const pendingReturnUrl = this.getSessionStorageItem(this.onboardingReturnStorageKey);
     const refreshAttempted = this.getSessionStorageItem(this.onboardingRefreshAttemptStorageKey);
 
-    if (pendingReturnUrl === currentUrl && !refreshAttempted) {
+    if (pendingReturnUrl === currentUrl && !refreshAttempted && !sessionWasRestored) {
       this.setSessionStorageItem(this.onboardingRefreshAttemptStorageKey, 'true');
 
       try {
@@ -414,7 +453,8 @@ export class AuthService {
   }
 
   private buildLoginRedirectUrl(options?: LoginOptions): string {
-    const url = new URL('/api/auth/login/redirect', window.location.origin);
+    const origin = isPlatformBrowser(this.platformId) ? window.location.origin : this.request?.url;
+    const url = new URL('/api/auth/login/redirect', origin);
     const returnTo = this.resolveReturnTo(options?.returnTo ?? this.getCurrentReturnPath());
 
     if (returnTo) {
@@ -429,6 +469,10 @@ export class AuthService {
   }
 
   private getCurrentReturnPath(): string {
+    if (!isPlatformBrowser(this.platformId)) {
+      const url = new URL(this.request?.url ?? this.document.baseURI);
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
     const { pathname, search, hash } = window.location;
     return `${pathname}${search}${hash}`;
   }
@@ -451,7 +495,8 @@ export class AuthService {
   private getBasePath(): string {
     try {
       const baseHref = this.document.querySelector('base')?.getAttribute('href') ?? '/';
-      const basePath = new URL(baseHref, window.location.origin).pathname;
+      const origin = isPlatformBrowser(this.platformId) ? window.location.origin : this.request?.url;
+      const basePath = new URL(baseHref, origin).pathname;
       return basePath.endsWith('/') ? basePath : `${basePath}/`;
     } catch {
       return '/';

@@ -40,26 +40,26 @@ export const onlineAttendanceStoryControlArgTypes = {
   state: {
     control: 'select',
     options: ['ready', 'empty', 'loading', 'error'],
-    description: 'Estado da consulta de presenças pendentes.',
+    description: 'Selects the loading state for the pending attendance query.',
   },
   eventCount: {
     control: { type: 'range', min: 0, max: 12, step: 1 },
-    description: 'Quantidade de eventos pendentes gerados deterministicamente.',
+    description: 'Sets how many deterministic pending events the mock generates.',
   },
   latencyMs: {
     control: { type: 'range', min: 0, max: 2_000, step: 100 },
-    description: 'Latência simulada das operações GraphQL.',
+    description: 'Sets the simulated latency for GraphQL operations.',
   },
   confirmationOutcome: {
     control: 'select',
     options: ['success', 'invalid-code', 'rate-limited', 'server-error'],
-    description: 'Resposta devolvida ao confirmar o código.',
+    description: 'Selects the response returned when the participant confirms the code.',
   },
-  expectedCode: { control: 'text', description: 'Código de quatro caracteres aceito pelo mock.' },
-  unregisteredWalkIn: { control: 'boolean', description: 'Presença manual sem inscrição nem interesse prévio.' },
+  expectedCode: { control: 'text', description: 'Sets the four-character code accepted by the mock.' },
+  unregisteredWalkIn: { control: 'boolean', description: 'Allows manual attendance without a registration or prior interest.' },
   retryAfterSeconds: {
     control: { type: 'range', min: 1, max: 60, step: 1 },
-    description: 'Tempo de bloqueio mostrado após excesso de tentativas.',
+    description: 'Sets the retry delay shown after too many attempts.',
   },
 } as const;
 
@@ -127,12 +127,19 @@ export function onlineAttendanceStoryHandlers(context: MutableStoryContext<Onlin
       }
 
       if (query.includes('CurrentUserWalkInAttendanceEvent')) {
-        return HttpResponse.json({ data: { publicEvent: {
-          ...createPublicStoryEventFromControls(controls, { id: 'event-1' }),
-          attendanceEligibility: 'ANYONE', shouldCollectAttendance: true, isOnlineAttendanceAllowed: true,
-          startDate: publicFixtureDateFromNow(-1), endDate: publicFixtureDateFromNow(1),
-          onlineAttendanceStartDate: publicFixtureDateFromNow(-1), onlineAttendanceEndDate: publicFixtureDateFromNow(1),
-        }, currentUserEventAttendance: null } });
+        const publicEvent = controls.state === 'empty'
+          ? null
+          : {
+              ...createPublicStoryEventFromControls(controls, { id: 'event-1' }),
+              attendanceEligibility: 'ANYONE',
+              shouldCollectAttendance: true,
+              isOnlineAttendanceAllowed: true,
+              startDate: publicFixtureDateFromNow(-1),
+              endDate: publicFixtureDateFromNow(1),
+              onlineAttendanceStartDate: publicFixtureDateFromNow(-1),
+              onlineAttendanceEndDate: publicFixtureDateFromNow(1),
+            };
+        return HttpResponse.json({ data: { publicEvent, currentUserEventAttendance: null } });
       }
 
       if (query.includes('CurrentUserPendingOnlineAttendanceEvents')) {

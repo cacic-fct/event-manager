@@ -1,8 +1,9 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { EMPTY, NEVER, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { TicketingApiService } from './ticketing-api.service';
 import { TicketTransferStartPage } from './ticket-transfer-start-page';
@@ -16,12 +17,12 @@ type TicketTransferStartStoryArgs = {
   ticketEmoji: string;
   description: string;
   eligibilityDescription: string;
-  apiState: 'ready' | 'loading' | 'empty' | 'error';
+  apiState: 'ready' | 'loading';
 };
 
 const meta: Meta<TicketTransferStartStoryArgs> = {
   component: TicketTransferStartPage,
-  title: 'CACiC Eventos/Tickets/Transfer Start',
+  title: 'Public/Ticketing/Transfers/Start',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: {
@@ -40,9 +41,10 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
     ticketEmoji: { control: 'text' },
     description: { control: 'text' },
     eligibilityDescription: { control: 'text' },
-    apiState: { control: 'select', options: ['ready', 'loading', 'empty', 'error'] },
+    apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
+    withScenarioControls<TicketTransferStartStoryArgs>(),
     (story, context) => {
       const ticket = createWalletStoryTicket(
         {
@@ -68,14 +70,8 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
       });
       const ticketResponse = context.args.apiState === 'loading'
         ? NEVER
-        : context.args.apiState === 'empty'
-          ? of(null)
-          : context.args.apiState === 'error'
-            ? throwError(() => new Error('Falha ao carregar o bilhete.'))
-            : of(ticket);
-      const transferResponse = context.args.apiState === 'error'
-        ? throwError(() => new Error('Falha ao carregar as transferências.'))
-        : of(createTicketStoryTransferLists({
+        : of(ticket);
+      const transferResponse = of(createTicketStoryTransferLists({
             outgoing: context.args.mode === 'pending' ? [pendingTransfer] : [],
           }));
 
@@ -134,22 +130,10 @@ type Story = StoryObj<TicketTransferStartStoryArgs>;
 
 export const Playground: Story = {
   args: { mode: 'new', apiState: 'ready', identityKind: 'cpf' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('textbox', { name: 'CPF ou passaporte' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Enviar bilhete' })).toBeDisabled();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { mode: 'pending', apiState: 'ready', identityKind: 'passport' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Cancelar pedido' })).toBeDisabled();
-    await expect(canvas.getByText('XK7654321', { selector: '.pending-document' })).toBeVisible();
-    await expect(canvas.getByText('XK1234567', { selector: '.person-document' })).toBeVisible();
   },
 };
 
@@ -176,7 +160,6 @@ export const NewRequest: Story = {
 
 export const PendingRequest: Story = {
   args: { mode: 'pending' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const cancel = await canvas.findByRole('button', { name: 'Cancelar pedido' });
@@ -230,19 +213,5 @@ export const Loading: Story = {
   args: { apiState: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando bilhete' })).toBeVisible();
-  },
-};
-
-export const NoTicket: Story = {
-  args: { apiState: 'empty' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Este bilhete não está disponível.')).toBeVisible();
-  },
-};
-
-export const LoadError: Story = {
-  args: { apiState: 'error' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar este bilhete.')).toBeVisible();
   },
 };

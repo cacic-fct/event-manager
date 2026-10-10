@@ -22,7 +22,7 @@ const defaultArgs: AuthErrorStoryArgs = {
 
 const meta: Meta<AuthErrorStoryArgs> = {
   component: AuthErrorPage,
-  title: 'CACiC Eventos/Auth/Error Page',
+  title: 'Public/Support/Auth Error',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -44,7 +44,7 @@ const meta: Meta<AuthErrorStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -63,7 +63,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -82,7 +81,7 @@ export const LongTechnicalDetails: Story = {
       2,
     ),
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -96,22 +95,15 @@ export const ServerError: Story = {
       2,
     ),
   },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     title: 'Não foi possível concluir a autenticação institucional neste momento.',
     description: 'Entre novamente para continuar para a página que você estava acessando antes do redirecionamento.',
     actionLabel: 'Tentar entrar novamente com a conta Google institucional',
     returnTo: '/major-events/storybook/registration',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', network: 'online', motion: 'reduced' },
-};
-
-export const DarkTheme: Story = {
-  args: {},
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  globals: { network: 'online' },
 };

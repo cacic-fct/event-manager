@@ -1,5 +1,6 @@
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import type { ReceiptValidationFilters } from './receipt-validation-filtering';
 import { ReceiptValidationFiltersDialogComponent } from './receipt-validation-filters-dialog.component';
@@ -26,7 +27,7 @@ let appliedFilters: ReceiptValidationFilters | undefined;
 
 const meta: Meta<FilterDialogStoryArgs> = {
   component: ReceiptValidationFiltersDialogComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Receipt Filters',
+  title: 'Admin/Registration/Receipts/Filters',
   tags: ['autodocs', 'ticketing'],
   args: defaultArgs,
   argTypes: {
@@ -38,6 +39,7 @@ const meta: Meta<FilterDialogStoryArgs> = {
     sort: { control: 'select', options: ['UPDATED_ASC', 'UPDATED_DESC', 'CREATED_ASC', 'CREATED_DESC'] },
   },
   decorators: [
+    withScenarioControls<FilterDialogStoryArgs>(),
     (story, context) => {
       appliedFilters = undefined;
       const args = context.args;
@@ -65,7 +67,15 @@ const meta: Meta<FilterDialogStoryArgs> = {
       })(story, context);
     },
   ],
-  parameters: { layout: 'centered', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Receipt queue filters for category, subscription tier, and sort order. Use the controls to compare available filter combinations.',
+      },
+    },
+    layout: 'centered',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -103,12 +113,4 @@ export const OneTicketResult: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Bilhete (1)', { exact: true })).toBeVisible();
   },
-};
-
-export const DarkTheme: Story = {
-  globals: { theme: 'dark' },
-};
-
-export const ReducedMotion: Story = {
-  globals: { motion: 'reduced' },
 };

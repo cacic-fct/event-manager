@@ -1,7 +1,8 @@
 import { DOCUMENT, Location } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type { PublicPrizeDraw, PublicPrizeDrawSpin } from '@cacic-fct/event-manager-public-contracts';
 import { Subject, of, throwError } from 'rxjs';
 import { PublicPrizeDrawApiService } from './prize-draw-api.service';
@@ -14,6 +15,7 @@ describe('PublicPrizeDrawPage', () => {
   let api: { list: ReturnType<typeof vi.fn>; watch: ReturnType<typeof vi.fn> };
   let fixture: ComponentFixture<PublicPrizeDrawPage>;
   let location: { back: ReturnType<typeof vi.fn> };
+  let routeErrors: RouteErrorService;
   let updates: Subject<void>;
   let deepLinkTarget: HTMLElement | null = null;
 
@@ -76,7 +78,7 @@ describe('PublicPrizeDrawPage', () => {
     expect(fixture.componentInstance.liveUpdatesUnavailable()).toBe(true);
   });
 
-  it('clears an invalidated snapshot when a live refresh loses public access', async () => {
+  it('routes to the shared not-found page when a live refresh loses private access', async () => {
     updates = new Subject<void>();
     api = {
       list: vi
@@ -90,11 +92,10 @@ describe('PublicPrizeDrawPage', () => {
     updates.next();
     await fixture.whenStable();
 
-    expect(fixture.componentInstance.state()).toEqual({ status: 'ready', draws: [] });
-    expect(fixture.componentInstance.liveUpdatesUnavailable()).toBe(false);
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
   });
 
-  it('reports initial API and live-stream failures without leaking an unusable loading state', async () => {
+  it('routes page-level API failures to the shared error page', async () => {
     updates = new Subject<void>();
     api = {
       list: vi.fn(() => throwError(() => new Error('Acesso negado'))),
@@ -102,20 +103,17 @@ describe('PublicPrizeDrawPage', () => {
     };
     await configure({ targetType: 'EVENT_GROUP', param: 'eventGroupId', id: 'group-1' });
 
-    expect(fixture.componentInstance.state()).toEqual({ status: 'error', message: 'Acesso negado' });
+    expect(routeErrors.navigate).toHaveBeenCalledWith(500);
     updates.error(new Error('SSE unavailable'));
     expect(fixture.componentInstance.liveUpdatesUnavailable()).toBe(true);
   });
 
-  it('rejects missing route identifiers without API calls and supports browser back navigation', async () => {
+  it('routes missing identifiers to not found and supports browser back navigation', async () => {
     updates = new Subject<void>();
     api = { list: vi.fn(), watch: vi.fn(() => updates) };
     await configure({ targetType: 'EVENT', param: 'eventId', id: ' ' });
 
-    expect(fixture.componentInstance.state()).toEqual({
-      status: 'error',
-      message: 'Página de sorteios inválida.',
-    });
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
     expect(api.list).not.toHaveBeenCalled();
     expect(api.watch).not.toHaveBeenCalled();
     fixture.componentInstance.goBack();
@@ -152,6 +150,7 @@ describe('PublicPrizeDrawPage', () => {
     await TestBed.configureTestingModule({
       imports: [PublicPrizeDrawPage],
       providers: [
+        provideRouter([]),
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: PublicPrizeDrawApiService, useValue: api },
         { provide: Location, useValue: location },
@@ -167,6 +166,8 @@ describe('PublicPrizeDrawPage', () => {
         { provide: DOCUMENT, useValue: document },
       ],
     }).compileComponents();
+    routeErrors = TestBed.inject(RouteErrorService);
+    vi.spyOn(routeErrors, 'navigate').mockResolvedValue(true);
     fixture = TestBed.createComponent(PublicPrizeDrawPage);
     fixture.detectChanges();
     await fixture.whenStable();

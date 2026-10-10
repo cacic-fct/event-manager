@@ -5,10 +5,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { ActivatedRoute } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { Subscription } from 'rxjs';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { SportsOfflineQueueService } from './sports-offline-queue.service';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 import {
   SportsMatchActionType,
   SportsOperationalMatch,
@@ -35,13 +37,13 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly offline = inject(SportsOfflineQueueService);
   protected readonly route = inject(ActivatedRoute);
   protected readonly realtime = inject(SportsViewerRealtimeService);
+  protected readonly routeErrors = inject(RouteErrorService);
   protected readonly scannerFeedback = inject(ScannerFeedbackService);
   protected readonly snackbar = inject(MatSnackBar);
   private readonly document = inject(DOCUMENT);
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   readonly match = signal<SportsOperationalMatch | null>(null);
   readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
   readonly busy = signal(false);
   readonly now = signal(Date.now());
   readonly holdingStart = signal(false);
@@ -236,7 +238,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
     const requestId = ++this.loadRequestId;
     if (!this.matchId) {
       this.loading.set(false);
-      this.error.set('A partida não foi informada.');
+      void this.routeErrors.navigate(404);
       return;
     }
     this.subscriptions.add(
@@ -266,14 +268,13 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
             awayScore: match.scoreboard.awayScore,
           });
           this.loading.set(false);
-          this.error.set(null);
         },
         error: (error: unknown) => {
           if (requestId !== this.loadRequestId) {
             return;
           }
           this.loading.set(false);
-          this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar a partida.');
+          void this.routeErrors.navigate(privateResourceErrorStatus(error));
         },
       }),
     );

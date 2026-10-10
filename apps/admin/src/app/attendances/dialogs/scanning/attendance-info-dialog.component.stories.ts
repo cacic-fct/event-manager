@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -20,7 +20,6 @@ type AttendanceInfoStoryArgs = {
 
 @Component({
   selector: 'app-storybook-attendance-info-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -64,7 +63,7 @@ class AttendanceInfoDialogStoryHostComponent {
 
 const meta: Meta<AttendanceInfoStoryArgs> = {
   component: AttendanceInfoDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Workspace Attendance Info Dialog',
+  title: 'Admin/Attendance/Scanning/Attendance Info',
   tags: ['autodocs'],
   args: {
     personName: 'Ana Clara Silva',
@@ -87,7 +86,7 @@ const meta: Meta<AttendanceInfoStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -109,9 +108,4 @@ export const WithoutLocation: Story = {
     createdByMethod: 'MANUAL_INPUT',
     collectedAccuracyMeters: 0,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...WithoutLocation,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

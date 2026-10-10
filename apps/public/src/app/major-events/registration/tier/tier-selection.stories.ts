@@ -23,7 +23,7 @@ const tiers = [
 ];
 const meta: Meta<SubscriptionTierSelection> = {
   component: SubscriptionTierSelection,
-  title: 'CACiC Eventos/Major Events/Registration/Tier Selection',
+  title: 'Public/Registration/Major Event/Tier Selection',
   tags: ['autodocs'],
   args: {
     majorEvent: createPublicMajorEvent({
@@ -33,6 +33,32 @@ const meta: Meta<SubscriptionTierSelection> = {
     tiers,
     selectedName: null,
     busy: false,
+  },
+  argTypes: {
+    majorEvent: { control: false, table: { category: 'Fixture Data' } },
+    tiers: { control: false, table: { category: 'Fixture Data' } },
+    selectedName: {
+      control: {
+        type: 'select',
+        labels: {
+          null: 'No selection',
+          Eventos: 'Events',
+          Esportes: 'Sports',
+          'Eventos e esportes': 'Events and sports',
+          'Participação no grande evento': 'Major event participation',
+        },
+      },
+      options: [null, ...tiers.map((tier) => tier.name)],
+      name: 'Selected Tier',
+      description: 'Selects a registration tier, or leave empty to start without a selection.',
+      table: { category: 'Selection' },
+    },
+    busy: {
+      control: 'boolean',
+      name: 'Loading',
+      description: 'Disables selection while the registration request is in progress.',
+      table: { category: 'Selection' },
+    },
   },
   render: (args) => ({
     props: args,
@@ -44,7 +70,6 @@ export default meta;
 type Story = StoryObj<SubscriptionTierSelection>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
 };
 
 export const CompareModalities: Story = {
@@ -57,11 +82,6 @@ export const CompareModalities: Story = {
 };
 export const SportsOnly: Story = { args: { selectedName: 'Esportes' } };
 export const NoActivities: Story = { args: { selectedName: 'Participação no grande evento' } };
-
-export const DarkReducedMotion: Story = {
-  args: { selectedName: 'Eventos e esportes' },
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-};
 
 export const SingleTier: Story = { args: { tiers: [tiers[0]], selectedName: 'Eventos' } };
 export const TournamentClosed: Story = {

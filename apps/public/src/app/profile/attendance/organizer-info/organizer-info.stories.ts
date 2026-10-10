@@ -1,10 +1,12 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { PLATFORM_ID } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { applicationConfig, type Decorator, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import {
   createPublicStoryEventFromControls,
@@ -41,6 +43,8 @@ const defaultArgs: OrganizerInfoStoryArgs = {
   downloadOutcome: 'success',
 };
 
+const navigateRouteError = fn(async () => true);
+
 const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, context) => {
   const args = { ...defaultArgs, ...context.args };
   return applicationConfig({
@@ -48,6 +52,7 @@ const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, co
       provideRouter([]),
       provideNoopAnimations(),
       { provide: PLATFORM_ID, useValue: 'browser' },
+      { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -75,7 +80,7 @@ const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, co
 
 const meta: Meta<OrganizerInfoStoryArgs> = {
   component: OrganizerInfoComponent,
-  title: 'CACiC Eventos/Profile/Attendance/Organizer Info',
+  title: 'Public/Profile/Attendance History/Organizer',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -98,10 +103,16 @@ const meta: Meta<OrganizerInfoStoryArgs> = {
       options: ['success', 'error'],
     },
   },
-  decorators: [withOrganizerInfoProviders],
+  decorators: [
+    withScenarioControls<OrganizerInfoStoryArgs>(),
+    withOrganizerInfoProviders,
+  ],
+  beforeEach: () => {
+    navigateRouteError.mockClear();
+  },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -114,11 +125,10 @@ export const Playground: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Informações do organizador')).toBeVisible();
     await expect(await canvas.findByText('Perfil público de ministrante')).toBeVisible();
-    const downloadButton = canvas.queryByRole('button', { name: /baixar lista de inscritos/i });
-    if (downloadButton) {
-      await userEvent.hover(downloadButton);
-      await expect(downloadButton).toBeVisible();
-    }
+    const downloadButtons = await canvas.findAllByRole('button', { name: /baixar lista de inscritos/i });
+    await expect(downloadButtons).toHaveLength(2);
+    await userEvent.hover(downloadButtons[0]);
+    await expect(downloadButtons[0]).toBeVisible();
   },
 };
 
@@ -148,7 +158,7 @@ export const WithoutDownloads: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Sem código de presença on-line.')).toBeVisible();
+    await expect(await canvas.findAllByText('Sem código de presença on-line.')).toHaveLength(2);
     await expect(canvas.queryByRole('button', { name: /baixar lista de inscritos/i })).toBeNull();
   },
 };
@@ -159,7 +169,8 @@ export const DownloadError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: /baixar lista de inscritos/i }));
+    const downloadButtons = await canvas.findAllByRole('button', { name: /baixar lista de inscritos/i });
+    await userEvent.click(downloadButtons[0]);
     await expect(await screen.findByText('Não foi possível baixar a lista de inscritos.')).toBeVisible();
   },
 };
@@ -168,9 +179,8 @@ export const Restricted: Story = {
   args: {
     state: 'restricted',
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Informações restritas aos ministrantes deste evento.')).toBeVisible();
+  play: async () => {
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404));
   },
 };
 
@@ -188,10 +198,8 @@ export const RequestError: Story = {
   args: {
     state: 'error',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar as informações do organizador.')).toBeVisible();
+  play: async () => {
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(500));
   },
 };
 
@@ -199,31 +207,33 @@ export const InvalidRoute: Story = {
   args: {
     state: 'invalid-route',
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Página de organizador inválida.')).toBeVisible();
+  play: async () => {
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404));
   },
 };
 
 function createAttendancesApiMock(
   args: OrganizerInfoStoryArgs,
-): Pick<AttendancesApiService, 'getOrganizerInfo' | 'downloadEventSubscriberList'> {
+): Pick<AttendancesApiService, 'getOrganizerInfo' | 'getOrganizerInfoStrict' | 'downloadEventSubscriberList'> {
+  const getOrganizerInfo = () => {
+    if (args.state === 'loading') {
+      return NEVER;
+    }
+
+    if (args.state === 'restricted') {
+      return of(null);
+    }
+
+    if (args.state === 'error') {
+      return throwError(() => new Error('Não foi possível carregar as informações do organizador.'));
+    }
+
+    return of(buildOrganizerInfo(args));
+  };
+
   return {
-    getOrganizerInfo: () => {
-      if (args.state === 'loading') {
-        return NEVER;
-      }
-
-      if (args.state === 'restricted') {
-        return of(null);
-      }
-
-      if (args.state === 'error') {
-        return throwError(() => new Error('Não foi possível carregar as informações do organizador.'));
-      }
-
-      return of(buildOrganizerInfo(args));
-    },
+    getOrganizerInfo,
+    getOrganizerInfoStrict: getOrganizerInfo,
     downloadEventSubscriberList: () => {
       if (args.downloadOutcome === 'error') {
         return throwError(() => new Error('Não foi possível baixar a lista de inscritos.'));

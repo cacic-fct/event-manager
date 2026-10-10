@@ -50,7 +50,7 @@ const interest = {
 
 const meta: Meta<EventInterestsComponent> = {
   component: EventInterestsComponent,
-  title: 'CACiC Eventos/Workspace/Subscriptions/Quero ir',
+  title: 'Admin/Registration/Interests',
   tags: ['autodocs'],
   args: { context: { kind: 'event', id: event.id } },
   decorators: [
@@ -97,7 +97,16 @@ const meta: Meta<EventInterestsComponent> = {
       ],
     }),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Interest list for event discovery and conversion. Use the stories to inspect available people, permissions, and conversion behavior.',
+      },
+    },
+    layout: 'fullscreen',
+    controls: { disable: true },
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -121,10 +130,6 @@ export const ConversionConfirmation: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: Playground.play,
-};
 
 export const CollectionDisabled: Story = {
   decorators: [applicationConfig({ providers: [{
@@ -133,7 +138,7 @@ export const CollectionDisabled: Story = {
   }] })],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.findByText(/Novos interesses desativados/)).resolves.toBeVisible();
+    await expect(canvas.findByText(/novos interesses desativados/i)).resolves.toBeVisible();
   },
 };
 

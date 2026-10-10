@@ -1,50 +1,38 @@
-import { TestBed } from '@angular/core/testing';
-import { CanActivateFn, provideRouter, Router, UrlTree } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { appRoutes } from '../app.routes';
+import { adminAuthenticationGuard } from './admin-auth.guard';
 
-describe('admin auth route wiring', () => {
-  let authService: {
-    consumePostLogoutRedirect: ReturnType<typeof vi.fn>;
-    isAuthenticated: ReturnType<typeof vi.fn>;
-    login: ReturnType<typeof vi.fn>;
-  };
-  let router: Router;
-
-  beforeEach(() => {
-    authService = {
-      consumePostLogoutRedirect: vi.fn(() => false),
-      isAuthenticated: vi.fn(() => false),
-      login: vi.fn().mockResolvedValue(undefined),
-    };
-
-    TestBed.configureTestingModule({
-      providers: [
-        provideRouter([]),
-        {
-          provide: AuthService,
-          useValue: authService,
-        },
-      ],
-    });
-
-    router = TestBed.inject(Router);
-  });
-
-  it('declares the local admin login route', () => {
+describe('admin route authentication and error wiring', () => {
+  it('keeps the local development login page explicit while protecting the workspace with direct SSO auth', () => {
     expect(appRoutes.some((route) => route.path === 'login')).toBe(true);
+
+    const workspaceRoute = appRoutes.find((route) => route.path === '');
+
+    expect(workspaceRoute?.canMatch).toContain(adminAuthenticationGuard);
+    expect(workspaceRoute?.canActivate).toHaveLength(1);
   });
 
-  it('wires the workspace entry route to the admin local-login guard behavior', () => {
-    const appRoute = appRoutes.find((route) => route.path === '');
-    const guard = appRoute?.canActivate?.[0] as CanActivateFn | undefined;
+  it('routes each shared error status to the shared error page and keeps unknown routes at 404', () => {
+    const errorRoutes = appRoutes.filter((route) => route.path?.startsWith('error/'));
+    const wildcardRoute = appRoutes.find((route) => route.path === '**');
 
-    expect(guard).toBeDefined();
-
-    const result = TestBed.runInInjectionContext(() => guard?.({} as never, { url: '/' } as never)) as UrlTree;
-
-    expect(result).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(result)).toBe('/login?returnTo=%2F');
-    expect(authService.login).not.toHaveBeenCalled();
+    expect(errorRoutes.map((route) => route.path)).toEqual([
+      'error/403',
+      'error/404',
+      'error/500',
+      'error/503',
+    ]);
+    expect(errorRoutes.map((route) => route.data?.['pageError'])).toEqual([
+      { status: 403, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },
+      { status: 404, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },
+      { status: 500, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },
+      { status: 503, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },
+    ]);
+    expect(errorRoutes.every((route) => route.loadComponent === errorRoutes[0].loadComponent)).toBe(true);
+    expect(wildcardRoute?.data?.['pageError']).toEqual({
+      status: 404,
+      actionHref: '/app/',
+      actionLabel: 'Voltar para os eventos',
+    });
+    expect(wildcardRoute?.loadComponent).toBe(errorRoutes[0].loadComponent);
   });
 });

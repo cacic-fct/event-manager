@@ -108,6 +108,7 @@ export const EVENT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,

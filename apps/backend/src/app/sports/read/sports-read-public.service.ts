@@ -104,9 +104,10 @@ export class SportsReadPublicService {
       throw new NotFoundException(`Sports match ${matchId} was not found.`);
     }
     const projected = this.mapper.projectPublicMatch(match);
+    const visibleMatchIds = this.mapper.canRevealParticipants(projected.state) ? [match.id] : [];
     const [rosters, officials] = await Promise.all([
-      this.loader.loadPublicRosters(this.mapper.canRevealRoster(projected.state) ? [match.id] : []),
-      this.loader.loadPublicOfficials(match.categoryId, [match.id]),
+      this.loader.loadPublicRosters(visibleMatchIds),
+      this.loader.loadPublicOfficials(match.categoryId, visibleMatchIds),
     ]);
     return this.mapper.mapPublicMatch(match, projected, rosters.get(match.id) ?? [], officials.get(match.id) ?? []);
   }
@@ -120,9 +121,10 @@ export class SportsReadPublicService {
       throw new NotFoundException(`Sports match ${matchId} was not found.`);
     }
     const projected = this.mapper.projectPublicMatch(match);
+    const visibleMatchIds = this.mapper.canRevealParticipants(projected.state) ? [match.id] : [];
     const [rosters, officials] = await Promise.all([
-      this.loader.loadPublicRosters(this.mapper.canRevealRoster(projected.state) ? [match.id] : []),
-      this.loader.loadPublicOfficials(match.categoryId, [match.id]),
+      this.loader.loadPublicRosters(visibleMatchIds),
+      this.loader.loadPublicOfficials(match.categoryId, visibleMatchIds),
     ]);
     return this.mapper.mapPublicMatch(match, projected, rosters.get(match.id) ?? [], officials.get(match.id) ?? []);
   }
@@ -350,12 +352,12 @@ export class SportsReadPublicService {
       match,
       projection: this.mapper.projectPublicMatch(match),
     }));
-    const rosterVisibleMatchIds = projectedMatches
-      .filter(({ projection }) => this.mapper.canRevealRoster(projection.state))
-      .map(({ match }) => match.id);
+    const participantVisibleMatches = projectedMatches
+      .filter(({ projection }) => this.mapper.canRevealParticipants(projection.state))
+      .map(({ match }) => match);
     const [rostersByMatch, officialsByMatch] = await Promise.all([
-      this.loader.loadPublicRosters(rosterVisibleMatchIds),
-      this.loader.loadPublicOfficialsForTournament(tournament.id, matches),
+      this.loader.loadPublicRosters(participantVisibleMatches.map((match) => match.id)),
+      this.loader.loadPublicOfficialsForTournament(tournament.id, participantVisibleMatches),
     ]);
     const publicMatches = projectedMatches.map(({ match, projection }) =>
       this.mapper.mapPublicMatch(

@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
@@ -8,7 +9,7 @@ import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './spo
 import type { RepresentativeTeamChange } from './sports-operations.types';
 import { SportsTeamOperationsPage } from './team-operations-page';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 type LineupMode = 'ready' | 'empty' | 'error';
 
 interface TeamOperationsStoryArgs {
@@ -27,7 +28,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<TeamOperationsStoryArgs> = {
   component: SportsTeamOperationsPage,
-  title: 'CACiC Eventos/Sports/Operations/Team',
+  title: 'Public/Sports/Operations/Team',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -35,7 +36,7 @@ const meta: Meta<TeamOperationsStoryArgs> = {
       control: 'select',
       options: ['PENDING', 'CHANGES_REQUESTED', 'CONFLICT', 'APPROVED', 'REJECTED', 'SUPERSEDED'],
     },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
     lineupMode: { control: 'inline-radio', options: ['ready', 'empty', 'error'] },
   },
   render: (args) => {
@@ -43,6 +44,7 @@ const meta: Meta<TeamOperationsStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<TeamOperationsStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -64,9 +66,6 @@ const meta: Meta<TeamOperationsStoryArgs> = {
             representativeWorkspace: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('Você não tem acesso à gestão desta equipe.'));
               }
               return of(createRepresentativeTeamWorkspace(activeArgs.requestStatus));
             },
@@ -99,7 +98,7 @@ const meta: Meta<TeamOperationsStoryArgs> = {
       ],
     }),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -108,7 +107,6 @@ type Story = StoryObj<TeamOperationsStoryArgs>;
 export const Playground: Story = {};
 
 export const PendingProfileDelta: Story = {
-  name: 'Delta pendente pré-preenchido',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByDisplayValue('Engenharia Atlética Renovada')).toBeVisible();
@@ -117,7 +115,6 @@ export const PendingProfileDelta: Story = {
 };
 
 export const AthleteIdentityRequest: Story = {
-  name: 'Inclusão sem enumeração de pessoa',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
@@ -126,13 +123,13 @@ export const AthleteIdentityRequest: Story = {
 };
 
 export const OverallMembersAndJoinQueue: Story = {
-  name: 'Integrantes e contagem da fila sem dados pessoais',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
     await expect(canvas.getByRole('heading', { name: 'Pessoas da equipe' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Solicitações para entrar' })).toBeVisible();
-    await expect(canvas.getByRole('status', { name: '1 pessoa aguardando análise da organização' })).toBeVisible();
+    await expect(canvas.getByRole('status', { name: '1 pessoa aguardando análise' })).toBeVisible();
+    await expect(canvas.getByText(/pessoa aguardando análise da organização/)).toBeVisible();
     await expect(canvas.queryByText('Mariana Luiza Ferreira')).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Aprovar' })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Recusar' })).not.toBeInTheDocument();
@@ -140,7 +137,6 @@ export const OverallMembersAndJoinQueue: Story = {
 };
 
 export const QueuedTeamLogo: Story = {
-  name: 'Escudo privado aguardando aprovação',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const file = new File(
@@ -150,14 +146,13 @@ export const QueuedTeamLogo: Story = {
       'escudo.svg',
       { type: 'image/svg+xml' },
     );
-    await userEvent.upload(await canvas.findByLabelText('Escolher arquivo'), file);
+    await userEvent.upload(await canvas.findByLabelText(/Escolher arquivo/), file);
     await expect(canvas.getByText('escudo.svg')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Enviar escudo' })).toBeEnabled();
   },
 };
 
 export const MatchLineup: Story = {
-  name: 'Escalação por partida',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
@@ -176,7 +171,6 @@ export const MatchLineup: Story = {
 };
 
 export const EmptyEligibleLineup: Story = {
-  name: 'Sem atletas elegíveis',
   args: { lineupMode: 'empty' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -186,7 +180,6 @@ export const EmptyEligibleLineup: Story = {
 };
 
 export const LineupConflict: Story = {
-  name: 'Erro de concorrência na escalação',
   args: { lineupMode: 'error' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -197,7 +190,6 @@ export const LineupConflict: Story = {
 };
 
 export const ReadOnlyMatchLineup: Story = {
-  name: 'Escalação em revisão somente leitura',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
@@ -210,7 +202,6 @@ export const ReadOnlyMatchLineup: Story = {
 };
 
 export const ChangeRequested: Story = {
-  name: 'Ajustes solicitados',
   args: { requestStatus: 'CHANGES_REQUESTED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -221,7 +212,6 @@ export const ChangeRequested: Story = {
 };
 
 export const ConcurrentConflict: Story = {
-  name: 'Conflito de edição',
   args: { requestStatus: 'CONFLICT' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -231,7 +221,6 @@ export const ConcurrentConflict: Story = {
 };
 
 export const ApprovedRequest: Story = {
-  name: 'Pedido aprovado',
   args: { requestStatus: 'APPROVED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -241,7 +230,6 @@ export const ApprovedRequest: Story = {
 };
 
 export const RejectedRequest: Story = {
-  name: 'Pedido negado',
   args: { requestStatus: 'REJECTED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -251,7 +239,6 @@ export const RejectedRequest: Story = {
 };
 
 export const SupersededRequest: Story = {
-  name: 'Pedido substituído',
   args: { requestStatus: 'SUPERSEDED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -262,13 +249,4 @@ export const SupersededRequest: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
-};
-
-export const PermissionError: Story = {
-  name: 'Acesso negado',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Você não tem acesso à gestão desta equipe.')).toBeVisible();
-  },
 };

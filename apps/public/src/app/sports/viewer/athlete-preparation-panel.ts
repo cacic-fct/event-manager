@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -25,7 +25,6 @@ import type { SportsAthleteProfile } from './sports-viewer.types';
   ],
   templateUrl: './athlete-preparation-panel.html',
   styleUrl: './athlete-preparation-panel.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsAthletePreparationPanel {
   private readonly api = inject(SportsViewerApiService);

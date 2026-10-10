@@ -27,15 +27,11 @@ describe('attendance labels', () => {
   });
 
   it('explains current eligibility separately from the recorded attendance category', () => {
-    expect(attendanceCurrentAssessmentLabel('REQUIREMENTS_CURRENTLY_MET')).toBe(
-      'Pessoa atende às regras de presença regular',
-    );
+    expect(attendanceCurrentAssessmentLabel('REQUIREMENTS_CURRENTLY_MET')).toBe('Presença regular');
     expect(attendanceCurrentAssessmentLabel('PRICE_TIER_NOT_ELIGIBLE')).toBe(
       'Faixa de pagamento não permite presença regular',
     );
-    expect(attendanceCurrentAssessmentLabel('INVITATION_REQUIRED')).toBe(
-      'Sem convite para presença regular',
-    );
+    expect(attendanceCurrentAssessmentLabel('INVITATION_REQUIRED')).toBe('Sem convite para presença regular');
     expect(attendanceCurrentAssessmentLabel('ACTIVITY_SUBSCRIPTION_MISSING')).toBe('Sem inscrição ativa na atividade');
     expect(attendanceCurrentAssessmentLabel('MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT')).toBe(
       'Aguardando comprovante do grande evento',

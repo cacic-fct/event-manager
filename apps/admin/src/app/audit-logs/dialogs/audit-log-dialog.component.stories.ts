@@ -1,9 +1,10 @@
-import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { Component, inject, input } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, screen, userEvent, within } from 'storybook/test';
 import {
   AuditLogActorType,
@@ -47,87 +48,89 @@ let revertedEntryId: string | null = null;
 
 @Component({
   selector: 'app-storybook-audit-log-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  imports: [MatButtonModule],
+  template: '<button mat-stroked-button type="button" (click)="open()">Abrir histórico</button>',
 })
 class AuditLogDialogStoryHostComponent {
-  private readonly injector = inject(Injector);
-
-  readonly component = AuditLogDialogComponent;
   readonly entityType = input<AuditLogEntityType>(defaultArgs.entityType);
   readonly entityLabel = input(defaultArgs.entityLabel);
+  private readonly dialog = inject(MatDialog);
 
-  readonly storyInjector = computed(() =>
-    Injector.create({
-      parent: this.injector,
-      providers: [
-        {
-          provide: MAT_DIALOG_DATA,
-          useValue: {
-            entityType: this.entityType(),
-            entityId: scenarioForEntity(this.entityType()).entityId,
-            entityLabel: this.entityLabel(),
-          },
-        },
-      ],
-    }),
-  );
+  open(): void {
+    const entityType = this.entityType();
+    this.dialog.open(AuditLogDialogComponent, {
+      data: {
+        entityType,
+        entityId: scenarioForEntity(entityType).entityId,
+        entityLabel: this.entityLabel(),
+      },
+      width: '44rem',
+      maxWidth: 'calc(100vw - 2rem)',
+      autoFocus: 'dialog',
+      restoreFocus: true,
+    });
+  }
 }
 
 const meta: Meta<AuditLogDialogStoryArgs> = {
   component: AuditLogDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Audit Log Dialog',
+  title: 'Admin/Audit/Logs/Details',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<AuditLogDialogStoryArgs>()],
   args: defaultArgs,
   argTypes: {
     entityType: {
       control: 'select',
       options: AUDIT_LOG_ENTITY_TYPE_OPTIONS.map((option) => option.value),
-      description: 'Tipo do registro auditado.',
+      description: 'Type of the audited record.',
     },
     entityLabel: {
       control: 'text',
-      description: 'Nome do registro auditado.',
+      description: 'Name of the audited record.',
     },
     entryCount: {
       control: { type: 'range', min: 1, max: 10, step: 1 },
-      description: 'Quantidade de registros gerados no histórico.',
+      description: 'Number of history entries to generate.',
       if: { arg: 'requestState', eq: 'success' },
     },
     groupedChanges: {
       control: 'boolean',
-      description: 'Agrupa alterações recentes no primeiro registro.',
+      description: 'Groups recent changes under the first entry.',
       if: { arg: 'requestState', eq: 'success' },
     },
     includeReverted: {
       control: 'boolean',
-      description: 'Marca o primeiro registro como já desfeito.',
+      description: 'Marks the first entry as already reverted.',
       if: { arg: 'requestState', eq: 'success' },
     },
     allowRevert: {
       control: 'boolean',
-      description: 'Exibe as ações para desfazer alterações elegíveis.',
+      description: 'Shows revert actions for eligible changes.',
       if: { arg: 'requestState', eq: 'success' },
     },
     requestState: {
       control: 'select',
       options: ['success', 'empty', 'error'],
-      description: 'Resposta simulada pela API GraphQL.',
+      description: 'Simulated GraphQL API response state.',
     },
     responseDelay: {
       control: { type: 'range', min: 0, max: 1500, step: 100 },
-      description: 'Latência simulada pela API em milissegundos.',
+      description: 'Simulated API latency in milliseconds.',
     },
   },
   render: (args) => {
     activeArgs = args;
     revertedEntryId = null;
-    return { props: args };
+    return { props: { entityType: args.entityType, entityLabel: args.entityLabel } };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Audit log detail dialog with controls for entry count, reverted changes, revert actions, and API state.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'error' },
+    a11y: { test: 'error', context: '.cdk-overlay-container' },
     msw: {
       handlers: {
         graphql: [
@@ -164,11 +167,16 @@ export default meta;
 
 type Story = StoryObj<AuditLogDialogStoryArgs>;
 
+async function openAuditLogDialog(canvasElement: HTMLElement) {
+  await userEvent.click(within(canvasElement).getByRole('button', { name: 'Abrir histórico' }));
+  return within(canvasElement.ownerDocument.body);
+}
+
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Histórico')).toBeVisible();
-    await expect(await canvas.findByText('Programação e publicação alteradas.')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Histórico')).toBeVisible();
+    await expect(await page.findByText('Programação e publicação alteradas.')).toBeVisible();
   },
 };
 
@@ -178,7 +186,8 @@ export const EmptyHistory: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Nenhum histórico encontrado')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Nenhum histórico encontrado')).toBeVisible();
   },
 };
 
@@ -188,7 +197,8 @@ export const WithRevertedEntry: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Desfeito por/)).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText(/Desfeito por/)).toBeVisible();
   },
 };
 
@@ -199,7 +209,8 @@ export const EventSubscriptionHistory: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Inscrição revisada pela secretaria.')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Inscrição revisada pela secretaria.')).toBeVisible();
   },
 };
 
@@ -210,7 +221,8 @@ export const CertificateHistory: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Certificado emitido.')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Certificado emitido.')).toBeVisible();
   },
 };
 
@@ -222,7 +234,8 @@ export const SystemHistory: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Rotina do sistema executada.')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Rotina do sistema executada.')).toBeVisible();
   },
 };
 
@@ -231,24 +244,24 @@ export const RevertConfirmation: Story = {
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const revertButtons = await canvas.findAllByRole('button', { name: 'Desfazer daqui em diante' });
+    const page = await openAuditLogDialog(canvasElement);
+    const revertButtons = await page.findAllByRole('button', { name: 'Desfazer daqui em diante' });
     await userEvent.click(revertButtons[0]);
     await expect(await screen.findByRole('heading', { name: 'Desfazer deste ponto em diante?' })).toBeVisible();
     await expect(await screen.findByText(/alterações posteriores do mesmo item/i)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
   },
 };
 
 export const RequestError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar o histórico')).toBeVisible();
-    await expect(await canvas.findByText('Não foi possível consultar o histórico simulado.')).toBeVisible();
+    const page = await openAuditLogDialog(canvasElement);
+    await expect(await page.findByText('Não foi possível carregar o histórico')).toBeVisible();
+    await expect(await page.findByText('Não foi possível consultar o histórico simulado.')).toBeVisible();
   },
 };
 

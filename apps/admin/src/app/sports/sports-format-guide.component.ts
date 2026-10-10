@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { SportsFormat } from '@cacic-fct/shared-data-types/sports-metadata';
 import { SPORTS_FORMAT_OPTIONS } from './sports-format-options';
@@ -7,7 +7,6 @@ export { SPORTS_FORMAT_OPTIONS } from './sports-format-options';
 
 @Component({
   selector: 'app-sports-format-guide',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
     <section class="format-gallery" aria-label="Comparação de formatos">

@@ -1,10 +1,15 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, authGuard } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { addHours, isValid, isWithinInterval, parseISO, subHours } from 'date-fns';
-import { firstValueFrom, map } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import { ForbiddenGraphqlError, NotFoundGraphqlError } from '../../shared/rate-limit-error';
+import { privateResourceErrorStatus, routePageErrorStatus } from '../../shared/route-error-handling';
 import {
   AttendanceCollectionApiService,
   AttendanceCollectionEvent,
@@ -94,63 +99,105 @@ export class AttendanceCollectionAccessService {
   }
 }
 
-export const attendanceCollectionListGuard: CanActivateFn = async () => {
+const COLLECTION_PERMISSIONS = [
+  Permission.EventAttendance.Collect,
+  Permission.EventAttendance.Import,
+  Permission.EventAttendance.Update,
+] as const;
+
+export const attendanceCollectionListGuard: CanActivateFn = async (route, state) => {
   const api = inject(AttendanceCollectionApiService);
   const auth = inject(AuthService);
   const offlineQueue = inject(AttendanceOfflineQueueService);
   const router = inject(Router);
+  const errors = inject(RouteErrorService);
+  const authResult = await authGuard(route, state);
+  if (authResult !== true) return authResult;
+
+  let events: AttendanceCollectionEvent[];
+  try {
+    events = await firstValueFrom(api.listCollectionEvents());
+  } catch (error: unknown) {
+    if (isPermissionDenied(error)) {
+      return errors.guardRedirect(403);
+    }
+    const userId = auth.user()?.sub;
+    try {
+      if (userId && (await offlineQueue.getCollectionEvents(userId)).length > 0) {
+        return true;
+      }
+    } catch {
+      return errors.guardRedirect(503);
+    }
+    return errors.guardRedirect(privateResourceErrorStatus(error));
+  }
+
+  if (events.length > 0) {
+    return true;
+  }
 
   try {
-    const events = await firstValueFrom(api.listCollectionEvents());
-    if (events.length > 0) {
-      return true;
-    }
-  } catch {
-    const userId = auth.user()?.sub;
-    if (userId && (await offlineQueue.getCollectionEvents(userId)).length > 0) {
-      return true;
-    }
+    const grantedPermissions = await firstValueFrom(auth.evaluatePermissions(COLLECTION_PERMISSIONS));
+    if (grantedPermissions.length === 0) return errors.guardRedirect(403);
+  } catch (error: unknown) {
+    if (isPermissionDenied(error)) return errors.guardRedirect(403);
+    return errors.guardRedirect(routePageErrorStatus(error));
   }
 
   return router.createUrlTree(['/menu']);
 };
 
-export const attendanceCollectionScannerGuard: CanActivateFn = async (route) => {
+export const attendanceCollectionScannerGuard: CanActivateFn = async (route, state) => {
   const api = inject(AttendanceCollectionApiService);
   const access = inject(AttendanceCollectionAccessService);
   const auth = inject(AuthService);
   const offlineQueue = inject(AttendanceOfflineQueueService);
   const router = inject(Router);
+  const errors = inject(RouteErrorService);
   const eventId = route.paramMap.get('eventId');
+  const authResult = await authGuard(route, state);
+  if (authResult !== true) return authResult;
 
   if (!eventId) {
-    return router.createUrlTree(['/attendance/collect']);
+    return errors.guardRedirect(404);
+  }
+
+  let event: AttendanceCollectionEvent | undefined;
+  let apiError: unknown;
+  try {
+    const events = await firstValueFrom(api.listCollectionEvents());
+    event = events.find((item) => item.eventId === eventId);
+  } catch (error: unknown) {
+    apiError = error;
+    if (isResourceMissing(error) || isPermissionDenied(error)) {
+      return errors.guardRedirect(404);
+    }
+    const userId = auth.user()?.sub;
+    try {
+      const cachedEvent = userId ? await offlineQueue.getCollectionEvent(userId, eventId) : null;
+      if (cachedEvent) event = cachedEvent;
+    } catch {
+      return errors.guardRedirect(503);
+    }
+  }
+
+  if (!event || !access.isCollectionOpen(event)) {
+    const status = apiError ? privateResourceErrorStatus(apiError) : 404;
+    return errors.guardRedirect(status);
   }
 
   try {
-    const canCollectEvent = await firstValueFrom(
-      api
-        .listCollectionEvents()
-        .pipe(map((events) => events.some((event) => event.eventId === eventId && access.isCollectionOpen(event)))),
-    );
-    if (!canCollectEvent) {
-      return router.createUrlTree(['/attendance/collect']);
-    }
-
     await access.getPreciseLocation();
     return true;
   } catch {
-    const userId = auth.user()?.sub;
-    const cachedEvent = userId && eventId ? await offlineQueue.getCollectionEvent(userId, eventId) : null;
-    if (cachedEvent && access.isCollectionOpen(cachedEvent)) {
-      try {
-        await access.getPreciseLocation();
-        return true;
-      } catch {
-        return router.createUrlTree(['/attendance/collect']);
-      }
-    }
+    return router.createUrlTree(['/attendance/collect']);
   }
-
-  return router.createUrlTree(['/attendance/collect']);
 };
+
+function isPermissionDenied(error: unknown): boolean {
+  return error instanceof ForbiddenGraphqlError || (error instanceof HttpErrorResponse && error.status === 403);
+}
+
+function isResourceMissing(error: unknown): boolean {
+  return error instanceof NotFoundGraphqlError || (error instanceof HttpErrorResponse && error.status === 404);
+}

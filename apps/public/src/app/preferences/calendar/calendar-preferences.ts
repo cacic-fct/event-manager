@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -51,7 +51,6 @@ const STALE_LOGIN_DISABLED_REASON = 'STALE_LOGIN';
   ],
   templateUrl: './calendar-preferences.html',
   styleUrl: './calendar-preferences.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarPreferences {
   private readonly api = inject(CalendarPreferencesApiService);

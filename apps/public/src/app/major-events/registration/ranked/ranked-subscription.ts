@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, linkedSignal } from '@angular/core';
+import { Component, ElementRef, computed, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -40,7 +40,6 @@ import { SubscriptionTierSelection } from '../tier/tier-selection';
   providers: [RankedSubscriptionStore],
   templateUrl: './ranked-subscription.html',
   styleUrls: ['../standard/subscription.css', './ranked-subscription.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RankedMajorEventSubscription {
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);

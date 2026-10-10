@@ -1,8 +1,9 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { withScenarioControls } from './storybook/scenario-controls.decorator';
 import {
   DuplicatePersonWarningDialogComponent,
   DuplicatePersonWarningDialogData,
@@ -14,9 +15,8 @@ type DuplicatePersonWarningDialogStoryArgs = DuplicatePersonWarningDialogData & 
 
 @Component({
   selector: 'lib-storybook-duplicate-person-warning-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  template: `<ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />`,
 })
 class DuplicatePersonWarningDialogStoryHostComponent {
   private readonly injector = inject(Injector);
@@ -41,19 +41,20 @@ class DuplicatePersonWarningDialogStoryHostComponent {
 
 const meta: Meta<DuplicatePersonWarningDialogStoryArgs> = {
   component: DuplicatePersonWarningDialogStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Dialogs/Duplicate person warning',
+  title: 'Shared/Dialogs/Duplicate Person Warning',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<DuplicatePersonWarningDialogStoryArgs>()],
   args: {
     message: 'Já existe uma pessoa com este CPF vinculada ao workspace.',
     closed: fn(),
   },
   argTypes: {
-    message: { control: 'text', description: 'Motivo seguro para interromper o cadastro duplicado.' },
+    message: { control: 'text', description: 'Safe explanation shown before stopping a duplicate registration.' },
     closed: { table: { disable: true } },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -78,12 +79,4 @@ export const LongMessage: Story = {
     message:
       'Encontramos outro registro com o mesmo documento, e-mail secundário ou código externo. Revise os dados antes de continuar com a coleta de presença.',
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    message: 'Já existe uma pessoa com este e-mail institucional vinculada a outra conta.',
-    closed: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

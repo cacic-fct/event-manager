@@ -4,16 +4,15 @@ import { ParticipationHistoryDemoComponent } from './participation-history-demo'
 
 const meta: Meta<ParticipationHistoryDemoComponent> = {
   component: ParticipationHistoryDemoComponent,
-  title: 'CACiC Eventos/Landing/Histórico de participações',
+  title: 'Public/Landing/Demos/Participation History',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<ParticipationHistoryDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Minhas participações' })).toBeVisible();
@@ -25,9 +24,8 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedCertificateAndArchive: Story = {
+export const CertificateAndArchiveActions: Story = {
   args: { initialParticipation: 'technology' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Baixar certificado de Interfaces que incluem' }));
@@ -37,10 +35,8 @@ export const DarkReducedCertificateAndArchive: Story = {
   },
 };
 
-export const MobileHistory: Story = {
+export const ReturnToHistory: Story = {
   args: { initialParticipation: 'innovation' },
-  globals: { theme: 'light', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Jornada de Inovação' })).toBeVisible();

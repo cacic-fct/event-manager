@@ -121,7 +121,10 @@ export const publicLecturerStoryDefaultControls: PublicLecturerStoryControls = {
 export const publicEventStoryControlArgTypes = {
   name: { control: 'text' },
   emoji: { control: 'text' },
-  type: { control: 'select', options: ['MINICURSO', 'PALESTRA', 'OTHER'] },
+  type: {
+    control: { type: 'select', labels: { MINICURSO: 'Course', PALESTRA: 'Lecture', OTHER: 'Other' } },
+    options: ['MINICURSO', 'PALESTRA', 'OTHER'],
+  },
   context: { control: 'select', options: ['major-event', 'event-group', 'short-description'] },
   majorEventName: { control: 'text' },
   eventGroupName: { control: 'text' },
@@ -138,7 +141,7 @@ export const publicEventCollectionStoryControlArgTypes = {
   ...publicEventStoryControlArgTypes,
   eventCount: {
     control: { type: 'range', min: 0, max: 30, step: 1 },
-    description: 'Quantidade de eventos gerados deterministicamente para listas e calendários.',
+    description: 'Number of deterministically generated events in lists and calendars.',
   },
 } as const;
 
@@ -379,7 +382,7 @@ export function createPublicStoryEvents(controls: Partial<PublicEventCollectionS
     return createPublicStoryEvent({
       id: `public-story-event-${index + 1}`,
       index,
-      name: `${names[index % names.length]} · ${faker.word.adjective()}`,
+      name: `${names[index % names.length]} ${faker.word.adjective()}`,
       emoji: ['🤖', '🔐', '🎨', '📊', '🌱', '🧭'][index % 6],
       context: index % 3 === 0 ? 'major-event' : index % 3 === 1 ? 'event-group' : 'short-description',
       shortDescription: faker.company.catchPhrase(),

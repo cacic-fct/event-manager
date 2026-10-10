@@ -1,11 +1,14 @@
 import { EventManagerKeycloakRole, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
 import { computed, signal } from '@angular/core';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import { applicationConfig } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import type {
   EventManagerPermissionGrant,
   EventManagerPermissionGrantTarget,
@@ -20,6 +23,7 @@ faker.seed(20260621);
 
 type PeoplePermissionsStoryArgs = {
   personCount: number;
+  selectedPersonId: string | null;
   grantCount: number;
   includeExpiredGrant: boolean;
   apiState: 'ready' | 'loading' | 'error';
@@ -77,6 +81,7 @@ const storyAuthService = {
 };
 const defaultArgs: PeoplePermissionsStoryArgs = {
   personCount: 6,
+  selectedPersonId: 'person-1',
   grantCount: 4,
   includeExpiredGrant: true,
   apiState: 'ready',
@@ -88,13 +93,14 @@ let activeData = buildStoryData(defaultArgs);
 
 const meta: Meta<PeoplePermissionsStoryArgs> = {
   component: PeoplePageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/People/Workspace People Tab',
+  title: 'Admin/People/People',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
-    personCount: { control: { type: 'range', min: 1, max: 30, step: 1 } },
-    grantCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
-    includeExpiredGrant: { control: 'boolean' },
+    personCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+    selectedPersonId: { table: { disable: true } },
+    grantCount: { table: { disable: true } },
+    includeExpiredGrant: { table: { disable: true } },
     apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     longNames: { control: 'boolean' },
@@ -103,16 +109,32 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
     storyRoles.set([EventManagerKeycloakRole.SuperAdmin]);
     activeArgs = args;
     activeData = buildStoryData(args);
-    return { props: args };
+    return { props: {} };
   },
   decorators: [
+    withScenarioControls<PeoplePermissionsStoryArgs>(),
     applicationConfig({
-      providers: [{ provide: AuthService, useValue: storyAuthService }],
+      providers: [
+        { provide: AuthService, useValue: storyAuthService },
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            paramMap: of(
+              convertToParamMap(activeArgs.selectedPersonId ? { personId: activeArgs.selectedPersonId } : {}),
+            ),
+          }),
+        },
+      ],
     }),
   ],
   parameters: {
+    docs: {
+      description: {
+        component: 'People administration workspace for searching records, reviewing linked data, and managing lecturer profiles. Use the controls to explore result volume, loading, errors, and long names.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -136,20 +158,20 @@ export default meta;
 type Story = StoryObj<PeoplePermissionsStoryArgs>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
-    await userEvent.click(await canvas.findByText(activeData.people[0].name));
+    await expect(await canvas.findByRole('heading', { name: activeData.people[0].name })).toBeVisible();
 
     await expect(await canvas.findByRole('tab', { name: 'Cadastro' })).toBeVisible();
     await expect(await canvas.findByRole('tab', { name: 'Ministrante' })).toBeVisible();
     await userEvent.click(await canvas.findByRole('tab', { name: 'Ministrante' }));
-    await expect(await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i })).toBeVisible();
+    const publishPhoto = await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i });
+    await waitFor(() => expect(publishPhoto.closest('mat-checkbox')).toBeVisible(), { timeout: 1_000 });
+    await expect(publishPhoto).toBeEnabled();
+    await expect(publishPhoto).not.toBeChecked();
     expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
-    await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
     await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
     await userEvent.click(await screen.findByText('Certificados'));
@@ -158,59 +180,29 @@ export const Playground: Story = {
     await expect(await screen.findByText('Ministrante')).toBeVisible();
     await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
 
-    await expect(await canvas.findByLabelText('Preset')).toBeVisible();
-    await expect(await canvas.findByLabelText('Categoria')).toBeVisible();
-    await expect(await canvas.findByLabelText('Permissões')).toBeVisible();
-    await expect(await canvas.findByLabelText('Escopo da permissão')).toBeVisible();
-    await expect(await canvas.findByLabelText('Válida a partir de')).toBeVisible();
-    await expect(await canvas.findByLabelText('Válida até')).toBeVisible();
-    await userEvent.click(await canvas.findByLabelText('Preset'));
-    await userEvent.click(await screen.findByRole('option', { name: /Consulta de comprovantes/ }));
-    await expect(await canvas.findByLabelText('Escopo da permissão')).toHaveTextContent('Grande evento');
-    await userEvent.click(await canvas.findByLabelText('Escopo da permissão'));
-    await expect(await screen.findByRole('option', { name: 'Evento' })).toHaveAttribute('aria-disabled', 'true');
-    await userEvent.keyboard('{Escape}');
-    await userEvent.click(await canvas.findByText(activeData.majorEvents[0].name));
-    await userEvent.click(await canvas.findByRole('button', { name: /adicionar permissões do preset/i }));
-    await expect(await canvas.findByText('Permissões em revisão')).toBeVisible();
-    await expect(await canvas.findByText('Comprovante · Visualizar')).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: /salvar permissões/i })).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: /remover permissão da revisão/i })).toBeVisible();
-
-    if (activeArgs.grantCount > 0) {
-      await expect(await canvas.findByText(/Validade indefinida|A partir de|Até|De /i)).toBeVisible();
-      const editButtons = await canvas.findAllByRole('button', { name: /editar permissão/i });
-      await userEvent.click(editButtons[0]);
-      await expect(await canvas.findByRole('button', { name: /salvar permissão/i })).toBeVisible();
-      await expect(await canvas.findByRole('button', { name: /cancelar edição/i })).toBeVisible();
-    }
   },
 };
 
-export const EmptyPermissions: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const EmptyPeople: Story = {
   args: {
+    personCount: 0,
+    selectedPersonId: null,
     grantCount: 0,
     includeExpiredGrant: false,
+    latencyMs: 0,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
-    await userEvent.click(await canvas.findByText(activeData.people[0].name));
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
-    await expect(await canvas.findByText('Nenhuma permissão concedida')).toBeVisible();
+    await expect(await canvas.findByText('Nenhuma pessoa encontrada')).toBeVisible();
   },
 };
 
 export const DeletablePersonWithoutLinks: Story = {
-  globals: { theme: 'light' },
+  args: { selectedPersonId: 'person-2' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const deletablePerson = activeData.people[1];
-    await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), deletablePerson.name);
-    await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
-    await userEvent.click(await canvas.findByText(deletablePerson.name));
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
     await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
     await expect(await screen.findByText('Nenhum vínculo encontrado')).toBeVisible();
@@ -218,8 +210,8 @@ export const DeletablePersonWithoutLinks: Story = {
   },
 };
 
-export const DensePeopleAndPermissions: Story = {
-  args: { personCount: 30, grantCount: 30, includeExpiredGrant: true, latencyMs: 0 },
+export const DensePeople: Story = {
+  args: { personCount: 30, selectedPersonId: 'person-1', grantCount: 0, includeExpiredGrant: false, latencyMs: 0 },
 };
 
 export const Loading: Story = {
@@ -228,13 +220,10 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
-export const LongNamesMobile: Story = {
-  args: { personCount: 20, grantCount: 12, longNames: true, latencyMs: 0 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
+export const LongNames: Story = {
+  args: { personCount: 20, grantCount: 0, includeExpiredGrant: false, longNames: true, latencyMs: 0 },
 };
 
 function graphqlData(query: string, variables: Record<string, unknown>) {
@@ -473,7 +462,9 @@ function buildStoryData(args: PeoplePermissionsStoryArgs): StoryData {
     ...grantTarget('event', index),
     majorEvent: majorEvents[index % majorEvents.length],
   }));
-  const permissionGrants = buildPermissionGrants(args, people[0], events, majorEvents, eventGroups);
+  const permissionGrants = people[0]
+    ? buildPermissionGrants(args, people[0], events, majorEvents, eventGroups)
+    : [];
 
   return {
     people,

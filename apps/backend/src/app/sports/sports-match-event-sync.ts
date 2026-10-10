@@ -17,7 +17,7 @@ function sportsMatchLocation(venue: SportsMatchEventVenue | null | undefined) {
         longitude: venue.placePreset.longitude,
         locationDescription: [venue.placePreset.locationDescription, venue.name, venue.courtLabel]
           .filter(Boolean)
-          .join(' · '),
+          .join(', '),
       }
     : {
         latitude: null,
@@ -75,6 +75,7 @@ export function updateSportsMatchBackingEvent(
     venue?: SportsMatchEventVenue | null;
     venueChanged: boolean;
     youtubeCode?: string | null;
+    twitchChannel?: string | null;
     livestreamChanged: boolean;
     actorId: string;
   },
@@ -86,7 +87,12 @@ export function updateSportsMatchBackingEvent(
       startDate: input.startDate,
       endDate: input.endDate,
       ...(input.venueChanged ? sportsMatchLocation(input.venue) : {}),
-      ...(input.livestreamChanged ? { youtubeCode: input.youtubeCode ?? null } : {}),
+      ...(input.livestreamChanged
+        ? {
+            youtubeCode: input.youtubeCode ?? null,
+            twitchChannel: input.twitchChannel ?? null,
+          }
+        : {}),
       updatedById: input.actorId,
     },
   });

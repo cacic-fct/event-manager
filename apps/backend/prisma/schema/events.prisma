@@ -105,9 +105,10 @@ model Event {
   publicationScheduledBy String?
   publicationUpdatedBy   String?
 
-  youtubeCode String?
-  buttonText  String?
-  buttonLink  String?
+  youtubeCode   String?
+  twitchChannel String?
+  buttonText    String?
+  buttonLink    String?
 
   deletedAt DateTime?
 

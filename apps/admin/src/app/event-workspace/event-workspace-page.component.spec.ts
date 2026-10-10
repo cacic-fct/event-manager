@@ -18,11 +18,15 @@ describe('event workspace child lists', () => {
   async function render(section?: string) {
     const events = Array.from({ length: 51 }, (_, index) => createAdminEvent({ id: `event-${index}` }));
     const listEvents = vi.fn(({ skip = 0, take = 50 }: { skip?: number; take?: number }) => of(events.slice(skip, skip + take)));
+    const navigate = vi.fn().mockResolvedValue(true);
     const workspace = { context: signal(null), canReadActivities: () => true };
     TestBed.configureTestingModule({ providers: [
       { provide: ADMIN_SHELL_CONTEXT, useValue: true },
-      { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ targetType: 'group', targetId: 'group-1', ...(section ? { section } : {}) })) } },
-      { provide: Router, useValue: {} },
+      { provide: ActivatedRoute, useValue: {
+        paramMap: of(convertToParamMap({ targetType: 'group', targetId: 'group-1', ...(section ? { section } : {}) })),
+        snapshot: { data: {} },
+      } },
+      { provide: Router, useValue: { navigate } },
       { provide: MatDialog, useValue: {} },
       { provide: EventWorkspaceContextService, useValue: workspace },
       { provide: PermissionsService, useValue: { has: () => true } },
@@ -35,7 +39,7 @@ describe('event workspace child lists', () => {
     await TestBed.compileComponents();
     const fixture = TestBed.createComponent(EventWorkspacePageComponent);
     await fixture.whenStable();
-    return { fixture, listEvents };
+    return { fixture, listEvents, navigate };
   }
 
   it('collects all child pages instead of exposing nested pagination', async () => {
@@ -50,5 +54,23 @@ describe('event workspace child lists', () => {
   it('does not fetch the overview child lists when opening settings', async () => {
     const { listEvents } = await render('settings');
     expect(listEvents).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['event', 'event-1'],
+    ['group', 'group-1'],
+    ['major-event', 'major-event-1'],
+  ] as const)('opens the selected %s context in settings', async (kind, id) => {
+    const { fixture, navigate } = await render();
+    const component = fixture.componentInstance as unknown as {
+      contextRoute(ref: { kind: 'event' | 'group' | 'major-event'; id: string }): string[];
+      selectContext(ref: { kind: 'event' | 'group' | 'major-event'; id: string }): void;
+    };
+
+    expect(component.contextRoute({ kind, id })).toEqual(['/event-workspace', kind, id, 'settings']);
+    component.selectContext({ kind, id });
+    await fixture.whenStable();
+
+    expect(navigate).toHaveBeenCalledWith(['/event-workspace', kind, id, 'settings']);
   });
 });

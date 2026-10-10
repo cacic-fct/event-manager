@@ -1,3 +1,5 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
 :host {
   display: block;
   min-height: 100%;
@@ -7,8 +9,8 @@
 .draw-stage {
   display: grid;
   gap: 1.5rem;
-  width: min(72rem, calc(100% - 2rem));
-  margin: 0 auto;
+  @include view-widths.view(1);
+  width: calc(100% - 2rem);
   padding: 1.5rem 0 4rem;
 }
 

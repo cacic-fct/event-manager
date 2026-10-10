@@ -4,16 +4,15 @@ import { PrizeDrawDemoComponent } from './prize-draw-demo';
 
 const meta: Meta<PrizeDrawDemoComponent> = {
   component: PrizeDrawDemoComponent,
-  title: 'CACiC Eventos/Landing/Prize Draw Demo',
+  title: 'Public/Landing/Demos/Prize Draw',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<PrizeDrawDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', motion: 'full' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Kit criatividade')).toBeVisible();
@@ -24,22 +23,8 @@ export const Playground: Story = {
   },
 };
 
-export const Mobile: Story = {
-  globals: { theme: 'light', motion: 'full' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('Kit criatividade')).toBeVisible();
-    await expect(
-      await canvas.findByText('Resultado: Beatriz Lima ganhou Kit criatividade.', {}, { timeout: 4500 }),
-    ).toBeInTheDocument();
-    await expect(canvas.getByRole('button', { name: 'Sortear novamente' })).toBeVisible();
-  },
-};
-
-export const DarkReducedMotionWinner: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
+export const ReducedMotionWinner: Story = {
+  globals: { motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const startButton = canvas.queryByRole('button', { name: 'Sortear' });
@@ -56,7 +41,6 @@ export const DarkReducedMotionWinner: Story = {
 };
 
 export const ManualReplay: Story = {
-  globals: { theme: 'light', motion: 'full' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(

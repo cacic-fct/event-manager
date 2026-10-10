@@ -24,7 +24,7 @@ interface PersonSearchStoryArgs {
 
 const defaultArgs: PersonSearchStoryArgs = {
   disabled: false,
-  disabledReason: 'Buscar pessoas exige permissão de Pessoa · Visualizar.',
+  disabledReason: 'Buscar pessoas exige permissão de Pessoa: Visualizar.',
   label: 'Buscar pessoa para vincular',
   loading: false,
   minimumQueryLength: 2,
@@ -42,7 +42,7 @@ const defaultArgs: PersonSearchStoryArgs = {
 
 const meta: Meta<PersonSearchStoryArgs> = {
   component: PersonSearchComponent,
-  title: 'CACiC Eventos/Workspace/Components/Person Search',
+  title: 'Admin/People/People/Search',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -91,29 +91,27 @@ export const Loading: Story = { args: { loading: true, resultCount: 0 } };
 export const Empty: Story = { args: { query: 'Pessoa inexistente', resultCount: 0 } };
 
 export const MissingOptionalData: Story = {
-  name: 'Sem e-mail ou documentos',
+  name: 'Missing optional data',
   args: { showAcademicId: false, showEmail: false, showIdentityDocument: false },
 };
 
-export const DenseResults: Story = { name: 'Muitos resultados', args: { resultCount: 40 } };
+export const DenseResults: Story = { name: 'Dense results', args: { resultCount: 40 } };
 
 export const PermissionRequired: Story = {
   args: {
     disabled: true,
     resultCount: 0,
-    disabledReason: 'Buscar pessoas exige permissão de Pessoa · Visualizar.',
+    disabledReason: 'Buscar pessoas exige permissão de Pessoa: Visualizar.',
   },
 };
 
-export const LongContentOnMobile: Story = {
-  name: 'Conteúdo extenso no celular',
+export const LongContent: Story = {
+  name: 'Long content',
   args: {
     label: 'Buscar pessoa responsável pela organização e pelo acompanhamento desta atividade',
     resultActionLabel: 'Vincular como pessoa responsável',
     resultCount: 8,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };
 
 function createPeople(args: PersonSearchStoryArgs): Person[] {

@@ -8,12 +8,15 @@ describe('OrganizerInfoComponent', () => {
     const first = new Subject<OrganizerInfo | null>();
     const second = new Subject<OrganizerInfo | null>();
     const api = { getOrganizerInfoStrict: vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second) };
+    const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
     const component = Object.create(OrganizerInfoComponent.prototype) as unknown as {
       api: typeof api;
+      routeErrors: typeof routeErrors;
       loadedOrganizerTarget: string | null;
       loadOrganizerInfo(params: ReturnType<typeof convertToParamMap>): Subject<unknown>;
     };
     component.api = api;
+    component.routeErrors = routeErrors;
     component.loadedOrganizerTarget = null;
     const states: unknown[] = [];
 
@@ -29,7 +32,8 @@ describe('OrganizerInfoComponent', () => {
 
     expect(states).toEqual([
       { status: 'ready', info: firstInfo },
-      { status: 'error', message: 'Falha ao carregar B' },
+      { status: 'loading' },
     ]);
+    expect(routeErrors.navigate).toHaveBeenCalledWith(500);
   });
 });

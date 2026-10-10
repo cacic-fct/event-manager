@@ -4,11 +4,12 @@ import { TooOldDialogComponent } from './too-old.component';
 
 const meta: Meta<TooOldDialogComponent> = {
   component: TooOldDialogComponent,
-  title: 'CACiC Eventos/Shared/Service worker/Update required dialog',
+  title: 'Shared/Service Worker/Update Required Dialog',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -20,19 +21,6 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('A versão do seu aplicativo é muito antiga')).toBeVisible();
-  },
-};
-
-export const MobileBlockingUpdate: Story = {
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'OK' })).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
 };

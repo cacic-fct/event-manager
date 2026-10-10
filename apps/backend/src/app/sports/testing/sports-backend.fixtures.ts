@@ -533,6 +533,7 @@ export function sportsAdminTeamMemberRecord(overrides: Record<string, unknown> =
     revision: 1,
     approvedAt: sportsTestDate(-60_000),
     approvedById: 'actor-original',
+    rejectionReason: null,
     deletedAt: null,
     participant: { person: { name: 'Ana Silva' } },
     team: {

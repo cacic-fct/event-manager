@@ -2,7 +2,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { delay, of, throwError } from 'rxjs';
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { createAdminPerson } from '../../testing/admin-entity-fixtures';
 import { PersonCreateDialogComponent } from './person-create-dialog.component';
@@ -42,14 +42,14 @@ function createdPerson(): Person {
 
 const meta: Meta<PersonCreateDialogStoryArgs> = {
   component: PersonCreateDialogComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Person Create Dialog',
+  title: 'Admin/People/People/Create',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
-    name: { control: 'text' },
-    email: { control: 'text' },
-    identityDocument: { control: 'text' },
-    academicId: { control: 'text' },
+    name: { control: 'text', table: { disable: true } },
+    email: { control: 'text', table: { disable: true } },
+    identityDocument: { control: 'text', table: { disable: true } },
+    academicId: { control: 'text', table: { disable: true } },
     duplicateState: { control: 'inline-radio', options: ['none', 'email', 'document'] },
     saveOutcome: { control: 'inline-radio', options: ['success', 'error'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
@@ -89,7 +89,16 @@ const meta: Meta<PersonCreateDialogStoryArgs> = {
   beforeEach: () => {
     closeDialog.mockClear();
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'People creation dialog with controls for duplicate detection, save outcome, and simulated latency. The form remains interactive for direct input testing.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -110,7 +119,9 @@ export const Playground: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = await fillForm(canvasElement, args);
     await userEvent.click(canvas.getByRole('button', { name: 'Criar pessoa' }));
-    await expect(closeDialog).toHaveBeenCalledWith(expect.objectContaining({ name: args.name, email: args.email }));
+    await waitFor(() =>
+      expect(closeDialog).toHaveBeenCalledWith(expect.objectContaining({ name: args.name, email: args.email })),
+    );
   },
 };
 
@@ -148,15 +159,4 @@ export const RequiredValidation: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Criar pessoa' }));
     await expect(closeDialog).not.toHaveBeenCalled();
   },
-};
-
-export const LongContentMobile: Story = {
-  args: {
-    name: 'Marina Aparecida de Souza Albuquerque dos Santos e Oliveira',
-    email: 'marina.aparecida.souza.albuquerque@instituicao.example.br',
-    identityDocument: '52998224725123456789',
-    academicId: '202612345678901234',
-  },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

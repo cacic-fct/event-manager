@@ -11,14 +11,19 @@ import {
 
 const meta: Meta<PageStoryArgs> = {
   component: MajorEventsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Major Events/Workspace Major Events Tab',
+  title: 'Admin/Event Management/Major Events',
   tags: ['autodocs'],
   args: defaultPageStoryArgs,
   argTypes: pageStoryArgTypes,
   decorators: [withPageStoryProviders],
   parameters: {
+    docs: {
+      description: {
+        component: 'Major event catalog with controls for event density, selection, and publication behavior.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -59,15 +64,12 @@ export const FrozenSportsTournament: Story = {
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
-export const LongContentTablet: Story = {
+export const LongContent: Story = {
   args: { longContent: true, itemCount: 12 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
 export const EmptyReadonly: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'readonly',
     itemCount: 0,
@@ -121,14 +123,11 @@ export const OptionalPaymentWithPrices: Story = {
 };
 
 export const SearchMajorEvents: Story = {
-  args: { itemCount: 12 },
+  name: 'Major event activity editor',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const records = canvasElement.querySelectorAll('app-workspace-record');
-    await expect(records).toHaveLength(12);
-    await userEvent.type(canvas.getByLabelText('Buscar grande evento por nome'), 'inexistente');
-    await expect(canvas.getByText('Nenhum grande evento encontrado')).toBeVisible();
-    await userEvent.clear(canvas.getByLabelText('Buscar grande evento por nome'));
-    await expect(canvasElement.querySelectorAll('app-workspace-record')).toHaveLength(12);
+    await expect(canvas.getByText('Editar grande evento')).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Buscar atividades por nome' })).toHaveValue('Angular');
+    await expect(canvasElement.querySelectorAll('.inline-list button').length).toBeGreaterThan(0);
   },
 };

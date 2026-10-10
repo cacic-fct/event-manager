@@ -1,5 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
+import { isDeepStrictEqual } from 'node:util';
 import { AuditRecordOptions } from '../audit-log/audit-log.types';
 import { EventFormRecord, EventFormResponseRecord } from './event-form-records';
 
@@ -34,6 +35,7 @@ export function eventFormResponseAuditRecord(
   actor: AuditRecordOptions['actor'],
   before: EventFormResponseRecord | null,
 ): AuditRecordOptions {
+  const answersChanged = before === null || !isDeepStrictEqual(before.answers, response.answers);
   return {
     entityType: AuditLogEntityType.EVENT_FORM_RESPONSE,
     entityId: response.id,
@@ -55,7 +57,9 @@ export function eventFormResponseAuditRecord(
       formId: form.id,
       linkId: response.linkId,
       responseSource: response.source,
+      answersChanged,
     },
+    force: answersChanged,
   };
 }
 
@@ -75,6 +79,7 @@ function eventFormAuditSnapshot(form: EventFormRecord): Record<string, unknown> 
     id: form.id,
     name: form.name,
     description: form.description,
+    descriptionImages: eventFormImageReferenceSnapshot(form.descriptionImages),
     ownerEventId: form.ownerEventId,
     ownerMajorEventId: form.ownerMajorEventId,
     elements: form.elements,
@@ -111,6 +116,7 @@ function eventFormResponseAuditSnapshot(response: EventFormResponseRecord): Reco
   return {
     id: response.id,
     formId: response.formId,
+    personId: response.personId,
     linkId: response.linkId,
     targetType: response.targetType,
     eventId: response.eventId,
@@ -119,6 +125,20 @@ function eventFormResponseAuditSnapshot(response: EventFormResponseRecord): Reco
     submittedAt: response.submittedAt,
     updatedAt: response.updatedAt,
   };
+}
+
+function eventFormImageReferenceSnapshot(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((image): Record<string, unknown>[] => {
+    if (!image || typeof image !== 'object' || Array.isArray(image)) return [];
+    const reference = image as Record<string, unknown>;
+    if (typeof reference['id'] !== 'string') return [];
+    return [{
+      id: reference['id'],
+      ...(typeof reference['altText'] === 'string' ? { altText: reference['altText'] } : {}),
+      ...(typeof reference['caption'] === 'string' ? { caption: reference['caption'] } : {}),
+    }];
+  });
 }
 
 function eventFormAuditScope(form: EventFormRecord): {

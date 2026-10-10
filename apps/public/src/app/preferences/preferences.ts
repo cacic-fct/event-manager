@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,7 +19,7 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
 
     <main class="global-container">
       <mat-nav-list>
-        <h3 matSubheader>Aplicativo</h3>
+        <h2 matSubheader>Aplicativo</h2>
 
         <a mat-list-item routerLink="/preferences/calendar">
           <mat-icon matListItemIcon>calendar_month</mat-icon>
@@ -33,7 +33,7 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
         </a>
 
         @if (authService.isAuthenticated()) {
-          <h3 matSubheader>Conta</h3>
+          <h2 matSubheader>Conta</h2>
 
           <a mat-list-item href="https://account.cacic.com.br/app/">
             <mat-icon matListItemIcon>person_edit</mat-icon>
@@ -60,7 +60,6 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
       </mat-nav-list>
     </main>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Preferences {
   readonly authService = inject(AuthService);

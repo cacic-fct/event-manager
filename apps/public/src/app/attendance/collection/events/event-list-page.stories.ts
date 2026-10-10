@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
@@ -73,18 +74,18 @@ function collectionEvents(count = activeArgs.eventCount): AttendanceCollectionEv
 
 const meta: Meta<ScannerEventListStoryArgs> = {
   component: ScannerEventList,
-  title: 'CACiC Eventos/Attendance/Collection/Event List',
+  title: 'Public/Attendance/Collection/Event List',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
     loadMode: {
       control: 'inline-radio',
       options: ['ready', 'loading', 'empty', 'offline-cache', 'offline-empty'],
-      description: 'Origem e estado da lista autorizada para coleta.',
+      description: 'Selects the source and load state for the authorized collection event list.',
     },
     eventCount: {
       control: { type: 'range', min: 0, max: 30, step: 1 },
-      description: 'Quantidade de eventos gerados deterministicamente.',
+      description: 'Sets how many deterministic events the mock generates.',
     },
     cacheCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     namePrefix: { control: 'text' },
@@ -98,6 +99,7 @@ const meta: Meta<ScannerEventListStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<ScannerEventListStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -132,7 +134,7 @@ const meta: Meta<ScannerEventListStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   beforeEach: () => {
     Object.defineProperty(navigator, 'geolocation', {
@@ -168,12 +170,10 @@ export const Playground: Story = {
 };
 
 export const ManyAuthorizedEvents: Story = {
-  name: 'Muitos eventos autorizados',
   args: { eventCount: 30 },
 };
 
 export const Empty: Story = {
-  name: 'Sem eventos autorizados',
   args: { loadMode: 'empty' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nenhum evento disponível')).toBeVisible();
@@ -181,9 +181,8 @@ export const Empty: Story = {
 };
 
 export const OfflineCache: Story = {
-  name: 'Cache off-line',
   args: { loadMode: 'offline-cache' },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Credenciamento')).toBeVisible();
   },
@@ -195,19 +194,18 @@ export const Loading: Story = {
 
 export const OfflineWithoutCache: Story = {
   args: { loadMode: 'offline-empty', cacheCount: 0 },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
 };
 
 export const PastEvents: Story = {
   args: { eventCount: 8, startOffsetMinutes: -240, durationMinutes: 60 },
 };
 
-export const LongNamesMobile: Story = {
+export const LongNames: Story = {
   args: {
     eventCount: 12,
     namePrefix: 'Atividade interdisciplinar de tecnologia, acessibilidade e extensão universitária',
     missingLocationEvery: 2,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
 };

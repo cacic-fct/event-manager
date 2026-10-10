@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -30,7 +30,6 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
 
 @Component({
   selector: 'lib-event-form-builder',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
     MatDatepickerModule,
@@ -81,7 +80,7 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
             <header>
               <div>
                 <span>{{ labels[element.type] }}</span>
-                <h3>{{ element.title }}</h3>
+                <h3>{{ element.title || labels[element.type] }}</h3>
               </div>
               <div class="item-actions">
                 <button

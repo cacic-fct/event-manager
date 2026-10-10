@@ -24,7 +24,6 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       winnerRegistrationId: string | null;
       loserRegistrationId: string | null;
       category: {
-        bracketRules: Prisma.JsonValue;
         overallScoringRules: Prisma.JsonValue;
         tournamentId: string;
         tournament: {
@@ -41,14 +40,10 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
     if (!winnerId || !loserId) {
       return;
     }
-    const bracketRules = this.readRecord(match.category.bracketRules);
     const overallRules =
       match.category.tournament.scoringMode === SportsScoringMode.PER_SPORT
         ? normalizeSportsOverallScoringRules({ mode: 'NONE' })
-        : normalizeSportsOverallScoringRules(
-            match.category.overallScoringRules,
-            this.readRecord(bracketRules['placementPoints']),
-          );
+        : normalizeSportsOverallScoringRules(match.category.overallScoringRules);
     const placementScoringEnabled = sportsOverallScoringUsesFinalPlacement(overallRules.mode);
     const effectiveRanking = rankedRegistrationIds.length > 0 ? rankedRegistrationIds : [winnerId, loserId];
     const placements = effectiveRanking.map((registrationId, index) => {
@@ -427,7 +422,6 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       categoryId: string;
       category: {
         format: SportsFormat;
-        bracketRules: Prisma.JsonValue;
         overallScoringRules: Prisma.JsonValue;
         tournamentId: string;
         tournament: {

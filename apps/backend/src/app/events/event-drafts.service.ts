@@ -10,6 +10,7 @@ import {
 import { addDays, isValid, parseISO, subDays } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { eventContentAuditSnapshot } from './event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
@@ -26,6 +27,7 @@ import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type Au
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -150,6 +152,7 @@ const EVENT_DETAIL_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -205,6 +208,7 @@ const EVENT_AUDIT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -282,7 +286,9 @@ export class EventDraftsService {
 
   async saveEventDraft(input: EventDraftSaveInput, user: AuthenticatedUser | undefined): Promise<EventDraft> {
     const sourceEvent = await this.readSourceEventForDraft(input.sourceEventId);
-    const normalizedInput = await this.normalizeEventCertificateInput(input.input, sourceEvent.id);
+    const normalizedInput = this.normalizeEventLivestreamFields(
+      await this.normalizeEventCertificateInput(input.input, sourceEvent.id),
+    );
     await this.assertCanWriteDraft(sourceEvent.id, normalizedInput, user);
 
     const actor = await this.resolveDraftActor(user);
@@ -364,9 +370,8 @@ export class EventDraftsService {
       throw new NotFoundException(`Event draft ${draftId} was not found.`);
     }
 
-    const payload = await this.normalizeEventCertificateInput(
-      this.eventInputFromDraftPayload(draft.payload),
-      draft.sourceEventId,
+    const payload = this.normalizeEventLivestreamFields(
+      await this.normalizeEventCertificateInput(this.eventInputFromDraftPayload(draft.payload), draft.sourceEventId),
     );
     await this.assertCanWriteDraft(draft.sourceEventId, payload, user);
 
@@ -447,8 +452,8 @@ export class EventDraftsService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
-          after: withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange),
+          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true)),
+          after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange)),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,
@@ -617,6 +622,22 @@ export class EventDraftsService {
 
   private normalizeDraftPayload(input: EventUpdateInput): Prisma.InputJsonObject {
     return this.normalizeJsonRecord(input);
+  }
+
+  private normalizeEventLivestreamFields(input: EventUpdateInput): EventUpdateInput {
+    const youtubeCode = normalizeYoutubeCode(input.youtubeCode);
+    const twitchChannel = normalizeTwitchChannel(input.twitchChannel);
+    if (input.youtubeCode?.trim() && !youtubeCode) {
+      throw new BadRequestException('Informe um código ou link válido do YouTube.');
+    }
+    if (input.twitchChannel?.trim() && !twitchChannel) {
+      throw new BadRequestException('Informe um canal ou link válido da Twitch.');
+    }
+    return {
+      ...input,
+      ...(input.youtubeCode !== undefined ? { youtubeCode } : {}),
+      ...(input.twitchChannel !== undefined ? { twitchChannel } : {}),
+    };
   }
 
   private normalizeJsonRecord(input: object): EventDraftPayload {
@@ -873,10 +894,6 @@ export class EventDraftsService {
       draftId: draft.id,
       sourceEventId: draft.sourceEventId,
       name: draft.name,
-      createdByName: draft.createdByName,
-      updatedByName: draft.updatedByName,
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
       expiresAt: draft.expiresAt,
     };
   }

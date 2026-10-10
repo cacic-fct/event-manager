@@ -1,9 +1,14 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn } from '@angular/router';
+import { authGuard } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 
-export const myDayFeatureGuard: CanActivateFn = () => {
+export const myDayFeatureGuard: CanActivateFn = async (route, state) => {
   const flags = inject(PublicFeatureFlagService);
-  const router = inject(Router);
-  return flags.booleanValue('myDayTabEnabled') ? true : router.createUrlTree(['/calendar']);
+  const errors = inject(RouteErrorService);
+  const authResult = await authGuard(route, state);
+  if (authResult !== true) return authResult;
+
+  return flags.booleanValue('myDayTabEnabled') ? true : errors.guardRedirect(404);
 };

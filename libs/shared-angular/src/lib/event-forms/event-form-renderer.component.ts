@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -28,7 +28,6 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
 
 @Component({
   selector: 'lib-event-form-renderer',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
     MatButtonModule,
@@ -67,7 +66,11 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
           } @else {
             <div class="question-heading">
               <div>
-                <h3>{{ element.title }}</h3>
+                @if (questionHeadingLevel() === 2) {
+                  <h2 class="question-title">{{ element.title }}</h2>
+                } @else {
+                  <h3 class="question-title">{{ element.title }}</h3>
+                }
                 @if (element.description) {
                   <p class="description">{{ element.description }}</p>
                 }
@@ -138,19 +141,27 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                   <div class="grid-answer">
                     <div class="grid-row grid-row--header">
                       <span></span>
-                      @for (column of element.settings?.grid?.columns ?? []; track column.id) {
-                        <span>{{ column.label }}</span>
-                      }
+                      <div
+                        class="grid-row-options"
+                        [style.grid-template-columns]="gridColumnsTemplate(element)">
+                        @for (column of element.settings?.grid?.columns ?? []; track column.id) {
+                          <span>{{ column.label }}</span>
+                        }
+                      </div>
                     </div>
                     @for (row of element.settings?.grid?.rows ?? []; track row.id) {
                       <div class="grid-row">
                         <strong>{{ row.label }}</strong>
-                        @for (column of element.settings?.grid?.columns ?? []; track column.id) {
-                          <mat-radio-button
-                            [name]="element.id + '-' + row.id"
-                            [checked]="gridStringAnswer(element.id, row.id) === column.id"
-                            (change)="setGridStringAnswer(element.id, row.id, column.id)" />
-                        }
+                        <mat-radio-group
+                          class="grid-row-options"
+                          [style.grid-template-columns]="gridColumnsTemplate(element)"
+                          [attr.aria-label]="element.title + ', ' + row.label"
+                          [value]="gridStringAnswer(element.id, row.id)"
+                          (change)="setGridStringAnswer(element.id, row.id, $event.value)">
+                          @for (column of element.settings?.grid?.columns ?? []; track column.id) {
+                            <mat-radio-button [value]="column.id" [aria-label]="column.label" />
+                          }
+                        </mat-radio-group>
                       </div>
                     }
                   </div>
@@ -159,18 +170,29 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                   <div class="grid-answer">
                     <div class="grid-row grid-row--header">
                       <span></span>
-                      @for (column of element.settings?.grid?.columns ?? []; track column.id) {
-                        <span>{{ column.label }}</span>
-                      }
+                      <div
+                        class="grid-row-options"
+                        [style.grid-template-columns]="gridColumnsTemplate(element)">
+                        @for (column of element.settings?.grid?.columns ?? []; track column.id) {
+                          <span>{{ column.label }}</span>
+                        }
+                      </div>
                     </div>
                     @for (row of element.settings?.grid?.rows ?? []; track row.id) {
                       <div class="grid-row">
                         <strong>{{ row.label }}</strong>
-                        @for (column of element.settings?.grid?.columns ?? []; track column.id) {
-                          <mat-checkbox
-                            [checked]="isGridOptionChecked(element.id, row.id, column.id)"
-                            (change)="toggleGridMultipleAnswer(element.id, row.id, column.id, $event.checked)" />
-                        }
+                        <div
+                          class="grid-row-options"
+                          role="group"
+                          [style.grid-template-columns]="gridColumnsTemplate(element)"
+                          [attr.aria-label]="element.title + ', ' + row.label">
+                          @for (column of element.settings?.grid?.columns ?? []; track column.id) {
+                            <mat-checkbox
+                              [attr.aria-label]="element.title + ', ' + row.label + ', ' + column.label"
+                              [checked]="isGridOptionChecked(element.id, row.id, column.id)"
+                              (change)="toggleGridMultipleAnswer(element.id, row.id, column.id, $event.checked)" />
+                          }
+                        </div>
                       </div>
                     }
                   </div>
@@ -197,6 +219,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                         mat-icon-button
                         type="button"
                         [class.selected-star]="numberAnswer(element.id) >= value"
+                        [attr.aria-label]="(element.title || 'Avaliação por estrelas') + ': ' + value + ' ' + (value === 1 ? 'estrela' : 'estrelas')"
                         [matTooltip]="value + ' estrela' + (value === 1 ? '' : 's')"
                         (click)="setAnswer(element.id, value)">
                         <mat-icon>{{ numberAnswer(element.id) >= value ? 'star' : 'star_border' }}</mat-icon>
@@ -320,7 +343,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
       margin-block: 0;
     }
 
-    h3 {
+    .question-title {
       font-size: 1rem;
       font-weight: 600;
     }
@@ -365,10 +388,16 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
 
     .grid-row {
       display: grid;
-      grid-template-columns: minmax(140px, 1fr) repeat(auto-fit, minmax(88px, 1fr));
+      grid-template-columns: minmax(140px, 1fr) minmax(0, 3fr);
       align-items: center;
       gap: 8px;
       min-width: 420px;
+    }
+
+    .grid-row-options {
+      display: grid;
+      align-items: center;
+      gap: 8px;
     }
 
     .grid-row--header {
@@ -411,6 +440,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
 export class EventFormRendererComponent {
   readonly elements = input<readonly FormElement[]>([]);
   readonly initialAnswers = input<readonly FormResponseAnswer[]>([]);
+  readonly questionHeadingLevel = input<2 | 3>(3);
   readonly readOnly = input(false);
   readonly showSubmit = input(true);
   readonly submitLabel = input('Enviar respostas');
@@ -478,6 +508,10 @@ export class EventFormRendererComponent {
     const value = answerValue(this.answers(), elementId);
     const record = this.isRecord(value) ? (value as Record<string, unknown>) : null;
     return typeof record?.[rowId] === 'string' ? record[rowId] : '';
+  }
+
+  gridColumnsTemplate(element: FormElement): string {
+    return `repeat(${element.settings?.grid?.columns?.length ?? 1}, minmax(88px, 1fr))`;
   }
 
   setGridStringAnswer(elementId: string, rowId: string, columnId: string): void {

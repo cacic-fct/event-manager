@@ -102,8 +102,11 @@ export class OfflineAttendanceSubmissions {
             personId: submission.personId,
             authorUserId: submission.authorUserId,
             submittedById: submission.submittedById,
-            stagedReason: submission.stagedReason,
-            resolutionError: submission.resolutionError,
+            createdByMethod: submission.createdByMethod,
+            status: submission.status,
+            resolutionIssue: classifyOfflineAttendanceMessage(
+              submission.resolutionError ?? submission.stagedReason,
+            ),
           },
           scope: {
             permission: Permission.EventAttendance.Collect,

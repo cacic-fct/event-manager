@@ -1,6 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   OnInit,
@@ -36,7 +35,6 @@ const ORAL_FEED_RECONNECT_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-oral-attendance-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [OralAttendanceComponent],
   template: `
     @if (event(); as selectedEvent) {

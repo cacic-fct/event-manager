@@ -1,4 +1,5 @@
-import { Component, inject, input } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, inject, input, PLATFORM_ID } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import {
@@ -44,8 +45,8 @@ export class PrizeDrawResultDialogStoryHarness {
   readonly drawTitle = input('Sorteio de boas-vindas');
   readonly spinDescription = input('Camiseta do evento');
   readonly demo = input(false);
-  readonly reducedMotion = input(false);
   private readonly dialog = inject(MatDialog);
+  private readonly platformId = inject(PLATFORM_ID);
 
   open(): void {
     const result = createPrizeDrawSpinResultStory({
@@ -62,7 +63,8 @@ export class PrizeDrawResultDialogStoryHarness {
             drawTitle: this.drawTitle(),
             spinDescription: this.spinDescription() || null,
           },
-          reducedMotion: this.reducedMotion(),
+          reducedMotion: isPlatformBrowser(this.platformId)
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
           publicDrawUrl: PRIZE_DRAW_STORY_PUBLIC_URL,
         },
         width: '100vw',

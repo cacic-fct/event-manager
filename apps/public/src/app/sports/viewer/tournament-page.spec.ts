@@ -5,7 +5,11 @@ import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { SportsTournamentPage } from './tournament-page';
 import { SportsViewerApiService } from './sports-viewer-api.service';
-import { createSportsViewerMatchForState, createSportsViewerTournament } from './sports-viewer.fixtures';
+import {
+  createSportsViewerMatch,
+  createSportsViewerMatchForState,
+  createSportsViewerTournament,
+} from './sports-viewer.fixtures';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
 
 describe('SportsTournamentPage', () => {
@@ -53,8 +57,10 @@ describe('SportsTournamentPage', () => {
     const finishedMatch = tournament.matches[0];
     if (!category || !finishedMatch) throw new Error('Expected tournament fixture details.');
 
+    expect(getTournament).toHaveBeenCalledWith('tournament-fixture');
     expect(page.selectedCategory()?.id).toBe(tournament.categories[0]?.id);
     expect(page.liveMatches()).toHaveLength(1);
+    expect(page.livestreamMatches()).toHaveLength(1);
     expect(page.upcomingMatches()).toHaveLength(1);
     expect(page.recentMatches()).toHaveLength(1);
     expect(page.categoryTitle(category)).toContain('Futsal');
@@ -70,6 +76,43 @@ describe('SportsTournamentPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/sports/match', 'match-target']);
     page.goBack();
     expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('shows configured active streams once when matches share a provider identifier', () => {
+    const matches = [
+      createSportsViewerMatch({
+        id: 'youtube-first',
+        state: 'LIVE',
+        livestreamProvider: 'YOUTUBE',
+        livestreamUrl: 'https://youtu.be/shared-stream',
+      }),
+      createSportsViewerMatch({
+        id: 'youtube-duplicate',
+        state: 'PAUSED',
+        livestreamProvider: 'YOUTUBE',
+        livestreamUrl: 'shared-stream',
+      }),
+      createSportsViewerMatch({
+        id: 'twitch-channel',
+        state: 'LIVE',
+        livestreamProvider: 'TWITCH',
+        livestreamUrl: 'https://www.twitch.tv/tacacomputa',
+      }),
+      createSportsViewerMatch({ id: 'upcoming', state: 'SCHEDULED' }),
+    ];
+    getTournament.mockReturnValue(of(createSportsViewerTournament({ matches })));
+    const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
+
+    expect(page.livestreamMatches().map((match) => match.id)).toEqual(['youtube-first', 'twitch-channel']);
+  });
+
+  it('loads only the canonical tournament route parameter', () => {
+    paramMap.next(convertToParamMap({ id: 'tournament-fixture' }));
+    TestBed.runInInjectionContext(() => new SportsTournamentPage());
+    expect(getTournament).not.toHaveBeenCalled();
+
+    paramMap.next(convertToParamMap({ tournamentId: 'tournament-fixture' }));
+    expect(getTournament).toHaveBeenCalledWith('tournament-fixture');
   });
 
   it('does not open a browser-only realtime stream during server rendering', () => {
@@ -101,7 +144,7 @@ describe('SportsTournamentPage', () => {
     expect(getTournament).toHaveBeenCalledTimes(2);
   });
 
-  it('exposes API and realtime failures without discarding loaded tournament data', () => {
+  it('exposes API errors inline and preserves loaded data after a realtime disconnect', () => {
     getTournament.mockReturnValueOnce(throwError(() => 'offline'));
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     expect(page.pageState()).toEqual({ status: 'error', message: 'Não foi possível carregar este torneio.' });

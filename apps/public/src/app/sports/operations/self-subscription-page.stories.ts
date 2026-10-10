@@ -1,13 +1,14 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 
 interface SelfSubscriptionStoryArgs {
   paymentRequired: boolean;
@@ -29,7 +30,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<SelfSubscriptionStoryArgs> = {
   component: SportsSelfSubscriptionPage,
-  title: 'CACiC Eventos/Sports/Operations/Self-registration',
+  title: 'Public/Sports/Operations/Registration',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -37,13 +38,14 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
     emptyOptions: { control: 'boolean' },
     allowNoTeam: { control: 'boolean' },
     allowNoCategory: { control: 'boolean' },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
   },
   render: (args) => {
     activeArgs = args;
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<SelfSubscriptionStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -52,6 +54,7 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
           useValue: {
             snapshot: {
               paramMap: convertToParamMap({ tournamentId: 'interfct-2026' }),
+              queryParamMap: convertToParamMap({}),
             },
           },
         },
@@ -62,9 +65,6 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
             tournament: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('As inscrições ainda não estão abertas.'));
               }
               return of(
                 createCurrentUserTournamentOperations({
@@ -85,7 +85,7 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
       ],
     }),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -94,7 +94,6 @@ type Story = StoryObj<SelfSubscriptionStoryArgs>;
 export const Playground: Story = {};
 
 export const PaidTournament: Story = {
-  name: 'Torneio pago',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Inscrever-se não garante sua escalação')).toBeVisible();
@@ -104,17 +103,15 @@ export const PaidTournament: Story = {
 };
 
 export const FreeTournament: Story = {
-  name: 'Torneio gratuito',
   args: { paymentRequired: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: /Quero jogar/ })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: /InterFCT 2026/, level: 2 })).toBeVisible();
     await expect(canvas.queryByLabelText('Faixa de pagamento')).not.toBeInTheDocument();
   },
 };
 
 export const MultipleSportsSelection: Story = {
-  name: 'Seleção de múltiplas modalidades',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Futsal')).toBeVisible();
@@ -124,7 +121,6 @@ export const MultipleSportsSelection: Story = {
 };
 
 export const SuccessfulRequest: Story = {
-  name: 'Solicitação enviada',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByLabelText('Equipe desejada'));
@@ -135,21 +131,23 @@ export const SuccessfulRequest: Story = {
     await expect(
       canvas.getByRole('combobox', { name: 'Equipe desejada' }).querySelector('lib-sports-team-logo'),
     ).toBeInTheDocument();
+    await userEvent.click(canvas.getByLabelText('Faixa de pagamento'));
+    await userEvent.click(await body.findByRole('option', { name: /Estudante/ }));
     await userEvent.click(canvas.getByText('Futsal'));
     await userEvent.click(canvas.getByText(/Li e entendi/));
     await userEvent.click(canvas.getByLabelText(/contrato de licença de uso de imagem/));
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar solicitação' }));
+    const submitButton = canvas.getByRole('button', { name: 'Enviar solicitação' });
+    await expect(submitButton).toBeEnabled();
+    await userEvent.click(submitButton);
     await expect(await canvas.findByRole('heading', { name: 'Solicitação enviada' })).toBeVisible();
   },
 };
 
 export const NoTeamsOrSports: Story = {
-  name: 'Sem opções disponíveis',
   args: { emptyOptions: true, paymentRequired: false },
 };
 
 export const MerchandiseOnly: Story = {
-  name: 'Participação sem equipe ou modalidade',
   args: {
     allowNoTeam: true,
     allowNoCategory: true,
@@ -165,15 +163,4 @@ export const MerchandiseOnly: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
-};
-
-export const ClosedRegistration: Story = {
-  name: 'Inscrições indisponíveis',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Inscrição indisponível')).toBeVisible();
-    await expect(canvas.getByText('As inscrições ainda não estão abertas.')).toBeVisible();
-  },
 };

@@ -9,7 +9,6 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
   EventFormTargetType,
@@ -19,7 +18,14 @@ import type {
   PublicLecturerProfile,
   SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MailtoService, MarkdownComponent, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import {
+  AuthService,
+  LivestreamEmbedComponent,
+  MailtoService,
+  MarkdownComponent,
+  parseFormAnswersJson,
+} from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
@@ -59,6 +65,7 @@ import { EventSubscriptionRealtimeService } from './subscription-realtime.servic
 import { EmojiService } from '../../shared/emoji.service';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../forms/event-form-availability';
 import { SubscriptionFormFlow } from '../../major-events/registration/standard/subscription-form-flow';
@@ -81,8 +88,7 @@ import { InterestToggle } from '../../interests/interest-toggle';
 
 type EventPageState =
   | { status: 'loading' }
-  | { status: 'ready'; data: EventPageData }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; data: EventPageData };
 
 type EventFormPageLink = {
   formId: string;
@@ -154,6 +160,7 @@ type EventStructuredData = {
     RouterLink,
     SubscriptionFormFlow,
     InterestToggle,
+    LivestreamEmbedComponent,
   ],
   templateUrl: './event-page.html',
   styleUrl: './event-page.css',
@@ -167,8 +174,8 @@ export class Event {
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly catalogRealtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly router = inject(Router);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly realtime = inject(EventSubscriptionRealtimeService);
@@ -776,12 +783,6 @@ export class Event {
     return 'Inscrições abertas.';
   }
 
-  youtubeEmbedUrl(code: string): SafeResourceUrl {
-    return this.sanitizer.bypassSecurityTrustResourceUrl(
-      `https://www.youtube-nocookie.com/embed/${encodeURIComponent(code)}`,
-    );
-  }
-
   lecturerMailto(email: string): string {
     return this.mailto.compose({ to: email });
   }
@@ -827,21 +828,17 @@ export class Event {
               }),
             ),
             startWith({ status: 'loading' } satisfies EventPageState),
-            catchError((error: unknown) =>
-              of({
-                status: 'error',
-                message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
-              } satisfies EventPageState),
-            ),
+            catchError((error: unknown) => {
+              void this.routeErrors.navigate(privateResourceErrorStatus(error));
+              return of({ status: 'loading' } satisfies EventPageState);
+            }),
           );
         }
 
         const eventId = routeParams.eventId;
         if (!eventId) {
-          return of({
-            status: 'error',
-            message: 'Página de evento inválida.',
-          } satisfies EventPageState);
+          void this.routeErrors.navigate(404);
+          return of({ status: 'loading' } satisfies EventPageState);
         }
 
         return this.api.getEventPageData(eventId, authenticated).pipe(
@@ -852,12 +849,10 @@ export class Event {
             }),
           ),
           startWith({ status: 'loading' } satisfies EventPageState),
-          catchError((error: unknown) =>
-            of({
-              status: 'error',
-              message: error instanceof Error ? error.message : 'Não foi possível carregar o evento.',
-            } satisfies EventPageState),
-          ),
+          catchError((error: unknown) => {
+            void this.routeErrors.navigate(privateResourceErrorStatus(error));
+            return of({ status: 'loading' } satisfies EventPageState);
+          }),
         );
       }),
     );

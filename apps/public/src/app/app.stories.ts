@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { App } from './app';
 
 const meta: Meta<App> = {
   component: App,
-  title: 'CACiC Eventos/App/Shell',
+  title: 'Public/Layout/App Shell',
   tags: ['autodocs'],
   argTypes: {
-    cookieBannerEnabledOverride: { control: 'boolean', name: 'Banner de cookies habilitado' },
+    cookieBannerEnabledOverride: { control: 'boolean', name: 'Cookie Banner Enabled' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -19,8 +19,12 @@ export default meta;
 
 type Story = StoryObj<App>;
 
-const exerciseStory = async (canvasElement: HTMLElement) => {
+const exerciseStory = async (canvasElement: HTMLElement, cookieBannerEnabled: boolean) => {
   const canvas = within(canvasElement);
+  if (cookieBannerEnabled) {
+    const acceptButton = await canvas.findByRole('button', { name: /aceitar cookies/i });
+    await waitFor(() => expect(acceptButton).toBeVisible());
+  }
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
   const enabledButton = buttons.find(
@@ -40,21 +44,12 @@ export const Playground: Story = {
   args: {
     cookieBannerEnabledOverride: true,
   },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args.cookieBannerEnabledOverride === true),
 };
 
 export const CookieBannerDisabled: Story = {
   args: {
     cookieBannerEnabledOverride: false,
   },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileBannerDarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
-  },
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args.cookieBannerEnabledOverride === true),
 };

@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
@@ -53,7 +53,6 @@ function parts(args: CloneAssetDialogStoryArgs): CloneAssetPartOption[] {
 
 @Component({
   selector: 'app-storybook-clone-asset-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -103,7 +102,7 @@ class CloneAssetDialogStoryHostComponent {
 
 const meta: Meta<CloneAssetDialogStoryArgs> = {
   component: CloneAssetDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Clone Asset Dialog',
+  title: 'Admin/Event Management/Events/Clone Asset',
   tags: ['autodocs'],
   args: {
     sourceName: 'Oficina de Git',
@@ -129,7 +128,7 @@ const meta: Meta<CloneAssetDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -159,18 +158,11 @@ export const NothingPreselected: Story = {
   args: { defaultSelected: false },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     title: 'Duplicar atividade interdisciplinar',
     sourceLabel: 'Evento acadêmico, cultural e esportivo existente',
     sourceName: 'Oficina interdisciplinar de tecnologia, acessibilidade e extensão universitária',
     copySuffix: '(cópia para revisão editorial e publicação futura)',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MissingCertificatePermission,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

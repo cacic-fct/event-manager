@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -39,7 +39,6 @@ function placePreset(id: string, name: string, options: { coordinates: boolean; 
 
 @Component({
   selector: 'app-storybook-place-preset-merge-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -77,7 +76,7 @@ class PlacePresetMergeDialogStoryHostComponent {
 
 const meta: Meta<PlacePresetMergeStoryArgs> = {
   component: PlacePresetMergeDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Place Preset Merge Dialog',
+  title: 'Admin/Event Management/Places/Dialogs',
   tags: ['autodocs'],
   args: {
     targetName: 'Auditório Discente',
@@ -93,7 +92,7 @@ const meta: Meta<PlacePresetMergeStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -117,9 +116,4 @@ export const MissingTargetCoordinates: Story = {
     sourceName: 'Laboratório de Software',
     targetHasCoordinates: false,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MissingTargetCoordinates,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

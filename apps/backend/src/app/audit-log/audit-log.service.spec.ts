@@ -53,6 +53,7 @@ describe('AuditLogService', () => {
       before: {
         name: 'Ana Silva',
         email: null,
+        description: 'Unchanged lengthy content',
         updatedAt: '2026-06-21T17:00:00.000Z',
         updatedById: 'admin-0',
         paymentInfo: {
@@ -62,6 +63,7 @@ describe('AuditLogService', () => {
       after: {
         name: 'Ana Clara Silva',
         email: 'ana@unesp.br',
+        description: 'Unchanged lengthy content',
         updatedAt: '2026-06-21T17:10:00.000Z',
         updatedById: 'admin-1',
         paymentInfo: {
@@ -83,6 +85,8 @@ describe('AuditLogService', () => {
         actorName: 'Renan Yudi',
         permission: Permission.Person.Update,
         changedFields: ['email', 'name', 'paymentInfo.bankName'],
+        before: { name: 'Ana Silva', email: null, paymentInfo: { bankName: 'Banco A' } },
+        after: { name: 'Ana Clara Silva', email: 'ana@unesp.br', paymentInfo: { bankName: 'Banco B' } },
       }),
     });
     expect(createdChanges(prisma)).toEqual([
@@ -393,6 +397,67 @@ describe('AuditLogService', () => {
       expect.objectContaining({ field: 'email', before: 'ana@example.com', after: 'ana@unesp.br' }),
       expect.objectContaining({ field: 'name', before: 'Ana Silva', after: 'Ana Clara Silva' }),
     ]);
+  });
+
+  it('squashes compact snapshots when a later edit changes a different field', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue(createAuditEntry({
+      operation: AuditLogOperation.UPDATE,
+      actorId: null,
+      actorName: 'Sistema',
+      permission: null,
+      before: { name: 'Original' },
+      after: { name: 'Edited' },
+      changedFields: ['name'],
+      lastRecordedAt: new Date(),
+    }));
+
+    await service.record({
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      operation: AuditLogOperation.UPDATE,
+      before: { name: 'Edited', email: 'old@example.com', description: 'Unchanged' },
+      after: { name: 'Edited', email: 'new@example.com', description: 'Unchanged' },
+    });
+
+    expect(prisma.auditLogEntry.create).not.toHaveBeenCalled();
+    expect(prisma.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'audit-1' },
+      data: expect.objectContaining({
+        before: { name: 'Original', email: 'old@example.com' },
+        after: { name: 'Edited', email: 'new@example.com' },
+        changedFields: ['email', 'name'],
+      }),
+    });
+  });
+
+  it('drops fields restored to their original values when squashing compact updates', async () => {
+    prisma.auditLogEntry.findFirst.mockResolvedValue(createAuditEntry({
+      operation: AuditLogOperation.UPDATE,
+      actorId: null,
+      actorName: 'Sistema',
+      permission: null,
+      before: { name: 'Original', email: 'old@example.com' },
+      after: { name: 'Edited', email: 'new@example.com' },
+      changedFields: ['email', 'name'],
+      lastRecordedAt: new Date(),
+    }));
+
+    await service.record({
+      entityType: AuditLogEntityType.PERSON,
+      entityId: 'person-1',
+      operation: AuditLogOperation.UPDATE,
+      before: { name: 'Edited', email: 'new@example.com' },
+      after: { name: 'Original', email: 'new@example.com' },
+    });
+
+    expect(prisma.auditLogEntry.update).toHaveBeenCalledWith({
+      where: { id: 'audit-1' },
+      data: expect.objectContaining({
+        before: { email: 'old@example.com' },
+        after: { email: 'new@example.com' },
+        changedFields: ['email'],
+      }),
+    });
   });
 
   it.each([
@@ -1812,11 +1877,11 @@ describe('AuditLogService', () => {
       entityId: 'event-1',
       operation: AuditLogOperation.UPDATE,
       eventId: 'event-1',
-      before: { id: 'event-1', interestEnabled: false },
-      after: { id: 'event-1', interestEnabled: true },
+      before: { interestEnabled: false },
+      after: { interestEnabled: true },
       changedFields: ['interestEnabled'],
     });
-    const currentEvent = { id: 'event-1', interestEnabled: true, deletedAt: null };
+    const currentEvent = { id: 'event-1', interestEnabled: true, deletedAt: null, description: 'Unchanged content' };
     const revertLog = createAuditEntry({
       id: 'audit-event-interest-revert',
       entityType: AuditLogEntityType.EVENT,
@@ -1834,6 +1899,13 @@ describe('AuditLogService', () => {
       .resolves.toEqual(expect.objectContaining({ id: revertLog.id }));
 
     expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: { interestEnabled: false } }));
+    expect(tx.auditLogEntry.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        before: { interestEnabled: true },
+        after: { interestEnabled: false },
+        changedFields: ['interestEnabled'],
+      }),
+    });
   });
 
   it('soft-deletes created events when reverting their creation', async () => {

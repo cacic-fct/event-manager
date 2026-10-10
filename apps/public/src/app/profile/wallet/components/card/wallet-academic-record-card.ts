@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { WalletCardUser } from './wallet-card.types';
 
 @Component({
@@ -34,7 +34,6 @@ import { WalletCardUser } from './wallet-card.types';
       font-weight: 700;
       letter-spacing: 0.02em;
       text-transform: uppercase;
-      opacity: 0.75;
     }
     .card-value {
       font-size: clamp(1.75rem, 7vw, 2.35rem);
@@ -42,7 +41,6 @@ import { WalletCardUser } from './wallet-card.types';
       letter-spacing: -0.04em;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletAcademicRecordCard {
   readonly user = input<WalletCardUser | null>(null);

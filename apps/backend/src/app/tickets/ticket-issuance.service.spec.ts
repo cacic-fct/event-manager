@@ -356,10 +356,7 @@ describe('ticket issuance and redemption safety', () => {
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         after: expect.objectContaining({ consumedAt: attendedAt.toISOString() }),
-        metadata: expect.objectContaining({
-          attendedAt: attendedAt.toISOString(),
-          processedAt: expect.any(String),
-        }),
+        metadata: undefined,
         firstRecordedAt: expect.any(Date),
       }),
     }));
@@ -468,8 +465,12 @@ describe('ticket issuance and redemption safety', () => {
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         before: expect.objectContaining({ holderPersonId: 'current-holder' }),
-        after: expect.objectContaining({ holderPersonId: 'current-holder', consumedByPersonId: 'person' }),
-        metadata: expect.objectContaining({ attendedByPersonId: 'person', attendedAt: attendedAt.toISOString() }),
+        after: expect.objectContaining({
+          holderPersonId: 'current-holder',
+          consumedByPersonId: 'person',
+          consumedAt: attendedAt.toISOString(),
+        }),
+        metadata: undefined,
       }),
     }));
   });

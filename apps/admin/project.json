@@ -113,8 +113,7 @@
         "port": 4400,
         "configDir": "apps/admin/.storybook",
         "browserTarget": "admin:build",
-        "compodoc": true,
-        "compodocArgs": ["-e", "json", "-d", "apps/public/.storybook/compodoc"],
+        "compodoc": false,
         "styles": [
           "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
@@ -153,7 +152,7 @@
     "test-storybook": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "test-storybook -c apps/admin/.storybook --url=http://localhost:4400"
+        "command": "node tools/storybook-browser-tests.mjs --url=http://localhost:4400"
       }
     },
     "static-storybook": {

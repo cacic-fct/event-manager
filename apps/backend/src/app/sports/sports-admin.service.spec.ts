@@ -266,8 +266,138 @@ describe('SportsAdminService', () => {
       }),
     );
     expect(tx.event.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ youtubeCode: null }) }),
+      expect.objectContaining({ data: expect.objectContaining({ youtubeCode: null, twitchChannel: null }) }),
     );
+  });
+
+  it('normalizes provider changes and clears the other backing Event livestream field', async () => {
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      stageId: null,
+      venueId: null,
+      homeRegistrationId: null,
+      awayRegistrationId: null,
+      winnerAdvancesToId: null,
+      loserAdvancesToId: null,
+      revision: 3,
+      livestreamProvider: 'TWITCH',
+      livestreamUrl: 'oldchannel',
+      event: createEvent(),
+      category: {
+        id: 'category-1',
+        eventGroupId: 'group-1',
+        tournamentId: 'tournament-1',
+        tournament: { majorEventId: 'major-1' },
+      },
+    });
+    tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsMatch.findUniqueOrThrow.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      revision: 4,
+      livestreamProvider: 'YOUTUBE',
+      livestreamUrl: 'video-1',
+      event: createEvent(),
+    });
+
+    await service.updateMatch(
+      'match-1',
+      {
+        expectedRevision: 3,
+        livestreamProvider: 'YOUTUBE',
+        livestreamUrl: 'https://www.youtube.com/watch?v=video-1',
+      },
+      actor,
+    );
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ livestreamProvider: 'YOUTUBE', livestreamUrl: 'video-1' }),
+      }),
+    );
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ youtubeCode: 'video-1', twitchChannel: null }),
+      }),
+    );
+  });
+
+  it.each([
+    ['YOUTUBE', 'https://www.youtube.com/watch?v=video-1', 'video-1', null],
+    ['TWITCH', 'https://www.twitch.tv/MyChannel', null, 'mychannel'],
+  ] as const)('stores a %s identifier and syncs both backing Event fields', async (provider, url, youtubeCode, twitchChannel) => {
+    const event = createEvent();
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.event.findFirst.mockResolvedValue(event);
+    tx.event.update.mockResolvedValue({ ...event, youtubeCode, twitchChannel });
+    tx.sportsMatch.create.mockResolvedValue({
+      id: 'match-1',
+      eventId: event.id,
+      event: { ...event, youtubeCode, twitchChannel },
+    });
+
+    await service.createMatch(
+      {
+        categoryId: 'category-1',
+        eventId: event.id,
+        livestreamProvider: provider,
+        livestreamUrl: url,
+      },
+      actor,
+    );
+
+    expect(tx.sportsMatch.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ livestreamProvider: provider, livestreamUrl: youtubeCode ?? twitchChannel }),
+      }),
+    );
+    expect(tx.event.update).toHaveBeenLastCalledWith({
+      where: { id: event.id },
+      data: { youtubeCode, twitchChannel, updatedById: 'admin-1' },
+    });
+  });
+
+  it.each([
+    ['video-1', null],
+    [null, 'mychannel'],
+    ['video-1', 'mychannel'],
+  ])('preserves existing Event streams when match creation omits livestream inputs (%s, %s)', async (youtubeCode, twitchChannel) => {
+    const event = { ...createEvent(), youtubeCode, twitchChannel };
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.event.findFirst.mockResolvedValue(event);
+    tx.event.update.mockResolvedValue({ ...event });
+    tx.sportsMatch.create.mockResolvedValue({ id: 'match-1', eventId: event.id, event: { ...event } });
+
+    const result = await service.createMatch({ categoryId: 'category-1', eventId: event.id }, actor);
+
+    expect(tx.event.update).toHaveBeenCalledTimes(1);
+    expect(tx.event.update.mock.calls[0][0].data).not.toHaveProperty('youtubeCode');
+    expect(tx.event.update.mock.calls[0][0].data).not.toHaveProperty('twitchChannel');
+    expect(result.event).toEqual(expect.objectContaining({ youtubeCode, twitchChannel }));
+  });
+
+  it('clears existing Event streams when match creation explicitly disables livestreams', async () => {
+    const event = { ...createEvent(), youtubeCode: 'video-1', twitchChannel: 'mychannel' };
+    prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'group-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.event.findFirst.mockResolvedValue(event);
+    tx.event.update.mockResolvedValue({ ...event });
+    tx.sportsMatch.create.mockResolvedValue({ id: 'match-1', eventId: event.id, event: { ...event } });
+
+    const result = await service.createMatch(
+      { categoryId: 'category-1', eventId: event.id, livestreamProvider: null },
+      actor,
+    );
+
+    expect(tx.event.update).toHaveBeenLastCalledWith({
+      where: { id: event.id },
+      data: { youtubeCode: null, twitchChannel: null, updatedById: 'admin-1' },
+    });
+    expect(result.event).toEqual(expect.objectContaining({ youtubeCode: null, twitchChannel: null }));
   });
 
   it('updates the backing Event name when a match name is edited', async () => {

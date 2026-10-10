@@ -133,7 +133,7 @@
           <mat-option value="">A definir</mat-option>
           @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
             <mat-option [value]="venue.id">
-              {{ venue.name }}{{ venue.courtLabel ? ' · ' + venue.courtLabel : '' }}
+              {{ venue.name }}{{ venue.courtLabel ? ', ' + venue.courtLabel : '' }}
             </mat-option>
           }
         </mat-select>
@@ -189,12 +189,24 @@
       </mat-form-field>
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Link da transmissão</mat-label>
-        <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
-        <mat-hint>Use o endereço público completo da live.</mat-hint>
-        @if (workspace.matchForm.controls.livestreamUrl.hasError('pattern')) {
-          <mat-error>Informe um endereço HTTPS válido.</mat-error>
-        } @else if (workspace.matchForm.hasError('invalidLivestreamUrl')) {
-          <mat-error>Use um endereço válido para a plataforma escolhida.</mat-error>
+        <input
+          matInput
+          type="url"
+          inputmode="url"
+          formControlName="livestreamUrl"
+          placeholder="https://"
+          (blur)="workspace.normalizeLivestreamInput()" />
+        @if (workspace.matchForm.controls.livestreamProvider.value === 'YOUTUBE') {
+          <mat-hint>Cole o link ou informe o código do vídeo; o código será salvo.</mat-hint>
+        } @else if (workspace.matchForm.controls.livestreamProvider.value === 'TWITCH') {
+          <mat-hint>Cole o link ou informe o canal; o nome do canal será salvo.</mat-hint>
+        } @else if (workspace.matchForm.controls.livestreamProvider.value === 'GENERAL') {
+          <mat-hint>Informe o endereço HTTPS completo da transmissão.</mat-hint>
+        } @else {
+          <mat-hint>Selecione o serviço e informe o link ou identificador da transmissão.</mat-hint>
+        }
+        @if (workspace.matchForm.hasError('invalidLivestreamUrl')) {
+          <mat-error>Informe um identificador ou endereço válido para a plataforma escolhida.</mat-error>
         } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
           <mat-error>Escolha a plataforma e informe o link.</mat-error>
         }
@@ -227,7 +239,7 @@
                 <span class="state-label">{{ workspace.statusLabel(action.reviewStatus) }}</span>
               </div>
               <p>{{ workspace.occurrenceValue(action, 'note') || 'Sem observação.' }}</p>
-              <small>{{ action.authoredAt | date: 'short' }}{{ action.offline ? ' · enviada off-line' : '' }}</small>
+              <small>{{ action.authoredAt | date: 'short' }}{{ action.offline ? ', enviada off-line' : '' }}</small>
               @if (workspace.canCorrectConsolidatedOccurrence(action)) {
                 <div class="review-actions">
                   <button
@@ -382,7 +394,7 @@
           <mat-icon>emoji_events</mat-icon>
           <span class="official-assignment-copy">
             <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
-            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            <small>{{ officialRoleLabel(official.role) }}, {{ workspace.officialScopeLabel(official) }}</small>
             @if (workspace.canReadOfficialContacts()) {
               <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
               <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>
@@ -417,7 +429,7 @@
           <mat-icon>category</mat-icon>
           <span class="official-assignment-copy">
             <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
-            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            <small>{{ officialRoleLabel(official.role) }}, {{ workspace.officialScopeLabel(official) }}</small>
             @if (workspace.canReadOfficialContacts()) {
               <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
               <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>
@@ -452,7 +464,7 @@
           <mat-icon>sports</mat-icon>
           <span class="official-assignment-copy">
             <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
-            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            <small>{{ officialRoleLabel(official.role) }}, {{ workspace.officialScopeLabel(official) }}</small>
             @if (workspace.canReadOfficialContacts()) {
               <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
               <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>

@@ -1,0 +1,23 @@
+.admin-list-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: 10rem;
+  padding: 1.5rem 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+.admin-list-empty > mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+  transform: scaleY(-1);
+}
+
+.admin-list-empty > p {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+}

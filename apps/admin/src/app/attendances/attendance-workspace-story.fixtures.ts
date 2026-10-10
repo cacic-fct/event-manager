@@ -198,8 +198,9 @@ function createEvents(controls: AttendanceWorkspaceStoryControls): Event[] {
 
   return Array.from({ length: count }, (_, index) => {
     const now = new Date();
-    const startDate = new Date(now.getTime() + index * 90 * 60_000);
     const frozenDate = new Date(now.getFullYear(), now.getMonth() - 4, 1);
+    const isFrozen = controls.frozenEvent && index === 0;
+    const startDate = isFrozen ? frozenDate : new Date(now.getTime() + index * 90 * 60_000);
     const name = controls.longNames
       ? `Atividade interdisciplinar de tecnologia, ciência, extensão e acessibilidade ${index + 1}`
       : ['Arquitetura Angular com Signals', 'Acessibilidade em produtos digitais', 'Robótica para a comunidade'][
@@ -210,7 +211,7 @@ function createEvents(controls: AttendanceWorkspaceStoryControls): Event[] {
       name,
       startDate: startDate.toISOString(),
       endDate: new Date(startDate.getTime() + 75 * 60_000).toISOString(),
-      createdAt: (controls.frozenEvent && index === 0 ? frozenDate : now).toISOString(),
+      createdAt: (isFrozen ? frozenDate : now).toISOString(),
       updatedAt: now.toISOString(),
       emoji: ['🧠', '♿', '🤖'][index % 3],
       type: ['MINICURSO', 'PALESTRA', 'OTHER'][index % 3] as Event['type'],

@@ -1,4 +1,5 @@
 import { AuthService } from '@cacic-fct/shared-angular';
+import { computed, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -13,16 +14,18 @@ import { MyDayPage } from './my-day.page';
 import { MyDayStore } from './my-day.store';
 import { myDayDateKey } from './my-day-date';
 
-let activeArgs: MyDayStoryControls = myDayStoryDefaultControls;
+const activeArgs = signal<MyDayStoryControls>(myDayStoryDefaultControls);
+const storyState = computed(() => createMyDayStoryState(activeArgs()));
+const storyData = computed(() => storyState().data);
 
 const meta: Meta<MyDayStoryControls> = {
   component: MyDayPage,
-  title: 'CACiC Eventos/My Day/Personal Companion',
+  title: 'Public/Discovery/My Day',
   tags: ['autodocs'],
   args: myDayStoryDefaultControls,
   argTypes: myDayStoryControlArgTypes,
   render: (args) => {
-    activeArgs = { ...myDayStoryDefaultControls, ...args };
+    activeArgs.set({ ...myDayStoryDefaultControls, ...args });
     return { props: {} };
   },
   decorators: [
@@ -32,16 +35,16 @@ const meta: Meta<MyDayStoryControls> = {
         {
           provide: AuthService,
           useValue: {
-            user: () => ({ sub: 'storybook-user', claims: { name: activeArgs.userName } }),
+            user: computed(() => ({ sub: 'storybook-user', claims: { name: activeArgs().userName } })),
           },
         },
         {
           provide: MyDayStore,
           useValue: {
-            state: () => createMyDayStoryState(activeArgs),
-            data: () => createMyDayStoryState(activeArgs).data,
-            selectedDate: () => myDayDateKey(new Date()),
-            cooldownSeconds: () => activeArgs.cooldownSeconds,
+            state: storyState,
+            data: storyData,
+            selectedDate: signal(myDayDateKey(new Date())),
+            cooldownSeconds: computed(() => activeArgs().cooldownSeconds),
             start: () => undefined,
             load: () => Promise.resolve(),
             refresh: () => Promise.resolve(),
@@ -52,11 +55,10 @@ const meta: Meta<MyDayStoryControls> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    viewport: { defaultViewport: 'mobile' },
     docs: {
       description: {
         component:
-          'Companheiro diário móvel com dados determinísticos editáveis, estados operacionais, agenda, ações, clima e alertas.',
+          'Daily companion with editable deterministic data, operational states, schedule, actions, weather, and alerts.',
       },
     },
   },
@@ -85,7 +87,6 @@ export const Playground: Story = {
 
 export const DenseAgenda: Story = {
   args: { laterEventCount: 12, attentionCount: 9, weatherCount: 8 },
-  parameters: { viewport: { defaultViewport: 'desktop' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByRole('link').length).toBeGreaterThan(20);
@@ -95,7 +96,7 @@ export const DenseAgenda: Story = {
 
 export const Offline: Story = {
   args: { state: 'offline', laterEventCount: 6, attentionCount: 6 },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Dados salvos')).toBeVisible();
@@ -146,7 +147,7 @@ export const LongContent: Story = {
     locationDescription: 'Centro de Ciências, bloco de laboratórios, auditório principal do segundo pavimento',
     laterEventCount: 5,
   },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/Maria/)).toBeVisible();

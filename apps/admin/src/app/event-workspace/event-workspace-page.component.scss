@@ -1,4 +1,12 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
 :host { display: block; min-width: 0; }
+
+@media (min-width: 761px) {
+  .event-workspace:has(> .context-workspace:not(.in-shell)) {
+    @include view-widths.view(2);
+  }
+}
 .event-workspace.standalone { padding: clamp(1rem, 3vw, 2rem); }
 .workspace-heading, .context-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .workspace-heading h1 { font: var(--mat-sys-headline-small); margin: 0; }

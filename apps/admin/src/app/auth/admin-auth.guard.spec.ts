@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router, UrlTree } from '@angular/router';
+import { CanMatchFn, provideRouter, RedirectCommand, Router, UrlTree } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { authGuardWithLocalLogin } from '@cacic-fct/shared-angular/auth/guard';
+import { adminAuthenticationGuard } from './admin-auth.guard';
 
-describe('admin authGuardWithLocalLogin', () => {
+describe('adminAuthenticationGuard', () => {
   let authService: {
     consumePostLogoutRedirect: ReturnType<typeof vi.fn>;
-    isAuthenticated: ReturnType<typeof vi.fn>;
+    ensureAuthenticated: ReturnType<typeof vi.fn>;
     login: ReturnType<typeof vi.fn>;
   };
   let router: Router;
@@ -14,7 +14,7 @@ describe('admin authGuardWithLocalLogin', () => {
   beforeEach(() => {
     authService = {
       consumePostLogoutRedirect: vi.fn(() => false),
-      isAuthenticated: vi.fn(() => false),
+      ensureAuthenticated: vi.fn().mockResolvedValue(false),
       login: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -31,35 +31,58 @@ describe('admin authGuardWithLocalLogin', () => {
     router = TestBed.inject(Router);
   });
 
-  it('allows authenticated admin users through without redirecting', () => {
-    authService.isAuthenticated.mockReturnValue(true);
+  it('allows authenticated admin users through without starting login', async () => {
+    authService.ensureAuthenticated.mockResolvedValue(true);
 
-    const result = runGuard('/');
+    const result = await runGuard();
 
     expect(result).toBe(true);
+    expect(authService.ensureAuthenticated).toHaveBeenCalledOnce();
     expect(authService.login).not.toHaveBeenCalled();
   });
 
-  it('sends unauthenticated admin users to the local dev login route with the requested return path', () => {
-    const result = runGuard('/');
+  it('starts Keycloak login with the full requested path and query after restoring once', async () => {
+    setNavigationTarget('/events?status=draft&page=2#selected-event');
 
-    expect(result).toBeInstanceOf(UrlTree);
-    expect(router.serializeUrl(result as UrlTree)).toBe('/login?returnTo=%2F');
-    expect(authService.login).not.toHaveBeenCalled();
+    const result = await runGuard();
+
+    expect(result).toBe(false);
+    expect(authService.ensureAuthenticated).toHaveBeenCalledOnce();
+    expect(authService.login).toHaveBeenCalledWith({ returnTo: '/events?status=draft&page=2#selected-event' });
   });
 
-  it('keeps post-logout admin redirects on the local login route without immediately starting SSO again', () => {
+  it('returns to the explicit post-logout page without starting SSO again', async () => {
     authService.consumePostLogoutRedirect.mockReturnValue(true);
 
-    const result = runGuard('/');
+    const result = await runGuard();
 
     expect(result).toBeInstanceOf(UrlTree);
     expect(router.serializeUrl(result as UrlTree)).toBe('/login');
     expect(authService.login).not.toHaveBeenCalled();
   });
 
-  function runGuard(url: string): boolean | UrlTree {
-    const guard = authGuardWithLocalLogin();
-    return TestBed.runInInjectionContext(() => guard({} as never, { url } as never)) as boolean | UrlTree;
+  it('shows the shared 503 page if session restoration fails unexpectedly', async () => {
+    authService.ensureAuthenticated.mockRejectedValue(new Error('service unavailable'));
+
+    const result = await runGuard();
+
+    expect(result).toBeInstanceOf(RedirectCommand);
+    expect(router.serializeUrl((result as RedirectCommand).redirectTo)).toBe('/error/503');
+    expect(authService.login).not.toHaveBeenCalled();
+  });
+
+  async function runGuard(): Promise<boolean | UrlTree | RedirectCommand> {
+    const guard = adminAuthenticationGuard as CanMatchFn;
+    return TestBed.runInInjectionContext(() => guard({} as never, [], {} as never)) as Promise<
+      boolean | UrlTree | RedirectCommand
+    >;
+  }
+
+  function setNavigationTarget(url: string): void {
+    const target = router.parseUrl(url);
+    vi.spyOn(router, 'currentNavigation').mockReturnValue({
+      extractedUrl: target,
+      initialUrl: target,
+    } as never);
   }
 });

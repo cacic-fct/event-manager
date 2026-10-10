@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -42,7 +42,6 @@ export type CloneAssetDialogResult = {
 
 @Component({
   selector: 'app-clone-asset-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -92,7 +91,7 @@ export type CloneAssetDialogResult = {
             class="field-row"
             [class.selected-field-row]="partControl(part.key).value"
             [class.disabled-field-row]="part.disabled">
-            <mat-checkbox [formControl]="partControl(part.key)" />
+            <mat-checkbox [formControl]="partControl(part.key)" [aria-label]="part.label" />
             <span class="field-name">{{ part.label }}</span>
             <span class="field-description">
               {{ part.disabled ? part.disabledReason : part.description }}
@@ -211,7 +210,7 @@ export type CloneAssetDialogResult = {
       }
 
       .disabled-field-row {
-        opacity: 0.72;
+        color: var(--mat-sys-on-surface-variant);
       }
 
       @media (max-width: 760px) {

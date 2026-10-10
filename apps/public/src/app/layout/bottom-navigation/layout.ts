@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, input, PLATFORM_ID } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { RouterOutlet } from '@angular/router';
 import { BottomToolbarComponent } from './toolbar';
@@ -11,7 +11,6 @@ import { MyDayStore } from '../../my-day/my-day.store';
 
 @Component({
   imports: [BottomToolbarComponent, RouterOutlet],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="layout-container">
       <main class="toolbar-content" [class.no-x-padding]="noXPadding()">

@@ -155,21 +155,24 @@
               <mat-divider />
             }
           }
-          @for (operation of eventWorkspace.operations(); track operation.id) {
-            <a
-              mat-button
-              class="nav-item"
-              [class.active]="currentOperationId() === operation.id"
-              [routerLink]="operation.path"
-              [queryParams]="operation.queryParams"
-              [attr.aria-current]="currentOperationId() === operation.id ? 'page' : null"
-              [attr.aria-label]="operation.label"
-              [matTooltip]="operation.label"
-              matTooltipPosition="right"
-              (click)="closeSidenavIfMobile(sidenav)">
-              <mat-icon>{{ operation.icon }}</mat-icon
-              ><span class="nav-label">{{ operation.label }}</span>
-            </a>
+          @for (group of eventWorkspace.operationGroups(); track $index) {
+            @if (!$first) { <mat-divider /> }
+            @for (operation of group; track operation.id) {
+              <a
+                mat-button
+                class="nav-item"
+                [class.active]="currentOperationId() === operation.id"
+                [routerLink]="operation.path"
+                [queryParams]="operation.queryParams"
+                [attr.aria-current]="currentOperationId() === operation.id ? 'page' : null"
+                [attr.aria-label]="operation.label"
+                [matTooltip]="operation.label"
+                matTooltipPosition="right"
+                (click)="closeSidenavIfMobile(sidenav)">
+                <mat-icon>{{ operation.icon }}</mat-icon
+                ><span class="nav-label">{{ operation.label }}</span>
+              </a>
+            }
           }
           @if (eventWorkspace.scopeSwitchBlocked()) {
             <p class="context-edit-note" role="status">Salve ou descarte as alterações antes de trocar o contexto.</p>

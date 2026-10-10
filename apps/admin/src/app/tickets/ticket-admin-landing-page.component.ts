@@ -16,13 +16,7 @@ import { EventContextPickerComponent, type EventContextRef } from '../shared/eve
       <app-event-context-picker [searchOnly]="true" [allowGroups]="false" (contextChange)="openTickets($event)" />
     </section>
   `,
-  styles: `
-    :host { display: block; min-width: 0; }
-    .ticket-landing { max-width: 64rem; }
-    p { max-width: 68ch; color: var(--mat-sys-on-surface-variant); }
-    .picker-heading { display: flex; align-items: center; gap: 0.5rem; margin-block-start: 1.5rem; }
-    .picker-heading h2 { margin: 0; font: var(--mat-sys-title-medium); }
-  `,
+  styleUrl: './ticket-admin-landing-page.component.scss',
 })
 export class TicketAdminLandingPageComponent {
   private readonly router = inject(Router);

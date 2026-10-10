@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type { TicketRealtimeInvalidation, TicketTransfer } from '@cacic-fct/shared-ticketing';
 import { TicketTransferActionDialog } from './ticket-transfer-action-dialog';
 import type { TicketTransferActionDialogData } from './ticket-transfer-action-dialog';
@@ -17,12 +18,11 @@ import { TicketingApiService } from './ticketing-api.service';
 import { TicketPersonSummaryComponent } from './ticket-person-summary.component';
 import { redactIdentityDocument } from './ticket-document';
 import { nextDeadlineDelay, ticketStatusAt } from './ticket-expiration';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 type TicketTransferDetailsState =
   | { status: 'loading' }
-  | { status: 'ready'; transfer: TicketTransfer }
-  | { status: 'empty'; message: string }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; transfer: TicketTransfer };
 
 @Component({
   selector: 'app-ticket-transfer-details-page',
@@ -46,6 +46,7 @@ export class TicketTransferDetailsPage {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly snackBar = inject(MatSnackBar);
   private requestId = 0;
   private transferId = '';
@@ -93,7 +94,7 @@ export class TicketTransferDetailsPage {
       this.transferId = params.get('transferId') ?? '';
       this.clearExpiryTimer();
       if (!this.transferId) {
-        this.state.set({ status: 'empty', message: 'Este pedido de transferência não está disponível.' });
+        this.navigateToError(404);
         return;
       }
       this.load();
@@ -296,15 +297,19 @@ export class TicketTransferDetailsPage {
             this.now.set(Date.now());
             this.scheduleExpiryRefresh(transfer);
           } else {
-            this.state.set({ status: 'empty', message: 'Este pedido de transferência não está disponível.' });
+            this.navigateToError(404);
           }
         },
-        error: () => {
+        error: (error: unknown) => {
           if (requestId === this.requestId) {
-            this.state.set({ status: 'error', message: 'Não foi possível carregar este pedido de transferência.' });
+            this.navigateToError(privateResourceErrorStatus(error));
           }
         },
       });
+  }
+
+  private navigateToError(status: 403 | 404 | 500 | 503): void {
+    void this.routeErrors.navigate(status);
   }
 
   private scheduleExpiryRefresh(transfer: TicketTransfer): void {

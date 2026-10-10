@@ -20,8 +20,8 @@ test('shows released results with criteria, exact historical odds, and privacy-s
   await page.getByRole('button', { name: 'Como este sorteio funciona' }).click();
   await expect(page.getByText('pessoas presentes, pessoas inscritas')).toBeVisible();
   await expect(page.getByText('Entradas ponderadas')).toBeVisible();
-  await expect(page.getByText('25% · 1 em 4')).toBeVisible();
-  await expect(page.getByText('Pesos: 1 pessoa com peso 1 · 1 pessoa com peso 3')).toBeVisible();
+  await expect(page.getByText('25% (1 em 4)')).toBeVisible();
+  await expect(page.getByText('Pesos: 1 pessoa com peso 1, 1 pessoa com peso 3')).toBeVisible();
   await expect(page.getByText(/CSPRNG/)).toBeVisible();
 });
 
@@ -32,7 +32,7 @@ test('renders access failures as a stable error state instead of stale or empty 
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ errors: [{ message: 'Você não participou deste sorteio.' }] }),
+        body: JSON.stringify({ errors: [{ message: 'Você não participou deste sorteio.', extensions: { code: 'FORBIDDEN' } }] }),
       });
       return;
     }
@@ -41,8 +41,9 @@ test('renders access failures as a stable error state instead of stale or empty 
 
   await page.goto('/app/draws/event/event-1');
 
-  await expect(page.getByRole('alert')).toContainText('Não foi possível abrir os sorteios');
-  await expect(page.getByRole('alert')).toContainText('Você não participou deste sorteio.');
+  await expect(page.getByRole('heading', { name: 'Página não encontrada.' })).toBeVisible();
+  await expect(page.getByText('Erro 404', { exact: true })).toBeVisible();
+  await expect(page.getByText('Você não participou deste sorteio.')).toHaveCount(0);
   await expect(page.getByText('Ada L.')).toHaveCount(0);
 });
 

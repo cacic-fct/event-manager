@@ -6,20 +6,19 @@ const openFeature = fn();
 
 const meta: Meta<DashboardDemoComponent> = {
   component: DashboardDemoComponent,
-  title: 'CACiC Eventos/Landing/Smart Dashboard',
+  title: 'Public/Landing/Demos/Dashboard',
   tags: ['autodocs', 'landing-showcase'],
   render: () => ({
     props: { onFeature: openFeature },
     template: '<app-landing-dashboard-demo (openFeature)="onFeature($event)" />',
   }),
-  parameters: { a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<DashboardDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Presenças off-line pendentes/ }));
@@ -27,15 +26,9 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const CertificateShortcut: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Ver certificados' }));
     await expect(openFeature).toHaveBeenCalledWith('certificates');
   },
-};
-
-export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light' },
 };

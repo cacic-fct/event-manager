@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, isDevMode, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, isDevMode, PLATFORM_ID } from '@angular/core';
 import { ExplanationCard } from '../../shared/components/explanation-card/explanation-card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -38,7 +38,6 @@ import { isPlatformBrowser } from '@angular/common';
       --mat-button-filled-state-layer-color: var(--mat-sys-on-error);
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceWorkerUnregisterConfirmDialog {}
 
@@ -47,7 +46,6 @@ export class ServiceWorkerUnregisterConfirmDialog {}
   imports: [ExplanationCard, MatIconModule, MatToolbarModule, MatListModule, RouterLink, MatButtonModule],
   templateUrl: './service-worker.html',
   styleUrl: './service-worker.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServiceWorker {
   private readonly platformId = inject(PLATFORM_ID);

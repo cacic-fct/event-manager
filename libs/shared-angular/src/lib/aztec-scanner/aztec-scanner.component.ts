@@ -1,6 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
@@ -47,7 +46,7 @@ interface ScreenWakeLockNavigator {
         <video #scannerVideo muted playsinline></video>
 
         @if (isBusy()) {
-          <mat-progress-bar mode="indeterminate" />
+          <mat-progress-bar mode="indeterminate" aria-label="Inicializando o leitor de códigos" />
         }
       </div>
 
@@ -63,6 +62,7 @@ interface ScreenWakeLockNavigator {
           matIconButton
           type="button"
           matTooltip="Trocar câmera"
+          aria-label="Trocar câmera"
           [disabled]="devices().length < 2 || isBusy()"
           (click)="selectNextDevice()">
           <mat-icon>cameraswitch</mat-icon>
@@ -118,7 +118,6 @@ interface ScreenWakeLockNavigator {
       margin: 2px 0 0;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AztecScannerComponent {
   private readonly destroyRef = inject(DestroyRef);

@@ -25,7 +25,7 @@ const defaultArgs: SubscriptionEventListStoryArgs = {
 
 const meta: Meta<SubscriptionEventListStoryArgs> = {
   component: SubscriptionEventList,
-  title: 'CACiC Eventos/Major Events/Registration/Standard/Event List',
+  title: 'Public/Registration/Major Event/Event List',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -61,7 +61,7 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -69,9 +69,14 @@ export default meta;
 
 type Story = StoryObj<SubscriptionEventListStoryArgs>;
 
+export const Playground: Story = {
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+
 export const PreviouslyInterested: Story = {
   args: { selectedFirstEvent: false, interestedFirstEvent: true },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Você marcou Quero ir')).toBeVisible();
@@ -96,17 +101,12 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
 export const OfflineFallback: Story = {
   args: {
     selectedFirstEvent: false,
     autoSelectSecondEvent: false,
   },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -157,14 +157,12 @@ export const UnlimitedAvailability: Story = {
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     eventCount: 6,
     name: 'Atividade interdisciplinar universitária de tecnologia, ciência, cultura e acessibilidade',
     eventGroupName: 'Trilha extensa de experiências acadêmicas e comunitárias',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/Atividade interdisciplinar/)).toBeVisible();
   },
