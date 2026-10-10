@@ -36,7 +36,7 @@
               <li><lib-twemoji [emoji]="activity.emoji" aria-hidden="true" /><span><strong>{{ activity.name }}</strong><small>{{ activity.time }}, no {{ activity.location }}</small></span><mat-icon aria-hidden="true">check</mat-icon></li>
             }
           </ul>
-          <button matButton="outlined" type="button" (click)="step.set('selection')">Recomeçar demonstração</button>
+          <button matButton="outlined" type="button" (click)="resetDemo()">Recomeçar demonstração</button>
         </div>
       } @else if (step() === 'review') {
         <h5>Revise sua inscrição</h5>
@@ -67,7 +67,7 @@
       }
     </div>
 
-    <div class="selection-actions" aria-label="Ações da seleção de eventos">
+    <div class="selection-actions" role="group" aria-label="Ações da seleção de eventos">
       <span class="selection-count">{{ selectedActivities().length }} {{ selectedActivities().length === 1 ? 'evento selecionado' : 'eventos selecionados' }}</span>
       @if (step() === 'selection') {
         <button matButton="filled" type="button" [disabled]="selectedActivities().length === 0" (click)="review()">Revisar inscrição<mat-icon iconPositionEnd>arrow_forward</mat-icon></button>

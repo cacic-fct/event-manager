@@ -54,9 +54,17 @@ describe('MajorEventSubscriptionDemoComponent', () => {
         item.textContent?.trim(),
       ),
     ).toEqual(['Interfaces que incluem', 'Realidade Virtual', 'Do protótipo ao mundo']);
-    expect(checkboxFor('Interfaces que incluem').checked).toBe(true);
-    expect(checkboxFor('Realidade Virtual').checked).toBe(true);
-    expect(buttonNamed('Revisar inscrição').disabled).toBe(false);
+    expect(fixture.componentInstance.selectedIds().size).toBe(0);
+    expect(fixture.componentInstance.interacting()).toBe(false);
+    expect(checkboxFor('Interfaces que incluem').checked).toBe(false);
+    expect(checkboxFor('Realidade Virtual').checked).toBe(false);
+    expect(buttonNamed('Revisar inscrição').disabled).toBe(true);
+
+    checkboxFor('Do protótipo ao mundo').click();
+    fixture.detectChanges();
+    buttonNamed('Revisar inscrição').click();
+    fixture.detectChanges();
+    expect(activityList('.review-activities')).toEqual(['Do protótipo ao mundo']);
   });
 
   function checkboxFor(activityName: string): HTMLInputElement {

@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, computed, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -67,6 +67,9 @@ export class CertificateDemoComponent {
   readonly selectedCertificate = signal<DemoCertificate | null>(null);
   readonly statusMessage = signal('');
 
+  private readonly focusPending = signal(false);
+  private readonly stepHeading = viewChild<ElementRef<HTMLHeadingElement>>('stepHeading');
+
   readonly eligibleCertificates = computed(() => CERTIFICATES[this.audience()]);
   readonly eligibleSummary = computed(() => {
     const count = this.eligibleCertificates().length;
@@ -86,6 +89,20 @@ export class CertificateDemoComponent {
     return certificate ? this.buildCertificateText(certificate) : '';
   });
   readonly canIssue = computed(() => this.publicCertificateName().trim().length > 0);
+
+  constructor() {
+    afterRenderEffect({
+      write: () => {
+        if (this.focusPending()) {
+          const heading = this.stepHeading()?.nativeElement;
+          if (heading) {
+            heading.focus({ preventScroll: true });
+            this.focusPending.set(false);
+          }
+        }
+      },
+    });
+  }
 
   updatePublicCertificateName(event: Event): void {
     const target = event.target;
@@ -110,7 +127,7 @@ export class CertificateDemoComponent {
 
     this.issuedCertificates.set([...this.eligibleCertificates()]);
     this.selectedCertificate.set(null);
-    this.step.set('issued');
+    this.transitionTo('issued');
     this.statusMessage.set('Certificados disponíveis');
   }
 
@@ -120,13 +137,13 @@ export class CertificateDemoComponent {
     }
 
     this.selectedCertificate.set(certificate);
-    this.step.set('inspection');
+    this.transitionTo('inspection');
     this.statusMessage.set('');
   }
 
   returnToIssuedList(): void {
     this.selectedCertificate.set(null);
-    this.step.set('issued');
+    this.transitionTo('issued');
   }
 
   resetDemo(): void {
@@ -136,11 +153,20 @@ export class CertificateDemoComponent {
   private resetIssuance(): void {
     this.issuedCertificates.set([]);
     this.selectedCertificate.set(null);
-    this.step.set('configuration');
+    this.transitionTo('configuration');
     this.statusMessage.set('');
   }
 
   private buildCertificateText(certificate: DemoCertificate): string {
     return `Certificamos que ${certificate.personName} ${certificate.action} na ${certificate.target}, com carga horária de ${certificate.hours} horas.`;
+  }
+
+  private transitionTo(step: CertificateStep): void {
+    if (this.step() === step) {
+      return;
+    }
+
+    this.step.set(step);
+    this.focusPending.set(true);
   }
 }

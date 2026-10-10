@@ -37,8 +37,10 @@ export const SpeakerIssuanceAndInspection: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Emitir certificados pendentes' }));
     await expect(canvas.getByRole('heading', { name: 'Certificados emitidos' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Certificados emitidos' })).toHaveFocus();
     await expect(canvas.getByText('Certificados disponíveis')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Visualizar certificado de Beatriz Lima' }));
+    await expect(canvas.getByRole('heading', { name: 'Dados de validação' })).toHaveFocus();
     await expect(canvas.getByText('DEMO-SPEAKER-001')).toBeVisible();
     await expect(canvas.getByText('Palestrante')).toBeVisible();
   },

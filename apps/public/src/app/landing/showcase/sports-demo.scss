@@ -77,7 +77,7 @@
   white-space: nowrap;
 }
 
-.score-line strong span {
+.score-line strong span[aria-hidden] > span {
   color: #9dc6b4;
   font-weight: 400;
 }

@@ -77,4 +77,27 @@ describe('CertificateDemoComponent', () => {
     fixture.componentInstance.simulateIssuance();
     expect(fixture.componentInstance.step()).toBe('configuration');
   });
+
+  it('moves keyboard focus to the new heading after each step replaces its controls', async () => {
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.ownerDocument.activeElement).not.toBe(element.querySelector('h3'));
+
+    for (const [label, heading] of [
+      ['Emitir certificados pendentes', 'Certificados emitidos'],
+      ['Visualizar', 'Dados de validação'],
+      ['Voltar à lista', 'Certificados emitidos'],
+      ['Nova emissão', 'Configurar certificado'],
+    ]) {
+      const button = [...element.querySelectorAll('button')].find((candidate) => candidate.textContent?.includes(label));
+      if (!button) throw new Error(`Certificate button not found: ${label}`);
+      button.focus();
+      button.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(element.ownerDocument.activeElement).toBe(element.querySelector('h3'));
+      expect(element.ownerDocument.activeElement?.textContent).toBe(heading);
+    }
+  });
 });

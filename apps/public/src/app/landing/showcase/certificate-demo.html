@@ -2,7 +2,7 @@
   @switch (step()) {
     @case ('configuration') {
       <section aria-labelledby="certificate-demo-setup-title">
-        <h3 id="certificate-demo-setup-title">Configurar certificado</h3>
+        <h3 #stepHeading id="certificate-demo-setup-title" tabindex="-1">Configurar certificado</h3>
 
         <div class="certificate-demo__fields">
           <mat-form-field appearance="outline">
@@ -25,14 +25,14 @@
           </mat-form-field>
         </div>
 
-        <div class="certificate-demo__template" aria-labelledby="certificate-demo-template-title">
+        <section class="certificate-demo__template" aria-labelledby="certificate-demo-template-title">
           <span class="certificate-demo__section-label" id="certificate-demo-template-title">Prévia do modelo</span>
           <h4>
             {{ publicCertificateName() }}
             <lib-twemoji emoji="♿" aria-hidden="true" />
           </h4>
           <p>{{ previewText() }}</p>
-        </div>
+        </section>
 
         <div class="certificate-demo__eligible">
           <p class="certificate-demo__eligible-count">{{ eligibleSummary() }}</p>
@@ -55,7 +55,7 @@
 
     @case ('issued') {
       <section aria-labelledby="certificate-demo-issued-title">
-        <h3 id="certificate-demo-issued-title">Certificados emitidos</h3>
+        <h3 #stepHeading id="certificate-demo-issued-title" tabindex="-1">Certificados emitidos</h3>
         <p class="certificate-demo__status" role="status" aria-live="polite" aria-atomic="true">
           {{ statusMessage() }}
         </p>
@@ -93,7 +93,7 @@
           <mat-icon aria-hidden="true">arrow_back</mat-icon>
           Voltar à lista
         </button>
-        <h3 id="certificate-demo-inspection-title">Dados de validação</h3>
+        <h3 #stepHeading id="certificate-demo-inspection-title" tabindex="-1">Dados de validação</h3>
         @if (selectedCertificate(); as certificate) {
           <h4 class="certificate-demo__detail-title">
             {{ publicCertificateName() }}

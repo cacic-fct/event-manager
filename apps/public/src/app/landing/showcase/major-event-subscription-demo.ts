@@ -129,4 +129,11 @@ export class MajorEventSubscriptionDemoComponent {
   confirm(): void {
     if (this.step() === 'review' && this.selectedActivities().length) this.step.set('confirmed');
   }
+
+  resetDemo(): void {
+    this.selectedIds.set(new Set());
+    this.interacting.set(false);
+    this.infoEventId.set(null);
+    this.step.set('selection');
+  }
 }

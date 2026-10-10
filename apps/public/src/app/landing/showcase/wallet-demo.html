@@ -27,7 +27,11 @@
         <strong>{{ card.brand }}</strong>
       </button>
 
-      <div class="wallet-card__body" [id]="'wallet-card-body-' + card.id">
+      <div
+        class="wallet-card__body"
+        [id]="'wallet-card-body-' + card.id"
+        [attr.aria-hidden]="isVisibleCardBody(card.id) ? null : 'true'"
+        [attr.inert]="isVisibleCardBody(card.id) ? null : ''">
         @switch (card.id) { @case ('credential') {
         <section class="credential-body" aria-label="Credencial de Marina Costa">
           <div class="credential-holder">

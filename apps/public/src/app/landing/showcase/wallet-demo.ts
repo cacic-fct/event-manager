@@ -132,6 +132,10 @@ export class WalletDemoComponent {
     return this.selectedCard() === cardId;
   }
 
+  isVisibleCardBody(cardId: WalletCardId): boolean {
+    return cardId === (this.selectedCard() ?? 'credential');
+  }
+
   isAwayCard(cardId: WalletCardId): boolean {
     const selectedCard = this.selectedCard();
     return selectedCard !== null && selectedCard !== cardId;

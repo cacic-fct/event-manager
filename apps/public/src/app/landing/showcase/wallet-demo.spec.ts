@@ -23,6 +23,8 @@ describe('WalletDemoComponent', () => {
     for (const cardId of ['offline', 'ticket', 'credential']) {
       expect(body(fixture, cardId).hasAttribute('hidden')).toBe(false);
       expect(card(fixture, cardId).hasAttribute('inert')).toBe(false);
+      expect(body(fixture, cardId).getAttribute('aria-hidden')).toBe(cardId === 'credential' ? null : 'true');
+      expect(body(fixture, cardId).hasAttribute('inert')).toBe(cardId !== 'credential');
     }
   });
 
@@ -47,6 +49,10 @@ describe('WalletDemoComponent', () => {
     expect(body(fixture, 'ticket').hasAttribute('hidden')).toBe(false);
     expect(body(fixture, 'credential').hasAttribute('hidden')).toBe(false);
     expect(body(fixture, 'offline').hasAttribute('hidden')).toBe(false);
+    expect(body(fixture, 'ticket').getAttribute('aria-hidden')).toBeNull();
+    expect(body(fixture, 'ticket').hasAttribute('inert')).toBe(false);
+    expect(body(fixture, 'credential').getAttribute('aria-hidden')).toBe('true');
+    expect(body(fixture, 'offline').getAttribute('aria-hidden')).toBe('true');
     expect(
       Array.from(
         fixture.nativeElement.querySelectorAll('.wallet-card') as NodeListOf<HTMLElement>,
@@ -65,6 +71,10 @@ describe('WalletDemoComponent', () => {
     expect(card(fixture, 'offline').hasAttribute('inert')).toBe(false);
     expect(body(fixture, 'credential').hasAttribute('hidden')).toBe(false);
     expect(body(fixture, 'ticket').hasAttribute('hidden')).toBe(false);
+    expect(body(fixture, 'credential').getAttribute('aria-hidden')).toBeNull();
+    expect(body(fixture, 'credential').hasAttribute('inert')).toBe(false);
+    expect(body(fixture, 'ticket').getAttribute('aria-hidden')).toBe('true');
+    expect(body(fixture, 'ticket').hasAttribute('inert')).toBe(true);
   });
 
   it('opens a card with native keyboard activation', async () => {
@@ -80,6 +90,10 @@ describe('WalletDemoComponent', () => {
     expect(fixture.componentInstance.selectedCard()).toBe('offline');
     expect(offlineButton.getAttribute('aria-pressed')).toBe('true');
     expect(body(fixture, 'offline').hasAttribute('hidden')).toBe(false);
+    expect(body(fixture, 'offline').getAttribute('aria-hidden')).toBeNull();
+    expect(body(fixture, 'offline').hasAttribute('inert')).toBe(false);
+    expect(body(fixture, 'ticket').getAttribute('aria-hidden')).toBe('true');
+    expect(body(fixture, 'credential').getAttribute('aria-hidden')).toBe('true');
   });
 
   it('rotates the fixed example code and countdown by elapsed TOTP periods', () => {

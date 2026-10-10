@@ -13,8 +13,9 @@
               <p><mat-icon aria-hidden="true">sports_soccer</mat-icon>Final de futsal</p>
               <div class="score-line">
                 <span>Compiladores</span>
-                <strong [attr.aria-label]="matchScore().home + ' a ' + matchScore().away">
-                  {{ matchScore().home }} <span>:</span> {{ matchScore().away }}
+                <strong>
+                  <span aria-hidden="true">{{ matchScore().home }} <span>:</span> {{ matchScore().away }}</span>
+                  <span class="cdk-visually-hidden">{{ matchScore().home }} a {{ matchScore().away }}</span>
                 </strong>
                 <span>Algoritmos</span>
               </div>

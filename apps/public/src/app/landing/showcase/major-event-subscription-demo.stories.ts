@@ -48,6 +48,19 @@ export const MobileReview: Story = {
   },
 };
 
+export const RestartSubscription: Story = {
+  globals: { theme: 'light', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Revisar inscrição' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar inscrição' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Recomeçar demonstração' }));
+    await expect(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' })).not.toBeChecked();
+    await expect(canvas.getByRole('button', { name: 'Revisar inscrição' })).toBeDisabled();
+  },
+};
+
 export const EventInformation: Story = {
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
