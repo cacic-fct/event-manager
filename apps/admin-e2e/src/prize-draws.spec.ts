@@ -58,7 +58,7 @@ test('configures, freezes, and opens a prize draw with an auditable roster', asy
 test('runs a side-effect-free demo and presents the winner in the result dialog', async ({ page }) => {
   await page.goto('/admin/draws/draw-1/draw?demo=true');
 
-  await expect(page.getByText('Demonstração · nenhum resultado será registrado.')).toBeVisible();
+  await expect(page.locator('.demo-mode')).toContainText('Demonstração. Nenhum resultado será registrado.');
   await page.getByRole('button', { name: 'Iniciar demonstração' }).click();
 
   const dialog = page.getByRole('dialog');

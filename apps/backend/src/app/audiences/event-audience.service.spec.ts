@@ -1,4 +1,10 @@
+import { Test } from '@nestjs/testing';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { AccountMergeService } from '../account-merge/account-merge.service';
+import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
+import { AccountManagerGrpcClient } from '../grpc/account-manager-grpc.client';
+import { PrismaService } from '../prisma/prisma.service';
 import { EventAudienceService } from './event-audience.service';
 
 function setup() {
@@ -17,6 +23,22 @@ function setup() {
 
 describe('audience principals', () => {
   afterEach(() => jest.useRealTimers());
+
+  it('resolves the account merge dependency through Nest injection', async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        EventAudienceService,
+        { provide: PrismaService, useValue: {} },
+        { provide: AuthorizationPolicyService, useValue: {} },
+        { provide: BackendFeatureFlagService, useValue: {} },
+        { provide: AccountManagerGrpcClient, useValue: {} },
+        { provide: AccountMergeService, useValue: {} },
+      ],
+    }).compile();
+
+    expect(moduleRef.get(EventAudienceService)).toBeInstanceOf(EventAudienceService);
+    await moduleRef.close();
+  });
 
   it('uses the final merged account for people, remote identity, and permissions', async () => {
     const { service, prisma, authorization, accountManager, user } = setup();

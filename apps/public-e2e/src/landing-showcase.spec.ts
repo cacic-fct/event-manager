@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
-import type * as axe from 'axe-core';
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
+
+type AxeApi = typeof import('axe-core');
 
 const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const participantFeatures = [
@@ -62,7 +63,7 @@ for (const scenario of [
         ? `${storybookUrl}/iframe.html?id=cacic-eventos-landing-page--${storyId}&viewMode=story`
         : '/app/');
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
-      await page.getByRole('button', { name: 'Ir para a próxima seção' }).click();
+      await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
       await expect(page.locator('app-landing-participant-showcase')).toBeVisible();
     });
 
@@ -157,7 +158,7 @@ async function selectFeature(showcase: Locator, label: string): Promise<void> {
 async function assertAccessible(page: Page, selector: string): Promise<void> {
   await page.evaluate(axeSource);
   const violations = await page.evaluate(async (context) => {
-    const results = await (window as typeof window & { axe: typeof axe }).axe.run(context, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } });
+    const results = await (window as typeof window & { axe: AxeApi }).axe.run(context, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } });
     return results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }));
   }, selector);
   expect(violations).toEqual([]);
