@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -127,7 +129,9 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notifications?: NovuNotificationsService,
-    @Optional() private readonly audiences?: EventAudienceService,
+    @Optional()
+    @Inject(forwardRef(() => EventAudienceService))
+    private readonly audiences?: EventAudienceService,
   ) {}
 
   async onModuleInit(): Promise<void> {
