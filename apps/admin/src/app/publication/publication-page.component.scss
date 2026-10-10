@@ -1,9 +1,11 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
 :host {
   display: block;
 }
 
 .publication-shell {
-  min-width: 0;
+  @include view-widths.view(2);
 }
 
 .publication-header {
@@ -24,4 +26,10 @@
   grid-template-columns: minmax(20rem, 0.95fr) minmax(0, 1.7fr);
   gap: 1rem;
   align-items: start;
+}
+
+@media (max-width: 860px) {
+  .publication-shell {
+    @include view-widths.view();
+  }
 }

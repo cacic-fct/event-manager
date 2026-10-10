@@ -20,8 +20,8 @@ test('shows released results with criteria, exact historical odds, and privacy-s
   await page.getByRole('button', { name: 'Como este sorteio funciona' }).click();
   await expect(page.getByText('pessoas presentes, pessoas inscritas')).toBeVisible();
   await expect(page.getByText('Entradas ponderadas')).toBeVisible();
-  await expect(page.getByText('25% · 1 em 4')).toBeVisible();
-  await expect(page.getByText('Pesos: 1 pessoa com peso 1 · 1 pessoa com peso 3')).toBeVisible();
+  await expect(page.getByText('25% (1 em 4)')).toBeVisible();
+  await expect(page.getByText('Pesos: 1 pessoa com peso 1, 1 pessoa com peso 3')).toBeVisible();
   await expect(page.getByText(/CSPRNG/)).toBeVisible();
 });
 

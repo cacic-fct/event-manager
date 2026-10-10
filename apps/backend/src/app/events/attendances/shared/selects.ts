@@ -85,6 +85,7 @@ export const EVENT_RELATION_SELECT = {
   onlineAttendanceEndDate: true,
   isPubliclyListed: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,

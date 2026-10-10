@@ -1,6 +1,5 @@
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   InjectionToken,
@@ -39,7 +38,6 @@ type FormResultSummary = {
 
 @Component({
   selector: 'app-workspace-form-results',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (results(); as result) {
       <section class="results-shell">
@@ -47,8 +45,7 @@ type FormResultSummary = {
           <div>
             <h3>Resultados</h3>
             <p>
-              {{ result.responseCount }} resposta{{ result.responseCount === 1 ? '' : 's' }}
-              ·
+              {{ result.responseCount }} resposta{{ result.responseCount === 1 ? '' : 's' }},
               {{ sigiloLabel(result) }}
             </p>
           </div>

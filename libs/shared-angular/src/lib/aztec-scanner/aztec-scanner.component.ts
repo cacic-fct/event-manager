@@ -1,6 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
@@ -118,7 +117,6 @@ interface ScreenWakeLockNavigator {
       margin: 2px 0 0;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AztecScannerComponent {
   private readonly destroyRef = inject(DestroyRef);

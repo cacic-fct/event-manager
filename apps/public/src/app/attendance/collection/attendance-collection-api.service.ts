@@ -4,6 +4,7 @@ import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
+import { graphqlError } from '../../shared/rate-limit-error';
 
 export type AttendanceCreationMethod =
   | 'CSV_IMPORT'
@@ -83,7 +84,7 @@ type GraphqlVariables = Record<string, unknown>;
 
 interface GraphqlResponse<TData> {
   data?: TData;
-  errors?: Array<{ message: string }>;
+  errors?: Array<{ message: string; extensions?: unknown }>;
 }
 
 const PUBLIC_EVENT_FIELDS = `
@@ -291,7 +292,7 @@ export class AttendanceCollectionApiService {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
+          throw graphqlError(response.errors);
         }
 
         if (!response.data) {

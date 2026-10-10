@@ -309,7 +309,7 @@ test.describe('admin workspace Storybook regression', () => {
       const rankedResults = dialog.getByRole('button', { name: /^Selecionar / });
       await expect(rankedResults.nth(0)).toHaveAccessibleName('Selecionar Oficina de acessibilidade 1');
       await expect(rankedResults.nth(1)).toHaveAccessibleName('Selecionar Oficina independente');
-      await expect(dialog.getByText(/Evento · Palestra .* Publicado/)).toBeVisible();
+      await expect(dialog.getByText(/Evento, tipo: Palestra .* publicação: Publicado/)).toBeVisible();
       await expect(dialog.getByText('Sala 1', { exact: true })).toBeVisible();
       await expect(dialog.getByText(/Em:.*Semana da Computação/)).toBeVisible();
       if (captureDirectory) await page.screenshot({ path: resolve(captureDirectory, `event-workspace-ranked-search-${viewport.name}.png`), fullPage: true });

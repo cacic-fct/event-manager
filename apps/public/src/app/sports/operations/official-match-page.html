@@ -27,13 +27,6 @@
   <mat-spinner diameter="42" />
   <p>Preparando a mesa de controle…</p>
 </main>
-} @else if (error()) {
-<main class="center-state">
-  <mat-icon>error_outline</mat-icon>
-  <h2>Não foi possível abrir a partida</h2>
-  <p>{{ error() }}</p>
-  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
-</main>
 } @else if (match(); as currentMatch) {
 <main class="operation-shell">
   <span class="score-announcement" aria-live="polite" aria-atomic="true">

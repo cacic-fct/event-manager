@@ -27,6 +27,7 @@ import type {
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { graphqlError } from '../../shared/rate-limit-error';
 
 export type {
   Certificate,
@@ -758,7 +759,7 @@ export class AttendancesApiService {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join('\n'));
+          throw graphqlError(response.errors);
         }
 
         if (!response.data) {

@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { AuditLogOperation, PublicationState } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventDraftsService } from './event-drafts.service';
@@ -202,6 +202,8 @@ describe('EventDraftsService', () => {
             name: 'Evento revisado',
             startDate: new Date('2026-07-01T12:00:00.000Z'),
             endDate: new Date('2026-07-01T13:00:00.000Z'),
+            youtubeCode: 'https://www.youtube.com/watch?v=video-123',
+            twitchChannel: 'https://www.twitch.tv/My_Channel',
           },
         },
         user as never,
@@ -223,6 +225,8 @@ describe('EventDraftsService', () => {
           payload: expect.objectContaining({
             name: 'Evento revisado',
             startDate: '2026-07-01T12:00:00.000Z',
+            youtubeCode: 'video-123',
+            twitchChannel: 'my_channel',
           }),
         }),
       }),
@@ -235,6 +239,19 @@ describe('EventDraftsService', () => {
       }),
       tx,
     );
+  });
+
+  it('rejects invalid livestream draft values instead of saving a clearing value', async () => {
+    const { service, tx } = buildService();
+
+    await expect(
+      service.saveEventDraft(
+        { sourceEventId: 'event-1', input: { twitchChannel: 'https://twitch.tv/videos/123' } },
+        user as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(tx.eventDraft.create).not.toHaveBeenCalled();
   });
 
   it('applies a draft to the source event, keeps it published, and hard deletes the draft', async () => {

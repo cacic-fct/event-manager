@@ -1,6 +1,6 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { EMPTY, NEVER, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 import { expect, within } from 'storybook/test';
 import { createWalletStoryTicket } from '../wallet/testing/wallet-story-fixtures';
 import { TicketingApiService } from './ticketing-api.service';
@@ -14,7 +14,7 @@ type TicketDetailsStoryArgs = {
   ticketEmoji: string;
   description: string;
   eligibilityDescription: string;
-  apiState: 'ready' | 'loading' | 'empty' | 'error';
+  apiState: 'ready' | 'loading';
 };
 
 const meta: Meta<TicketDetailsStoryArgs> = {
@@ -40,17 +40,13 @@ const meta: Meta<TicketDetailsStoryArgs> = {
     ticketEmoji: { control: 'text' },
     description: { control: 'text' },
     eligibilityDescription: { control: 'text' },
-    apiState: { control: 'select', options: ['ready', 'loading', 'empty', 'error'] },
+    apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
     (story, context) => {
       const ticketResponse = context.args.apiState === 'loading'
         ? NEVER
-        : context.args.apiState === 'empty'
-          ? of(null)
-          : context.args.apiState === 'error'
-            ? throwError(() => new Error('Falha ao carregar o bilhete.'))
-            : null;
+        : null;
       const ticket = createWalletStoryTicket({
         name: context.args.ticketName,
         emoji: context.args.ticketEmoji,
@@ -158,20 +154,6 @@ export const Loading: Story = {
   args: { apiState: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando informações do bilhete' })).toBeVisible();
-  },
-};
-
-export const MissingTicket: Story = {
-  args: { apiState: 'empty' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Este bilhete não está disponível.')).toBeVisible();
-  },
-};
-
-export const LoadError: Story = {
-  args: { apiState: 'error' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar as informações deste bilhete.')).toBeVisible();
   },
 };
 

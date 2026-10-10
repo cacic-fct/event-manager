@@ -406,7 +406,7 @@ export const LongContentOnMobile: Story = {
   args: {
     coordinateLayout: 'nearby',
     eventCount: 24,
-    eventNamePrefix: 'Semana integrada de ciência, tecnologia, cultura e extensão universitária · ',
+    eventNamePrefix: 'Semana integrada de ciência, tecnologia, cultura e extensão universitária: ',
     spreadRadiusMeters: 18,
   },
   globals: { theme: 'dark', motion: 'reduced' },

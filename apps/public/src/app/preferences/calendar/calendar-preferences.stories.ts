@@ -1,6 +1,6 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@angular/core';
+import { Component, LOCALE_ID, input, signal } from '@angular/core';
 import { CalendarDefaultItemViewPreference, CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -59,7 +59,6 @@ const storyAuthState = signal(defaultArgs.authenticated);
       <app-calendar-preferences />
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 class CalendarPreferencesStoryHostComponent {
   readonly renderKey = input(0);

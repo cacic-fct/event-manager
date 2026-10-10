@@ -65,8 +65,7 @@
           <div>
             <h3>Inscritos</h3>
             <p>
-              {{ workspace.majorEventSubscriptionCount() }} registros ·
-              {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'Pagamento exigido' : 'Pagamento não exigido' }} ·
+              {{ workspace.majorEventSubscriptionCount() }} registros, {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'pagamento exigido' : 'pagamento não exigido' }}.
               <a matButton="text" [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)">Editar política</a>
             </p>
           </div>
@@ -91,11 +90,10 @@
                 <app-participant-summary recordDescription [person]="subscription.person" [showName]="false" />
               }
               <span recordDescription>
-                {{ statusLabel(subscription.subscriptionStatus) }} ·
-                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
-                @if (hasSubscribedLecturer(subscription)) {
-                  · Palestrante inscrito no próprio evento
-                }
+                {{ statusLabel(subscription.subscriptionStatus) }},
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}{{
+                  hasSubscribedLecturer(subscription) ? ', palestrante inscrito no próprio evento' : ''
+                }}
               </span>
               <div recordActions class="item-actions">
                 <button
@@ -118,15 +116,15 @@
               </div>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum inscrito encontrado</span>
-              <span matListItemLine>Ajuste a busca e tente novamente.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum inscrito encontrado</p>
+            </div>
           }
         </mat-list>
 
         <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
-          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }} · {{ workspace.majorEventSubscriptionCount() }} no total</span>
+          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}, {{ workspace.majorEventSubscriptionCount() }} no total</span>
           <div class="list-pager-actions">
             <button
               mat-icon-button
@@ -181,24 +179,23 @@
                 <p>Equipe solicitada: {{ application.requestedTeam?.name ?? 'Sem equipe' }}</p>
                 <div class="sports-interest-list" aria-label="Modalidades de interesse">
                   @for (category of application.categories; track category.id) {
-                    <span>{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</span>
+                    <span>{{ category.name }}{{ category.division ? ', ' + category.division : '' }}</span>
                   } @empty {
                     <span>Sem modalidade</span>
                   }
                 </div>
                 @if (workspace.sportsParticipantFor(application.applicant.personId); as participant) {
                   <p>
-                    Participação efetiva: {{ statusLabel(participant.status) }} ·
+                    Participação efetiva: {{ statusLabel(participant.status) }},
                     {{ sportsPaymentStatusLabel(participant.paymentStatus) }}
                   </p>
                   <div class="sports-interest-list" aria-label="Equipes e modalidades efetivas">
                     @for (membership of participant.teams; track membership.memberId) {
                       <span>
-                        {{ membership.teamName }}
+                        {{ membership.teamName }}{{ membership.categories.length > 0 ? ': ' : '' }}
                         @if (membership.categories.length > 0) {
-                          ·
                           @for (category of membership.categories; track category.id; let last = $last) {
-                            {{ category.name }}{{ category.division ? ' · ' + category.division : ''
+                            {{ category.name }}{{ category.division ? ', ' + category.division : ''
                             }}{{ last ? '' : ', ' }}
                           }
                         }
@@ -275,17 +272,16 @@
                   <span>{{ statusLabel(participant.status) }}</span>
                 </div>
                 <p>
-                  {{ sportsParticipantSourceLabel(participant.source) }} ·
+                  {{ sportsParticipantSourceLabel(participant.source) }},
                   {{ sportsPaymentStatusLabel(participant.paymentStatus) }}
                 </p>
                 <div class="sports-interest-list" aria-label="Equipes e modalidades efetivas">
                   @for (membership of participant.teams; track membership.memberId) {
                     <span>
-                      {{ membership.teamName }}
+                      {{ membership.teamName }}{{ membership.categories.length > 0 ? ': ' : '' }}
                       @if (membership.categories.length > 0) {
-                        ·
                         @for (category of membership.categories; track category.id; let last = $last) {
-                          {{ category.name }}{{ category.division ? ' · ' + category.division : ''
+                          {{ category.name }}{{ category.division ? ', ' + category.division : ''
                           }}{{ last ? '' : ', ' }}
                         }
                       }
@@ -335,8 +331,7 @@
             </h3>
             <p>
               @if (workspace.selectedMajorEventSubscription()) {
-                {{ workspace.selectedMajorEventSubscription()?.createdAt | date: 'short' }}
-                ·
+                {{ workspace.selectedMajorEventSubscription()?.createdAt | date: 'short' }},
                 {{ subscriptionCreationMethodLabel(workspace.selectedMajorEventSubscription()?.createdByMethod ?? 'UNKNOWN') }}
               } @else {
                 Selecione a pessoa e os eventos para criar a inscrição.
@@ -413,7 +408,7 @@
                 [disabled]="!permissions.has(Permission.Person.Read) || !canEditSelectedMajorEventSubscriptions()"
                 [disabledReason]="
                   !permissions.has(Permission.Person.Read)
-                    ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                    ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                     : 'Criar inscrições exige permissão para editar este grande evento.'
                 "
                 resultActionLabel="Selecionar para inscrição"
@@ -523,10 +518,10 @@
                 "
                 (selectionChange)="workspace.setSelectedEvent(eventItem.eventId, $event)" />
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhum evento carregado</span>
-                <span matListItemLine> Carregue uma inscrição existente para ver os eventos do grande evento. </span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhum evento carregado</p>
+              </div>
             }
           </mat-list>
         </section>

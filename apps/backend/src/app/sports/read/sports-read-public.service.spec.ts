@@ -67,7 +67,7 @@ describe('SportsReadPublicService', () => {
     );
   });
 
-  it('returns a privacy-safe match and skips roster persistence before a final state', async () => {
+  it('returns a privacy-safe match and skips participant persistence before play starts', async () => {
     prisma.sportsMatch.findFirst.mockResolvedValue(sportsPublicMatchRecord());
 
     const result = await new SportsReadPublicService(prisma as never).publicMatch('match-1');
@@ -75,6 +75,8 @@ describe('SportsReadPublicService', () => {
     expect(result.id).toBe('match-1');
     expect(result.state).toBe(SportsMatchState.SCHEDULED);
     expect(result.rosters).toEqual([]);
+    expect(result.officials).toEqual([]);
+    expect(prisma.sportsOfficialAssignment.findMany).not.toHaveBeenCalled();
     expect(prisma.sportsMatchRoster.findMany).not.toHaveBeenCalled();
     expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -105,6 +107,34 @@ describe('SportsReadPublicService', () => {
 
     expect(result.officials).toEqual([]);
     expect(prisma.sportsOfficialAssignment.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('reveals participants during play (paused: %s)', async (paused) => {
+    const actions = [
+      {
+        type: SportsMatchActionType.START,
+        payload: {},
+        authoredAt: sportsTestDate(-60_000),
+        reviewStatus: SportsReviewStatus.APPROVED,
+      },
+      ...(paused
+        ? [{
+            type: SportsMatchActionType.PAUSE,
+            payload: {},
+            authoredAt: sportsTestDate(-30_000),
+            reviewStatus: SportsReviewStatus.APPROVED,
+          }]
+        : []),
+    ];
+    prisma.sportsMatch.findFirst.mockResolvedValue(sportsPublicMatchRecord({ actions }));
+    prisma.sportsMatchRoster.findMany.mockResolvedValue([sportsPublicRosterRecord()]);
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([sportsPublicOfficialAssignmentRecord()]);
+
+    const result = await new SportsReadPublicService(prisma as never).publicMatch('match-1');
+
+    expect(result.state).toBe(paused ? SportsMatchState.PAUSED : SportsMatchState.LIVE);
+    expect(result.rosters).toHaveLength(1);
+    expect(result.officials).toEqual([{ name: 'Carlos S.', role: 'REFEREE' }]);
   });
 
   it('reveals anonymized approved rosters and scoped officials after a match is final', async () => {
@@ -185,6 +215,7 @@ describe('SportsReadPublicService', () => {
       sportsPublicMatchRecord({ id: 'match-2', eventId: 'event-2', stageId: 'stage-1' }),
     ]);
     prisma.sportsMatchRoster.findMany.mockResolvedValue([sportsPublicRosterRecord()]);
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([sportsPublicOfficialAssignmentRecord()]);
     prisma.sportsStanding.findMany.mockResolvedValue([
       {
         stage: { categoryId: 'category-1' },
@@ -240,7 +271,7 @@ describe('SportsReadPublicService', () => {
             id: 'stage-1',
             matches: expect.arrayContaining([
               expect.objectContaining({ id: 'match-1' }),
-              expect.objectContaining({ id: 'match-2', rosters: [] }),
+              expect.objectContaining({ id: 'match-2', rosters: [], officials: [] }),
             ]),
           }),
         ],
@@ -254,7 +285,7 @@ describe('SportsReadPublicService', () => {
               }),
             ],
           }),
-          expect.objectContaining({ id: 'match-2', state: SportsMatchState.SCHEDULED, rosters: [] }),
+          expect.objectContaining({ id: 'match-2', state: SportsMatchState.SCHEDULED, rosters: [], officials: [] }),
         ]),
       }),
     );

@@ -18,7 +18,7 @@ const meta: Meta<WorkspaceRecordComponent> = {
   render: (args) => ({ props: args, template: `
     <app-workspace-record [title]="title" [label]="label" [selected]="selected" [disabled]="disabled" [readonly]="readonly" [link]="link" [queryParams]="queryParams" (activate)="activate($event)">
       <mat-icon recordIcon>event</mat-icon>
-      <span recordDescription>Minicurso · Auditório da FCT · 24 participantes</span>
+      <span recordDescription>Minicurso, no Auditório da FCT, com 24 participantes</span>
       <button recordActions matIconButton type="button" aria-label="Mais ações"><mat-icon>more_vert</mat-icon></button>
     </app-workspace-record>
   ` }),

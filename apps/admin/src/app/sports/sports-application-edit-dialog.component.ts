@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -34,7 +34,6 @@ const AVAILABLE_CATEGORY_STATUSES = new Set(['REGISTRATION_OPEN', 'ACTIVE']);
 
 @Component({
   selector: 'app-sports-application-edit-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CurrencyPipe, MatButtonModule, MatDialogModule, MatFormFieldModule, MatSelectModule, ReactiveFormsModule],
   template: `
     <h2 mat-dialog-title>Corrigir dados da inscrição</h2>
@@ -51,7 +50,7 @@ const AVAILABLE_CATEGORY_STATUSES = new Set(['REGISTRATION_OPEN', 'ACTIVE']);
             }
             @for (team of data.teams; track team.id) {
               <mat-option [value]="team.id">
-                {{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}
+                {{ team.name }}{{ team.institution ? ', instituição: ' + team.institution : '' }}
               </mat-option>
             }
           </mat-select>
@@ -65,7 +64,7 @@ const AVAILABLE_CATEGORY_STATUSES = new Set(['REGISTRATION_OPEN', 'ACTIVE']);
           <mat-select formControlName="categoryIds" multiple>
             @for (category of availableCategories(); track category.id) {
               <mat-option [value]="category.id">
-                {{ category.name }}{{ category.division ? ' · ' + category.division : '' }}
+                {{ category.name }}{{ category.division ? ', divisão: ' + category.division : '' }}
               </mat-option>
             }
           </mat-select>
@@ -83,7 +82,7 @@ const AVAILABLE_CATEGORY_STATUSES = new Set(['REGISTRATION_OPEN', 'ACTIVE']);
             <mat-select formControlName="paymentTier">
               @for (tier of paymentTiers(); track tier.name) {
                 <mat-option [value]="tier.name">
-                  {{ tier.name }}{{ tier.value >= 0 ? ' · ' : '' }}
+                  {{ tier.name }}{{ tier.value >= 0 ? ': ' : '' }}
                   @if (tier.value >= 0) {
                     {{ tier.value / 100 | currency: 'BRL' }}
                   }

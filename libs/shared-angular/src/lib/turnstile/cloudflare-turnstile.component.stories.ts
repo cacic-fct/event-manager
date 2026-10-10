@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
@@ -40,7 +40,6 @@ class MockCloudflareTurnstileService {
 
 @Component({
   selector: 'lib-storybook-cloudflare-turnstile-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CloudflareTurnstileComponent],
   providers: [
     MockCloudflareTurnstileService,

@@ -80,7 +80,7 @@
               </span>
               <span matListItemLine>{{ item.summary }}</span>
               <span matListItemLine
-                >{{ item.actorName || 'Origem automática' }} · {{ item.detectedAt | date: 'short' }}</span
+                >{{ item.actorName || 'Origem automática' }}, {{ item.detectedAt | date: 'short' }}</span
               >
               <div matListItemMeta class="review-actions">
                 @if (item.deepLink) {
@@ -204,7 +204,7 @@
                 <span>{{ collector.firstScanAt | date: 'shortTime' }}</span>
                 <span>{{ collector.lastScanAt | date: 'shortTime' }}</span>
                 <span>{{ methodSummary(collector.methods) }}</span>
-                <span>{{ collector.onlineCount }} on-line · {{ collector.offlineCount }} off-line</span>
+                <span>{{ collector.onlineCount }} on-line e {{ collector.offlineCount }} off-line</span>
                 <strong>{{ collector.count }}</strong>
               </div>
             }

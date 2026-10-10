@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { EMPTY, of } from 'rxjs';
 import { createWalletStoryTicket } from '../wallet/testing/wallet-story-fixtures';
 import { TicketingApiService } from './ticketing-api.service';
@@ -26,6 +27,33 @@ describe('TicketDetailsPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Indisponível');
     expect(fixture.nativeElement.querySelector('a[mat-flat-button]')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-wallet-barcode')).toBeNull();
+    fixture.destroy();
+    TestBed.resetTestingModule();
+  });
+
+  it('routes a ticket that is not owned by the current user to shared not found', async () => {
+    await TestBed.configureTestingModule({
+      imports: [TicketDetailsPage],
+      providers: [
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ ticketId: 'private-ticket' }) },
+            paramMap: of(convertToParamMap({ ticketId: 'private-ticket' })),
+          },
+        },
+        { provide: TicketingApiService, useValue: { myWalletTicket: () => of(null), watchCurrentUser: () => EMPTY } },
+      ],
+    }).compileComponents();
+    const routeErrors = TestBed.inject(RouteErrorService);
+    vi.spyOn(routeErrors, 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(TicketDetailsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
     fixture.destroy();
     TestBed.resetTestingModule();
   });

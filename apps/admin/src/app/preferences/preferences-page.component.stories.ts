@@ -1,6 +1,6 @@
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, input, signal } from '@angular/core';
+import { Component, LOCALE_ID, computed, input, signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -88,7 +88,6 @@ let storyRenderKey = 0;
       <app-workspace-preferences-tab />
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 class WorkspacePreferencesTabStoryHostComponent {
   readonly renderKey = input(0);

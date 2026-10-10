@@ -136,7 +136,7 @@ function createMyDayStoryEvent(
     'Encontro de comunidades',
   ][index % 5];
   const name = `${controls.eventNamePrefix.trim()}${controls.eventNamePrefix.trim() ? ' ' : ''}${
-    options.name ?? `${generatedName} · ${faker.word.adjective()}`
+    options.name ?? `${generatedName} ${faker.word.adjective()}`
   }`;
 
   return {

@@ -4,6 +4,7 @@ import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { firstValueFrom } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { CertificateApiService } from '../graphql/certificate-api.service';
@@ -48,6 +49,7 @@ import { AttendanceCsvColumnDialogComponent } from '../attendances/dialogs/impor
 import { AttendanceCsvImportResultDialogComponent } from '../attendances/dialogs/import/attendance-csv-import-result-dialog.component';
 import { AttendancePersonResolutionDialogComponent } from '../attendances/dialogs/import/attendance-person-resolution-dialog.component';
 import { PermissionsService } from '../permissions/permissions.service';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import {
   AttendanceEligibility,
   type AttendanceEligibility as AttendanceEligibilityValue,
@@ -99,6 +101,8 @@ export class CertificatesService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
+  private readonly routeErrors = inject(RouteErrorService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
   private targetSearchRequestGeneration = 0;
@@ -405,7 +409,7 @@ export class CertificatesService {
 
     const scope = this.targetTypeToScope(targetType);
     if (!scope) {
-      void this.router.navigate(['/certificates']);
+      void this.routeErrors.navigate(404).catch(() => undefined);
       return;
     }
 
@@ -413,10 +417,17 @@ export class CertificatesService {
     await this.searchTargets();
     if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
 
-    const target = await this.getTargetByRoute(scope, targetId);
-    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
-    await this.applyTargetSelection(target);
-    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+    let target: IssuableTarget;
+    try {
+      target = await this.getTargetByRoute(scope, targetId);
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      await this.applyTargetSelection(target);
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+    } catch (error) {
+      if (routeSelectionGeneration !== this.routeSelectionGeneration || this.routeResourceErrors.redirectIfUnavailable(error)) return;
+      this.feedback.error(error, 'Não foi possível abrir este contexto de certificado.');
+      return;
+    }
 
     if (!configId) {
       return;
@@ -427,12 +438,13 @@ export class CertificatesService {
       if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
       const configTarget = this.getCertificateConfigTarget(config);
       if (config.scope !== scope || configTarget?.id !== target.id) {
-        void this.router.navigate(['/certificates', this.scopeToTargetType(scope), target.id]);
+        void this.routeErrors.navigate(404).catch(() => undefined);
         return;
       }
       this.applyCertificateConfigSelection(config);
     } catch (error) {
       if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      if (this.routeResourceErrors.redirectIfUnavailable(error)) return;
       this.feedback.error(error, 'Não foi possível abrir a configuração de certificado.');
       void this.router.navigate(['/certificates', this.scopeToTargetType(scope), target.id]);
     }

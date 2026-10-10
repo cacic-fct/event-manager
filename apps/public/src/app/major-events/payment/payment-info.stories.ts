@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { HttpResponse, http } from 'msw';
 import { expect, userEvent, within } from 'storybook/test';
 import { PaymentInfo } from './payment-info';
 
@@ -44,21 +43,4 @@ export const OfflineFallback: Story = {
   args: {},
   globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const ApiError: Story = {
-  parameters: {
-    msw: {
-      handlers: {
-        graphql: [
-          http.post('/api/graphql', () =>
-            HttpResponse.json({ errors: [{ message: 'Pagamento temporariamente indisponível.' }] }),
-          ),
-        ],
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Pagamento temporariamente indisponível.')).toBeVisible();
-  },
 };

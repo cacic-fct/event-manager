@@ -173,7 +173,7 @@ export const Playground: Story = {
     await userEvent.click(await canvas.findByText(activeData.majorEvents[0].name));
     await userEvent.click(await canvas.findByRole('button', { name: /adicionar permissões do preset/i }));
     await expect(await canvas.findByText('Permissões em revisão')).toBeVisible();
-    await expect(await canvas.findByText('Comprovante · Visualizar')).toBeVisible();
+    await expect(await canvas.findByText('Comprovante: Visualizar')).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /salvar permissões/i })).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /remover permissão da revisão/i })).toBeVisible();
 

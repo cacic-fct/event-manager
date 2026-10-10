@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { AuthService, CacicAnalyticsService, MailtoService } from '@cacic-fct/shared-angular';
@@ -57,7 +57,6 @@ function buildCertificates(args: CertificateDialogStoryArgs): Certificate[] {
 
 @Component({
   selector: 'app-storybook-certificate-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

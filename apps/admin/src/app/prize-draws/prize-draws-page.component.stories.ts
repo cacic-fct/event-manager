@@ -193,7 +193,11 @@ export const EmptyNewSetup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Novo sorteio' })).toBeVisible();
-    await expect(canvas.getByText('Nenhum sorteio salvo')).toBeVisible();
+    const emptyMessage = canvas.getByText('Nenhum sorteio salvo');
+    await expect(emptyMessage).toBeVisible();
+    const emptyState = emptyMessage.closest('.admin-list-empty');
+    await expect(emptyState?.querySelector('mat-icon')).toHaveTextContent('hide_source');
+    await expect(canvas.queryByText('Crie a primeira configuração no painel ao lado.')).not.toBeInTheDocument();
   },
 };
 

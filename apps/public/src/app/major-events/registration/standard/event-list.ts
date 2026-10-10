@@ -65,7 +65,7 @@ export class SubscriptionEventList {
       summary.availableSlots == null
         ? 'Vagas ilimitadas'
         : `${summary.availableSlots} ${summary.availableSlots === 1 ? 'vaga disponível' : 'vagas disponíveis'}`;
-    return `${slots} · Posição ${summary.projectedQueuePosition} na fila`;
+    return `${slots}, posição ${summary.projectedQueuePosition} na fila`;
   }
 
   eventOption(event: PublicEvent): SubscriptionEventOptionView {

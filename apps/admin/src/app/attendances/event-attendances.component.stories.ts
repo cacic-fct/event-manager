@@ -35,13 +35,12 @@ export default meta;
 type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Ausências do evento' })).toBeVisible();
     await expect(await canvas.findAllByText(/Leitor de crachá/)).not.toHaveLength(0);
-    await expect(await canvas.findAllByText('Pessoa atende às regras de presença regular')).not.toHaveLength(0);
+    await expect(await canvas.findAllByText('Presença regular')).not.toHaveLength(0);
     await expect(canvas.queryByText('SCANNER')).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Atualizar' }));
   },
@@ -60,7 +59,7 @@ export const DenseOperations: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('80 registros')).toBeVisible();
     await expect(canvas.getByText('30 pendência(s)')).toBeVisible();
-    await expect(canvas.getByText('20 explícitas · 20 implícitas')).toBeVisible();
+    await expect(canvas.getByText('20 explícitas e 20 implícitas')).toBeVisible();
   },
 };
 

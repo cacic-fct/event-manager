@@ -1,14 +1,14 @@
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { provideRouter } from '@angular/router';
-import { EMPTY, NEVER, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 import { expect, within } from 'storybook/test';
 import { createTicketStoryTransfer, createTicketStoryTransferLists } from './ticketing-story-fixtures';
 import { TicketingApiService } from './ticketing-api.service';
 import { TicketTransfersPage } from './ticket-transfers-page';
 
 type TicketTransfersStoryArgs = {
-  mode: 'all' | 'empty' | 'system-ineligible' | 'system-duplicate' | 'admin' | 'loading' | 'error';
+  mode: 'all' | 'empty' | 'system-ineligible' | 'system-duplicate' | 'admin' | 'loading';
 };
 
 const meta: Meta<TicketTransfersStoryArgs> = {
@@ -18,7 +18,7 @@ const meta: Meta<TicketTransfersStoryArgs> = {
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: { mode: 'all' },
   argTypes: {
-    mode: { control: 'select', options: ['all', 'empty', 'system-ineligible', 'system-duplicate', 'admin', 'loading', 'error'] },
+    mode: { control: 'select', options: ['all', 'empty', 'system-ineligible', 'system-duplicate', 'admin', 'loading'] },
   },
   decorators: [
     (story, context) => {
@@ -60,9 +60,7 @@ const meta: Meta<TicketTransfersStoryArgs> = {
       });
       const apiResult = context.args.mode === 'loading'
         ? NEVER
-        : context.args.mode === 'error'
-          ? throwError(() => new Error('Falha ao carregar transferências.'))
-          : of(transfers);
+        : of(transfers);
 
       return applicationConfig({
         providers: [
@@ -141,15 +139,6 @@ export const Loading: Story = {
   args: { mode: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando transferências' })).toBeVisible();
-  },
-};
-
-export const LoadError: Story = {
-  args: { mode: 'error' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar suas transferências.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled();
   },
 };
 

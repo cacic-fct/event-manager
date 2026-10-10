@@ -97,7 +97,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_REGISTRATION,
           entityId: registration.id,
-          entityLabel: `${team.name} · ${category.name}`,
+          entityLabel: `${team.name}, modalidade: ${category.name}`,
           operation: AuditLogOperation.CREATE,
           actor,
           after: {
@@ -275,7 +275,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
           {
             entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
             entityId: assignment.id,
-            entityLabel: `${registration.team.name} · ${registration.category.name}`,
+            entityLabel: `${registration.team.name}, modalidade: ${registration.category.name}`,
             operation: AuditLogOperation.UPDATE,
             actor,
             before: {
@@ -313,7 +313,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
           entityId: assignment.id,
-          entityLabel: `${registration.team.name} · ${registration.category.name}`,
+          entityLabel: `${registration.team.name}, modalidade: ${registration.category.name}`,
           operation: AuditLogOperation.ASSIGN,
           actor,
           after: {
@@ -389,7 +389,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
           entityId: member.id,
-          entityLabel: `${member.teamMember.participant.person.name} · ${member.category.name}`,
+          entityLabel: `${member.teamMember.participant.person.name}, modalidade: ${member.category.name}`,
           operation: AuditLogOperation.UPDATE,
           actor,
           before: {
@@ -491,7 +491,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
           entityId: member.id,
-          entityLabel: `${member.teamMember.participant.person.name} · ${member.category.name}`,
+          entityLabel: `${member.teamMember.participant.person.name}, modalidade: ${member.category.name}`,
           operation: AuditLogOperation.UPDATE,
           actor,
           before: {
@@ -577,7 +577,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_REGISTRATION,
           entityId: registration.id,
-          entityLabel: `${registration.team.name} · ${registration.category.name}`,
+          entityLabel: `${registration.team.name}, modalidade: ${registration.category.name}`,
           operation: AuditLogOperation.DELETE,
           actor,
           before: this.registrationAuditSnapshot(registration),

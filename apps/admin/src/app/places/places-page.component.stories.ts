@@ -31,7 +31,7 @@ function placePreset(index: number, incomplete = false): PlacePreset {
 
   return createAdminPlacePreset({
     id: `place-${index + 1}`,
-    name: `${names[index % names.length]}${activeArgs.longNames ? ` · ${faker.company.catchPhrase()}` : ''}`,
+    name: `${names[index % names.length]}${activeArgs.longNames ? `, ${faker.company.catchPhrase()}` : ''}`,
     latitude: incomplete ? null : Number((-22.1211 + index * 0.001).toFixed(6)),
     longitude: incomplete ? null : Number((-51.4086 - index * 0.001).toFixed(6)),
     locationDescription: incomplete

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -265,7 +265,6 @@ export interface OfflineAttendanceSubmissionEditDialogResult {
       }
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OfflineAttendanceSubmissionEditDialogComponent {
   private readonly dialogRef = inject(
@@ -361,7 +360,7 @@ export class OfflineAttendanceSubmissionEditDialogComponent {
   }
 
   personSummary(person: Person): string {
-    return [person.email, person.identityDocument, person.academicId].filter(Boolean).join(' · ') || person.id;
+    return [person.email, person.identityDocument, person.academicId].filter(Boolean).join(', ') || person.id;
   }
 
   originalSourceLabel(): string {

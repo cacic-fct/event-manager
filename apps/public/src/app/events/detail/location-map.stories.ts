@@ -74,7 +74,7 @@ export const LongLocationName: Story = {
   name: 'Nome de localização extenso',
   args: {
     title:
-      'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho · Campus de Presidente Prudente',
+      'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho, campus de Presidente Prudente',
   },
   globals: { theme: 'dark', motion: 'reduced' },
   parameters: { viewport: { defaultViewport: 'mobile' } },

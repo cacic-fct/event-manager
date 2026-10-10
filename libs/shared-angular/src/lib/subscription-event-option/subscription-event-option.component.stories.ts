@@ -18,7 +18,7 @@ const meta: Meta<SubscriptionEventOptionComponent> = {
       startDate: '2026-06-02T12:00:00.000Z',
       endDate: '2026-06-02T14:00:00.000Z',
       locationDescription: 'Auditório 2',
-      availabilityLine: '2 vagas disponíveis · Posição 4 na fila',
+      availabilityLine: '2 vagas disponíveis, posição 4 na fila',
     },
     selected: true,
     disabled: false,

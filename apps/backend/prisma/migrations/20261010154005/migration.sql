@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "prize_draw_spins_notificationStatus_presentationAcknowledgedAt_" RENAME TO "prize_draw_spins_notificationStatus_presentationAck_idx";

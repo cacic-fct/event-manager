@@ -149,7 +149,7 @@ test('renders a scheduled match view with location and private roster state', as
   await expect(page.getByRole('heading', { name: 'Equipe Azul', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
   await expect(page.getByText('Agendada', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ginásio · Quadra 1 · Ginásio principal', { exact: true })).toBeVisible();
+  await expect(page.getByText('Ginásio, Quadra 1, Ginásio principal', { exact: true })).toBeVisible();
   await expect(page.getByText('As escalações são disponibilizadas após o encerramento da partida.')).toBeVisible();
   await expect(page.getByText('Ao vivo', { exact: true })).toHaveCount(0);
 });

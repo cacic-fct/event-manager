@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -72,7 +72,6 @@ const FIELD_OPTIONS: MergeFieldOption[] = [
 
 @Component({
   selector: 'app-merge-candidate-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet, ReactiveFormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule, MatTabsModule],
   template: `
     <h2 mat-dialog-title>Unificar pessoas duplicadas</h2>

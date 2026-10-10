@@ -1,6 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types';
 import {
+  normalizeLivestreamValue,
+  normalizeTwitchChannel,
+  normalizeYoutubeCode,
+} from '@cacic-fct/shared-livestream';
+import {
   Prisma,
   SportsAthleteIdentifierMode,
   SportsCategoryStatus,
@@ -101,6 +106,18 @@ export abstract class SportsAdminSupport {
       }
       return null;
     }
+
+    const livestreamValue = normalizeLivestreamValue(provider, normalized);
+    if (livestreamValue) {
+      return livestreamValue;
+    }
+    if (provider === SportsLivestreamProvider.YOUTUBE) {
+      throw new BadRequestException('Informe uma URL válida do YouTube.');
+    }
+    if (provider === SportsLivestreamProvider.TWITCH) {
+      throw new BadRequestException('Informe uma URL válida da Twitch.');
+    }
+
     let url: URL;
     try {
       url = new URL(normalized);
@@ -110,33 +127,24 @@ export abstract class SportsAdminSupport {
     if (url.protocol !== 'https:') {
       throw new BadRequestException('A transmissão deve utilizar uma URL HTTPS.');
     }
-    const hostname = url.hostname.toLocaleLowerCase('en-US');
-    if (
-      provider === SportsLivestreamProvider.YOUTUBE &&
-      hostname !== 'youtu.be' &&
-      !hostname.endsWith('.youtube.com') &&
-      hostname !== 'youtube.com'
-    ) {
-      throw new BadRequestException('Informe uma URL válida do YouTube.');
-    }
-    if (provider === SportsLivestreamProvider.TWITCH && hostname !== 'twitch.tv' && !hostname.endsWith('.twitch.tv')) {
-      throw new BadRequestException('Informe uma URL válida da Twitch.');
-    }
-    return url.toString();
+    throw new BadRequestException('Informe uma URL de transmissão válida.');
   }
 
   protected youtubeCodeForLivestream(
     provider: SportsLivestreamProvider | null | undefined,
     value: string | null | undefined,
   ): string | null {
-    if (provider !== SportsLivestreamProvider.YOUTUBE || !value?.trim()) {
+    if (provider !== SportsLivestreamProvider.YOUTUBE) {
       return null;
     }
-    const url = new URL(this.normalizeLivestreamUrl(provider, value) as string);
-    if (url.hostname.toLocaleLowerCase('en-US') === 'youtu.be') {
-      return url.pathname.split('/').filter(Boolean)[0] ?? null;
-    }
-    return url.searchParams.get('v') ?? url.pathname.match(/\/(?:live|embed|shorts)\/([^/?#]+)/)?.[1] ?? null;
+    return normalizeYoutubeCode(value);
+  }
+
+  protected twitchChannelForLivestream(
+    provider: SportsLivestreamProvider | null | undefined,
+    value: string | null | undefined,
+  ): string | null {
+    return provider === SportsLivestreamProvider.TWITCH ? normalizeTwitchChannel(value) : null;
   }
 
   protected requireDate(value: Date | undefined, label: string): Date {

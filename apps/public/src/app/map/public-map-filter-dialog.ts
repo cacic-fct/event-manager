@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +15,6 @@ export interface PublicMapFilterDialogData {
   imports: [MatButtonModule, MatDialogModule, MatIconModule, MatRadioModule],
   templateUrl: './public-map-filter-dialog.html',
   styleUrl: './public-map-filter-dialog.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PublicMapFilterDialog {
   readonly data = inject<PublicMapFilterDialogData>(MAT_DIALOG_DATA);

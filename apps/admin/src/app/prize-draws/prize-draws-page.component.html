@@ -119,13 +119,13 @@
               [link]="['/draws', draw.id]" [queryParams]="workspace.scopeFilter()"
               [selected]="workspace.selected()?.id === draw.id">
               <mat-icon recordIcon>rewarded_ads</mat-icon>
-              <span recordDescription>{{ draw.target.name }} · {{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }} · {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span>
+              <span recordDescription>{{ draw.target.name }}, {{ draw.spins.length }} giro{{ draw.spins.length === 1 ? '' : 's' }}, {{ draw.frozenAt ? 'lista congelada' : 'lista dinâmica' }}</span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum sorteio salvo</span>
-              <span matListItemLine>Crie a primeira configuração no painel ao lado.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum sorteio salvo</p>
+            </div>
           }
         </div>
         <div class="list-pager" role="group" aria-label="Paginação de sorteios">
@@ -385,7 +385,7 @@
                       <span matListItemTitle>{{ entry.displayName }}</span>
                       <span matListItemLine>
                         @for (source of entry.sources; track source; let last = $last) {
-                          {{ workspace.sourceLabel(source) }}{{ last ? '' : ' · ' }}
+                          {{ workspace.sourceLabel(source) }}{{ last ? '' : ', ' }}
                         }
                       </span>
                       @if (workspace.form.controls.chanceMode.value === 'WEIGHTED') {
@@ -414,10 +414,10 @@
                       }
                     </mat-list-item>
                   } @empty {
-                    <mat-list-item
-                      ><span matListItemTitle>Nenhuma pessoa elegível</span
-                      ><span matListItemLine>Revise os critérios ou adicione entradas manuais.</span></mat-list-item
-                    >
+                    <div class="admin-list-empty">
+                      <mat-icon aria-hidden="true">hide_source</mat-icon>
+                      <p>Nenhuma pessoa elegível</p>
+                    </div>
                   }
                 </mat-list>
                 @if (workspace.excludedPeople().length > 0) {
@@ -582,17 +582,10 @@
               @for (spin of selected.spins; track spin.id) {
                 <mat-list-item [class.undone-result]="!!spin.undoneAt">
                   <span matListItemTitle
-                    >{{ spin.winnerDisplayName }}
-                    @if (spin.undoneAt) {
-                      · desfeito
-                    }
+                    >{{ spin.winnerDisplayName }}{{ spin.undoneAt ? ', desfeito' : '' }}
                   </span>
                   <span matListItemLine
-                    >Giro {{ spin.sequence }}
-                    @if (spin.description) {
-                      · {{ spin.description }}
-                    }
-                    · {{ spin.drawnAt | date: 'dd/MM/yyyy HH:mm:ss' }}</span
+                    >Giro {{ spin.sequence }}{{ spin.description ? ': ' + spin.description : '' }}, realizado em {{ spin.drawnAt | date: 'dd/MM/yyyy HH:mm:ss' }}</span
                   >
                   <span matListItemLine class="audit-id">ID do giro: {{ spin.id }}</span>
                   @if (!spin.undoneAt && permissions.has(Permission.PrizeDraw.ContactRead)) {
@@ -616,10 +609,10 @@
                   </div>
                 }
               } @empty {
-                <mat-list-item
-                  ><span matListItemTitle>Nenhum giro realizado</span
-                  ><span matListItemLine>Os resultados reais aparecerão aqui.</span></mat-list-item
-                >
+                <div class="admin-list-empty">
+                  <mat-icon aria-hidden="true">hide_source</mat-icon>
+                  <p>Nenhum giro realizado</p>
+                </div>
               }
             </mat-list>
           </section>

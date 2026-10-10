@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { SportsBreathingAnimationService } from './sports-breathing-animation.service';
 
 @Component({
@@ -25,7 +25,6 @@ import { SportsBreathingAnimationService } from './sports-breathing-animation.se
       }
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsLiveDotComponent implements OnInit, OnDestroy {
   readonly animation = inject(SportsBreathingAnimationService);

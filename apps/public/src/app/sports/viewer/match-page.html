@@ -41,16 +41,9 @@
         } {{ stateLabel(match) }}
       </mat-chip>
       <time [attr.datetime]="match.schedule.startDate">
-        {{ match.schedule.startDate | date: 'EEEE, dd/MM · HH:mm' }}
+        {{ match.schedule.startDate | date: "EEEE, dd/MM 'às' HH:mm" }}
       </time>
     </header>
-
-    @if (match.livestreamUrl) {
-    <a class="livestream-action" mat-flat-button [href]="match.livestreamUrl" target="_blank" rel="noopener noreferrer">
-      <mat-icon>live_tv</mat-icon>
-      {{ livestreamLabel(match.livestreamProvider) }}
-    </a>
-    }
 
     <div class="scoreboard" aria-label="Placar da partida">
       <article class="team home-team">
@@ -95,6 +88,18 @@
     </p>
     }
   </section>
+
+  @if (match.livestreamUrl; as livestreamValue) {
+  @if (hasLivestream(match)) {
+  <section class="livestream-section">
+    <h2>Transmissão da partida</h2>
+    <lib-livestream-embed
+      [provider]="match.livestreamProvider ?? 'GENERAL'"
+      [value]="livestreamValue"
+      [title]="'Transmissão: ' + teamName(match, 'home') + ' × ' + teamName(match, 'away')" />
+  </section>
+  }
+  }
 
   <section class="match-grid">
     <article class="information-section">
@@ -151,7 +156,7 @@
       match.lossReasonDetail }} }
     </p>
   </section>
-  } @if (match.officials.length) {
+  } @if (matchHasStarted(match)) { @if (match.officials.length) {
   <section class="officials-section">
     <h2>Organização da partida</h2>
     <div class="official-list">
@@ -170,7 +175,7 @@
 
   <section class="roster-section">
     <h2>Escalações</h2>
-    @if (rosterIsPublic(match)) { @if (match.rosters.length) {
+    @if (match.rosters.length) {
     <div class="roster-grid">
       @for (roster of match.rosters; track roster.team.id) {
       <article>
@@ -199,12 +204,8 @@
     </div>
     } @else {
     <p class="quiet-state">Nenhuma escalação foi publicada para esta partida.</p>
-    } } @else {
-    <div class="privacy-notice">
-      <mat-icon aria-hidden="true">visibility_off</mat-icon>
-      <p>As escalações são disponibilizadas após o encerramento da partida.</p>
-    </div>
     }
   </section>
+  }
   }
 </main>

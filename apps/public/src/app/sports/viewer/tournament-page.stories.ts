@@ -173,6 +173,11 @@ export const LiveTournament: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Ao vivo')).toBeVisible();
     await expect(canvas.getByText('Próximas partidas')).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Transmissões ao vivo' })).toBeVisible();
+    await expect(canvas.getByTitle(/Transmissão da partida 1: Atlética FCT × Ciência da Computação/)).toHaveAttribute(
+      'src',
+      expect.stringContaining('youtube-nocookie.com/embed/storybook-sports'),
+    );
   },
 };
 

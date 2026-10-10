@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -104,7 +104,6 @@ import { OfflineCodeStateService } from './offline-code-state.service';
       justify-self: start;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletOfflineCodeCard {
   private readonly offlineCodeState = inject(OfflineCodeStateService);

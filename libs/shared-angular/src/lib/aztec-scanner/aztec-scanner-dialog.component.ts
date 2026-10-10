@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { AztecScannerComponent } from './aztec-scanner.component';
@@ -29,7 +29,6 @@ export type AztecScannerDialogData = {
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
     </mat-dialog-actions>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AztecScannerDialogComponent {
   readonly data: AztecScannerDialogData = inject<AztecScannerDialogData>(MAT_DIALOG_DATA);

@@ -29,7 +29,7 @@ describe('audit log snapshot helpers', () => {
     expect(diffAuditRecords(before, after)).toEqual([
       {
         field: 'metadata.externalRef',
-        label: 'Metadata · Referência externa',
+        label: 'Metadata: Referência externa',
         before: '1',
         after: '2',
       },

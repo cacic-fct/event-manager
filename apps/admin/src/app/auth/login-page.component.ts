@@ -1,6 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   InjectionToken,
   PLATFORM_ID,
@@ -25,7 +24,6 @@ export const LOGIN_DEVELOPMENT_MODE = new InjectionToken<boolean>('LOGIN_DEVELOP
 
 @Component({
   selector: 'app-login-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

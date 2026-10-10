@@ -26,6 +26,7 @@ import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type Au
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -150,6 +151,7 @@ const EVENT_DETAIL_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -205,6 +207,7 @@ const EVENT_AUDIT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -282,7 +285,9 @@ export class EventDraftsService {
 
   async saveEventDraft(input: EventDraftSaveInput, user: AuthenticatedUser | undefined): Promise<EventDraft> {
     const sourceEvent = await this.readSourceEventForDraft(input.sourceEventId);
-    const normalizedInput = await this.normalizeEventCertificateInput(input.input, sourceEvent.id);
+    const normalizedInput = this.normalizeEventLivestreamFields(
+      await this.normalizeEventCertificateInput(input.input, sourceEvent.id),
+    );
     await this.assertCanWriteDraft(sourceEvent.id, normalizedInput, user);
 
     const actor = await this.resolveDraftActor(user);
@@ -364,9 +369,8 @@ export class EventDraftsService {
       throw new NotFoundException(`Event draft ${draftId} was not found.`);
     }
 
-    const payload = await this.normalizeEventCertificateInput(
-      this.eventInputFromDraftPayload(draft.payload),
-      draft.sourceEventId,
+    const payload = this.normalizeEventLivestreamFields(
+      await this.normalizeEventCertificateInput(this.eventInputFromDraftPayload(draft.payload), draft.sourceEventId),
     );
     await this.assertCanWriteDraft(draft.sourceEventId, payload, user);
 
@@ -617,6 +621,22 @@ export class EventDraftsService {
 
   private normalizeDraftPayload(input: EventUpdateInput): Prisma.InputJsonObject {
     return this.normalizeJsonRecord(input);
+  }
+
+  private normalizeEventLivestreamFields(input: EventUpdateInput): EventUpdateInput {
+    const youtubeCode = normalizeYoutubeCode(input.youtubeCode);
+    const twitchChannel = normalizeTwitchChannel(input.twitchChannel);
+    if (input.youtubeCode?.trim() && !youtubeCode) {
+      throw new BadRequestException('Informe um código ou link válido do YouTube.');
+    }
+    if (input.twitchChannel?.trim() && !twitchChannel) {
+      throw new BadRequestException('Informe um canal ou link válido da Twitch.');
+    }
+    return {
+      ...input,
+      ...(input.youtubeCode !== undefined ? { youtubeCode } : {}),
+      ...(input.twitchChannel !== undefined ? { twitchChannel } : {}),
+    };
   }
 
   private normalizeJsonRecord(input: object): EventDraftPayload {

@@ -579,7 +579,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
     },
     exportUrl: (currentForm: EventForm) => `/api/event-forms/${encodeURIComponent(currentForm.id)}/results.csv`,
     linkedTargetSummary: (currentForm: EventForm) =>
-      currentForm.links.map((link) => link.target?.name ?? 'Vínculo').join(' · ') || 'Sem vínculos de exibição',
+      currentForm.links.map((link) => link.target?.name ?? 'Vínculo').join(', ') || 'Sem vínculos de exibição',
     targetName: (link: EventFormLinkInput) =>
       link.targetType === 'EVENT'
         ? (events.find((event) => event.id === link.eventId)?.name ?? 'Evento selecionado')

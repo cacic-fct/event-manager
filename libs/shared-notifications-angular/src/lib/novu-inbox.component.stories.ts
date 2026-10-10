@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -313,7 +313,6 @@ class MockNovuNotificationsService {
 
 @Component({
   selector: 'lib-storybook-novu-inbox-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NovuInboxComponent],
   providers: [
     MockNovuNotificationsService,

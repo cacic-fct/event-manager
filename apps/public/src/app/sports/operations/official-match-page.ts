@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -50,7 +50,6 @@ import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
   ],
   templateUrl: './official-match-page.html',
   styleUrls: ['./official-match-scoreboard.css', './official-match-workflows.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OfficialSportsMatchPage extends OfficialMatchPageOperations {
   private readonly operationRoute = inject(ActivatedRoute);

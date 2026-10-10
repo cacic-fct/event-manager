@@ -23,6 +23,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import {
@@ -48,6 +49,7 @@ import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../.
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
 import { TicketPurchaseOptionsSectionComponent } from '../../../major-events/payment/ticket-purchase-options-section.component';
+import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
 
 type DetailFormLink = {
   formId: string;
@@ -60,8 +62,7 @@ type DetailFormLink = {
 
 type DetailState =
   | { status: 'loading' }
-  | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; detail: DetailViewModel; formLinks: DetailFormLink[]; hasPrizeDraws: boolean };
 type ReadyDetailState = Extract<DetailState, { status: 'ready' }>;
 
 type PrizeDrawTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT';
@@ -91,6 +92,7 @@ export class MoreInfo {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);
@@ -278,19 +280,15 @@ export class MoreInfo {
     const eventId = params.get('eventId')?.trim();
 
     if (!eventType || !eventId) {
-      return of({
-        status: 'error',
-        message: 'Página de evento inválida.',
-      } satisfies DetailState);
+      void this.routeErrors.navigate(404);
+      return of({ status: 'loading' } satisfies DetailState);
     }
 
     return this.loadDetail(eventType, eventId).pipe(
       switchMap((detail) => {
         if (!detail) {
-          return of({
-            status: 'error',
-            message: 'Inscrição não encontrada.',
-          } satisfies DetailState);
+          void this.routeErrors.navigate(404);
+          return of({ status: 'loading' } satisfies DetailState);
         }
 
         const targetType = {
@@ -320,12 +318,10 @@ export class MoreInfo {
         );
       }),
       startWith({ status: 'loading' } satisfies DetailState),
-      catchError((error: unknown) =>
-        of({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar os detalhes.',
-        } satisfies DetailState),
-      ),
+      catchError((error: unknown) => {
+        void this.routeErrors.navigate(privateResourceErrorStatus(error));
+        return of({ status: 'loading' } satisfies DetailState);
+      }),
     );
   }
 

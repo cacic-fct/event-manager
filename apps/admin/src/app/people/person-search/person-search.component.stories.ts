@@ -24,7 +24,7 @@ interface PersonSearchStoryArgs {
 
 const defaultArgs: PersonSearchStoryArgs = {
   disabled: false,
-  disabledReason: 'Buscar pessoas exige permissão de Pessoa · Visualizar.',
+  disabledReason: 'Buscar pessoas exige permissão de Pessoa: Visualizar.',
   label: 'Buscar pessoa para vincular',
   loading: false,
   minimumQueryLength: 2,
@@ -101,7 +101,7 @@ export const PermissionRequired: Story = {
   args: {
     disabled: true,
     resultCount: 0,
-    disabledReason: 'Buscar pessoas exige permissão de Pessoa · Visualizar.',
+    disabledReason: 'Buscar pessoas exige permissão de Pessoa: Visualizar.',
   },
 };
 

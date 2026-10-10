@@ -203,7 +203,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
             longitude: result.placePreset.longitude,
             locationDescription: [result.placePreset.locationDescription, result.name, result.courtLabel]
               .filter(Boolean)
-              .join(' · '),
+              .join(', '),
             updatedById: actorId,
           },
         });

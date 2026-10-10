@@ -14,8 +14,8 @@
         </h3>
         <p>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
-            {{ selectedAttendanceEvent.startDate | date: 'medium' }}
-            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
+            Evento em {{ selectedAttendanceEvent.startDate | date: 'medium' }}.
+            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }
@@ -97,7 +97,7 @@
             "
             [disabledReason]="
               !permissions.has(Permission.Person.Read)
-                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                 : 'Registrar presenças exige permissão para editar este evento.'
             "
             resultActionLabel="Registrar presença de"
@@ -140,8 +140,8 @@
                 </span>
                 <span matListItemLine class="attendance-item-line">
                   Coletada em {{ submission.collectedAt | date: 'short' }} por
-                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }}
-                  · enviada por {{ submission.submittedByFullName || submission.submittedById }}
+                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }},
+                  enviada por {{ submission.submittedByFullName || submission.submittedById }}
                 </span>
                 <span matListItemLine class="attendance-item-line review-line">
                   <span class="review-badge">{{
@@ -231,7 +231,7 @@
                   <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
                 }
                 <span matListItemLine class="attendance-item-line">
-                  {{ attendance.attendedAt | date: 'short' }} · por
+                  {{ attendance.attendedAt | date: 'short' }}, por
                   {{ attendanceCreationMethodLabel(attendance.createdByMethod) }}
                 </span>
                 @if (
@@ -285,10 +285,10 @@
               </mat-list-item>
             }
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma presença carregada</span>
-              <span matListItemLine>Selecione um evento para começar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhuma presença carregada</p>
+            </div>
           }
         </mat-list>
 
@@ -322,7 +322,7 @@
           <div class="surface-heading">
             <h4>Ausências do evento</h4>
             <span>
-              {{ workspace.explicitAbsences().length }} explícitas ·
+              {{ workspace.explicitAbsences().length }} explícitas e
               {{ workspace.implicitAbsences().length }} implícitas
             </span>
           </div>
@@ -332,7 +332,7 @@
               <mat-list-item>
                 <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
                 <span matListItemLine class="attendance-item-line">
-                  Ausência explícita · chamada oral em {{ attendance.attendedAt | date: 'short' }}
+                  Ausência explícita: chamada oral em {{ attendance.attendedAt | date: 'short' }}.
                 </span>
                 <div matListItemMeta class="attendance-item-actions">
                   <button
@@ -364,7 +364,7 @@
               <mat-list-item>
                 <span matListItemTitle class="attendance-item-title">{{ person.fullName }}</span>
                 <span matListItemLine class="attendance-item-line">
-                  Ausência implícita · nenhuma decisão registrada
+                  Ausência implícita: nenhuma decisão registrada.
                 </span>
               </mat-list-item>
             }

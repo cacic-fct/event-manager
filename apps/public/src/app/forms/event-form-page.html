@@ -10,11 +10,6 @@
 <main class="form-page">
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando formulário" />
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon>error</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else { @if (currentState.form.description || currentState.form.descriptionImages.length) {
   <header class="form-introduction">
     <lib-event-form-description-content
@@ -50,7 +45,7 @@
       <p>{{ resultVisibilityLabel(currentState) }}</p>
       <h2>Resultados</h2>
       <span>
-        {{ currentResults.responseCount }} resposta{{ currentResults.responseCount === 1 ? '' : 's' }} · {{
+        {{ currentResults.responseCount }} resposta{{ currentResults.responseCount === 1 ? '' : 's' }}, {{
         sigiloLabel(currentResults) }}
       </span>
     </header>

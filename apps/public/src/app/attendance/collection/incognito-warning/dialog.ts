@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 
@@ -24,7 +24,6 @@ export interface AttendanceIncognitoWarningDialogData {
       <button mat-flat-button type="button" mat-dialog-close>Entendi</button>
     </div>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendanceIncognitoWarningDialog {
   readonly data = inject<AttendanceIncognitoWarningDialogData>(MAT_DIALOG_DATA);

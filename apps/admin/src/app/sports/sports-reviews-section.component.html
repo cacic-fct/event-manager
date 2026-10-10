@@ -16,7 +16,7 @@
         <div class="application-interests">
           <span>{{ application.createdAt | date: 'short' }}</span>
           @for (category of application.categories; track category.id) {
-            <span>{{ categoryName(category.id) }}{{ category.division ? ' · ' + category.division : '' }}</span>
+            <span>{{ categoryName(category.id) }}{{ category.division ? ', divisão: ' + category.division : '' }}</span>
           } @empty {
             <span>Sem modalidade</span>
           }
@@ -163,16 +163,16 @@
           <div class="review-heading">
             <div>
               <strong>{{ actionTypeLabel(item.action.type) }}</strong>
-              <span>{{ item.categoryName }} · {{ item.match.event?.name ?? 'Partida' }}</span>
+              <span>{{ item.categoryName }}, partida: {{ item.match.event?.name ?? 'Partida' }}</span>
             </div>
             <span class="state-label">{{ workspace.statusLabel(item.action.reviewStatus) }}</span>
           </div>
           <p>
-            {{ item.homeTeamName ?? 'A definir' }} × {{ item.awayTeamName ?? 'A definir' }} ·
+            {{ item.homeTeamName ?? 'A definir' }} × {{ item.awayTeamName ?? 'A definir' }},
             {{ item.match.event?.startDate | date: 'short' }}
           </p>
           <small
-            >{{ item.action.authoredAt | date: 'short' }}{{ item.action.offline ? ' · enviado off-line' : '' }}</small
+            >{{ item.action.authoredAt | date: 'short' }}{{ item.action.offline ? ', enviado off-line' : '' }}</small
           >
           <pre>{{ item.action.payloadJson }}</pre>
           <div class="review-actions">

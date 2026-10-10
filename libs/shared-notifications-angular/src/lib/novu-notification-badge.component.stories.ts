@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -21,7 +21,6 @@ class MockNovuBadgeNotificationsService {
 
 @Component({
   selector: 'lib-storybook-novu-notification-badge-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, NovuNotificationBadgeComponent],
   providers: [
     MockNovuBadgeNotificationsService,

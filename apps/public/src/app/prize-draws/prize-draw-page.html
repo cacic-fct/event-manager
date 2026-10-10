@@ -88,11 +88,11 @@
           <h3 [id]="'odds-title-' + draw.id">Chances por giro</h3>
           @for (spin of draw.spins; track spin.id) {
           <article class="odds-entry">
-            <h4>Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} }</h4>
+            <h4>Giro {{ spin.sequence }}@if (spin.description) {: {{ spin.description }} }</h4>
             <dl class="odds-grid">
               <div>
                 <dt>Chance de vencer</dt>
-                <dd><strong>{{ percentage(spin) }} · {{ chance(spin) }}</strong></dd>
+                <dd><strong>{{ percentage(spin) }} ({{ chance(spin) }})</strong></dd>
               </div>
               <div>
                 <dt>Pessoas na lista</dt>
@@ -114,7 +114,7 @@
             <p class="weight-line">
               Pesos: @for (bucket of spin.weightBreakdown; track bucket.weight; let last = $last) { {{
               bucket.peopleCount }} pessoa{{ bucket.peopleCount === 1 ? '' : 's' }} com peso {{ bucket.weight }}{{ last
-              ? '' : ' · ' }} }
+              ? '' : ', ' }} }
             </p>
             }
           </article>
@@ -130,8 +130,8 @@
             <mat-icon matListItemIcon>emoji_events</mat-icon>
             <div matListItemTitle>{{ spin.winnerDisplayName }}</div>
             <div matListItemLine>
-              Giro {{ spin.sequence }} @if (spin.description) { · {{ spin.description }} } · {{ spin.drawnAt | date:
-              'dd/MM/yyyy HH:mm:ss' }}
+              Giro {{ spin.sequence }}@if (spin.description) {: {{ spin.description }}, } sorteado em {{ spin.drawnAt | date:
+              "dd/MM/yyyy 'às' HH:mm:ss" }}
             </div>
             <div matListItemLine class="audit-id">ID do giro: {{ spin.id }}</div>
           </mat-list-item>

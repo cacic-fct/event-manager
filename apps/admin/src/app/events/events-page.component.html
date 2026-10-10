@@ -32,7 +32,7 @@
           <p>
             @if (workspace.selectedEvent()) {
               @if (workspace.selectedEventDraft(); as selectedDraft) {
-                Rascunho de {{ workspace.selectedEvent()?.name }} · {{ selectedDraft.updatedAt | date: 'short' }}
+                Rascunho de {{ workspace.selectedEvent()?.name }}, atualizado em {{ selectedDraft.updatedAt | date: 'short' }}
               } @else {
                 {{ workspace.selectedEvent()?.name }}
               }
@@ -368,12 +368,37 @@
 <mat-error>Preencha latitude e longitude juntas.</mat-error>
 }
 </mat-expansion-panel>
-</section><mat-expansion-panel [expanded]="workspace.eventForm.hasError('buttonTextRequiresbuttonLink')">
+</section><mat-expansion-panel
+  [expanded]="
+    workspace.eventForm.hasError('buttonTextRequiresbuttonLink') ||
+    (workspace.eventForm.controls.youtubeCode.touched && workspace.eventForm.controls.youtubeCode.invalid) ||
+    (workspace.eventForm.controls.twitchChannel.touched && workspace.eventForm.controls.twitchChannel.invalid)
+  ">
 <mat-expansion-panel-header><mat-panel-title>Vídeo e botão do evento</mat-panel-title></mat-expansion-panel-header>
 <div class="field-grid">
-<mat-form-field class="span-2">
-              <mat-label>Código do YouTube</mat-label>
-              <input matInput formControlName="youtubeCode" />
+<mat-form-field>
+              <mat-label>Código ou link do YouTube</mat-label>
+              <input
+                matInput
+                formControlName="youtubeCode"
+                placeholder="Código ou URL completa"
+                (blur)="workspace.normalizeYoutubeCodeInput()" />
+              <mat-hint>Cole o link da live; o código será salvo automaticamente.</mat-hint>
+              @if (workspace.eventForm.controls.youtubeCode.hasError('invalidYoutubeCode')) {
+                <mat-error>Informe um código válido ou um link do YouTube reconhecido.</mat-error>
+              }
+            </mat-form-field>
+<mat-form-field>
+              <mat-label>Canal ou link da Twitch</mat-label>
+              <input
+                matInput
+                formControlName="twitchChannel"
+                placeholder="Nome do canal ou URL completa"
+                (blur)="workspace.normalizeTwitchChannelInput()" />
+              <mat-hint>Cole o link da live; o nome do canal será salvo automaticamente.</mat-hint>
+              @if (workspace.eventForm.controls.twitchChannel.hasError('invalidTwitchChannel')) {
+                <mat-error>Informe um canal válido ou um link da Twitch reconhecido.</mat-error>
+              }
             </mat-form-field>
 <mat-form-field>
               <mat-label>Texto do botão</mat-label>
@@ -550,7 +575,7 @@
             "
             [disabledReason]="
               !permissions.has(Permission.Person.Read)
-                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                 : 'Vincular ministrantes exige permissão para editar este evento.'
             "
             resultActionLabel="Adicionar ministrante"
@@ -620,7 +645,7 @@
             "
             [disabledReason]="
               !permissions.has(Permission.Person.Read)
-                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                 : 'Vincular coletores exige permissão para editar este evento.'
             "
             resultActionLabel="Adicionar coletor"

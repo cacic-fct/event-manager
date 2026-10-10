@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
@@ -31,7 +31,6 @@ const TEAM_CHANGE_REQUEST_STATUS_LABELS: Readonly<Record<string, string>> = {
 
 @Component({
   selector: 'app-sports-reviews-section',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, MatButtonModule, MatIconModule, SportsTeamLogoComponent],
   templateUrl: './sports-reviews-section.component.html',
 })

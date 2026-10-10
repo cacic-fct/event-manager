@@ -11,7 +11,7 @@ import { of } from 'rxjs';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { MajorEvent } from './event-list-page';
 
-type MajorEventApiState = 'ready' | 'loading' | 'error';
+type MajorEventApiState = 'ready' | 'loading';
 type MajorEventRegistrationState = 'open' | 'upcoming' | 'closed';
 
 interface MajorEventStoryArgs {
@@ -66,7 +66,7 @@ const meta: Meta<MajorEventStoryArgs> = {
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
-    apiState: { control: 'select', options: ['ready', 'loading', 'error'] },
+    apiState: { control: 'select', options: ['ready', 'loading'] },
     eventCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     subscribedCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
@@ -147,13 +147,6 @@ export const Loading: Story = {
   },
 };
 
-export const ApiError: Story = {
-  args: { apiState: 'error' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar os grandes eventos.')).toBeVisible();
-  },
-};
-
 export const Unauthenticated: Story = {
   args: { authenticated: false, subscribedCount: 0, eventCount: 4 },
   play: async ({ canvasElement }) => {
@@ -216,10 +209,6 @@ function majorEventsHandler() {
     } else if (activeArgs.latencyMs > 0) {
       await delay(activeArgs.latencyMs);
     }
-    if (activeArgs.apiState === 'error') {
-      return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar os grandes eventos.' }] });
-    }
-
     const events = buildMajorEvents(activeArgs);
     if (query.includes('PublicationPreviewMajorEvent')) {
       return HttpResponse.json({
@@ -267,7 +256,7 @@ function buildMajorEvent(args: MajorEventStoryArgs, index: number): PublicMajorE
     name:
       index === 0
         ? args.name
-        : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} · ${faker.word.adjective()}`,
+        : `${['Semana de tecnologia', 'Mostra científica', 'Festival de extensão'][index % 3]} ${faker.word.adjective()}`,
     emoji: index === 0 ? args.emoji : ['💻', '🔬', '🌎'][index % 3],
     description: index === 0 ? args.description : faker.lorem.sentences(2),
     rankedSubscriptionEnabled: args.rankedSubscriptionEnabled,

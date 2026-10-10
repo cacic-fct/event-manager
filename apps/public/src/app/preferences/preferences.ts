@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -60,7 +60,6 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
       </mat-nav-list>
     </main>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Preferences {
   readonly authService = inject(AuthService);

@@ -1,11 +1,11 @@
 import { provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { expect, within } from 'storybook/test';
 import { SportsAutoroutePage } from './sports-autoroute-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 
-type AutorouteState = 'loading' | 'empty' | 'error';
+type AutorouteState = 'loading' | 'empty';
 
 interface AutorouteStoryArgs {
   state: AutorouteState;
@@ -19,7 +19,7 @@ const meta: Meta<AutorouteStoryArgs> = {
   tags: ['autodocs'],
   args: { state: 'empty' },
   argTypes: {
-    state: { control: 'inline-radio', options: ['loading', 'empty', 'error'] },
+    state: { control: 'inline-radio', options: ['loading', 'empty'] },
   },
   render: (args) => {
     activeState = args.state;
@@ -35,9 +35,6 @@ const meta: Meta<AutorouteStoryArgs> = {
             autoroute: () => {
               if (activeState === 'loading') {
                 return NEVER;
-              }
-              if (activeState === 'error') {
-                return throwError(() => new Error('Sua função na partida não pôde ser confirmada.'));
               }
               return of(null);
             },
@@ -61,16 +58,5 @@ export const Playground: Story = {
   args: { state: 'empty' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nenhuma partida para operar agora')).toBeVisible();
-  },
-};
-
-export const PermissionLookupError: Story = {
-  name: 'Erro de função ou permissão',
-  args: { state: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível abrir a partida')).toBeVisible();
-    await expect(canvas.getByText('Sua função na partida não pôde ser confirmada.')).toBeVisible();
   },
 };

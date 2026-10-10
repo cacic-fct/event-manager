@@ -1,0 +1,23 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+:host {
+  display: block;
+  @include view-widths.view();
+}
+
+p {
+  max-width: 68ch;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 1.5rem 1rem;
+}
+
+.picker-heading h2 {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}

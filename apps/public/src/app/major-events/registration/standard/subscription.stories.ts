@@ -383,7 +383,7 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
           ? 'Oficina de Angular'
           : args.longEventNames
             ? `Atividade interdisciplinar de tecnologia, ciência e acessibilidade ${index + 1}`
-            : `${['Palestra de acessibilidade', 'Observabilidade para APIs', 'Robótica para a comunidade'][index % 3]} · ${faker.word.adjective()}`,
+            : `${['Palestra de acessibilidade', 'Observabilidade para APIs', 'Robótica para a comunidade'][index % 3]} ${faker.word.adjective()}`,
       shortDescription: faker.company.catchPhrase(),
       emoji: ['🧠', '♿', '📡', '🤖'][index % 4],
       type: ['MINICURSO', 'PALESTRA', 'OTHER'][index % 3] as PublicEvent['type'],

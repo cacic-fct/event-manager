@@ -1,5 +1,6 @@
 import { DestroyRef, Signal, computed, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { graphqlErrorStatus } from '@cacic-fct/shared-angular/errors';
 
 type GraphqlErrorLike = {
   message: string;
@@ -20,6 +21,12 @@ export class RateLimitError extends Error {
 }
 
 export class ForbiddenGraphqlError extends Error {}
+export class NotFoundGraphqlError extends Error {}
+export class GraphqlServiceError extends Error {
+  constructor(message: string, readonly status: 500 | 503) {
+    super(message);
+  }
+}
 
 export function graphqlError(errors: readonly GraphqlErrorLike[]): Error {
   const rateLimit = errors.map(rateLimitFromGraphqlError).find((error): error is RateLimitError => Boolean(error));
@@ -28,8 +35,18 @@ export function graphqlError(errors: readonly GraphqlErrorLike[]): Error {
   }
 
   const message = errors.map((error) => error.message).join('\n');
-  if (errors.some((error) => graphqlErrorCode(error) === 'FORBIDDEN')) {
+  const status = errors.map(graphqlErrorStatus).find((value): value is number => value !== null);
+  if (status === 403) {
     return new ForbiddenGraphqlError(message);
+  }
+  if (status === 404) {
+    return new NotFoundGraphqlError(message);
+  }
+  if (status === 503) {
+    return new GraphqlServiceError(message, 503);
+  }
+  if (status === 500) {
+    return new GraphqlServiceError(message, 500);
   }
   return new Error(message);
 }
@@ -97,21 +114,11 @@ export function formatCooldownDuration(seconds: number): string {
 
 function rateLimitFromGraphqlError(error: GraphqlErrorLike): RateLimitError | null {
   const extensions = recordFromUnknown(error.extensions);
-  if (!extensions) {
-    return null;
-  }
-
-  const code = graphqlErrorCode(error);
-  if (code !== 'RATE_LIMITED') {
+  if (graphqlErrorStatus(error) !== 429) {
     return null;
   }
 
   return new RateLimitError(retryAfterFromBody(extensions) ?? 60);
-}
-
-function graphqlErrorCode(error: GraphqlErrorLike): string | null {
-  const extensions = recordFromUnknown(error.extensions);
-  return typeof extensions?.['code'] === 'string' ? extensions['code'] : null;
 }
 
 function retryAfterFromBody(value: unknown): number | null {

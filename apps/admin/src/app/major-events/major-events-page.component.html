@@ -187,10 +187,10 @@
                 }
               </app-workspace-record>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhuma atividade vinculada</span>
-                <span matListItemLine>Busque abaixo para adicionar.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhuma atividade vinculada</p>
+              </div>
             }
           </mat-list>
         </section>

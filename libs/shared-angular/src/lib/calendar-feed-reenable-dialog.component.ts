@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -33,7 +33,6 @@ export interface CalendarFeedReenableDialogData {
       </button>
     </div>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarFeedReenableDialogComponent {
   readonly data = inject<CalendarFeedReenableDialogData>(MAT_DIALOG_DATA);

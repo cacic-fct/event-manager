@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -9,7 +9,6 @@ import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../at
 
 @Component({
   selector: 'app-attendance-method',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, MatButtonModule, MatIconModule, MatToolbarModule],
   template: `
     <mat-toolbar>

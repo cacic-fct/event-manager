@@ -1,3 +1,11 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+@media (min-width: 1041px) {
+  .sports-workspace:has(> .area-nav) {
+    @include view-widths.view(2);
+  }
+}
+
 :host {
   display: block;
 }

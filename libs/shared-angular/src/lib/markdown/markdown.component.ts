@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { MarkdownService } from './markdown.service';
 
 @Component({
   selector: 'lib-markdown',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="markdown-body" [innerHTML]="renderedHtml()"></div>`,
   styles: `
     :host {

@@ -44,7 +44,7 @@ describe('sports match backing events', () => {
         eventGroupId: 'group-1',
         latitude: -22,
         longitude: -43,
-        locationDescription: 'Bloco A · Ginásio · Quadra 1',
+        locationDescription: 'Bloco A, Ginásio, Quadra 1',
         allowSubscription: false,
         shouldCollectAttendance: true,
         isPubliclyListed: true,
@@ -67,6 +67,7 @@ describe('sports match backing events', () => {
       venueChanged: true,
       livestreamChanged: true,
       youtubeCode: null,
+      twitchChannel: null,
       actorId: 'actor-1',
     });
     await softDeleteSportsMatchBackingEvents(tx, ['event-1', 'event-2'], endDate, 'actor-1');
@@ -80,6 +81,7 @@ describe('sports match backing events', () => {
         longitude: null,
         locationDescription: null,
         youtubeCode: null,
+        twitchChannel: null,
         updatedById: 'actor-1',
       }),
     });

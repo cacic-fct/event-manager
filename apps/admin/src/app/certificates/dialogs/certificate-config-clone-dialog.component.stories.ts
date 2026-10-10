@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import {
@@ -42,7 +42,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-certificate-config-clone-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

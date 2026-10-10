@@ -1,0 +1,64 @@
+:host {
+  display: block;
+  min-width: 0;
+  width: 100%;
+}
+
+.livestream-player {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.livestream-frame {
+  aspect-ratio: 16 / 9;
+  background: var(--mat-sys-surface-container-highest, #202124);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.livestream-player--twitch .livestream-frame {
+  aspect-ratio: 4 / 3;
+}
+
+iframe {
+  border: 0;
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.livestream-external-link {
+  color: var(--mat-sys-primary, #005cbb);
+  display: inline-block;
+  font: var(--mat-sys-label-large, 500 0.875rem/1.25rem sans-serif);
+  margin-block-start: 10px;
+  text-underline-offset: 0.18em;
+}
+
+.livestream-compact-note {
+  display: none;
+  margin: 0;
+}
+
+.livestream-fallback {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.3rem;
+  margin: 0;
+}
+
+.livestream-fallback .livestream-external-link {
+  margin-block-start: 0;
+}
+
+@container (max-width: 399px) {
+  .livestream-player--twitch .livestream-frame {
+    display: none;
+  }
+
+  .livestream-player--twitch .livestream-compact-note {
+    display: block;
+  }
+}

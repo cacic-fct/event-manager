@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -22,7 +22,6 @@ export interface DuplicatePersonWarningDialogData {
       <button mat-button type="button" [disabled]="!canClose()" (click)="close()">Entendi</button>
     </mat-dialog-actions>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DuplicatePersonWarningDialogComponent {
   readonly data = inject<DuplicatePersonWarningDialogData>(MAT_DIALOG_DATA);

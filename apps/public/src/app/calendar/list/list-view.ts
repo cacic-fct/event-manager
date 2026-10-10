@@ -1,5 +1,5 @@
 import { formatDate } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -25,7 +25,6 @@ interface CalendarListDay {
   imports: [CalendarEventListItem, MatButtonModule, MatIconModule, MatListModule],
   templateUrl: './list-view.html',
   styleUrl: './list-view.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarListView {
   readonly events = input.required<PublicEvent[]>();

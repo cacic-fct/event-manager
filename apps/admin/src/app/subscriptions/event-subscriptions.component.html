@@ -14,9 +14,9 @@
         </h3>
         <p>
           @if (workspace.selectedEvent(); as selectedEvent) {
-            {{ selectedEvent.startDate | date: 'medium' }}
-            · {{ selectedEvent.allowSubscription ? 'Inscrições públicas ativas' : 'Inscrições públicas desativadas' }}
-            · <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedEvent.id, 'settings']">Editar política</a>
+            {{ selectedEvent.startDate | date: 'medium' }}.
+            {{ selectedEvent.allowSubscription ? 'Inscrições públicas ativas.' : 'Inscrições públicas desativadas.' }}
+            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedEvent.id, 'settings']">Editar política</a>
           } @else {
             As inscrições do evento aparecem aqui.
           }
@@ -55,7 +55,7 @@
             "
             [disabledReason]="
               !permissions.has(Permission.Person.Read)
-                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                 : 'Criar inscrições exige permissão para editar as inscrições deste evento.'
             "
             resultActionLabel="Inscrever"
@@ -91,7 +91,7 @@
                 <span matListItemTitle>{{ subscription.personId }}</span>
               }
               <span matListItemLine>
-                {{ subscription.createdAt | date: 'short' }} ·
+                {{ subscription.createdAt | date: 'short' }},
                 {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}
               </span>
               <div matListItemMeta class="item-actions">
@@ -112,10 +112,10 @@
               </div>
             </mat-list-item>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma inscrição carregada</span>
-              <span matListItemLine>Selecione um evento para começar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhuma inscrição carregada</p>
+            </div>
           }
         </mat-list>
 

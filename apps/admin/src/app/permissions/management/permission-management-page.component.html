@@ -49,7 +49,7 @@
               @for (role of predefinedRoles(); track role.id) {
                 <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
                   <lib-twemoji recordIcon [emoji]="role.emoji" />
-                  <span recordDescription>{{ role.description }} · {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                  <span recordDescription>{{ role.description }}, {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
                 </app-workspace-record>
               }
             </div>
@@ -58,7 +58,7 @@
               @for (role of customRoles(); track role.id) {
                 <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
                   <lib-twemoji recordIcon [emoji]="role.emoji" />
-                  <span recordDescription>{{ role.description }} · {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                  <span recordDescription>{{ role.description }}, {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
                 </app-workspace-record>
               } @empty {
                 <p class="empty-note">Nenhum cargo personalizado encontrado.</p>
@@ -78,7 +78,7 @@
                         role.isExternal
                           ? 'Administrado pelo Keycloak'
                           : role.isSystem
-                            ? 'Predefinido · atribuição permitida'
+                            ? 'Predefinido, atribuição permitida'
                             : 'Cargo personalizado'
                       }}
                     </p>
@@ -252,7 +252,7 @@
                           <app-workspace-record [title]="group.name" [label]="'Adicionar grupo ' + group.name"
                             [disabled]="!store.canEditRole()" (activate)="store.addGroupAssignment(group.id)">
                             <lib-twemoji recordIcon [emoji]="group.emoji" />
-                            <span recordDescription>{{ group.description || 'Sem descrição' }} · {{ group.members.length }} integrantes</span>
+                            <span recordDescription>{{ group.description || 'Sem descrição' }}, {{ group.members.length }} integrantes</span>
                           </app-workspace-record>
                         } @empty {
                           <p class="search-hint">Nenhum grupo encontrado para esta busca.</p>
@@ -271,7 +271,7 @@
                               ><strong>{{ store.assignmentName(assignment) }}</strong>
                               @if (assignment.personId && !store.assignmentHasLinkedUser(assignment)) {
                                 <small
-                                  >Sem usuário vinculado · o acesso será ativado quando uma conta for associada.</small
+                                  >Sem usuário vinculado. O acesso será ativado quando uma conta for associada.</small
                                 >
                               }
                             </span>
@@ -377,7 +377,7 @@
                                     ">
                                     @for (target of store.targets()[scope.scope]; track target.id) {
                                       <mat-option [value]="target.id"
-                                        >{{ target.label }} · {{ target.description }}</mat-option
+                                        >{{ target.label }}: {{ target.description }}</mat-option
                                       >
                                     }
                                   </mat-select></mat-form-field
@@ -469,7 +469,7 @@
                     {{
                       person.userId
                         ? 'Usuário vinculado'
-                        : 'Sem usuário vinculado · atribuições ficam dormentes até uma conta ser associada.'
+                        : 'Sem usuário vinculado. As atribuições ficam dormentes até uma conta ser associada.'
                     }}
                   </p>
                 </div>

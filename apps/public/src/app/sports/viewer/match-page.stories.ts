@@ -174,7 +174,8 @@ export const AthleteCheckIn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Check-in')).toBeVisible();
-    await expect(canvas.getByText(/escalações ficam públicas somente/)).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Organização da partida' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('heading', { name: 'Escalações' })).not.toBeInTheDocument();
     await expect(canvas.queryByText('Ana Souza')).not.toBeInTheDocument();
   },
 };
@@ -182,17 +183,27 @@ export const AthleteCheckIn: Story = {
 export const Live: Story = {
   name: 'Ao vivo',
   args: { state: 'LIVE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Organização da partida' })).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Escalações' })).toBeVisible();
+    await expect(await canvas.findByText('Ana Souza')).toBeVisible();
+  },
 };
 
 export const TwitchLivestream: Story = {
   name: 'Transmissão na Twitch',
   args: { state: 'LIVE', livestream: 'TWITCH' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('link', { name: 'Assistir na Twitch' })).toHaveAttribute(
+    const canvas = within(canvasElement);
+    const iframe = await canvas.findByTitle(/Transmissão: Atlética FCT × Ciência da Computação/);
+    await expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups-to-escape-sandbox');
+    await expect(await canvas.findByRole('link', { name: /Abrir na Twitch/ })).toHaveAttribute(
       'href',
       'https://www.twitch.tv/cacic',
     );
   },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const Paused: Story = {
@@ -261,12 +272,11 @@ export const LongTeamAndVenueNamesMobile: Story = {
 };
 
 export const LoadError: Story = {
-  name: 'Erro recuperável',
+  name: 'Partida indisponível',
   args: { loadMode: 'error' },
   globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar a partida')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+    await expect(await canvas.findByText('A partida não está disponível para visualização.')).toBeVisible();
   },
 };

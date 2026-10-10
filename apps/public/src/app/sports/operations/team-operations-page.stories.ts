@@ -8,7 +8,7 @@ import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './spo
 import type { RepresentativeTeamChange } from './sports-operations.types';
 import { SportsTeamOperationsPage } from './team-operations-page';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 type LineupMode = 'ready' | 'empty' | 'error';
 
 interface TeamOperationsStoryArgs {
@@ -35,7 +35,7 @@ const meta: Meta<TeamOperationsStoryArgs> = {
       control: 'select',
       options: ['PENDING', 'CHANGES_REQUESTED', 'CONFLICT', 'APPROVED', 'REJECTED', 'SUPERSEDED'],
     },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
     lineupMode: { control: 'inline-radio', options: ['ready', 'empty', 'error'] },
   },
   render: (args) => {
@@ -64,9 +64,6 @@ const meta: Meta<TeamOperationsStoryArgs> = {
             representativeWorkspace: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('Você não tem acesso à gestão desta equipe.'));
               }
               return of(createRepresentativeTeamWorkspace(activeArgs.requestStatus));
             },
@@ -262,13 +259,4 @@ export const SupersededRequest: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
-};
-
-export const PermissionError: Story = {
-  name: 'Acesso negado',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Você não tem acesso à gestão desta equipe.')).toBeVisible();
-  },
 };

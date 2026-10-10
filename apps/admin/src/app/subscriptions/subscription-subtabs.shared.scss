@@ -1,3 +1,16 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+.subtab-layout {
+  @include view-widths.view();
+}
+
+@media (min-width: 901px) {
+  .event-subscription-layout,
+  .major-subscription-layout {
+    @include view-widths.view(2);
+  }
+}
+
 .subscription-actions {
   display: flex;
   justify-content: flex-end;

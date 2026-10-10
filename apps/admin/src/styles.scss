@@ -5,6 +5,7 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 @use 'sass:meta';
+@use './app/app-shell/layout/list-empty.shared';
 
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource-variable/source-code-pro/index.css';

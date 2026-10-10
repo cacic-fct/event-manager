@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -38,7 +38,6 @@ const snackBarMock = {
 
 @Component({
   selector: 'app-storybook-person-linked-data-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

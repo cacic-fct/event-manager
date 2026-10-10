@@ -1,4 +1,5 @@
 import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import {
   DeletionResult,
   Event,
@@ -7,7 +8,7 @@ import {
   EventUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { addHours, subHours } from 'date-fns';
 import {
@@ -52,6 +53,22 @@ type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
   request?: { user?: AuthenticatedUser };
 };
+
+function normalizeEventLivestreamFields<T extends EventCreateInput | EventUpdateInput>(input: T): T {
+  const youtubeCode = normalizeYoutubeCode(input.youtubeCode);
+  const twitchChannel = normalizeTwitchChannel(input.twitchChannel);
+  if (input.youtubeCode?.trim() && !youtubeCode) {
+    throw new BadRequestException('Informe um código ou link válido do YouTube.');
+  }
+  if (input.twitchChannel?.trim() && !twitchChannel) {
+    throw new BadRequestException('Informe um canal ou link válido da Twitch.');
+  }
+  return {
+    ...input,
+    ...(input.youtubeCode !== undefined ? { youtubeCode } : {}),
+    ...(input.twitchChannel !== undefined ? { twitchChannel } : {}),
+  };
+}
 
 const MAJOR_EVENT_SELECT = {
   id: true,
@@ -151,6 +168,7 @@ const EVENT_BASE_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -204,6 +222,7 @@ const EVENT_AUDIT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -434,7 +453,8 @@ export class EventsResolver {
     const user = this.getUser(context);
     await this.assertEventCreateRelationPermissions(input, user);
     await this.frozenResources.assertEventCreateTargetsMutable(input, user);
-    const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(input));
+    const certificateInput = await this.normalizeEventCertificateInput(input);
+    const normalizedInput = this.applyEventCreateDefaults(normalizeEventLivestreamFields(certificateInput));
     const eventInput = withoutAudienceInput(normalizedInput);
     let audienceChange: AudienceChange | undefined;
     const lecturerPersonIds = eventInput.lecturerPersonIds;
@@ -519,7 +539,8 @@ export class EventsResolver {
     await this.frozenResources.assertEventUpdateMutable(id, input, user);
     const { publishAfterUpdate = false, ...eventInput } = withoutAudienceInput(input);
     let audienceChange: AudienceChange | undefined;
-    const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
+    const certificateInput = await this.normalizeEventCertificateInput(eventInput, id);
+    const normalizedInput = normalizeEventLivestreamFields(certificateInput);
     const event = await this.prisma.$transaction(async (tx) => {
       if (normalizedInput.endDate instanceof Date) {
         await this.ticketIssuance.lockEventExpirationAlignment(tx, id, 'UPDATE');
@@ -706,6 +727,7 @@ export class EventsResolver {
       majorEventId: source.majorEventId ?? undefined,
       eventGroupId: source.eventGroupId ?? undefined,
       youtubeCode: source.youtubeCode ?? undefined,
+      twitchChannel: source.twitchChannel ?? undefined,
       buttonText: source.buttonText ?? undefined,
       buttonLink: source.buttonLink ?? undefined,
       ...(parts?.place

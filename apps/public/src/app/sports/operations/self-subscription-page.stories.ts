@@ -1,13 +1,13 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 
 interface SelfSubscriptionStoryArgs {
   paymentRequired: boolean;
@@ -37,7 +37,7 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
     emptyOptions: { control: 'boolean' },
     allowNoTeam: { control: 'boolean' },
     allowNoCategory: { control: 'boolean' },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
   },
   render: (args) => {
     activeArgs = args;
@@ -62,9 +62,6 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
             tournament: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('As inscrições ainda não estão abertas.'));
               }
               return of(
                 createCurrentUserTournamentOperations({
@@ -165,15 +162,4 @@ export const MerchandiseOnly: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
-};
-
-export const ClosedRegistration: Story = {
-  name: 'Inscrições indisponíveis',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Inscrição indisponível')).toBeVisible();
-    await expect(canvas.getByText('As inscrições ainda não estão abertas.')).toBeVisible();
-  },
 };

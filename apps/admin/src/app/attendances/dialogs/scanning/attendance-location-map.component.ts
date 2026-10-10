@@ -1,6 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -21,7 +20,6 @@ type MapInstance = {
 
 @Component({
   selector: 'app-attendance-location-map',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div #mapTarget class="map-preview" role="img" [attr.aria-label]="ariaLabel()"></div>`,
   styles: `
     :host {

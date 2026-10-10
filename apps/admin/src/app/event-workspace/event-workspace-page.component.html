@@ -66,7 +66,7 @@
               <h3>{{ context.kind === 'major-event' && !appliedQuery() ? 'Eventos fora de grupos' : 'Eventos' }}</h3>
               @for (event of activities(); track event.id) {
                 <app-workspace-record [title]="event.name" [link]="contextRoute({kind:'event', id:event.id})">
-                  <lib-twemoji recordIcon [emoji]="event.emoji" /><span recordDescription>{{ event.startDate | date:'short' }} @if (appliedQuery() && event.eventGroup?.name) { · {{ event.eventGroup.name }} }</span>
+                  <lib-twemoji recordIcon [emoji]="event.emoji" /><span recordDescription>{{ event.startDate | date:'short' }}@if (appliedQuery() && event.eventGroup?.name) {, grupo: {{ event.eventGroup.name }} }</span>
                 </app-workspace-record>
               } @empty {
                 @if (!activitiesLoading() && !activitiesError()) { <p class="empty-note">Nenhum evento encontrado neste contexto.</p> }

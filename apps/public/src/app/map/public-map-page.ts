@@ -1,7 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
@@ -68,7 +67,6 @@ const FIT_PADDING_PX = 72;
   ],
   templateUrl: './public-map-page.html',
   styleUrl: './public-map-page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PublicMapPage implements AfterViewInit {
   private readonly api = inject(PublicMapApiService);

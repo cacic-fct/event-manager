@@ -50,9 +50,9 @@
       @for (item of queuedAttendances(); track item.clientId) {
       <mat-list-item
         [class.needs-review]="item.status === 'CONFLICT' || item.status === 'DUPLICATE' || item.status === 'FORBIDDEN'">
-        <span matListItemTitle>{{ methodLabel(item.createdByMethod) }} · {{ queueStatusLabel(item.status) }}</span>
+        <span matListItemTitle>{{ methodLabel(item.createdByMethod) }}, {{ queueStatusLabel(item.status) }}</span>
         <span matListItemLine
-          >{{ item.collectedAt | date: 'shortTime' }} · {{ item.authorName || 'autor não identificado' }}</span
+          >{{ item.collectedAt | date: "'às' HH:mm" }}, {{ item.authorName || 'autor não identificado' }}</span
         >
         @if (item.lastError) {
         <span matListItemLine>{{ item.lastError }}</span>
@@ -85,13 +85,13 @@
       <mat-list-item>
         <span matListItemTitle>{{ attendance.fullName || attendance.personId }}</span>
         <span matListItemLine>
-          {{ roleLabel(attendance.unespRole) }} · {{ statusLabel(attendance.subscriptionStatus) }}
+          {{ roleLabel(attendance.unespRole) }}, {{ statusLabel(attendance.subscriptionStatus) }}
         </span>
         <span matListItemLine>
-          @if (attendance.attendedAt) { {{ attendance.attendedAt | date: 'shortTime' }} } @else { - } · {{
-          methodLabel(attendance.createdByMethod) }} @if (attendance.collectedByFirstName) { · por {{
-          attendance.collectedByFirstName }} } @if (attendance.committedByFirstName) { · enviado por {{
-          attendance.committedByFirstName }} }
+          @if (attendance.attendedAt) { {{ attendance.attendedAt | date: "'às' HH:mm" }}, } @else { Horário não informado, }
+          {{ methodLabel(attendance.createdByMethod) }}@if (attendance.collectedByFirstName) {, por {{
+          attendance.collectedByFirstName }}}@if (attendance.committedByFirstName) {, enviado por {{
+          attendance.committedByFirstName }}}
         </span>
       </mat-list-item>
       } @empty {

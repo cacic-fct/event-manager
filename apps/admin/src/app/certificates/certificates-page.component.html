@@ -153,10 +153,10 @@
               <span recordDescription>{{ eventItem.startDate | date: 'shortDate' }}</span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum evento encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum evento encontrado</p>
+            </div>
           }
         } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP') {
           @for (group of workspace.issuableEventGroups(); track group.id) {
@@ -171,10 +171,10 @@
               </span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum grupo encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum grupo encontrado</p>
+            </div>
           }
         } @else {
           @for (majorEvent of workspace.issuableMajorEvents(); track majorEvent.id) {
@@ -186,10 +186,10 @@
               </span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum grande evento encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum grande evento encontrado</p>
+            </div>
           }
         }
       </div>
@@ -253,8 +253,7 @@
                 [disabled]="workspace.unsavedChanges()"
                 [link]="workspace.certificateConfigRoute(config.id)">
                 <span recordDescription>
-                  {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
-                  {{ config.certificateTemplate.name }}
+                  {{ config.isActive ? 'Ativa' : 'Inativa' }}, modelo: {{ config.certificateTemplate.name }}
                 </span>
                 @if (canCloneConfig(config)) {
                   <button
@@ -282,10 +281,10 @@
                 }
               </app-workspace-record>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhuma configuração</span>
-                <span matListItemLine>Crie uma configuração para emitir.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhuma configuração</p>
+              </div>
             }
           </div>
 
@@ -578,7 +577,7 @@
               "
               [disabledReason]="
                 !permissions.has(Permission.Person.Read)
-                  ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                   : !canEditSelectedTarget()
                     ? 'Emitir certificados exige permissão para editar este destino.'
                     : 'Selecione um modelo de certificado disponível antes de emitir.'
@@ -602,7 +601,7 @@
           <mat-list class="detail-list">
             @for (certificate of workspace.certificates(); track certificate.id) {
               <mat-list-item>
-                <span matListItemTitle> {{ certificate.person.name }} · {{ certificate.config.name }} </span>
+                <span matListItemTitle> {{ certificate.person.name }}, certificado: {{ certificate.config.name }} </span>
                 <span matListItemLine> Emitido em {{ certificate.issuedAt | date: 'short' }} </span>
                 <button
                   matIconButton
@@ -624,10 +623,10 @@
                 }
               </mat-list-item>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhum certificado emitido</span>
-                <span matListItemLine>As emissões aparecerão aqui.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhum certificado emitido</p>
+              </div>
             }
           </mat-list>
 

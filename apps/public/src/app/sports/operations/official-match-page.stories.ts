@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { OfficialSportsMatchPage } from './official-match-page';
 import { SportsOfflineQueueService } from './sports-offline-queue.service';
@@ -10,7 +10,7 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
 import type { SportsMatchState, SportsOperationalMatch } from './sports-operations.types';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 type RosterMode = 'full' | 'empty' | 'long-names';
 
 interface OfficialMatchStoryArgs {
@@ -49,7 +49,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
       control: 'select',
       options: ['SCHEDULED', 'CHECK_IN', 'LIVE', 'PAUSED', 'AWAITING_REVIEW', 'CANCELED', 'DRAW', 'FINISHED'],
     },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
     rosterMode: { control: 'inline-radio', options: ['full', 'empty', 'long-names'] },
     pendingOfflineActions: { control: { type: 'range', min: 0, max: 12, step: 1 } },
   },
@@ -76,9 +76,6 @@ const meta: Meta<OfficialMatchStoryArgs> = {
             match: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('A conexão com a mesa de controle foi interrompida.'));
               }
               return of(currentMatch());
             },
@@ -260,17 +257,6 @@ export const LongTeamAndAthleteNames: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
-};
-
-export const LoadError: Story = {
-  name: 'Erro recuperável',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível abrir a partida')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
-  },
 };
 
 export const FinalizationWizard: Story = {

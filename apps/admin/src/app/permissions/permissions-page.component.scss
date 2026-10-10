@@ -1,4 +1,13 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+@media (min-width: 1001px) {
+  .permissions-page:has(app-permission-management-page.two-column-view) {
+    @include view-widths.view(2);
+  }
+}
+
 .permissions-page {
+  @include view-widths.view();
   min-width: 0;
 }
 .workspace-tab-label {

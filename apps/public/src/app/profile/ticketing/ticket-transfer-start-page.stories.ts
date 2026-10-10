@@ -2,7 +2,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { EMPTY, NEVER, of, throwError } from 'rxjs';
+import { EMPTY, NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { TicketingApiService } from './ticketing-api.service';
 import { TicketTransferStartPage } from './ticket-transfer-start-page';
@@ -16,7 +16,7 @@ type TicketTransferStartStoryArgs = {
   ticketEmoji: string;
   description: string;
   eligibilityDescription: string;
-  apiState: 'ready' | 'loading' | 'empty' | 'error';
+  apiState: 'ready' | 'loading';
 };
 
 const meta: Meta<TicketTransferStartStoryArgs> = {
@@ -40,7 +40,7 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
     ticketEmoji: { control: 'text' },
     description: { control: 'text' },
     eligibilityDescription: { control: 'text' },
-    apiState: { control: 'select', options: ['ready', 'loading', 'empty', 'error'] },
+    apiState: { control: 'select', options: ['ready', 'loading'] },
   },
   decorators: [
     (story, context) => {
@@ -68,14 +68,8 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
       });
       const ticketResponse = context.args.apiState === 'loading'
         ? NEVER
-        : context.args.apiState === 'empty'
-          ? of(null)
-          : context.args.apiState === 'error'
-            ? throwError(() => new Error('Falha ao carregar o bilhete.'))
-            : of(ticket);
-      const transferResponse = context.args.apiState === 'error'
-        ? throwError(() => new Error('Falha ao carregar as transferências.'))
-        : of(createTicketStoryTransferLists({
+        : of(ticket);
+      const transferResponse = of(createTicketStoryTransferLists({
             outgoing: context.args.mode === 'pending' ? [pendingTransfer] : [],
           }));
 
@@ -230,19 +224,5 @@ export const Loading: Story = {
   args: { apiState: 'loading' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando bilhete' })).toBeVisible();
-  },
-};
-
-export const NoTicket: Story = {
-  args: { apiState: 'empty' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Este bilhete não está disponível.')).toBeVisible();
-  },
-};
-
-export const LoadError: Story = {
-  args: { apiState: 'error' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar este bilhete.')).toBeVisible();
   },
 };

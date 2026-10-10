@@ -1,6 +1,6 @@
 import { Component, computed, signal } from '@angular/core';
 import { of } from 'rxjs';
-import { EventWorkspaceContextService, contextOperations, type EventWorkspaceContext, type EventWorkspaceRef } from '../event-workspace/event-workspace-context.service';
+import { EventWorkspaceContextService, contextOperations, contextOperationGroups, type EventWorkspaceContext, type EventWorkspaceRef } from '../event-workspace/event-workspace-context.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -32,11 +32,12 @@ const contextService = {
   context: shellContext,
   loading: signal(false), error: signal(''), scopeSwitchBlocked: signal(false),
   operations: computed(() => { const context = shellContext(); return context ? contextOperations(context) : []; }),
+  operationGroups: computed(() => { const context = shellContext(); return context ? contextOperationGroups(contextOperations(context)) : []; }),
   load: async (ref: EventWorkspaceRef | null) => {
     shellContext.set(ref ? { ...ref, name: ref.kind === 'event' ? 'Oficina de acessibilidade' : 'Semana da Computação', emoji: ref.kind === 'event' ? '♿' : '🎓' } : null);
   },
   canReadActivities: () => true,
-} satisfies Pick<EventWorkspaceContextService, 'context' | 'loading' | 'error' | 'operations' | 'load' | 'canReadActivities' | 'scopeSwitchBlocked'>;
+} satisfies Pick<EventWorkspaceContextService, 'context' | 'loading' | 'error' | 'operations' | 'operationGroups' | 'load' | 'canReadActivities' | 'scopeSwitchBlocked'>;
 
 const storyUser = signal({
   sub: 'storybook-admin',

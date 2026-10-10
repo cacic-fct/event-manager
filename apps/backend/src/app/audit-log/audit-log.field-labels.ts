@@ -110,6 +110,7 @@ const FIELD_LABELS: Record<string, string> = {
   validUntil: 'Válida até',
   whatsapp: 'WhatsApp',
   youtubeCode: 'YouTube',
+  twitchChannel: 'Twitch',
 };
 
 export function getAuditFieldLabel(field: string): string {

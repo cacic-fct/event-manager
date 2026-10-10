@@ -30,11 +30,6 @@
     <div class="line"></div>
     <div class="line short-line"></div>
   </section>
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else { @let data = currentState.data; @let event = data.event; @if (subscriptionFormFlow(); as formFlow) {
   <app-subscription-form-flow
     [forms]="formFlow.forms"
@@ -269,16 +264,20 @@
       }
     </div>
   </section>
-  } @if (event.youtubeCode) {
+  } @if (event.twitchChannel || event.youtubeCode) {
   <section class="detail-section">
     <h2>Transmissão</h2>
-    <div class="video-frame">
-      <iframe
-        [src]="youtubeEmbedUrl(event.youtubeCode)"
-        title="Transmissão do evento"
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-        allowfullscreen></iframe>
-    </div>
+    @if (event.twitchChannel) {
+    <lib-livestream-embed
+      provider="TWITCH"
+      [value]="event.twitchChannel"
+      title="Transmissão do evento na Twitch" />
+    } @if (event.youtubeCode) {
+    <lib-livestream-embed
+      provider="YOUTUBE"
+      [value]="event.youtubeCode"
+      title="Transmissão do evento no YouTube" />
+    }
   </section>
   } @if (event.locationDescription || (event.latitude !== null && event.longitude !== null)) {
   <section class="detail-section">

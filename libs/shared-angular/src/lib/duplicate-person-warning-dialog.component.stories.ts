@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
@@ -14,7 +14,6 @@ type DuplicatePersonWarningDialogStoryArgs = DuplicatePersonWarningDialogData & 
 
 @Component({
   selector: 'lib-storybook-duplicate-person-warning-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

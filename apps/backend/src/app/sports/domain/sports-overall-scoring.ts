@@ -64,18 +64,12 @@ function inferMode(hasMatchPoints: boolean, hasPlacementPoints: boolean): Sports
   return 'NONE';
 }
 
-export function normalizeSportsOverallScoringRules(
-  value: unknown,
-  legacyPlacementPoints?: unknown,
-): SportsOverallScoringRules {
+export function normalizeSportsOverallScoringRules(value: unknown): SportsOverallScoringRules {
   const rules = isRecord(value) ? value : {};
   const match = readMatchPoints(rules['match']);
   const hasMatchPoints =
     isRecord(rules['match']) && Object.keys(rules['match']).some((key) => key in DEFAULT_MATCH_POINTS);
-  const hasExplicitPlacement = Object.prototype.hasOwnProperty.call(rules, 'placement');
-  const placement = hasExplicitPlacement
-    ? readPlacementPoints(rules['placement'])
-    : readPlacementPoints(legacyPlacementPoints);
+  const placement = readPlacementPoints(rules['placement']);
   const hasPlacementPoints = Object.keys(placement).length > 0;
   const mode = SPORTS_OVERALL_SCORING_MODES.includes(rules['mode'] as SportsOverallScoringMode)
     ? (rules['mode'] as SportsOverallScoringMode)

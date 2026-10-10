@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
@@ -47,7 +47,6 @@ let revertedEntryId: string | null = null;
 
 @Component({
   selector: 'app-storybook-audit-log-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

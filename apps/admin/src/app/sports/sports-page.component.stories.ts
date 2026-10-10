@@ -141,7 +141,12 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
   }
   if (query.includes('AdminSportsMatchReview(')) {
     return HttpResponse.json({
-      data: { adminSportsMatchReviewRead: createAdminSportsMatchReview() },
+      data: {
+        adminSportsMatchReviewRead: createAdminSportsMatchReview({
+          livestreamProvider: 'TWITCH',
+          livestreamUrl: 'cacicfct',
+        }),
+      },
     });
   }
   if (query.includes('AdminSportsMatchActionReviewQueue')) {

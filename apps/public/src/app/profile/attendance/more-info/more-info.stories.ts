@@ -224,7 +224,7 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
             issuedAt: event.endDate,
             config: {
               id: `certificate-config-story-${index + 1}`,
-              name: `Certificado ${index + 1} · ${event.name}`,
+              name: `Certificado ${index + 1} de ${event.name}`,
               scope: 'EVENT',
               certificateText: 'Certificado emitido para a atividade de demonstração.',
               certificateTemplate: { id: 'certificate-template-story', name: 'Modelo CACiC' },

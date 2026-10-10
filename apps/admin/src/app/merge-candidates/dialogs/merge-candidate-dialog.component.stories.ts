@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { MergeCandidate, Person } from '@cacic-fct/event-manager-admin-contracts';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -75,7 +75,6 @@ function buildCandidate(args: MergeCandidateDialogStoryArgs): MergeCandidate {
 
 @Component({
   selector: 'app-storybook-merge-candidate-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

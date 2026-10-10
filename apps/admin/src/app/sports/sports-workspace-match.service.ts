@@ -1,4 +1,5 @@
 import { firstValueFrom } from 'rxjs';
+import { normalizeLivestreamValue } from '@cacic-fct/shared-livestream';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import type { SportsMatchReview, SportsMatchSummary, SportsOfficialSummary, SportsVenueSummary } from './sports.models';
 import { toIsoDateOrUndefined, toLocalDate } from './sports-workspace-form.utils';
@@ -291,11 +292,16 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
   }
 
   async saveMatch(): Promise<void> {
+    this.normalizeLivestreamInput();
     if (this.matchForm.invalid) {
       this.matchForm.markAllAsTouched();
       return;
     }
     const raw = this.matchForm.getRawValue();
+    const livestreamUrl =
+      raw.livestreamProvider === 'YOUTUBE' || raw.livestreamProvider === 'TWITCH'
+        ? normalizeLivestreamValue(raw.livestreamProvider, raw.livestreamUrl)
+        : raw.livestreamUrl || null;
     const existing = this.matchReview()?.match;
     await this.run('Não foi possível salvar a partida.', async () => {
       const payload = existing
@@ -314,7 +320,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
             groupKey: raw.groupKey || null,
             notes: raw.notes || null,
             livestreamProvider: raw.livestreamProvider || null,
-            livestreamUrl: raw.livestreamUrl || null,
+            livestreamUrl,
           }
         : {
             categoryId: raw.categoryId,
@@ -330,7 +336,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
             groupKey: raw.groupKey || null,
             notes: raw.notes || null,
             livestreamProvider: raw.livestreamProvider || null,
-            livestreamUrl: raw.livestreamUrl || null,
+            livestreamUrl,
           };
       const id = await firstValueFrom(
         this.api.mutate<string>(
@@ -349,6 +355,19 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
       }
       this.notify('Partida salva.');
     });
+  }
+
+  normalizeLivestreamInput(): void {
+    const provider = this.matchForm.controls.livestreamProvider.value;
+    if (provider !== 'YOUTUBE' && provider !== 'TWITCH') {
+      return;
+    }
+
+    const control = this.matchForm.controls.livestreamUrl;
+    const normalized = normalizeLivestreamValue(provider, control.value);
+    if (normalized !== null) {
+      control.setValue(normalized);
+    }
   }
 
   async deleteSelectedMatch(): Promise<void> {

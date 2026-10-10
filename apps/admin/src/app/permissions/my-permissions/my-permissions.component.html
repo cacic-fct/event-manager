@@ -25,11 +25,10 @@
         </div>
       </mat-list-item>
     } @empty {
-      <mat-list-item>
-        <mat-icon matListItemIcon>shield</mat-icon>
-        <span matListItemTitle>Nenhuma permissão encontrada</span>
-        <span matListItemLine>Você ainda não recebeu um cargo ativo no Event Manager.</span>
-      </mat-list-item>
+      <div class="admin-list-empty">
+        <mat-icon aria-hidden="true">hide_source</mat-icon>
+        <p>Nenhuma permissão encontrada</p>
+      </div>
     }
   </mat-list>
 

@@ -68,6 +68,45 @@ describe('EventsPageComponent', () => {
     });
   });
 
+  it('strips pasted provider URLs on blur and keeps invalid links visible', async () => {
+    await configureComponent('populated');
+    const { element, fixture } = await createComponent();
+    const videoPanel = [...element.querySelectorAll('mat-expansion-panel-header')].find((header) =>
+      header.textContent?.includes('Vídeo e botão do evento'),
+    );
+    videoPanel?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const youtubeInput = element.querySelector<HTMLInputElement>('input[formcontrolname="youtubeCode"]');
+    const twitchInput = element.querySelector<HTMLInputElement>('input[formcontrolname="twitchChannel"]');
+    if (!youtubeInput || !twitchInput) {
+      throw new Error('Expected both provider fields to be visible in the event form.');
+    }
+
+    youtubeInput.value = 'https://youtu.be/Video_123';
+    youtubeInput.dispatchEvent(new Event('input'));
+    youtubeInput.dispatchEvent(new Event('blur'));
+    twitchInput.value = 'https://www.twitch.tv/CanalFct';
+    twitchInput.dispatchEvent(new Event('input'));
+    twitchInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.workspace.eventForm.controls.youtubeCode.value).toBe('Video_123');
+    expect(fixture.componentInstance.workspace.eventForm.controls.twitchChannel.value).toBe('canalfct');
+    expect(youtubeInput.value).toBe('Video_123');
+    expect(twitchInput.value).toBe('canalfct');
+
+    twitchInput.value = 'https://example.com/not-a-channel';
+    twitchInput.dispatchEvent(new Event('input'));
+    twitchInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.workspace.eventForm.controls.twitchChannel.value).toBe(
+      'https://example.com/not-a-channel',
+    );
+    expect(element.textContent).toContain('Informe um canal válido ou um link da Twitch reconhecido.');
+  });
+
   it('copies coordinates confirmed in the map picker into the event form', async () => {
     const dialog = {
       open: vi.fn().mockReturnValue({

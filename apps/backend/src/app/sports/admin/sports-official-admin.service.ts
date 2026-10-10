@@ -129,7 +129,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
         {
           entityType: AuditLogEntityType.SPORTS_OFFICIAL_ASSIGNMENT,
           entityId: assignment.id,
-          entityLabel: `${person.name} · ${input.role}`,
+          entityLabel: `${person.name}, função: ${input.role}`,
           operation: AuditLogOperation.ASSIGN,
           actor,
           after: {

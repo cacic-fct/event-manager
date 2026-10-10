@@ -15,6 +15,7 @@
     "storybook:quality": "node tools/storybook-quality-audit.mjs",
     "test:data-import": "node --test tools/data-import/*.test.mts tools/data-import/lib/*.test.mts",
     "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",
+    "test:attendance-access-migration": "node --test tools/attendance-access-migration.test.mts",
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
     "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json"
   },
@@ -125,6 +126,7 @@
     "@angular/compiler-cli": "~22.2.1",
     "@angular/language-service": "~22.2.1",
     "@compodoc/compodoc": "^1.2.1",
+    "@electric-sql/pglite": "0.4.3",
     "@eslint/js": "^9.39.5",
     "@faker-js/faker": "^10.6.0",
     "@mermaid-js/mermaid-cli": "^11.17.0",

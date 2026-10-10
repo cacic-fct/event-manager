@@ -379,7 +379,7 @@ export function createPublicStoryEvents(controls: Partial<PublicEventCollectionS
     return createPublicStoryEvent({
       id: `public-story-event-${index + 1}`,
       index,
-      name: `${names[index % names.length]} · ${faker.word.adjective()}`,
+      name: `${names[index % names.length]} ${faker.word.adjective()}`,
       emoji: ['🤖', '🔐', '🎨', '📊', '🌱', '🧭'][index % 6],
       context: index % 3 === 0 ? 'major-event' : index % 3 === 1 ? 'event-group' : 'short-description',
       shortDescription: faker.company.catchPhrase(),

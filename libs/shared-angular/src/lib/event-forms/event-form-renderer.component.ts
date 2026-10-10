@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -28,7 +28,6 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
 
 @Component({
   selector: 'lib-event-form-renderer',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
     MatButtonModule,

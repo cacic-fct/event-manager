@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
+import { GraphqlStatusError } from '@cacic-fct/shared-angular/errors';
 import { GraphqlHttpService } from './graphql-http.service';
 
 describe('GraphqlHttpService', () => {
@@ -58,6 +59,25 @@ describe('GraphqlHttpService', () => {
     });
 
     await expect(responsePromise).rejects.toThrow('Nope');
+  });
+
+  it.each([
+    [{ code: 'FORBIDDEN' }, 403],
+    [{ originalError: { statusCode: 404 } }, 404],
+  ])('retains safe GraphQL access status metadata (%s)', async (extensions, status) => {
+    const responsePromise = firstValueFrom(service.request('query Private { private }'));
+
+    httpTesting.expectOne('/api/graphql').flush({
+      errors: [{ message: 'Resource unavailable', extensions }],
+    });
+
+    const error = await responsePromise.then(() => null, (reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(GraphqlStatusError);
+    expect(error).toMatchObject({
+      message: 'Resource unavailable',
+      status,
+    });
   });
 
   it('throws when the response has no data', async () => {

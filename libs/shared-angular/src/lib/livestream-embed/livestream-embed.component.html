@@ -1,0 +1,51 @@
+@if (embedUrl(); as source) {
+<div class="livestream-player" [class.livestream-player--twitch]="isTwitch()">
+  <div class="livestream-frame">
+    @if (isTwitch()) {
+    <iframe
+      [src]="source"
+      [title]="title()"
+      loading="lazy"
+      allow="autoplay; fullscreen; picture-in-picture"
+      allowfullscreen
+      sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"></iframe>
+    } @else {
+    <iframe
+      [src]="source"
+      [title]="title()"
+      loading="lazy"
+      allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+      allowfullscreen></iframe>
+    }
+  </div>
+  @if (isTwitch()) {
+  <p class="livestream-compact-note">Em telas estreitas, abra a transmissão na Twitch.</p>
+  }
+  @if (externalUrl(); as url) {
+  <a
+    class="livestream-external-link"
+    [href]="url"
+    [attr.aria-label]="externalLinkLabel() + ': ' + title()"
+    target="_blank"
+    rel="noopener noreferrer">
+    {{ externalLinkLabel() }}
+  </a>
+  }
+</div>
+} @else if (externalUrl(); as url) {
+<p class="livestream-fallback">
+  @if (provider() === 'TWITCH') {
+  <span>O player da Twitch não pôde ser configurado nesta visualização.</span>
+  } @else if (provider() === 'YOUTUBE') {
+  <span>O player do YouTube não pôde ser configurado nesta visualização.</span>
+  }
+  <a
+    class="livestream-external-link"
+    [href]="url"
+    [attr.aria-label]="externalLinkLabel() + ': ' + title()"
+    target="_blank"
+    rel="noopener noreferrer">
+    {{ externalLinkLabel() }}
+  </a>
+</p>
+}

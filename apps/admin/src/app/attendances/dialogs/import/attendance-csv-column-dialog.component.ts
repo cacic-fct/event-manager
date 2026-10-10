@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { signal } from '@angular/core';
 import { FormField, form, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,7 +17,6 @@ export interface AttendanceCsvColumnDialogData {
 
 @Component({
   selector: 'app-attendance-csv-column-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormField, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>{{ data.title ?? 'Importar presenças' }}</h2>

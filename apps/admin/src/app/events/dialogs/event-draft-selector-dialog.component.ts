@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +15,6 @@ export type EventDraftSelectorDialogData = {
 
 @Component({
   selector: 'app-event-draft-selector-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule],
   template: `
     <h2 mat-dialog-title>Escolher versão para edição</h2>

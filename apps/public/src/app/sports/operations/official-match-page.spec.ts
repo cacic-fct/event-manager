@@ -11,6 +11,7 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
 import type { SportsMatchAction } from './sports-operations.types';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { SportsMatchOverlayBuilderComponent } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 
 describe('OfficialSportsMatchPage', () => {
   let fixture: ComponentFixture<OfficialSportsMatchPage>;
@@ -112,6 +113,7 @@ describe('OfficialSportsMatchPage', () => {
           provide: SportsViewerRealtimeService,
           useValue: { watchMatch: () => NEVER },
         },
+        { provide: RouteErrorService, useValue: { navigate: vi.fn(() => Promise.resolve(true)) } },
       ],
     });
     TestBed.overrideComponent(OfficialSportsMatchPage, {

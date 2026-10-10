@@ -1,3 +1,11 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+@media (min-width: 1057px) {
+  .workspace-tab-shell {
+    @include view-widths.view(2);
+  }
+}
+
 .draw-setup-grid {
   align-items: start;
   margin-top: 1rem;

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -28,7 +28,6 @@ type CertificateDialogState =
   selector: 'app-certificate-dialog',
   templateUrl: './certificate-dialog.html',
   styleUrl: './certificate-dialog.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule, MatProgressSpinnerModule],
 })
 export class CertificateDialog {

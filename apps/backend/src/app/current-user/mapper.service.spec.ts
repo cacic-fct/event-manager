@@ -271,6 +271,7 @@ function eventFixture(overrides: Record<string, unknown> = {}) {
     onlineAttendanceEndDate: null,
     isPubliclyListed: true,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     ...overrides,

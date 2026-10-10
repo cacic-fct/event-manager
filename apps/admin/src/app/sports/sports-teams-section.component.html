@@ -35,10 +35,10 @@
           </span>
         </mat-list-item>
       } @empty {
-        <mat-list-item
-          ><span matListItemTitle>Nenhuma equipe</span
-          ><span matListItemLine>Cadastre a primeira equipe do torneio.</span></mat-list-item
-        >
+        <div class="admin-list-empty">
+          <mat-icon aria-hidden="true">hide_source</mat-icon>
+          <p>Nenhuma equipe</p>
+        </div>
       }
     </mat-list>
   </aside>
@@ -339,7 +339,7 @@
               {{ workspace.approvedTeamMemberCount() }} atleta{{
                 workspace.approvedTeamMemberCount() === 1 ? '' : 's'
               }}
-              aprovado{{ workspace.approvedTeamMemberCount() === 1 ? '' : 's' }} ·
+              aprovado{{ workspace.approvedTeamMemberCount() === 1 ? '' : 's' }},
               {{ workspace.automaticTeamCategories().length }} modalidade{{
                 workspace.automaticTeamCategories().length === 1 ? '' : 's'
               }}

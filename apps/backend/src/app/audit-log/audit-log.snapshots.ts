@@ -23,7 +23,7 @@ export function diffAuditRecords(before: Record<string, unknown>, after: Record<
       const childChanges = diffAuditRecords(beforeValue, afterValue).map((change) => ({
         ...change,
         field: `${key}.${change.field}`,
-        label: `${getAuditFieldLabel(key)} · ${change.label}`,
+        label: `${getAuditFieldLabel(key)}: ${change.label}`,
       }));
       changes.push(...childChanges);
       continue;

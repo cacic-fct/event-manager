@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import type { MajorEventSubscriptionCsvImportResult } from '@cacic-fct/event-manager-admin-contracts';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -55,7 +55,6 @@ function buildResult(args: CsvImportResultStoryArgs): MajorEventSubscriptionCsvI
 
 @Component({
   selector: 'app-storybook-subscription-csv-result-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })

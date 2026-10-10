@@ -1,5 +1,5 @@
 import { DatePipe, Location, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -8,12 +8,14 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import {
+  LivestreamEmbedComponent,
   SportsBracketComponent,
   SportsLiveDotComponent,
   SportsTeamLogoComponent,
   TwemojiComponent,
   MarkdownComponent,
 } from '@cacic-fct/shared-angular';
+import { normalizeLivestreamValue } from '@cacic-fct/shared-livestream';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
@@ -45,6 +47,7 @@ import { SportsAthletePreparationPanel } from './athlete-preparation-panel';
     MatTabsModule,
     MatToolbarModule,
     MarkdownComponent,
+    LivestreamEmbedComponent,
     RouterLink,
     SportsBracketComponent,
     SportsLiveDotComponent,
@@ -54,7 +57,6 @@ import { SportsAthletePreparationPanel } from './athlete-preparation-panel';
   ],
   templateUrl: './tournament-page.html',
   styleUrl: './tournament-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsTournamentPage {
   private readonly api = inject(SportsViewerApiService);
@@ -100,6 +102,23 @@ export class SportsTournamentPage {
   readonly liveMatches = computed(() =>
     this.orderedMatches().filter((match) => match.state === 'LIVE' || match.state === 'PAUSED'),
   );
+  readonly livestreamMatches = computed(() => {
+    const seenStreams = new Set<string>();
+    return this.liveMatches().filter((match) => {
+      const provider = match.livestreamProvider ?? 'GENERAL';
+      const value = normalizeLivestreamValue(provider, match.livestreamUrl);
+      if (!value) {
+        return false;
+      }
+
+      const streamKey = `${provider}:${value}`;
+      if (seenStreams.has(streamKey)) {
+        return false;
+      }
+      seenStreams.add(streamKey);
+      return true;
+    });
+  });
   readonly upcomingMatches = computed(() =>
     this.orderedMatches().filter((match) => match.state === 'SCHEDULED' || match.state === 'CHECK_IN'),
   );
@@ -140,7 +159,7 @@ export class SportsTournamentPage {
 
     this.route.paramMap
       .pipe(
-        map((params) => params.get('tournamentId') ?? params.get('id') ?? ''),
+        map((params) => params.get('tournamentId') ?? ''),
         filter(Boolean),
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef),
@@ -172,8 +191,8 @@ export class SportsTournamentPage {
   }
 
   categoryTitle(category: PublicSportsCategory): string {
-    const details = [sportsPresetLabel(category.sport, category.customSportName), category.division].filter(Boolean);
-    return details.join(' · ');
+    const sportLabel = sportsPresetLabel(category.sport, category.customSportName);
+    return category.division ? `${sportLabel}, divisão: ${category.division}` : sportLabel;
   }
 
   formatLabel(category: PublicSportsCategory): string {

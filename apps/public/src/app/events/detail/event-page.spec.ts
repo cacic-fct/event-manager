@@ -9,6 +9,7 @@ import { InterestApiService } from '../../interests/interest-api.service';
 import { MatDialog } from '@angular/material/dialog';
 import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { NEVER, Subject, of, throwError } from 'rxjs';
 import { EventApiService, type EventPageData } from './event-api.service';
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
@@ -18,6 +19,7 @@ import { SubscriptionReviewDialog } from '../../major-events/registration/standa
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { ForbiddenGraphqlError } from '../../shared/rate-limit-error';
 
 interface EventComponentFixtureOptions {
   authenticated?: boolean;
@@ -29,6 +31,7 @@ interface EventComponentFixtureOptions {
   dialog?: Partial<MatDialog>;
   routeParams?: Params;
   parentRoutePath?: string;
+  routeErrors?: Partial<RouteErrorService>;
 }
 
 async function createEventComponentFixture(
@@ -103,6 +106,10 @@ async function createEventComponentFixture(
           navigateByUrl: vi.fn(),
         },
       },
+      {
+        provide: RouteErrorService,
+        useValue: options.routeErrors ?? { navigate: vi.fn(() => Promise.resolve(true)) },
+      },
     ],
   });
   TestBed.overrideProvider(MatDialog, { useValue: dialog });
@@ -137,6 +144,7 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     onlineAttendanceEndDate: null,
     isPubliclyListed: true,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     majorEventId: null,
@@ -228,6 +236,59 @@ function subscriptionFormFixture(): PublicEventForm {
 }
 
 describe('Event', () => {
+  it('masks forbidden event resource lookups as shared not found', async () => {
+    TestBed.resetTestingModule();
+    const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
+    const eventFixture = await createEventComponentFixture({}, {
+      eventApi: { getEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
+      routeErrors,
+    });
+    eventFixture.detectChanges();
+    await eventFixture.whenStable();
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
+    eventFixture.destroy();
+  });
+
+  it('masks forbidden preview token lookups as shared not found', async () => {
+    TestBed.resetTestingModule();
+    const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
+    const previewFixture = await createEventComponentFixture({}, {
+      eventApi: { getPreviewEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
+      routeParams: { previewToken: 'private-preview-token' },
+      routeErrors,
+    });
+    previewFixture.detectChanges();
+    await previewFixture.whenStable();
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
+    previewFixture.destroy();
+  });
+
+  it('renders both configured event livestream providers with external fallbacks', async () => {
+    TestBed.resetTestingModule();
+    const data = defaultEventPageData();
+    data.event = { ...data.event, youtubeCode: 'event-video', twitchChannel: 'cacic' };
+    const eventFixture = await createEventComponentFixture({}, { eventPageData: data });
+    await eventFixture.whenStable();
+
+    const element = eventFixture.nativeElement as HTMLElement;
+    const frames = [...element.querySelectorAll('iframe')];
+    expect(frames).toHaveLength(2);
+    expect(frames.map((frame) => frame.getAttribute('src'))).toEqual(
+      expect.arrayContaining([
+        'https://www.youtube-nocookie.com/embed/event-video',
+        expect.stringContaining('https://player.twitch.tv/?'),
+      ]),
+    );
+    expect(element.querySelector('a[href="https://www.youtube.com/watch?v=event-video"]')).not.toBeNull();
+    expect(element.querySelector('a[href="https://www.twitch.tv/cacic"]')).not.toBeNull();
+    expect(element.querySelector('iframe[title="Transmissão do evento no YouTube"]')).not.toBeNull();
+    expect(element.querySelector('iframe[title="Transmissão do evento na Twitch"]')).not.toBeNull();
+
+    eventFixture.destroy();
+  });
+
   it('keeps group interest available after a member event ends', async () => {
     TestBed.resetTestingModule();
     const data = defaultEventPageData();

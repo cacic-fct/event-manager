@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -38,7 +38,6 @@ type AttendanceDetail = {
 
 @Component({
   selector: 'app-workspace-attendance-info-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AttendanceLocationMapComponent, DecimalPipe, MatButtonModule, MatDialogModule, MatIconModule],
   template: `
     <h2 mat-dialog-title>{{ data.status === 'ABSENT' ? 'Detalhes da ausência' : 'Detalhes da presença' }}</h2>
@@ -77,10 +76,9 @@ type AttendanceDetail = {
             [markerLabel]="data.personName" />
           <p class="location-coordinates">
             {{ data.collectedLatitude | number: '1.6-6' }},
-            {{ data.collectedLongitude | number: '1.6-6' }}
-            @if (data.collectedAccuracyMeters !== null && data.collectedAccuracyMeters !== undefined) {
-              · precisão de {{ data.collectedAccuracyMeters | number: '1.0-1' }} m
-            }
+            {{ data.collectedLongitude | number: '1.6-6' }}@if (
+              data.collectedAccuracyMeters !== null && data.collectedAccuracyMeters !== undefined
+            ) {, precisão de {{ data.collectedAccuracyMeters | number: '1.0-1' }} m}
           </p>
         } @else {
           <div class="empty-location">

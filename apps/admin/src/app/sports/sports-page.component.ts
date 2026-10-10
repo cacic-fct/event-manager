@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, inject } from '@angular/core';
+import { Component, ViewEncapsulation, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import { SportsCategoriesSectionComponent } from './sports-categories-section.component';
 import { SportsMatchesSectionComponent } from './sports-matches-section.component';
 import { SportsOverviewSectionComponent } from './sports-overview-section.component';
@@ -22,8 +23,6 @@ import { SportsWorkspaceService } from './sports-workspace.service';
 import type { SportsMajorEventWorkspaceItem } from './sports.models';
 import {
   isSportsWorkspaceArea,
-  legacySportsWorkspaceRoute,
-  parseLegacySportsWorkspaceRoute,
   parseSportsWorkspaceRoute,
   sportsWorkspaceRoute,
   type SportsWorkspaceArea,
@@ -40,7 +39,6 @@ const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
 
 @Component({
   selector: 'app-workspace-sports-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   // These styles intentionally cover the standalone section components rendered by this workspace.
   encapsulation: ViewEncapsulation.None,
   imports: [
@@ -86,6 +84,7 @@ export class SportsPageComponent {
   });
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private initialization: Promise<void> | null = null;
   private routeRevision = 0;
 
@@ -99,7 +98,7 @@ export class SportsPageComponent {
     try {
       await this.workspace.loadTournament(tournamentId);
     } catch (error) {
-      await this.redirectFromMissingTournament(error);
+      this.redirectFromMissingTournament(error);
       return;
     }
     const majorEventId = this.workspace.tournamentRead()?.tournament.majorEventId ?? null;
@@ -153,12 +152,6 @@ export class SportsPageComponent {
 
   private async applyRoute(params: { get(name: string): string | null }): Promise<void> {
     const revision = ++this.routeRevision;
-    const legacyRoute = parseLegacySportsWorkspaceRoute(params);
-    if (legacyRoute) {
-      await this.applyLegacyRoute(legacyRoute, params, revision);
-      return;
-    }
-
     const areaParam = params.get('area');
     if (areaParam && !isSportsWorkspaceArea(areaParam)) {
       const majorEventId = params.get('majorEventId');
@@ -191,46 +184,6 @@ export class SportsPageComponent {
     await this.applyRouteSelection(route, revision);
   }
 
-  private async applyLegacyRoute(
-    legacyRoute: NonNullable<ReturnType<typeof parseLegacySportsWorkspaceRoute>>,
-    params: { get(name: string): string | null },
-    revision: number,
-  ): Promise<void> {
-    await this.initializeWorkspace();
-    if (revision !== this.routeRevision) return;
-    try {
-      await this.workspace.loadTournament(legacyRoute.tournamentId);
-    } catch (error) {
-      await this.redirectFromMissingTournament(error, revision);
-      return;
-    }
-    if (revision !== this.routeRevision) return;
-
-    const majorEventId = this.workspace.tournamentRead()?.tournament.majorEventId ?? null;
-    this.workspace.useMajorEventRouteScope(majorEventId);
-    if (!majorEventId) {
-      this.workspace.resetWorkspaceRoute();
-      await this.router.navigate(['/sports'], {
-        replaceUrl: true,
-        queryParamsHandling: 'preserve',
-        preserveFragment: true,
-      }).catch(() => undefined);
-      return;
-    }
-
-    const route = { ...legacyRoute, majorEventId };
-    this.workspace.activeArea.set(route.area);
-    await this.applyRouteSelection(route, revision);
-    if (revision !== this.routeRevision) return;
-    const destination = legacySportsWorkspaceRoute(params, majorEventId);
-    if (!destination) return;
-    await this.router.navigate(destination, {
-      replaceUrl: true,
-      queryParamsHandling: 'preserve',
-      preserveFragment: true,
-    }).catch(() => undefined);
-  }
-
   private async applyRouteSelection(route: SportsWorkspaceRouteState, revision: number): Promise<void> {
     switch (route.area) {
       case 'overview':
@@ -245,7 +198,7 @@ export class SportsPageComponent {
         }
         const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === route.categoryId);
         if (!category) {
-          this.workspace.newCategory(false);
+          this.redirectToNotFound();
           return;
         }
         if (this.workspace.selectedCategoryId() !== category.id || !this.workspace.categoryRead()) {
@@ -263,7 +216,7 @@ export class SportsPageComponent {
         }
         const team = this.workspace.tournamentRead()?.teams.find((item) => item.id === route.teamId);
         if (!team) {
-          this.workspace.newTeam(false);
+          this.redirectToNotFound();
           return;
         }
         if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
@@ -282,8 +235,7 @@ export class SportsPageComponent {
         }
         const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === route.categoryId);
         if (!category) {
-          this.workspace.newCategory(false);
-          this.workspace.newMatch(false);
+          this.redirectToNotFound();
           return;
         }
         if (this.workspace.selectedCategoryId() !== category.id || !this.workspace.categoryRead()) {
@@ -300,7 +252,8 @@ export class SportsPageComponent {
             await this.workspace.selectMatch(match, { navigate: false });
           }
         } else {
-          this.workspace.newMatch(false);
+          if (route.matchId) this.redirectToNotFound();
+          else this.workspace.newMatch(false);
         }
         return;
       }
@@ -311,7 +264,7 @@ export class SportsPageComponent {
         }
         const team = this.workspace.tournamentRead()?.teams.find((item) => item.id === route.teamId);
         if (!team) {
-          this.workspace.newTeam(false);
+          this.redirectToNotFound();
           return;
         }
         if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
@@ -330,15 +283,16 @@ export class SportsPageComponent {
     return this.initialization;
   }
 
-  private async redirectFromMissingTournament(error: unknown, revision = this.routeRevision): Promise<void> {
-    if (revision !== this.routeRevision || !this.isMissingTournamentError(error)) {
+  private redirectFromMissingTournament(error: unknown): void {
+    if (!this.isMissingTournamentError(error)) {
       return;
     }
     this.workspace.resetWorkspaceRoute();
-    const majorEventId = this.workspace.majorEventRouteScopeId();
-    await this.router
-      .navigate(majorEventId ? ['/sports', 'major-event', majorEventId] : ['/sports'], { replaceUrl: true })
-      .catch(() => undefined);
+    this.routeResourceErrors.redirectNotFound();
+  }
+
+  private redirectToNotFound(): void {
+    this.routeResourceErrors.redirectNotFound();
   }
 
   private isMissingTournamentError(error: unknown): boolean {

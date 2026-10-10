@@ -49,7 +49,7 @@ test('opens sports management from workspace navigation and lists configured tou
   await expect(tournamentList.locator('mat-list-item')).toHaveCount(1);
   const tournament = tournamentList
     .locator('mat-list-item')
-    .filter({ hasText: '2 modalidades · 8 equipes · Publicado' });
+    .filter({ hasText: '2 modalidades e 8 equipes, Publicado' });
   await expect(tournament).toBeVisible();
   await expect(tournament.getByText('Semana da Computação')).toBeVisible();
   await expect(tournament.getByText('3 pendências')).toBeVisible();

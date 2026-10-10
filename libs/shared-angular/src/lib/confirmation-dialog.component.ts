@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,7 +15,6 @@ export interface ConfirmationDialogData {
 
 @Component({
   selector: 'lib-confirmation-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MatIconModule],
   template: `
     <h2 mat-dialog-title class="dialog-title" [class.danger]="data.tone === 'danger'">

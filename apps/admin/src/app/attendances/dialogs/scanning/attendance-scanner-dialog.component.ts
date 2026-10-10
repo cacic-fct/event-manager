@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -40,7 +40,6 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
 
 @Component({
   selector: 'app-workspace-attendance-scanner-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     ReactiveFormsModule,
@@ -93,18 +92,17 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
                   {{ attendance.fullName || attendance.personId }}
                 </span>
                 <span matListItemLine class="attendance-line">
-                  {{ roleLabel(attendance.unespRole) }} · {{ statusLabel(attendance.subscriptionStatus) }}
+                  {{ roleLabel(attendance.unespRole) }}, {{ statusLabel(attendance.subscriptionStatus) }}
                 </span>
                 <span matListItemLine class="attendance-line">
                   @if (attendance.attendedAt) {
-                    {{ attendance.attendedAt | date: 'shortTime' }}
+                    {{ attendance.attendedAt | date: 'shortTime' }},
                   } @else {
-                    -
+                    Horário não informado,
                   }
-                  · {{ methodLabel(attendance.createdByMethod) }}
-                  @if (attendance.collectedByFirstName) {
-                    · por {{ attendance.collectedByFirstName }}
-                  }
+                  método: {{ methodLabel(attendance.createdByMethod) }}{{
+                    attendance.collectedByFirstName ? ', coletado por ' + attendance.collectedByFirstName : ''
+                  }}
                 </span>
               </mat-list-item>
             } @empty {

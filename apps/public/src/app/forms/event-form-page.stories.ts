@@ -10,7 +10,7 @@ import { EventFormPage } from './event-form-page';
 
 faker.seed(20260724);
 
-type EventFormPageStoryState = 'editable' | 'submitted' | 'closed' | 'results' | 'empty-results' | 'error' | 'loading';
+type EventFormPageStoryState = 'editable' | 'submitted' | 'closed' | 'results' | 'empty-results' | 'loading';
 
 interface EventFormPageStoryArgs {
   state: EventFormPageStoryState;
@@ -81,7 +81,7 @@ const meta: Meta<EventFormPageStoryArgs> = {
   argTypes: {
     state: {
       control: 'select',
-      options: ['editable', 'submitted', 'closed', 'results', 'empty-results', 'error', 'loading'],
+      options: ['editable', 'submitted', 'closed', 'results', 'empty-results', 'loading'],
       description: 'Estado de dados e disponibilidade retornado pela API.',
     },
     formName: { control: 'text' },
@@ -105,7 +105,7 @@ const meta: Meta<EventFormPageStoryArgs> = {
     docs: {
       description: {
         component:
-          'Página de resposta de formulários vinculados a inscrições, com carregamento, indisponibilidade, resposta existente, resultados agregados e falha de API.',
+          'Página de resposta de formulários vinculados a inscrições, com carregamento, resposta existente e resultados agregados.',
       },
     },
     msw: {
@@ -122,10 +122,6 @@ const meta: Meta<EventFormPageStoryArgs> = {
 
             const body = (await request.json()) as { query?: string };
             const query = body.query ?? '';
-            if (activeArgs.state === 'error' && query.includes('CurrentUserEventForms')) {
-              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o formulário.' }] });
-            }
-
             return HttpResponse.json({ data: graphqlData(query, activeArgs) });
           }),
         ],
@@ -179,14 +175,6 @@ export const ReleasedWithoutAnswers: Story = {
     await expect(
       await within(canvasElement).findByText('Ainda não há perguntas respondidas neste formulário.'),
     ).toBeVisible();
-  },
-};
-
-export const ApiError: Story = {
-  args: { state: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar o formulário.')).toBeVisible();
   },
 };
 

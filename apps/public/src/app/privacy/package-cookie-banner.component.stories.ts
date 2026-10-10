@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -17,7 +17,6 @@ type CookieBannerStoryArgs = {
 
 @Component({
   selector: 'app-storybook-cookie-banner-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [PackageCookieBannerComponent],
   template: `<app-cookie-banner [config]="config()" />`,
 })

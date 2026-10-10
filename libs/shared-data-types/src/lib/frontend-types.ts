@@ -213,6 +213,7 @@ export interface Event {
   isPubliclyListed: boolean;
   displayLecturerProfile: boolean;
   youtubeCode?: string | null;
+  twitchChannel?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;
   deletedAt?: string | null;

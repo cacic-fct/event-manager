@@ -1,6 +1,5 @@
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   PLATFORM_ID,
@@ -37,6 +36,7 @@ import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationNodes,
@@ -50,7 +50,6 @@ import {
 
 @Component({
   selector: 'app-workspace-publishing-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -86,6 +85,7 @@ export class PublicationPageComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly realtime = inject(RealtimeApiService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private refreshRequestId = 0;
 
   readonly loading = signal(false);
@@ -179,6 +179,7 @@ export class PublicationPageComponent {
       this.selectedNode.set(nextSelection ?? this.workspaceItems()[0] ?? null);
     } catch (error) {
       if (requestId !== this.refreshRequestId) return;
+      if (this.requestedNode() && this.routeResourceErrors.redirectIfUnavailable(error)) return;
       this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       if (requestId === this.refreshRequestId) {
@@ -365,7 +366,7 @@ export class PublicationPageComponent {
       omittedFromPublicListing ? 'Não listado no site público' : null,
     ]
       .filter((item): item is string => item != null)
-      .join(' · ');
+      .join(', ');
   }
 
   childCountLabel(count: number): string {

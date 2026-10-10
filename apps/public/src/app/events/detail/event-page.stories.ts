@@ -22,7 +22,8 @@ import {
 import { Event } from './event-page';
 
 interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryControls {
-  apiState: 'ready' | 'loading' | 'error';
+  livestream: 'NONE' | 'YOUTUBE' | 'TWITCH' | 'BOTH';
+  apiState: 'ready' | 'loading';
   latencyMs: number;
   weatherState: 'forecast' | 'unavailable' | 'extreme-heat';
   allowSubscription: boolean;
@@ -39,6 +40,7 @@ const defaultArgs: EventStoryArgs = {
   ...publicEventStoryDefaultControls,
   ...publicLecturerStoryDefaultControls,
   apiState: 'ready',
+  livestream: 'NONE',
   latencyMs: 120,
   weatherState: 'forecast',
   allowSubscription: true,
@@ -72,7 +74,8 @@ const meta: Meta<EventStoryArgs> = {
   argTypes: {
     ...publicEventStoryControlArgTypes,
     ...publicLecturerStoryControlArgTypes,
-    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    livestream: { control: 'select', options: ['NONE', 'YOUTUBE', 'TWITCH', 'BOTH'] },
+    apiState: { control: 'inline-radio', options: ['ready', 'loading'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     weatherState: { control: 'select', options: ['forecast', 'unavailable', 'extreme-heat'] },
     allowSubscription: { control: 'boolean' },
@@ -118,6 +121,51 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const YouTubeLivestream: Story = {
+  name: 'Transmissão do evento no YouTube',
+  args: { livestream: 'YOUTUBE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTitle('Transmissão do evento no YouTube')).toHaveAttribute(
+      'src',
+      expect.stringContaining('youtube-nocookie.com/embed/storybook-event'),
+    );
+    await expect(canvas.getByRole('link', { name: /Abrir no YouTube/ })).toHaveAttribute(
+      'href',
+      'https://www.youtube.com/watch?v=storybook-event',
+    );
+  },
+};
+
+export const TwitchLivestream: Story = {
+  name: 'Transmissão do evento na Twitch',
+  args: { livestream: 'TWITCH' },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTitle('Transmissão do evento na Twitch')).toHaveAttribute(
+      'sandbox',
+      'allow-scripts allow-same-origin allow-popups-to-escape-sandbox',
+    );
+    await expect(canvas.getByRole('link', { name: /Abrir na Twitch/ })).toHaveAttribute(
+      'href',
+      'https://www.twitch.tv/cacic',
+    );
+  },
+};
+
+export const BothLivestreamProviders: Story = {
+  name: 'YouTube e Twitch configurados',
+  args: { livestream: 'BOTH' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTitle('Transmissão do evento no YouTube')).toBeVisible();
+    await expect(canvas.getByTitle('Transmissão do evento na Twitch')).toBeVisible();
+    await expect(canvas.getByRole('link', { name: /Abrir no YouTube/ })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: /Abrir na Twitch/ })).toBeVisible();
+  },
 };
 
 export const InterestWithoutRegistration: Story = {
@@ -227,11 +275,6 @@ export const Loading: Story = {
   globals: { theme: 'light', network: 'online' },
 };
 
-export const LoadError: Story = {
-  args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
-};
-
 export const LongContentMobile: Story = {
   args: {
     name: 'Encontro interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
@@ -283,9 +326,6 @@ function eventParameters(context: EventStoryContext) {
               await delay(context.args.latencyMs);
             }
             const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-            if (context.args.apiState === 'error') {
-              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
-            }
             return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', body.variables ?? {}, context.args) });
           }),
         ],
@@ -330,6 +370,8 @@ function buildEvent(args: EventStoryArgs) {
     lecturers: createPublicStoryLecturerProfilesFromControls(args),
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
     interestEnabled: args.interestEnabled,
+    youtubeCode: args.livestream === 'YOUTUBE' || args.livestream === 'BOTH' ? 'storybook-event' : null,
+    twitchChannel: args.livestream === 'TWITCH' || args.livestream === 'BOTH' ? 'cacic' : null,
   };
 }
 
