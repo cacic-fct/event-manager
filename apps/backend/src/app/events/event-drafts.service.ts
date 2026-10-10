@@ -54,6 +54,8 @@ const MAJOR_EVENT_SELECT = {
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
+  attendanceEligibility: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -82,6 +84,8 @@ const EVENT_GROUP_SELECT = {
   name: true,
   emoji: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
+  attendanceEligibility: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
@@ -116,6 +120,8 @@ const EVENT_DETAIL_SELECT = {
     select: EVENT_GROUP_SELECT,
   },
   allowSubscription: true,
+  interestEnabled: true,
+  attendanceEligibility: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
@@ -166,6 +172,8 @@ const EVENT_AUDIT_SELECT = {
   majorEventId: true,
   eventGroupId: true,
   allowSubscription: true,
+  interestEnabled: true,
+  attendanceEligibility: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
@@ -373,7 +381,17 @@ export class EventDraftsService {
           publicationUpdatedBy: user?.sub ?? null,
         },
       });
-      if (attendancePriceTierPolicyChanged(payload, previousEvent)) {
+      const attendanceEligibilityChanged =
+        payload.attendanceEligibility !== undefined &&
+        payload.attendanceEligibility !== previousEvent.attendanceEligibility;
+      const attendanceTargetChanged =
+        (payload.eventGroupId !== undefined && payload.eventGroupId !== previousEvent.eventGroupId) ||
+        (payload.majorEventId !== undefined && payload.majorEventId !== previousEvent.majorEventId);
+      if (
+        attendancePriceTierPolicyChanged(payload, previousEvent) ||
+        attendanceEligibilityChanged ||
+        attendanceTargetChanged
+      ) {
         await this.attendanceCategories.refreshForEvent(draft.sourceEventId, tx);
       }
       await tx.eventDraft.delete({ where: { id: draft.id } });
@@ -731,7 +749,10 @@ export class EventDraftsService {
       input.isOnlineAttendanceAllowed !== undefined ||
       input.onlineAttendanceCode !== undefined ||
       input.onlineAttendanceStartDate !== undefined ||
-      input.onlineAttendanceEndDate !== undefined
+      input.onlineAttendanceEndDate !== undefined ||
+      input.attendanceEligibility !== undefined ||
+      input.eventGroupId !== undefined ||
+      input.majorEventId !== undefined
     );
   }
 

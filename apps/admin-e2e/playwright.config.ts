@@ -48,6 +48,7 @@ export default defineConfig({
   use: {
     baseURL,
     ignoreHTTPSErrors: baseURL.startsWith('https://localhost'),
+    ...(process.env['E2E_BROWSER_CHANNEL'] === 'chrome' ? { channel: 'chrome' } : {}),
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },

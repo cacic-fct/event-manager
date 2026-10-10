@@ -53,6 +53,7 @@ export const PAYMENT_INFO_SELECT = {
 } satisfies Prisma.PaymentInfoSelect;
 
 export const MAJOR_EVENT_BASE_SELECT = {
+  attendanceEligibility: true,
   id: true,
   name: true,
   emoji: true,
@@ -62,6 +63,7 @@ export const MAJOR_EVENT_BASE_SELECT = {
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -168,10 +170,13 @@ export const CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT = {
 } satisfies Prisma.EventSubscriptionSelect;
 
 export const EVENT_GROUP_SELECT = {
+  attendanceEligibility: true,
+  majorEventId: true,
   id: true,
   name: true,
   emoji: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
@@ -185,6 +190,7 @@ export const EVENT_GROUP_SELECT = {
 } satisfies Prisma.EventGroupSelect;
 
 export const EVENT_SELECT = {
+  attendanceEligibility: true,
   id: true,
   name: true,
   creditMinutes: true,
@@ -206,6 +212,7 @@ export const EVENT_SELECT = {
     select: EVENT_GROUP_SELECT,
   },
   allowSubscription: true,
+  interestEnabled: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,

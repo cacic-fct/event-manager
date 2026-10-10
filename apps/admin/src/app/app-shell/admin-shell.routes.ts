@@ -175,6 +175,9 @@ export const routes: Route[] = [
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),
 
+      ...guardedFeatureRoute(`${subscriptionsData.path}/interests`, subscriptionsData, () =>
+        import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
+      ),
       ...guardedFeatureRoute(subscriptionsData.path, subscriptionsData, () =>
         import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
       ),

@@ -1,11 +1,18 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { PublicationState, SubscriptionStatus } from '@prisma/client';
+import { PublicationState } from '@prisma/client';
+import { AttendanceEligibility, isAttendanceEligible } from '@cacic-fct/shared-event-participation';
 import { Queue } from 'bullmq';
 import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { PrismaService } from '../prisma/prisma.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
+import {
+  ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES,
+  eventAttendanceEligibility,
+  isApprovedAttendance,
+  isRegisteredAttendanceEvidence,
+} from '../events/attendance-eligibility';
 
 export const ONLINE_ATTENDANCE_NOTIFICATION_QUEUE = 'online-attendance-notifications';
 export const ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB = 'notify-online-attendance-available';
@@ -156,6 +163,10 @@ export class OnlineAttendanceNotificationJobsService {
       select: {
         id: true,
         name: true,
+        eventGroupId: true,
+        majorEventId: true,
+        autoSubscribe: true,
+        attendanceEligibility: true,
         endDate: true,
         onlineAttendanceStartDate: true,
         onlineAttendanceCode: true,
@@ -168,13 +179,28 @@ export class OnlineAttendanceNotificationJobsService {
         },
         majorEvent: {
           select: {
+            attendanceEligibility: true,
+            deletedAt: true,
             subscriptions: {
               where: {
                 deletedAt: null,
-                subscriptionStatus: SubscriptionStatus.CONFIRMED,
+                subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
               },
-              select: { person: { select: PERSON_SELECT } },
+              select: {
+                subscriptionStatus: true,
+                person: { select: PERSON_SELECT },
+                selectedEvents: {
+                  where: { eventId: input.eventId, deletedAt: null },
+                  select: { eventId: true },
+                },
+              },
             },
+          },
+        },
+        eventGroup: {
+          select: {
+            attendanceEligibility: true,
+            deletedAt: true,
           },
         },
       },
@@ -189,10 +215,46 @@ export class OnlineAttendanceNotificationJobsService {
       return;
     }
 
-    const recipients = [
-      ...event.subscriptions.map(({ person }) => this.notifications.mapPersonToRecipient(person)),
-      ...(event.majorEvent?.subscriptions ?? []).map(({ person }) => this.notifications.mapPersonToRecipient(person)),
-    ];
+    const eligibility = eventAttendanceEligibility(event);
+    if (eligibility === AttendanceEligibility.INVITED_ONLY) {
+      return;
+    }
+
+    const directPeople = new Set(event.subscriptions.map(({ person }) => person.id));
+    const majorSubscriptions = new Map((event.majorEvent?.subscriptions ?? []).map((subscription) => [subscription.person.id, subscription]));
+    const candidates = new Map(event.subscriptions.map(({ person }) => [person.id, person]));
+    for (const subscription of majorSubscriptions.values()) {
+      if (event.autoSubscribe || subscription.selectedEvents.length) candidates.set(subscription.person.id, subscription.person);
+    }
+    const recipients = [...candidates.values()].filter((person) => {
+      const subscription = majorSubscriptions.get(person.id);
+      const evidence = {
+        hasEventSubscription: directPeople.has(person.id),
+        majorEventSubscriptionStatus: subscription?.subscriptionStatus,
+        hasSelectedEvent: Boolean(subscription?.selectedEvents.length),
+        autoSubscribe: event.autoSubscribe,
+      };
+      return isAttendanceEligible(eligibility, {
+        registered: isRegisteredAttendanceEvidence(event, evidence),
+        approved: isApprovedAttendance(event, evidence),
+      });
+    }).map((person) => this.notifications.mapPersonToRecipient(person));
+    if (eligibility === AttendanceEligibility.ANYONE) {
+      const interests = await this.prisma.eventInterest.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { eventId: event.id },
+            ...(event.eventGroupId ? [{ eventGroupId: event.eventGroupId }] : []),
+            ...(event.majorEventId ? [{ majorEventId: event.majorEventId }] : []),
+          ],
+        },
+        select: {
+          person: { select: PERSON_SELECT },
+        },
+      });
+      recipients.push(...interests.map(({ person }) => this.notifications.mapPersonToRecipient(person)));
+    }
     const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.subscriberId, recipient])).values()];
     if (uniqueRecipients.length === 0) {
       return;

@@ -187,6 +187,7 @@ async function createFixture({
   api: {
     confirmAttendance: ReturnType<typeof vi.fn>;
     listPendingEvents: ReturnType<typeof vi.fn>;
+    getWalkInEvent: ReturnType<typeof vi.fn>;
   };
   component: OnlineAttendanceCodeComponent;
   attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
@@ -202,6 +203,7 @@ async function createFixture({
   const api = {
     confirmAttendance: vi.fn(() => of({ eventId: 'event-1', attendedAt: null, createdAt: null })),
     listPendingEvents: vi.fn(() => of(pendingEvents)),
+    getWalkInEvent: vi.fn(() => of(null)),
   };
   api.listPendingEvents.mockReturnValueOnce(of(pendingEvents));
   if (pendingEventsAfterSubmit.length > 0) {

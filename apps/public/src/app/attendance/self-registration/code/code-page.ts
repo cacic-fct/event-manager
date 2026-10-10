@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormField, form, maxLength, minLength, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -39,7 +39,6 @@ type AttendanceCodeStateEmission = {
   ],
   templateUrl: './code-page.html',
   styleUrl: './code-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnlineAttendanceCodeComponent {
   private readonly api = inject(OnlineAttendanceApiService);
@@ -228,6 +227,13 @@ export class OnlineAttendanceCodeComponent {
       switchMap(({ preserveStateOnError }) => {
         const request = this.api.listPendingEvents().pipe(
           take(1),
+          switchMap((items) => {
+            const eventId = this.eventId();
+            if (!eventId || this.openedFromNotification() || items.some((item) => item.eventId === eventId)) {
+              return of(items);
+            }
+            return this.api.getWalkInEvent(eventId).pipe(map((walkIn) => walkIn ? [...items, walkIn] : items));
+          }),
           map(
             (items): AttendanceCodeStateEmission => ({
               state: this.stateFor(items),

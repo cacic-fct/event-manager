@@ -1,3 +1,4 @@
+import type { EventInterest } from '../types/participation';
 import type {
   CertificateDownload,
   DateTimeString,
@@ -286,14 +287,19 @@ export const PUBLIC_EVENT_PAGE_QUERY = `
 
 export interface PublicMajorEventSubscriptionPageQueryVariables {
   majorEventId: string;
+  includeInterests?: boolean;
 }
 
 export interface PublicMajorEventSubscriptionPageQuery {
   publicMajorEventSubscriptionPage: PublicMajorEventSubscriptionPage;
+  currentUserInterests?: EventInterest[];
 }
 
 export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY = `
-  query PublicMajorEventSubscriptionPage($majorEventId: String!) {
+  query PublicMajorEventSubscriptionPage($majorEventId: String!, $includeInterests: Boolean! = false) {
+    currentUserInterests(majorEventId: $majorEventId) @include(if: $includeInterests) {
+      id personId eventId eventGroupId majorEventId createdAt
+    }
     publicMajorEventSubscriptionPage(majorEventId: $majorEventId) {
       majorEvent {
         ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}

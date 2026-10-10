@@ -182,7 +182,9 @@ describe('CurrentUserEventAttendanceResolver', () => {
   it('requires an active event subscription before confirming online attendance for subscription events', async () => {
     const prisma = {
       event: {
-        findFirst: jest.fn().mockResolvedValue(createOnlineAttendanceEvent({ allowSubscription: true })),
+        findFirst: jest.fn().mockResolvedValue(
+          createOnlineAttendanceEvent({ allowSubscription: true, attendanceEligibility: 'REGISTERED_ONLY' }),
+        ),
       },
       eventSubscription: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -212,6 +214,35 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(prisma.eventAttendance.findUnique).not.toHaveBeenCalled();
   });
 
+  it('ignores a soft-deleted event-group attendance policy when confirming online attendance', async () => {
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(
+          createOnlineAttendanceEvent({
+            attendanceEligibility: null,
+            eventGroupId: 'deleted-group',
+            eventGroup: {
+              attendanceEligibility: 'ANYONE',
+              deletedAt: new Date('2026-06-20T12:00:00.000Z'),
+            },
+          }),
+        ),
+      },
+      eventSubscription: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      eventAttendance: {
+        findUnique: jest.fn(),
+      },
+    };
+    const resolver = createResolver(prisma);
+
+    await expect(
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {} as never),
+    ).rejects.toThrow('You must be subscribed to event event-1');
+    expect(prisma.eventAttendance.findUnique).not.toHaveBeenCalled();
+  });
+
   it('requires a confirmed major-event subscription before confirming online attendance for paid major events', async () => {
     const prisma = {
       event: {
@@ -223,10 +254,14 @@ describe('CurrentUserEventAttendanceResolver', () => {
               id: 'major-event-1',
               isPaymentRequired: true,
             },
+            attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
           }),
         ),
       },
       majorEventSubscription: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      eventSubscription: {
         findFirst: jest.fn().mockResolvedValue(null),
       },
       eventAttendance: {
@@ -246,13 +281,55 @@ describe('CurrentUserEventAttendanceResolver', () => {
         personId: 'person-1',
         majorEventId: 'major-event-1',
         deletedAt: null,
-        subscriptionStatus: 'CONFIRMED',
       },
       select: {
-        id: true,
+        subscriptionStatus: true,
+        selectedEvents: {
+          where: { eventId: 'event-1', deletedAt: null },
+          select: { eventId: true },
+        },
       },
     });
     expect(prisma.eventAttendance.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('allows REGISTERED_ONLY online confirmation from a pending selected major activity without a child subscription row', async () => {
+    const attendance = { personId: 'person-1', eventId: 'pending-event', status: 'PRESENT' };
+    const tx = {
+      eventAttendance: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn().mockResolvedValue(undefined),
+        findUnique: jest.fn().mockResolvedValue(null),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(
+          createOnlineAttendanceEvent({
+            id: 'pending-event',
+            attendanceEligibility: 'REGISTERED_ONLY',
+            majorEventId: 'major-event-1',
+            majorEvent: { id: 'major-event-1', isPaymentRequired: true },
+          }),
+        ),
+      },
+      eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+      majorEventSubscription: {
+        findFirst: jest.fn().mockResolvedValue({
+          subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+          selectedEvents: [{ eventId: 'pending-event' }],
+        }),
+      },
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const { resolver } = createResolverWithDependencies(prisma, {
+      mapper: { mapCurrentUserEventAttendance: jest.fn().mockReturnValue(attendance) },
+    });
+
+    await expect(
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'pending-event', code: '123456' }, {} as never),
+    ).resolves.toBe(attendance);
   });
 
   it('rejects an online attendance confirmation when no record can transition and creation conflicts', async () => {
@@ -328,7 +405,10 @@ describe('CurrentUserEventAttendanceResolver', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'subscription-1' }),
       },
       majorEventSubscription: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'major-subscription-1' }),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'major-subscription-1',
+          subscriptionStatus: 'CONFIRMED',
+        }),
       },
       $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
@@ -812,6 +892,7 @@ function createResolverWithDependencies(
 
 function createOnlineAttendanceEvent(
   overrides: Partial<{
+    id: string;
     allowSubscription: boolean;
     shouldCollectAttendance: boolean;
     isOnlineAttendanceAllowed: boolean;
@@ -819,7 +900,18 @@ function createOnlineAttendanceEvent(
     onlineAttendanceStartDate: Date | null;
     onlineAttendanceEndDate: Date | null;
     majorEventId: string | null;
-    majorEvent: { id: string; isPaymentRequired: boolean } | null;
+    majorEvent: {
+      id: string;
+      isPaymentRequired: boolean;
+      attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
+      deletedAt?: Date | null;
+    } | null;
+    attendanceEligibility: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
+    eventGroupId: string | null;
+    eventGroup: {
+      attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
+      deletedAt?: Date | null;
+    } | null;
   }> = {},
 ) {
   return {
@@ -833,6 +925,9 @@ function createOnlineAttendanceEvent(
     onlineAttendanceEndDate: new Date('2099-01-01T00:00:00.000Z'),
     majorEventId: null,
     majorEvent: null,
+    eventGroupId: null,
+    eventGroup: null,
+    attendanceEligibility: 'ANYONE',
     ...overrides,
   };
 }

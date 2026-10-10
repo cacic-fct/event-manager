@@ -3,14 +3,24 @@ import { AttendanceCategory, Prisma, PrismaClient } from '@prisma/client';
 import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import { normalizeAttendancePriceTier } from './attendance-price-tier-policy';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ATTENDANCE_POLICY_EVENT_SELECT,
+  currentAssessmentForAttendance,
+  eventAttendanceEligibility,
+} from './attendance-eligibility';
+import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 
 type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 
 type AttendanceEvent = {
   regularAttendancePriceTierIds?: string[];
   allowSubscription: boolean;
+  autoSubscribe?: boolean;
+  eventGroupId?: string | null;
   majorEventId: string | null;
-  majorEvent: { isPaymentRequired: boolean } | null;
+  attendanceEligibility?: AttendanceEligibility | null;
+  eventGroup?: { attendanceEligibility?: AttendanceEligibility | null } | null;
+  majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: AttendanceEligibility | null } | null;
 };
 
 type AttendanceAssessmentSubject = {
@@ -37,6 +47,7 @@ type BulkMajorEventSubscription = {
   personId: string;
   paymentTier: string | null;
   subscriptionStatus: string;
+  selectedEvents: Array<{ eventId: string }>;
 };
 
 type BulkPriceTier = {
@@ -48,15 +59,11 @@ type BulkPriceTier = {
 const ATTENDANCE_UPDATE_CHUNK_SIZE = 500;
 
 const ATTENDANCE_EVENT_SELECT = {
+  ...ATTENDANCE_POLICY_EVENT_SELECT,
   id: true,
   regularAttendancePriceTierIds: true,
   allowSubscription: true,
-  majorEventId: true,
-  majorEvent: {
-    select: {
-      isPaymentRequired: true,
-    },
-  },
+  autoSubscribe: true,
 } satisfies Prisma.EventSelect;
 
 export function attendanceAssessmentKey(personId: string, eventId: string): string {
@@ -81,8 +88,8 @@ export class AttendanceCategoryService {
         id: { in: [...new Set(undefinedAttendances.map((attendance) => attendance.eventId))] },
       },
       select: {
+        ...ATTENDANCE_POLICY_EVENT_SELECT,
         id: true,
-        majorEventId: true,
         regularAttendancePriceTierIds: true,
       },
     });
@@ -96,6 +103,11 @@ export class AttendanceCategoryService {
           ...attendance.event,
           id: attendance.eventId,
           majorEventId: policy ? policy.majorEventId : attendance.event.majorEventId,
+          eventGroupId: policy ? policy.eventGroupId : attendance.event.eventGroupId,
+          attendanceEligibility:
+            policy?.attendanceEligibility ?? attendance.event.attendanceEligibility ?? null,
+          eventGroup: policy?.eventGroup ?? attendance.event.eventGroup ?? null,
+          majorEvent: policy?.majorEvent ?? attendance.event.majorEvent ?? null,
           regularAttendancePriceTierIds:
             policy?.regularAttendancePriceTierIds ?? attendance.event.regularAttendancePriceTierIds ?? [],
         },
@@ -117,15 +129,11 @@ export class AttendanceCategoryService {
         personId: true,
         event: {
           select: {
+            ...ATTENDANCE_POLICY_EVENT_SELECT,
             id: true,
             regularAttendancePriceTierIds: true,
             allowSubscription: true,
-            majorEventId: true,
-            majorEvent: {
-              select: {
-                isPaymentRequired: true,
-              },
-            },
+            autoSubscribe: true,
           },
         },
       },
@@ -326,6 +334,10 @@ export class AttendanceCategoryService {
               personId: true,
               paymentTier: true,
               subscriptionStatus: true,
+              selectedEvents: {
+                where: { eventId: { in: eventIds }, deletedAt: null },
+                select: { eventId: true },
+              },
             },
           })
         : Promise.resolve([] as BulkMajorEventSubscription[]),
@@ -367,7 +379,9 @@ export class AttendanceCategoryService {
           ? majorSubscriptionByKey.get(attendanceAssessmentKey(attendance.personId, event.majorEventId))
           : undefined;
         const paymentTier = normalizeAttendancePriceTier(majorSubscription?.paymentTier);
+        const policy = eventAttendanceEligibility(event);
         const tierEligible =
+          policy === AttendanceEligibility.ANYONE ||
           !event.regularAttendancePriceTierIds?.length ||
           Boolean(
             event.majorEventId &&
@@ -384,11 +398,14 @@ export class AttendanceCategoryService {
         return [
           key,
           tierEligible
-            ? this.resolveCurrentAssessment(
-                event,
-                majorSubscription?.subscriptionStatus,
-                eventSubscriptionKeys.has(key),
-              )
+            ? currentAssessmentForAttendance(event, {
+                hasEventSubscription: eventSubscriptionKeys.has(key),
+                majorEventSubscriptionStatus: majorSubscription?.subscriptionStatus,
+                hasSelectedEvent: majorSubscription?.selectedEvents?.some(
+                  (selectedEvent) => selectedEvent.eventId === event.id,
+                ),
+                autoSubscribe: event.autoSubscribe,
+              })
             : AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
         ];
       }),
@@ -400,6 +417,10 @@ export class AttendanceCategoryService {
     personId: string,
     event: AttendanceAssessmentSubject['event'],
   ): Promise<boolean> {
+    if (eventAttendanceEligibility(event) === AttendanceEligibility.ANYONE) {
+      return true;
+    }
+
     if (!event.majorEventId) return false;
     const [tiers, subscription] = await Promise.all([
       tx.priceTier.findMany({
@@ -422,34 +443,24 @@ export class AttendanceCategoryService {
       id: string;
       regularAttendancePriceTierIds?: string[];
       allowSubscription: boolean;
+      autoSubscribe?: boolean;
+      eventGroupId?: string | null;
+      attendanceEligibility?: AttendanceEligibility | null;
+      eventGroup?: { attendanceEligibility?: AttendanceEligibility | null } | null;
       majorEventId: string | null;
-      majorEvent: { isPaymentRequired: boolean } | null;
+      majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: AttendanceEligibility | null } | null;
     },
   ): Promise<AttendanceCurrentAssessment> {
-    if (event.regularAttendancePriceTierIds?.length) {
+    if (
+      event.regularAttendancePriceTierIds?.length &&
+      eventAttendanceEligibility(event) !== AttendanceEligibility.ANYONE
+    ) {
       const eligible = await this.isPriceTierEligible(tx, personId, event);
       if (!eligible) return AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE;
     }
 
-    if (event.majorEventId && event.majorEvent?.isPaymentRequired) {
-      const majorEventSubscription = await tx.majorEventSubscription.findFirst({
-        where: {
-          majorEventId: event.majorEventId,
-          personId,
-          deletedAt: null,
-        },
-        select: {
-          subscriptionStatus: true,
-        },
-      });
-
-      if (majorEventSubscription?.subscriptionStatus !== 'CONFIRMED') {
-        return this.resolveCurrentAssessment(event, majorEventSubscription?.subscriptionStatus, true);
-      }
-    }
-
-    if (event.allowSubscription) {
-      const eventSubscription = await tx.eventSubscription.findFirst({
+    const [eventSubscription, majorEventSubscription] = await Promise.all([
+      tx.eventSubscription.findFirst({
         where: {
           eventId: event.id,
           personId,
@@ -458,37 +469,30 @@ export class AttendanceCategoryService {
         select: {
           id: true,
         },
-      });
+      }),
+      event.majorEventId
+        ? tx.majorEventSubscription.findFirst({
+            where: {
+              majorEventId: event.majorEventId,
+              personId,
+              deletedAt: null,
+            },
+            select: {
+              subscriptionStatus: true,
+              selectedEvents: {
+                where: { eventId: event.id, deletedAt: null },
+                select: { eventId: true },
+              },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
 
-      if (!eventSubscription) {
-        return AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING;
-      }
-    }
-
-    return AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET;
-  }
-
-  private resolveCurrentAssessment(
-    event: AttendanceAssessmentSubject['event'],
-    majorEventSubscriptionStatus: string | undefined,
-    hasEventSubscription: boolean,
-  ): AttendanceCurrentAssessment {
-    if (event.majorEventId && event.majorEvent?.isPaymentRequired && majorEventSubscriptionStatus !== 'CONFIRMED') {
-      if (majorEventSubscriptionStatus === 'WAITING_RECEIPT_UPLOAD') {
-        return AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT;
-      }
-
-      if (majorEventSubscriptionStatus === 'RECEIPT_UNDER_REVIEW') {
-        return AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_UNDER_REVIEW;
-      }
-
-      return AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_NOT_CONFIRMED;
-    }
-
-    if (event.allowSubscription && !hasEventSubscription) {
-      return AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING;
-    }
-
-    return AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET;
+    return currentAssessmentForAttendance(event, {
+      hasEventSubscription: Boolean(eventSubscription),
+      majorEventSubscriptionStatus: majorEventSubscription?.subscriptionStatus,
+      hasSelectedEvent: majorEventSubscription?.selectedEvents?.some((selected) => selected.eventId === event.id),
+      autoSubscribe: event.autoSubscribe,
+    });
   }
 }

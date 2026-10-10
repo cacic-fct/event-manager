@@ -112,6 +112,41 @@ describe('MajorEventsService', () => {
     });
   });
 
+  it('persists independent interest and explicit attendance eligibility settings', async () => {
+    service.majorEventForm.patchValue({
+      interestEnabled: true,
+      attendanceEligibility: 'ANYONE',
+    });
+
+    await service.saveMajorEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      interestEnabled: true,
+      attendanceEligibility: 'ANYONE',
+    });
+  });
+
+  it('persists certificate exception flags and disables non-paying certificates for paid events', async () => {
+    expect(service.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees.disabled).toBe(true);
+    service.majorEventForm.patchValue({
+      shouldIssueCertificateForNonPayingAttendees: true,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+    });
+
+    await service.saveMajorEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      shouldIssueCertificateForNonPayingAttendees: false,
+      shouldIssueCertificateForNonSubscribedAttendees: true,
+    });
+
+    service.majorEventForm.controls.isPaymentRequired.setValue(false);
+    service.majorEventForm.controls.shouldIssueCertificateForNonPayingAttendees.setValue(true);
+    await service.saveMajorEvent('DRAFT');
+
+    expect(lastPayload?.shouldIssueCertificateForNonPayingAttendees).toBe(true);
+  });
+
   it('serializes an event-disabled tier while leaving the default-enabled value omitted', async () => {
     service.priceTiers.at(0).controls.value.setValue('40');
     service.priceTiers.at(0).controls.includesEventRegistration.setValue(false);

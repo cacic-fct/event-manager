@@ -19,7 +19,7 @@ O dono ajuda a organizar o formulário no painel. Os vínculos decidem onde o p�
 
 Cada vínculo aponta para um evento ou grande evento e define:
 
-- Público autorizado: inscritos, participantes com presença ou ambos;
+- Públicos autorizados em `audiences`: interessados ainda não inscritos, inscritos e participantes com presença;
 - Janela de disponibilidade;
 - Ordem de exibição;
 - Se o formulário entra no fluxo de inscrição;
@@ -28,6 +28,10 @@ Cada vínculo aponta para um evento ou grande evento e define:
 - Se ministrantes podem publicar manualmente, quando o vínculo é de evento.
 
 Formulários inseridos no fluxo de inscrição não devem disparar notificação de disponibilidade, porque a pessoa vê o formulário enquanto se inscreve.
+
+`EventFormAudience` contém `INTERESTED`, `SUBSCRIBERS` e `ATTENDEES`. A seleção é uma lista não vazia e combina os públicos com a regra **ou**. `INTERESTED` exige uma manifestação explícita de interesse e ausência de inscrição ativa no mesmo alvo; o registro histórico de interesse não é apagado quando ocorre uma inscrição. A mesma regra compartilhada é usada na autorização e na seleção de destinatários das notificações.
+
+Vínculos antigos de inscritos ou presentes são migrados para a seleção dos dois públicos. Formulários do fluxo de inscrição precisam incluir `SUBSCRIBERS`.
 
 ## Publicação
 

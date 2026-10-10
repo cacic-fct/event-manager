@@ -1,5 +1,4 @@
 import {
-  EventFormAudience as ContractAudience,
   EventFormInput,
   EventFormResponseMode as ContractResponseMode,
   EventFormSigilo as ContractSigilo,
@@ -596,7 +595,7 @@ function linkInput(overrides: Partial<EventFormLinkInput> = {}): EventFormLinkIn
     targetType: EventFormTargetType.EVENT,
     eventId: 'event-1',
     majorEventId: null,
-    audience: ContractAudience.SUBSCRIBERS_OR_ATTENDEES,
+    audiences: [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
     displayOrder: 0,
@@ -687,7 +686,7 @@ function linkRecord(
     targetType?: EventFormTargetType;
     eventId?: string | null;
     majorEventId?: string | null;
-    audience?: EventFormAudience;
+    audiences?: EventFormAudience[];
     insertInSubscriptionFlow?: boolean;
     requiredInSubscriptionFlow?: boolean;
     notifyOnPublish?: boolean;
@@ -727,7 +726,7 @@ function linkRecord(
           emoji: 'calendar',
         }
       : null,
-    audience: options.audience ?? EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
+    audiences: options.audiences ?? [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES],
     insertInSubscriptionFlow: options.insertInSubscriptionFlow ?? false,
     requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
     displayOrder: 0,

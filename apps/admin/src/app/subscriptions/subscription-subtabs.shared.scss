@@ -345,6 +345,47 @@
   background: var(--mat-sys-surface-container-high);
 }
 
+.interest-target-search {
+  display: block;
+}
+
+.interest-target-list {
+  max-height: 40rem;
+  overflow: auto;
+}
+
+.interest-target-list mat-list-item {
+  min-height: 4.5rem;
+  cursor: pointer;
+}
+
+.interest-list mat-list-item {
+  min-height: 4.75rem;
+}
+
+@media (max-width: 720px) {
+  .interest-list mat-list-item {
+    min-height: 0;
+    padding-block: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .interest-list mat-list-item .mdc-list-item__content,
+  .interest-list mat-list-item .mdc-list-item__end {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .interest-list .item-actions {
+    margin-top: 0.5rem;
+  }
+
+  .interest-list .item-actions button {
+    width: 100%;
+  }
+}
+
 .editable-list-item {
   cursor: pointer;
 }

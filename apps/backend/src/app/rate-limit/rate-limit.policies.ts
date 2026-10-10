@@ -66,6 +66,14 @@ export const RATE_LIMIT_POLICIES = {
     baseCooldownMs: 30_000,
     maxCooldownMs: 10 * minute,
   },
+  eventInterest: {
+    name: 'event-interest',
+    windowMs: 15 * minute,
+    freeAttempts: 20,
+    baseCooldownMs: 5_000,
+    maxCooldownMs: minute,
+    maxAttempts: 60,
+  },
   receiptUpload: {
     name: 'receipt-upload',
     windowMs: 2 * 60 * minute,

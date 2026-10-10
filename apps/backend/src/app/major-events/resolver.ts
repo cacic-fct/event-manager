@@ -41,6 +41,8 @@ import {
 } from '../realtime/public-catalog-invalidation';
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { AttendanceCategoryService } from '../events/attendance-category.service';
+import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -81,6 +83,7 @@ const MAJOR_EVENT_SELECT = {
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   requiresImageLicenseAgreement: true,
+  interestEnabled: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -92,6 +95,7 @@ const MAJOR_EVENT_SELECT = {
   isPaymentRequired: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
+  attendanceEligibility: true,
   additionalPaymentInfo: true,
   sportsTournament: {
     where: { deletedAt: null },
@@ -137,6 +141,7 @@ const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
     issuedTo: true,
     certificateTypeLabel: true,
     certificateFields: true,
+    attendeeEligibility: true,
   },
 } satisfies Prisma.CertificateConfigFindManyArgs;
 
@@ -171,6 +176,12 @@ export class MajorEventsResolver {
       scope: (channel) => channel,
       publish: async () => ({}),
     },
+    private readonly attendanceCategories: AttendanceCategoryService = {
+      refreshForEvent: async () => undefined,
+    } as unknown as AttendanceCategoryService,
+    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService = {
+      notifyAllConnectedPeople: async () => undefined,
+    } as unknown as CurrentUserOnlineAttendanceRealtimeService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -393,6 +404,19 @@ export class MajorEventsResolver {
         await this.syncMajorEventPrice(tx, effectiveId, majorEventInput.price);
       }
 
+      if (
+        majorEventInput.attendanceEligibility !== undefined &&
+        majorEventInput.attendanceEligibility !== majorEvent.attendanceEligibility
+      ) {
+        const events = await tx.event.findMany({
+          where: { majorEventId: effectiveId, deletedAt: null },
+          select: { id: true },
+        });
+        for (const event of events) {
+          await this.attendanceCategories.refreshForEvent(event.id, tx);
+        }
+      }
+
       const updated = await tx.majorEvent.findUniqueOrThrow({
         where: {
           id: effectiveId,
@@ -445,6 +469,9 @@ export class MajorEventsResolver {
         publicationState: updatedMajorEvent.publicationState,
       });
     });
+    if (majorEventInput.attendanceEligibility !== undefined) {
+      await this.attendanceRealtime.notifyAllConnectedPeople();
+    }
     return updatedMajorEvent;
   }
 
@@ -493,6 +520,7 @@ export class MajorEventsResolver {
       contactType: source.contactType ?? undefined,
       ...(parts?.subscriptionSettings
         ? {
+            attendanceEligibility: source.attendanceEligibility,
             subscriptionStartDate: source.subscriptionStartDate ?? undefined,
             subscriptionEndDate: source.subscriptionEndDate ?? undefined,
             maxCoursesPerAttendee: source.maxCoursesPerAttendee ?? undefined,
@@ -674,6 +702,12 @@ export class MajorEventsResolver {
     if (input.requiresImageLicenseAgreement !== undefined) {
       data.requiresImageLicenseAgreement = input.requiresImageLicenseAgreement;
     }
+    if (input.interestEnabled !== undefined) {
+      data.interestEnabled = input.interestEnabled;
+    }
+    if (input.attendanceEligibility !== undefined && input.attendanceEligibility !== null) {
+      data.attendanceEligibility = input.attendanceEligibility;
+    }
     if (input.maxCoursesPerAttendee !== undefined) {
       data.maxCoursesPerAttendee = input.maxCoursesPerAttendee;
     }
@@ -760,6 +794,12 @@ export class MajorEventsResolver {
     }
     if (input.requiresImageLicenseAgreement !== undefined) {
       data.requiresImageLicenseAgreement = input.requiresImageLicenseAgreement;
+    }
+    if (input.interestEnabled !== undefined) {
+      data.interestEnabled = input.interestEnabled;
+    }
+    if (input.attendanceEligibility !== undefined && input.attendanceEligibility !== null) {
+      data.attendanceEligibility = input.attendanceEligibility;
     }
     if (input.maxCoursesPerAttendee !== undefined) {
       data.maxCoursesPerAttendee = input.maxCoursesPerAttendee;
@@ -1220,6 +1260,7 @@ export class MajorEventsResolver {
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
       certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
+      attendeeEligibility: Prisma.CertificateConfigCreateInput['attendeeEligibility'];
     }>,
     majorEventId: string,
   ): Promise<void> {
@@ -1236,6 +1277,7 @@ export class MajorEventsResolver {
           isActive: config.isActive,
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
+          attendeeEligibility: config.attendeeEligibility,
           certificateFields:
             config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },

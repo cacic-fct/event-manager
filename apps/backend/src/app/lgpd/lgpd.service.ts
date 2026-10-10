@@ -23,6 +23,7 @@ import {
   LGPD_EVENT_ATTENDANCE_SELECT,
   LGPD_EVENT_DRAFT_SELECT,
   LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
+  LGPD_EVENT_INTEREST_SELECT,
   LGPD_EVENT_LECTURER_SELECT,
   LGPD_LECTURER_PROFILE_SELECT,
   LGPD_EVENT_SUBSCRIPTION_SELECT,
@@ -66,6 +67,7 @@ export class LgpdService {
       accountUserMerges,
       externalAccountMergeOperations,
       eventSubscriptions,
+      eventInterests,
       eventGroupSubscriptions,
       majorEventSubscriptions,
       attendances,
@@ -110,6 +112,13 @@ export class LgpdService {
         ? this.prisma.eventSubscription.findMany({
             where: { personId: { in: personIds } },
             select: LGPD_EVENT_SUBSCRIPTION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.eventInterest.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_EVENT_INTEREST_SELECT,
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),
@@ -244,6 +253,7 @@ export class LgpdService {
       metadata: this.metadata(input, dataSubject),
       accountUsers: { records: selectManyForExport(accountUsers, LGPD_ACCOUNT_USER_SELECT) },
       people: { records: people.map((person) => mapPersonForExport(person)) },
+      interests: { records: selectManyForExport(eventInterests, LGPD_EVENT_INTEREST_SELECT) },
       subscriptions: {
         eventSubscriptions: selectManyForExport(eventSubscriptions, LGPD_EVENT_SUBSCRIPTION_SELECT),
         eventGroupSubscriptions: selectManyForExport(eventGroupSubscriptions, LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT),
@@ -304,6 +314,10 @@ export class LgpdService {
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
+      const eventInterests = await tx.eventInterest.updateMany({
+        where: { personId: { in: personIds }, deletedAt: null },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
+      });
       const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
@@ -323,6 +337,7 @@ export class LgpdService {
         people,
         recordsUpdated:
           eventSubscriptions.count +
+          eventInterests.count +
           eventGroupSubscriptions.count +
           majorEventSubscriptions.count +
           selections.count +
@@ -359,6 +374,10 @@ export class LgpdService {
         where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
         data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
+      const eventInterests = await tx.eventInterest.updateMany({
+        where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
+      });
       const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
         where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
         data: { deletedAt: null, lgpdDeletionRequestId: null },
@@ -376,6 +395,7 @@ export class LgpdService {
         people,
         recordsUpdated:
           eventSubscriptions.count +
+          eventInterests.count +
           eventGroupSubscriptions.count +
           majorEventSubscriptions.count +
           selections.count +
@@ -426,6 +446,7 @@ export class LgpdService {
       });
       const majorEventReceipts = await tx.majorEventReceipt.deleteMany({ where: { personId: { in: personIds } } });
       const eventSubscriptions = await tx.eventSubscription.deleteMany({ where: { personId: { in: personIds } } });
+      const eventInterests = await tx.eventInterest.deleteMany({ where: { personId: { in: personIds } } });
       const eventGroupSubscriptions = await tx.eventGroupSubscription.deleteMany({
         where: { personId: { in: personIds } },
       });
@@ -544,6 +565,7 @@ export class LgpdService {
           receiptValidationActions.count +
           majorEventReceipts.count +
           eventSubscriptions.count +
+          eventInterests.count +
           eventGroupSubscriptions.count +
           majorEventSubscriptions.count +
           attendances.count +

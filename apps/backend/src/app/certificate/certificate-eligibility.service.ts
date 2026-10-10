@@ -1,6 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { isAttendanceEligible } from '@cacic-fct/shared-event-participation';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AttendanceCategory, AttendanceCurrentAssessment, Prisma, SubscriptionStatus } from '@prisma/client';
+import { Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CERTIFICATE_CONFIG_SELECT,
@@ -14,6 +15,8 @@ import {
 } from './certificate.constants';
 import { CertificateSportsEligibility } from './certificate-sports-eligibility';
 import { isAutomaticSportsCertificateIssuedTo, isManualCertificateIssuedTo } from './certificate-sports-roles';
+import { isApprovedAttendance, isRegisteredAttendanceEvidence } from '../events/attendance-eligibility';
+import { normalizeAttendancePriceTier } from '../events/attendance-price-tier-policy';
 
 const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   majorEventId: true,
@@ -24,7 +27,53 @@ const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   },
 } satisfies Prisma.MajorEventSubscriptionSelect;
 
-type AssessedAttendance = { category: AttendanceCategory; currentAssessment?: AttendanceCurrentAssessment | null };
+const ATTENDANCE_MAJOR_EVENT_SUBSCRIPTION_SELECT = {
+  majorEventId: true,
+  personId: true,
+  subscriptionStatus: true,
+  paymentTier: true,
+  selectedEvents: {
+    where: {
+      deletedAt: null,
+    },
+    select: {
+      eventId: true,
+    },
+  },
+} satisfies Prisma.MajorEventSubscriptionSelect;
+
+const ATTENDANCE_PRICE_TIER_SELECT = {
+  id: true,
+  name: true,
+  price: {
+    select: {
+      majorEventId: true,
+    },
+  },
+} satisfies Prisma.PriceTierSelect;
+
+type CertificateAttendanceFact = {
+  registered: boolean;
+  approved: boolean;
+  hasEventSubscription: boolean;
+  majorEventSubscriptionStatus: SubscriptionStatus | null;
+  paymentTier: string | null;
+  tierEligible: boolean;
+};
+
+type AttendanceMajorEventSubscription = Prisma.MajorEventSubscriptionGetPayload<{
+  select: typeof ATTENDANCE_MAJOR_EVENT_SUBSCRIPTION_SELECT;
+}>;
+
+type AttendancePriceTier = Prisma.PriceTierGetPayload<{
+  select: typeof ATTENDANCE_PRICE_TIER_SELECT;
+}>;
+
+type CertificateMajorEventPolicy = {
+  isPaymentRequired: boolean;
+  shouldIssueCertificateForNonPayingAttendees: boolean;
+  shouldIssueCertificateForNonSubscribedAttendees: boolean;
+};
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
@@ -61,36 +110,6 @@ export class CertificateEligibilityService {
     config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
-    const recipients = await this.resolveRecipients(config, personId);
-    if (config.issuedTo !== CertificateIssuedTo.ATTENDEE || !config.paymentTiers?.length || recipients.length === 0) {
-      return recipients;
-    }
-
-    const majorEventId =
-      config.scope === CertificateScope.MAJOR_EVENT
-        ? config.majorEventId
-        : config.scope === CertificateScope.EVENT
-          ? config.event?.majorEventId
-          : null;
-    if (!majorEventId) return [];
-
-    const subscriptions = await this.prisma.majorEventSubscription.findMany({
-      where: {
-        majorEventId,
-        deletedAt: null,
-        personId: { in: recipients.map((recipient) => recipient.person.id) },
-        paymentTier: { in: config.paymentTiers },
-      },
-      select: { personId: true },
-    });
-    const allowedPeople = new Set(subscriptions.map((subscription) => subscription.personId));
-    return recipients.filter((recipient) => allowedPeople.has(recipient.person.id));
-  }
-
-  private async resolveRecipients(
-    config: CertificateConfigRecord,
-    personId?: string,
-  ): Promise<EligibleCertificateRecipient[]> {
     if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       return personId ? this.resolveManualRecipient(config, personId) : [];
     }
@@ -104,15 +123,15 @@ export class CertificateEligibilityService {
     }
 
     if (config.scope === CertificateScope.EVENT) {
-      return this.resolveEventRecipients(config.eventId, personId);
+      return this.resolveEventRecipients(config, personId);
     }
 
     if (config.scope === CertificateScope.EVENT_GROUP) {
-      return this.resolveEventGroupRecipients(config.eventGroupId, personId);
+      return this.resolveEventGroupRecipients(config, personId);
     }
 
     if (config.scope === CertificateScope.MAJOR_EVENT) {
-      return this.resolveMajorEventRecipients(config.majorEventId, personId);
+      return this.resolveMajorEventRecipients(config, personId);
     }
 
     throw new BadRequestException(`Unsupported certificate scope ${config.scope}.`);
@@ -270,9 +289,10 @@ export class CertificateEligibilityService {
   }
 
   private async resolveEventRecipients(
-    eventId: string | null,
+    config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
+    const eventId = config.eventId;
     if (!eventId) {
       throw new BadRequestException('Event config must define eventId.');
     }
@@ -313,16 +333,16 @@ export class CertificateEligibilityService {
       },
       select: {
         personId: true,
-        category: true,
-        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
       },
     });
 
+    const facts = await this.resolveAttendanceFacts([event], attendances.map((attendance) => attendance.personId));
+
     return attendances
-      .filter((attendance) => this.canIssueForEventAttendance(attendance, event))
+      .filter((attendance) => this.canIssueForConfiguredAttendance(config, event, facts.get(this.attendanceFactKey(attendance.personId, event.id))))
       .map((attendance) => ({
         person: attendance.person,
         events: [event],
@@ -330,9 +350,10 @@ export class CertificateEligibilityService {
   }
 
   private async resolveEventGroupRecipients(
-    eventGroupId: string | null,
+    config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
+    const eventGroupId = config.eventGroupId;
     if (!eventGroupId) {
       throw new BadRequestException('Event-group config must define eventGroupId.');
     }
@@ -390,18 +411,25 @@ export class CertificateEligibilityService {
       select: {
         personId: true,
         eventId: true,
-        category: true,
-        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
       },
     });
 
+    const facts = await this.resolveAttendanceFacts(groupEvents, attendances.map((attendance) => attendance.personId));
+
     const attendanceByPerson = new Map<string, { person: PersonRecord; eventIds: Set<string> }>();
     for (const attendance of attendances) {
       const event = eventById.get(attendance.eventId);
-      if (!event || !this.canIssueForGroupedEventAttendance(attendance, event)) {
+      if (
+        !event ||
+        !this.canIssueForConfiguredAttendance(
+          config,
+          event,
+          facts.get(this.attendanceFactKey(attendance.personId, event.id)),
+        )
+      ) {
         continue;
       }
 
@@ -444,9 +472,10 @@ export class CertificateEligibilityService {
   }
 
   private async resolveMajorEventRecipients(
-    majorEventId: string | null,
+    config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
+    const majorEventId = config.majorEventId;
     if (!majorEventId) {
       throw new BadRequestException('Major-event config must define majorEventId.');
     }
@@ -463,12 +492,12 @@ export class CertificateEligibilityService {
       throw new NotFoundException(`Major event ${majorEventId} was not found.`);
     }
 
+    const includeAttendanceWithoutMajorEventSubscription =
+      !majorEvent.isPaymentRequired && majorEvent.shouldIssueCertificateForNonPayingAttendees;
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId: majorEvent.id,
-        ...(majorEvent.isPaymentRequired || !majorEvent.shouldIssueCertificateForNonPayingAttendees
-          ? { subscriptionStatus: SubscriptionStatus.CONFIRMED }
-          : {}),
+        ...(includeAttendanceWithoutMajorEventSubscription ? {} : { subscriptionStatus: SubscriptionStatus.CONFIRMED }),
         deletedAt: null,
         ...(personId ? { personId } : {}),
         person: {
@@ -477,9 +506,6 @@ export class CertificateEligibilityService {
       },
       select: MAJOR_EVENT_SUBSCRIPTION_SELECT,
     });
-
-    const includeAttendanceWithoutMajorEventSubscription =
-      !majorEvent.isPaymentRequired && majorEvent.shouldIssueCertificateForNonPayingAttendees;
 
     if (subscriptions.length === 0 && !includeAttendanceWithoutMajorEventSubscription) {
       return [];
@@ -538,8 +564,6 @@ export class CertificateEligibilityService {
       select: {
         personId: true,
         eventId: true,
-        category: true,
-        currentAssessment: true,
         person: {
           select: PERSON_SELECT,
         },
@@ -551,11 +575,21 @@ export class CertificateEligibilityService {
       },
     });
 
+    const facts = await this.resolveAttendanceFacts(issuableEvents, attendancesByPerson.map((attendance) => attendance.personId));
+
     const peopleByPersonId = new Map(subscriptions.map((subscription) => [subscription.personId, subscription.person]));
     const attendedEventIdsByPersonId = new Map<string, Set<string>>();
     for (const attendance of attendancesByPerson) {
       const event = issuableEventById.get(attendance.eventId);
-      if (!event || !this.canIssueForMajorEventAttendance(attendance, event, majorEvent)) {
+      if (
+        !event ||
+        !this.canIssueForConfiguredAttendance(
+          config,
+          event,
+          facts.get(this.attendanceFactKey(attendance.personId, event.id)),
+          majorEvent,
+        )
+      ) {
         continue;
       }
 
@@ -639,76 +673,194 @@ export class CertificateEligibilityService {
       });
   }
 
-  private canIssueForGroupedEventAttendance(attendance: AssessedAttendance, event: EventRecord): boolean {
-    return this.canIssueForEventAttendance(attendance, event);
+  private async resolveAttendanceFacts(
+    events: readonly EventRecord[],
+    personIds: readonly string[],
+  ): Promise<Map<string, CertificateAttendanceFact>> {
+    const uniquePersonIds = [...new Set(personIds)];
+    const uniqueEventIds = [...new Set(events.map((event) => event.id))];
+    const majorEventIds = [
+      ...new Set(
+        events
+          .map((event) => event.majorEventId)
+          .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
+      ),
+    ];
+    if (uniquePersonIds.length === 0 || uniqueEventIds.length === 0) {
+      return new Map();
+    }
+
+    const tierIds = [
+      ...new Set(events.flatMap((event) => event.regularAttendancePriceTierIds ?? [])),
+    ];
+    const [eventSubscriptions, majorSubscriptions, priceTiers] = await Promise.all([
+      this.prisma.eventSubscription.findMany({
+        where: {
+          eventId: { in: uniqueEventIds },
+          personId: { in: uniquePersonIds },
+          deletedAt: null,
+        },
+        select: { eventId: true, personId: true },
+      }),
+      majorEventIds.length
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId: { in: majorEventIds },
+              personId: { in: uniquePersonIds },
+              deletedAt: null,
+            },
+            select: {
+              ...ATTENDANCE_MAJOR_EVENT_SUBSCRIPTION_SELECT,
+              selectedEvents: {
+                where: {
+                  eventId: { in: uniqueEventIds },
+                  deletedAt: null,
+                },
+                select: {
+                  eventId: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([] as AttendanceMajorEventSubscription[]),
+      tierIds.length > 0 && majorEventIds.length > 0
+        ? this.prisma.priceTier.findMany({
+            where: {
+              id: { in: tierIds },
+              price: {
+                majorEventId: { in: majorEventIds },
+              },
+            },
+            select: ATTENDANCE_PRICE_TIER_SELECT,
+          })
+        : Promise.resolve([] as AttendancePriceTier[]),
+    ]);
+
+    const eventSubscriptionKeys = new Set(
+      eventSubscriptions.map((subscription) => this.attendanceFactKey(subscription.personId, subscription.eventId)),
+    );
+    const majorSubscriptionByKey = new Map<string, AttendanceMajorEventSubscription>(
+      majorSubscriptions.map((subscription) => [
+        this.attendanceFactKey(subscription.personId, subscription.majorEventId),
+        subscription,
+      ]),
+    );
+    const priceTierById = new Map(priceTiers.map((tier) => [tier.id, tier]));
+    const facts = new Map<string, CertificateAttendanceFact>();
+    for (const personId of uniquePersonIds) {
+      for (const event of events) {
+        const majorSubscription = event.majorEventId
+          ? majorSubscriptionByKey.get(this.attendanceFactKey(personId, event.majorEventId))
+          : undefined;
+        const registrationEvidence = {
+          hasEventSubscription: eventSubscriptionKeys.has(this.attendanceFactKey(personId, event.id)),
+          majorEventSubscriptionStatus: majorSubscription?.subscriptionStatus,
+          hasSelectedEvent: majorSubscription?.selectedEvents?.some((selected) => selected.eventId === event.id),
+          autoSubscribe: event.autoSubscribe,
+        };
+        const paymentTier = normalizeAttendancePriceTier(majorSubscription?.paymentTier);
+        const regularAttendancePriceTierIds = event.regularAttendancePriceTierIds ?? [];
+        facts.set(this.attendanceFactKey(personId, event.id), {
+          registered: isRegisteredAttendanceEvidence(event, registrationEvidence),
+          approved: isApprovedAttendance(event, registrationEvidence),
+          hasEventSubscription: registrationEvidence.hasEventSubscription,
+          majorEventSubscriptionStatus: majorSubscription?.subscriptionStatus ?? null,
+          paymentTier,
+          tierEligible:
+            regularAttendancePriceTierIds.length === 0 ||
+            Boolean(
+              event.majorEventId &&
+                paymentTier &&
+                regularAttendancePriceTierIds.some((tierId) => {
+                  const tier = priceTierById.get(tierId);
+                  return (
+                    tier?.price.majorEventId === event.majorEventId &&
+                    normalizeAttendancePriceTier(tier.name) === paymentTier
+                  );
+                }),
+            ),
+        });
+      }
+    }
+
+    return facts;
   }
 
-  private canIssueForMajorEventAttendance(
-    attendance: AssessedAttendance,
+  private canIssueForConfiguredAttendance(
+    config: CertificateConfigRecord,
     event: EventRecord,
-    majorEvent: {
-      shouldIssueCertificateForNonPayingAttendees: boolean;
-      shouldIssueCertificateForNonSubscribedAttendees: boolean;
-    },
+    fact: CertificateAttendanceFact | undefined,
+    majorEvent?: CertificateMajorEventPolicy | null,
   ): boolean {
-    return this.canIssueForAttendanceCategory(
-      attendance,
-      majorEvent.shouldIssueCertificateForNonPayingAttendees && this.canIssueForNonPayingEventAttendance(event),
-      majorEvent.shouldIssueCertificateForNonSubscribedAttendees && this.canIssueForNonSubscribedEventAttendance(event),
-    );
-  }
-
-  private canIssueForEventAttendance(attendance: AssessedAttendance, event: EventRecord): boolean {
-    return this.canIssueForAttendanceCategory(
-      attendance,
-      this.canIssueForNonPayingEventAttendance(event),
-      this.canIssueForNonSubscribedEventAttendance(event),
-    );
-  }
-
-  private canIssueForNonPayingEventAttendance(event: EventRecord): boolean {
-    if (event.eventGroupId) {
-      return (
-        event.shouldIssueCertificateForNonPayingAttendees &&
-        Boolean(event.eventGroup?.shouldIssueCertificateForNonPayingAttendees)
-      );
+    if (!fact || !fact.tierEligible) {
+      return false;
     }
 
-    return event.shouldIssueCertificateForNonPayingAttendees;
-  }
-
-  private canIssueForNonSubscribedEventAttendance(event: EventRecord): boolean {
-    if (event.eventGroupId) {
-      return (
-        event.shouldIssueCertificateForNonSubscribedAttendees &&
-        Boolean(event.eventGroup?.shouldIssueCertificateForNonSubscribedAttendees)
-      );
+    if (!this.canIssueForTargetAttendance(config.scope, event, fact, majorEvent ?? config.majorEvent)) {
+      return false;
     }
 
-    return event.shouldIssueCertificateForNonSubscribedAttendees;
-  }
+    if (!this.matchesCertificatePaymentTiers(config, fact)) {
+      return false;
+    }
 
-  private canIssueForAttendanceCategory(
-    attendance: AssessedAttendance,
-    allowNonPaying: boolean,
-    allowNonSubscribed: boolean,
-  ): boolean {
-    if (attendance.category === AttendanceCategory.REGULAR || attendance.category === AttendanceCategory.UNKNOWN) {
+    if (!config.attendeeEligibility) {
       return true;
     }
 
-    if (
-      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_NOT_CONFIRMED ||
-      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT ||
-      attendance.currentAssessment === AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_UNDER_REVIEW
-    ) {
-      return allowNonPaying;
+    return isAttendanceEligible(config.attendeeEligibility, fact);
+  }
+
+  private canIssueForTargetAttendance(
+    scope: CertificateScope,
+    event: EventRecord,
+    fact: CertificateAttendanceFact,
+    majorEvent?: CertificateMajorEventPolicy | null,
+  ): boolean {
+    const eventGroup = event.eventGroupId ? event.eventGroup : null;
+    const allowsNonPaying =
+      event.shouldIssueCertificateForNonPayingAttendees &&
+      (!event.eventGroupId || eventGroup?.shouldIssueCertificateForNonPayingAttendees === true);
+    const allowsNonSubscribed =
+      event.shouldIssueCertificateForNonSubscribedAttendees &&
+      (!event.eventGroupId || eventGroup?.shouldIssueCertificateForNonSubscribedAttendees === true);
+    const isPaymentPending =
+      Boolean(event.majorEventId) &&
+      (scope === CertificateScope.MAJOR_EVENT
+        ? majorEvent?.isPaymentRequired
+        : event.majorEvent?.isPaymentRequired ?? false) &&
+      fact.majorEventSubscriptionStatus !== SubscriptionStatus.CONFIRMED;
+
+    if (isPaymentPending) {
+      return scope === CertificateScope.MAJOR_EVENT
+        ? Boolean(majorEvent?.shouldIssueCertificateForNonPayingAttendees && allowsNonPaying)
+        : allowsNonPaying;
     }
 
-    if (attendance.currentAssessment === AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING) {
-      return allowNonSubscribed;
+    if (event.allowSubscription && !fact.hasEventSubscription) {
+      return scope === CertificateScope.MAJOR_EVENT
+        ? Boolean(majorEvent?.shouldIssueCertificateForNonSubscribedAttendees && allowsNonSubscribed)
+        : allowsNonSubscribed;
     }
 
-    return false;
+    return true;
+  }
+
+  private matchesCertificatePaymentTiers(
+    config: CertificateConfigRecord,
+    fact: CertificateAttendanceFact,
+  ): boolean {
+    const configuredTiers = (config.paymentTiers ?? [])
+      .map((tier) => normalizeAttendancePriceTier(tier))
+      .filter((tier): tier is string => tier !== null);
+    if ((config.paymentTiers ?? []).length === 0) {
+      return true;
+    }
+
+    return fact.paymentTier !== null && configuredTiers.includes(fact.paymentTier);
+  }
+
+  private attendanceFactKey(personId: string, eventId: string): string {
+    return `${personId}:${eventId}`;
   }
 }

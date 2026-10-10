@@ -175,6 +175,7 @@ function createPrismaMock() {
     },
     eventDraft: findManyDelegate(),
     eventSubscription: softDeleteDelegate(),
+    eventInterest: { ...softDeleteDelegate(), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     eventGroupSubscription: softDeleteDelegate(),
     majorEventSubscription: softDeleteDelegate(),
     majorEventSubscriptionEventSelection: {
@@ -241,6 +242,7 @@ function createTransactionMock() {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     eventSubscription: writeManyDelegate(1),
+    eventInterest: writeManyDelegate(),
     eventGroupSubscription: writeManyDelegate(),
     majorEventSubscription: writeManyDelegate(),
     eventAttendance: deleteManyDelegate(),

@@ -1,4 +1,4 @@
-import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
+import { AttendanceEligibility, CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { CertificateConfigsService } from './certificate-configs.service';
@@ -36,6 +36,76 @@ describe('CertificateConfigsService', () => {
         expect.objectContaining({ data: expect.objectContaining({ paymentTiers: [] }) }),
       );
       expect(priceTier.findMany).not.toHaveBeenCalled();
+    });
+
+    it('inherits granular target rules by default instead of imposing scope-wide registration defaults', async () => {
+      const { prisma, service, input } = setup();
+      await service.createConfig(input);
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attendeeEligibility: null }) }),
+      );
+    });
+
+    it.each([undefined, null, AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY])(
+      'preserves an omitted criterion and accepts an explicit reset or replacement: %s',
+      async (attendeeEligibility) => {
+        const { prisma, service } = setup();
+        const existing = createConfigRecord({
+          scope: CertificateScope.MAJOR_EVENT,
+          majorEventId: 'major-1',
+          folderId: null,
+          attendeeEligibility: AttendanceEligibility.REGISTERED_ONLY,
+        });
+        prisma.certificateConfig.findFirst.mockImplementation(({ where }: { where: { id?: string } }) =>
+          Promise.resolve(typeof where.id === 'string' ? existing : null),
+        );
+        prisma.certificateConfig.update.mockResolvedValue(existing);
+        await service.updateConfig(existing.id, {
+          name: 'Novo nome',
+          scope: CertificateScope.MAJOR_EVENT,
+          majorEventId: 'major-1',
+          attendeeEligibility,
+        });
+        const data = prisma.certificateConfig.update.mock.calls[0][0].data;
+        if (attendeeEligibility === undefined) {
+          expect(data).not.toHaveProperty('attendeeEligibility');
+        } else {
+          expect(data.attendeeEligibility).toBe(attendeeEligibility);
+        }
+      },
+    );
+
+    it('resets an omitted additional criterion when moving to another target', async () => {
+      const { prisma, service } = setup();
+      const existing = createConfigRecord({
+        scope: CertificateScope.MAJOR_EVENT,
+        majorEventId: 'major-1',
+        folderId: null,
+        attendeeEligibility: AttendanceEligibility.REGISTERED_ONLY,
+      });
+      prisma.certificateConfig.findFirst.mockImplementation(({ where }: { where: { id?: string } }) =>
+        Promise.resolve(typeof where.id === 'string' ? existing : null),
+      );
+      prisma.certificateConfig.update.mockResolvedValue(existing);
+      await service.updateConfig(existing.id, { majorEventId: 'major-2' });
+      expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attendeeEligibility: null }) }),
+      );
+    });
+
+    it('stores no additional requirement as inheritance rather than a duplicate policy value', async () => {
+      const { prisma, service, input } = setup();
+      await service.createConfig({ ...input, attendeeEligibility: AttendanceEligibility.ANYONE });
+      expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ attendeeEligibility: null }) }),
+      );
+    });
+
+    it('rejects unsupported invitation criteria before creating a configuration', async () => {
+      const { prisma, service, input } = setup();
+      await expect(service.createConfig({ ...input, attendeeEligibility: AttendanceEligibility.INVITED_ONLY }))
+        .rejects.toThrow('Invitation-based certificate eligibility is not supported.');
+      expect(prisma.certificateConfig.create).not.toHaveBeenCalled();
     });
 
     it('persists multiple tiers and removes duplicate selections', async () => {
@@ -83,6 +153,7 @@ describe('CertificateConfigsService', () => {
         majorEventId: 'major-1',
         folderId: null,
         paymentTiers: ['Aluno'],
+        attendeeEligibility: AttendanceEligibility.REGISTERED_ONLY,
       };
       prisma.certificateConfig.findFirst.mockResolvedValueOnce(source).mockResolvedValue(null);
       await service.cloneConfig(source.id, {
@@ -92,7 +163,10 @@ describe('CertificateConfigsService', () => {
       });
       expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ paymentTiers: sameTarget ? ['Aluno'] : [] }),
+          data: expect.objectContaining({
+            paymentTiers: sameTarget ? ['Aluno'] : [],
+            attendeeEligibility: sameTarget ? AttendanceEligibility.REGISTERED_ONLY : null,
+          }),
         }),
       );
     });
@@ -1203,6 +1277,8 @@ function baseConfigRecord() {
     isActive: true,
     issuedTo: CertificateIssuedTo.OTHER,
     certificateTypeLabel: 'Manual',
+    paymentTiers: [],
+    attendeeEligibility: null as AttendanceEligibility | null,
     certificateFields: null,
     createdAt: now,
     createdById: null,

@@ -11,6 +11,7 @@ import { AuthorizationPolicyService } from '../authorization/authorization-polic
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
+import { ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES } from '../events/attendance-eligibility';
 import { buildAccessibleFormWhere, isEmptyAccessibleTargets } from './event-form-access';
 import {
   assertPersonIsEventLecturer,
@@ -18,6 +19,7 @@ import {
   canPersonAnswerLink,
   canPersonViewPublicResults,
   canStartPublicSubscriptionForLink,
+  eventSubscriberWhere,
 } from './event-form-eligibility';
 import { toEventFormModel, toPublicEventFormModel } from './event-form-model.mapper';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
@@ -218,9 +220,7 @@ export class EventFormListingsService {
         deletedAt: null,
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
-        audience: {
-          not: EventFormAudience.ATTENDEES,
-        },
+        audiences: { has: EventFormAudience.SUBSCRIBERS },
         AND: [
           { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
           { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
@@ -234,12 +234,7 @@ export class EventFormListingsService {
             event: {
               deletedAt: null,
               endDate: { gt: now },
-              subscriptions: {
-                some: {
-                  personId: person.id,
-                  deletedAt: null,
-                },
-              },
+              ...eventSubscriberWhere(person.id),
             },
           },
           {
@@ -250,6 +245,7 @@ export class EventFormListingsService {
                 some: {
                   personId: person.id,
                   deletedAt: null,
+                  subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
                 },
               },
             },
@@ -272,7 +268,11 @@ export class EventFormListingsService {
         majorEvent: {
           select: {
             subscriptions: {
-              where: { personId: person.id, deletedAt: null },
+              where: {
+                personId: person.id,
+                deletedAt: null,
+                subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
+              },
               select: { paymentTier: true },
               take: 1,
             },
@@ -380,6 +380,7 @@ export class EventFormListingsService {
             where: {
               majorEventId: target.majorEventId ?? undefined,
               deletedAt: null,
+              subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
             },
           });
     }
@@ -424,6 +425,7 @@ export class EventFormListingsService {
           where: {
             majorEventId: link.majorEventId ?? '',
             deletedAt: null,
+            subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
             ...(link.priceTiers.length > 0
               ? { paymentTier: { in: link.priceTiers.map(({ priceTier }) => priceTier.name) } }
               : {}),

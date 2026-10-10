@@ -12,6 +12,7 @@ export interface CurrentUserRealtimeFingerprint {
   minute: number;
   attendances: AggregateFingerprint;
   eventSubscriptions: AggregateFingerprint;
+  eventInterests: AggregateFingerprint;
   eventSubscriptionGroups: string;
   eventGroupSubscriptions: AggregateFingerprint;
   majorEventSubscriptions: AggregateFingerprint;
@@ -33,6 +34,7 @@ export interface CurrentUserRealtimeFingerprint {
 export interface EventSubscriptionsRealtimeFingerprint {
   type: 'EVENT_SUBSCRIPTIONS_INVALIDATED';
   subscriptions: AggregateFingerprint;
+  interests: AggregateFingerprint;
   subscriptionGroups: string;
   lecturers: AggregateFingerprint;
   selections: AggregateFingerprint;
@@ -42,6 +44,7 @@ export interface EventSubscriptionsRealtimeFingerprint {
 export interface MajorEventSubscriptionsRealtimeFingerprint {
   type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED';
   subscriptions: AggregateFingerprint;
+  interests: AggregateFingerprint;
   selections: AggregateFingerprint;
   receipts: AggregateFingerprint;
   applications: AggregateFingerprint;
@@ -59,6 +62,7 @@ export class RealtimeFingerprintService {
     const [
       attendances,
       eventSubscriptions,
+      eventInterests,
       eventSubscriptionGroups,
       eventGroupSubscriptions,
       majorEventSubscriptions,
@@ -85,6 +89,11 @@ export class RealtimeFingerprintService {
         where: { personId },
         _count: true,
         _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.eventInterest.aggregate({
+        where: { personId },
+        _count: true,
+        _max: { createdAt: true, updatedAt: true, deletedAt: true },
       }),
       this.eventSubscriptionGroupFingerprint({ personId }),
       this.prisma.eventGroupSubscription.aggregate({
@@ -175,6 +184,7 @@ export class RealtimeFingerprintService {
       minute: Math.floor(Date.now() / 60_000),
       attendances,
       eventSubscriptions,
+      eventInterests,
       eventSubscriptionGroups,
       eventGroupSubscriptions,
       majorEventSubscriptions,
@@ -195,11 +205,22 @@ export class RealtimeFingerprintService {
   }
 
   async eventSubscriptions(eventId: string): Promise<EventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, subscriptionGroups, lecturers, selections, rankedSubscriptions] = await Promise.all([
+    const [subscriptions, interests, subscriptionGroups, lecturers, selections, rankedSubscriptions] = await Promise.all([
       this.prisma.eventSubscription.aggregate({
         where: { eventId },
         _count: true,
         _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.eventInterest.aggregate({
+        where: {
+          deletedAt: null,
+          OR: [
+            { eventId },
+            { eventGroup: { events: { some: { id: eventId } } } },
+          ],
+        },
+        _count: true,
+        _max: { createdAt: true, updatedAt: true, deletedAt: true },
       }),
       this.eventSubscriptionGroupFingerprint({ eventId }),
       this.prisma.eventLecturer.aggregate({
@@ -221,6 +242,7 @@ export class RealtimeFingerprintService {
     return {
       type: 'EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions,
+      interests,
       subscriptionGroups,
       lecturers,
       selections,
@@ -229,12 +251,17 @@ export class RealtimeFingerprintService {
   }
 
   async majorEventSubscriptions(majorEventId: string): Promise<MajorEventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, selections, receipts, applications, participants, teams, members, registrationMembers] =
+    const [subscriptions, interests, selections, receipts, applications, participants, teams, members, registrationMembers] =
       await Promise.all([
         this.prisma.majorEventSubscription.aggregate({
           where: { majorEventId },
           _count: true,
           _max: { updatedAt: true, deletedAt: true },
+        }),
+        this.prisma.eventInterest.aggregate({
+          where: { majorEventId, deletedAt: null },
+          _count: true,
+          _max: { createdAt: true, updatedAt: true, deletedAt: true },
         }),
         this.prisma.majorEventSubscriptionEventSelection.aggregate({
           where: { subscription: { majorEventId } },
@@ -275,6 +302,7 @@ export class RealtimeFingerprintService {
     return {
       type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions,
+      interests,
       selections,
       receipts,
       applications,

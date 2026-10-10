@@ -86,6 +86,7 @@ interface CurrentUserSubscriptionFeedResponse {
 }
 
 interface CurrentUserEventParticipation {
+  isInterested?: boolean;
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
@@ -197,6 +198,7 @@ export class AttendancesApiService {
             }
             participation {
               isSubscribed
+              isInterested
               isLecturer
               hasIssuedCertificate
               isSportsManager
@@ -239,6 +241,7 @@ export class AttendancesApiService {
 
               participation {
                 isSubscribed
+                isInterested
                 isLecturer
                 hasIssuedCertificate
               }
@@ -682,6 +685,7 @@ export class AttendancesApiService {
             }
             participation {
               isSubscribed
+              isInterested
               isLecturer
               hasIssuedCertificate
               isSportsManager

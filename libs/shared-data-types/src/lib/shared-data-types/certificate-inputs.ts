@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 
-import { CertificateIssuedTo, CertificateScope } from './enums';
+import { AttendanceEligibility, CertificateIssuedTo, CertificateScope } from './enums';
 
 @InputType()
 export class CertificateCsvImportResolutionInput {
@@ -28,6 +28,9 @@ export class CertificateCsvImportInput {
 
 @InputType()
 export class CertificateConfigCreateInput {
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendeeEligibility?: AttendanceEligibility | null;
+
   @Field(() => String)
   name!: string;
 
@@ -76,6 +79,9 @@ export class CertificateConfigCreateInput {
 
 @InputType()
 export class CertificateConfigUpdateInput {
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendeeEligibility?: AttendanceEligibility | null;
+
   @Field(() => String, { nullable: true })
   name?: string;
 

@@ -180,6 +180,17 @@ export const MajorEventFiltered: Story = {
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement, { selectedFormPublished: false }),
 };
 
+export const InterestAudience: Story = {
+  args: {
+    selectedIndex: 3,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Interessados ainda não inscritos')).toBeVisible();
+  },
+};
+
 export const PublishedFormDraftWithImages: Story = {
   args: {
     withImages: true,
@@ -371,7 +382,7 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
           targetType,
           eventId: targetType === 'EVENT' ? (events[0]?.id ?? '') : null,
           majorEventId: targetType === 'MAJOR_EVENT' ? (majorEvents[0]?.id ?? '') : null,
-          audience: 'SUBSCRIBERS_OR_ATTENDEES',
+          audiences: ['SUBSCRIBERS', 'ATTENDEES'],
           insertInSubscriptionFlow: false,
           requiredInSubscriptionFlow: false,
           displayOrder: current.length,
@@ -478,7 +489,7 @@ function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEve
             name: targetType === 'EVENT' ? event.name : majorEvent.name,
             emoji: targetType === 'EVENT' ? event.emoji : majorEvent.emoji,
           },
-          audience: index % 2 === 0 ? 'SUBSCRIBERS_OR_ATTENDEES' : 'ATTENDEES',
+          audiences: index === 3 ? ['INTERESTED'] : index % 2 === 0 ? ['SUBSCRIBERS', 'ATTENDEES'] : ['ATTENDEES'],
           insertInSubscriptionFlow: index === 0,
           requiredInSubscriptionFlow: index === 0,
           displayOrder: index,

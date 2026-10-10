@@ -277,6 +277,24 @@
               <input matInput type="number" formControlName="maxUncategorizedPerAttendee" />
             </mat-form-field>
 
+            <mat-checkbox formControlName="interestEnabled"> Permitir manifestação de interesse </mat-checkbox>
+            <mat-form-field class="span-2" subscriptSizing="dynamic">
+              <mat-label>Quem pode confirmar presença on-line</mat-label>
+              <mat-select
+                formControlName="attendanceEligibility"
+                [compareWith]="attendanceEligibilityCompareWith">
+                <mat-select-trigger>
+                  {{ attendanceEligibilityLabel(attendanceEligibilityDisplayValue()) }}
+                </mat-select-trigger>
+                @for (policy of attendanceEligibilityOptions(); track policy.label) {
+                  <mat-option [value]="policy.value" [disabled]="policy.disabled">
+                    {{ policy.label }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>{{ attendanceEligibilityHint() }}</mat-hint>
+            </mat-form-field>
+
             <mat-checkbox formControlName="rankedSubscriptionEnabled"> Inscrição por voto preferencial </mat-checkbox>
             <mat-checkbox formControlName="requiresImageLicenseAgreement">
               Exigir concordância com o
@@ -288,6 +306,17 @@
                 contrato de licença de uso de imagem do CACiC
               </a>
             </mat-checkbox>
+            <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
+              Emitir para presentes não pagantes
+            </mat-checkbox>
+            <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
+              Emitir para presentes não inscritos
+            </mat-checkbox>
+            <mat-hint class="span-2">
+              O grande evento precisa permitir a emissão junto com a atividade e o grupo; a presença é independente
+              do certificado. Com pagamento obrigatório, não pagantes não recebem certificado e a inscrição confirmada
+              continua necessária.
+            </mat-hint>
           </div>
         </section>
 
@@ -295,12 +324,6 @@
           <h4>Contato e pagamento</h4>
           <div class="checkbox-grid">
             <mat-checkbox formControlName="isPaymentRequired"> Exigir pagamento </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonPayingAttendees">
-              Emitir certificados para presentes não pagantes?
-            </mat-checkbox>
-            <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
-              Emitir certificados para presentes não inscritos?
-            </mat-checkbox>
           </div>
 
           <div class="field-grid">

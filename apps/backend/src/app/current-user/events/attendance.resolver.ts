@@ -2,6 +2,10 @@ import { isValidCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
+import {
+  AttendanceEligibility,
+  isAttendanceEligible,
+} from '@cacic-fct/shared-event-participation';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
@@ -28,6 +32,11 @@ import {
 import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { recordAttendanceSet } from './attendance-collection-audit';
+import {
+  eventAttendanceEligibility,
+  isApprovedAttendance,
+  isRegisteredAttendanceEvidence,
+} from '../../events/attendance-eligibility';
 
 const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
 
@@ -148,6 +157,9 @@ export class CurrentUserEventAttendanceResolver {
         id: true,
         name: true,
         allowSubscription: true,
+        autoSubscribe: true,
+        attendanceEligibility: true,
+        eventGroupId: true,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
         onlineAttendanceCode: true,
@@ -158,6 +170,14 @@ export class CurrentUserEventAttendanceResolver {
           select: {
             id: true,
             isPaymentRequired: true,
+            attendanceEligibility: true,
+            deletedAt: true,
+          },
+        },
+        eventGroup: {
+          select: {
+            attendanceEligibility: true,
+            deletedAt: true,
           },
         },
       },
@@ -283,12 +303,21 @@ export class CurrentUserEventAttendanceResolver {
     event: {
       id: string;
       allowSubscription: boolean;
+      autoSubscribe: boolean;
+      attendanceEligibility?: AttendanceEligibility | null;
+      eventGroupId?: string | null;
+      eventGroup?: { attendanceEligibility?: AttendanceEligibility | null } | null;
       majorEventId: string | null;
-      majorEvent: { isPaymentRequired: boolean } | null;
+      majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: AttendanceEligibility | null } | null;
     },
   ): Promise<void> {
-    if (event.allowSubscription) {
-      const eventSubscription = await this.prisma.eventSubscription.findFirst({
+    const policy = eventAttendanceEligibility(event);
+    if (policy === AttendanceEligibility.ANYONE) {
+      return;
+    }
+
+    const [eventSubscription, majorEventSubscription] = await Promise.all([
+      this.prisma.eventSubscription.findFirst({
         where: {
           personId,
           eventId: event.id,
@@ -297,31 +326,60 @@ export class CurrentUserEventAttendanceResolver {
         select: {
           id: true,
         },
-      });
+      }),
+      event.majorEventId
+        ? this.prisma.majorEventSubscription.findFirst({
+            where: {
+              personId,
+              majorEventId: event.majorEventId,
+              deletedAt: null,
+            },
+            select: {
+              subscriptionStatus: true,
+              selectedEvents: {
+                where: { eventId: event.id, deletedAt: null },
+                select: { eventId: true },
+              },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
 
-      if (!eventSubscription) {
-        throw new BadRequestException(`You must be subscribed to event ${event.id} to confirm online attendance.`);
+    const registrationEvidence = {
+      hasEventSubscription: Boolean(eventSubscription),
+      majorEventSubscriptionStatus: majorEventSubscription?.subscriptionStatus,
+      hasSelectedEvent: majorEventSubscription?.selectedEvents.some((selected) => selected.eventId === event.id),
+      autoSubscribe: event.autoSubscribe,
+    };
+    const registered = isRegisteredAttendanceEvidence(event, registrationEvidence);
+    const approved = isApprovedAttendance(event, registrationEvidence);
+    if (!isAttendanceEligible(policy, { registered, approved })) {
+      if (policy === AttendanceEligibility.INVITED_ONLY) {
+        throw new BadRequestException(`You must be invited to confirm online attendance for event ${event.id}.`);
       }
-    }
 
-    if (event.majorEventId && event.majorEvent?.isPaymentRequired) {
-      const majorEventSubscription = await this.prisma.majorEventSubscription.findFirst({
-        where: {
-          personId,
-          majorEventId: event.majorEventId,
-          deletedAt: null,
-          subscriptionStatus: SubscriptionStatus.CONFIRMED,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!majorEventSubscription) {
+      if (
+        policy === AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY &&
+        event.majorEventId &&
+        event.majorEvent?.isPaymentRequired
+      ) {
         throw new BadRequestException(
           `You must have a confirmed subscription to major event ${event.majorEventId} to confirm online attendance.`,
         );
       }
+
+      throw new BadRequestException(`You must be subscribed to event ${event.id} to confirm online attendance.`);
+    }
+
+    if (
+      policy === AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY &&
+      event.majorEventId &&
+      event.majorEvent?.isPaymentRequired &&
+      majorEventSubscription?.subscriptionStatus !== SubscriptionStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        `You must have a confirmed subscription to major event ${event.majorEventId} to confirm online attendance.`,
+      );
     }
   }
 

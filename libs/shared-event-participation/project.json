@@ -1,0 +1,18 @@
+{
+  "name": "shared-event-participation",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared-event-participation/src",
+  "projectType": "library",
+  "tags": [
+    "scope:shared",
+    "type:util"
+  ],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bunx vitest run --config libs/shared-event-participation/vitest.config.ts"
+      }
+    }
+  }
+}

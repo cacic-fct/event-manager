@@ -129,6 +129,7 @@ describe('MajorEventsResolver', () => {
           isActive: true,
           issuedTo: 'ATTENDEE',
           certificateFields: null,
+          attendeeEligibility: 'REGISTERED_ONLY',
         },
       ],
     };
@@ -239,6 +240,7 @@ describe('MajorEventsResolver', () => {
         scope: 'MAJOR_EVENT',
         majorEventId: 'major-clone',
         certificateTemplateId: 'template-1',
+        attendeeEligibility: 'REGISTERED_ONLY',
       }),
     });
     expect(auditLog.record).toHaveBeenCalledWith(
@@ -1123,6 +1125,48 @@ describe('MajorEventsResolver', () => {
     );
 
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
+  });
+  it('refreshes stored attendance categories when the major-event eligibility policy changes', async () => {
+    const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
+    const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
+    const tx = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+      },
+      majorEvent: {
+        update: jest.fn().mockResolvedValue({ id: 'major-1' }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
+      },
+      majorEventPrice: { upsert: jest.fn(), deleteMany: jest.fn() },
+      priceTier: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+      eventFormLinkPriceTier: { count: jest.fn().mockResolvedValue(0) },
+      sportsTournament: { findFirst: jest.fn() },
+    };
+    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+    const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
+    const resolver = new MajorEventsResolver(
+      { $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]), majorEvent: { findFirst: jest.fn().mockResolvedValue(previous) }, $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)) } as never,
+      { upsertMajorEvent: jest.fn() } as never,
+      { assertMajorEventMutable: jest.fn() } as never,
+      {} as never,
+      { record: jest.fn() } as never,
+      undefined,
+      undefined,
+      { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) } as never,
+      attendanceCategories as never,
+      attendanceRealtime as never,
+    );
+
+    await expect(
+      resolver.updateMajorEvent(
+        'major-1',
+        { attendanceEligibility: 'ANYONE' } as never,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toBe(updated);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 });
 

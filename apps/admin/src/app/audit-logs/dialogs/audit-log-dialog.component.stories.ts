@@ -598,7 +598,12 @@ const scenarioByEntityType: Record<AuditLogEntityType, AuditLogScenario> = {
     majorEventId: 'major-event-story',
     eventGroupId: 'event-group-story',
     changes: () => [
-      { field: 'audience', label: 'Público', beforeValue: 'Inscritos', afterValue: 'Inscritos ou presentes' },
+      {
+        field: 'audiences',
+        label: 'Públicos',
+        beforeValue: 'Inscritos',
+        afterValue: 'Interessados ainda não inscritos e participantes com presença',
+      },
       { field: 'requiredInSubscriptionFlow', label: 'Obrigatório na inscrição', beforeValue: 'Não', afterValue: 'Sim' },
     ],
   },

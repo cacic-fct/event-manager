@@ -10,7 +10,7 @@ import {
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 
 const PUBLIC_EVENT_FORM_FIELDS = `
@@ -45,7 +45,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
       name
       emoji
     }
-    audience
+    audiences
     insertInSubscriptionFlow
     requiredInSubscriptionFlow
     displayOrder
@@ -95,6 +95,21 @@ const PUBLIC_EVENT_FORM_RESULTS_FIELDS = `
 @Service()
 export class PublicEventFormApiService {
   private readonly http = inject(HttpClient);
+
+  listCurrentUserFormsForMajorEvents(majorEventIds: readonly string[]): Observable<PublicEventForm[]> {
+    const ids = [...new Set(majorEventIds)];
+    if (ids.length === 0) return of([]);
+    const variables = Object.fromEntries(ids.map((id, index) => [`majorEventId${index}`, id]));
+    const declarations = ids.map((_, index) => `$majorEventId${index}: String!`).join(', ');
+    const fields = ids.map((_, index) => `
+      target${index}: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId${index}) {
+        ${PUBLIC_EVENT_FORM_FIELDS}
+      }
+    `).join('\n');
+    return this.query<Record<string, PublicEventForm[]>>(
+      `query CurrentUserMajorEventForms(${declarations}) { ${fields} }`, variables,
+    ).pipe(map((data) => Object.values(data).flat()));
+  }
 
   listCurrentUserForms(input: {
     targetType: EventFormTargetType;

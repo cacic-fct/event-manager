@@ -139,6 +139,18 @@ describe('EventAttendancesQueriesResolver', () => {
           }),
         ],
       }),
+      expect.objectContaining({
+        personId: 'person-2',
+        subscriptionId: undefined,
+        subscriptionStatus: 'UNKNOWN',
+        attendances: expect.arrayContaining([
+          expect.objectContaining({
+            eventId: 'event-2',
+            attended: true,
+            category: AttendanceCategory.NON_REGULAR,
+          }),
+        ]),
+      }),
     ]);
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -146,10 +158,8 @@ describe('EventAttendancesQueriesResolver', () => {
           eventId: {
             in: ['event-1', 'event-2'],
           },
-          personId: {
-            in: ['person-1'],
-          },
           status: 'PRESENT',
+          personId: { in: ['person-1', 'person-2'] },
         },
       }),
     );
@@ -160,6 +170,37 @@ describe('EventAttendancesQueriesResolver', () => {
     prisma.majorEvent.findFirst.mockResolvedValueOnce({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValueOnce([]);
     await expect(resolver.majorEventUserAttendances('major-1')).resolves.toEqual([]);
+  });
+
+  it('loads and assesses only the selected attendance page, including attendees without subscriptions', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    const event = { id: 'event-1', name: 'Opening' };
+    const attendance = { personId: 'attendee-1', eventId: 'event-1', person: { id: 'attendee-1' } };
+    prisma.event.findMany.mockResolvedValue([event]);
+    prisma.$queryRaw.mockResolvedValue([{ personId: 'attendee-1' }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([attendance]);
+
+    await expect(resolver.majorEventUserAttendances('major-1', undefined, 50, 1)).resolves.toEqual([
+      expect.objectContaining({ personId: 'attendee-1', subscriptionStatus: 'UNKNOWN' }),
+    ]);
+    const query = prisma.$queryRaw.mock.calls[0][0];
+    expect(query.sql).toContain('UNION ALL');
+    expect(query.sql).toContain('LIMIT ? OFFSET ?');
+    expect(query.values.slice(-2)).toEqual([1, 50]);
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { majorEventId: 'major-1', deletedAt: null, personId: { in: ['attendee-1'] } },
+    }));
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { eventId: { in: ['event-1'] }, status: 'PRESENT', personId: { in: ['attendee-1'] } },
+    }));
+    expect(resolveCurrentAssessments).toHaveBeenCalledWith([{ ...attendance, event }]);
+
+    prisma.$queryRaw.mockResolvedValue([]);
+    prisma.eventAttendance.findMany.mockClear();
+    resolveCurrentAssessments.mockClear();
+    await expect(resolver.majorEventUserAttendances('major-1', undefined, 100, 1)).resolves.toEqual([]);
+    expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+    expect(resolveCurrentAssessments).not.toHaveBeenCalled();
   });
 
   it('returns one attendance or throws when it is missing', async () => {
@@ -177,6 +218,7 @@ describe('EventAttendancesQueriesResolver', () => {
 function createFullPrisma() {
   return {
     $transaction: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([{ personId: 'person-1' }, { personId: 'person-2' }]),
     eventAttendance: {
       count: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),

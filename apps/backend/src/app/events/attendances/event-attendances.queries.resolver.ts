@@ -195,6 +195,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       select: {
         id: true,
         isPaymentRequired: true,
+        attendanceEligibility: true,
       },
     });
 
@@ -212,7 +213,22 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         name: true,
         emoji: true,
         startDate: true,
+        majorEventId: true,
         allowSubscription: true,
+        autoSubscribe: true,
+        attendanceEligibility: true,
+        regularAttendancePriceTierIds: true,
+        eventGroup: {
+          select: {
+            attendanceEligibility: true,
+          },
+        },
+        majorEvent: {
+          select: {
+            attendanceEligibility: true,
+            isPaymentRequired: true,
+          },
+        },
       },
       orderBy: {
         startDate: 'asc',
@@ -224,11 +240,34 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }
 
     const eventIds = events.map((event) => event.id);
+    // Page the union before hydrating people and resolving their assessments.
+    // Registrations precede attendance-only participants.
+    const page = await this.prisma.$queryRaw<{ personId: string }[]>(Prisma.sql`
+      WITH participants AS (
+        SELECT "personId", MAX("createdAt") AS "registeredAt", NULL::timestamp AS "attendedAt"
+        FROM major_event_subscriptions
+        WHERE "majorEventId" = ${majorEventId} AND "deletedAt" IS NULL
+          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
+        GROUP BY "personId"
+        UNION ALL
+        SELECT "personId", NULL::timestamp AS "registeredAt", MIN("attendedAt") AS "attendedAt"
+        FROM event_attendances
+        WHERE "eventId" IN (${Prisma.join(eventIds)}) AND status = 'PRESENT'
+          ${personId ? Prisma.sql`AND "personId" = ${personId}` : Prisma.empty}
+        GROUP BY "personId"
+      )
+      SELECT "personId" FROM participants
+      GROUP BY "personId"
+      ORDER BY MAX("registeredAt") DESC NULLS LAST, MIN("attendedAt") ASC NULLS LAST, "personId" ASC
+      LIMIT ${pagination.take} OFFSET ${pagination.skip}
+    `);
+    const pagePersonIds = page.map(({ personId }) => personId);
+    if (pagePersonIds.length === 0) return [];
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
         deletedAt: null,
-        ...(personId ? { personId } : {}),
+        personId: { in: pagePersonIds },
       },
       include: {
         person: {
@@ -240,14 +279,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       orderBy: {
         createdAt: 'desc',
       },
-      skip: pagination.skip,
-      take: pagination.take,
     });
-
-    const personIds = subscriptions.map((subscription) => subscription.personId);
-    if (personIds.length === 0) {
-      return [];
-    }
 
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
@@ -255,9 +287,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         eventId: {
           in: eventIds,
         },
-        personId: {
-          in: personIds,
-        },
+        personId: { in: pagePersonIds },
       },
       select: {
         personId: true,
@@ -274,17 +304,14 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     });
 
     const attendanceByKey = new Map(
-      attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
+      attendances
+        .map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
     const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(
-      attendances.map((attendance) => ({
-        ...attendance,
-        event: {
-          allowSubscription: events.find((event) => event.id === attendance.eventId)?.allowSubscription ?? false,
-          majorEventId,
-          majorEvent,
-        },
-      })),
+      attendances.flatMap((attendance) => {
+        const event = events.find((candidate) => candidate.id === attendance.eventId);
+        return event ? [{ ...attendance, event }] : [];
+      }),
     );
 
     const majorSubscriptionByPerson = new Map<string, (typeof subscriptions)[number]>();
@@ -294,7 +321,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       }
     }
 
-    return personIds.map((resolvedPersonId) => {
+    return pagePersonIds.map((resolvedPersonId) => {
       const subscription = majorSubscriptionByPerson.get(resolvedPersonId);
       const person =
         subscription?.person ?? attendances.find((attendance) => attendance.personId === resolvedPersonId)?.person;

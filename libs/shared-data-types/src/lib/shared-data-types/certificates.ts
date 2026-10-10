@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-import { AttendanceImportMatchType, CertificateIssuedTo, CertificateScope, EventType } from './enums';
+import { AttendanceEligibility, AttendanceImportMatchType, CertificateIssuedTo, CertificateScope, EventType } from './enums';
 import { Event } from './events';
 import { EventGroup } from './event-groups';
 import { MajorEvent } from './major-events';
@@ -68,6 +68,9 @@ export class CertificateTemplate {
 
 @ObjectType()
 export class CertificateConfig {
+  @Field(() => AttendanceEligibility, { nullable: true })
+  attendeeEligibility?: AttendanceEligibility | null;
+
   @Field(() => String)
   id!: string;
 

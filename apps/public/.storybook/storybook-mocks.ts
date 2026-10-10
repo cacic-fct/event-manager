@@ -724,5 +724,6 @@ Last update check: ${storyNow().toISOString()}`),
       rejectionReason: null,
     }),
   ),
+  http.get('/api/current-user/events/realtime', () => new HttpResponse(null, { status: 204 })),
   http.all('/api/*', () => HttpResponse.json({ ok: true })),
 ];

@@ -1,3 +1,4 @@
+import type { AttendanceEligibility, EventInterest } from './participation';
 import type { ContactType, DateTimeString, EventType } from './common';
 
 export interface PublicPaymentInfo {
@@ -41,6 +42,8 @@ export interface PublicSportsMatchMarker {
 }
 
 export interface PublicMajorEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -71,6 +74,9 @@ export interface PublicMajorEvent {
 }
 
 export interface PublicEventGroup {
+  majorEventId?: string | null;
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -94,6 +100,8 @@ export interface PublicLecturerProfile {
 }
 
 export interface PublicEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   creditMinutes?: number | null;
@@ -153,6 +161,7 @@ export interface PublicEventSubscriptionSummary {
 }
 
 export interface PublicMajorEventSubscriptionPage {
+  interests?: EventInterest[];
   majorEvent: PublicMajorEvent;
   events: PublicEvent[];
   subscriptionSummaries: PublicEventSubscriptionSummary[];

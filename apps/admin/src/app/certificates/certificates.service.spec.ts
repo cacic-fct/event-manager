@@ -15,6 +15,7 @@ import {
   createAdminCertificateConfigFromInput,
   createAdminCertificateTemplate,
   createAdminEvent,
+  createAdminMajorEvent,
   createAdminPerson,
 } from '../testing/admin-entity-fixtures';
 import { CertificatesService } from './certificates.service';
@@ -221,6 +222,47 @@ describe('CertificatesService', () => {
     expect(service.showPaymentTiers()).toBe(false);
     await service.saveCertificateConfig();
     expect(lastPayload?.paymentTiers).toEqual([]);
+  });
+
+  it('inherits target registration rules by default and persists an explicit restriction', async () => {
+    expect(service.certificateConfigForm.attendeeEligibility().value()).toBeNull();
+    service.certificateConfigForm.attendeeEligibility().value.set('REGISTERED_ONLY');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.attendeeEligibility).toBe('REGISTERED_ONLY');
+
+    service.certificateConfigForm.attendeeEligibility().value.set(null);
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.attendeeEligibility).toBeNull();
+  });
+
+  it('normalizes the no-extra-requirement option to inherited eligibility', async () => {
+    service.certificateConfigForm.attendeeEligibility().value.set('ANYONE');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.attendeeEligibility).toBeNull();
+  });
+
+  it('hides attendee eligibility for nonparticipant certificates and clears it on save', async () => {
+    service.certificateConfigForm.attendeeEligibility().value.set('REGISTERED_ONLY');
+    service.onCertificateIssuedToChanged('LECTURER_PALESTRA');
+
+    expect(service.showAttendeeEligibility()).toBe(false);
+    expect(service.certificateConfigForm.attendeeEligibility().value()).toBeNull();
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload?.attendeeEligibility).toBeNull();
+  });
+
+  it('offers approved registrations for a major-event certificate target', async () => {
+    service.targetFiltersForm.controls.scope.setValue('MAJOR_EVENT');
+    await service.selectTarget(createAdminMajorEvent({ id: 'major-1', name: 'Semana da Computação' }));
+
+    expect(service.attendeeEligibilityOptions().map((option) => option.value)).toContain('APPROVED_REGISTRATIONS_ONLY');
   });
 
   it('uses template defaults without materializing them as config overrides', async () => {

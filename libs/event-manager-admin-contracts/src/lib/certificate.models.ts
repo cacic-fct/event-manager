@@ -1,3 +1,4 @@
+import type { AttendanceEligibility } from '@cacic-fct/event-manager-public-contracts';
 import type { AttendanceImportMatchType } from './attendance.models';
 import type { Event, EventGroup, MajorEvent } from './event.models';
 import type { Person } from './people.models';
@@ -40,6 +41,7 @@ export interface CertificateFolder {
 }
 
 export interface CertificateConfig {
+  attendeeEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   scope: CertificateScope;
@@ -96,6 +98,7 @@ export interface CertificateReissueResult {
 }
 
 export interface CertificateConfigInput {
+  attendeeEligibility?: AttendanceEligibility | null;
   name?: string;
   scope?: CertificateScope;
   majorEventId?: string | null;

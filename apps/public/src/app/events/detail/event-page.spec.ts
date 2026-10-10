@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event-page';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
+import { InterestApiService } from '../../interests/interest-api.service';
 import { MatDialog } from '@angular/material/dialog';
 import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -206,7 +207,7 @@ function subscriptionFormFixture(): PublicEventForm {
           name: 'Evento teste',
           emoji: '🎓',
         },
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
         displayOrder: 0,
@@ -227,6 +228,25 @@ function subscriptionFormFixture(): PublicEventForm {
 }
 
 describe('Event', () => {
+  it('keeps group interest available after a member event ends', async () => {
+    TestBed.resetTestingModule();
+    const data = defaultEventPageData();
+    data.event = {
+      ...data.event,
+      endDate: new Date(Date.now() - 60_000).toISOString(),
+      eventGroupId: 'group-1',
+      eventGroup: { id: 'group-1', name: 'Grupo aberto', emoji: '🎓', interestEnabled: true },
+    };
+    const getState = vi.fn(() => of({ interest: null, enabled: true, subscribed: false,
+      endsAt: new Date(Date.now() + 86_400_000).toISOString() }));
+    TestBed.configureTestingModule({ providers: [{ provide: InterestApiService, useValue: { getState, changes: NEVER } }] });
+    const fixture = await createEventComponentFixture({}, { eventPageData: data, authenticated: true });
+    await fixture.whenStable();
+    expect(getState).toHaveBeenCalledWith('EVENT_GROUP', 'group-1');
+    expect(fixture.nativeElement.querySelector('[aria-label="Interesse no grupo de eventos"] button')).not.toBeNull();
+    fixture.destroy();
+  });
+
   let component: Event;
   let fixture: ComponentFixture<Event>;
   beforeEach(async () => {
@@ -738,7 +758,7 @@ describe('Event', () => {
     });
     expect(compiled.textContent).toContain('Formulários');
     expect(compiled.textContent).toContain('Pesquisa de camiseta');
-    const [formLink] = newFixture.componentInstance.attendeeFormLinks();
+    const [formLink] = newFixture.componentInstance.availableFormLinks();
     expect(newFixture.componentInstance.formRoute(formLink)).toEqual(['/profile', 'forms', 'form-1']);
     expect(newFixture.componentInstance.formQueryParams(formLink)).toEqual({
       targetType: 'EVENT',
@@ -747,9 +767,9 @@ describe('Event', () => {
     });
   });
 
-  it('does not request event page forms for authenticated users without attendance', async () => {
+  it('asks the backend for authorized forms even without attendance or an enabled interest toggle', async () => {
     TestBed.resetTestingModule();
-    const listCurrentUserForms = vi.fn(() => of([subscriptionFormFixture()]));
+    const listCurrentUserForms = vi.fn(() => of([]));
     const newFixture = await createEventComponentFixture(
       {},
       {
@@ -764,7 +784,7 @@ describe('Event', () => {
     await newFixture.whenStable();
     newFixture.detectChanges();
 
-    expect(listCurrentUserForms).not.toHaveBeenCalled();
+    expect(listCurrentUserForms).toHaveBeenCalledWith({ targetType: 'EVENT', eventId: 'event-1', majorEventId: null });
     expect((newFixture.nativeElement as HTMLElement).textContent).not.toContain('Formulários');
   });
 
@@ -867,10 +887,9 @@ describe('Event', () => {
       ],
     };
     const listPublicEventGroupEvents = vi.fn(() => of([eventPageData.event, groupEvent]));
-    const listCurrentUserForms = vi
-      .fn()
-      .mockReturnValueOnce(of([]))
-      .mockReturnValueOnce(of([siblingForm]));
+    const listCurrentUserForms = vi.fn((input: { eventId?: string | null; subscriptionFlowOnly?: boolean }) =>
+      of(input.subscriptionFlowOnly && input.eventId === 'event-2' ? [siblingForm] : []),
+    );
     const getCurrentUserResponse = vi.fn(() => of(null));
     const subscribeToEvent = vi.fn(() => of(eventPageData.event));
     const open = vi.fn(() => ({ afterClosed: () => of({ confirmed: true }) }));

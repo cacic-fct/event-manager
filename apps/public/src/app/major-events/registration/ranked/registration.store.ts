@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { EventType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { interestedEventIds } from '@cacic-fct/shared-event-participation';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import {
   compareIsoDateAsc,
@@ -76,6 +77,7 @@ export class RankedSubscriptionStore {
   private readonly subscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly interestedEventIds = computed(() => interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []));
   readonly isSubmitting = signal(false);
   readonly isPreparingSubscriptionFlow = signal(false);
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
@@ -189,7 +191,7 @@ export class RankedSubscriptionStore {
         this.subscriptionCooldown.clear();
       });
 
-      const initialSubscription = this.api.getSubscriptionPage(majorEventId).subscribe({
+      const initialSubscription = this.api.getSubscriptionPage(majorEventId, this.isAuthenticated()).subscribe({
         next: (data) =>
           this.pageState.set({ status: 'ready', data: this.mergeRealtimeDelta(data, this.pendingRealtimeDelta()) }),
         error: (error: unknown) =>

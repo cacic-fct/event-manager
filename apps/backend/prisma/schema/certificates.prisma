@@ -109,6 +109,9 @@ model CertificateConfig {
   // Empty means all tiers; names match the registration paymentTier snapshot.
   paymentTiers String[] @default([])
 
+  // Optional additional registration criterion; null preserves the target certificate rules.
+  attendeeEligibility AttendanceEligibility?
+
   certificates Certificate[]
 
   // Additional variable fields, depending on each template's needs

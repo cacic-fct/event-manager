@@ -10,6 +10,10 @@ model EventGroup {
 
   events                       Event[]
   subscriptions                EventGroupSubscription[]
+  interestEnabled              Boolean @default(false)
+  interests                    EventInterest[]
+  // Null inherits the major event policy, or REGISTERED_ONLY when standalone.
+  attendanceEligibility        AttendanceEligibility?
   eventManagerRoleAssignmentScopes EventManagerRoleAssignmentScope[]
   sportsCategory               SportsCategory?
 

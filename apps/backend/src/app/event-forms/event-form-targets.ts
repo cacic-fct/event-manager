@@ -225,8 +225,23 @@ export function toDbSigilo(value: ContractSigilo | EventFormSigilo): EventFormSi
   return value as EventFormSigilo;
 }
 
-export function toDbAudience(value: ContractAudience | EventFormAudience): EventFormAudience {
-  return value as EventFormAudience;
+export function normalizeAudiences(
+  values: readonly (ContractAudience | EventFormAudience)[] | null | undefined,
+): EventFormAudience[] {
+  if (values == null) {
+    return [EventFormAudience.SUBSCRIBERS, EventFormAudience.ATTENDEES];
+  }
+  const normalized = [...new Set(values.map((value) => String(value).trim()).filter(Boolean))] as EventFormAudience[];
+  if (normalized.length === 0) {
+    throw new BadRequestException('Selecione pelo menos um público para o formulário.');
+  }
+  return normalized;
+}
+
+export function toDbAudiences(
+  values: readonly (ContractAudience | EventFormAudience)[] | null | undefined,
+): EventFormAudience[] {
+  return normalizeAudiences(values);
 }
 
 export function toDbResponseMode(value: ContractResponseMode | EventFormResponseMode): EventFormResponseMode {

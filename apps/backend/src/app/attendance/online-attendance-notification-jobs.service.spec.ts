@@ -118,13 +118,19 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     prisma.event.findFirst.mockResolvedValue({
       id: 'event-1',
       name: 'Aula de TypeScript',
+      majorEventId: 'major-1',
       endDate: new Date('2026-06-25T14:00:00.000Z'),
+      attendanceEligibility: 'REGISTERED_ONLY',
+      autoSubscribe: true,
       onlineAttendanceStartDate: now,
       onlineAttendanceCode: 'ABCD',
       onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
       subscriptions: [{ person: person('person-1', 'user-1') }, { person: person('person-2', 'user-2') }],
       majorEvent: {
-        subscriptions: [{ person: person('person-2', 'user-2') }, { person: person('person-3', 'user-3') }],
+        subscriptions: [
+          { person: person('person-2', 'user-2'), subscriptionStatus: 'CONFIRMED', selectedEvents: [] },
+          { person: person('person-3', 'user-3'), subscriptionStatus: 'CONFIRMED', selectedEvents: [] },
+        ],
       },
     });
     notifications.mapPersonToRecipient.mockImplementation((value) => ({
@@ -160,7 +166,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
           majorEvent: expect.objectContaining({
             select: expect.objectContaining({
               subscriptions: expect.objectContaining({
-                where: { deletedAt: null, subscriptionStatus: SubscriptionStatus.CONFIRMED },
+                where: { deletedAt: null, subscriptionStatus: { in: [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, SubscriptionStatus.RECEIPT_UNDER_REVIEW, SubscriptionStatus.CONFIRMED] } },
               }),
             }),
           }),
@@ -175,6 +181,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       id: 'event-1',
       name: 'Aula de TypeScript',
       endDate: new Date('2026-06-25T14:00:00.000Z'),
+      attendanceEligibility: 'REGISTERED_ONLY',
       onlineAttendanceStartDate: now,
       onlineAttendanceCode: 'ABCD',
       onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
@@ -208,6 +215,96 @@ describe('OnlineAttendanceNotificationJobsService', () => {
 
     expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
   });
+
+  it('notifies interest-only people for an ANYONE event without creating subscriptions', async () => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event-1',
+      name: 'Evento aberto',
+      eventGroupId: 'group-1',
+      majorEventId: null,
+      attendanceEligibility: 'ANYONE',
+      endDate: new Date('2026-06-25T14:00:00.000Z'),
+      onlineAttendanceStartDate: now,
+      onlineAttendanceCode: 'ABCD',
+      onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
+      subscriptions: [],
+      majorEvent: null,
+      eventGroup: { attendanceEligibility: null },
+    });
+    prisma.eventInterest.findMany.mockResolvedValue([
+      { person: person('person-1', 'user-1') },
+      { person: person('person-2', 'user-2') },
+    ]);
+    notifications.mapPersonToRecipient.mockImplementation((value) => ({
+      subscriberId: value.userId,
+      email: value.email,
+    }));
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: [
+          { subscriberId: 'user-1', email: 'user-1@example.com' },
+          { subscriberId: 'user-2', email: 'user-2@example.com' },
+        ],
+      }),
+    );
+    expect(prisma.eventInterest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          OR: [{ eventId: 'event-1' }, { eventGroupId: 'group-1' }],
+        }),
+      }),
+    );
+  });
+
+  it('does not invite subscribers into an invitation-only self-check-in flow', async () => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      ...onlineAttendanceEvent(),
+      name: 'Evento reservado', attendanceEligibility: 'INVITED_ONLY',
+      subscriptions: [{ person: person('person-1', 'user-1') }], majorEvent: null,
+    });
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+    expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
+  });
+
+  it('ignores a soft-deleted event-group attendance policy when notifying', async () => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      ...onlineAttendanceEvent(),
+      attendanceEligibility: null,
+      eventGroupId: 'deleted-group',
+      eventGroup: {
+        attendanceEligibility: 'ANYONE',
+        deletedAt: new Date('2026-06-20T12:00:00.000Z'),
+      },
+      subscriptions: [],
+      majorEvent: null,
+    });
+
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
+    expect(prisma.eventInterest.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each(['REGISTERED_ONLY', 'APPROVED_REGISTRATIONS_ONLY'] as const)('filters pending registration notifications using %s', async (attendanceEligibility) => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      ...onlineAttendanceEvent(), name: 'Atividade selecionada', majorEventId: 'major-1', attendanceEligibility,
+      autoSubscribe: false, subscriptions: [],
+      majorEvent: { subscriptions: [{
+        person: person('person-1', 'user-1'), subscriptionStatus: 'WAITING_RECEIPT_UPLOAD', selectedEvents: [{ eventId: 'event-1' }],
+      }] },
+    });
+    notifications.mapPersonToRecipient.mockImplementation((value) => ({ subscriberId: value.userId, email: value.email }));
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledTimes(attendanceEligibility === 'REGISTERED_ONLY' ? 1 : 0);
+  });
 });
 
 function createService() {
@@ -215,6 +312,9 @@ function createService() {
     event: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+    },
+    eventInterest: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
   const notifications = {

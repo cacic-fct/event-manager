@@ -3,6 +3,7 @@ import { readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { assertInterestMigrationIntegrity } from './interest-migration-integrity.mts';
 
 const { Pool } = pg;
 
@@ -41,6 +42,9 @@ async function expectPostgresError(
 }
 
 async function deleteFixtures(): Promise<void> {
+  await pool.query('DELETE FROM "event_interests" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
+  await pool.query('DELETE FROM "event_form_links" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
+  await pool.query('DELETE FROM "event_forms" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
   await pool.query('DELETE FROM "event_subscriptions" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
   await pool.query('DELETE FROM "major_event_subscriptions" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
   await pool.query('DELETE FROM "event_group_subscriptions" WHERE "id" LIKE $1', [`${fixturePrefix}%`]);
@@ -156,6 +160,8 @@ try {
       ),
     '23514',
   );
+
+  await assertInterestMigrationIntegrity(pool, { prefix: fixturePrefix, eventId, eventGroupId, majorEventId, personId });
 
   const eventSubscriptionAttempts = await Promise.allSettled([
     pool.query(`INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`, [

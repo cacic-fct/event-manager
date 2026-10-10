@@ -40,6 +40,7 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
           allowSubscription: true,
           majorEventId: null,
           autoSubscribe: false,
+          attendanceEligibility: 'ANYONE',
           sportsMatch: null,
         }),
       },

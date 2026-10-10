@@ -1,6 +1,6 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -8,17 +8,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicMajorEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
-import { EMPTY, auditTime, catchError, forkJoin, map, merge, of, switchMap } from 'rxjs';
+import { EMPTY, Subject, combineLatest, auditTime, catchError, forkJoin, map, merge, of, switchMap, timer } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { InterestToggle } from '../../interests/interest-toggle';
+import { CurrentUserInterestState, InterestApiService } from '../../interests/interest-api.service';
+import { PublicEventFormApiService } from '../../forms/event-form-api.service';
+import { NetworkStatusService } from '../../shared/network-status.service';
+import { TargetFormLinks } from '../../forms/target-form-links';
 
 type MajorEventPageState =
   | { status: 'loading' }
@@ -52,10 +57,11 @@ const PRIZE_DRAW_INVALIDATION_WINDOW_MS = 100;
     MatToolbarModule,
     MarkdownComponent,
     RouterLink,
+    InterestToggle,
+    TargetFormLinks,
   ],
   templateUrl: './event-list-page.html',
   styleUrl: './event-list-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MajorEvent {
   private readonly api = inject(MajorEventSubscriptionApiService);
@@ -63,9 +69,22 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly currentTime = toSignal(isPlatformBrowser(this.platformId) ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()), { initialValue: Date.now() });
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
+
+  private readonly interestApi = inject(InterestApiService);
+  private readonly formsApi = inject(PublicEventFormApiService);
+  private readonly online = inject(NetworkStatusService).isOnline;
+  private readonly participationRefresh = new Subject<void>();
+  private readonly authChanges = toObservable(this.auth.isAuthenticated);
+  private readonly onlineChanges = toObservable(this.online);
+  readonly interestStates = signal<Partial<Record<string, CurrentUserInterestState>>>({});
+  readonly participationLoading = signal(false);
+  readonly participationForms = signal<PublicEventForm[]>([]);
+
+  refreshParticipation(): void { this.participationRefresh.next(); }
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
@@ -104,6 +123,10 @@ export class MajorEvent {
 
   dateLine(majorEvent: PublicMajorEvent): string {
     return formatDateRange(majorEvent.startDate, majorEvent.endDate);
+  }
+
+  isEventFinished(majorEvent: PublicMajorEvent): boolean {
+    return parseISO(majorEvent.endDate).getTime() <= this.currentTime();
   }
 
   subscriptionFor(majorEventId: string): CurrentUserMajorEventSubscription | null {
@@ -236,6 +259,7 @@ export class MajorEvent {
         next: ({ events, subscriptions }) => {
           this.pageState.set({ status: 'ready', events, subscriptions, prizeDrawTargetIds: [] });
           this.loadPrizeDrawAvailability(events);
+          this.loadParticipation(events);
           this.analytics.trackEvent('major_event_list_viewed', {
             major_event_count: events.length,
             authenticated: this.isAuthenticated(),
@@ -247,6 +271,36 @@ export class MajorEvent {
             message: error instanceof Error ? error.message : 'Não foi possível carregar os eventos.',
           }),
       });
+  }
+
+  private loadParticipation(events: PublicMajorEvent[]): void {
+    combineLatest([this.authChanges, this.onlineChanges]).pipe(
+      switchMap(([authenticated, online]) => {
+        if (!authenticated || !online) {
+          this.interestStates.set({});
+          this.participationForms.set([]);
+          this.participationLoading.set(false);
+          return EMPTY;
+        }
+        this.participationLoading.set(true);
+        return merge(of(undefined), this.interestApi.changes, this.participationRefresh, this.realtime.watchCatalog()).pipe(
+          auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+          switchMap(() => {
+            this.participationLoading.set(true);
+            const targetIds = events.filter((event) => !this.isEventFinished(event)).map((event) => event.id);
+            return forkJoin({
+              states: this.interestApi.getStates('MAJOR_EVENT', targetIds).pipe(catchError(() => of({}))),
+              forms: this.formsApi.listCurrentUserFormsForMajorEvents(events.map((event) => event.id)).pipe(catchError(() => of([]))),
+            });
+          }),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(({ states, forms }) => {
+      this.interestStates.set(states);
+      this.participationForms.set(forms);
+      this.participationLoading.set(false);
+    });
   }
 
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {

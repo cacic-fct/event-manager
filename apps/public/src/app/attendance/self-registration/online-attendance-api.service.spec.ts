@@ -26,6 +26,27 @@ describe('OnlineAttendanceApiService', () => {
     httpTesting.verify();
   });
 
+  it('opens a public walk-in attendance event without requiring an interest or subscription', async () => {
+    const event = createPublicEvent({
+      id: 'event-1', attendanceEligibility: 'ANYONE', shouldCollectAttendance: true, isOnlineAttendanceAllowed: true,
+      onlineAttendanceStartDate: publicFixtureDateFromNow(-1), onlineAttendanceEndDate: publicFixtureDateFromNow(1),
+      endDate: publicFixtureDateFromNow(1), majorEvent: null, majorEventId: null,
+    });
+    const result = firstValueFrom(service.getWalkInEvent(event.id));
+    httpTesting.expectOne('/api/graphql').flush({ data: { publicEvent: event, currentUserEventAttendance: null } });
+    await expect(result).resolves.toEqual({ eventId: event.id, event });
+  });
+
+  it('does not expose restricted events through the manual walk-in fallback', async () => {
+    const event = createPublicEvent({
+      attendanceEligibility: 'REGISTERED_ONLY', shouldCollectAttendance: true, isOnlineAttendanceAllowed: true,
+      onlineAttendanceStartDate: publicFixtureDateFromNow(-1), onlineAttendanceEndDate: publicFixtureDateFromNow(1),
+    });
+    const result = firstValueFrom(service.getWalkInEvent(event.id));
+    httpTesting.expectOne('/api/graphql').flush({ data: { publicEvent: event, currentUserEventAttendance: null } });
+    await expect(result).resolves.toBeNull();
+  });
+
   it('loads pending online attendance events with major-event context', async () => {
     const event = createPublicEvent({
       id: 'event-1',

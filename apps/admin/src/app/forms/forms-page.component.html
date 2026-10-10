@@ -396,12 +396,15 @@
                   <mat-form-field>
                     <mat-label>Quem pode responder</mat-label>
                     <mat-select
-                      [value]="link.audience"
-                      (selectionChange)="workspace.updateLink(link.localId, { audience: $event.value })">
+                      multiple
+                      [value]="link.audiences ?? []"
+                      [attr.aria-label]="'Públicos que podem responder para ' + workspace.targetName(link)"
+                      (selectionChange)="workspace.updateLink(link.localId, { audiences: $event.value })">
+                      <mat-option value="INTERESTED">Interessados ainda não inscritos</mat-option>
                       <mat-option value="SUBSCRIBERS">Inscritos</mat-option>
                       <mat-option value="ATTENDEES">Participantes com presença</mat-option>
-                      <mat-option value="SUBSCRIBERS_OR_ATTENDEES">Inscritos ou presentes</mat-option>
                     </mat-select>
+                    <mat-hint>Qualquer público selecionado pode responder; selecione ao menos um.</mat-hint>
                   </mat-form-field>
 
                   <mat-form-field>

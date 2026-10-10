@@ -42,6 +42,8 @@ export class CurrentUserEventMapperService {
 
     return {
       id: majorEvent.id,
+      interestEnabled: majorEvent.interestEnabled ?? false,
+      attendanceEligibility: majorEvent.attendanceEligibility,
       name: majorEvent.name,
       emoji: majorEvent.emoji,
       startDate: majorEvent.startDate,
@@ -85,6 +87,9 @@ export class CurrentUserEventMapperService {
   mapPublicEventGroup(eventGroup: PublicEventGroupRecord): PublicEventGroup {
     return {
       id: eventGroup.id,
+      majorEventId: eventGroup.majorEventId,
+      interestEnabled: eventGroup.interestEnabled ?? false,
+      attendanceEligibility: eventGroup.attendanceEligibility,
       name: eventGroup.name,
       emoji: eventGroup.emoji,
       requiresImageLicenseAgreement: eventGroup.requiresImageLicenseAgreement,
@@ -97,6 +102,8 @@ export class CurrentUserEventMapperService {
   mapPublicEvent(event: PublicEventRecord | EventRecord): PublicEvent {
     return {
       id: event.id,
+      interestEnabled: event.interestEnabled ?? false,
+      attendanceEligibility: event.attendanceEligibility,
       name: event.name,
       creditMinutes: event.creditMinutes ?? undefined,
       startDate: event.startDate,

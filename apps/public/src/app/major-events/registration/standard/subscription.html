@@ -71,6 +71,7 @@
   } @if (decisions().includesEvents) {
   <h2 data-step-title tabindex="-1">Escolha seus eventos</h2>
   <app-subscription-event-list
+    [interestedEventIds]="interestedEventIds()"
     [events]="sortedEvents()"
     [summariesByEventId]="summariesByEventId()"
     [selectedEventIds]="effectiveSelectedEventIds()"

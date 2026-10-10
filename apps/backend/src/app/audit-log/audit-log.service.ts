@@ -729,7 +729,7 @@ export class AuditLogService {
       return false;
     }
 
-    return ['majorEventId', 'regularAttendancePriceTierIds', 'deletedAt'].some((field) => field in revertData);
+    return ['majorEventId', 'regularAttendancePriceTierIds', 'attendanceEligibility', 'deletedAt'].some((field) => field in revertData);
   }
 
   private canRevertEntry(entry: PrismaAuditLogEntry): boolean {

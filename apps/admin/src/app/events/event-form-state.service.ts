@@ -1,5 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { dateRangeValidator } from '../shared/date-range-validator';
 
 @Service()
@@ -36,6 +37,8 @@ export class EventFormStateService {
         majorEventId: [''],
         eventGroupId: [''],
         allowSubscription: [false],
+        interestEnabled: [false],
+        attendanceEligibility: this.formBuilder.control<AttendanceEligibility | null>(null),
         requiresImageLicenseAgreement: [false],
         subscriptionStartDate: [''],
         subscriptionEndDate: [''],

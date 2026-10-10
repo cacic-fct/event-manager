@@ -1,3 +1,4 @@
+import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import type { ContactType, EventType } from './frontend-types';
 
 export interface PublicPaymentInfo {
@@ -27,6 +28,8 @@ export interface PublicMajorEventPrice {
 }
 
 export interface PublicMajorEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji: string;
@@ -54,6 +57,9 @@ export interface PublicMajorEvent {
 }
 
 export interface PublicEventGroup {
+  majorEventId?: string | null;
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   emoji?: string | null;
@@ -77,6 +83,8 @@ export interface PublicLecturerProfile {
 }
 
 export interface PublicEvent {
+  interestEnabled?: boolean;
+  attendanceEligibility?: AttendanceEligibility | null;
   id: string;
   name: string;
   creditMinutes?: number | null;

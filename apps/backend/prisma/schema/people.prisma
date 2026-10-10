@@ -16,6 +16,7 @@ model People {
   attendanceCollectorFor       EventAttendanceCollector[]
   offlineAttendanceSubmissions OfflineEventAttendanceSubmission[]
   eventSubscriptions           EventSubscription[]
+  eventInterests               EventInterest[]
   eventGroupSubscriptions      EventGroupSubscription[]
   majorEventSubscriptions      MajorEventSubscription[]
   eventFormResponses           EventFormResponse[]

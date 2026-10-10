@@ -94,7 +94,7 @@ function eventFormAuditSnapshot(form: EventFormRecord): Record<string, unknown> 
       eventId: link.eventId,
       majorEventId: link.majorEventId,
       priceTierIds: link.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [],
-      audience: link.audience,
+      audiences: link.audiences,
       insertInSubscriptionFlow: link.insertInSubscriptionFlow,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
       displayOrder: link.displayOrder,

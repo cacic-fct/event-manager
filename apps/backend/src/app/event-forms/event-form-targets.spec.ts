@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import {
-  EventFormAudience,
   EventFormResponseMode,
   EventFormResponseSource,
   EventFormSigilo,
@@ -19,7 +18,6 @@ import {
   normalizeTarget,
   ownerTargetInput,
   responseLookupWhere,
-  toDbAudience,
   toDbResponseMode,
   toDbResponseSource,
   toDbSigilo,
@@ -167,7 +165,6 @@ describe('event form target helpers', () => {
     expect(isLinkAvailable(form.links[0] as never)).toBe(true);
     expect(isLinkAvailable(form.links[1] as never)).toBe(false);
     expect(toDbSigilo(EventFormSigilo.PARTIALLY_SECRET)).toBe(EventFormSigilo.PARTIALLY_SECRET);
-    expect(toDbAudience(EventFormAudience.SUBSCRIBERS)).toBe(EventFormAudience.SUBSCRIBERS);
     expect(toDbResponseMode(EventFormResponseMode.SINGLE_PER_TARGET)).toBe(EventFormResponseMode.SINGLE_PER_TARGET);
     expect(toDbResponseSource(EventFormResponseSource.PUBLIC_FORM)).toBe(EventFormResponseSource.PUBLIC_FORM);
   });

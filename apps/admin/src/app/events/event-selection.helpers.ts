@@ -53,7 +53,11 @@ export function getEventGroupCertificatePermissions(resolution: EventGroupResolu
   allowsNonSubscribedCertificates: boolean | null;
 } {
   if (resolution.status === 'unresolved') {
-    return { allowsCertificates: null, allowsNonPayingCertificates: null, allowsNonSubscribedCertificates: null };
+    return {
+      allowsCertificates: null,
+      allowsNonPayingCertificates: null,
+      allowsNonSubscribedCertificates: null,
+    };
   }
   const allowsCertificates = resolution.status === 'found' ? (resolution.group.shouldIssueCertificate ?? true) : true;
   return {

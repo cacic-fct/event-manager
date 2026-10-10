@@ -48,7 +48,7 @@
         </p>
         }
 
-        <mat-chip-set aria-label="Características do evento">
+        <mat-chip-set role="group" aria-label="Características do evento">
           @if (majorEvent.isPaymentRequired) {
           <mat-chip>
             <mat-icon matChipAvatar>payments</mat-icon>
@@ -67,6 +67,15 @@
           </mat-chip>
           }
         </mat-chip-set>
+        @if (!isPreview()) {
+        <app-interest-toggle targetType="MAJOR_EVENT" [targetId]="majorEvent.id" [targetName]="majorEvent.name"
+          [interestEnabled]="!!majorEvent.interestEnabled" [endsAt]="majorEvent.endDate"
+          [prefetchedState]="interestStates()[majorEvent.id] ?? null" [prefetchLoading]="participationLoading()"
+          (changed)="refreshParticipation()" />
+        }
+        @if (!isPreview() && isAuthenticated()) {
+        <app-target-form-links targetType="MAJOR_EVENT" [targetId]="majorEvent.id" [prefetchedForms]="participationForms()" />
+        }
       </mat-card-content>
 
       @if (!isPreview()) {
@@ -81,12 +90,12 @@
           <mat-icon>rewarded_ads</mat-icon>
           Sorteios
         </a>
-        } @if (subscription && canEditSubscription(majorEvent, subscription)) {
+        } @if (!isEventFinished(majorEvent) && subscription && canEditSubscription(majorEvent, subscription)) {
         <a mat-stroked-button [routerLink]="subscriptionRoute">
           <mat-icon>edit</mat-icon>
           {{ subscriptionActionLabel(majorEvent, 'edit') }}
         </a>
-        } @else if (subscription?.subscriptionStatus === 'CONFIRMED') {
+        } @else if (!isEventFinished(majorEvent) && subscription?.subscriptionStatus === 'CONFIRMED') {
         <button mat-flat-button type="button" disabled>
           <mat-icon>check</mat-icon>
           Inscrito
@@ -96,12 +105,12 @@
           <mat-icon>cloud_upload</mat-icon>
           Enviar comprovante
         </a>
-        } } @else if (!isAuthenticated() && subscriptionRoute) {
+        } } @else if (!isEventFinished(majorEvent) && !isAuthenticated() && subscriptionRoute) {
         <button mat-flat-button type="button" (click)="login()">
           <mat-icon>login</mat-icon>
           {{ subscriptionActionLabel(majorEvent, 'login') }}
         </button>
-        } @else if (subscriptionRoute) {
+        } @else if (!isEventFinished(majorEvent) && subscriptionRoute) {
         <a
           mat-flat-button
           [routerLink]="subscriptionRoute"

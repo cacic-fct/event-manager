@@ -264,6 +264,8 @@ export function createAdminMajorEvent(overrides: Partial<MajorEvent> = {}): Majo
 
   return {
     id,
+    interestEnabled: false,
+    attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY',
     name: 'Grande evento',
     emoji: 'event',
     startDate: adminFixtureDateFromNow(-1),
@@ -308,6 +310,8 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
     emoji: input.emoji ?? 'event',
     startDate: input.startDate ?? adminFixtureDateFromNow(-1),
     endDate: input.endDate ?? adminFixtureDateFromNow(2, 21),
+    interestEnabled: input.interestEnabled ?? false,
+    attendanceEligibility: input.attendanceEligibility ?? 'APPROVED_REGISTRATIONS_ONLY',
     description: input.description,
     subscriptionStartDate: input.subscriptionStartDate,
     subscriptionEndDate: input.subscriptionEndDate,
@@ -353,6 +357,8 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
 export function createAdminEventGroup(overrides: Partial<EventGroup> = {}): EventGroup {
   return {
     id: 'event-group-1',
+    interestEnabled: false,
+    attendanceEligibility: null,
     name: 'Grupo de eventos',
     emoji: 'group',
     requiresImageLicenseAgreement: false,
@@ -373,6 +379,8 @@ export function createAdminEventGroup(overrides: Partial<EventGroup> = {}): Even
 export function createAdminEvent(overrides: Partial<Event> = {}): Event {
   return {
     id: 'event-1',
+    interestEnabled: false,
+    attendanceEligibility: null,
     name: 'Evento',
     creditMinutes: 120,
     startDate: adminFixtureDateFromNow(0, 17),
@@ -455,6 +463,8 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
     majorEventId: input.majorEventId,
     eventGroupId: input.eventGroupId,
     allowSubscription: input.allowSubscription ?? true,
+    interestEnabled: input.interestEnabled ?? false,
+    attendanceEligibility: input.attendanceEligibility ?? null,
     requiresImageLicenseAgreement: input.requiresImageLicenseAgreement ?? false,
     subscriptionStartDate: input.subscriptionStartDate,
     subscriptionEndDate: input.subscriptionEndDate,
@@ -558,7 +568,7 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
           name: event.name,
           emoji: event.emoji,
         },
-        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
         displayOrder: 0,
@@ -620,7 +630,7 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
         majorEventId: link.targetType === 'MAJOR_EVENT' ? (link.majorEventId ?? null) : null,
         priceTierIds: link.priceTierIds ?? [],
         target: null,
-        audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
+        audiences: link.audiences ?? ['SUBSCRIBERS', 'ATTENDEES'],
         insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
         requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
         displayOrder: link.displayOrder ?? index,
@@ -895,6 +905,7 @@ export function createAdminCertificateConfig(
     shouldAutofillSecondPage: true,
     secondPageText: null,
     isActive: true,
+    attendeeEligibility: null,
     issuedTo: 'ATTENDEE',
     certificateTypeLabel: null,
     certificateFieldsJson: null,
@@ -925,6 +936,7 @@ export function createAdminCertificateConfigFromInput(
       shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? true,
       secondPageText: input.secondPageText,
       isActive: input.isActive ?? true,
+      attendeeEligibility: input.attendeeEligibility === undefined ? null : input.attendeeEligibility,
       issuedTo: input.issuedTo ?? 'ATTENDEE',
       certificateTypeLabel: input.certificateTypeLabel,
       paymentTiers: input.paymentTiers ?? [],

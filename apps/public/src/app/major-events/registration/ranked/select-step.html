@@ -35,6 +35,7 @@
   </section>
 
   <app-subscription-event-list
+    [interestedEventIds]="store.interestedEventIds()"
     [events]="store.sortedEvents()"
     [summariesByEventId]="store.summariesByEventId()"
     [selectedEventIds]="store.effectiveSelectedEventIds()"

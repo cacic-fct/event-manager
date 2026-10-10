@@ -55,6 +55,7 @@ describe('EventDraftsService', () => {
       auditLog: Record<string, unknown>;
       attendanceRealtime: Record<string, unknown>;
       typesenseSearch: Record<string, unknown>;
+      attendanceCategories: Record<string, unknown>;
     }> = {},
   ) {
     const tx = {
@@ -65,6 +66,7 @@ describe('EventDraftsService', () => {
       },
       event: {
         findFirst: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn(),
         findUniqueOrThrow: jest.fn(),
       },
@@ -76,6 +78,13 @@ describe('EventDraftsService', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(sourceEvent),
         findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue({
+          shouldIssueCertificate: true,
+          shouldIssueCertificateForNonPayingAttendees: true,
+          shouldIssueCertificateForNonSubscribedAttendees: true,
+        }),
       },
       eventDraft: {
         findUnique: jest.fn(),
@@ -108,6 +117,10 @@ describe('EventDraftsService', () => {
       upsertEvent: jest.fn(),
       ...(overrides.typesenseSearch ?? {}),
     };
+    const attendanceCategories = {
+      refreshForEvent: jest.fn(),
+      ...(overrides.attendanceCategories ?? {}),
+    };
 
     return {
       service: new EventDraftsService(
@@ -117,6 +130,9 @@ describe('EventDraftsService', () => {
         auditLog as never,
         attendanceRealtime as never,
         typesenseSearch as never,
+        undefined,
+        undefined,
+        attendanceCategories as never,
       ),
       prisma,
       tx,
@@ -125,6 +141,7 @@ describe('EventDraftsService', () => {
       auditLog,
       attendanceRealtime,
       typesenseSearch,
+      attendanceCategories,
     };
   }
 
@@ -264,6 +281,71 @@ describe('EventDraftsService', () => {
       }),
     );
     expect(attendanceRealtime.notifyAllConnectedPeople).not.toHaveBeenCalled();
+  });
+
+  it('refreshes attendance classification and notifies online users when a draft changes attendance eligibility', async () => {
+    const previousEvent = {
+      id: 'event-1',
+      name: 'Evento publicado',
+      publicationState: PublicationState.PUBLISHED,
+      publishedAt: new Date(Date.now() - 86_400_000),
+      majorEventId: null,
+      eventGroupId: null,
+      attendanceEligibility: 'REGISTERED_ONLY',
+    };
+    const updatedEvent = {
+      ...previousEvent,
+      attendanceEligibility: 'ANYONE',
+    };
+    const draft = {
+      ...draftRecord,
+      payload: {
+        ...draftRecord.payload,
+        attendanceEligibility: 'ANYONE',
+      },
+    };
+    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue(draft);
+    tx.event.findFirst.mockResolvedValue(previousEvent);
+    tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);
+
+    await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
+
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes attendance classification and notifies online users when a draft changes event group', async () => {
+    const previousEvent = {
+      id: 'event-1',
+      name: 'Evento publicado',
+      publicationState: PublicationState.PUBLISHED,
+      publishedAt: new Date(Date.now() - 86_400_000),
+      majorEventId: null,
+      eventGroupId: null,
+      attendanceEligibility: null,
+    };
+    const updatedEvent = {
+      ...previousEvent,
+      eventGroupId: 'group-1',
+    };
+    const draft = {
+      ...draftRecord,
+      payload: {
+        ...draftRecord.payload,
+        eventGroupId: 'group-1',
+      },
+    };
+    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue(draft);
+    prisma.event.findFirst.mockResolvedValue({ eventGroupId: null });
+    tx.event.findFirst.mockResolvedValue(previousEvent);
+    tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);
+
+    await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
+
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the apply mutation successful when post-commit search sync fails', async () => {

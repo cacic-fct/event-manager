@@ -1,8 +1,9 @@
+import type { EventFormAudience } from '@cacic-fct/event-manager-public-contracts';
+export type { EventFormAudience } from '@cacic-fct/event-manager-public-contracts';
 import type { FormElement, FormImage, FormImageReference } from '@cacic-fct/form-contracts';
 import type { PublicationState } from './event.models';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
-export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
 export type EventFormTargetType = 'EVENT' | 'MAJOR_EVENT';
 export type EventFormResponseSource = 'PUBLIC_FORM' | 'SUBSCRIPTION_FLOW' | 'LECTURER_PUBLISH';
 export type EventFormResponseMode = 'ONE_PER_TARGET' | 'MULTIPLE_PER_TARGET' | 'SINGLE_PER_FORM';
@@ -22,7 +23,7 @@ export interface EventFormLink {
   majorEventId?: string | null;
   priceTierIds: string[];
   target?: EventFormTargetSummary | null;
-  audience: EventFormAudience;
+  audiences: EventFormAudience[];
   insertInSubscriptionFlow: boolean;
   requiredInSubscriptionFlow: boolean;
   displayOrder: number;
@@ -106,7 +107,7 @@ export interface EventFormResults {
 
 interface EventFormLinkInputBase {
   id?: string | null;
-  audience?: EventFormAudience | null;
+  audiences?: EventFormAudience[] | null;
   insertInSubscriptionFlow?: boolean | null;
   requiredInSubscriptionFlow?: boolean | null;
   displayOrder?: number | null;

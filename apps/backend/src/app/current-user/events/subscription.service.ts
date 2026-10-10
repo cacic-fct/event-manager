@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, EventFormTargetType } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventFormTargetType,
+  SubscriptionCreationMethod,
+} from '@prisma/client';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
@@ -42,6 +47,12 @@ type EventGroupSubscriptionAuditSnapshot = EventGroupSubscriptionRecord & {
   eventIds: string[];
 };
 
+type EventSubscriptionWriteOptions = {
+  createdById?: string;
+  createdByMethod?: SubscriptionCreationMethod;
+  bypassSubscriptionPolicy?: boolean;
+};
+
 @Injectable()
 export class CurrentUserEventSubscriptionService {
   constructor(
@@ -65,7 +76,11 @@ export class CurrentUserEventSubscriptionService {
       'id' | 'allowSubscription' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'startDate'
     >,
     now = new Date(),
+    options: EventSubscriptionWriteOptions = {},
   ): string | null {
+    if (options.bypassSubscriptionPolicy) {
+      return null;
+    }
     if (!event.allowSubscription) {
       return `Event ${event.id} does not allow subscriptions.`;
     }
@@ -91,8 +106,9 @@ export class CurrentUserEventSubscriptionService {
       'id' | 'allowSubscription' | 'subscriptionStartDate' | 'subscriptionEndDate' | 'startDate'
     >,
     now = new Date(),
+    options: EventSubscriptionWriteOptions = {},
   ): void {
-    const error = this.getEventSubscriptionError(event, now);
+    const error = this.getEventSubscriptionError(event, now, options);
     if (error) {
       throw new BadRequestException(error);
     }
@@ -236,6 +252,7 @@ export class CurrentUserEventSubscriptionService {
     actor?: AuthenticatedUser,
     formResponses?: readonly SubmitEventFormResponseInput[] | null,
     imageLicenseAgreementAccepted?: boolean | null,
+    options: EventSubscriptionWriteOptions = {},
   ): Promise<PublicEvent> {
     const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const submittedFormIds: string[] = [];
@@ -275,7 +292,7 @@ export class CurrentUserEventSubscriptionService {
           imageLicenseAgreementAccepted === true &&
           Boolean(targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement);
         if (!isAgreementUpdate) {
-          this.ensureEventSubscriptionWindowOpen(targetEvent, now);
+          this.ensureEventSubscriptionWindowOpen(targetEvent, now, options);
         }
       }
       this.ensureImageLicenseAgreementAccepted(
@@ -295,8 +312,15 @@ export class CurrentUserEventSubscriptionService {
           targetEvent.eventGroupId,
           now,
           imageLicenseAgreementAccepted,
+          options,
         );
-        await this.recordEventGroupSubscriptionChange(groupSubscription, personId, actor, tx);
+        await this.recordEventGroupSubscriptionChange(
+          groupSubscription,
+          personId,
+          actor,
+          tx,
+          options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION,
+        );
         submittedFormIds.push(
           ...(await this.eventForms.submitSubscriptionFlowResponses(
             tx,
@@ -324,7 +348,8 @@ export class CurrentUserEventSubscriptionService {
             eventId: targetEvent.id,
             personId,
             imageLicenseAgreementAccepted: imageLicenseAgreementAccepted === true,
-            createdByMethod: 'SELF_SUBSCRIPTION',
+            createdById: options.createdById ?? actor?.sub,
+            createdByMethod: options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION,
           },
           select: {
             id: true,
@@ -337,16 +362,23 @@ export class CurrentUserEventSubscriptionService {
         });
         await this.attendanceCategories.refreshForAttendance(personId, targetEvent.id, tx);
         await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
+        const createdByMethod = options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION;
         await this.auditLog.record(
           {
             entityType: AuditLogEntityType.EVENT_SUBSCRIPTION,
             entityId: createdSubscription.id,
             entityLabel: personId,
-            operation: AuditLogOperation.USER_CREATE,
+            operation:
+              createdByMethod === SubscriptionCreationMethod.ADMIN_DASHBOARD
+                ? AuditLogOperation.CREATE
+                : AuditLogOperation.USER_CREATE,
             actor,
             after: createdSubscription,
             scope: { permission: Permission.Subscription.Create, eventId: createdSubscription.eventId },
-            summary: 'Inscrição em evento criada pelo usuário.',
+            summary:
+              createdByMethod === SubscriptionCreationMethod.ADMIN_DASHBOARD
+                ? 'Inscrição em evento criada pelo painel administrativo a partir de um interesse.'
+                : 'Inscrição em evento criada pelo usuário.',
           },
           tx,
         );
@@ -556,6 +588,7 @@ export class CurrentUserEventSubscriptionService {
     eventGroupId: string,
     actor?: AuthenticatedUser,
     imageLicenseAgreementAccepted?: boolean | null,
+    options: EventSubscriptionWriteOptions = {},
   ): Promise<CurrentUserEventGroupSubscription> {
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const result = await this.subscribeCurrentUserEventGroupTx(
@@ -564,8 +597,15 @@ export class CurrentUserEventSubscriptionService {
         eventGroupId,
         new Date(),
         imageLicenseAgreementAccepted,
+        options,
       );
-      await this.recordEventGroupSubscriptionChange(result, personId, actor, tx);
+      await this.recordEventGroupSubscriptionChange(
+        result,
+        personId,
+        actor,
+        tx,
+        options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION,
+      );
       return result;
     });
 
@@ -685,6 +725,7 @@ export class CurrentUserEventSubscriptionService {
     eventGroupId: string,
     now = new Date(),
     imageLicenseAgreementAccepted?: boolean | null,
+    options: EventSubscriptionWriteOptions = {},
   ): Promise<{
     subscription: EventGroupSubscriptionRecord;
     events: PublicEvent[];
@@ -756,7 +797,7 @@ export class CurrentUserEventSubscriptionService {
       `event group ${eventGroupId}`,
     );
 
-    const eligibleEvents = groupEvents.filter((event) => this.getEventSubscriptionError(event, now) === null);
+    const eligibleEvents = groupEvents.filter((event) => this.getEventSubscriptionError(event, now, options) === null);
     const hasExistingSubscriptionState = existingSubscription != null || activeChildSubscriptions.length > 0;
 
     if (!hasExistingSubscriptionState && eligibleEvents.length === 0) {
@@ -778,7 +819,8 @@ export class CurrentUserEventSubscriptionService {
           eventGroupId,
           personId,
           imageLicenseAgreementAccepted: imageLicenseAgreementAccepted === true,
-          createdByMethod: 'SELF_SUBSCRIPTION',
+          createdById: options.createdById,
+          createdByMethod: options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION,
         },
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       }));
@@ -828,7 +870,8 @@ export class CurrentUserEventSubscriptionService {
           eventId: event.id,
           personId,
           eventGroupSubscriptionId: subscription.id,
-          createdByMethod: 'SELF_SUBSCRIPTION',
+          createdById: options.createdById,
+          createdByMethod: options.createdByMethod ?? SubscriptionCreationMethod.SELF_SUBSCRIPTION,
         })),
       });
       await this.attendanceCategories.refreshForEventPersons(
@@ -884,13 +927,19 @@ export class CurrentUserEventSubscriptionService {
     personId: string,
     actor: AuthenticatedUser | undefined,
     tx: TransactionClient,
+    createdByMethod: SubscriptionCreationMethod,
   ): Promise<void> {
     await this.auditLog.record(
       {
         entityType: AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
         entityId: result.subscription.id,
         entityLabel: personId,
-        operation: result.createdGroupSubscription ? AuditLogOperation.USER_CREATE : AuditLogOperation.UPDATE,
+        operation:
+          result.createdGroupSubscription && createdByMethod === SubscriptionCreationMethod.ADMIN_DASHBOARD
+            ? AuditLogOperation.CREATE
+            : result.createdGroupSubscription
+              ? AuditLogOperation.USER_CREATE
+              : AuditLogOperation.UPDATE,
         actor,
         before: result.previousAuditSnapshot ?? undefined,
         after: result.currentAuditSnapshot,
@@ -899,7 +948,9 @@ export class CurrentUserEventSubscriptionService {
           eventGroupId: result.subscription.eventGroupId,
         },
         summary: result.createdGroupSubscription
-          ? 'Inscrição em grupo de eventos criada pelo usuário.'
+          ? createdByMethod === SubscriptionCreationMethod.ADMIN_DASHBOARD
+            ? 'Inscrição em grupo de eventos criada pelo painel administrativo a partir de um interesse.'
+            : 'Inscrição em grupo de eventos criada pelo usuário.'
           : 'Inscrição em grupo de eventos atualizada pelo usuário.',
       },
       tx,

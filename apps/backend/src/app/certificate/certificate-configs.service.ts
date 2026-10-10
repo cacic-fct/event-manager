@@ -32,6 +32,7 @@ import { CertificateTargetsService } from './certificate-targets.service';
 import { sportsCertificateTypeLabel } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';
 import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
+import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
@@ -367,6 +368,7 @@ export class CertificateConfigsService {
       eventId,
       folderId,
     });
+    const attendeeEligibility = this.normalizeAttendeeEligibility(input.attendeeEligibility);
 
     await this.ensureTemplateExists(templateId);
     if (scope === CertificateScope.OTHER) {
@@ -395,6 +397,7 @@ export class CertificateConfigsService {
           issuedTo,
           certificateTypeLabel,
           paymentTiers,
+          attendeeEligibility,
           ...(certificateFields === undefined
             ? {}
             : certificateFields === null
@@ -468,6 +471,17 @@ export class CertificateConfigsService {
       eventId: mergedEventId,
       folderId: mergedFolderId,
     });
+    const shouldUpdateScopeOrTargets =
+      mergedScope !== existingConfig.scope ||
+      mergedMajorEventId !== existingConfig.majorEventId ||
+      mergedEventGroupId !== existingConfig.eventGroupId ||
+      mergedEventId !== existingConfig.eventId ||
+      mergedFolderId !== existingConfig.folderId;
+    const attendeeEligibility = this.normalizeAttendeeEligibility(
+      input.attendeeEligibility === undefined
+        ? shouldUpdateScopeOrTargets ? null : existingConfig.attendeeEligibility
+        : input.attendeeEligibility,
+    );
 
     await this.ensureTemplateExists(mergedTemplateId);
     if (mergedScope === CertificateScope.OTHER) {
@@ -508,13 +522,6 @@ export class CertificateConfigsService {
         ? this.resolveCertificateTypeLabel(mergedIssuedTo, mergedCertificateFields, input.certificateTypeLabel)
         : undefined;
 
-    const shouldUpdateScopeOrTargets =
-      input.scope !== undefined ||
-      input.majorEventId !== undefined ||
-      input.eventGroupId !== undefined ||
-      input.eventId !== undefined ||
-      input.folderId !== undefined;
-
     const requestedPaymentTiers =
       input.paymentTiers === undefined ? (existingConfig.paymentTiers ?? []) : (input.paymentTiers ?? []);
     const samePaymentTierTarget =
@@ -542,6 +549,9 @@ export class CertificateConfigsService {
           }
         : {}),
       ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
+      ...(input.attendeeEligibility === undefined && !shouldUpdateScopeOrTargets
+        ? {}
+        : { attendeeEligibility }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
       ...(input.shouldAutofillSecondPage === undefined
         ? changedStandaloneMode
@@ -672,6 +682,15 @@ export class CertificateConfigsService {
     });
     const parts = input?.parts;
     const shouldCopyRecipientData = Boolean(parts?.recipientData || parts?.issuedPeople || parts?.manualPeople);
+    const sameRecipientTarget =
+      shouldCopyRecipientData &&
+      scope === source.scope &&
+      majorEventId === source.majorEventId &&
+      eventId === source.eventId &&
+      eventGroupId === source.eventGroupId;
+    const attendeeEligibility = this.normalizeAttendeeEligibility(
+      sameRecipientTarget ? source.attendeeEligibility : null,
+    );
     const defaultIssuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : CertificateIssuedTo.ATTENDEE;
     const issuedTo =
       scope === CertificateScope.OTHER
@@ -711,6 +730,7 @@ export class CertificateConfigsService {
         isActive: parts?.activeState ? source.isActive : true,
         issuedTo,
         certificateTypeLabel,
+        attendeeEligibility,
         paymentTiers:
           shouldCopyRecipientData &&
           scope === source.scope &&
@@ -858,6 +878,15 @@ export class CertificateConfigsService {
       throw new BadRequestException('Select payment tiers belonging to the target major event.');
     }
     return tiers;
+  }
+
+  private normalizeAttendeeEligibility(
+    requested: AttendanceEligibility | null | undefined,
+  ): AttendanceEligibility | null {
+    if (requested === AttendanceEligibility.INVITED_ONLY) {
+      throw new BadRequestException('Invitation-based certificate eligibility is not supported.');
+    }
+    return requested === AttendanceEligibility.ANYONE ? null : requested ?? null;
   }
 
   private async ensureTemplateExists(templateId: string): Promise<void> {

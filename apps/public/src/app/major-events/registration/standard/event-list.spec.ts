@@ -9,6 +9,24 @@ import { SubscriptionEventList } from './event-list';
 registerLocaleData(localePt);
 
 describe('SubscriptionEventList', () => {
+  it('signals prior interest without preselecting registration', async () => {
+    await TestBed.configureTestingModule({
+      imports: [SubscriptionEventList],
+      providers: [{ provide: EmojiService, useValue: { getTwemojiUrl: vi.fn() } }],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SubscriptionEventList);
+    const event = createPublicEvent({ id: 'event-1', eventGroupId: null });
+    fixture.componentRef.setInput('events', [event]);
+    fixture.componentRef.setInput('summariesByEventId', new Map());
+    fixture.componentRef.setInput('selectedEventIds', new Set());
+    fixture.componentRef.setInput('autoSelectedEventIds', new Set());
+    fixture.componentRef.setInput('disabledReasons', new Map());
+    fixture.componentRef.setInput('interestedEventIds', new Set([event.id]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Você marcou Quero ir');
+    expect(fixture.nativeElement.querySelector('input[type="checkbox"]').checked).toBe(false);
+  });
+
   it('shows the available slots and projected queue position', async () => {
     await TestBed.configureTestingModule({
       imports: [SubscriptionEventList],

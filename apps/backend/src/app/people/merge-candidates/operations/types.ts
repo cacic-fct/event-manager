@@ -131,6 +131,8 @@ export type MovedRelationsSnapshot = {
   insertedAttendanceEventIds: string[];
   insertedLectureEventIds: string[];
   movedEventSubscriptionIds: string[];
+  movedEventInterestIds?: string[];
+  retiredEventInterestIds?: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
   movedRoleAssignmentIds: string[];

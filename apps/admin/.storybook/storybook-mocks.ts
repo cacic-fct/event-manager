@@ -319,6 +319,7 @@ const certificateConfig = {
   shouldAutofillSecondPage: true,
   secondPageText: null,
   isActive: true,
+  attendeeEligibility: null,
   issuedTo: 'ATTENDEE',
   certificateTypeLabel: 'Participação',
   certificateFieldsJson: '{}',

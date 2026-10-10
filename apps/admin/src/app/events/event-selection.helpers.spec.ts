@@ -28,13 +28,11 @@ describe('workspace event selection helpers', () => {
         status: 'found',
         group: createAdminEventGroup({
           shouldIssueCertificate: false,
-          shouldIssueCertificateForNonPayingAttendees: true,
-          shouldIssueCertificateForNonSubscribedAttendees: false,
         }),
       }),
     ).toEqual({
       allowsCertificates: false,
-      allowsNonPayingCertificates: true,
+      allowsNonPayingCertificates: false,
       allowsNonSubscribedCertificates: false,
     });
     expect(
@@ -42,14 +40,29 @@ describe('workspace event selection helpers', () => {
         status: 'found',
         group: createAdminEventGroup({
           shouldIssueCertificate: false,
-          shouldIssueCertificateForNonPayingAttendees: undefined as never,
-          shouldIssueCertificateForNonSubscribedAttendees: undefined as never,
         }),
       }),
     ).toEqual({
       allowsCertificates: false,
       allowsNonPayingCertificates: false,
       allowsNonSubscribedCertificates: false,
+    });
+  });
+
+  it('carries group exception gates into event certificate policy', () => {
+    expect(
+      getEventGroupCertificatePermissions({
+        status: 'found',
+        group: createAdminEventGroup({
+          shouldIssueCertificate: true,
+          shouldIssueCertificateForNonPayingAttendees: false,
+          shouldIssueCertificateForNonSubscribedAttendees: true,
+        }),
+      }),
+    ).toEqual({
+      allowsCertificates: true,
+      allowsNonPayingCertificates: false,
+      allowsNonSubscribedCertificates: true,
     });
   });
 

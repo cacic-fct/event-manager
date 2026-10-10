@@ -1,5 +1,6 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import {
   MutableStoryContext,
   PublicEventStoryControls,
@@ -20,6 +21,7 @@ export interface OnlineAttendanceStoryControls extends PublicEventStoryControls 
   confirmationOutcome: OnlineAttendanceConfirmationOutcome;
   expectedCode: string;
   retryAfterSeconds: number;
+  unregisteredWalkIn: boolean;
 }
 
 export const onlineAttendanceStoryDefaultControls: OnlineAttendanceStoryControls = {
@@ -30,6 +32,7 @@ export const onlineAttendanceStoryDefaultControls: OnlineAttendanceStoryControls
   confirmationOutcome: 'success',
   expectedCode: 'A1B2',
   retryAfterSeconds: 8,
+  unregisteredWalkIn: false,
 };
 
 export const onlineAttendanceStoryControlArgTypes = {
@@ -53,6 +56,7 @@ export const onlineAttendanceStoryControlArgTypes = {
     description: 'Resposta devolvida ao confirmar o código.',
   },
   expectedCode: { control: 'text', description: 'Código de quatro caracteres aceito pelo mock.' },
+  unregisteredWalkIn: { control: 'boolean', description: 'Presença manual sem inscrição nem interesse prévio.' },
   retryAfterSeconds: {
     control: { type: 'range', min: 1, max: 60, step: 1 },
     description: 'Tempo de bloqueio mostrado após excesso de tentativas.',
@@ -122,6 +126,15 @@ export function onlineAttendanceStoryHandlers(context: MutableStoryContext<Onlin
         await delay(controls.latencyMs);
       }
 
+      if (query.includes('CurrentUserWalkInAttendanceEvent')) {
+        return HttpResponse.json({ data: { publicEvent: {
+          ...createPublicStoryEventFromControls(controls, { id: 'event-1' }),
+          attendanceEligibility: 'ANYONE', shouldCollectAttendance: true, isOnlineAttendanceAllowed: true,
+          startDate: publicFixtureDateFromNow(-1), endDate: publicFixtureDateFromNow(1),
+          onlineAttendanceStartDate: publicFixtureDateFromNow(-1), onlineAttendanceEndDate: publicFixtureDateFromNow(1),
+        }, currentUserEventAttendance: null } });
+      }
+
       if (query.includes('CurrentUserPendingOnlineAttendanceEvents')) {
         if (controls.state === 'error') {
           return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar as presenças pendentes.' }] });
@@ -129,7 +142,7 @@ export function onlineAttendanceStoryHandlers(context: MutableStoryContext<Onlin
 
         return HttpResponse.json({
           data: {
-            currentUserPendingOnlineAttendanceEvents: createOnlineAttendancePendingEvents(controls).map((event) => ({
+            currentUserPendingOnlineAttendanceEvents: (controls.unregisteredWalkIn ? [] : createOnlineAttendancePendingEvents(controls)).map((event) => ({
               eventId: event.id,
               event,
             })),

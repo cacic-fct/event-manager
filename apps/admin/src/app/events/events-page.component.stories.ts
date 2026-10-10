@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { expect, within } from 'storybook/test';
 import { EventsPageComponent } from './events-page.component';
 import {
   defaultPageStoryArgs,
@@ -73,4 +74,15 @@ export const EmptyReadonly: Story = {
 export const SwagKitAttendance: Story = {
   args: { restrictAttendancePriceTiers: true, sportsEvery: 0 },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const InterestAndEligibility: Story = {
+  args: { selectedIndex: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Permitir manifestação de interesse')).toBeVisible();
+    await expect(canvas.getByText('Qualquer participante')).toBeVisible();
+    await expect(canvas.getByText('Emitir para presentes não pagantes')).toBeVisible();
+    await expect(canvas.getByText('Emitir para presentes não inscritos')).toBeVisible();
+  },
 };

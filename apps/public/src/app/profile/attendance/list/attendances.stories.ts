@@ -82,6 +82,16 @@ const meta: Meta<AttendancesStoryControls> = {
 export default meta;
 type Story = StoryObj<AttendancesStoryControls>;
 
+export const InterestedEvents: Story = {
+  args: { interestedOnly: true, attendanceEvery: 0, majorEventCount: 0, eventCount: 2, certificateFolderCount: 0 },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
+    await expect(canvas.getAllByText('Quero ir').length).toBeGreaterThan(0);
+  },
+};
+
 export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {

@@ -371,7 +371,7 @@ describe('FormsService integration', () => {
     service.updateLink('form-link-1', {
       targetType: 'MAJOR_EVENT',
       majorEventId: 'major-event-1',
-      audience: 'ATTENDEES',
+      audiences: ['ATTENDEES'],
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
       displayOrder: 3,
@@ -399,7 +399,7 @@ describe('FormsService integration', () => {
       targetType: 'MAJOR_EVENT',
       eventId: null,
       majorEventId: 'major-event-1',
-      audience: 'ATTENDEES',
+      audiences: ['ATTENDEES'],
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
       displayOrder: 3,
@@ -426,6 +426,17 @@ describe('FormsService integration', () => {
       notifyOnPublish: true,
       allowLecturerManualPublish: false,
     });
+  });
+
+  it('requires at least one audience on every form link', async () => {
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+    service.updateLink('form-link-1', { audiences: [] });
+
+    await service.save();
+
+    expect(formApi.saveForm).not.toHaveBeenCalled();
+    expect(service.hasInvalidLinkAudiences()).toBe(true);
   });
 
   it('saves a major-event form for one or more selected tiered prices', async () => {

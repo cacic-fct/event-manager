@@ -333,3 +333,6 @@ mat-toolbar {
     grid-template-columns: 1fr;
   }
 }
+:host .interest-actions {
+  margin-block: 1rem;
+}

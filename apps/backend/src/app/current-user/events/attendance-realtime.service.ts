@@ -14,7 +14,7 @@ import {
   Req,
   Sse,
 } from '@nestjs/common';
-import { SubscriptionStatus } from '@prisma/client';
+import { isAttendanceEligible } from '@cacic-fct/shared-event-participation';
 import type { Request } from 'express';
 import { Observable, Subject, interval, map, merge, takeUntil } from 'rxjs';
 import {
@@ -35,10 +35,21 @@ import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { CurrentUserPendingOnlineAttendanceEvent } from '../models';
-import { PUBLIC_EVENT_SELECT, PublicEventSubscriptionSummary } from '../../public-events/models';
+import {
+  PUBLIC_EVENT_GROUP_SELECT,
+  PUBLIC_EVENT_SELECT,
+  PUBLIC_EVENT_WHERE,
+  PUBLIC_MAJOR_EVENT_SELECT,
+  PublicEventSubscriptionSummary,
+} from '../../public-events/models';
 import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 import { SseReplayService } from '../../realtime/sse-replay.service';
+import {
+  eventAttendanceEligibility,
+  isApprovedAttendance,
+  isRegisteredAttendanceEvidence,
+} from '../../events/attendance-eligibility';
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
@@ -47,6 +58,22 @@ const MAX_REALTIME_IDS = 50;
 const MAX_REALTIME_ID_LENGTH = 128;
 const MAX_REALTIME_QUERY_LENGTH = 4_096;
 const MAX_REALTIME_CONNECTIONS_PER_IDENTITY = 10;
+
+const PENDING_ONLINE_ATTENDANCE_EVENT_SELECT = {
+  ...PUBLIC_EVENT_SELECT,
+  majorEvent: {
+    select: {
+      ...PUBLIC_MAJOR_EVENT_SELECT,
+      deletedAt: true,
+    },
+  },
+  eventGroup: {
+    select: {
+      ...PUBLIC_EVENT_GROUP_SELECT,
+      deletedAt: true,
+    },
+  },
+} as const;
 
 interface RealtimeClient {
   connectionIdentity: string;
@@ -289,6 +316,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     const now = new Date();
     const events = await this.prisma.event.findMany({
       where: {
+        AND: [PUBLIC_EVENT_WHERE],
         deletedAt: null,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
@@ -299,66 +327,91 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         onlineAttendanceEndDate: {
           gte: now,
         },
-
         attendances: {
           none: {
             personId,
             status: 'PRESENT',
           },
         },
-
-        OR: [
-          {
-            allowSubscription: false,
-          },
-          {
-            subscriptions: {
-              some: {
-                personId,
-                deletedAt: null,
-              },
-            },
-          },
-        ],
-
-        AND: [
-          {
-            OR: [
-              {
-                majorEventId: null,
-              },
-              {
-                majorEvent: {
-                  isPaymentRequired: false,
-                },
-              },
-              {
-                majorEvent: {
-                  subscriptions: {
-                    some: {
-                      personId,
-                      deletedAt: null,
-                      subscriptionStatus: SubscriptionStatus.CONFIRMED,
-                    },
-                  },
-                },
-              },
-            ],
-          },
-        ],
       },
-      select: {
-        ...PUBLIC_EVENT_SELECT,
-      },
+      select: PENDING_ONLINE_ATTENDANCE_EVENT_SELECT,
       orderBy: {
         startDate: 'asc',
       },
     });
 
-    return events.map((event) => ({
-      eventId: event.id,
-      event: this.mapper.mapPublicEvent(event),
-    }));
+    if (events.length === 0) {
+      return [];
+    }
+
+    const eventIds = events.map((event) => event.id);
+    const majorEventIds = [
+      ...new Set(
+        events
+          .map((event) => event.majorEventId)
+          .filter((majorEventId): majorEventId is string => Boolean(majorEventId)),
+      ),
+    ];
+    const [eventSubscriptions, majorEventSubscriptions] = await Promise.all([
+      this.prisma.eventSubscription.findMany({
+        where: {
+          eventId: { in: eventIds },
+          personId,
+          deletedAt: null,
+        },
+        select: {
+          eventId: true,
+        },
+      }),
+      majorEventIds.length
+        ? this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId: { in: majorEventIds },
+              personId,
+              deletedAt: null,
+            },
+            select: {
+              majorEventId: true,
+              subscriptionStatus: true,
+              selectedEvents: {
+                where: { eventId: { in: eventIds }, deletedAt: null },
+                select: { eventId: true },
+              },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const eventSubscriptionIds = new Set(eventSubscriptions.map((subscription) => subscription.eventId));
+    const majorSubscriptionById = new Map(
+      majorEventSubscriptions.map((subscription) => [subscription.majorEventId, subscription]),
+    );
+
+    return events.flatMap((event) => {
+      const policy = eventAttendanceEligibility(event);
+      const majorSubscription = event.majorEventId
+        ? majorSubscriptionById.get(event.majorEventId)
+        : undefined;
+      const registrationEvidence = {
+        hasEventSubscription: eventSubscriptionIds.has(event.id),
+        majorEventSubscriptionStatus: majorSubscription?.subscriptionStatus,
+        hasSelectedEvent: majorSubscription?.selectedEvents.some((selected) => selected.eventId === event.id),
+        autoSubscribe: event.autoSubscribe,
+      };
+      const registered = isRegisteredAttendanceEvidence(event, registrationEvidence);
+      const approved = isApprovedAttendance(
+        event,
+        registrationEvidence,
+      );
+      return isAttendanceEligible(policy, { registered, approved })
+        ? [
+            {
+              eventId: event.id,
+              event: this.mapper.mapPublicEvent(event),
+            },
+          ]
+        : [];
+    });
   }
 
   async notifyAllConnectedPeople(): Promise<void> {

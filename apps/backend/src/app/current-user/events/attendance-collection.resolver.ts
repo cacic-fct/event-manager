@@ -22,12 +22,7 @@ import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 import { recordAttendanceCreate, recordAttendanceSet } from './attendance-collection-audit';
 import { findCurrentUserAttendanceCollectionEvents, requireAttendanceCollector } from './attendance-collection-events';
-import {
-  findAttendanceOralRosterPersonIds,
-  getAttendanceOralRoster,
-  getAttendanceScannerFeed,
-  isOnAttendanceOralRoster,
-} from './attendance-collection-feed';
+import { getAttendanceOralRoster, getAttendanceScannerFeed } from './attendance-collection-feed';
 import { OfflineAttendanceCommitter } from './attendance-collection-offline-commit';
 import {
   createAttendance,
@@ -245,11 +240,6 @@ export class CurrentUserAttendanceCollectionResolver {
       getAuthenticatedUser(this.currentUserContext, context),
       'edit',
     );
-    const subscriber = await isOnAttendanceOralRoster(this.prisma, input.eventId, input.personId);
-    if (!subscriber) {
-      throw new NotFoundException('Pessoa não inscrita neste evento.');
-    }
-
     const actorId = getActorId(context) ?? collector.userId ?? undefined;
     const existingReceipt = await this.findOralReceipt(input, actorId);
     if (existingReceipt?.status === 'COMMITTED') {
@@ -363,14 +353,6 @@ export class CurrentUserAttendanceCollectionResolver {
       getAuthenticatedUser(this.currentUserContext, context),
       'edit',
     );
-    const rosterIds = await findAttendanceOralRosterPersonIds(
-      this.prisma,
-      eventId,
-      inputs.map((input) => input.personId),
-    );
-    if (inputs.some((input) => !rosterIds.has(input.personId))) {
-      throw new NotFoundException('Uma ou mais pessoas não estão inscritas neste evento.');
-    }
     const actorId = getActorId(context) ?? collector.userId ?? undefined;
     const idempotentClientIds = new Set<string>();
     for (const input of inputs) {

@@ -11,6 +11,8 @@ export const EVENT_LIST_FIELDS = `
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
+  interestEnabled
+  attendanceEligibility
   publicationState
   scheduledPublishAt
   publishedAt
@@ -39,6 +41,8 @@ export const EVENT_DETAIL_FIELDS = `
   majorEventId
   eventGroupId
   allowSubscription
+  interestEnabled
+  attendanceEligibility
   requiresImageLicenseAgreement
   subscriptionStartDate
   subscriptionEndDate
@@ -79,6 +83,9 @@ export const EVENT_DETAIL_FIELDS = `
     id
     name
     emoji
+    majorEventId
+    interestEnabled
+    attendanceEligibility
     requiresImageLicenseAgreement
     shouldIssueCertificate
     shouldIssueCertificateForNonPayingAttendees
@@ -116,6 +123,11 @@ export const EVENT_CERTIFICATE_TARGET_FIELDS = `
   endDate
   emoji
   type
+  majorEventId
+  eventGroupId
+  eventGroup {
+    majorEventId
+  }
   createdAt
 `;
 
@@ -127,6 +139,8 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   endDate
   subscriptionStartDate
   subscriptionEndDate
+  interestEnabled
+  attendanceEligibility
   isPaymentRequired
   sportsTournament {
     id
@@ -158,6 +172,8 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   description
   subscriptionStartDate
   subscriptionEndDate
+  interestEnabled
+  attendanceEligibility
   requiresImageLicenseAgreement
   maxCoursesPerAttendee
   maxLecturesPerAttendee
@@ -218,9 +234,12 @@ export const MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS = `
 
 export const EVENT_GROUP_FIELDS = `
   id
+  majorEventId
   isSportsCategory
   name
   emoji
+  interestEnabled
+  attendanceEligibility
   requiresImageLicenseAgreement
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
@@ -238,6 +257,7 @@ export const EVENT_GROUP_CERTIFICATE_TARGET_FIELDS = `
   id
   name
   emoji
+  majorEventId
   shouldIssueCertificate
   shouldIssueCertificateForEachEvent
   shouldIssuePartialCertificate
@@ -475,6 +495,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   secondPageText
   isActive
   issuedTo
+  attendeeEligibility
   certificateTypeLabel
   paymentTiers
   certificateFieldsJson

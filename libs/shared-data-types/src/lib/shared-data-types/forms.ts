@@ -47,8 +47,8 @@ export class EventFormLink {
   @Field(() => EventFormTargetSummary, { nullable: true })
   target?: EventFormTargetSummary | null;
 
-  @Field(() => EventFormAudience)
-  audience!: EventFormAudience;
+  @Field(() => [EventFormAudience])
+  audiences!: EventFormAudience[];
 
   @Field(() => Boolean)
   insertInSubscriptionFlow!: boolean;
@@ -338,8 +338,8 @@ export class EventFormLinkInput {
   @Field(() => String, { nullable: true })
   majorEventId?: string | null;
 
-  @Field(() => EventFormAudience, { nullable: true })
-  audience?: EventFormAudience | null;
+  @Field(() => [EventFormAudience], { nullable: true })
+  audiences?: EventFormAudience[] | null;
 
   @Field(() => Boolean, { nullable: true })
   insertInSubscriptionFlow?: boolean | null;

@@ -1,33 +1,78 @@
 import { EventFormImagesService } from './event-form-images.service';
-import { EventFormAudience, PublicationState } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
+import { Readable } from 'node:stream';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { formRecord, linkRecord } from './event-form.spec-support';
 
 describe('EventFormImagesService references and cleanup', () => {
+  it.each([
+    { interested: true, subscribed: false, allowed: true },
+    { interested: false, subscribed: false, allowed: false },
+    { interested: true, subscribed: true, allowed: false },
+  ])('checks real participation for interest-only images: %j', async ({ interested, subscribed, allowed }) => {
+    const { service, prisma, s3, authorization } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.eventInterest.findFirst.mockResolvedValue(interested ? { id: 'interest-1' } : null);
+    prisma.eventSubscription.findFirst.mockResolvedValue(subscribed ? { id: 'subscription-1' } : null);
+    prisma.eventFormImage.findUnique.mockResolvedValue({
+      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      form: formRecord({ resultsPublic: false, links: [linkRecord({ audiences: ['INTERESTED'] })] }),
+    });
+
+    const download = service.downloadById('image-1', { sub: 'user-1' } as never);
+
+    if (allowed) {
+      await expect(download).resolves.toEqual(expect.objectContaining({ contentType: 'image/avif' }));
+      expect(s3.downloadFile).toHaveBeenCalledWith('image-1.avif');
+    } else {
+      await expect(download).rejects.toBeInstanceOf(ForbiddenException);
+      expect(s3.downloadFile).not.toHaveBeenCalled();
+    }
+  });
+
+  it('keeps subscription-flow images available before registration', async () => {
+    const { service, prisma, authorization, s3 } = createHarness();
+    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
+    prisma.eventFormImage.findUnique.mockResolvedValue({
+      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      form: formRecord({
+        resultsPublic: false,
+        links: [linkRecord({ audiences: ['SUBSCRIBERS'], insertInSubscriptionFlow: true })],
+      }),
+    });
+
+    await expect(service.downloadById('image-1', { sub: 'user-1' } as never)).resolves.toEqual(
+      expect.objectContaining({ contentType: 'image/avif' }),
+    );
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'event-1', allowSubscription: true }),
+    }));
+    expect(s3.downloadFile).toHaveBeenCalledWith('image-1.avif');
+  });
+
   it.each([false, true])('denies non-participants image access for a hidden target (subscription flow: %s)', async (insertInSubscriptionFlow) => {
     const { service, prisma, authorization, s3 } = createHarness();
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+    prisma.event.findFirst.mockResolvedValue(null);
     prisma.eventFormImage.findFirst.mockResolvedValue({
       objectKey: 'private.avif',
-      form: {
-        id: 'form-1',
-        publicationState: PublicationState.PUBLISHED,
-        deletedAt: null,
-        _count: { responses: 0 },
-        links: [{
+      form: formRecord({
+        resultsPublic: false,
+        links: [linkRecord({
           eventId: 'hidden-event',
-          majorEventId: null,
-          audience: EventFormAudience.SUBSCRIBERS,
+          event: { id: 'hidden-event', name: 'Hidden', emoji: null, majorEventId: null, eventGroupId: null },
+          audiences: ['SUBSCRIBERS'],
           insertInSubscriptionFlow,
-          availableFrom: null,
-          availableUntil: null,
-          _count: { responses: 0 },
-        }],
-      },
+        })],
+      }),
     });
 
     await expect(service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser))
       .rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
+    }));
     expect(s3.downloadFile).not.toHaveBeenCalled();
   });
 
@@ -183,10 +228,15 @@ describe('EventFormImagesService references and cleanup', () => {
 
 function createHarness() {
   const prisma = {
-    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    event: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockResolvedValue({ majorEventId: null, eventGroupId: null }),
+    },
     eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
     eventAttendance: { findFirst: jest.fn().mockResolvedValue(null) },
+    eventInterest: { findFirst: jest.fn().mockResolvedValue(null) },
     eventFormImage: {
+      findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -195,15 +245,17 @@ function createHarness() {
     eventForm: { findMany: jest.fn() },
     eventFormDraft: { findMany: jest.fn().mockResolvedValue([]) },
   };
-  const s3 = { deleteFile: jest.fn().mockResolvedValue(undefined), downloadFile: jest.fn() };
+  const s3 = {
+    deleteFile: jest.fn().mockResolvedValue(undefined),
+    downloadFile: jest.fn().mockResolvedValue({ stream: Readable.from([]), contentType: 'image/avif' }),
+  };
   const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+  const currentUser = { resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' } }) };
   return {
     prisma,
     s3,
     authorization,
-    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, {
-      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' } }),
-    } as never),
+    service: new EventFormImagesService(prisma as never, s3 as never, authorization as never, currentUser as never),
   };
 }
 

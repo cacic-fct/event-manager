@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { firstValueFrom, take } from 'rxjs';
 import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from '../../auth/auth.constants';
+import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
   CurrentUserRealtimeEventsController,
@@ -91,6 +92,10 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     const event = {
       id: 'event-1',
       name: 'Online event',
+      majorEventId: null,
+      attendanceEligibility: 'REGISTERED_ONLY',
+      eventGroup: null,
+      majorEvent: null,
     };
     const mappedEvent = {
       id: 'event-1',
@@ -118,19 +123,6 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
               status: 'PRESENT',
             },
           },
-          OR: [
-            {
-              allowSubscription: false,
-            },
-            {
-              subscriptions: {
-                some: {
-                  personId: 'person-1',
-                  deletedAt: null,
-                },
-              },
-            },
-          ],
         }),
         orderBy: {
           startDate: 'asc',
@@ -138,6 +130,76 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       }),
     );
     expect(mapper.mapPublicEvent).toHaveBeenCalledWith(event);
+  });
+
+  it('lists ANYONE events for a person without a subscription', async () => {
+    const { mapper, prisma, service } = createService();
+    const event = {
+      id: 'event-anyone',
+      majorEventId: null,
+      attendanceEligibility: 'ANYONE',
+      eventGroup: null,
+      majorEvent: null,
+    };
+    const mappedEvent = { id: 'event-anyone' };
+    prisma.event.findMany.mockResolvedValueOnce([event]);
+    prisma.eventSubscription.findMany.mockResolvedValueOnce([]);
+    mapper.mapPublicEvent.mockReturnValueOnce(mappedEvent);
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([
+      { eventId: 'event-anyone', event: mappedEvent },
+    ]);
+    expect(prisma.event.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ AND: [PUBLIC_EVENT_WHERE] }),
+    }));
+  });
+
+  it('lists a pending selected major-event activity for REGISTERED_ONLY without a child subscription row', async () => {
+    const { mapper, prisma, service } = createService();
+    const event = {
+      id: 'pending-event',
+      majorEventId: 'major-event',
+      attendanceEligibility: 'REGISTERED_ONLY',
+      autoSubscribe: false,
+      eventGroup: null,
+      majorEvent: { attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY', isPaymentRequired: true },
+    };
+    const mappedEvent = { id: 'pending-event' };
+    prisma.event.findMany.mockResolvedValueOnce([event]);
+    prisma.eventSubscription.findMany.mockResolvedValueOnce([]);
+    prisma.majorEventSubscription.findMany.mockResolvedValueOnce([
+      {
+        majorEventId: 'major-event',
+        subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        selectedEvents: [{ eventId: 'pending-event' }],
+      },
+    ]);
+    mapper.mapPublicEvent.mockReturnValueOnce(mappedEvent);
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([
+      { eventId: 'pending-event', event: mappedEvent },
+    ]);
+  });
+
+  it('ignores a soft-deleted event-group attendance policy when listing pending events', async () => {
+    const { mapper, prisma, service } = createService();
+    const event = {
+      id: 'deleted-group-event',
+      majorEventId: null,
+      attendanceEligibility: null,
+      autoSubscribe: false,
+      eventGroupId: 'deleted-group',
+      eventGroup: {
+        attendanceEligibility: 'ANYONE',
+        deletedAt: new Date('2026-08-15T12:00:00.000Z'),
+      },
+      majorEvent: null,
+    };
+    prisma.event.findMany.mockResolvedValueOnce([event]);
+    prisma.eventSubscription.findMany.mockResolvedValueOnce([]);
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([]);
+    expect(mapper.mapPublicEvent).not.toHaveBeenCalled();
   });
 
   it('emits pending attendance after resolving the current user from an encoded session cookie', async () => {
@@ -418,6 +480,12 @@ function createService() {
     prisma: {
       event: {
         findMany: jest.fn(),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([{ eventId: 'event-1' }]),
+      },
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
     },
     publicEvents: {
