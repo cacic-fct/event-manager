@@ -132,6 +132,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
     for (const item of this.tournaments()) {
       if (!seenMajorEventIds.has(item.majorEvent.id)) {
+        seenMajorEventIds.add(item.majorEvent.id);
         items.push({ majorEvent: item.majorEvent, tournament: item });
       }
     }

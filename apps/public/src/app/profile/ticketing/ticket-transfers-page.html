@@ -1,0 +1,65 @@
+@let current = state();
+
+<mat-toolbar>
+  <a matIconButton routerLink="/profile/wallet" aria-label="Voltar para a carteira">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="global-toolbar-title">Transferência de bilhetes</h1>
+</mat-toolbar>
+
+<main class="ticket-transfers-page">
+  @if (current.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando transferências"></mat-progress-bar>
+  } @else if (current.status === 'error') {
+    <section class="transfer-page-message" aria-live="polite">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Não foi possível carregar suas transferências.</p>
+      <button mat-button type="button" (click)="retry()">Tentar novamente</button>
+    </section>
+  } @else if (!hasTransfers()) {
+    <section class="transfer-page-message">
+      <mat-icon aria-hidden="true">confirmation_number</mat-icon>
+      <p>Você ainda não tem pedidos de transferência de bilhetes.</p>
+    </section>
+  } @else {
+    @let transfers = current.transfers;
+    <section class="transfer-section" aria-labelledby="incoming-heading">
+      <h2 id="incoming-heading">Aguardando sua resposta</h2>
+      @if (transfers.incomingPending.length) {
+        <mat-action-list>
+          @for (transfer of transfers.incomingPending; track transfer.id) {
+            <app-calendar-list-item [item]="incomingPendingItem(transfer)" />
+          }
+        </mat-action-list>
+      } @else {
+        <p class="empty-line">Não há bilhetes aguardando sua resposta.</p>
+      }
+    </section>
+
+    <section class="transfer-section" aria-labelledby="ignored-heading">
+      <h2 id="ignored-heading">Pedidos ignorados</h2>
+      @if (transfers.incomingIgnored.length) {
+        <mat-action-list>
+          @for (transfer of transfers.incomingIgnored; track transfer.id) {
+            <app-calendar-list-item [item]="incomingIgnoredItem(transfer)" />
+          }
+        </mat-action-list>
+      } @else {
+        <p class="empty-line">Você não ignorou nenhum pedido.</p>
+      }
+    </section>
+
+    <section class="transfer-section" aria-labelledby="outgoing-heading">
+      <h2 id="outgoing-heading">Pedidos enviados</h2>
+      @if (transfers.outgoing.length) {
+        <mat-action-list>
+          @for (transfer of transfers.outgoing; track transfer.id) {
+            <app-calendar-list-item [item]="outgoingItem(transfer)" />
+          }
+        </mat-action-list>
+      } @else {
+        <p class="empty-line">Você ainda não enviou nenhum bilhete.</p>
+      }
+    </section>
+  }
+</main>

@@ -343,7 +343,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         collectedAccuracyMeters: 15,
       },
     });
-    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', txMock);
+    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', txMock, true);
   });
 
   it('converts duplicate attendance writes into conflicts', async () => {
@@ -363,6 +363,33 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         context as never,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('re-evaluates an existing non-regular attendance through the collector scanner endpoint', async () => {
+    const attendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT', category: 'REGULAR' };
+    const refreshForAttendance = jest.fn().mockResolvedValue(undefined);
+    const { resolver, prisma, auditLog } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+      attendanceCategories: { refreshForAttendance },
+    });
+    const tx = createTxMock(attendance);
+    tx.eventAttendance.findUnique.mockResolvedValue({ ...attendance, category: 'NON_REGULAR' });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.collectCurrentUserAttendanceFromScannerCode(
+        { eventId: 'event-1', code: 'user:user-1', location: preciseLocation() },
+        context as never,
+      ),
+    ).resolves.toBe(attendance);
+    expect(refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+      attendedAt: expect.any(Date),
+      actorUserId: 'collector-user',
+    });
+    expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+    expect(tx.eventAttendance.update).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 
   it('commits offline attendances with claimed author and current sender separated', async () => {

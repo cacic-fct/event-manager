@@ -7,6 +7,17 @@ export const ANONYMIZED_AUDIT_VALUE = '[ANONIMIZADO]';
 
 const AUDIT_IDENTITY_FIELDS = new Set([
   'personId',
+  'holderPersonId',
+  'originalHolderPersonId',
+  'previousHolderPersonId',
+  'newHolderPersonId',
+  'senderPersonId',
+  'recipientPersonId',
+  'senderUserId',
+  'recipientUserId',
+  'initiatingAdminUserId',
+  'actorUserId',
+  'reviewedById',
   'invitationPersonIds',
   'personAId',
   'personBId',
@@ -102,6 +113,10 @@ export function buildAuditLogSubjectWhere(
         : []),
       ...eventAttendanceEntityConditions,
       ...jsonIdentityConditions,
+      ...identifiers.flatMap((identifier) => ['before', 'after'].flatMap((snapshot) => [
+        { [snapshot]: { path: ['sourceKey'], string_ends_with: `:${identifier}` } },
+        { [snapshot]: { path: ['sourceKey'], string_contains: `:${identifier}:` } },
+      ])),
       ...invitationConditions,
       ...emailConditions,
     ],
@@ -303,7 +318,8 @@ export function containsAuditIdentity(
   path: readonly string[] = [],
 ): boolean {
   if (typeof value === 'string') {
-    return isAuditIdentityPath(path, personRoot) && identities.has(value);
+    return (isAuditIdentityPath(path, personRoot) && identities.has(value)) ||
+      (path.at(-1) === 'sourceKey' && sourceKeyContainsIdentity(value, identities));
   }
   if (Array.isArray(value)) {
     return value.some((child) => containsAuditIdentity(child, identities, personRoot, path));
@@ -312,7 +328,7 @@ export function containsAuditIdentity(
     const changedField = typeof value['field'] === 'string' ? value['field'] : null;
     return Object.entries(value as Record<string, Prisma.JsonValue>).some(([key, child]) => {
       const nextPath = [...path, key];
-      if ((key === 'before' || key === 'after') && changedField && isAuditIdentityField(changedField, personRoot)) {
+      if ((key === 'before' || key === 'after') && changedField && (isAuditIdentityField(changedField, personRoot) || changedField === 'sourceKey')) {
         return containsAuditIdentity(child, identities, personRoot, [...path, changedField]);
       }
       return containsAuditIdentity(child, identities, personRoot, nextPath);
@@ -343,6 +359,9 @@ export function anonymizeAuditJson(
   identityContext = false,
 ): Prisma.InputJsonValue {
   if (typeof value === 'string') {
+    if (path.at(-1) === 'sourceKey' && sourceKeyContainsIdentity(value, identityValues)) {
+      return ANONYMIZED_AUDIT_VALUE;
+    }
     if ((identityContext || isAuditIdentityPath(path, personRoot)) && identityValues.has(value)) {
       return anonymizedSubjectId;
     }
@@ -364,10 +383,12 @@ export function anonymizeAuditJson(
   if (value && typeof value === 'object') {
     const changedField = typeof value['field'] === 'string' ? value['field'].split('.')[0] : null;
     const redactChangeValues = personRoot && changedField != null && PERSONAL_AUDIT_FIELDS.has(changedField);
+    const anonymizeSourceKeyChange = changedField === 'sourceKey';
     const anonymizeChangeValues = changedField != null && isAuditIdentityField(changedField, personRoot);
     return Object.fromEntries(
       Object.entries(value as Record<string, Prisma.JsonValue>).map(([key, child]) => {
-        const nextPath = [...path, key];
+        const nextPath = anonymizeSourceKeyChange && (key === 'before' || key === 'after')
+          ? [...path, 'sourceKey'] : [...path, key];
         const isNestedPerson = path.includes('person') || path.includes('user');
         const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);
         if (redactPersonalField || (redactChangeValues && (key === 'before' || key === 'after'))) {
@@ -391,6 +412,10 @@ export function anonymizeAuditJson(
     );
   }
   return value as Prisma.InputJsonValue;
+}
+
+function sourceKeyContainsIdentity(value: string, identities: ReadonlySet<string>): boolean {
+  return value.split(':').some((segment) => identities.has(decodeAuditEntityIdSegment(segment)));
 }
 
 function isAuditIdentityPath(path: readonly string[], personRoot: boolean): boolean {

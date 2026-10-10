@@ -11,10 +11,18 @@
       @if (!inWorkspaceShell) {
         <h1>Validação de comprovantes</h1>
       }
-      <p>{{ pendingCount() }} pendente{{ pendingCount() === 1 ? '' : 's' }}</p>
+      @if (activeFilterSummary(); as summary) {
+        <p>{{ summary }}</p>
+      } @else {
+        <p>{{ pendingCount() }} pendente{{ pendingCount() === 1 ? '' : 's' }}</p>
+      }
     </div>
 
     <div class="header-actions">
+      <button mat-stroked-button type="button" [disabled]="loading()" (click)="openFilters()">
+        <mat-icon>tune</mat-icon>
+        Filtros
+      </button>
       @if (lastAction(); as action) {
         <button mat-stroked-button type="button" [disabled]="saving()" (click)="undoLastAction()">
           <mat-icon>undo</mat-icon>
@@ -26,7 +34,7 @@
 
   @if (loading()) {
     <section class="loading-state">
-      <mat-spinner diameter="32" />
+      <mat-spinner diameter="32" aria-label="Carregando comprovantes" />
       <span>Carregando comprovantes...</span>
     </section>
   } @else if (error()) {
@@ -40,9 +48,13 @@
   } @else if (!currentItem()) {
     <mat-card appearance="outlined" class="empty-state">
       <mat-card-header>
-        <mat-icon mat-card-avatar>task_alt</mat-icon>
-        <mat-card-title>Nenhum comprovante pendente</mat-card-title>
-        <mat-card-subtitle>A fila será atualizada automaticamente.</mat-card-subtitle>
+        <mat-icon mat-card-avatar>{{ queue().items.length === 0 ? 'task_alt' : 'filter_alt_off' }}</mat-icon>
+        <mat-card-title>
+          {{ queue().items.length === 0 ? 'Nenhum comprovante pendente' : 'Nenhum comprovante corresponde aos filtros' }}
+        </mat-card-title>
+        <mat-card-subtitle>
+          {{ queue().items.length === 0 ? 'A fila será atualizada automaticamente.' : 'Altere os filtros para ver outros itens da fila.' }}
+        </mat-card-subtitle>
       </mat-card-header>
     </mat-card>
   } @else if (currentItem(); as item) {
@@ -51,8 +63,12 @@
         <mat-card-header>
           <mat-icon mat-card-avatar>person</mat-icon>
           <mat-card-title>{{ item.personName }}</mat-card-title>
-          <mat-card-subtitle>
-            {{ item.majorEventName }} · atualização em {{ item.subscriptionUpdatedAt | date: 'dd/MM/yyyy HH:mm' }}
+          <mat-card-subtitle class="queue-context">
+            <span>{{ item.majorEventName }}</span>
+            <span>{{ isTicketPurchase(item) ? 'Compra enviada em' : 'Última alteração em' }}</span>
+            <time [attr.datetime]="isTicketPurchase(item) ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt : item.subscriptionUpdatedAt">
+              {{ (isTicketPurchase(item) ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt : item.subscriptionUpdatedAt) | date: 'dd/MM/yyyy HH:mm' }}
+            </time>
           </mat-card-subtitle>
         </mat-card-header>
 
@@ -71,14 +87,16 @@
               {{ item.paymentTier || 'Não informado' }}
             </span>
             <span>
-              <strong>Status</strong>
-              {{ statusLabel(item.subscriptionStatus) }}
+              <strong>{{ isTicketPurchase(item) ? 'Análise' : 'Status' }}</strong>
+              {{ isTicketPurchase(item) ? 'Comprovante de bilhete' : statusLabel(item.subscriptionStatus) }}
             </span>
-            @if (item.subscriptionFlow === 'RANKED_VOTING') {
-              <span>
-                <strong>Preferências</strong>
-                {{ rankedRequestLine(item) }}
-              </span>
+            @if (!isTicketPurchase(item) && item.subscriptionFlow === 'RANKED_VOTING') {
+              <div class="queue-preferences">
+                <strong>Preferências selecionadas</strong>
+                <span>Minicursos: {{ item.desiredCourses ?? 0 }}</span>
+                <span>Palestras: {{ item.desiredLectures ?? 0 }}</span>
+                <span>Outras atividades: {{ item.desiredUncategorized ?? 0 }}</span>
+              </div>
             }
           </div>
 
@@ -102,11 +120,11 @@
       </mat-card>
 
       <section class="stack-toolbar" aria-label="Navegação de comprovantes">
-        <button matIconButton type="button" [disabled]="selectedIndex() === 0" (click)="previousReceipt()">
+        <button matIconButton type="button" aria-label="Comprovante anterior" [disabled]="selectedIndex() === 0" (click)="previousReceipt()">
           <mat-icon>chevron_left</mat-icon>
         </button>
         <span>{{ currentPosition() }} de {{ totalItems() }}</span>
-        <button matIconButton type="button" [disabled]="selectedIndex() + 1 >= totalItems()" (click)="nextReceipt()">
+        <button matIconButton type="button" aria-label="Próximo comprovante" [disabled]="selectedIndex() + 1 >= totalItems()" (click)="nextReceipt()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </section>
@@ -115,12 +133,14 @@
         <mat-card appearance="outlined" class="events-panel">
           <mat-card-header>
             <mat-icon mat-card-avatar>event</mat-icon>
-            <mat-card-title>Eventos selecionados</mat-card-title>
+            <mat-card-title>{{ isTicketPurchase(item) ? 'Bilhete solicitado' : 'Eventos selecionados' }}</mat-card-title>
             <mat-card-subtitle>
-              @if (item.subscriptionFlow === 'RANKED_VOTING') {
+              @if (isTicketPurchase(item)) {
+                {{ item.ticketName || 'Compra de bilhete' }}
+              } @else if (item.subscriptionFlow === 'RANKED_VOTING') {
                 Ajuste as vagas que serão confirmadas. Seleções automática atualizadas em tempo real.
               } @else {
-                Conflitos em vermelho, sem vagas em amarelo.
+                Conflitos de horário e eventos sem vagas aparecem destacados.
               }
             </mat-card-subtitle>
           </mat-card-header>
@@ -137,39 +157,39 @@
                         class="event-row"
                         [class.conflict-event]="event.hasScheduleConflict"
                         [class.no-slots-event]="event.hasNoSlots && !event.hasScheduleConflict">
-                        @if (item.subscriptionFlow === 'RANKED_VOTING') {
+                        @if (!isTicketPurchase(item) && item.subscriptionFlow === 'RANKED_VOTING') {
                           <mat-checkbox
                             matListItemIcon
                             [checked]="selectedEventIds().has(event.id)"
                             [disabled]="event.autoSubscribe || saving() || !canEditReceiptValidation(item)"
-                            [attr.aria-label]="'Confirmar ' + event.name"
+                            [aria-label]="'Confirmar ' + event.name"
                             (change)="toggleEvent(event, $event.checked)" />
                         }
                         <span matListItemTitle>
                           <span class="event-emoji">{{ event.emoji }}</span>
                           {{ event.name }}
-                          @if (event.eventGroupName) {
-                            · {{ event.eventGroupName }}
-                          }
                         </span>
+                        @if (event.eventGroupName) {
+                          <span matListItemLine>Grupo: {{ event.eventGroupName }}</span>
+                        }
                         <span matListItemLine>
-                          {{ event.startDate | date: 'HH:mm' }} - {{ event.endDate | date: 'HH:mm' }}
-                          @if (event.locationDescription) {
-                            · {{ event.locationDescription }}
-                          }
+                          Horário: {{ event.startDate | date: 'HH:mm' }} a {{ event.endDate | date: 'HH:mm' }}
                         </span>
+                        @if (event.locationDescription) {
+                          <span matListItemLine>Local: {{ event.locationDescription }}</span>
+                        }
                         <span matListItemLine>
-                          @if (event.slotsAvailable === null || event.slotsAvailable === undefined) {
-                            Vagas ilimitadas
+                          @if (isTicketPurchase(item)) {
+                            Bilhete vinculado a este evento
+                          } @else if (event.slotsAvailable === null || event.slotsAvailable === undefined) {
+                            Vagas disponíveis: ilimitadas
                           } @else {
-                            {{ event.slotsAvailable }} vaga{{ event.slotsAvailable === 1 ? '' : 's' }} disponível{{
-                              event.slotsAvailable === 1 ? '' : 'is'
-                            }}
-                          }
-                          @if (event.autoSubscribe) {
-                            · inscrição automática
+                            Vagas disponíveis: {{ event.slotsAvailable }}
                           }
                         </span>
+                        @if (event.autoSubscribe) {
+                          <span matListItemLine>Inscrição automática.</span>
+                        }
                       </mat-list-item>
                     }
                   </mat-list>
@@ -183,10 +203,11 @@
           <mat-card-header>
             <mat-icon mat-card-avatar>receipt_long</mat-icon>
             <mat-card-title>Comprovante</mat-card-title>
-            <mat-card-subtitle>
+            <mat-card-subtitle class="receipt-meta">
               @if (item.receipt) {
-                Enviado em {{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }} ·
-                {{ processingStatusLabel(item.receipt.processingStatus) }}
+                <span>Enviado em</span>
+                <time [attr.datetime]="item.receipt.uploadedAt">{{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</time>
+                <span>Situação: {{ processingStatusLabel(item.receipt.processingStatus) }}</span>
               } @else {
                 Nenhum arquivo encontrado
               }
@@ -197,7 +218,7 @@
             @if (hasOcrMatches(item) && item.receipt) {
               <mat-divider />
               <section class="ocr-matches">
-                <h3>Dados encontrados pelo OCR</h3>
+                <h2>Dados encontrados pelo OCR</h2>
                 <mat-chip-set>
                   @if (item.receipt.nameMatched) {
                     <mat-chip>Nome: {{ item.receipt.matchedNameText }}</mat-chip>
@@ -215,11 +236,11 @@
                 <span>Preparando a pré-visualização de todas as páginas do PDF...</span>
               </div>
             } @else if (item.receipt && !imageUnavailable()) {
-              <div class="receipt-image-shell">
+              <div class="receipt-image-shell" tabindex="0" role="region" aria-label="Imagem do comprovante">
                 <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
               </div>
             } @else if (item.receipt?.ocrText) {
-              <pre class="ocr-fallback">{{ item.receipt.ocrText }}</pre>
+              <pre class="ocr-fallback" tabindex="0" role="region" aria-label="Texto do comprovante">{{ item.receipt.ocrText }}</pre>
             } @else {
               <div class="missing-receipt">
                 <mat-icon>image_not_supported</mat-icon>
@@ -230,7 +251,7 @@
         </mat-card>
       </section>
 
-      @if (rejectPanelOpen() && canEditReceiptValidation(item)) {
+      @if (rejectPanelOpen() && canReject(item)) {
         <mat-card appearance="outlined" class="reject-panel">
           <mat-card-header>
             <mat-icon mat-card-avatar>cancel</mat-icon>
@@ -238,15 +259,17 @@
           </mat-card-header>
           <mat-card-content>
             <form [formGroup]="rejectionForm" class="reject-form">
-              <mat-radio-group formControlName="rejectionCode" aria-label="Motivo da recusa">
-                <mat-radio-button value="INVALID_RECEIPT">Erro no comprovante</mat-radio-button>
-                <mat-radio-button value="NO_SLOTS">Não há mais vagas</mat-radio-button>
-                <mat-radio-button value="SCHEDULE_CONFLICT">Choque de horário</mat-radio-button>
-                <mat-radio-button value="GENERIC">Outro motivo</mat-radio-button>
-              </mat-radio-group>
+              @if (!isTicketPurchase(item)) {
+                <mat-radio-group formControlName="rejectionCode" aria-label="Motivo da recusa">
+                  <mat-radio-button value="INVALID_RECEIPT">Erro no comprovante</mat-radio-button>
+                  <mat-radio-button value="NO_SLOTS">Não há mais vagas</mat-radio-button>
+                  <mat-radio-button value="SCHEDULE_CONFLICT">Choque de horário</mat-radio-button>
+                  <mat-radio-button value="GENERIC">Outro motivo</mat-radio-button>
+                </mat-radio-group>
+              }
 
               <mat-form-field appearance="outline">
-                <mat-label>Motivo para o participante</mat-label>
+                <mat-label>{{ isTicketPurchase(item) ? 'Motivo da recusa' : 'Motivo para o participante' }}</mat-label>
                 <textarea matInput rows="3" formControlName="reason"></textarea>
               </mat-form-field>
             </form>
@@ -256,10 +279,10 @@
             <button
               matButton="filled"
               type="button"
-              [disabled]="rejectionForm.invalid || saving()"
+              [disabled]="rejectionForm.invalid || saving() || !canReject(item)"
               (click)="reject(item)">
               <mat-icon>close</mat-icon>
-              Confirmar recusa
+              {{ isTicketPurchase(item) ? 'Recusar compra' : 'Confirmar recusa' }}
             </button>
           </mat-card-actions>
         </mat-card>
@@ -267,27 +290,31 @@
 
       @if (canEditReceiptValidation(item)) {
         <div class="validation-fab">
-          <button
-            mat-fab
-            color="warn"
-            type="button"
-            [disabled]="saving()"
-            aria-label="Recusar comprovante"
-            matTooltip="Recusar"
-            (click)="openRejectPanel()">
-            <mat-icon>close</mat-icon>
-          </button>
-          <button
-            mat-fab
-            color="primary"
-            type="button"
-            [disabled]="saving() || !item.receipt || !canApprove(item)"
-            [class.validation-disabled]="!canApprove(item)"
-            aria-label="Aprovar comprovante"
-            matTooltip="Aprovar"
-            (click)="approve(item)">
-            <mat-icon>check</mat-icon>
-          </button>
+          @if (canReject(item)) {
+            <button
+              mat-fab
+              color="warn"
+              type="button"
+              [disabled]="saving()"
+              aria-label="Recusar comprovante"
+              matTooltip="Recusar"
+              (click)="openRejectPanel()">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+          @if (canApproveReceipt(item)) {
+            <button
+              mat-fab
+              color="primary"
+              type="button"
+              [disabled]="saving() || !item.receipt || !canApprove(item)"
+              [class.validation-disabled]="!canApprove(item)"
+              aria-label="Aprovar comprovante"
+              matTooltip="Aprovar"
+              (click)="approve(item)">
+              <mat-icon>check</mat-icon>
+            </button>
+          }
         </div>
       }
     </section>

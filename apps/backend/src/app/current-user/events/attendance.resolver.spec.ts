@@ -377,6 +377,37 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(tx.eventAttendance.create).toHaveBeenCalledTimes(1);
   });
 
+  it.each([null, 'standalone-group'])('preserves online attendance for migrated open standalone activities in group %s', async (eventGroupId) => {
+    const createdAttendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' };
+    const tx = {
+      eventAttendance: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(null),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(createdAttendance),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(createOnlineAttendanceEvent({
+          allowSubscription: false,
+          attendanceEligibility: 'ANYONE',
+          eventGroupId,
+          eventGroup: eventGroupId ? { attendanceEligibility: null, deletedAt: null } : null,
+        })),
+      },
+      eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+      majorEventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const resolver = createResolver(prisma);
+
+    await expect(resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {} as never)).resolves.toBeDefined();
+    expect(prisma.eventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(prisma.majorEventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(tx.eventAttendance.create).toHaveBeenCalled();
+  });
+
   it('creates online attendance inside a transaction and notifies realtime listeners', async () => {
     const createdAttendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' };
     const mappedAttendance = { eventId: 'event-1', attendedAt: new Date('2026-01-01T00:00:00.000Z') };
@@ -450,7 +481,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
         committedById: 'user-1',
       },
     });
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
     expect(tx.eventAttendance.findUniqueOrThrow).toHaveBeenCalledWith({
       where: {
         personId_eventId: {

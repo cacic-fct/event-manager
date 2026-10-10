@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   SPORTS_TEST_NOW,
@@ -35,6 +36,10 @@ describe('SportsMatchOperationService offline command log', () => {
   const eventEffects = {
     syncEvent: jest.fn().mockResolvedValue(undefined),
   };
+  const ticketIssuance = {
+    lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+    alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
+  };
 
   let tx: ReturnType<typeof createTransaction>;
   let prisma: {
@@ -58,6 +63,7 @@ describe('SportsMatchOperationService offline command log', () => {
       auditLog as never,
       frozen as never,
       eventEffects as never,
+      ticketIssuance as never,
     );
   });
 
@@ -325,6 +331,16 @@ describe('SportsMatchOperationService offline command log', () => {
       },
     });
     expect(eventEffects.syncEvent).toHaveBeenCalledWith('event-1');
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: 'admin-1',
+      permission: Permission.SportsMatch.Operate,
+    });
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
+    expect(tx.event.update.mock.invocationCallOrder[0])
+      .toBeLessThan(ticketIssuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
   });
 
   it('approves a pending start against the canonical projection without self-invalidating', async () => {

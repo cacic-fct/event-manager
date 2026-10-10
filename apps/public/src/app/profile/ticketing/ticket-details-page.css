@@ -1,0 +1,59 @@
+.ticket-details-page {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1.5rem;
+  margin-inline: auto;
+  max-width: 42rem;
+  padding: 1rem 1rem 2.5rem;
+  width: 100%;
+}
+
+.ticket-event-section {
+  margin: 0 -0.75rem;
+}
+
+.ticket-meta-section h2,
+.ticket-description h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0 0 0.5rem;
+}
+
+.ticket-transfer-eligibility {
+  margin-top: 0.75rem;
+}
+
+.ticket-transfer-eligibility h3 {
+  font: var(--mat-sys-title-medium);
+  margin: 0 0 0.25rem;
+}
+
+.ticket-transfer-eligibility p {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ticket-description {
+  margin-top: 1.5rem;
+}
+
+.ticket-description p {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ticket-page-message {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 10rem;
+  text-align: center;
+}
+
+.ticket-page-message p {
+  margin: 0;
+}

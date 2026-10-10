@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,6 +7,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -30,6 +31,13 @@ import { getErrorMessage } from '../../feedback/error-message';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { isFrozenMajorEvent } from '../../resource-state/frozen-resource';
 import { PermissionsService } from '../../permissions/permissions.service';
+import { ReceiptValidationFiltersDialogComponent } from './receipt-validation-filters-dialog.component';
+import {
+  DEFAULT_RECEIPT_VALIDATION_FILTERS,
+  filterAndSortReceiptValidationItems,
+  receiptValidationCategory,
+  type ReceiptValidationFilters,
+} from './receipt-validation-filtering';
 import { ADMIN_SHELL_CONTEXT } from '../../shared/admin-shell-context';
 import { receiptProcessingStatusLabel } from '../subscription-labels';
 
@@ -72,15 +80,16 @@ interface EventDayGroup {
     '../../app-shell/layout/forms-feedback.shared.scss',
     './receipt-validation-page.component.scss',
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReceiptValidationPageComponent {
   protected readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly api = inject(ReceiptValidationApiService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
+  private readonly dialog = inject(MatDialog);
   protected readonly permissions = inject(PermissionsService);
   private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
 
@@ -89,6 +98,7 @@ export class ReceiptValidationPageComponent {
   protected readonly imageUnavailable = signal(false);
   protected readonly rejectPanelOpen = signal(false);
   protected readonly queue = signal<ReceiptValidationQueue>({ pendingCount: 0, items: [] });
+  protected readonly filters = signal<ReceiptValidationFilters>(DEFAULT_RECEIPT_VALIDATION_FILTERS);
   protected readonly selectedIndex = signal(0);
   protected readonly lastAction = signal<LastValidationAction | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -99,9 +109,10 @@ export class ReceiptValidationPageComponent {
     reason: ['', Validators.required],
   });
 
-  protected readonly pendingCount = computed(() => this.queue()?.pendingCount ?? 0);
-  protected readonly totalItems = computed(() => this.queue()?.items.length ?? 0);
-  protected readonly currentItem = computed(() => this.queue()?.items[this.selectedIndex()] ?? null);
+  protected readonly visibleItems = computed(() => filterAndSortReceiptValidationItems(this.queue().items, this.filters()));
+  protected readonly pendingCount = computed(() => this.visibleItems().length);
+  protected readonly totalItems = computed(() => this.visibleItems().length);
+  protected readonly currentItem = computed(() => this.visibleItems()[this.selectedIndex()] ?? null);
   protected readonly currentPosition = computed(() =>
     this.totalItems() === 0 ? 0 : Math.min(this.selectedIndex() + 1, this.totalItems()),
   );
@@ -110,6 +121,15 @@ export class ReceiptValidationPageComponent {
   protected readonly subscriptionsLink = computed(() =>
     this.majorEventId ? ['/subscriptions/major-event', this.majorEventId] : ['/subscriptions'],
   );
+  protected readonly activeFilterSummary = computed(() => {
+    const filters = this.filters();
+    if (filters.category === 'ALL' && !filters.paymentTier) return null;
+    const category = filters.category === 'SUBSCRIPTION' ? 'Inscrições' : filters.category === 'TICKET' ? 'Bilhetes' : '';
+    const details = [category ? `Categoria: ${category}` : '', filters.paymentTier ? `Lote: ${filters.paymentTier}` : '']
+      .filter(Boolean)
+      .join('. ');
+    return `${this.pendingCount()} de ${this.queue().pendingCount} pendentes. ${details}.`;
+  });
 
   constructor() {
     this.api
@@ -120,7 +140,7 @@ export class ReceiptValidationPageComponent {
           this.queue.set(queue);
           this.loading.set(false);
           this.error.set(null);
-          this.clampSelectedIndex(queue.items.length);
+          this.clampSelectedIndex(this.visibleItems().length);
         },
         error: (error: unknown) => {
           this.loading.set(false);
@@ -148,10 +168,27 @@ export class ReceiptValidationPageComponent {
   }
 
   protected nextReceipt(): void {
-    this.selectedIndex.update((index) => Math.min(this.queue().items.length - 1, index + 1));
+    this.selectedIndex.update((index) => Math.min(this.visibleItems().length - 1, index + 1));
   }
 
   protected async approve(item: ReceiptValidationQueueItem): Promise<void> {
+    if (this.isTicketPurchase(item)) {
+      const purchaseId = item.purchaseId ?? item.subscriptionId;
+      if (this.saving() || !this.canApprove(item) || !item.receipt) return;
+      this.saving.set(true);
+      try {
+        const approved = await firstValueFrom(this.api.approveTicketPurchase(purchaseId));
+        if (!approved) throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        this.snackbar.open('Compra de bilhete aprovada.', 'Fechar', { duration: 3000 });
+        await this.refreshQueue();
+      } catch (error) {
+        this.showError(error, 'Não foi possível aprovar a compra do bilhete.');
+      } finally {
+        this.saving.set(false);
+      }
+      return;
+    }
+
     const receiptId = item.receipt?.id;
     if (!receiptId || this.saving() || !this.canApprove(item)) {
       return;
@@ -172,6 +209,26 @@ export class ReceiptValidationPageComponent {
   }
 
   protected async reject(item: ReceiptValidationQueueItem): Promise<void> {
+    if (this.isTicketPurchase(item)) {
+      const reason = this.rejectionForm.controls.reason.value.trim();
+      if (!reason || this.saving() || !this.canReject(item)) return;
+      this.saving.set(true);
+      try {
+        const rejected = await firstValueFrom(
+          this.api.rejectTicketPurchase(item.purchaseId ?? item.subscriptionId, reason),
+        );
+        if (!rejected) throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        this.rejectPanelOpen.set(false);
+        this.snackbar.open('Compra de bilhete recusada.', 'Fechar', { duration: 3000 });
+        await this.refreshQueue();
+      } catch (error) {
+        this.showError(error, 'Não foi possível recusar a compra do bilhete.');
+      } finally {
+        this.saving.set(false);
+      }
+      return;
+    }
+
     const receiptId = item.receipt?.id;
     if (this.rejectionForm.invalid || this.saving()) {
       return;
@@ -237,6 +294,32 @@ export class ReceiptValidationPageComponent {
     return getSubscriptionStatusLabel(status);
   }
 
+  protected isTicketPurchase(item: ReceiptValidationQueueItem): boolean {
+    return receiptValidationCategory(item) === 'TICKET';
+  }
+
+  protected openFilters(): void {
+    const queue = this.queue();
+    const paymentTiers = queue.availablePaymentTiers?.map((tier) => tier.name) ?? [];
+    const reference = this.dialog.open(ReceiptValidationFiltersDialogComponent, {
+      width: 'min(30rem, calc(100vw - 2rem))',
+      maxWidth: 'calc(100vw - 2rem)',
+      autoFocus: 'first-tabbable',
+      data: {
+        subscriptionCount: queue.subscriptionCount ?? queue.items.filter((item) => !this.isTicketPurchase(item)).length,
+        ticketCount: queue.ticketCount ?? queue.items.filter((item) => this.isTicketPurchase(item)).length,
+        paymentTiers,
+        filters: this.filters(),
+      },
+    });
+    reference.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((filters: ReceiptValidationFilters | undefined) => {
+      if (!filters) return;
+      const currentId = this.currentItem()?.subscriptionId;
+      this.filters.set(filters);
+      const retainedIndex = currentId ? this.visibleItems().findIndex((item) => item.subscriptionId === currentId) : -1;
+      this.selectedIndex.set(retainedIndex >= 0 ? retainedIndex : 0);
+    });
+  }
   protected readonly processingStatusLabel = receiptProcessingStatusLabel;
 
   protected toggleEvent(event: ReceiptValidationEvent, checked: boolean): void {
@@ -256,6 +339,8 @@ export class ReceiptValidationPageComponent {
   }
 
   protected canApprove(item: ReceiptValidationQueueItem): boolean {
+    if (!this.canApproveReceipt(item)) return false;
+    if (this.isTicketPurchase(item)) return true;
     if (item.subscriptionFlow !== 'RANKED_VOTING') {
       return true;
     }
@@ -269,23 +354,23 @@ export class ReceiptValidationPageComponent {
     );
   }
 
+  protected canApproveReceipt(item: ReceiptValidationQueueItem): boolean {
+    return this.canEditReceiptValidation(item) && this.permissions.has(Permission.Receipt.Approve);
+  }
+
+  protected canReject(item: ReceiptValidationQueueItem): boolean {
+    return this.canEditReceiptValidation(item) && this.permissions.has(Permission.Receipt.Reject);
+  }
+
   protected canEditReceiptValidation(item: ReceiptValidationQueueItem): boolean {
-    return (
-      this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]) &&
-      (!isFrozenMajorEvent({
+    const canValidate = this.isTicketPurchase(item)
+      ? this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject])
+      : this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]);
+    return canValidate && (!isFrozenMajorEvent({
         createdAt: item.majorEventCreatedAt,
         endDate: item.majorEventEndDate,
       }) ||
-        this.permissions.has(Permission.Frozen.Update))
-    );
-  }
-
-  protected rankedRequestLine(item: ReceiptValidationQueueItem): string {
-    return [
-      `${item.desiredCourses ?? 0} minicurso(s)`,
-      `${item.desiredLectures ?? 0} palestra(s)`,
-      `${item.desiredUncategorized ?? 0} outro(s)`,
-    ].join(' · ');
+        this.permissions.has(Permission.Frozen.Update));
   }
 
   protected hasOcrMatches(item: ReceiptValidationQueueItem): boolean {
@@ -301,7 +386,7 @@ export class ReceiptValidationPageComponent {
   private async refreshQueue(): Promise<void> {
     try {
       this.queue.set(await firstValueFrom(this.api.getQueue(this.majorEventId)));
-      this.clampSelectedIndex(this.queue().items.length);
+      this.clampSelectedIndex(this.visibleItems().length);
       this.error.set(null);
     } catch (error) {
       this.showError(error, 'Não foi possível atualizar a fila.');

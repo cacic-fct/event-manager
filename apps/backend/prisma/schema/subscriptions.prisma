@@ -108,6 +108,7 @@ model MajorEventSubscription {
   receiptValidatedBy           String?
   validationActions            MajorEventReceiptValidationAction[]
   sportsTournamentParticipants SportsTournamentParticipant[]
+  ticketPurchases TicketPurchase[]
 
   createdAt                     DateTime                   @default(now())
   imageLicenseAgreementAccepted Boolean                    @default(false)

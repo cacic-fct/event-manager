@@ -36,12 +36,25 @@
 
 .header-actions,
 .contact-actions {
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .receipt-stack {
   display: grid;
   gap: 16px;
+}
+
+.queue-context,
+.receipt-meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.queue-context time,
+.receipt-meta time {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
 }
 
 .subscriber-grid {
@@ -59,6 +72,12 @@
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+.queue-preferences {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .stack-toolbar {
@@ -95,20 +114,29 @@
 }
 
 .event-row {
-  border-left: 4px solid transparent;
   border-radius: 4px;
   margin-bottom: 6px;
 }
 
 .event-row.conflict-event {
-  border-left-color: var(--mat-sys-error);
-  background: color-mix(in srgb, var(--mat-sys-error-container) 45%, transparent);
+  --receipt-event-foreground: var(--mat-sys-on-error-container);
+  background: var(--mat-sys-error-container);
 }
 
 .event-row.no-slots-event {
-  border-left-color: #8a6d00;
-  background: color-mix(in srgb, #fff3bf 55%, transparent);
-  color: #302400;
+  --receipt-event-foreground: var(--mat-sys-on-tertiary-container);
+  background: var(--mat-sys-tertiary-container);
+}
+
+.event-row.conflict-event,
+.event-row.no-slots-event {
+  --mat-list-list-item-label-text-color: var(--receipt-event-foreground);
+  --mat-list-list-item-supporting-text-color: var(--receipt-event-foreground);
+  --mat-list-list-item-hover-label-text-color: var(--receipt-event-foreground);
+  --mat-list-list-item-hover-supporting-text-color: var(--receipt-event-foreground);
+  --mat-list-list-item-focus-label-text-color: var(--receipt-event-foreground);
+  --mat-list-list-item-focus-supporting-text-color: var(--receipt-event-foreground);
+  color: var(--receipt-event-foreground);
 }
 
 .event-emoji {
@@ -161,7 +189,7 @@
   margin-top: 16px;
 }
 
-.ocr-matches h3 {
+.ocr-matches h2 {
   margin: 16px 0 8px;
   font-size: 1rem;
 }
@@ -216,7 +244,22 @@
   }
 
   .validation-fab {
-    right: 16px;
-    bottom: 16px;
+    position: static;
+    justify-content: flex-end;
+    padding-block: 16px;
   }
+
+  .receipt-validation-page {
+    padding-bottom: 16px;
+  }
+
+  .reject-panel {
+    position: static;
+  }
+}
+
+.receipt-image-shell:focus-visible,
+.ocr-fallback:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }

@@ -392,6 +392,34 @@ export const AUDIENCE_RELATIONS = {
       "isList": true,
       "isRequired": true,
       "ownsRelation": false
+    },
+    {
+      "name": "ticketConfig",
+      "type": "TicketConfig",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": false
+    },
+    {
+      "name": "eventTickets",
+      "type": "EventTicket",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfers",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketPurchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
     }
   ],
   "EventDraft": [
@@ -726,6 +754,13 @@ export const AUDIENCE_RELATIONS = {
       "isList": true,
       "isRequired": true,
       "ownsRelation": false
+    },
+    {
+      "name": "ticketPurchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
     }
   ],
   "PaymentInfo": [
@@ -796,6 +831,20 @@ export const AUDIENCE_RELATIONS = {
     {
       "name": "eventFormLinks",
       "type": "EventFormLinkPriceTier",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketPriceOptions",
+      "type": "TicketPriceOption",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketPurchases",
+      "type": "TicketPurchase",
       "isList": true,
       "isRequired": true,
       "ownsRelation": false
@@ -1103,6 +1152,55 @@ export const AUDIENCE_RELATIONS = {
     {
       "name": "certificates",
       "type": "Certificate",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "heldTickets",
+      "type": "EventTicket",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "originatedTickets",
+      "type": "EventTicket",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketPurchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersSent",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersReceived",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketHistoryAsPreviousHolder",
+      "type": "EventTicketHistory",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketHistoryAsNewHolder",
+      "type": "EventTicketHistory",
       "isList": true,
       "isRequired": true,
       "ownsRelation": false
@@ -2348,6 +2446,13 @@ export const AUDIENCE_RELATIONS = {
       "isList": true,
       "isRequired": true,
       "ownsRelation": false
+    },
+    {
+      "name": "ticketPurchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
     }
   ],
   "MajorEventSubscriptionEventSelection": [
@@ -2366,12 +2471,318 @@ export const AUDIENCE_RELATIONS = {
       "ownsRelation": true
     }
   ],
+  "TicketConfig": [
+    {
+      "name": "event",
+      "type": "Event",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "priceOptions",
+      "type": "TicketPriceOption",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "tickets",
+      "type": "EventTicket",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "purchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    }
+  ],
+  "TicketPriceOption": [
+    {
+      "name": "ticketConfig",
+      "type": "TicketConfig",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "priceTier",
+      "type": "PriceTier",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "purchases",
+      "type": "TicketPurchase",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    }
+  ],
+  "EventTicket": [
+    {
+      "name": "event",
+      "type": "Event",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "ticketConfig",
+      "type": "TicketConfig",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "holder",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "originalHolder",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "history",
+      "type": "EventTicketHistory",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "transfers",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    }
+  ],
+  "EventTicketHistory": [
+    {
+      "name": "ticket",
+      "type": "EventTicket",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "previousHolder",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "newHolder",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "transfer",
+      "type": "TicketTransfer",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    }
+  ],
+  "TicketTransfer": [
+    {
+      "name": "ticket",
+      "type": "EventTicket",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "event",
+      "type": "Event",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "sender",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "senderUser",
+      "type": "User",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "recipient",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "recipientUser",
+      "type": "User",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "author",
+      "type": "User",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "initiatingAdmin",
+      "type": "User",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "history",
+      "type": "EventTicketHistory",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "resolutionJob",
+      "type": "TicketTransferResolutionOutbox",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": false
+    }
+  ],
+  "TicketTransferResolutionOutbox": [
+    {
+      "name": "transfer",
+      "type": "TicketTransfer",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    }
+  ],
+  "TicketTransferAuthorCooldown": [
+    {
+      "name": "user",
+      "type": "User",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    }
+  ],
+  "TicketPurchase": [
+    {
+      "name": "event",
+      "type": "Event",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "majorEvent",
+      "type": "MajorEvent",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "ticketConfig",
+      "type": "TicketConfig",
+      "isList": false,
+      "isRequired": true,
+      "ownsRelation": true
+    },
+    {
+      "name": "majorEventSubscription",
+      "type": "MajorEventSubscription",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "person",
+      "type": "People",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "priceOption",
+      "type": "TicketPriceOption",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    },
+    {
+      "name": "priceTier",
+      "type": "PriceTier",
+      "isList": false,
+      "isRequired": false,
+      "ownsRelation": true
+    }
+  ],
+  "TicketNotificationOutbox": [],
+  "TicketRealtimeOutbox": [],
+  "TicketEntitlementReconciliation": [],
   "User": [
     {
       "name": "people",
       "type": "People",
       "isList": true,
       "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersAuthored",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersAdminStarted",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersAsSender",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransfersAsRecipient",
+      "type": "TicketTransfer",
+      "isList": true,
+      "isRequired": true,
+      "ownsRelation": false
+    },
+    {
+      "name": "ticketTransferCooldown",
+      "type": "TicketTransferAuthorCooldown",
+      "isList": false,
+      "isRequired": false,
       "ownsRelation": false
     },
     {

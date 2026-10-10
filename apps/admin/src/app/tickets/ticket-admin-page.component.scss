@@ -1,0 +1,378 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.loading-state,
+.loading-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.loading-state {
+  min-height: 8rem;
+  justify-content: center;
+}
+
+.ticket-major-workspace,
+.ticket-event-workspace {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.intro {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.purpose-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-color: var(--mat-sys-outline-variant);
+}
+
+.purpose-note mat-icon {
+  flex: 0 0 auto;
+  color: var(--mat-sys-primary);
+}
+
+.purpose-note p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.workspace-region {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding-block: 0.25rem 1rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.workspace-region h2,
+.section-heading h2,
+.list-toolbar h2 {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.section-heading,
+.list-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-heading p,
+.list-toolbar p {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.count,
+.state-label {
+  flex: 0 0 auto;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.config-list {
+  display: grid;
+}
+
+.config-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.config-copy,
+.ticket-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.config-copy strong,
+.ticket-copy strong {
+  overflow-wrap: anywhere;
+  font: var(--mat-sys-title-small);
+}
+
+.config-copy span,
+.ticket-copy span,
+.ticket-copy small {
+  overflow-wrap: anywhere;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.config-form {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset[disabled] {
+  opacity: 0.72;
+}
+
+.identity-fields,
+.policy-fields,
+.price-editor,
+.ticket-filters {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.full-width {
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.subsection {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.subsection h3 {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.price-editor {
+  align-items: start;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.price-rows {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.25rem;
+}
+
+.price-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.7fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.form-actions .muted {
+  margin-inline-end: auto;
+}
+
+.eligibility-warnings,
+.inline-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.eligibility-warnings mat-icon {
+  flex: 0 0 auto;
+  color: var(--mat-sys-error);
+}
+
+.eligibility-warnings p {
+  margin: 0.35rem 0 0;
+}
+
+.muted,
+.empty-state {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.purchase-receipt-rule {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.empty-state {
+  margin: 0;
+  padding-block: 0.75rem;
+}
+
+.issued-panel {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+.ticket-list {
+  display: grid;
+}
+
+.ticket-row {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding-block: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.ticket-identity {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ticket-metadata,
+.ticket-actions,
+.ticket-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.ticket-metadata {
+  display: grid;
+  gap: 0.4rem;
+  padding-inline-start: 2.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.ticket-metadata > div {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+}
+
+.ticket-metadata strong {
+  color: var(--mat-sys-on-surface);
+  font-weight: 600;
+}
+
+.ticket-metadata span,
+.ticket-metadata time {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ticket-actions {
+  padding-inline-start: 2.75rem;
+}
+
+.ticket-pager {
+  justify-content: space-between;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 0.75rem;
+}
+
+.ticket-filters {
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.5fr);
+}
+
+.inline-error {
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 760px) {
+  .section-heading,
+  .list-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-heading > a,
+  .list-toolbar > button {
+    align-self: flex-start;
+  }
+
+  .identity-fields,
+  .policy-fields,
+  .price-editor,
+  .ticket-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .full-width,
+  .price-rows {
+    grid-column: auto;
+  }
+
+  .price-row {
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.8fr) auto;
+  }
+
+  .ticket-identity {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+
+  .ticket-identity mat-chip-set {
+    grid-column: 2;
+  }
+
+  .ticket-metadata,
+  .ticket-actions {
+    padding-inline-start: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .config-row {
+    grid-template-columns: 2rem minmax(0, 1fr);
+  }
+
+  .config-row > a {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .price-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .price-row mat-form-field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .purpose-note {
+    align-items: flex-start;
+  }
+}

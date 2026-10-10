@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { People, Prisma } from '@prisma/client';
+import { EventTicketStatus, People, Prisma, TicketPurchaseStatus } from '@prisma/client';
 import {
   isRecord,
   readArray,
@@ -21,6 +21,10 @@ import {
   SportsTournamentParticipantSnapshot,
 } from './types';
 import type { AudienceInvitationSnapshot } from './audience-invitations';
+import type {
+  TicketHolderMergeSnapshot,
+  TicketPersonRelationsSnapshot,
+} from '../../../tickets/ticket-merge-relations';
 
 export function toPersonSnapshot(person: People): PersonSnapshot {
   return {
@@ -187,7 +191,79 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
       value.sportsOfficialAssignmentSnapshots === undefined
         ? []
         : readSportsOfficialAssignmentSnapshots(value.sportsOfficialAssignmentSnapshots),
+    ...(value.ticketRelations === undefined
+      ? {}
+      : { ticketRelations: readTicketPersonRelationsSnapshot(value.ticketRelations) }),
   };
+}
+
+function readTicketPersonRelationsSnapshot(value: Prisma.JsonValue): TicketPersonRelationsSnapshot {
+  if (!isRecord(value)) {
+    throw new ConflictException('Invalid ticketRelations payload.');
+  }
+
+  const holderSnapshots = readArrayValue(value.holderSnapshots, 'ticket holder snapshots').map((entry) => {
+    const action = readRequiredString(entry, 'action');
+    if (action !== 'MOVED' && action !== 'ARCHIVED') {
+      throw new ConflictException('Invalid ticket holder snapshot action.');
+    }
+    return {
+      action: action as TicketHolderMergeSnapshot['action'],
+      id: readRequiredString(entry, 'id'),
+      eventId: readRequiredString(entry, 'eventId'),
+      sourceKey: readNullableString(entry, 'sourceKey'),
+      originalHolderPersonId: readNullableString(entry, 'originalHolderPersonId'),
+      holderPersonId: readRequiredString(entry, 'holderPersonId'),
+      status: readTicketStatus(entry, 'status'),
+      revokedAt: readNullableString(entry, 'revokedAt'),
+      revokedReason: readNullableString(entry, 'revokedReason'),
+      expectedHolderPersonId: readRequiredString(entry, 'expectedHolderPersonId'),
+      expectedStatus: readTicketStatus(entry, 'expectedStatus'),
+      expectedRevokedAt: readNullableString(entry, 'expectedRevokedAt'),
+      expectedRevokedReason: readNullableString(entry, 'expectedRevokedReason'),
+      archiveHistoryId: readNullableString(entry, 'archiveHistoryId'),
+    };
+  });
+  const transferSnapshots = readArrayValue(value.transferSnapshots, 'ticket transfer snapshots').map((entry) => ({
+    id: readRequiredString(entry, 'id'),
+    senderPersonId: readNullableString(entry, 'senderPersonId'),
+    recipientPersonId: readNullableString(entry, 'recipientPersonId'),
+    expectedSenderPersonId: readNullableString(entry, 'expectedSenderPersonId'),
+    expectedRecipientPersonId: readNullableString(entry, 'expectedRecipientPersonId'),
+  }));
+  const purchaseSnapshots =
+    value.purchaseSnapshots === undefined
+      ? []
+      : readArrayValue(value.purchaseSnapshots, 'ticket purchase snapshots').map((entry) => ({
+          id: readRequiredString(entry, 'id'),
+          ticketConfigId: readRequiredString(entry, 'ticketConfigId'),
+          personId: readRequiredString(entry, 'personId'),
+          majorEventSubscriptionId: readNullableString(entry, 'majorEventSubscriptionId'),
+          status: readTicketPurchaseStatus(entry, 'status'),
+          expectedPersonId: readRequiredString(entry, 'expectedPersonId'),
+          expectedMajorEventSubscriptionId: readNullableString(entry, 'expectedMajorEventSubscriptionId'),
+          expectedStatus: readTicketPurchaseStatus(entry, 'expectedStatus'),
+        }));
+  return { holderSnapshots, transferSnapshots, purchaseSnapshots };
+}
+
+function readTicketStatus(record: Record<string, Prisma.JsonValue>, fieldName: string): EventTicketStatus {
+  const status = readRequiredString(record, fieldName);
+  if (!Object.values(EventTicketStatus).includes(status as EventTicketStatus)) {
+    throw new ConflictException(`Invalid ticket ${fieldName} payload.`);
+  }
+  return status as EventTicketStatus;
+}
+
+function readTicketPurchaseStatus(
+  record: Record<string, Prisma.JsonValue>,
+  fieldName: string,
+): TicketPurchaseStatus {
+  const status = readRequiredString(record, fieldName);
+  if (!Object.values(TicketPurchaseStatus).includes(status as TicketPurchaseStatus)) {
+    throw new ConflictException(`Invalid ticket purchase ${fieldName} payload.`);
+  }
+  return status as TicketPurchaseStatus;
 }
 
 function readAudienceInvitationSnapshots(value: Prisma.JsonValue): AudienceInvitationSnapshot[] {

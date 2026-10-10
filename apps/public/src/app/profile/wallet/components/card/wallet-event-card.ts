@@ -1,5 +1,5 @@
 import { NgOptimizedImage } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 import { WalletBarcodeComponent } from '../barcode/barcode';
 import { WalletCardUser } from './wallet-card.types';
@@ -107,7 +107,7 @@ import { WalletCardUser } from './wallet-card.types';
     }
     .credential-hint {
       margin-top: 0.75rem;
-      color: #293444;
+      color: #d8e4f5;
       font-size: 0.8125rem;
       line-height: 1.4;
       text-align: center;
@@ -196,7 +196,6 @@ import { WalletCardUser } from './wallet-card.types';
       }
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletEventCard {
   readonly user = input<WalletCardUser | null>(null);
@@ -205,11 +204,14 @@ export class WalletEventCard {
   );
 
   googlePictureUrl(url: string | null | undefined): string {
-    if (!url?.includes('lh3.googleusercontent.com')) {
-      return url ?? '';
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') return url;
+      return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
+    } catch {
+      return url;
     }
-
-    return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
   }
 
   protected formatDocument(document: string): string {

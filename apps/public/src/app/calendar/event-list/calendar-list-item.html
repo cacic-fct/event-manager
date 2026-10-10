@@ -1,0 +1,72 @@
+@let entry = item();
+
+<mat-list class="calendar-item-list" role="presentation">
+  @if (entry.route) {
+    <a
+      mat-list-item
+      class="calendar-row"
+      [routerLink]="entry.route"
+      [queryParams]="queryParams()"
+      [attr.aria-label]="ariaLabel()">
+      <div matListItemIcon class="emoji-frame" aria-hidden="true">
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
+      </div>
+      <div matListItemTitle>{{ entry.name }}</div>
+      @if (hasSupportingText()) {
+        <div matListItemLine class="row-supporting-text">
+          @for (line of contextLines(); track $index) {
+            <span class="metadata-item">{{ line }}</span>
+          }
+          @if (entry.eventType) {
+            <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
+          }
+          @for (line of entry.secondaryLines ?? []; track $index) {
+            <span class="metadata-item">{{ line }}</span>
+          }
+          @if (entry.expiresAt) {
+            <span class="metadata-item">
+              {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+            </span>
+          }
+          @if (entry.locationDescription) {
+            <span class="metadata-item">{{ entry.locationDescription }}</span>
+          }
+        </div>
+      }
+      <div matListItemMeta class="time-range" aria-label="Horário do evento">
+        <span>{{ entry.startDate | date: 'HH:mm' }}–{{ entry.endDate | date: 'HH:mm' }}</span>
+      </div>
+    </a>
+  } @else {
+    <mat-list-item class="calendar-row">
+      <div matListItemIcon class="emoji-frame" aria-hidden="true">
+        <img class="twemoji" [src]="emoji.getTwemojiUrl(entry.emoji)" alt="" />
+      </div>
+      <div matListItemTitle>{{ entry.name }}</div>
+      @if (hasSupportingText()) {
+        <div matListItemLine class="row-supporting-text">
+          @for (line of contextLines(); track $index) {
+            <span class="metadata-item">{{ line }}</span>
+          }
+          @if (entry.eventType) {
+            <span class="metadata-item">{{ eventTypeLabel(entry.eventType) }}</span>
+          }
+          @for (line of entry.secondaryLines ?? []; track $index) {
+            <span class="metadata-item">{{ line }}</span>
+          }
+          @if (entry.expiresAt) {
+            <span class="metadata-item">
+              {{ entry.expiresLabel ?? 'Válido até' }} {{ entry.expiresAt | date: 'dd/MM/yyyy HH:mm' }}
+            </span>
+          }
+          @if (entry.locationDescription) {
+            <span class="metadata-item">{{ entry.locationDescription }}</span>
+          }
+        </div>
+      }
+      <div matListItemMeta class="time-range" aria-label="Horário do evento">
+        <span>{{ entry.startDate | date: 'HH:mm' }}–{{ entry.endDate | date: 'HH:mm' }}</span>
+      </div>
+    </mat-list-item>
+  }
+</mat-list>

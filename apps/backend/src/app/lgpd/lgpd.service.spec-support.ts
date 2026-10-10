@@ -174,6 +174,9 @@ function createPrismaMock() {
       findMany: jest.fn(),
     },
     eventDraft: findManyDelegate(),
+    eventTicket: findManyDelegate(),
+    ticketTransfer: findManyDelegate(),
+    ticketPurchase: findManyDelegate(),
     eventSubscription: softDeleteDelegate(),
     eventInterest: { ...softDeleteDelegate(), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     eventGroupSubscription: softDeleteDelegate(),
@@ -218,6 +221,12 @@ function createTransactionMock() {
   });
 
   return {
+    eventTicket: { findMany: jest.fn().mockResolvedValue([]), update: jest.fn(), ...writeManyDelegate() },
+    ticketTransfer: { findMany: jest.fn().mockResolvedValue([]), ...writeManyDelegate() },
+    ticketPurchase: writeManyDelegate(),
+    ticketNotificationOutbox: deleteManyDelegate(),
+    ticketRealtimeOutbox: deleteManyDelegate(),
+    eventTicketHistory: writeManyDelegate(),
     externalImportRecord: {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),

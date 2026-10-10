@@ -40,6 +40,7 @@ const permissionScopeExpectations = [
   ['reject', 'Rejeitar', 'cancel'],
   ['undo', 'Desfazer', 'undo'],
   ['issue', 'Emitir', 'workspace_premium'],
+  ['revoke', 'Revogar', 'block'],
   ['reissue', 'Reemitir', 'sync'],
   ['merge', 'Mesclar', 'merge_type'],
   ['scan', 'Buscar', 'search'],
@@ -49,6 +50,7 @@ const permissionScopeExpectations = [
   ['duplicate', 'Duplicar', 'content_copy'],
   ['review', 'Revisar', 'rate_review'],
   ['operate', 'Operar', 'sports_score'],
+  ['manage', 'Gerenciar', 'swap_horiz'],
   ['assign-representative', 'Atribuir representante', 'manage_accounts'],
   ['custom-action', 'custom-action', 'help'],
 ] as const;
@@ -71,6 +73,9 @@ const permissionResourceExpectations = [
   ['place-preset', 'Local', 'place'],
   ['receipt', 'Comprovante', 'receipt_long'],
   ['subscription', 'Inscrição', 'how_to_reg'],
+  ['ticket-config', 'Configuração de bilhete', 'confirmation_number'],
+  ['ticket', 'Bilhete', 'confirmation_number'],
+  ['ticket-transfer', 'Transferência de bilhete', 'swap_horiz'],
   ['sports-tournament', 'Torneio esportivo', 'emoji_events'],
   ['sports-category', 'Modalidade esportiva', 'sports'],
   ['sports-team', 'Equipe esportiva', 'groups'],
@@ -218,6 +223,56 @@ describe('shared permissions contract', () => {
     }
   });
 
+  it('formats every catalog permission with a localized label and specific icon', () => {
+    for (const permission of EVENT_MANAGER_PERMISSION_CATALOG) {
+      const { resource, scope } = parsePermission(permission);
+
+      expect(getPermissionResourceLabel(resource)).not.toBe(resource);
+      expect(getPermissionResourceIcon(resource)).not.toBe('shield');
+      expect(getPermissionScopeLabel(scope)).not.toBe(scope);
+      expect(getPermissionScopeIcon(scope)).not.toBe('help');
+    }
+  });
+
+  it('formats ticket permissions as Brazilian Portuguese permission groups', () => {
+    const groups = formatPermissionGroups([
+      Permission.TicketConfig.Read,
+      Permission.Ticket.Read,
+      Permission.Ticket.Issue,
+      Permission.Ticket.Revoke,
+      Permission.TicketTransfer.Read,
+      Permission.TicketTransfer.Manage,
+    ]);
+
+    expect(groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'ticket-config',
+          label: 'Configuração de bilhete',
+          resourceIcon: 'confirmation_number',
+          actions: [expect.objectContaining({ scope: 'read', label: 'Visualizar', icon: 'visibility' })],
+        }),
+        expect.objectContaining({
+          type: 'ticket',
+          label: 'Bilhete',
+          resourceIcon: 'confirmation_number',
+          actions: expect.arrayContaining([
+            expect.objectContaining({ scope: 'issue', label: 'Emitir', icon: 'workspace_premium' }),
+            expect.objectContaining({ scope: 'revoke', label: 'Revogar', icon: 'block' }),
+          ]),
+        }),
+        expect.objectContaining({
+          type: 'ticket-transfer',
+          label: 'Transferência de bilhete',
+          resourceIcon: 'swap_horiz',
+          actions: expect.arrayContaining([
+            expect.objectContaining({ scope: 'manage', label: 'Gerenciar', icon: 'swap_horiz' }),
+          ]),
+        }),
+      ]),
+    );
+  });
+
   it('documents included data and preset permission bundles', () => {
     expect(getPermissionIncludedData(Permission.Receipt.Read)).toEqual(
       expect.arrayContaining([
@@ -344,6 +399,14 @@ describe('shared permissions contract', () => {
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual(
       expect.arrayContaining([Permission.Certificate.Issue, Permission.Receipt.Approve]),
     );
+  });
+
+  it('allows the ticketing manager preset to enter the tickets workspace without receipt access', () => {
+    const preset = EVENT_MANAGER_PERMISSION_PRESETS.find((candidate) => candidate.id === 'ticketing-manager');
+    const tab = WORKSPACE_TAB_PERMISSIONS.find((candidate) => candidate.id === WorkspacePermissionTab.Tickets);
+    expect(preset).toBeDefined();
+    expect(tab?.read.every((permission) => preset?.permissions.includes(permission))).toBe(true);
+    expect(tab?.read).not.toContain(Permission.Receipt.Read);
   });
 
   it('keeps workspace tabs and evaluation permissions aligned', () => {

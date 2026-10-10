@@ -17,6 +17,8 @@ describe('PaymentInfo', () => {
     readySubscription(): CurrentUserMajorEventSubscription | null;
     isUploading(): boolean;
     canUpload(): boolean;
+    ticketPurchaseMode: boolean;
+    state: ReturnType<typeof signal>;
     receiptUploadErrorMessage(error: unknown): string;
   };
 
@@ -67,10 +69,22 @@ describe('PaymentInfo', () => {
         subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
         majorEvent: {
           isPaymentRequired: true,
-          subscriptionEndDate: '2000-01-01T00:00:00.000Z',
+          subscriptionEndDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
         },
       }) as unknown as CurrentUserMajorEventSubscription;
     component.isUploading = () => false;
+    component.ticketPurchaseMode = false;
+    component.state = signal({
+      status: 'ready',
+      subscription: {
+        subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        majorEvent: { isPaymentRequired: true },
+      },
+      receipt: null,
+      ticketOption: null,
+      ticketPurchase: null,
+      uploadedTicketPurchaseReceipt: null,
+    });
 
     expect(component.canUpload()).toBe(true);
   });
@@ -84,14 +98,34 @@ describe('PaymentInfo', () => {
   });
 
   it('keeps the newest live refresh when requests finish out of order', () => {
-    const older = new Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>();
-    const newer = new Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>();
+    const older = new Subject<{
+      subscription: CurrentUserMajorEventSubscription | null;
+      receipt: null;
+      ticketOption: null;
+      ticketPurchase: null;
+      uploadedTicketPurchaseReceipt: null;
+    }>();
+    const newer = new Subject<{
+      subscription: CurrentUserMajorEventSubscription | null;
+      receipt: null;
+      ticketOption: null;
+      ticketPurchase: null;
+      uploadedTicketPurchaseReceipt: null;
+    }>();
     const requests = [older, newer];
     const liveComponent = Object.create(PaymentInfo.prototype) as unknown as {
       majorEventId: string;
+      ticketPurchaseMode: boolean;
       state: ReturnType<typeof signal>;
       pageRequestId: number;
-      pageRequest(): Subject<{ subscription: CurrentUserMajorEventSubscription | null; receipt: null }>;
+      paymentNow: ReturnType<typeof signal<number>>;
+      pageRequest(): Subject<{
+        subscription: CurrentUserMajorEventSubscription | null;
+        receipt: null;
+        ticketOption: null;
+        ticketPurchase: null;
+        uploadedTicketPurchaseReceipt: null;
+      }>;
       loadPage(background?: boolean): void;
       receiptUploadCooldown: { clear(): void };
       destroyRef: { onDestroy(callback: () => void): () => void };
@@ -99,8 +133,10 @@ describe('PaymentInfo', () => {
       resolveApplicablePrice(): number | null;
     };
     liveComponent.majorEventId = 'major-1';
+    liveComponent.ticketPurchaseMode = false;
     liveComponent.state = signal({ status: 'loading' });
     liveComponent.pageRequestId = 0;
+    liveComponent.paymentNow = signal(Date.now());
     liveComponent.pageRequest = () => requests.shift() as typeof older;
     liveComponent.receiptUploadCooldown = { clear: vi.fn() };
     liveComponent.destroyRef = { onDestroy: () => () => undefined };
@@ -112,10 +148,20 @@ describe('PaymentInfo', () => {
 
     liveComponent.loadPage(true);
     liveComponent.loadPage(true);
-    newer.next({ subscription: newSubscription, receipt: null });
-    older.next({ subscription: oldSubscription, receipt: null });
+    const response = (subscription: CurrentUserMajorEventSubscription) => ({
+      subscription,
+      receipt: null,
+      ticketOption: null,
+      ticketPurchase: null,
+      uploadedTicketPurchaseReceipt: null,
+    });
+    newer.next(response(newSubscription));
+    older.next(response(oldSubscription));
 
-    expect(liveComponent.state()).toEqual({ status: 'ready', subscription: newSubscription, receipt: null });
+    expect(liveComponent.state()).toEqual({
+      status: 'ready',
+      ...response(newSubscription),
+    });
     expect(trackMajorEventTransaction).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import {
   MajorEventSubscriptionNotificationRecord,
@@ -7,6 +7,9 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReceiptQueueMapper } from '../mappers/receipt-queue.mapper';
 import { AdminReceiptQueueItem, AdminReceiptQueueResponse } from '../receipt.types';
+import { TicketPurchasesService } from '../../ticket-purchases/ticket-purchases.service';
+
+const QUEUE_LIMIT = 100;
 
 @Injectable()
 export class ReceiptAdminQueueService {
@@ -14,6 +17,7 @@ export class ReceiptAdminQueueService {
     private readonly prisma: PrismaService,
     private readonly mapper: ReceiptQueueMapper,
     private readonly notifications: NovuNotificationsService,
+    @Optional() private readonly ticketPurchases?: TicketPurchasesService,
   ) {}
 
   async getPendingValidationCount(): Promise<{ pendingCount: number }> {
@@ -28,7 +32,10 @@ export class ReceiptAdminQueueService {
       },
     });
 
-    return { pendingCount };
+    const ticketCount = this.ticketPurchases ? await this.prisma.ticketPurchase.count({
+      where: this.ticketPurchases.pendingWhere(),
+    }) : 0;
+    return { pendingCount: pendingCount + ticketCount };
   }
 
   async listPendingValidationQueue(majorEventId?: string): Promise<AdminReceiptQueueResponse> {
@@ -52,16 +59,31 @@ export class ReceiptAdminQueueService {
             updatedAt: 'asc',
           },
           {
-            createdAt: 'asc',
+            id: 'asc',
           },
         ],
-        take: 100,
+        take: QUEUE_LIMIT,
       }),
     ]);
 
+    const [ticketItems, ticketCount] = this.ticketPurchases
+      ? await Promise.all([
+          this.ticketPurchases.pending(majorEventId, QUEUE_LIMIT),
+          this.prisma.ticketPurchase.count({ where: this.ticketPurchases.pendingWhere(majorEventId) }),
+        ])
+      : [[], 0];
+    const availablePaymentTiers = majorEventId && this.ticketPurchases
+      ? await this.prisma.priceTier.findMany({ where: { price: { majorEventId } }, select: { id: true, name: true }, orderBy: { value: 'asc' } })
+      : [];
+    const items = [...subscriptions.map((subscription) => this.mapper.mapAdminQueueItem(subscription)), ...ticketItems]
+      .sort((a, b) => a.subscriptionUpdatedAt.getTime() - b.subscriptionUpdatedAt.getTime() || a.subscriptionId.localeCompare(b.subscriptionId))
+      .slice(0, QUEUE_LIMIT);
     return {
-      pendingCount,
-      items: subscriptions.map((subscription) => this.mapper.mapAdminQueueItem(subscription)),
+      pendingCount: pendingCount + ticketCount,
+      subscriptionCount: pendingCount,
+      ticketCount,
+      availablePaymentTiers,
+      items,
     };
   }
 

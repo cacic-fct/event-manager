@@ -38,7 +38,8 @@ describe('WorkspacePendingChangesService', () => {
   });
 
   it('cancels navigation when pending edits are retained', async () => {
-    const registration = service.register();
+    const discard = vi.fn();
+    const registration = service.register(discard);
     registration.set(true);
     const navigate = vi.fn(() => Promise.resolve(true));
 
@@ -46,6 +47,8 @@ describe('WorkspacePendingChangesService', () => {
 
     expect(navigate).not.toHaveBeenCalled();
     expect(dialog.open).toHaveBeenCalledOnce();
+    expect(discard).not.toHaveBeenCalled();
+    expect(service.pending()).toBe(true);
   });
 
   it('bypasses the route guard only during confirmed programmatic navigation', async () => {
@@ -58,8 +61,50 @@ describe('WorkspacePendingChangesService', () => {
       return true;
     })).resolves.toBe(true);
 
+    registration.set(true);
     afterClosedValue = false;
     await expect(service.canDeactivate()).resolves.toBe(false);
+  });
+
+  it('discards only pending editors before programmatic navigation', async () => {
+    const discardPending = vi.fn();
+    const discardClean = vi.fn();
+    service.register(discardPending).set(true);
+    service.register(discardClean);
+    afterClosedValue = true;
+
+    await service.navigate(async () => {
+      expect(discardPending).toHaveBeenCalledOnce();
+      expect(service.pending()).toBe(false);
+      return true;
+    });
+
+    expect(discardClean).not.toHaveBeenCalled();
+  });
+
+  it('discards once when the route guards approve leaving an editor', async () => {
+    const discard = vi.fn();
+    service.register(discard).set(true);
+    afterClosedValue = true;
+
+    await expect(service.canDeactivate()).resolves.toBe(true);
+    expect(service.canActivate()).toBe(true);
+    await expect(service.canDeactivate()).resolves.toBe(true);
+
+    expect(discard).toHaveBeenCalledOnce();
+    expect(service.pending()).toBe(false);
+    expect(dialog.open).toHaveBeenCalledOnce();
+  });
+
+  it('discards when a parameter change reruns the activation guard', async () => {
+    const discard = vi.fn();
+    service.register(discard).set(true);
+    afterClosedValue = true;
+
+    await expect(service.canActivate()).resolves.toBe(true);
+
+    expect(discard).toHaveBeenCalledOnce();
+    expect(service.pending()).toBe(false);
   });
 
   it('reuses a deactivation confirmation for the matching activation phase', async () => {

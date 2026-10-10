@@ -4,6 +4,22 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
 
 describe('MajorEventsResolver', () => {
+  it('blocks tier deletion when ticket policies or offers reference a removed tier', async () => {
+    const { resolver, tx } = createResolver();
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-used' }]);
+    tx.ticketConfig.findFirst.mockResolvedValue({ id: 'config-used' });
+    await expect(resolver['deleteMajorEventPrice'](tx as never, 'major-1')).rejects.toThrow('configurações de bilhetes');
+    expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
+    expect(tx.ticketConfig.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [
+        { includedPriceTierIds: { hasSome: ['tier-used'] } },
+        { recipientAllowedPriceTierIds: { hasSome: ['tier-used'] } },
+        { purchaseVisiblePriceTierIds: { hasSome: ['tier-used'] } },
+        { priceOptions: { some: { priceTierId: { in: ['tier-used'] } } } },
+      ] },
+    }));
+  });
+
   it.each([false, true, undefined])('preserves explicit sports entitlement updates: %s', (value) => {
     const resolver = new MajorEventsResolver({} as never, {} as never, {} as never, {} as never);
     const [payload] = resolver['buildPriceTierPayloads']({
@@ -1041,8 +1057,8 @@ describe('MajorEventsResolver', () => {
   });
 
   it('rejects inline publication when invited attendance has no active invitee', async () => {
-    const { resolver, tx, auditLog, prisma } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx, auditLog } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue(majorEventRecord());
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ attendanceEligibility: 'INVITED_ONLY' }));
     await expect(resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never)).rejects.toThrow('confirmar presença');
@@ -1050,13 +1066,13 @@ describe('MajorEventsResolver', () => {
   });
 
   it('selects only invitation IDs for major-event mutation audit snapshots', async () => {
-    const { resolver, tx, prisma } = createResolver();
-    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    const { resolver, tx } = createResolver();
+    tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue(majorEventRecord());
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord());
     await resolver.updateMajorEvent('major-1', { name: 'Novo nome' }, context() as never);
     const expectedSelect = expect.objectContaining({ audienceInvitations: { select: { personId: true } } });
-    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
+    expect(tx.majorEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
     expect(tx.majorEvent.findUniqueOrThrow).toHaveBeenCalledWith(expect.objectContaining({ select: expectedSelect }));
   });
 
@@ -1151,17 +1167,20 @@ describe('MajorEventsResolver', () => {
     const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
     const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       event: {
         findMany: jest.fn(async () => audienceContext.getStore()?.bypass
           ? [{ id: 'event-1' }, { id: 'event-2' }]
           : [{ id: 'event-1' }]),
       },
       majorEvent: {
+        findFirst: jest.fn().mockResolvedValue(previous),
         update: jest.fn().mockResolvedValue({ id: 'major-1' }),
         findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
       },
       majorEventPrice: { upsert: jest.fn(), deleteMany: jest.fn() },
       priceTier: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+      ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
       eventFormLinkPriceTier: { count: jest.fn().mockResolvedValue(0) },
       sportsTournament: { findFirst: jest.fn() },
     };
@@ -1209,6 +1228,7 @@ function createResolver(
   } = {},
 ) {
   const tx = {
+    ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
     $executeRaw: jest.fn().mockResolvedValue(1),
     event: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEvent: {
@@ -1230,9 +1250,6 @@ function createResolver(
     eventFormLinkPriceTier: {
       count: jest.fn().mockResolvedValue(0),
     },
-    certificateConfig: {
-      create: jest.fn(),
-    },
     sportsTournament: {
       findFirst: jest.fn(),
     },
@@ -1241,6 +1258,7 @@ function createResolver(
       updateMany: jest.fn(),
     },
     certificateConfig: {
+      create: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
     },

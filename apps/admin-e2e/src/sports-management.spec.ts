@@ -9,6 +9,7 @@ import {
 } from './support/admin-e2e-fixtures';
 
 const sportsReadPermissions = [
+  'event#read',
   'major-event#read',
   'sports-tournament#read',
   'sports-category#read',
@@ -39,14 +40,19 @@ test('opens sports management from workspace navigation and lists configured tou
     });
   });
 
-  await page.goto('/admin/');
+  await page.goto('/admin/event-workspace/major-event/major-event-1');
   await page.getByRole('link', { name: /Esportes/ }).click();
 
-  await expect(page).toHaveURL(/\/admin\/sports$/);
+  await expect(page).toHaveURL(/\/admin\/sports\/major-event\/major-event-1$/);
   await expect(page.getByRole('heading', { name: 'Esportes' })).toBeVisible();
-  await expect(page.getByText('Semana da Computação')).toBeVisible();
-  await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
-  await expect(page.getByText('3 pendências')).toBeVisible();
+  const tournamentList = page.locator('.sports-major-event-list');
+  await expect(tournamentList.locator('mat-list-item')).toHaveCount(1);
+  const tournament = tournamentList
+    .locator('mat-list-item')
+    .filter({ hasText: '2 modalidades · 8 equipes · Publicado' });
+  await expect(tournament).toBeVisible();
+  await expect(tournament.getByText('Semana da Computação')).toBeVisible();
+  await expect(tournament.getByText('3 pendências')).toBeVisible();
 });
 
 test('keeps the selected tournament workspace state on a deep link', async ({ page }) => {
@@ -56,6 +62,14 @@ test('keeps the selected tournament workspace state on a deep link', async ({ pa
   });
   await page.route('**/api/graphql', async (route) => {
     const body = route.request().postDataJSON() as { query?: string };
+    if (body.query?.includes('query AdminSportsTournamentList')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { adminSportsTournamentList: [adminSportsTournamentListFixture()] } }),
+      });
+      return;
+    }
     if (body.query?.includes('query AdminSportsApplications')) {
       await route.fulfill({
         status: 200,

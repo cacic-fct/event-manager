@@ -34,6 +34,7 @@ import {
 import { AttendanceCollectionAccessService } from '../access.service';
 import { AttendanceOfflineSyncService } from '../offline/sync.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
+import { normalizeTicketBarcodeForAttendance } from './ticket-barcode';
 
 @Component({
   selector: 'app-attendance-scanner',
@@ -128,20 +129,27 @@ export class AttendanceScanner implements OnInit {
       return;
     }
 
+    const attendanceCode = normalizeTicketBarcodeForAttendance(code);
+    if (!attendanceCode) {
+      this.feedback.show('invalid');
+      this.snackbar.open('Código do bilhete inválido.', 'Fechar', { duration: 3500 });
+      return;
+    }
+
     let location: AttendanceCollectionLocation | null = null;
     try {
       location = await this.getPreciseLocation();
       if (!this.network.isOnline()) {
-        await this.queueScannerAttendance(eventId, code, location);
+        await this.queueScannerAttendance(eventId, attendanceCode, location);
         return;
       }
 
-      const attendance = await firstValueFrom(this.api.registerScannerCode(eventId, code, location));
+      const attendance = await firstValueFrom(this.api.registerScannerCode(eventId, attendanceCode, location));
       this.feedback.show(this.feedbackKindForCategory(attendance.category, attendance.currentAssessment));
       this.snackbar.open('Presença registrada.', 'Fechar', { duration: 2500 });
       this.loadFeed(eventId);
     } catch (error: unknown) {
-      if (await this.queueAfterNetworkFailure(error, eventId, 'SCANNER', { code }, location)) {
+      if (await this.queueAfterNetworkFailure(error, eventId, 'SCANNER', { code: attendanceCode }, location)) {
         return;
       }
 

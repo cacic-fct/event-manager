@@ -23,6 +23,12 @@ describe('ReceiptValidationApiService operation contracts', () => {
         if (query.includes('ApproveAdminReceipt')) {
           return of({ approveAdminReceipt: receiptResultFixture() });
         }
+        if (query.includes('ApproveTicketPurchase')) {
+          return of({ approveTicketPurchase: true });
+        }
+        if (query.includes('RejectTicketPurchase')) {
+          return of({ rejectTicketPurchase: true });
+        }
         return of({ adminReceiptValidationQueue: queueFixture() });
       }),
     };
@@ -58,6 +64,8 @@ describe('ReceiptValidationApiService operation contracts', () => {
     expect(queueQuery).toContain('adminReceiptValidationQueue');
     expect(queueQuery).toContain('subscriptionId');
     expect(queueQuery).toContain('selectedForConfirmation');
+    expect(queueQuery).toContain('availablePaymentTiers');
+    expect(queueQuery).toContain('ticketCount');
   });
 
   it('passes through GraphQL errors from queue reads', async () => {
@@ -81,6 +89,22 @@ describe('ReceiptValidationApiService operation contracts', () => {
     expect(mutation).toContain('approveAdminReceipt');
     expect(mutation).toContain('actionId');
   });
+
+  it('approves a ticket purchase through its own audited action', async () => {
+    await expect(firstValueFrom(service.approveTicketPurchase('purchase-1'))).resolves.toBe(true);
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('approveTicketPurchase(purchaseId: $purchaseId)'),
+      { purchaseId: 'purchase-1' },
+    );
+  });
+
+  it('rejects a ticket purchase with the required reviewer reason', async () => {
+    await expect(firstValueFrom(service.rejectTicketPurchase('purchase-1', 'Comprovante ilegível'))).resolves.toBe(true);
+    expect(graphqlHttp.request).toHaveBeenCalledWith(
+      expect.stringContaining('rejectTicketPurchase(purchaseId: $purchaseId, reason: $reason)'),
+      { purchaseId: 'purchase-1', reason: 'Comprovante ilegível' },
+    );
+  });
 });
 
 function receiptResultFixture() {
@@ -93,8 +117,12 @@ function queueFixture() {
   const person = createAdminPerson({ id: 'person-1', name: 'Ada Lovelace', email: 'ada@example.edu' });
   return {
     pendingCount: 1,
+    subscriptionCount: 1,
+    ticketCount: 0,
+    availablePaymentTiers: [{ id: 'tier-student', name: 'Estudante' }],
     items: [
       {
+        category: 'SUBSCRIPTION' as const,
         subscriptionId: 'subscription-1',
         majorEventId: 'major-1',
         majorEventName: majorEvent.name,
@@ -106,6 +134,7 @@ function queueFixture() {
         subscriptionFlow: 'RECEIPT',
         subscriptionStatus: 'PENDING_PAYMENT',
         subscriptionUpdatedAt: adminFixtureDateFromNow(-1, 15),
+        subscriptionCreatedAt: adminFixtureDateFromNow(-2, 15),
         receipt: null,
         events: [
           {

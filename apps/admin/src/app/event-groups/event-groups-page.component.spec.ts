@@ -3,18 +3,22 @@ import { MatAnchor } from '@angular/material/button';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { of } from 'rxjs';
 import { createPageStoryProviders, defaultPageStoryArgs } from '../stories/page-story-support';
+import { createAdminEvent } from '../testing/admin-entity-fixtures';
+import { PermissionsService } from '../permissions/permissions.service';
 import { EventGroupsPageComponent } from './event-groups-page.component';
 
 describe('EventGroupsPageComponent', () => {
-  async function createFixture() {
+  async function createFixture(permissions?: Partial<PermissionsService>) {
     await TestBed.configureTestingModule({
       imports: [EventGroupsPageComponent],
       providers: [
         provideNoopAnimations(),
         provideRouter([]),
         ...createPageStoryProviders(defaultPageStoryArgs),
+        ...(permissions ? [{ provide: PermissionsService, useValue: permissions }] : []),
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({})) } },
       ],
     }).compileComponents();
@@ -83,5 +87,31 @@ describe('EventGroupsPageComponent', () => {
     expect(element.querySelector('aside')).toBeNull();
     expect([...element.querySelectorAll('button')].some((button) => button.textContent?.includes('Mais ações'))).toBe(true);
     expect(element.querySelector('#certificados')).not.toBeNull();
+  });
+
+  it('uses the selected group events when checking the freeze cutoff', async () => {
+    const fixture = await createFixture({
+      canEdit: () => true,
+      canDelete: () => false,
+      has: (permission) => permission !== Permission.Frozen.Update,
+      hasAll: () => true,
+    });
+    const workspace = fixture.componentInstance.workspace;
+    const group = workspace.selectedEventGroup();
+    if (!group) throw new Error('The story fixture did not select an event group');
+
+    const oldCreatedAt = new Date();
+    oldCreatedAt.setDate(oldCreatedAt.getDate() - 150);
+    workspace.selectedEventGroup.set({ ...group, createdAt: oldCreatedAt.toISOString() });
+    workspace.eventSummaries.set([]);
+    const currentDate = new Date().toISOString();
+    workspace.eventGroupEvents.set([
+      createAdminEvent({ eventGroupId: group.id, createdAt: currentDate, endDate: currentDate, publicationState: 'PUBLISHED' }),
+    ]);
+    fixture.detectChanges();
+
+    const publicationActions = (fixture.nativeElement as HTMLElement).querySelector('.editor-action-group--publication');
+    expect(publicationActions?.textContent).toContain('Voltar para rascunho');
+    expect(publicationActions?.textContent).toContain('Atualizar publicação');
   });
 });

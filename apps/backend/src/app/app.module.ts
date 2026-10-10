@@ -1,4 +1,19 @@
+import { TicketsResolver } from './tickets/tickets.resolver';
+import { CurrentUserTicketRealtimeController, AdminTicketRealtimeController } from './tickets/tickets.controller';
+import { TicketIssuanceService } from './tickets/ticket-issuance.service';
+import { TicketEligibilityService } from './tickets/ticket-eligibility.service';
+import { TicketTransferService } from './tickets/ticket-transfer.service';
+import { TicketRealtimeService } from './tickets/ticket-realtime.service';
+import { TicketNotificationOutboxService } from './tickets/ticket-notification-outbox.service';
+import { TicketTransferResolutionService } from './tickets/ticket-transfer-resolution.service';
+import { TicketTransferRetentionService } from './tickets/ticket-transfer-retention.service';
 import { Module } from '@nestjs/common';
+import { TicketPurchaseCatalogService } from './ticket-purchases/ticket-purchase-catalog.service';
+import { TicketPurchaseRetentionService } from './ticket-purchases/ticket-purchase-retention.service';
+import { TicketPurchasesService } from './ticket-purchases/ticket-purchases.service';
+import { TicketPurchasesResolver } from './ticket-purchases/ticket-purchases.resolver';
+import { TicketPurchasesController } from './ticket-purchases/ticket-purchases.controller';
+import { TicketSubscriptionSyncService } from './events/ticket-subscription-sync.service';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventAudienceService } from './audiences/event-audience.service';
 import { EventAudienceInterceptor } from './audiences/event-audience.interceptor';
@@ -387,6 +402,9 @@ const schedulerProviders = useInMemoryTestInfra
     SubscriptionBadgeExportController,
     EventFormsController,
     MajorEventReceiptsController,
+    TicketPurchasesController,
+    CurrentUserTicketRealtimeController,
+    AdminTicketRealtimeController,
     NovuNotificationsController,
     PrivacyController,
     TrackingController,
@@ -403,6 +421,19 @@ const schedulerProviders = useInMemoryTestInfra
     RealtimeInvalidationController,
   ],
   providers: [
+    TicketsResolver,
+    TicketIssuanceService,
+    TicketEligibilityService,
+    TicketTransferService,
+    TicketRealtimeService,
+    TicketNotificationOutboxService,
+    TicketTransferResolutionService,
+    TicketTransferRetentionService,
+    TicketPurchaseCatalogService,
+    TicketPurchasesService,
+    TicketPurchaseRetentionService,
+    TicketPurchasesResolver,
+    TicketSubscriptionSyncService,
     HealthService,
     NovuNotificationsService,
     BackendFeatureFlagService,

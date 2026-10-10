@@ -253,6 +253,54 @@ export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
       fields: ['pessoa', 'evento ou grande evento', 'status'],
     },
   ],
+  [Permission.TicketConfig.Read]: [
+    {
+      label: 'Configuração do bilhete do evento',
+      fields: ['evento', 'nome e ícone', 'descrição', 'critérios de elegibilidade', 'opções de preço e validade'],
+    },
+  ],
+  [Permission.TicketConfig.Create]: [
+    {
+      label: 'Configuração do bilhete do evento',
+      fields: ['evento', 'regras de emissão e transferência', 'critérios de elegibilidade', 'opções de preço'],
+    },
+  ],
+  [Permission.TicketConfig.Update]: [
+    {
+      label: 'Configuração do bilhete do evento',
+      fields: ['evento', 'regras de emissão e transferência', 'critérios de elegibilidade', 'preços e validade'],
+    },
+  ],
+  [Permission.Ticket.Read]: [
+    {
+      label: 'Titularidade dos bilhetes',
+      fields: ['nome da pessoa', 'identificador mascarado', 'evento', 'estado e validade', 'trilha de titularidade'],
+    },
+  ],
+  [Permission.Ticket.Issue]: [
+    {
+      label: 'Emissão administrativa de bilhete',
+      fields: ['pessoa selecionada', 'evento', 'motivo da emissão', 'avisos de elegibilidade'],
+    },
+  ],
+  [Permission.Ticket.Revoke]: [
+    {
+      label: 'Revogação administrativa de bilhete',
+      fields: ['titular', 'evento', 'motivo da revogação'],
+    },
+  ],
+  [Permission.TicketTransfer.Read]: [
+    {
+      label: 'Histórico de transferência de bilhetes',
+      fields: ['titular anterior e atual', 'evento', 'estado e motivo'],
+    },
+  ],
+  [Permission.TicketTransfer.Manage]: [
+    {
+      label: 'Transferência administrativa de bilhete',
+      fields: ['titular atual e destinatário escolhido', 'evento', 'motivo da transferência'],
+    },
+  ],
   [Permission.Receipt.Read]: [
     {
       label: 'Dados limitados da pessoa inscrita',

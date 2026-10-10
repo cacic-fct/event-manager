@@ -1,10 +1,11 @@
+import { TicketSubscriptionSyncService } from '../ticket-subscription-sync.service';
 import {
   EventAttendance,
   MajorEventSubscriptionCsvImportInput,
   MajorEventSubscriptionCsvImportResult,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, Optional } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -23,6 +24,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
     private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    @Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -217,6 +219,7 @@ export class MajorEventSubscriptionCsvImportResolver extends EventAttendancesRes
           createdEventSubscriptionCount += created.count;
         }
 
+        await this.ticketSubscriptions?.forMajorEvent(tx, input.majorEventId, personId);
         await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, personId, tx);
       }
 

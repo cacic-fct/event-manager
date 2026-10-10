@@ -54,7 +54,7 @@ test('event workspace shows published event draft, scheduling, draft and publish
 
   await expect(page.getByRole('heading', { name: 'Editar rascunho' })).toBeVisible();
   await expect(page.getByText('Oficina de Angular', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Ajustes de publicação')).toBeVisible();
+  await expect(page.getByText('Rascunho de Oficina de Angular')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Salvar rascunho' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Atualizar publicação' })).toBeVisible();
 });
@@ -62,7 +62,7 @@ test('event workspace shows published event draft, scheduling, draft and publish
 test('group and major event workspaces expose draft and publication controls', async ({ page }) => {
   await page.goto('/admin/event-workspace/group/event-group-1/settings');
 
-  await expect(page.getByText('Trilha de Minicursos')).toBeVisible();
+  await expect(page.getByText('Trilha de Minicursos', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: /Novo grupo|Editar grupo/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Salvar rascunho|Voltar para rascunho/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Publicar|Salvar grupo|Atualizar publicação/ })).toBeVisible();
@@ -93,16 +93,16 @@ test('subscription management loads event and major event subscriptions', async 
   await expect(page.locator('app-workspace-subscriptions-tab > section > mat-tab-group, app-workspace-attendances-tab > section > mat-tab-group')).toHaveCount(0);
   await expect(page.getByText('Semana da Computação').first()).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Abrir inscrição de Ada Lovelace', exact: true }).click();
+  await page.getByRole('link', { name: 'Abrir inscrição de Ada Lovelace', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Eventos inscritos' })).toBeVisible();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
 });
 
 test('Quero ir lists interests separately and converts one to a subscription', async ({ page }) => {
-  await page.goto('/admin/subscriptions');
-  await page.getByRole('link', { name: 'Consultar interesses de eventos e grupos' }).click();
-  await expect(page).toHaveURL(/subscriptions\/interests/);
-  await expect(page.getByRole('heading', { name: 'Interessados' })).toBeVisible();
+  await page.goto('/admin/subscriptions/major-event/major-event-1');
+  await page.getByRole('link', { name: 'Consultar interesses' }).click();
+  await expect(page).toHaveURL(/subscriptions\/major-event\/major-event-1\/interests/);
+  await expect(page.getByRole('heading', { name: 'Interessados', level: 1 })).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByText('1 interesse')).toBeVisible();
 
@@ -113,7 +113,14 @@ test('Quero ir lists interests separately and converts one to a subscription', a
   await selection.getByRole('button', { name: 'Continuar' }).click();
   const confirmation = page.getByRole('dialog');
   await expect(confirmation.getByRole('heading', { name: 'Converter interesse em inscrição?' })).toBeVisible();
-  await confirmation.getByRole('button', { name: 'Converter em inscrição' }).click();
+  const imageLicenseAgreement = confirmation.getByRole('checkbox', {
+    name: 'A pessoa concordou com o contrato de licença de uso de imagem do CACiC.',
+  });
+  const convertButton = confirmation.getByRole('button', { name: 'Converter em inscrição' });
+  await expect(imageLicenseAgreement).toBeVisible();
+  await expect(convertButton).toBeDisabled();
+  await imageLicenseAgreement.check();
+  await convertButton.click();
   await expect(page.getByRole('button', { name: 'Inscrito' })).toBeVisible();
 });
 
@@ -185,6 +192,7 @@ test('attendance management loads event attendance and major event attendance de
   await expect(page.getByRole('button', { name: /^Trocar contexto:/ })).toBeVisible();
   await expect(page.locator('app-workspace-subscriptions-tab > section > mat-tab-group, app-workspace-attendances-tab > section > mat-tab-group')).toHaveCount(0);
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await page.getByRole('link', { name: 'Consultar presenças de Ada Lovelace' }).click();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
   await expect(page.getByText(/Presença registrada em/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Abrir inscrição' })).toBeVisible();

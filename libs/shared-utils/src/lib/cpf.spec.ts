@@ -1,6 +1,11 @@
-import { formatCPF, isValidCPF, unformatCPF } from './cpf';
+import { formatCPF, isValidCPF, maskCPF, unformatCPF } from './cpf';
 
 describe('CPF helpers', () => {
+  it('uses the middle-digit mask without exposing incomplete documents', () => {
+    expect(maskCPF('52998224725')).toBe('•••.982.247-••');
+    expect(maskCPF('529.982.247-25')).toBe('•••.982.247-••');
+    expect(maskCPF('52998')).toBe('••••••••');
+  });
   it('accepts valid CPF values with or without punctuation', () => {
     expect(isValidCPF('52998224725')).toBe(true);
     expect(isValidCPF('529.982.247-25')).toBe(true);

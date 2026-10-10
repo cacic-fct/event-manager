@@ -1,19 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { createAdminEventFormResults } from '../testing/admin-entity-fixtures';
-import { FormResultsComponent } from './form-results.component';
+import { FORM_RESULTS_ECHARTS_FACTORY, FormResultsComponent } from './form-results.component';
 
-const echartsMock = vi.hoisted(() => ({
-  setOption: vi.fn(),
-  init: vi.fn((element: HTMLElement) => ({
-    dispose: vi.fn(),
-    getDom: () => element,
-    resize: vi.fn(),
-    setOption: echartsMock.setOption,
-  })),
+const echartsSetOptionMock = vi.fn();
+const echartsInitMock = vi.fn((element: HTMLElement) => ({
+  dispose: vi.fn(),
+  getDom: () => element,
+  resize: vi.fn(),
+  setOption: echartsSetOptionMock,
 }));
-
-vi.mock('echarts', () => echartsMock);
+const echartsMock = { init: echartsInitMock, setOption: echartsSetOptionMock };
 
 describe('FormResultsComponent', () => {
   let chartWidth = 320;
@@ -63,6 +60,7 @@ describe('FormResultsComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [FormResultsComponent],
+      providers: [{ provide: FORM_RESULTS_ECHARTS_FACTORY, useValue: echartsMock }],
     }).compileComponents();
   });
 

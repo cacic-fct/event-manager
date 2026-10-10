@@ -71,7 +71,7 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
 export class MajorEventsPageComponent {
   readonly workspace = inject(MajorEventsService);
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
-  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly pendingRegistration = this.pendingChanges.register(() => this.workspace.discardChanges());
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);

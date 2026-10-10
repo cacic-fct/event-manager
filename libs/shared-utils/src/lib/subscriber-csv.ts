@@ -1,3 +1,5 @@
+import { maskCPF } from './cpf';
+
 export const SUBSCRIBER_CSV_FIELDS = [
   'fullName',
   'email',
@@ -115,7 +117,7 @@ export function formatIdentityDocumentForExport(
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
   }
 
-  return `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••`;
+  return maskCPF(document);
 }
 
 export function isValidCpf(value: string | null | undefined): boolean {

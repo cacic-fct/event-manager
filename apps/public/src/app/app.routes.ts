@@ -174,6 +174,12 @@ export const appRoutes: Route[] = [
     ],
   },
   {
+    path: 'major-event/:majorEventId/payment/ticket/:ticketEventId',
+    loadComponent: () => import('./major-events/payment/payment-info').then((m) => m.PaymentInfo),
+    title: 'Pagamento do bilhete',
+    canActivate: [authGuard],
+  },
+  {
     path: 'major-event/:majorEventId/payment',
     loadComponent: () => import('./major-events/payment/payment-info').then((m) => m.PaymentInfo),
     title: 'Pagamento',

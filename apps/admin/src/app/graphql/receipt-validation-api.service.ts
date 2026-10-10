@@ -2,75 +2,22 @@ import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
+import type {
+  ReceiptRejectionCode,
+  ReceiptValidationEvent,
+  ReceiptValidationQueue,
+  ReceiptValidationQueueItem,
+  ReceiptValidationResult,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { GraphqlHttpService } from './graphql-http.service';
 
-export type ReceiptRejectionCode = 'INVALID_RECEIPT' | 'NO_SLOTS' | 'SCHEDULE_CONFLICT' | 'GENERIC';
-
-export interface ReceiptValidationEvent {
-  id: string;
-  name: string;
-  emoji: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  locationDescription?: string | null;
-  slots?: number | null;
-  slotsAvailable?: number | null;
-  eventGroupId?: string | null;
-  eventGroupName?: string | null;
-  preferenceOrder?: number | null;
-  autoSubscribe: boolean;
-  selectedForConfirmation: boolean;
-  hasScheduleConflict: boolean;
-  hasNoSlots: boolean;
-}
-
-export interface ReceiptValidationQueueItem {
-  subscriptionId: string;
-  majorEventId: string;
-  majorEventName: string;
-  majorEventCreatedAt: string;
-  majorEventEndDate: string;
-  personId: string;
-  personName: string;
-  personEmail?: string | null;
-  personPhone?: string | null;
-  amountPaid?: number | null;
-  paymentTier?: string | null;
-  subscriptionFlow: string;
-  desiredCourses?: number | null;
-  desiredLectures?: number | null;
-  desiredUncategorized?: number | null;
-  subscriptionStatus: string;
-  subscriptionUpdatedAt: string;
-  receiptRejectionReason?: string | null;
-  receipt?: {
-    id: string;
-    fileName: string;
-    mimeType: string;
-    sizeBytes: number;
-    uploadedAt: string;
-    expiresAt: string;
-    imageUrl: string;
-    processingStatus: string;
-    ocrText?: string | null;
-    amountMatched?: boolean | null;
-    matchedAmountText?: string | null;
-    nameMatched?: boolean | null;
-    matchedNameText?: string | null;
-  } | null;
-  events: ReceiptValidationEvent[];
-}
-
-export interface ReceiptValidationQueue {
-  pendingCount: number;
-  items: ReceiptValidationQueueItem[];
-}
-
-export interface ReceiptValidationResult {
-  actionId: string;
-  item: ReceiptValidationQueueItem;
-}
+export type {
+  ReceiptRejectionCode,
+  ReceiptValidationEvent,
+  ReceiptValidationQueue,
+  ReceiptValidationQueueItem,
+  ReceiptValidationResult,
+};
 
 @Service()
 export class ReceiptValidationApiService {
@@ -161,11 +108,41 @@ export class ReceiptValidationApiService {
       )
       .pipe(map((data) => data.undoAdminReceiptValidationAction));
   }
+
+  approveTicketPurchase(purchaseId: string): Observable<boolean> {
+    return this.graphqlHttp
+      .request<{ approveTicketPurchase: boolean }>(
+        `mutation ApproveTicketPurchase($purchaseId: String!) {
+          approveTicketPurchase(purchaseId: $purchaseId)
+        }`,
+        { purchaseId },
+      )
+      .pipe(map((data) => data.approveTicketPurchase));
+  }
+
+  rejectTicketPurchase(purchaseId: string, reason: string): Observable<boolean> {
+    return this.graphqlHttp
+      .request<{ rejectTicketPurchase: boolean }>(
+        `mutation RejectTicketPurchase($purchaseId: String!, $reason: String!) {
+          rejectTicketPurchase(purchaseId: $purchaseId, reason: $reason)
+        }`,
+        { purchaseId, reason },
+      )
+      .pipe(map((data) => data.rejectTicketPurchase));
+  }
 }
 
 function normalizeReceiptValidationQueue(queue: ReceiptValidationQueue): ReceiptValidationQueue {
   return {
     ...queue,
+    pendingCount: Number.isFinite(queue?.pendingCount) ? queue.pendingCount : 0,
+    subscriptionCount: Number.isFinite(queue?.subscriptionCount)
+      ? queue.subscriptionCount
+      : (Array.isArray(queue?.items) ? queue.items.filter((item) => item.category !== 'TICKET').length : 0),
+    ticketCount: Number.isFinite(queue?.ticketCount)
+      ? queue.ticketCount
+      : (Array.isArray(queue?.items) ? queue.items.filter((item) => item.category === 'TICKET').length : 0),
+    availablePaymentTiers: Array.isArray(queue?.availablePaymentTiers) ? queue.availablePaymentTiers : [],
     items: Array.isArray(queue?.items)
       ? queue.items.map((item) => ({
           ...item,
@@ -195,7 +172,10 @@ const RECEIPT_VALIDATION_EVENT_FIELDS = `
 `;
 
 const RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS = `
+  category
   subscriptionId
+  purchaseId
+  ticketName
   majorEventId
   majorEventName
   majorEventCreatedAt
@@ -212,6 +192,7 @@ const RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS = `
   desiredUncategorized
   subscriptionStatus
   subscriptionUpdatedAt
+  subscriptionCreatedAt
   receiptRejectionReason
   receipt {
     id
@@ -235,6 +216,12 @@ const RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS = `
 
 const RECEIPT_VALIDATION_QUEUE_FIELDS = `
   pendingCount
+  subscriptionCount
+  ticketCount
+  availablePaymentTiers {
+    id
+    name
+  }
   items {
     ${RECEIPT_VALIDATION_QUEUE_ITEM_FIELDS}
   }

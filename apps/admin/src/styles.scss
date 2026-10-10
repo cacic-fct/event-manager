@@ -109,6 +109,17 @@ body {
   min-height: var(--mat-list-list-item-one-line-container-height, 48px);
 }
 
+input.money-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input.money-input[type='number']::-webkit-inner-spin-button,
+input.money-input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-one-line,
 .mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-two-lines {
   height: auto;

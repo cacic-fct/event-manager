@@ -31,11 +31,14 @@ import {
   unionPermissionRelationValidity,
 } from '../people/permission-relation-validity';
 import { toAttendanceCreateData, toAttendanceSnapshot } from '../people/merge-candidates/operations/attendance';
+import { moveEventInterests } from '../people/merge-candidates/operations/interests';
 import { moveSportsPersonRelations } from '../people/merge-candidates/operations/sports-representatives';
 import {
   moveAudienceInvitations,
   type AudienceInvitationSnapshot,
 } from '../people/merge-candidates/operations/audience-invitations';
+import type { TicketPersonRelationsSnapshot } from '../tickets/ticket-merge-relations';
+import { moveTicketPersonRelations, reassignTicketUserRelations } from '../tickets/ticket-merge-relations';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import {
   AttendanceSnapshot,
@@ -83,6 +86,8 @@ type MovedRelationsSnapshot = {
   insertedAttendanceEventIds: string[];
   insertedLectureEventIds: string[];
   movedEventSubscriptionIds: string[];
+  movedEventInterestIds: string[];
+  retiredEventInterestIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
   movedAudienceInvitationSnapshots: AudienceInvitationSnapshot[];
@@ -99,6 +104,7 @@ type MovedRelationsSnapshot = {
   sportsTournamentParticipantSnapshots: SportsTournamentParticipantSnapshot[];
   movedSportsOfficialAssignmentIds: string[];
   sportsOfficialAssignmentSnapshots: SportsOfficialAssignmentSnapshot[];
+  ticketRelations: TicketPersonRelationsSnapshot;
 };
 
 const MAX_ACCOUNT_MERGE_SCORE_CANDIDATES = 100;
@@ -156,6 +162,7 @@ export class AccountMergeService {
 
         await this.ensureAccountMapping(tx, input.oldUserId, input.newUserId);
         const applied = await this.applyLocalMerge(tx, input, actorId);
+        await reassignTicketUserRelations(tx, input.oldUserId, input.newUserId);
 
         if (existing) {
           await tx.externalAccountMergeOperation.update({
@@ -530,6 +537,7 @@ export class AccountMergeService {
     sourcePersonId: string,
     revokedRepresentativeById: string | null = null,
   ): Promise<MovedRelationsSnapshot> {
+    const ticketRelations = await moveTicketPersonRelations(tx, targetPersonId, sourcePersonId, revokedRepresentativeById);
     const sportsRelations = await moveSportsPersonRelations(
       tx,
       targetPersonId,
@@ -559,6 +567,7 @@ export class AccountMergeService {
       targetPersonId,
       sourcePersonId,
     );
+    const interests = await moveEventInterests(tx, sourcePersonId, targetPersonId);
     const movedAudienceInvitationSnapshots = await moveAudienceInvitations(tx, sourcePersonId, targetPersonId);
     const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
     const permissionRelations = await this.movePermissionRelations(tx, targetPersonId, sourcePersonId);
@@ -573,6 +582,8 @@ export class AccountMergeService {
       insertedAttendanceEventIds: insertedAttendanceRows.map((attendance) => attendance.eventId),
       insertedLectureEventIds: insertedLectureRows.map((lecture) => lecture.eventId),
       movedEventSubscriptionIds,
+      movedEventInterestIds: interests.movedIds,
+      retiredEventInterestIds: interests.retiredIds,
       movedEventGroupSubscriptionIds,
       movedMajorEventSubscriptionIds,
       movedAudienceInvitationSnapshots,
@@ -580,6 +591,7 @@ export class AccountMergeService {
       coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
       ...permissionRelations,
       ...sportsRelations,
+      ticketRelations,
     };
   }
 

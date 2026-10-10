@@ -36,6 +36,7 @@ const ATTENDANCE_CURRENT_ASSESSMENT_LABELS: Readonly<Record<string, string>> = {
   MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'Aguardando comprovante do grande evento',
   MAJOR_EVENT_PAYMENT_NOT_CONFIRMED: 'Pagamento do grande evento não confirmado',
   MAJOR_EVENT_PAYMENT_UNDER_REVIEW: 'Comprovante do grande evento em análise',
+  TICKET_REQUIRED: 'Bilhete não disponível',
   PRICE_TIER_NOT_ELIGIBLE: 'Faixa de pagamento não permite presença regular',
   REQUIREMENTS_CURRENTLY_MET: 'Pessoa atende às regras de presença regular',
 };

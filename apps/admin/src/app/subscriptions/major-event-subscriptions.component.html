@@ -442,7 +442,14 @@
             <mat-form-field>
               <mat-label>Valor pago</mat-label>
               @if (workspace.editMode()) {
-                <input matInput type="number" min="0" step="0.01" inputmode="decimal" formControlName="amountPaid" />
+                <input
+                  matInput
+                  class="money-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  formControlName="amountPaid" />
               }
               @if (workspace.editMode()) {
                 <span matTextPrefix>R$&nbsp;</span>

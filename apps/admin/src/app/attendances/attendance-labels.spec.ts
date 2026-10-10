@@ -7,6 +7,10 @@ import {
 } from './attendance-labels';
 
 describe('attendance labels', () => {
+  it('describes ticket eligibility requirements', () => {
+    expect(attendanceCurrentAssessmentLabel('TICKET_REQUIRED')).toBe('Bilhete não disponível');
+  });
+
   it('translates attendance categories and methods, including unrecognized values', () => {
     expect(attendanceCategoryLabel('NON_REGULAR')).toBe('Não regular');
     expect(attendanceCategoryLabel('UNKNOWN')).toBe('Sem classificação');

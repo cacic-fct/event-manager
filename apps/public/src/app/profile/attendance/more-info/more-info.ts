@@ -6,7 +6,6 @@ import type {
   PublicPrizeDrawAvailability,
 } from '@cacic-fct/event-manager-public-contracts';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   PLATFORM_ID,
@@ -48,6 +47,7 @@ import { EmojiService } from '../../../shared/emoji.service';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../../../forms/event-form-availability';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { PublicPrizeDrawApiService } from '../../../prize-draws/prize-draw-api.service';
+import { TicketPurchaseOptionsSectionComponent } from '../../../major-events/payment/ticket-purchase-options-section.component';
 
 type DetailFormLink = {
   formId: string;
@@ -81,10 +81,10 @@ const PRIZE_DRAW_RECONNECT_MAX_DELAY_MS = 30_000;
     MatToolbarModule,
     MarkdownComponent,
     RouterLink,
+    TicketPurchaseOptionsSectionComponent,
   ],
   templateUrl: './more-info.html',
   styleUrl: './more-info.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoreInfo {
   private readonly destroyRef = inject(DestroyRef);

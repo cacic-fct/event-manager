@@ -1,0 +1,33 @@
+.ticket-transfers-page {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1.5rem;
+  margin-inline: auto;
+  max-width: 44rem;
+  padding: 1rem 1rem 2.5rem;
+  width: 100%;
+}
+
+.transfer-section h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0 0 0.5rem;
+}
+
+.empty-line {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+  padding: 0.5rem 1rem;
+}
+
+.transfer-page-message {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 12rem;
+  text-align: center;
+}
+
+.transfer-page-message p {
+  margin: 0;
+}

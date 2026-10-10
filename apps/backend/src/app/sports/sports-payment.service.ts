@@ -14,6 +14,8 @@ import {
   resolveSportsSelfServicePayment,
 } from '../current-user/major-events/major-event-payment-selection';
 
+import { TicketSubscriptionSyncService } from '../events/ticket-subscription-sync.service';
+
 type ParticipantApprovalInput = {
   tournamentId: string;
   personId: string;
@@ -34,6 +36,8 @@ const REJECTED_SUBSCRIPTION_STATUSES = new Set<SubscriptionStatus>([
 
 @Injectable()
 export class SportsPaymentService {
+  constructor(private readonly ticketSubscriptions: TicketSubscriptionSyncService) {}
+
   async ensureParticipant(tx: Prisma.TransactionClient, input: ParticipantApprovalInput) {
     await this.lockParticipantIdentity(tx, input.tournamentId, input.personId);
 
@@ -108,6 +112,7 @@ export class SportsPaymentService {
       paymentSelection,
       imageLicenseAgreementAccepted,
     });
+    await this.ticketSubscriptions.forMajorEvent(tx, tournament.majorEventId, input.personId);
     const approved = input.approved || existingParticipant?.approvedAt != null;
     const participantStatus = resolveParticipantStatus(subscription.subscriptionStatus, approved);
     const paymentStatus = resolvePaymentStatus(

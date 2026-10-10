@@ -70,9 +70,13 @@ describe('EventFormImagesService references and cleanup', () => {
 
     await expect(service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser))
       .rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
-    }));
+    if (insertInSubscriptionFlow) {
+      expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
+      }));
+    } else {
+      expect(prisma.event.findFirst).not.toHaveBeenCalled();
+    }
     expect(s3.downloadFile).not.toHaveBeenCalled();
   });
 

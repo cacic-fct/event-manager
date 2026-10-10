@@ -51,6 +51,13 @@ model People {
   mergeOperationsAsSource PeopleMergeOperation[] @relation("MergeSourceOperations")
 
   certificates Certificate[]
+  heldTickets EventTicket[] @relation("EventTicketHolder")
+  originatedTickets EventTicket[] @relation("EventTicketOriginalHolder")
+  ticketPurchases TicketPurchase[]
+  ticketTransfersSent TicketTransfer[] @relation("TicketTransferSender")
+  ticketTransfersReceived TicketTransfer[] @relation("TicketTransferRecipient")
+  ticketHistoryAsPreviousHolder EventTicketHistory[] @relation("TicketHistoryPreviousHolder")
+  ticketHistoryAsNewHolder EventTicketHistory[] @relation("TicketHistoryNewHolder")
 
   externalRef String? @unique // external system reference (optional)
 

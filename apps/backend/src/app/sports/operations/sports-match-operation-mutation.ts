@@ -1,5 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma, SportsMatchAction, SportsMatchActionType, SportsReviewStatus } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
@@ -126,6 +127,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
     }
     if (input.type === SportsMatchActionType.RESCHEDULE) {
       const schedule = this.readRescheduleDates(this.requireRecord(payload));
+      await this.ticketIssuance.lockEventExpirationAlignment(tx, match.eventId, 'UPDATE');
       await tx.event.update({
         where: { id: match.eventId },
         data: {
@@ -133,6 +135,11 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
           endDate: schedule.endDate,
           updatedById: actor.userId ?? actor.personId ?? null,
         },
+      });
+      await this.ticketIssuance.alignActiveTicketExpirations(tx, match.eventId, {
+        scope: 'EVENT_END_ONLY',
+        actorUserId: actor.userId ?? null,
+        permission: Permission.SportsMatch.Operate,
       });
     }
     await this.recordAudit(tx, match, actor.auditActor, action, this.auditOperation(action.type));

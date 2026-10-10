@@ -5,7 +5,7 @@ import {
   CertificateScope,
   DeletionResult,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
@@ -45,6 +45,7 @@ export class CertificateIssuingService {
     private readonly validation: CertificateValidationService,
     private readonly eligibilityService: CertificateEligibilityService,
     private readonly notifications?: NovuNotificationsService,
+    @Inject(forwardRef(() => AuditLogService))
     auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
     private readonly notificationJobs?: CertificateNotificationJobsService,
   ) {

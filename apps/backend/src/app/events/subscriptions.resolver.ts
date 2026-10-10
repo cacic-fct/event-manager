@@ -1,4 +1,5 @@
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { TicketSubscriptionSyncService } from './ticket-subscription-sync.service';
+import { BadRequestException, Optional, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import {
@@ -191,6 +192,7 @@ export class EventSubscriptionsResolver {
     private readonly auditLog: AuditLogService,
     private readonly counters: EventSubscriptionCountersService = new EventSubscriptionCountersService(),
     private readonly eventSubscriptionSync: EventSubscriptionSyncService = new EventSubscriptionSyncService(),
+    @Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService,
   ) {}
 
   @Query(() => [WorkspaceEventSubscription], {
@@ -347,6 +349,7 @@ export class EventSubscriptionsResolver {
           createdByMethod: true,
         },
       });
+      await this.ticketSubscriptions?.forEvent(tx, input.eventId, input.personId);
       await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
       await this.refreshEventSubscriptionCounters(tx, [input.eventId]);
       await this.auditLog.record(
@@ -513,6 +516,7 @@ export class EventSubscriptionsResolver {
             )
           : null;
 
+      await this.ticketSubscriptions?.forMajorEvent(tx, input.majorEventId, input.personId);
       await this.attendanceCategories.refreshForMajorEventPerson(input.majorEventId, input.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, [
         ...selectedEventIds,
@@ -648,6 +652,7 @@ export class EventSubscriptionsResolver {
         await refreshSportsParticipantForSubscription(tx, id);
       }
 
+      await this.ticketSubscriptions?.forMajorEvent(tx, existing.majorEventId, existing.personId);
       await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
 

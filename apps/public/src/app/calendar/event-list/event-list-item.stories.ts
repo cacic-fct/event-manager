@@ -9,6 +9,7 @@ import {
   createCalendarStoryEventFromControls,
   createPublicStorySportsMatchEvent,
 } from '../story-fixtures';
+import { createPublicStoryEventGroup } from '../../testing/public-event-story-fixtures';
 
 type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
   isSubscribed: boolean;
@@ -18,7 +19,7 @@ type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
 const meta: Meta<CalendarEventListItemStoryArgs> = {
   component: CalendarEventListItem,
   title: 'CACiC Eventos/Calendar/Event List Item',
-  tags: ['autodocs'],
+  tags: ['autodocs', 'ticketing'],
   args: {
     ...calendarStoryEventDefaultControls,
     isSubscribed: true,
@@ -38,7 +39,7 @@ const meta: Meta<CalendarEventListItemStoryArgs> = {
   }),
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -91,8 +92,10 @@ export const SportsMatch: Story = {
       name: /Atlética FCT × Ciência da Computação/i,
     });
 
-    await expect(eventLink).toHaveAttribute('href', '/sports/match/sports-match-story');
-    await expect(canvas.getByText('Futsal aberto · Semifinal')).toBeVisible();
+    const eventUrl = new URL(eventLink.getAttribute('href') ?? '', window.location.href);
+    await expect(eventUrl.pathname).toBe('/sports/match/sports-match-story');
+    await expect(eventUrl.searchParams.get('returnUrl')).toBe('/calendar');
+    await expect(canvas.getByText('Futsal aberto. Semifinal')).toBeVisible();
   },
 };
 
@@ -117,6 +120,33 @@ export const EventGroupContext: Story = {
 
 export const MajorEventContext: Story = {
   args: { context: 'major-event', majorEventName: 'Congresso interdisciplinar universitário de tecnologia' },
+};
+
+export const MultipleParentContext: Story = {
+  args: { context: 'major-event', majorEventName: 'Congresso de tecnologia' },
+  render: (args) => {
+    const base = createDemoEvent(args);
+    const eventGroup = createPublicStoryEventGroup({ name: 'Trilha de acessibilidade' });
+    return {
+      props: {
+        event: {
+          ...base,
+          eventGroup,
+          eventGroupId: eventGroup.id,
+          shortDescription: 'Atividade prática com leitores de tela.',
+        },
+        isSubscribed: args.isSubscribed,
+        returnUrl: args.returnUrl,
+      },
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Congresso de tecnologia')).toBeVisible();
+    await expect(canvas.getByText('Trilha de acessibilidade')).toBeVisible();
+    await expect(canvas.getByText('Atividade prática com leitores de tela.')).toBeVisible();
+    await expect(canvas.getByText('Minicurso')).toBeVisible();
+  },
 };
 
 export const LongContentMobile: Story = {

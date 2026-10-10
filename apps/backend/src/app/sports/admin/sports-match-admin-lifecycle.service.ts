@@ -8,6 +8,11 @@ import {
   SportsMatchState,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { TicketIssuanceService } from '../../tickets/ticket-issuance.service';
+import { SportsPaymentService } from '../sports-payment.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import {
   softDeleteSportsMatchBackingEvents,
@@ -17,6 +22,16 @@ import {
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseService {
+  constructor(
+    prisma: PrismaService,
+    frozen: FrozenResourceService,
+    auditLog: AuditLogService,
+    payments: SportsPaymentService,
+    protected readonly ticketIssuance: TicketIssuanceService,
+  ) {
+    super(prisma, frozen, auditLog, payments);
+  }
+
   async updateMatch(
     matchId: string,
     input: {
@@ -49,6 +64,16 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
       );
     }
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      if (input.endDate !== undefined) {
+        const matchReference = await tx.sportsMatch.findFirst({
+          where: { id: matchId, deletedAt: null },
+          select: { eventId: true },
+        });
+        if (!matchReference) {
+          throw new NotFoundException(`Sports match ${matchId} was not found.`);
+        }
+        await this.ticketIssuance.lockEventExpirationAlignment(tx, matchReference.eventId, 'UPDATE');
+      }
       const match = await tx.sportsMatch.findFirst({
         where: { id: matchId, deletedAt: null },
         include: {
@@ -150,6 +175,13 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         livestreamChanged: input.livestreamProvider !== undefined || input.livestreamUrl !== undefined,
         actorId,
       });
+      if (endDate.getTime() !== match.event.endDate.getTime()) {
+        await this.ticketIssuance.alignActiveTicketExpirations(tx, match.eventId, {
+          scope: 'EVENT_END_ONLY',
+          actorUserId: actorId,
+          permission: Permission.SportsMatch.Update,
+        });
+      }
       if (
         input.name === undefined &&
         (input.homeRegistrationId !== undefined || input.awayRegistrationId !== undefined)

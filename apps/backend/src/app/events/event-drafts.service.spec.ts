@@ -56,6 +56,7 @@ describe('EventDraftsService', () => {
       attendanceRealtime: Record<string, unknown>;
       typesenseSearch: Record<string, unknown>;
       attendanceCategories: Record<string, unknown>;
+      ticketIssuance: Record<string, unknown>;
       audienceInvitations: Record<string, unknown>;
     }> = {},
   ) {
@@ -124,6 +125,16 @@ describe('EventDraftsService', () => {
       refreshForEvent: jest.fn(),
       ...(overrides.attendanceCategories ?? {}),
     };
+    const audienceInvitations = {
+      notifyInvited: jest.fn(),
+      replaceInvitations: jest.fn().mockResolvedValue({ invitations: [], addedPersonIds: [], removedPersonIds: [] }),
+      ...(overrides.audienceInvitations ?? {}),
+    };
+    const ticketIssuance = {
+      alignActiveTicketExpirations: jest.fn().mockResolvedValue(0),
+      lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+      ...(overrides.ticketIssuance ?? {}),
+    };
 
     return {
       service: new EventDraftsService(
@@ -136,7 +147,8 @@ describe('EventDraftsService', () => {
         undefined,
         undefined,
         attendanceCategories as never,
-        overrides.audienceInvitations as never,
+        audienceInvitations as never,
+        ticketIssuance as never,
       ),
       prisma,
       tx,
@@ -146,6 +158,8 @@ describe('EventDraftsService', () => {
       attendanceRealtime,
       typesenseSearch,
       attendanceCategories,
+      audienceInvitations,
+      ticketIssuance,
     };
   }
 
@@ -287,6 +301,36 @@ describe('EventDraftsService', () => {
     expect(attendanceRealtime.notifyAllConnectedPeople).not.toHaveBeenCalled();
   });
 
+  it('aligns event-end tickets when applying a draft with a changed end date', async () => {
+    const newEndDate = new Date(sourceEvent.endDate.getTime() + 60 * 60 * 1_000);
+    const changedDraft = {
+      ...draftRecord,
+      payload: { ...draftRecord.payload, endDate: newEndDate.toISOString() },
+    };
+    const previousEvent = {
+      id: 'event-1',
+      name: 'Evento publicado',
+      endDate: sourceEvent.endDate,
+      majorEventId: null,
+      eventGroupId: null,
+    };
+    const { service, prisma, tx, ticketIssuance } = buildService();
+    prisma.eventDraft.findUnique.mockResolvedValue(changedDraft);
+    tx.event.findFirst.mockResolvedValue(previousEvent);
+    tx.event.findUniqueOrThrow.mockResolvedValue({ ...previousEvent, endDate: newEndDate });
+
+    await service.applyEventDraft('draft-1', user as never);
+
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.updateMany.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: 'user-1',
+      permission: Permission.Event.Update,
+    });
+  });
+
   it('rejects draft publication without invitations for an inherited invited-only attendance policy', async () => {
     const previousEvent = {
       id: 'event-1',
@@ -347,7 +391,7 @@ describe('EventDraftsService', () => {
     };
     const updatedEvent = {
       ...previousEvent,
-      attendanceEligibility: 'ANYONE',
+      ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : {}),
     };
     const draft = {
       ...draftRecord,
@@ -356,7 +400,15 @@ describe('EventDraftsService', () => {
         ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }),
       },
     };
-    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({ audienceInvitations: { notifyInvited: jest.fn(), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } });
+    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({
+      audienceInvitations: {
+        replaceInvitations: jest.fn().mockResolvedValue({
+          invitations: [{ personId: 'person-new' }],
+          addedPersonIds: ['person-new'],
+          removedPersonIds: [],
+        }),
+      },
+    });
     prisma.eventDraft.findUnique.mockResolvedValue(draft);
     tx.event.findFirst.mockResolvedValue(previousEvent);
     tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);

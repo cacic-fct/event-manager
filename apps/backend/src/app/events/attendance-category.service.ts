@@ -9,6 +9,7 @@ import {
   eventAttendanceEligibility,
 } from './attendance-eligibility';
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import { TicketIssuanceService, type ConsumeTicketOptions } from '../tickets/ticket-issuance.service';
 import {
   AudienceInvitationService,
   invitationFactForAttendance,
@@ -18,6 +19,7 @@ type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 
 type AttendanceEvent = {
   regularAttendancePriceTierIds?: string[];
+  ticketConfig?: { enabled: boolean } | null;
   allowSubscription: boolean;
   autoSubscribe?: boolean;
   eventGroupId?: string | null;
@@ -79,6 +81,7 @@ export class AttendanceCategoryService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly audienceInvitations?: AudienceInvitationService,
+    @Optional() private readonly tickets?: TicketIssuanceService,
   ) {}
 
   async resolveCurrentAssessments(
@@ -115,6 +118,7 @@ export class AttendanceCategoryService {
             policy?.attendanceEligibility ?? attendance.event.attendanceEligibility ?? null,
           eventGroup: policy?.eventGroup ?? attendance.event.eventGroup ?? null,
           majorEvent: policy?.majorEvent ?? attendance.event.majorEvent ?? null,
+          ticketConfig: policy?.ticketConfig ?? attendance.event.ticketConfig,
           regularAttendancePriceTierIds:
             policy?.regularAttendancePriceTierIds ?? attendance.event.regularAttendancePriceTierIds ?? [],
         },
@@ -124,7 +128,13 @@ export class AttendanceCategoryService {
     return this.assessAttendances(subjects, tx);
   }
 
-  async refreshForAttendance(personId: string, eventId: string, tx: PrismaExecutor = this.prisma): Promise<void> {
+  async refreshForAttendance(
+    personId: string,
+    eventId: string,
+    tx: PrismaExecutor = this.prisma,
+    consumeTicket = false,
+    redemption?: ConsumeTicketOptions,
+  ): Promise<void> {
     const attendance = await tx.eventAttendance.findUnique({
       where: {
         personId_eventId: {
@@ -134,6 +144,10 @@ export class AttendanceCategoryService {
       },
       select: {
         personId: true,
+        status: true,
+        attendedAt: true,
+        committedById: true,
+        createdById: true,
         event: {
           select: {
             ...ATTENDANCE_POLICY_EVENT_SELECT,
@@ -150,6 +164,14 @@ export class AttendanceCategoryService {
       return;
     }
 
+    if (consumeTicket && attendance.status === 'PRESENT' && attendance.event.ticketConfig?.enabled) {
+      const redemptionTime = redemption?.attendedAt ?? attendance.attendedAt;
+      await this.tickets?.syncForAttendance(tx as Prisma.TransactionClient, eventId, personId, redemptionTime);
+      await this.tickets?.consumeForAttendance(tx, eventId, personId, {
+        actorUserId: redemption?.actorUserId ?? attendance.committedById ?? attendance.createdById ?? undefined,
+        attendedAt: redemptionTime,
+      });
+    }
     const currentAssessment = await this.assessAttendance(tx, attendance.personId, attendance.event);
     const category =
       currentAssessment === AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
@@ -199,6 +221,7 @@ export class AttendanceCategoryService {
     eventIds: string[],
     personIds: string[],
     tx: PrismaExecutor = this.prisma,
+    consumeTickets = false,
   ): Promise<void> {
     if (eventIds.length === 0 || personIds.length === 0) {
       return;
@@ -222,6 +245,12 @@ export class AttendanceCategoryService {
       },
     });
 
+    if (consumeTickets) {
+      for (const attendance of attendances) {
+        await this.refreshForAttendance(attendance.personId, attendance.eventId, tx, true);
+      }
+      return;
+    }
     await this.refreshAttendances(attendances, tx);
   }
 
@@ -324,6 +353,14 @@ export class AttendanceCategoryService {
         )
       : new Map();
 
+    const ticketEventIds = attendances.filter((row) => row.event.ticketConfig?.enabled).map((row) => row.eventId);
+    const consumedTickets = ticketEventIds.length
+      ? await tx.eventTicket.findMany({
+          where: { eventId: { in: ticketEventIds }, holderPersonId: { in: personIds }, status: 'CONSUMED' },
+          select: { eventId: true, holderPersonId: true },
+        })
+      : [];
+    const consumedTicketKeys = new Set(consumedTickets.flatMap((ticket) => ticket.holderPersonId ? [attendanceAssessmentKey(ticket.holderPersonId, ticket.eventId)] : []));
     const [eventSubscriptions, majorEventSubscriptions, priceTiers] = await Promise.all([
       tx.eventSubscription.findMany({
         where: {
@@ -389,6 +426,11 @@ export class AttendanceCategoryService {
       attendances.map((attendance) => {
         const key = attendanceAssessmentKey(attendance.personId, attendance.eventId);
         const event = attendance.event;
+        if (event.ticketConfig?.enabled) {
+          return [key, consumedTicketKeys.has(key)
+            ? AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
+            : AttendanceCurrentAssessment.TICKET_REQUIRED];
+        }
         const majorSubscription = event.majorEventId
           ? majorSubscriptionByKey.get(attendanceAssessmentKey(attendance.personId, event.majorEventId))
           : undefined;
@@ -460,6 +502,7 @@ export class AttendanceCategoryService {
     event: {
       id: string;
       regularAttendancePriceTierIds?: string[];
+      ticketConfig?: { enabled: boolean } | null;
       allowSubscription: boolean;
       autoSubscribe?: boolean;
       eventGroupId?: string | null;
@@ -469,6 +512,15 @@ export class AttendanceCategoryService {
       majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: AttendanceEligibility | null } | null;
     },
   ): Promise<AttendanceCurrentAssessment> {
+    if (event.ticketConfig?.enabled) {
+      const consumed = await tx.eventTicket.findFirst({
+        where: { eventId: event.id, holderPersonId: personId, status: 'CONSUMED' },
+        select: { id: true },
+      });
+      return consumed
+        ? AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
+        : AttendanceCurrentAssessment.TICKET_REQUIRED;
+    }
     if (
       event.regularAttendancePriceTierIds?.length &&
       eventAttendanceEligibility(event) !== AttendanceEligibility.ANYONE

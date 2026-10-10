@@ -1,0 +1,97 @@
+@let current = state();
+
+<mat-toolbar>
+  <a matIconButton routerLink="/profile/wallet/ticket-transfers" aria-label="Voltar para transferências">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="global-toolbar-title">Transferência de bilhete</h1>
+</mat-toolbar>
+
+<main class="ticket-transfer-details-page">
+  @if (current.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando pedido"></mat-progress-bar>
+  } @else if (current.status === 'empty' || current.status === 'error') {
+    <section class="transfer-page-message" aria-live="polite">
+      <mat-icon aria-hidden="true">{{ current.status === 'error' ? 'error' : 'confirmation_number' }}</mat-icon>
+      <p>{{ current.message }}</p>
+    </section>
+  } @else {
+    @let transfer = current.transfer;
+    <section class="transfer-ticket-basics" aria-label="Informações do bilhete">
+      <app-calendar-list-item [item]="eventItem(transfer)" />
+    </section>
+
+    @if (transfer.initiatedByAdmin) {
+      <section class="admin-initiator" aria-label="Transferência iniciada pela administração">
+        <h2>Transferência iniciada pela administração:</h2>
+        <app-ticket-person-summary
+          [fullName]="transfer.initiatingAdmin?.firstName ?? 'Administração'"
+          [avatarUrl]="null"
+          [identityDocument]="null"
+          [showDocument]="false" />
+      </section>
+    }
+
+    <section class="sender-section" aria-label="Cedente do bilhete">
+      <app-ticket-person-summary
+        [fullName]="transfer.sender?.fullName ?? 'Cedente do bilhete'"
+        [avatarUrl]="null"
+        [identityDocument]="transfer.sender?.redactedIdentityDocument ?? null" />
+    </section>
+
+    <section class="recipient-section" aria-labelledby="recipient-heading">
+      <h2 id="recipient-heading">Quer transferir para:</h2>
+      @if (transfer.recipient; as recipient) {
+        <app-ticket-person-summary
+          [fullName]="recipientIdentity().fullName"
+          [avatarUrl]="recipientIdentity().avatarUrl"
+          [identityDocument]="recipientIdentity().identityDocument" />
+      } @else if (transfer.submittedDestinationIdentityDocument; as destinationDocument) {
+        <p class="pending-document-label">Documento informado</p>
+        <p class="pending-document">{{ destinationDocument }}</p>
+      }
+    </section>
+
+    @if (canAccept()) {
+      <section class="recipient-actions" aria-label="Responder ao pedido">
+        <button mat-flat-button type="button" [disabled]="isAccepting() || isIgnoring()" (click)="openAcceptConfirmation(transfer)">
+          <mat-icon>check</mat-icon>
+          {{ isAccepting() ? 'Recebendo…' : 'Receber bilhete' }}
+        </button>
+        <button mat-stroked-button type="button" [disabled]="isAccepting() || isIgnoring()" (click)="openIgnoreConfirmation(transfer)">
+          <mat-icon>close</mat-icon>
+          {{ isIgnoring() ? 'Ignorando…' : 'Ignorar' }}
+        </button>
+      </section>
+    } @else if (transfer.recipient) {
+      <p class="transfer-status" role="status">{{ stateMessage(transfer) }}</p>
+    } @else {
+      @if (transfer.senderStatus === 'PENDING') {
+        @if (ticketIsUnavailable(transfer)) {
+          <p class="transfer-status" role="status">{{ stateMessage(transfer) }}</p>
+        }
+        @if (canCancel()) {
+          <button mat-flat-button type="button" [disabled]="!canCancel() || isCanceling()" (click)="cancelTransfer()">
+            <mat-icon>cancel</mat-icon>
+            {{ isCanceling() ? 'Cancelando pedido…' : 'Cancelar pedido' }}
+          </button>
+        }
+      } @else {
+        <p class="transfer-status" role="status">{{ stateMessage(transfer) }}</p>
+      }
+    }
+
+    @if (transfer.ticket.description || transfer.ticket.transferEligibilityDescription) {
+      <section class="ticket-extra-information">
+        @if (transfer.ticket.description) {
+          <h2>Sobre o bilhete</h2>
+          <p>{{ transfer.ticket.description }}</p>
+        }
+        @if (transfer.ticket.transferEligibilityDescription) {
+          <h2>Quem pode receber</h2>
+          <p>{{ transfer.ticket.transferEligibilityDescription }}</p>
+        }
+      </section>
+    }
+  }
+</main>

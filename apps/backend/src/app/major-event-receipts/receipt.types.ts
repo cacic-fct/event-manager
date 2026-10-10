@@ -65,6 +65,10 @@ export interface AdminReceiptEventSummary {
 }
 
 export interface AdminReceiptQueueItem {
+  category?: 'SUBSCRIPTION' | 'TICKET';
+  purchaseId?: string | null;
+  ticketName?: string | null;
+  subscriptionCreatedAt?: Date;
   subscriptionId: string;
   majorEventId: string;
   majorEventName: string;
@@ -102,6 +106,9 @@ export interface AdminReceiptQueueItem {
 }
 
 export interface AdminReceiptQueueResponse {
+  subscriptionCount?: number;
+  ticketCount?: number;
+  availablePaymentTiers?: Array<{ id: string; name: string }>;
   pendingCount: number;
   items: AdminReceiptQueueItem[];
 }

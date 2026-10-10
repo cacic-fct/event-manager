@@ -1,3 +1,4 @@
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 
@@ -11,7 +12,10 @@ export async function findReceiptObjectKeys(prisma: PrismaService, personIds: re
     select: { objectKey: true },
   });
 
-  return receipts.map((receipt) => receipt.objectKey);
+  const ticketReceipts = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => prisma.ticketPurchase.findMany({
+    where: { personId: { in: [...personIds] } }, select: { objectKey: true },
+  }));
+  return [...receipts, ...ticketReceipts].map((receipt) => receipt.objectKey).filter(Boolean);
 }
 
 export async function deleteReceiptObjects(

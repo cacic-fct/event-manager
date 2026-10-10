@@ -88,6 +88,26 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     subscription.unsubscribe();
   });
 
+  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'])('includes invited attendance from the %s policy and excludes uninvited people', async (scope) => {
+    const { audienceInvitations, mapper, prisma, service } = createService();
+    const event = {
+      id: 'event-1',
+      majorEventId: scope === 'MAJOR_EVENT' ? 'major-1' : null,
+      eventGroupId: scope === 'EVENT_GROUP' ? 'group-1' : null,
+      attendanceEligibility: scope === 'EVENT' ? 'INVITED_ONLY' : null,
+      eventGroup: scope === 'EVENT_GROUP' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
+      majorEvent: scope === 'MAJOR_EVENT' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
+    };
+    prisma.event.findMany.mockResolvedValue([event]);
+    mapper.mapPublicEvent.mockReturnValue({ id: 'event-1' });
+    audienceInvitations.getEventInvitationFacts.mockResolvedValue(new Map([
+      ['person-1:event-1', { event: scope === 'EVENT', eventGroup: scope === 'EVENT_GROUP', majorEvent: scope === 'MAJOR_EVENT' }],
+    ]));
+
+    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toHaveLength(1);
+    await expect(service.listPendingOnlineAttendanceEvents('person-2')).resolves.toEqual([]);
+  });
+
   it('lists pending online attendance events and maps public event records', async () => {
     const { mapper, prisma, service } = createService();
     const event = {

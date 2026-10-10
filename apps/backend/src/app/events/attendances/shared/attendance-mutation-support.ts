@@ -25,6 +25,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     input: {
       eventId: string;
       personId: string;
+      scannerCode?: string | null;
       createdByMethod: AttendanceCreationMethod;
       createdById?: string;
       committedById?: string;
@@ -40,6 +41,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
           tx,
           attendanceCategories: this.attendanceCategories,
           input,
+          refreshNonRegular: input.createdByMethod === AttendanceCreationMethod.SCANNER,
           afterWrite: async (attendance, transaction) => {
             if (
               await startSportsMatchCheckInFromAthleteAttendance({

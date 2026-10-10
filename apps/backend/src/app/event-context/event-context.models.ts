@@ -14,13 +14,13 @@ export class AdminEventContextAncestor {
   @Field(() => AdminEventContextKind)
   kind!: AdminEventContextKind;
 
-  @Field()
+  @Field(() => String)
   id!: string;
 
-  @Field()
+  @Field(() => String)
   name!: string;
 
-  @Field()
+  @Field(() => String)
   emoji!: string;
 }
 
@@ -29,13 +29,13 @@ export class AdminEventContextNode {
   @Field(() => AdminEventContextKind)
   kind!: AdminEventContextKind;
 
-  @Field()
+  @Field(() => String)
   id!: string;
 
-  @Field()
+  @Field(() => String)
   name!: string;
 
-  @Field()
+  @Field(() => String)
   emoji!: string;
 
   @Field(() => Date, { nullable: true })
@@ -56,7 +56,7 @@ export class AdminEventContextNode {
   @Field(() => [AdminEventContextAncestor])
   ancestors!: AdminEventContextAncestor[];
 
-  @Field()
+  @Field(() => Boolean)
   hasChildren!: boolean;
 }
 

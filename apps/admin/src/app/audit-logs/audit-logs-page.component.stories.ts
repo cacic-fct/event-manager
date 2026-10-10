@@ -371,6 +371,10 @@ function contextForEntity(
     return { eventId: null, majorEventId: 'major-event-story', eventGroupId: entityId };
   }
 
+  if (['TICKET', 'TICKET_TRANSFER', 'TICKET_PURCHASE', 'TICKET_CONFIG'].includes(entityType)) {
+    return { eventId: 'event-story', majorEventId: 'major-event-story', eventGroupId: null };
+  }
+
   if (
     entityType === 'EVENT_SUBSCRIPTION' ||
     entityType === 'EVENT_ATTENDANCE' ||
@@ -392,6 +396,10 @@ function permissionForEntry(entityType: AuditLogEntityType, operation: AuditLogO
   if (entityType === 'SYSTEM') {
     return null;
   }
+
+  if (entityType === 'TICKET_TRANSFER') return 'ticket-transfer#manage';
+  if (entityType === 'TICKET_PURCHASE') return operation === 'REJECT' ? 'receipt#reject' : 'receipt#approve';
+  if (entityType === 'TICKET_CONFIG') return `ticket-config#${operation.toLocaleLowerCase('en-US')}`;
 
   return `${entityType.toLocaleLowerCase('en-US').replace(/_/g, '-')}#${operation.toLocaleLowerCase('en-US')}`;
 }

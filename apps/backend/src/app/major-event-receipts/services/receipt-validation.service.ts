@@ -1,3 +1,4 @@
+import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import {
   BadRequestException,
   ConflictException,
@@ -83,6 +84,7 @@ export class ReceiptValidationService {
     > = {
       publishPaymentChanged: async () => undefined,
     },
+    @Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService,
   ) {}
 
   async approveReceipt(
@@ -130,6 +132,7 @@ export class ReceiptValidationService {
         actorId,
       );
       await this.sync.refreshSportsParticipantPayment(tx, subscriptionId);
+      await this.ticketSubscriptions?.forMajorEvent(tx, subscription.majorEventId, subscription.personId);
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
       await this.sync.refreshEventSubscriptionCounters(tx, [
         ...subscription.selectedEvents.map((selection) => selection.eventId),
@@ -218,6 +221,7 @@ export class ReceiptValidationService {
       });
 
       await this.sync.refreshSportsParticipantPayment(tx, subscriptionId);
+      await this.ticketSubscriptions?.forMajorEvent(tx, subscription.majorEventId, subscription.personId);
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
       await this.auditLog.record(
         {
@@ -331,6 +335,7 @@ export class ReceiptValidationService {
         actorId,
       );
       await this.sync.refreshSportsParticipantPayment(tx, existingAction.subscriptionId);
+      await this.ticketSubscriptions?.forMajorEvent(tx, existingAction.subscription.majorEventId, existingAction.subscription.personId);
       await this.attendanceCategories.refreshForMajorEventPerson(
         existingAction.subscription.majorEventId,
         existingAction.subscription.personId,

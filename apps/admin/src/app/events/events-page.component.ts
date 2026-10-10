@@ -90,7 +90,10 @@ export class EventsPageComponent {
 
   readonly workspace = inject(EventsService);
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
-  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly pendingRegistration = this.pendingChanges.register(() => this.workspace.discardChanges({
+    majorEventId: this.lastContext?.query?.get('majorEventId'),
+    eventGroupId: this.lastContext?.query?.get('eventGroupId'),
+  }));
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);

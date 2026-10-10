@@ -191,7 +191,7 @@ describe('EventAttendancesMutationsResolver', () => {
         data: expect.objectContaining({ createdByMethod: AttendanceCreationMethod.MANUAL_INPUT }),
       }),
     );
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true);
 
     tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
     const attendedAt = new Date('2026-05-21T13:00:00.000Z');
@@ -314,6 +314,28 @@ describe('EventAttendancesMutationsResolver', () => {
         {} as never,
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('returns a refreshed category for an existing non-regular scanner attendance', async () => {
+    const tx = createTxMock();
+    const attendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT', category: 'REGULAR' };
+    tx.eventAttendance.findUnique.mockResolvedValue({ ...attendance, category: 'NON_REGULAR' });
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue(attendance);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
+
+    await expect(
+      resolver.createEventAttendanceFromScannerCode(
+        { eventId: 'event-1', code: 'user:user-1' },
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toBe(attendance);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+      attendedAt: expect.any(Date),
+      actorUserId: 'collector-1',
+    });
+    expect(tx.eventAttendance.create).not.toHaveBeenCalled();
+    expect(tx.eventAttendance.update).not.toHaveBeenCalled();
   });
 
   it('creates Aztec-code attendances after validating the event and active person', async () => {

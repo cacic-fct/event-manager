@@ -1,0 +1,98 @@
+@let current = state();
+
+<mat-toolbar>
+  @if (current.status === 'ready') {
+    <a matIconButton [routerLink]="['/profile/wallet/tickets', current.ticket.id]" aria-label="Voltar às informações do bilhete">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+  } @else {
+    <a matIconButton routerLink="/profile/wallet" aria-label="Voltar para a carteira">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+  }
+  <h1 class="global-toolbar-title">Transferir bilhete</h1>
+</mat-toolbar>
+
+<main class="ticket-transfer-start-page">
+  @if (current.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando bilhete"></mat-progress-bar>
+  } @else if (current.status === 'empty' || current.status === 'error') {
+    <section class="transfer-page-message" aria-live="polite">
+      <mat-icon aria-hidden="true">{{ current.status === 'error' ? 'error' : 'confirmation_number' }}</mat-icon>
+      <p>{{ current.message }}</p>
+    </section>
+  } @else {
+    @let ticket = current.ticket;
+    <section class="transfer-ticket-basics" aria-label="Informações do bilhete">
+      <app-calendar-list-item [item]="eventItem(ticket)" />
+      <app-ticket-person-summary
+        [fullName]="senderIdentity().fullName"
+        [avatarUrl]="senderIdentity().avatarUrl"
+        [identityDocument]="senderIdentity().identityDocument" />
+      <p class="privacy-copy">
+        Seu nome completo e seu CPF parcialmente oculto ou o passaporte serão compartilhados com quem receber o bilhete.
+      </p>
+    </section>
+
+    <section class="transfer-form-section">
+      <h2>Quer transferir para:</h2>
+      @if (current.pendingTransfer; as pending) {
+        <p class="pending-document-label">Documento informado</p>
+        <p class="pending-document">{{ pending.submittedDestinationIdentityDocument }}</p>
+        @if (!ticketIsActive()) {
+          <p class="transfer-status" role="status">{{ ticketUnavailableMessage(ticket) }}</p>
+        }
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!canCancel() || isCanceling()"
+          (click)="cancelTransfer()">
+          <mat-icon>cancel</mat-icon>
+          {{ isCanceling() ? 'Cancelando pedido…' : 'Cancelar pedido' }}
+        </button>
+      } @else if (canStartTransfer()) {
+        <form [formGroup]="destinationForm" (ngSubmit)="submitTransfer()" novalidate>
+          <mat-form-field appearance="outline">
+            <mat-label>CPF ou passaporte</mat-label>
+            <input
+              matInput
+              formControlName="identityDocument"
+              autocomplete="off"
+              autocapitalize="characters"
+              inputmode="text"
+              [attr.aria-describedby]="formError() ? 'transfer-error' : null" />
+            @if (destinationForm.controls.identityDocument.touched && destinationForm.controls.identityDocument.invalid) {
+              <mat-error>{{ documentErrorMessage() }}</mat-error>
+            }
+          </mat-form-field>
+          <p class="privacy-copy">Não informaremos se o documento está cadastrado ou pode receber este bilhete.</p>
+          @if (formError()) {
+            <p class="form-error" id="transfer-error" role="alert">{{ formError() }}</p>
+          }
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="destinationForm.invalid || isSubmitting()">
+            <mat-icon>send</mat-icon>
+            {{ isSubmitting() ? 'Enviando…' : 'Enviar bilhete' }}
+          </button>
+        </form>
+      } @else {
+        <p class="form-error" role="status">{{ ticketUnavailableMessage(ticket) }}</p>
+      }
+    </section>
+
+    @if (ticket.description || ticket.transferEligibilityDescription) {
+      <section class="ticket-extra-information">
+        @if (ticket.description) {
+          <h2>Sobre o bilhete</h2>
+          <p>{{ ticket.description }}</p>
+        }
+        @if (ticket.transferEligibilityDescription) {
+          <h2>Quem pode receber</h2>
+          <p>{{ ticket.transferEligibilityDescription }}</p>
+        }
+      </section>
+    }
+  }
+</main>

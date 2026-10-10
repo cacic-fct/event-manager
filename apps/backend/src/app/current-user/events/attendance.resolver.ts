@@ -163,6 +163,7 @@ export class CurrentUserEventAttendanceResolver {
         name: true,
         allowSubscription: true,
         autoSubscribe: true,
+        ticketConfig: { select: { enabled: true } },
         attendanceEligibility: true,
         eventGroupId: true,
         shouldCollectAttendance: true,
@@ -258,7 +259,7 @@ export class CurrentUserEventAttendanceResolver {
               },
             });
           }
-          await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);
+          await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx, true);
           checkInStarted = await startSportsMatchCheckInFromAthleteAttendance({
             tx,
             eventId: event.id,
@@ -309,6 +310,7 @@ export class CurrentUserEventAttendanceResolver {
       id: string;
       allowSubscription: boolean;
       autoSubscribe: boolean;
+      ticketConfig?: { enabled: boolean } | null;
       attendanceEligibility?: AttendanceEligibility | null;
       eventGroupId?: string | null;
       eventGroup?: { attendanceEligibility?: AttendanceEligibility | null; deletedAt?: Date | null } | null;
@@ -320,6 +322,8 @@ export class CurrentUserEventAttendanceResolver {
       } | null;
     },
   ): Promise<void> {
+    // Ticket attendance is classified from the consumed ticket in this transaction.
+    if (event.ticketConfig?.enabled) return;
     const policy = eventAttendanceEligibility(event);
     if (policy === AttendanceEligibility.ANYONE) {
       return;

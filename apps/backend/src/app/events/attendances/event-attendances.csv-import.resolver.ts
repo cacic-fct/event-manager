@@ -168,7 +168,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
                 createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
               },
             });
-            await this.attendanceCategories.refreshForEventPersons([input.eventId], createdPersonIds, tx);
+            await this.attendanceCategories.refreshForEventPersons([input.eventId], createdPersonIds, tx, true);
             for (const personId of createdPersonIds) {
               checkInStarted =
                 (await startSportsMatchCheckInFromAthleteAttendance({

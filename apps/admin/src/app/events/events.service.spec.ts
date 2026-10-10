@@ -26,8 +26,31 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { PlacePresetsService } from '../places/place-presets.service';
 import { ShellUiService } from '../app-shell/ui.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
+import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-changes.service';
 
 describe('EventsService', () => {
+  it('reloads the saved event after confirmed discard and reopening the same selection', async () => {
+    const savedEvent = createAdminEvent({ id: 'event-1', name: 'Nome salvo' });
+    api.getEvent.mockReturnValue(of(savedEvent));
+    await service.selectEventById(savedEvent.id, { skipIfCurrent: true });
+    service.eventForm.controls.name.setValue('Nome descartado');
+    vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ afterClosed: () => of(true) } as never);
+    const pendingChanges = TestBed.inject(WorkspacePendingChangesService);
+    const registration = pendingChanges.register(() => service.discardChanges());
+    registration.set(service.unsavedChanges());
+
+    await expect(pendingChanges.canDeactivate()).resolves.toBe(true);
+    expect(service.selectedEvent()?.id).toBe(savedEvent.id);
+    expect(service.eventForm.controls.name.value).toBe('Nome salvo');
+    registration.destroy();
+    await service.selectEventById(savedEvent.id, { skipIfCurrent: true });
+
+    expect(service.eventForm.controls.name.value).toBe('Nome salvo');
+    expect(service.unsavedChanges()).toBe(false);
+    expect(api.getEvent).toHaveBeenCalledTimes(2);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   let service: EventsService;
   let lastPayload: EventInput | null;
   let api: {

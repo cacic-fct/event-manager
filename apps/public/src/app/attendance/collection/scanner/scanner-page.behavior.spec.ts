@@ -4,6 +4,7 @@ import { computed, signal } from '@angular/core';
 import { createPublicEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { OfflineAttendanceQueueItem } from '@cacic-fct/public-indexed-db';
 import { of, throwError } from 'rxjs';
+import { TICKET_FIXTURE_HOLDER_USER_ID } from '@cacic-fct/shared-ticketing/testing';
 import { AttendanceCollectionEvent, AttendanceCollectionLocation } from '../attendance-collection-api.service';
 import { AttendanceScanner } from './scanner-page';
 
@@ -262,6 +263,42 @@ describe('AttendanceScanner operations', () => {
     expect(deps.feedback.show).toHaveBeenCalledWith('nonSubscribed');
     expect(deps.snackbar.open).toHaveBeenCalledWith('Presença registrada.', 'Fechar', { duration: 2500 });
     expect(component.attendances()).toEqual([present]);
+  });
+
+  it('normalizes a ticket barcode to the user-card attendance code', async () => {
+    const { component, deps } = createScanner();
+
+    await handleScan(component, `ticket:018f47a1-3d5b-7abc-8def-0123456789ab:${TICKET_FIXTURE_HOLDER_USER_ID}`);
+
+    expect(deps.api.registerScannerCode).toHaveBeenCalledWith('event-1', `user:${TICKET_FIXTURE_HOLDER_USER_ID}`, location);
+  });
+
+  it('queues the normalized ticket code with its original collector for upload', async () => {
+    const { component, deps } = createScanner();
+    deps.network.isOnline.mockReturnValue(false);
+
+    await handleScan(component, `ticket:018f47a1-3d5b-7abc-8def-0123456789ab:${TICKET_FIXTURE_HOLDER_USER_ID}`);
+
+    expect(deps.api.registerScannerCode).not.toHaveBeenCalled();
+    expect(deps.offlineQueue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdByMethod: 'SCANNER',
+        code: `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
+        queuedByUserId: 'collector-1',
+        authorUserId: 'collector-1',
+      }),
+    );
+    expect(deps.offlineSync.notifyPendingNow).toHaveBeenCalledOnce();
+  });
+
+  it('rejects malformed ticket barcodes before online registration', async () => {
+    const { component, deps } = createScanner();
+
+    await handleScan(component, 'ticket:not-a-uuid:holder-user-1');
+
+    expect(deps.api.registerScannerCode).not.toHaveBeenCalled();
+    expect(deps.feedback.show).toHaveBeenCalledWith('invalid');
+    expect(deps.snackbar.open).toHaveBeenCalledWith('Código do bilhete inválido.', 'Fechar', { duration: 3500 });
   });
 
   it('queues scanner input while offline with collector provenance and wakes the sync service', async () => {

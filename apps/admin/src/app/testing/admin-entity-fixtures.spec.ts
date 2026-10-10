@@ -6,12 +6,35 @@ import {
   createAdminMajorEventFromInput,
   createAdminOfflineEventAttendanceSubmission,
   createAdminPerson,
+  createAdminReceiptValidationQueue,
+  createAdminReceiptValidationQueueItem,
   createAdminWorkspaceDashboardInsights,
   createAdminWorkspaceEventSubscription,
   createAdminWorkspaceMajorEventSubscription,
 } from './admin-entity-fixtures';
 
 describe('admin entity fixtures', () => {
+  it('creates a mixed receipt queue with protected previews and full tier counts', () => {
+    const now = new Date();
+    const subscription = createAdminReceiptValidationQueueItem({}, now);
+    const ticketPurchase = createAdminReceiptValidationQueueItem(
+      {
+        category: 'TICKET',
+        purchaseId: 'purchase-1',
+        ticketName: 'Acesso à festa de boas-vindas',
+        paymentTier: 'Visitante',
+      },
+      now,
+    );
+    const queue = createAdminReceiptValidationQueue({ items: [subscription, ticketPurchase] });
+
+    expect(queue).toMatchObject({ pendingCount: 2, subscriptionCount: 1, ticketCount: 1 });
+    expect(ticketPurchase).toMatchObject({ category: 'TICKET', purchaseId: 'purchase-1', ticketName: 'Acesso à festa de boas-vindas' });
+    expect(subscription.receipt?.imageUrl).toContain('data:image/svg+xml');
+    expect(Date.parse(subscription.receipt?.expiresAt ?? '')).toBeGreaterThan(now.getTime());
+    expect(queue.availablePaymentTiers?.map((tier) => tier.name)).toEqual(['Estudante', 'Visitante']);
+  });
+
   it('maps major-event input payment data into the editable fixture shape', () => {
     const majorEvent = createAdminMajorEventFromInput({
       id: 'major-custom',

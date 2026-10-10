@@ -21,6 +21,7 @@ const certificatesData = getFeatureRouteData('certificates');
 const formsData = getFeatureRouteData('forms');
 const attendancesData = getFeatureRouteData('attendances');
 const subscriptionsData = getFeatureRouteData('subscriptions');
+const ticketsData = getFeatureRouteData('tickets');
 const notificationsData = getFeatureRouteData('notifications');
 const globalOperationsData = getFeatureRouteData('global-operations');
 const permissionsData = getFeatureRouteData('permissions');
@@ -50,7 +51,7 @@ function guardedFeatureRoute(path: string, data: NavigationLinkItem, loadCompone
         canDeactivate: [prizeDrawsUnsavedChangesGuard],
         runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
       } : {}),
-      ...(['events', 'groups', 'major-events', 'certificates'].includes(data.id) ? {
+      ...(['events', 'groups', 'major-events', 'certificates', 'tickets'].includes(data.id) ? {
         canActivate: [workspacePendingChangesActivateGuard],
         canDeactivate: [workspacePendingChangesGuard],
         runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
@@ -119,6 +120,26 @@ export const routes: Route[] = [
       ...guardedFeatureRoute('event-workspace/new/major-event', majorEventsData, () =>
         import('../major-events/major-events-page.component').then((m) => m.MajorEventsPageComponent),
         canCreateContextGuard,
+      ),
+
+      {
+        path: ticketsData.path,
+        pathMatch: 'full',
+        data: ticketsData,
+        canMatch: [canReadFeatureGuard],
+        loadComponent: () => import('../tickets/ticket-admin-landing-page.component').then((m) => m.TicketAdminLandingPageComponent),
+      },
+      {
+        path: ticketsData.path,
+        pathMatch: 'full',
+        data: ticketsData,
+        loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
+      },
+      ...guardedFeatureRoute('tickets/event/:eventId', ticketsData, () =>
+        import('../tickets/ticket-admin-page.component').then((m) => m.TicketAdminPageComponent),
+      ),
+      ...guardedFeatureRoute('tickets/major-event/:majorEventId', ticketsData, () =>
+        import('../tickets/ticket-admin-page.component').then((m) => m.TicketAdminPageComponent),
       ),
       ...(['event', 'group', 'major-event'] as const).flatMap((kind) => guardedFeatureMatcher(
         (segments) => (segments.length === 3 || (segments.length === 4 && segments[3].path === 'settings')) && segments[0].path === 'event-workspace' && segments[1].path === kind

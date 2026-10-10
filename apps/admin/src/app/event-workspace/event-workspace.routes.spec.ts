@@ -37,6 +37,12 @@ describe('canonical event workspace routes', () => {
     expect(children.find((route) => route.path === path)).toEqual({ path, pathMatch: 'full', redirectTo });
   });
 
+  it('registers the global ticket picker and event-scoped ticket workspaces', () => {
+    expect(children.some((route) => route.path === 'tickets' && route.pathMatch === 'full')).toBe(true);
+    expect(children.some((route) => route.path === 'tickets/event/:eventId')).toBe(true);
+    expect(children.some((route) => route.path === 'tickets/major-event/:majorEventId')).toBe(true);
+  });
+
   it.each([
     ['/events', '/event-workspace'],
     ['/events/event-1', '/event-workspace/event/event-1'],
@@ -51,5 +57,4 @@ describe('canonical event workspace routes', () => {
     await RouterTestingHarness.create(`${legacy}?source=calendar#details`);
     expect(TestBed.inject(Router).url).toBe(`${canonical}?source=calendar#details`);
   });
-
 });

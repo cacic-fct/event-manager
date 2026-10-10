@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { TicketSubscriptionSyncService } from './ticket-subscription-sync.service';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 
 export type MajorEventSubscriptionSyncResult = {
@@ -9,6 +10,8 @@ export type MajorEventSubscriptionSyncResult = {
 
 @Injectable()
 export class EventSubscriptionSyncService {
+  constructor(@Optional() private readonly ticketSubscriptions?: TicketSubscriptionSyncService) {}
+
   async syncMajorEventConfirmedSubscriptions(
     tx: Prisma.TransactionClient,
     majorEventId: string,
@@ -69,6 +72,7 @@ export class EventSubscriptionSyncService {
       });
     }
 
+    await this.ticketSubscriptions?.forMajorEvent(tx, majorEventId, personId);
     return {
       activeEventIds,
       archivedEventIds,

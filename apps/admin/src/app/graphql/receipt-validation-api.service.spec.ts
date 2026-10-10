@@ -20,7 +20,13 @@ describe('ReceiptValidationApiService', () => {
     expect(source.url).toBe('/api/major-event-receipts/admin/queue/events?majorEventId=major%20%2F%201');
     source.emitMessage({ type: 'receipt-validation-queue', queue: { pendingCount: 1, items: [] } });
 
-    await expect(queue).resolves.toEqual({ pendingCount: 1, items: [] });
+    await expect(queue).resolves.toEqual({
+      pendingCount: 1,
+      subscriptionCount: 0,
+      ticketCount: 0,
+      availablePaymentTiers: [],
+      items: [],
+    });
     expect(source.close).toHaveBeenCalledOnce();
   });
 
@@ -58,6 +64,9 @@ describe('ReceiptValidationApiService', () => {
 
     await expect(queue).resolves.toMatchObject({
       pendingCount: 1,
+      subscriptionCount: 1,
+      ticketCount: 0,
+      availablePaymentTiers: [],
       items: [{ events: [] }],
     });
   });

@@ -9,6 +9,9 @@ import { CurrentUserContextService } from './context.service';
 import { PersonRecord, UserRecord } from './selects';
 
 type PrismaMock = {
+  accountUserMerge: { findMany: jest.Mock };
+  $queryRaw: jest.Mock;
+  $transaction: jest.Mock;
   user: {
     findUnique: jest.Mock;
     findFirst: jest.Mock;
@@ -20,6 +23,15 @@ type PrismaMock = {
     findFirst: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+  };
+  ticketTransfer: { findFirst: jest.Mock; updateMany: jest.Mock };
+  ticketNotificationOutbox: { findFirst: jest.Mock; updateMany: jest.Mock };
+  ticketRealtimeOutbox: { findFirst: jest.Mock; updateMany: jest.Mock };
+  ticketTransferAuthorCooldown: {
+    findFirst: jest.Mock;
+    findUnique: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
   };
 };
 
@@ -35,6 +47,9 @@ describe('CurrentUserContextService', () => {
 
   beforeEach(() => {
     prisma = {
+      accountUserMerge: { findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      $transaction: jest.fn(),
       user: {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
@@ -46,6 +61,15 @@ describe('CurrentUserContextService', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+      },
+      ticketTransfer: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      ticketNotificationOutbox: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      ticketRealtimeOutbox: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      ticketTransferAuthorCooldown: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findUnique: jest.fn().mockResolvedValue(null),
+        update: jest.fn(),
+        delete: jest.fn(),
       },
     };
     certificateIssuingService = {
@@ -378,6 +402,82 @@ describe('CurrentUserContextService', () => {
         },
       }),
     );
+  });
+
+  it('skips reconciliation transactions after old ticket account references are gone', async () => {
+    const user = createUserRecord({ id: 'new-user' });
+    const person = createPersonRecord({ userId: user.id, user });
+    prisma.user.findUnique.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+    prisma.accountUserMerge.findMany.mockResolvedValueOnce([{ oldUserId: 'old-user' }]).mockResolvedValue([]);
+    await service.resolveCurrentUserContext(createAuthenticatedUser({ sub: user.id }));
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.ticketTransfer.updateMany).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('reconciles ticket account references after the survivor User is created on first login', async () => {
+    const authenticatedUser = createAuthenticatedUser({ sub: 'new-user' });
+    const user = createUserRecord({ id: 'new-user' });
+    const person = createPersonRecord({ id: 'survivor-person', userId: user.id, user });
+    const lastSubmittedAt = new Date();
+
+    accountMergeService.resolveFinalUserId.mockResolvedValue('new-user');
+    prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValue(user);
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue(user);
+    prisma.people.findMany.mockResolvedValue([person]);
+    prisma.accountUserMerge.findMany.mockImplementation(({ where }: { where: { newUserId: { in: string[] } } }) => {
+      if (where.newUserId.in.includes('new-user')) return Promise.resolve([{ oldUserId: 'middle-user' }]);
+      if (where.newUserId.in.includes('middle-user')) return Promise.resolve([{ oldUserId: 'old-user' }]);
+      return Promise.resolve([]);
+    });
+    prisma.ticketTransfer.findFirst.mockResolvedValue({ id: 'pending-transfer' });
+    prisma.ticketTransferAuthorCooldown.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ userId: 'old-user', submissionCount: 5, lastSubmittedAt })
+      .mockResolvedValueOnce(null);
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        user: prisma.user,
+        ticketTransfer: prisma.ticketTransfer,
+        ticketNotificationOutbox: prisma.ticketNotificationOutbox,
+        ticketRealtimeOutbox: prisma.ticketRealtimeOutbox,
+        ticketTransferAuthorCooldown: prisma.ticketTransferAuthorCooldown,
+        $queryRaw: prisma.$queryRaw,
+      }),
+    );
+
+    await expect(service.resolveCurrentUserContext(authenticatedUser)).resolves.toEqual({ user, person });
+
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ id: 'new-user' }) }),
+    );
+    expect(prisma.accountUserMerge.findMany).toHaveBeenNthCalledWith(1, {
+      where: { newUserId: { in: ['new-user'] } },
+      select: { oldUserId: true },
+    });
+    expect(prisma.accountUserMerge.findMany).toHaveBeenNthCalledWith(2, {
+      where: { newUserId: { in: ['middle-user'] } },
+      select: { oldUserId: true },
+    });
+    expect(prisma.ticketTransfer.updateMany).toHaveBeenCalledWith({
+      where: { senderStatus: 'PENDING', recipientUserId: 'old-user' },
+      data: { recipientUserId: 'new-user' },
+    });
+    expect(prisma.ticketNotificationOutbox.updateMany).toHaveBeenCalledWith({
+      where: { recipientUserId: 'old-user', sentAt: null },
+      data: { recipientUserId: 'new-user' },
+    });
+    expect(prisma.ticketRealtimeOutbox.updateMany).toHaveBeenCalledWith({
+      where: { recipientUserId: 'old-user', publishedAt: null },
+      data: { recipientUserId: 'new-user' },
+    });
+    expect(prisma.ticketTransferAuthorCooldown.update).toHaveBeenCalledWith({
+      where: { userId: 'old-user' },
+      data: { userId: 'new-user' },
+    });
   });
 });
 

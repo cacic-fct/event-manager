@@ -49,14 +49,17 @@ describe('RealtimeApiService', () => {
     try {
       const service = TestBed.inject(RealtimeApiService);
       const eventSubscription = service.watchEventSubscriptions('event /1').subscribe();
+      const ticketSubscription = service.watchEventTickets('ticket event/3').subscribe();
       const majorEventSubscription = service.watchMajorEventSubscriptions('major event/2').subscribe();
 
       expect(FakeEventSource.instances.map((source) => source.url)).toEqual([
         '/api/realtime/admin/events/event%20%2F1/subscriptions/events',
+        '/api/realtime/admin/events/ticket%20event%2F3/tickets/events',
         '/api/realtime/admin/major-events/major%20event%2F2/subscriptions/events',
       ]);
 
       eventSubscription.unsubscribe();
+      ticketSubscription.unsubscribe();
       majorEventSubscription.unsubscribe();
       expect(FakeEventSource.instances.every((source) => source.close.mock.calls.length === 1)).toBe(true);
     } finally {

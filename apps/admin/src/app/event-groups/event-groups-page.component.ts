@@ -68,7 +68,9 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
 export class EventGroupsPageComponent {
   readonly workspace = inject(EventGroupsService);
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
-  private readonly pendingRegistration = this.pendingChanges.register();
+  private readonly pendingRegistration = this.pendingChanges.register(() =>
+    this.workspace.discardChanges(this.lastContext?.query?.get('majorEventId')),
+  );
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
@@ -243,7 +245,10 @@ export class EventGroupsPageComponent {
   }
 
   private isGroupFrozen(group: EventGroup): boolean {
-    const events = this.workspace.eventSummaries().filter((eventItem) => eventItem.eventGroupId === group.id);
+    const events =
+      this.workspace.selectedEventGroup()?.id === group.id
+        ? this.workspace.eventGroupEvents()
+        : this.workspace.eventSummaries().filter((eventItem) => eventItem.eventGroupId === group.id);
     return isFrozenEventGroup(group, events);
   }
 }

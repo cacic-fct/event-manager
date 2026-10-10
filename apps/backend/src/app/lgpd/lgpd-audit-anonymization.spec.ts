@@ -211,6 +211,42 @@ describe('merge candidate audit anonymization', () => {
 });
 
 
+describe('ticket audit subject anonymization', () => {
+  it('selects ticket holder snapshots and person-derived source keys', () => {
+    const where = buildAuditLogSubjectWhere({ people: [], personIds: ['person-1'], userIds: [], emails: [] });
+    expect(where.OR).toEqual(expect.arrayContaining([
+      { after: { path: ['holderPersonId'], equals: 'person-1' } },
+      { before: { path: ['recipientPersonId'], equals: 'person-1' } },
+      { after: { path: ['sourceKey'], string_ends_with: ':person-1' } },
+    ]));
+  });
+
+  it('recognizes source-key-only ticket snapshots and changes as subject data', () => {
+    const identities = new Set(['person-1']);
+    expect(containsAuditIdentity({ sourceKey: 'event-subscription:event-1:person-1' }, identities, false)).toBe(true);
+    expect(containsAuditIdentity([{ field: 'sourceKey', before: 'event-subscription:event-1:person-1', after: null }], identities, false)).toBe(true);
+    expect(containsAuditIdentity({ sourceKey: 'event-subscription:event-1:person-10' }, identities, false)).toBe(false);
+    expect(anonymizeAuditJson({ sourceKey: 'event-subscription:event-1:person-1' }, identities, identities, 'anonymous', [], false))
+      .toEqual({ sourceKey: ANONYMIZED_AUDIT_VALUE });
+  });
+
+  it('scrubs ticket identities and source keys in snapshots and change arrays without matching neighboring IDs', () => {
+    const identities = new Set(['person-1']);
+    const value = {
+      holderPersonId: 'person-1',
+      sourceKey: 'event-subscription:event-1:person-1',
+      unrelatedKey: 'event-subscription:event-1:person-10',
+      changes: [{ field: 'sourceKey', before: 'event-subscription:event-1:person-1', after: 'major-event-subscription:event-1:person-1' }],
+    };
+    expect(anonymizeAuditJson(value, identities, identities, 'anonymous', [], false)).toEqual({
+      holderPersonId: 'anonymous',
+      sourceKey: ANONYMIZED_AUDIT_VALUE,
+      unrelatedKey: 'event-subscription:event-1:person-10',
+      changes: [{ field: 'sourceKey', before: ANONYMIZED_AUDIT_VALUE, after: ANONYMIZED_AUDIT_VALUE }],
+    });
+  });
+});
+
 describe('invitation audit privacy', () => {
   const dataSubject = { people: [], personIds: ['person-1'], userIds: [], emails: [] };
 

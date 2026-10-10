@@ -32,6 +32,10 @@ export const AUDIT_LOG_ENTITY_TYPE_OPTIONS: readonly SelectOption<AuditLogEntity
   { value: 'CERTIFICATE', label: 'Certificado' },
   { value: 'MERGE_CANDIDATE', label: 'Pessoa duplicada' },
   { value: 'RECEIPT_VALIDATION', label: 'Validação de comprovante' },
+  { value: 'TICKET', label: 'Bilhete' },
+  { value: 'TICKET_TRANSFER', label: 'Transferência de bilhete' },
+  { value: 'TICKET_PURCHASE', label: 'Compra de bilhete' },
+  { value: 'TICKET_CONFIG', label: 'Configuração de bilhete' },
   { value: 'SYSTEM', label: 'Sistema' },
 ];
 

@@ -45,8 +45,8 @@ import {
 import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
 import { SseReplayService } from '../../realtime/sse-replay.service';
-import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../../audiences/audience-context';
 import { AudienceInvitationService, invitationFactForAttendance } from '../../audiences/audience-invitation.service';
+import { ANONYMOUS_AUDIENCE, audienceContext, type EventAudiencePrincipal } from '../../audiences/audience-context';
 import {
   eventAttendanceEligibility,
   isApprovedAttendance,

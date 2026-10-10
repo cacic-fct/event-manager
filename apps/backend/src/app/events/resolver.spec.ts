@@ -8,8 +8,15 @@ describe('EventsResolver', () => {
   it('refreshes attendance classifications and realtime after an invitation-only edit', async () => {
     const event = { id: 'event-1', name: 'Evento', audience: 'PUBLIC', audienceCourseCodes: [],
       eventGroupId: null, majorEventId: null, attendanceEligibility: 'INVITED_ONLY', deletedAt: null };
-    const tx = { event: { findFirst: jest.fn().mockResolvedValue(event), update: jest.fn(),
-      updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue(event) } };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      event: {
+        findFirst: jest.fn().mockResolvedValue(event),
+        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(event),
+      },
+    };
     const prisma = { event: { findFirst: jest.fn().mockResolvedValue(event) },
       $transaction: jest.fn((operation) => operation(tx)) };
     const attendance = { refreshForEvent: jest.fn() };
@@ -237,7 +244,165 @@ describe('EventsResolver', () => {
     );
   });
 
+  it('uses scalar event snapshots for update audit records', async () => {
+    const previousEndDate = new Date();
+    const updatedEndDate = new Date(previousEndDate.getTime() + 60 * 60 * 1_000);
+    const eventStartDate = new Date();
+    const previousAudit = {
+      id: 'event-1',
+      name: 'Evento antigo',
+      endDate: previousEndDate,
+      majorEventId: 'major-old',
+      eventGroupId: null,
+      publicationState: 'PUBLISHED',
+    };
+    const updatedDetail = {
+      id: 'event-1',
+      name: 'Evento novo',
+      emoji: 'calendar',
+      type: 'OTHER',
+      description: null,
+      shortDescription: null,
+      locationDescription: null,
+      majorEventId: 'major-new',
+      majorEvent: {
+        id: 'major-new',
+        name: 'Grande evento',
+      },
+      eventGroupId: null,
+      eventGroup: null,
+      startDate: eventStartDate,
+      endDate: updatedEndDate,
+    };
+    const updatedAudit = {
+      id: 'event-1',
+      name: 'Evento novo',
+      endDate: updatedDetail.endDate,
+      majorEventId: 'major-new',
+      eventGroupId: null,
+      publicationState: 'PUBLISHED',
+      scheduledPublishAt: null,
+      publishedAt: new Date(),
+    };
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(previousAudit),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValue(updatedAudit),
+      },
+      eventGroup: {
+        updateMany: jest.fn(),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ eventGroupId: null }),
+      },
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const typesenseSearch = {
+      upsertEvent: jest.fn(),
+    };
+    const frozenResources = {
+      assertEventUpdateMutable: jest.fn(),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const attendanceCategories = {
+      refreshForEvent: jest.fn().mockResolvedValue(undefined),
+    };
+    const attendanceRealtime = {
+      notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined),
+    };
+    const sportsMutationEvents = {
+      publishForBackingEvent: jest.fn(),
+    };
+    const ticketIssuance = {
+      alignActiveTicketExpirations: jest.fn().mockResolvedValue(1),
+      lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      attendanceRealtime as never,
+      frozenResources as never,
+      authorizationPolicy as never,
+      auditLog as never,
+      attendanceCategories as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
+      undefined,
+      ticketIssuance as never,
+    );
+
+    await expect(
+      resolver.updateEvent(
+        'event-1',
+        {
+          name: 'Evento novo',
+          endDate: updatedDetail.endDate,
+          majorEventId: 'major-new',
+          eventGroupId: null,
+          shouldAllowOralAttendance: false,
+          publishAfterUpdate: true,
+        } as never,
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).resolves.toBe(updatedDetail);
+
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Evento novo',
+          shouldAllowOralAttendance: false,
+          publicationState: 'PUBLISHED',
+          scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
+          publicationUpdatedBy: 'user-1',
+        }),
+      }),
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'user-1' }, [Permission.Event.Update], {
+      majorEventId: 'major-new',
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: expect.objectContaining({
+          majorEventId: 'major-new',
+          eventGroupId: null,
+        }),
+      }),
+      tx,
+    );
+    expect(auditLog.record.mock.calls[0][0].before).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('scheduledPublishAt');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+    expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
+      .toBeLessThan(tx.event.updateMany.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
+      scope: 'EVENT_END_ONLY',
+      actorUserId: 'user-1',
+      permission: Permission.Event.Update,
+    });
+    expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
+    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+  });
+
   it.each([false, true])('audits publication separately when content changes: %s', async (contentChanged) => {
+    const eventStartDate = new Date();
+    const eventEndDate = new Date(eventStartDate.getTime() + 60 * 60 * 1_000);
     const previousAudit = {
       id: 'event-1',
       name: 'Evento antigo',
@@ -261,8 +426,8 @@ describe('EventsResolver', () => {
       },
       eventGroupId: null,
       eventGroup: null,
-      startDate: new Date('2026-06-22T12:00:00.000Z'),
-      endDate: new Date('2026-06-22T13:00:00.000Z'),
+      startDate: eventStartDate,
+      endDate: eventEndDate,
     };
     const updatedAudit = {
       id: 'event-1',
@@ -438,7 +603,7 @@ describe('EventsResolver', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(currentEvent),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit),
+        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValue(updatedAudit),
       },
       eventGroup: { updateMany: jest.fn() },
     };
@@ -457,7 +622,7 @@ describe('EventsResolver', () => {
     const resolver = new EventsResolver(
       prisma as never,
       { upsertEvent: jest.fn() } as never,
-      {} as never,
+      { notifyAllConnectedPeople: jest.fn() } as never,
       { assertEventUpdateMutable: jest.fn() } as never,
       { assertPermissions: jest.fn() } as never,
       auditLog as never,
@@ -686,7 +851,7 @@ describe('EventsResolver', () => {
         },
       ],
     });
-    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx);
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx, true);
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({
