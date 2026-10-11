@@ -18,7 +18,9 @@
     "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",
     "test:attendance-access-migration": "node --test tools/attendance-access-migration.test.mts",
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
-    "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json"
+    "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json",
+    "prepare": "node .husky/install.mjs",
+    "format:staged": "lint-staged"
   },
   "nx": {
     "targets": {
@@ -173,11 +175,13 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-playwright": "^1.8.3",
     "fake-indexeddb": "^6.2.5",
+    "husky": "^9.1.7",
     "jest": "^30.5.1",
     "jest-environment-node": "^30.5.1",
     "jest-util": "^30.5.1",
     "jsdom": "^27.4.0",
     "jsonc-eslint-parser": "^2.4.2",
+    "lint-staged": "^15.5.2",
     "monocart-reporter": "^2.13.1",
     "msw": "^2.15.0",
     "msw-storybook-addon": "^2.0.7",
@@ -207,5 +211,8 @@
       "apps/public/public",
       "apps/admin/public"
     ]
+  },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
   }
 }
