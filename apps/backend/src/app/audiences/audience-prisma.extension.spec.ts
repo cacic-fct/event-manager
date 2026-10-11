@@ -52,6 +52,13 @@ describe('event audience query boundary', () => {
     ).not.toThrow();
   });
 
+  it('accepts formatted relation metadata while rejecting stale relation data', () => {
+    execFileSync(process.execPath, [
+      '--test',
+      resolve(__dirname, '../../../../../tools/generate-audience-relations.test.mjs'),
+    ]);
+  });
+
   it('compiles audience and ancestor predicates before pagination using the real Prisma query compiler', async () => {
     await audienceContext.run(
       ANONYMOUS_AUDIENCE,
