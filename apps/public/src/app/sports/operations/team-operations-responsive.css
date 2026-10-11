@@ -1,0 +1,55 @@
+@media (max-width: 600px) {
+  .team-shell {
+    padding: 0.75rem;
+  }
+  .queue-panel article > div {
+    display: grid;
+  }
+  .identity-fields {
+    grid-template-columns: 1fr;
+  }
+  .logo-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .logo-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+  .member-list {
+    padding: 0.25rem;
+  }
+  .member-list article {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+    padding: 0.75rem 0.55rem;
+  }
+  .member-fields {
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+  .overall-member-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+  .match-selection-summary {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .matchup-identity {
+    flex-basis: 100%;
+    justify-items: start;
+    margin-inline-start: 0;
+    text-align: start;
+    justify-content: flex-start;
+  }
+  .matchup-identity .matchup-teams {
+    justify-content: flex-start;
+  }
+  .match-option {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .match-option-meta {
+    flex-basis: 100%;
+    margin-inline-start: 2rem;
+  }
+}

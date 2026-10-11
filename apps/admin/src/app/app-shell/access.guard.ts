@@ -4,7 +4,7 @@ import { inject } from '@angular/core';
 import { PLATFORM_ID } from '@angular/core';
 import { CanMatchFn, RedirectCommand, Route, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { EventManagerKeycloakRole, Permission, type WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { PermissionsService } from '../permissions/permissions.service';
 import { canCreateEventContext } from '../shared/event-context-access';

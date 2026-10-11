@@ -8,7 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { TicketRealtimeInvalidation, WalletTicket } from '@cacic-fct/shared-ticketing';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
 import { TicketingApiService } from './ticketing-api.service';
@@ -16,9 +16,7 @@ import { ticketStatusAt } from './ticket-expiration';
 import { nextDeadlineDelay } from './ticket-expiration';
 import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
-type TicketDetailsState =
-  | { status: 'loading' }
-  | { status: 'ready'; ticket: WalletTicket };
+type TicketDetailsState = { status: 'loading' } | { status: 'ready'; ticket: WalletTicket };
 
 @Component({
   selector: 'app-ticket-details-page',
@@ -49,9 +47,11 @@ export class TicketDetailsPage {
   readonly now = signal(Date.now());
   readonly canTransfer = computed(() => {
     const current = this.state();
-    return current.status === 'ready' &&
+    return (
+      current.status === 'ready' &&
       ticketStatusAt(current.ticket, this.now()) === 'ACTIVE' &&
-      current.ticket.transferable;
+      current.ticket.transferable
+    );
   });
 
   constructor() {
@@ -120,9 +120,7 @@ export class TicketDetailsPage {
             this.navigateToError(404);
             return;
           }
-          this.state.set(
-            { status: 'ready', ticket },
-          );
+          this.state.set({ status: 'ready', ticket });
           this.now.set(Date.now());
           this.scheduleExpiryRefresh(ticket);
         },
@@ -160,8 +158,7 @@ export class TicketDetailsPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.loadTicket(ticket.id);
-      }
-      else this.scheduleExpiryRefresh(ticket);
+      } else this.scheduleExpiryRefresh(ticket);
     }, delay);
   }
 
@@ -180,8 +177,10 @@ export class TicketDetailsPage {
     if (
       current.status === 'ready' &&
       ticketId &&
-      (invalidation.ticketId === ticketId || invalidation.eventId === current.ticket.eventId ||
-        invalidation.type === 'TICKETS_CHANGED' || invalidation.type === 'TRANSFERS_CHANGED')
+      (invalidation.ticketId === ticketId ||
+        invalidation.eventId === current.ticket.eventId ||
+        invalidation.type === 'TICKETS_CHANGED' ||
+        invalidation.type === 'TRANSFERS_CHANGED')
     ) {
       this.loadTicket(ticketId);
     }

@@ -29,7 +29,7 @@ import { myDayCountdown, myDayDateKey, myDayTimeProgress } from './my-day-date';
     TwemojiComponent,
   ],
   templateUrl: './my-day.page.html',
-  styleUrl: './my-day.page.css',
+  styleUrls: ['./my-day.page.css', './my-day-sections.css', './my-day-attention.css'],
 })
 export class MyDayPage {
   private readonly auth = inject(AuthService);

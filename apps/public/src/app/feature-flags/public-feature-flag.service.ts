@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { FeatureFlagCacheRecord, PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
-import { UnleashClient, type IToggle, type IVariant, type IStorageProvider } from 'unleash-proxy-client';
+import type { UnleashClient, IToggle, IVariant, IStorageProvider } from 'unleash-proxy-client';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
 import {
   PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS,
@@ -38,7 +38,8 @@ export class PublicFeatureFlagService {
       return;
     }
 
-    const client = new UnleashClient({
+    const unleash = await import('unleash-proxy-client');
+    const client = new unleash.UnleashClient({
       url: this.config.url,
       clientKey: this.config.clientKey,
       appName: this.config.appName,

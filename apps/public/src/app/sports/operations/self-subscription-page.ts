@@ -11,7 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import {
   EMPTY,
   Observable,

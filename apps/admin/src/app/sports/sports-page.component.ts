@@ -1,3 +1,4 @@
+import { providePortugueseDateFns } from '@cacic-fct/shared-angular/material/date-fns';
 import { DatePipe } from '@angular/common';
 import { Component, ViewEncapsulation, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -60,7 +61,7 @@ const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
     SportsReviewsSectionComponent,
     SportsTeamsSectionComponent,
   ],
-  providers: [SportsWorkspaceService],
+  providers: [...providePortugueseDateFns(), SportsWorkspaceService],
   templateUrl: './sports-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -68,9 +69,18 @@ const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
     '../app-shell/layout/forms-feedback.shared.scss',
     '../app-shell/layout/workspace-tabs.shared.scss',
     './sports-workspace-layout.scss',
+    './sports-workspace-scores-and-venues.scss',
+    './sports-workspace-review-details.scss',
     './sports-workspace-teams.scss',
+    './sports-workspace-registrations.scss',
+    './sports-workspace-members.scss',
+    './sports-workspace-people-search.scss',
     './sports-workspace-matches.scss',
+    './sports-workspace-bracket-generation.scss',
+    './sports-workspace-match-list.scss',
+    './sports-workspace-matches-responsive.scss',
     './sports-workspace-match-editor.scss',
+    './sports-workspace-match-editor-lineup.scss',
   ],
 })
 export class SportsPageComponent {
@@ -79,7 +89,7 @@ export class SportsPageComponent {
   protected readonly scopedMajorEventItem = computed(() => {
     const majorEventId = this.workspace.majorEventRouteScopeId();
     return majorEventId
-      ? this.workspace.scopedMajorEventWorkspaceItems().find((item) => item.majorEvent.id === majorEventId) ?? null
+      ? (this.workspace.scopedMajorEventWorkspaceItems().find((item) => item.majorEvent.id === majorEventId) ?? null)
       : null;
   });
   private readonly route = inject(ActivatedRoute);
@@ -130,15 +140,11 @@ export class SportsPageComponent {
     this.workspace.activeArea.set(area);
     void this.router
       .navigate(
-        sportsWorkspaceRoute(
-          majorEventId,
-          area,
-          {
-            categoryId: this.workspace.selectedCategoryId() || undefined,
-            teamId: this.workspace.selectedTeamId() || undefined,
-            matchId: this.workspace.selectedMatchId() || undefined,
-          },
-        ),
+        sportsWorkspaceRoute(majorEventId, area, {
+          categoryId: this.workspace.selectedCategoryId() || undefined,
+          teamId: this.workspace.selectedTeamId() || undefined,
+          matchId: this.workspace.selectedMatchId() || undefined,
+        }),
       )
       .catch(() => undefined);
   }
@@ -156,11 +162,7 @@ export class SportsPageComponent {
     if (areaParam && !isSportsWorkspaceArea(areaParam)) {
       const majorEventId = params.get('majorEventId');
       void this.router
-        .navigate(
-          majorEventId
-            ? ['/sports', 'major-event', majorEventId]
-            : ['/sports'],
-        )
+        .navigate(majorEventId ? ['/sports', 'major-event', majorEventId] : ['/sports'])
         .catch(() => undefined);
       return;
     }

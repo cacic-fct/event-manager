@@ -14,6 +14,25 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
+      "@cacic-fct/shared-angular/material/icons": ["./libs/shared-angular/src/lib/material/icons.ts"],
+      "@cacic-fct/shared-angular/material/date-fns": ["./libs/shared-angular/src/lib/material/date-fns.providers.ts"],
+      "@cacic-fct/shared-angular/auth/onboarding": [
+        "./libs/shared-angular/src/lib/auth/auth-onboarding-enforcement.token.ts"
+      ],
+      "@cacic-fct/shared-angular/auth/online-status": [
+        "./libs/shared-angular/src/lib/auth/auth-online-status.service.ts"
+      ],
+      "@cacic-fct/shared-angular/service-worker": [
+        "./libs/shared-angular/src/lib/service-worker/service-worker.service.ts"
+      ],
+      "@cacic-fct/shared-angular/turnstile/config": [
+        "./libs/shared-angular/src/lib/turnstile/cloudflare-turnstile.config.ts"
+      ],
+      "@cacic-fct/shared-angular/analytics": ["./libs/shared-angular/src/lib/observability/analytics.service.ts"],
+      "@cacic-fct/shared-angular/realtime": ["./libs/shared-angular/src/lib/realtime/replayable-event-source.ts"],
+      "@cacic-fct/shared-angular/errors/routing": ["./libs/shared-angular/src/lib/errors/route-error.service.ts"],
+      "@cacic-fct/shared-angular/errors/graphql": ["./libs/shared-angular/src/lib/errors/graphql-error-status.ts"],
+      "@cacic-fct/shared-permissions/workspace": ["./libs/shared-permissions/src/lib/workspace-permissions.ts"],
       "@cacic-fct/shared-ticketing": ["./libs/shared-ticketing/src/index.ts"],
       "@cacic-fct/shared-ticketing/testing": ["./libs/shared-ticketing/src/testing.ts"],
       "@cacic-fct/shared-event-participation": ["./libs/shared-event-participation/src/index.ts"],

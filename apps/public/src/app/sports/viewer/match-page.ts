@@ -40,7 +40,7 @@ import {
     SportsTeamLogoComponent,
   ],
   templateUrl: './match-page.html',
-  styleUrl: './match-page.css',
+  styleUrls: ['./match-page.css', './match-page-details.css'],
 })
 export class SportsMatchPage {
   private readonly api = inject(SportsViewerApiService);

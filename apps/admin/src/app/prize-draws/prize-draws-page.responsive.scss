@@ -1,0 +1,66 @@
+@media (max-width: 960px) {
+  .saved-draws {
+    position: static;
+  }
+
+  .field-grid,
+  .checkbox-grid,
+  .planned-spin-row,
+  .scope-results {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
+}
+
+@container draw-workspace (max-width: 64rem) {
+  .draw-setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .saved-draws {
+    position: static;
+  }
+}
+
+@container setup-editor (max-width: 55rem) {
+  .field-grid,
+  .checkbox-grid,
+  .planned-spin-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
+}
+
+@container setup-editor (max-width: 28rem) {
+  .chance-mode-selector,
+  .speed-selector {
+    display: flex;
+    width: 100%;
+  }
+
+  .chance-mode-selector mat-button-toggle,
+  .speed-selector mat-button-toggle {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .free-entry-row,
+  .manual-entry-row,
+  .spin-limit-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .weight-field,
+  .list-weight,
+  .countdown-field {
+    width: 100%;
+  }
+}

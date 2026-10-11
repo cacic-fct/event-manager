@@ -1,7 +1,7 @@
 import { Route } from '@angular/router';
-import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions';
+import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions/workspace';
 import { requiredPermissionsGuard } from '@cacic-fct/shared-angular/auth/guard';
-import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors';
+import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors/routing';
 import { redirectAuthenticatedGuard } from '@cacic-fct/shared-angular/redirect-authenticated';
 import { adminAuthenticationGuard } from './auth/admin-auth.guard';
 
@@ -15,17 +15,19 @@ export const appRoutes: Route[] = [
     canActivate: [redirectAuthenticatedGuard([''])],
     loadComponent: () => import('./auth/login-page.component').then((c) => c.LoginPageComponent),
   },
-  ...errorStatuses.map((status): Route => ({
-    path: `error/${status}`,
-    data: {
-      pageError: {
-        status,
-        actionHref: '/app/',
-        actionLabel: 'Voltar para os eventos',
+  ...errorStatuses.map(
+    (status): Route => ({
+      path: `error/${status}`,
+      data: {
+        pageError: {
+          status,
+          actionHref: '/app/',
+          actionLabel: 'Voltar para os eventos',
+        },
       },
-    },
-    loadComponent: loadErrorPage,
-  })),
+      loadComponent: loadErrorPage,
+    }),
+  ),
   {
     path: '',
     canMatch: [adminAuthenticationGuard],

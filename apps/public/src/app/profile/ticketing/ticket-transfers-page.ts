@@ -5,19 +5,13 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
-import type {
-  TicketRealtimeInvalidation,
-  TicketTransfer,
-  TicketTransferLists,
-} from '@cacic-fct/shared-ticketing';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
+import type { TicketRealtimeInvalidation, TicketTransfer, TicketTransferLists } from '@cacic-fct/shared-ticketing';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
 import { TicketingApiService } from './ticketing-api.service';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 
-type TransferListState =
-  | { status: 'loading' }
-  | { status: 'ready'; transfers: TicketTransferLists };
+type TransferListState = { status: 'loading' } | { status: 'ready'; transfers: TicketTransferLists };
 
 @Component({
   selector: 'app-ticket-transfers-page',
@@ -34,10 +28,13 @@ export class TicketTransfersPage {
   readonly state = signal<TransferListState>({ status: 'loading' });
   readonly hasTransfers = computed(() => {
     const current = this.state();
-    return current.status === 'ready' && Boolean(
-      current.transfers.incomingPending.length ||
-        current.transfers.incomingIgnored.length ||
-        current.transfers.outgoing.length,
+    return (
+      current.status === 'ready' &&
+      Boolean(
+        current.transfers.incomingPending.length ||
+          current.transfers.incomingIgnored.length ||
+          current.transfers.outgoing.length,
+      )
     );
   });
 
@@ -50,12 +47,16 @@ export class TicketTransfersPage {
   }
 
   incomingPendingItem(transfer: TicketTransfer): CalendarListItemData {
-    return this.listItem(transfer, [
-      `Cedente: ${transfer.sender?.firstName ?? transfer.sender?.fullName ?? 'Pessoa remetente'}`,
-      ...(transfer.initiatedByAdmin
-        ? [`Transferência iniciada por: ${transfer.initiatingAdmin?.firstName ?? 'administração'}`]
-        : []),
-    ], ['/profile/wallet/ticket-transfers', transfer.id]);
+    return this.listItem(
+      transfer,
+      [
+        `Cedente: ${transfer.sender?.firstName ?? transfer.sender?.fullName ?? 'Pessoa remetente'}`,
+        ...(transfer.initiatedByAdmin
+          ? [`Transferência iniciada por: ${transfer.initiatingAdmin?.firstName ?? 'administração'}`]
+          : []),
+      ],
+      ['/profile/wallet/ticket-transfers', transfer.id],
+    );
   }
 
   incomingIgnoredItem(transfer: TicketTransfer): CalendarListItemData {

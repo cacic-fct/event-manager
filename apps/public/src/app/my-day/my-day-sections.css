@@ -1,0 +1,134 @@
+.my-day-page {
+  padding: 20px 20px calc(var(--app-bottom-toolbar-height, 88px) + 28px);
+}
+
+.my-day-page > section + section {
+  margin-top: 30px;
+}
+
+.now-section {
+  background: var(--mat-sys-primary-container);
+  border-radius: 14px;
+  color: var(--mat-sys-on-primary-container);
+  padding: 16px;
+}
+
+.now-section h2 {
+  color: inherit;
+  font: var(--mat-sys-label-large);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.now-row,
+.next-summary,
+.attention-row,
+.later-row {
+  align-items: center;
+  display: flex;
+}
+
+.event-emoji {
+  --twemoji-size: 32px;
+
+  flex: 0 0 auto;
+  margin-right: 12px;
+}
+
+.event-copy {
+  min-width: 0;
+}
+
+.now-row .event-copy,
+.next-summary .event-copy {
+  flex: 1;
+}
+
+.roles,
+.location {
+  color: inherit;
+  font: var(--mat-sys-body-medium);
+  margin-top: 4px;
+  opacity: 0.78;
+}
+
+.now-section .roles,
+.now-section .location {
+  opacity: 1;
+}
+
+.location {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.location mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}
+
+.icon-actions {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.operation-row,
+.next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.operation-row a,
+.next-actions a {
+  flex: 1 1 180px;
+}
+
+.next-card {
+  background: var(--mat-sys-surface-container-lowest);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.12);
+  padding: 18px;
+}
+
+.next-summary time {
+  color: var(--mat-sys-primary);
+  display: block;
+  font: var(--mat-sys-headline-medium);
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+  letter-spacing: -0.03em;
+}
+
+.role-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.role-row span {
+  background: var(--mat-sys-secondary-container);
+  border-radius: 999px;
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-medium);
+  padding: 5px 10px;
+}
+
+.time-glance {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 18px;
+}
+
+.time-glance span {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

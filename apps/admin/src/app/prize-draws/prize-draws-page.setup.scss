@@ -1,0 +1,91 @@
+.setup-editor {
+  container: setup-editor / inline-size;
+  overflow: hidden;
+}
+
+.setup-editor mat-form-field,
+.setup-editor app-person-search,
+.panel-heading > div,
+.surface-heading > div {
+  min-width: 0;
+}
+
+.setup-editor mat-form-field {
+  width: 100%;
+}
+
+.panel-heading,
+.surface-heading,
+.free-entry-row,
+.manual-entry-row,
+.spin-limit-row {
+  flex-wrap: wrap;
+}
+
+.panel-actions > button,
+.panel-actions > a,
+.surface-heading > button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.motion-notice,
+.frozen-notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.875rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.frozen-notice {
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.motion-notice div,
+.frozen-notice div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.field-grid,
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.checkbox-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.surface-locked .manual-entry-area,
+.surface-locked .roster-preview {
+  opacity: 0.82;
+}
+
+mat-button-toggle-group {
+  max-width: 100%;
+}
+
+.chance-mode-selector,
+.speed-selector {
+  width: fit-content;
+}
+
+mat-button-toggle {
+  min-width: 0;
+}
+
+.speed-description {
+  margin: -0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}

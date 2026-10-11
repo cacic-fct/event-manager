@@ -3,7 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { catchError, map, of, startWith } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -16,9 +16,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendance/attendances-api.service';
 import { routePageErrorStatus } from '../../shared/route-error-handling';
 
-type LecturerProfileState =
-  | { status: 'loading' }
-  | { status: 'ready'; profile: LecturerProfile | null };
+type LecturerProfileState = { status: 'loading' } | { status: 'ready'; profile: LecturerProfile | null };
 
 @Component({
   selector: 'app-lecturer-profile',

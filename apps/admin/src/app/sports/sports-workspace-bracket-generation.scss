@@ -1,0 +1,146 @@
+.bracket-panel {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--matches-panel-radius);
+  min-width: 0;
+}
+
+.bracket-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.bracket-panel-heading,
+.section-heading-inline,
+.match-editor-header,
+.feature-heading,
+.feature-summary {
+  align-items: start;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+}
+
+.bracket-panel-heading h4,
+.section-heading-inline h4,
+.match-editor-header h4 {
+  font-size: 1.15rem;
+  letter-spacing: -0.015em;
+}
+
+.bracket-panel-heading p,
+.section-heading-inline p {
+  font-size: 0.86rem;
+  margin-top: 0.25rem;
+}
+
+.panel-count {
+  color: var(--mat-sys-on-surface-variant);
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding-top: 0.2rem;
+  white-space: nowrap;
+}
+
+.bracket-generation-form {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.8rem;
+}
+
+.bracket-generation-main {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.generation-copy,
+.editor-section-heading,
+.feature-heading,
+.feature-summary {
+  align-items: start;
+  display: flex;
+  gap: 0.65rem;
+}
+
+.generation-copy > mat-icon,
+.editor-section-heading > mat-icon,
+.feature-heading > mat-icon,
+.feature-summary > mat-icon {
+  color: var(--mat-sys-primary);
+  flex: 0 0 auto;
+}
+
+.generation-copy > div,
+.editor-section-heading > div,
+.feature-heading > div,
+.feature-summary > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.generation-copy span {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.generation-options {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.generation-options .mat-expansion-panel-header,
+.editor-expansion .mat-expansion-panel-header {
+  min-height: 3.2rem;
+  padding-inline: 0.8rem;
+}
+
+.generation-options .mat-expansion-panel-body {
+  padding: 0 0.8rem 0.8rem;
+}
+
+.generation-options-grid {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.generation-options-grid mat-form-field {
+  grid-column: 1 / -1;
+}
+
+.safety-note {
+  align-items: start;
+  color: var(--mat-sys-on-surface-variant) !important;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.safety-note mat-icon {
+  color: var(--mat-sys-primary);
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.bracket-surface {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1rem;
+}

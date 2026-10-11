@@ -1,8 +1,8 @@
 import { isDevMode, inject } from '@angular/core';
 import { CanActivateFn, Route } from '@angular/router';
-import { authGuard } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
-import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors';
+import { authGuard } from '@cacic-fct/shared-angular/auth/guard';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
+import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors/routing';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,

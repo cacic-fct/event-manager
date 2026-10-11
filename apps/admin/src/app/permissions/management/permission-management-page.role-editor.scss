@@ -1,0 +1,116 @@
+.role-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+.role-title {
+  align-items: center;
+}
+.role-title lib-twemoji {
+  --twemoji-size: 2rem;
+}
+.editor-section {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+.section-heading h4,
+.section-heading p {
+  margin: 0;
+}
+.section-heading p {
+  margin-top: 0.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  max-width: 72ch;
+}
+.role-fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.35fr) minmax(14rem, 1fr);
+  gap: 0.75rem;
+}
+.span-2 {
+  grid-column: 1 / -1;
+}
+.parent-role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.5rem;
+}
+.permission-matrix {
+  display: grid;
+  gap: 0.5rem;
+}
+.permission-category {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.45fr) minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container-low);
+}
+.permission-category header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.permission-category > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.25rem 0.75rem;
+}
+.permission-category mat-checkbox span,
+.permission-category mat-checkbox small {
+  display: block;
+}
+.permission-category mat-checkbox small {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+.group-assignment-search {
+  display: grid;
+  gap: 0.5rem;
+}
+.group-search-control {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+.group-search-control mat-form-field {
+  min-width: 0;
+}
+.group-search-control button {
+  min-height: 3.5rem;
+}
+.group-search-results {
+  display: grid;
+  gap: 0.35rem;
+}
+.group-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.5rem;
+  text-align: start;
+}
+.group-search-result > span {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  text-align: start;
+}
+.group-search-result strong,
+.group-search-result small {
+  overflow-wrap: anywhere;
+}
+.group-search-result small,
+.search-hint {
+  color: var(--mat-sys-on-surface-variant);
+}
+.search-hint {
+  margin: 0.25rem 0 0;
+  font: var(--mat-sys-body-small);
+}

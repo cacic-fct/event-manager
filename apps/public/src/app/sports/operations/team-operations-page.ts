@@ -14,7 +14,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
@@ -61,7 +61,12 @@ import { privateResourceErrorStatus } from '../../shared/route-error-handling';
     TwemojiComponent,
   ],
   templateUrl: './team-operations-page.html',
-  styleUrl: './team-operations-page.css',
+  styleUrls: [
+    './team-operations-page.css',
+    './team-operations-match.css',
+    './team-operations-members.css',
+    './team-operations-responsive.css',
+  ],
 })
 export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private readonly api = inject(SportsOperationsApiService);

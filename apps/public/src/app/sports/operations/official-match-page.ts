@@ -49,7 +49,12 @@ import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
     SportsTeamLogoComponent,
   ],
   templateUrl: './official-match-page.html',
-  styleUrls: ['./official-match-scoreboard.css', './official-match-workflows.css'],
+  styleUrls: [
+    './official-match-scoreboard.css',
+    './official-match-scoreboard-actions.css',
+    './official-match-scoreboard-details.css',
+    './official-match-workflows.css',
+  ],
 })
 export class OfficialSportsMatchPage extends OfficialMatchPageOperations {
   private readonly operationRoute = inject(ActivatedRoute);

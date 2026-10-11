@@ -1,6 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
-import { AuthService, watchRecoveringReplayableEventSource } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { watchRecoveringReplayableEventSource } from '@cacic-fct/shared-angular/realtime';
 import { Observable, Subject, Subscription } from 'rxjs';
 
 export interface RealtimeEventMessage<TPayload = unknown> {
@@ -88,7 +89,7 @@ export class RealtimeEventsService implements OnDestroy {
         return message.type === 'heartbeat' ? null : message;
       },
       errorMessage: 'Não foi possível acompanhar as atualizações dos eventos.',
-      recover: () => this.auth.isAuthenticated() ? this.auth.refreshMe() : Promise.resolve(),
+      recover: () => (this.auth.isAuthenticated() ? this.auth.refreshMe() : Promise.resolve()),
     }).subscribe((message) => this.messages.next(message));
   }
 

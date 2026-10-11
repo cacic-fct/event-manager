@@ -1,6 +1,6 @@
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Service } from '@angular/core';
-import { CacicAnalyticsService } from '@cacic-fct/shared-angular';
+import { CacicAnalyticsService } from '@cacic-fct/shared-angular/analytics';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 
 @Service()

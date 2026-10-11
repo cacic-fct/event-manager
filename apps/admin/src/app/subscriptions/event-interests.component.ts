@@ -19,14 +19,15 @@ import {
 } from '@cacic-fct/shared-event-participation';
 import { Observable, Subscription, auditTime, debounceTime, distinctUntilChanged, firstValueFrom } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { InterestConversionDialogComponent, type InterestConversionDialogData, type InterestConversionDialogResult } from './interest-conversion-dialog.component';
+import {
+  InterestConversionDialogComponent,
+  type InterestConversionDialogData,
+  type InterestConversionDialogResult,
+} from './interest-conversion-dialog.component';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
-import {
-  InterestApiService,
-  type AdminEventInterest,
-} from '../graphql/interest-api.service';
+import { InterestApiService, type AdminEventInterest } from '../graphql/interest-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -83,6 +84,9 @@ interface TargetEventResolution {
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
     './subscription-subtabs.shared.scss',
+    './subscription-subtabs.panels.shared.scss',
+    './subscription-subtabs.sports.shared.scss',
+    './subscription-subtabs.responsive.shared.scss',
   ],
 })
 export class EventInterestsComponent {
@@ -137,8 +141,12 @@ export class EventInterestsComponent {
   async loadTargets(context = this.context()): Promise<void> {
     const request = ++this.targetsRequest;
     const current = this.selectedTarget();
-    const targetType = context?.kind === 'event' ? InterestTargetType.EVENT
-      : context?.kind === 'group' ? InterestTargetType.EVENT_GROUP : InterestTargetType.MAJOR_EVENT;
+    const targetType =
+      context?.kind === 'event'
+        ? InterestTargetType.EVENT
+        : context?.kind === 'group'
+          ? InterestTargetType.EVENT_GROUP
+          : InterestTargetType.MAJOR_EVENT;
     const sameTarget = context !== null && current?.targetType === targetType && current.targetId === context.id;
     if (!sameTarget) {
       ++this.interestsRequest;
@@ -155,9 +163,12 @@ export class EventInterestsComponent {
     if (!context) return;
 
     try {
-      const entity = context.kind === 'event' ? await firstValueFrom(this.eventApi.getEvent(context.id))
-        : context.kind === 'group' ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
-        : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
+      const entity =
+        context.kind === 'event'
+          ? await firstValueFrom(this.eventApi.getEvent(context.id))
+          : context.kind === 'group'
+            ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
+            : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
       if (request !== this.targetsRequest) return;
       this.selectedTarget.set({
         targetType,
@@ -199,10 +210,12 @@ export class EventInterestsComponent {
     this.loadingInterests.set(true);
     try {
       const [interests, count, targetEventResolution] = await Promise.all([
-        firstValueFrom(this.api.listInterests(target.targetType, target.targetId, {
-          query,
-          ...pageVariables(this.interestsPagination.pageIndex()),
-        })),
+        firstValueFrom(
+          this.api.listInterests(target.targetType, target.targetId, {
+            query,
+            ...pageVariables(this.interestsPagination.pageIndex()),
+          }),
+        ),
         firstValueFrom(this.api.countInterests(target.targetType, target.targetId, query)),
         this.resolveTargetEventIds(target),
       ]);
@@ -249,14 +262,19 @@ export class EventInterestsComponent {
       }
       const requiresImageLicenseAgreement = await this.requiresImageLicenseAgreement(target);
       const confirmation = await firstValueFrom(
-        this.dialog.open<InterestConversionDialogComponent, InterestConversionDialogData, InterestConversionDialogResult>(InterestConversionDialogComponent, {
-          data: {
-            personName: interest.person?.name ?? interest.personId,
-            targetName: target.name,
-            requiresImageLicenseAgreement,
-          },
-          width: 'min(460px, 96vw)',
-        }).afterClosed(),
+        this.dialog
+          .open<InterestConversionDialogComponent, InterestConversionDialogData, InterestConversionDialogResult>(
+            InterestConversionDialogComponent,
+            {
+              data: {
+                personName: interest.person?.name ?? interest.personId,
+                targetName: target.name,
+                requiresImageLicenseAgreement,
+              },
+              width: 'min(460px, 96vw)',
+            },
+          )
+          .afterClosed(),
       );
       if (!confirmation || (requiresImageLicenseAgreement && !confirmation.imageLicenseAgreementAccepted)) {
         return;
@@ -315,9 +333,7 @@ export class EventInterestsComponent {
     return `Itens ${firstItem}-${firstItem + count - 1}`;
   }
 
-  private async loadAllTargetPages<T>(
-    load: (page: { skip: number; take: number }) => Observable<T[]>,
-  ): Promise<T[]> {
+  private async loadAllTargetPages<T>(load: (page: { skip: number; take: number }) => Observable<T[]>): Promise<T[]> {
     const items: T[] = [];
     const take = 200;
     for (let skip = 0; ; skip += take) {
@@ -369,11 +385,13 @@ export class EventInterestsComponent {
             : { eventGroupId: target.targetId, ...page },
         ),
       );
-      const selectionItems = events.filter((event) => !event.isSportsMatch).map((event) => ({
-        id: event.id,
-        name: event.name,
-        startDate: event.startDate,
-      }));
+      const selectionItems = events
+        .filter((event) => !event.isSportsMatch)
+        .map((event) => ({
+          id: event.id,
+          name: event.name,
+          startDate: event.startDate,
+        }));
       return { eventIds: selectionItems.map((event) => event.id), events: selectionItems };
     } catch {
       return { eventIds: [], events: [] };
@@ -386,17 +404,19 @@ export class EventInterestsComponent {
     }
 
     const result = await firstValueFrom(
-      this.dialog.open<
-        InterestEventSelectionDialogComponent,
-        { targetName: string; events: Array<{ id: string; name: string; startDate: string }> },
-        InterestEventSelectionDialogResult
-      >(InterestEventSelectionDialogComponent, {
-        data: {
-          targetName: target.name,
-          events: this.targetEvents(),
-        },
-        width: 'min(560px, 96vw)',
-      }).afterClosed(),
+      this.dialog
+        .open<
+          InterestEventSelectionDialogComponent,
+          { targetName: string; events: Array<{ id: string; name: string; startDate: string }> },
+          InterestEventSelectionDialogResult
+        >(InterestEventSelectionDialogComponent, {
+          data: {
+            targetName: target.name,
+            events: this.targetEvents(),
+          },
+          width: 'min(560px, 96vw)',
+        })
+        .afterClosed(),
     );
 
     return result?.selectedEventIds ?? null;

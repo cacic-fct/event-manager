@@ -1,6 +1,6 @@
 import { DestroyRef, Signal, computed, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { graphqlErrorStatus } from '@cacic-fct/shared-angular/errors';
+import { graphqlErrorStatus } from '@cacic-fct/shared-angular/errors/graphql';
 
 type GraphqlErrorLike = {
   message: string;
@@ -23,7 +23,10 @@ export class RateLimitError extends Error {
 export class ForbiddenGraphqlError extends Error {}
 export class NotFoundGraphqlError extends Error {}
 export class GraphqlServiceError extends Error {
-  constructor(message: string, readonly status: 500 | 503) {
+  constructor(
+    message: string,
+    readonly status: 500 | 503,
+  ) {
     super(message);
   }
 }

@@ -1,0 +1,96 @@
+@media (max-width: 1000px) {
+  .management-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .permission-category {
+    grid-template-columns: 1fr;
+  }
+  .role-rail {
+    position: static;
+    max-height: none;
+  }
+}
+@media (max-width: 720px) {
+  .management-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .privacy-note {
+    white-space: normal;
+  }
+  .role-fields,
+  .overview-columns {
+    grid-template-columns: 1fr;
+  }
+  .span-2 {
+    grid-column: auto;
+  }
+  .validity-row {
+    grid-template-columns: 1fr;
+  }
+  .permission-category > div {
+    grid-template-columns: 1fr;
+  }
+  .assignment header {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 480px) {
+  .group-search-control {
+    grid-template-columns: 1fr;
+  }
+  .group-search-control button {
+    width: 100%;
+  }
+  .validity-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.role-search {
+  width: 100%;
+  margin-top: 1rem;
+}
+.management-heading {
+  flex-wrap: wrap;
+}
+.role-title,
+.role-title > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.privacy-note {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .panel-heading {
+    flex-flow: column nowrap;
+  }
+  .panel-heading > div:first-child {
+    flex-basis: auto;
+    width: 100%;
+  }
+  .assignment {
+    min-width: 0;
+  }
+  .validity-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scope-row mat-form-field {
+    min-width: 0;
+  }
+}
+
+.role-editor,
+.editor-section,
+.permission-matrix,
+.permission-category,
+.permission-category > div {
+  min-width: 0;
+}
+.role-editor mat-form-field {
+  min-width: 0;
+  width: 100%;
+}

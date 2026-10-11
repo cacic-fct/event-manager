@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { CanMatchFn, RedirectCommand, Router, UrlTree } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 
 /** Restore an admin session before matching protected routes, then start Keycloak login directly. */
 export async function ensureAdminAuthentication(

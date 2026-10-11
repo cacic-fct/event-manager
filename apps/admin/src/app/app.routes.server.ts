@@ -1,6 +1,6 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 import type { Route } from '@angular/router';
-import { PAGE_ERROR_HEADERS, type PageErrorStatus } from '@cacic-fct/shared-angular/errors';
+import { PAGE_ERROR_HEADERS, type PageErrorStatus } from '@cacic-fct/shared-angular/errors/routing';
 import { routes as adminShellRoutes } from './app-shell/admin-shell.routes';
 import { routes as dashboardRoutes } from './dashboard/home.routes';
 import { routes as permissionRoutes } from './permissions/permissions.routes';
@@ -37,23 +37,23 @@ function collectAdminClientPaths(routes: readonly Route[], parentPath = ''): str
   return paths;
 }
 
-const knownClientPaths = [...new Set([
-  'login',
-  '',
-  ...collectAdminClientPaths(adminShellRoutes),
-])];
+const knownClientPaths = [...new Set(['login', '', ...collectAdminClientPaths(adminShellRoutes)])];
 
 export const serverRoutes: ServerRoute[] = [
-  ...errorStatuses.map((status): ServerRoute => ({
-    path: `error/${status}`,
-    renderMode: RenderMode.Server,
-    status,
-    headers: PAGE_ERROR_HEADERS,
-  })),
-  ...knownClientPaths.map((path): ServerRoute => ({
-    path,
-    renderMode: RenderMode.Client,
-  })),
+  ...errorStatuses.map(
+    (status): ServerRoute => ({
+      path: `error/${status}`,
+      renderMode: RenderMode.Server,
+      status,
+      headers: PAGE_ERROR_HEADERS,
+    }),
+  ),
+  ...knownClientPaths.map(
+    (path): ServerRoute => ({
+      path,
+      renderMode: RenderMode.Client,
+    }),
+  ),
   {
     path: '**',
     renderMode: RenderMode.Server,

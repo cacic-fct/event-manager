@@ -1,0 +1,128 @@
+@media (max-width: 1180px) {
+  .match-studio {
+    grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.8fr);
+  }
+}
+
+@media (max-width: 1040px) {
+  .match-studio {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .matches-surface-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .matches-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .category-picker {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .matches-toolbar > button {
+    justify-content: center;
+  }
+
+  .matches-context-status {
+    margin-inline-start: 0;
+  }
+
+  .bracket-panel {
+    padding: 0.85rem;
+  }
+
+  .bracket-panel-heading,
+  .section-heading-inline {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .bracket-generation-main {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bracket-generation-main > button {
+    justify-content: center;
+  }
+
+  .generation-options-grid,
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .generation-options-grid mat-form-field,
+  .field-span-2 {
+    grid-column: auto;
+  }
+
+  .match-list {
+    max-height: none;
+  }
+
+  .match-list-item {
+    align-items: start;
+    grid-template-columns: 3.7rem minmax(0, 1fr) auto;
+    padding: 0.7rem;
+  }
+
+  .match-list-time {
+    padding-right: 0.55rem;
+  }
+
+  .match-list-teams {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .match-list-vs {
+    display: none;
+  }
+
+  .match-list-result {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .match-list-item > mat-icon {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .matches-heading {
+    align-items: start;
+  }
+
+  .sport-mark {
+    height: 2.8rem;
+    width: 2.8rem;
+  }
+
+  .matches-context {
+    align-items: start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matches-context-status {
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-list-item {
+    transition: none;
+  }
+}

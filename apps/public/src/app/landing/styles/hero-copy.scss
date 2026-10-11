@@ -1,0 +1,64 @@
+@use 'mixins';
+
+.hero-section {
+  .hero-text {
+    position: absolute;
+    top: 10%;
+    z-index: 2;
+
+    @media (max-width: 1000px) {
+      left: 0;
+      right: 0;
+      max-width: 38rem;
+      margin: 0 auto;
+      padding: 0 1rem;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      line-height: 1;
+
+      @media (max-width: 1000px) {
+        line-height: 3rem;
+      }
+
+      // .brand-highlight {
+      //   background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+      //   background-clip: text;
+      //   -webkit-background-clip: text;
+      //   -webkit-text-fill-color: transparent;
+      //   display: inline-block;
+      // }
+    }
+
+    .hero-subtitle {
+      font-size: 1.5rem;
+      font-weight: 300;
+      margin-bottom: 1.5rem;
+      line-height: 1;
+
+      b {
+        font-weight: 500;
+      }
+
+      @media (max-width: 1000px) {
+        font-size: 1.2rem;
+      }
+    }
+
+    .hero-description {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      opacity: 0.8;
+      max-width: 500px;
+
+      @media (max-width: 1000px) {
+        font-size: 1rem;
+      }
+    }
+  }
+}

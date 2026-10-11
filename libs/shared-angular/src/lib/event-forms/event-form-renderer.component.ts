@@ -1,3 +1,4 @@
+import { providePortugueseDateFns } from '../material/date-fns.providers';
 import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,6 +28,7 @@ import {
 import { EventFormDescriptionContentComponent } from './event-form-description-content.component';
 
 @Component({
+  providers: providePortugueseDateFns(),
   selector: 'lib-event-form-renderer',
   imports: [
     FormsModule,
@@ -141,9 +143,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                   <div class="grid-answer">
                     <div class="grid-row grid-row--header">
                       <span></span>
-                      <div
-                        class="grid-row-options"
-                        [style.grid-template-columns]="gridColumnsTemplate(element)">
+                      <div class="grid-row-options" [style.grid-template-columns]="gridColumnsTemplate(element)">
                         @for (column of element.settings?.grid?.columns ?? []; track column.id) {
                           <span>{{ column.label }}</span>
                         }
@@ -170,9 +170,7 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                   <div class="grid-answer">
                     <div class="grid-row grid-row--header">
                       <span></span>
-                      <div
-                        class="grid-row-options"
-                        [style.grid-template-columns]="gridColumnsTemplate(element)">
+                      <div class="grid-row-options" [style.grid-template-columns]="gridColumnsTemplate(element)">
                         @for (column of element.settings?.grid?.columns ?? []; track column.id) {
                           <span>{{ column.label }}</span>
                         }
@@ -219,7 +217,13 @@ import { EventFormDescriptionContentComponent } from './event-form-description-c
                         mat-icon-button
                         type="button"
                         [class.selected-star]="numberAnswer(element.id) >= value"
-                        [attr.aria-label]="(element.title || 'Avaliação por estrelas') + ': ' + value + ' ' + (value === 1 ? 'estrela' : 'estrelas')"
+                        [attr.aria-label]="
+                          (element.title || 'Avaliação por estrelas') +
+                          ': ' +
+                          value +
+                          ' ' +
+                          (value === 1 ? 'estrela' : 'estrelas')
+                        "
                         [matTooltip]="value + ' estrela' + (value === 1 ? '' : 's')"
                         (click)="setAnswer(element.id, value)">
                         <mat-icon>{{ numberAnswer(element.id) >= value ? 'star' : 'star_border' }}</mat-icon>

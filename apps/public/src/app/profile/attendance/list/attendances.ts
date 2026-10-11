@@ -100,7 +100,7 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
 @Component({
   selector: 'app-attendances',
   templateUrl: './attendances.html',
-  styleUrl: './attendances.css',
+  styleUrls: ['./attendances.css', './attendances-records.css', './attendances-responsive.css'],
   imports: [
     MatIconModule,
     MatProgressBarModule,
@@ -200,18 +200,20 @@ export class Attendances {
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      toObservable(this.feedUserId).pipe(
-        distinctUntilChanged(),
-        switchMap((userId) => {
-          this.certificateArchiveCooldownEndsAt.set(0);
-          return userId ? this.api.getCertificateArchiveCooldown().pipe(catchError(() => of(null))) : of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      ).subscribe((status) => {
-        if (status) {
-          this.startCertificateArchiveCooldown(status.cooldownSeconds);
-        }
-      });
+      toObservable(this.feedUserId)
+        .pipe(
+          distinctUntilChanged(),
+          switchMap((userId) => {
+            this.certificateArchiveCooldownEndsAt.set(0);
+            return userId ? this.api.getCertificateArchiveCooldown().pipe(catchError(() => of(null))) : of(null);
+          }),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((status) => {
+          if (status) {
+            this.startCertificateArchiveCooldown(status.cooldownSeconds);
+          }
+        });
     }
     this.realtime
       .watchCurrentUserData()
@@ -336,7 +338,10 @@ export class Attendances {
     this.isDownloadingCertificates.set(true);
     this.api
       .downloadCurrentUserCertificatesArchive()
-      .pipe(takeUntilDestroyed(this.destroyRef), finalize(() => this.isDownloadingCertificates.set(false)))
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.isDownloadingCertificates.set(false)),
+      )
       .subscribe({
         next: (download) => {
           this.certificateFileDownload.saveBlob(download.blob, download.fileName);

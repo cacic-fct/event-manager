@@ -53,15 +53,22 @@ import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
     '../../app-shell/layout/page-layout.shared.scss',
     '../../app-shell/layout/workspace-tabs.shared.scss',
     './permission-management-page.component.scss',
+    './permission-management-page.role-editor.scss',
+    './permission-management-page.assignments.scss',
+    './permission-management-page.responsive.scss',
   ],
 })
 export class PermissionManagementPageComponent {
   protected readonly store = inject(PermissionManagementStore);
   protected readonly roleSearch = signal('');
-  protected readonly predefinedRoles = computed(() => this.store.predefinedRoles().filter((role) =>
-    matchesWorkspaceText(this.roleSearch(), [role.name, role.description])));
-  protected readonly customRoles = computed(() => this.store.customRoles().filter((role) =>
-    matchesWorkspaceText(this.roleSearch(), [role.name, role.description])));
+  protected readonly predefinedRoles = computed(() =>
+    this.store
+      .predefinedRoles()
+      .filter((role) => matchesWorkspaceText(this.roleSearch(), [role.name, role.description])),
+  );
+  protected readonly customRoles = computed(() =>
+    this.store.customRoles().filter((role) => matchesWorkspaceText(this.roleSearch(), [role.name, role.description])),
+  );
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
 

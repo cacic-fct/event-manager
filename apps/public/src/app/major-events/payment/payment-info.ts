@@ -12,7 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import type { TicketPurchase, TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { toSVG } from '@bwip-js/browser';
@@ -124,13 +124,21 @@ export class PaymentInfo {
   });
   readonly ticketAmountChanged = computed(() => {
     const currentState = this.state();
-    return this.ticketPurchaseMode && currentState.status === 'ready' && currentState.ticketOption !== null &&
-      this.expectedAmountCents !== currentState.ticketOption.amountCents;
+    return (
+      this.ticketPurchaseMode &&
+      currentState.status === 'ready' &&
+      currentState.ticketOption !== null &&
+      this.expectedAmountCents !== currentState.ticketOption.amountCents
+    );
   });
   readonly ticketOfferExpired = computed(() => {
     const currentState = this.state();
-    return this.ticketPurchaseMode && currentState.status === 'ready' && currentState.ticketOption !== null &&
-      Date.parse(currentState.ticketOption.expiresAt) <= this.paymentNow();
+    return (
+      this.ticketPurchaseMode &&
+      currentState.status === 'ready' &&
+      currentState.ticketOption !== null &&
+      Date.parse(currentState.ticketOption.expiresAt) <= this.paymentNow()
+    );
   });
   readonly pixPayload = computed(() => {
     const currentState = this.state();
@@ -144,7 +152,8 @@ export class PaymentInfo {
   constructor() {
     effect((onCleanup) => {
       const currentState = this.state();
-      if (!this.isBrowser || !this.ticketPurchaseMode || currentState.status !== 'ready' || !currentState.ticketOption) return;
+      if (!this.isBrowser || !this.ticketPurchaseMode || currentState.status !== 'ready' || !currentState.ticketOption)
+        return;
       const delay = nextDeadlineDelay([currentState.ticketOption.expiresAt], this.paymentNow());
       if (delay === null) return;
       const timer = window.setTimeout(() => this.paymentNow.set(Date.now()), delay);
@@ -209,11 +218,14 @@ export class PaymentInfo {
     if (brCode) {
       const subscription = this.readySubscription();
       if (subscription) {
-        this.analytics.trackEvent(this.ticketPurchaseMode ? 'ticket_purchase_pix_code_copied' : 'major_event_pix_code_copied', {
-          major_event_id: subscription.majorEvent.id,
-          subscription_id: subscription.id,
-          ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
-        });
+        this.analytics.trackEvent(
+          this.ticketPurchaseMode ? 'ticket_purchase_pix_code_copied' : 'major_event_pix_code_copied',
+          {
+            major_event_id: subscription.majorEvent.id,
+            subscription_id: subscription.id,
+            ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
+          },
+        );
       }
       void this.copyToClipboard(brCode, 'Pix copia e cola copiado.');
     }
@@ -226,11 +238,14 @@ export class PaymentInfo {
     if (paymentInfo?.pixKey) {
       const subscription = this.readySubscription();
       if (subscription) {
-        this.analytics.trackEvent(this.ticketPurchaseMode ? 'ticket_purchase_pix_key_copied' : 'major_event_pix_key_copied', {
-          major_event_id: subscription.majorEvent.id,
-          subscription_id: subscription.id,
-          ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
-        });
+        this.analytics.trackEvent(
+          this.ticketPurchaseMode ? 'ticket_purchase_pix_key_copied' : 'major_event_pix_key_copied',
+          {
+            major_event_id: subscription.majorEvent.id,
+            subscription_id: subscription.id,
+            ...(this.ticketPurchaseMode ? { event_id: this.ticketEventId } : {}),
+          },
+        );
       }
       void this.copyToClipboard(paymentInfo.pixKey, 'Chave Pix copiada.');
     }
@@ -270,11 +285,19 @@ export class PaymentInfo {
     }
 
     if (this.ticketPurchaseMode) {
-      if (!currentState || currentState.status !== 'ready' || !currentState.ticketOption || this.ticketAmountChanged() || this.ticketOfferExpired()) {
+      if (
+        !currentState ||
+        currentState.status !== 'ready' ||
+        !currentState.ticketOption ||
+        this.ticketAmountChanged() ||
+        this.ticketOfferExpired()
+      ) {
         return false;
       }
       if (currentState.uploadedTicketPurchaseReceipt) return false;
-      return currentState.ticketPurchase?.status !== 'UNDER_REVIEW' && currentState.ticketPurchase?.status !== 'APPROVED';
+      return (
+        currentState.ticketPurchase?.status !== 'UNDER_REVIEW' && currentState.ticketPurchase?.status !== 'APPROVED'
+      );
     }
 
     if (!subscription.majorEvent.isPaymentRequired) return false;
@@ -362,12 +385,16 @@ export class PaymentInfo {
       purchases: this.ticketPurchaseApi.getPurchases(this.majorEventId),
     }).pipe(
       map(({ subscription, options, purchases }) => {
-        const ticketOption = options.find(
-          (option) => option.eventId === this.ticketEventId && option.ticketConfigId === this.ticketConfigId,
-        ) ?? null;
-        const ticketPurchase = purchases
-          .filter((purchase) => purchase.eventId === this.ticketEventId && purchase.ticketConfigId === this.ticketConfigId)
-          .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
+        const ticketOption =
+          options.find(
+            (option) => option.eventId === this.ticketEventId && option.ticketConfigId === this.ticketConfigId,
+          ) ?? null;
+        const ticketPurchase =
+          purchases
+            .filter(
+              (purchase) => purchase.eventId === this.ticketEventId && purchase.ticketConfigId === this.ticketConfigId,
+            )
+            .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
 
         return {
           subscription,

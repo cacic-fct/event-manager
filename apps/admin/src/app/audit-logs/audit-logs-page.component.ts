@@ -1,3 +1,4 @@
+import { providePortugueseDateFns } from '@cacic-fct/shared-angular/material/date-fns';
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -45,6 +46,7 @@ type AuditLogFilterForm = {
 };
 
 @Component({
+  providers: providePortugueseDateFns(),
   selector: 'app-workspace-audit-logs-tab',
   imports: [
     DatePipe,
@@ -66,6 +68,8 @@ type AuditLogFilterForm = {
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
     './audit-logs-page.component.scss',
+    './audit-logs-page.results.scss',
+    './audit-logs-page.responsive.scss',
   ],
 })
 export class AuditLogsPageComponent {
@@ -86,8 +90,14 @@ export class AuditLogsPageComponent {
   private readonly filterValue = toSignal(this.filters.valueChanges.pipe(startWith(this.filters.getRawValue())));
   protected readonly advancedFilterCount = computed(() => {
     const value = this.filterValue();
-    return [value?.entity, value?.entityType, value?.operation, value?.dateFrom, value?.dateTo,
-      value?.revertedStatus !== 'ALL' ? value?.revertedStatus : null].filter(Boolean).length;
+    return [
+      value?.entity,
+      value?.entityType,
+      value?.operation,
+      value?.dateFrom,
+      value?.dateTo,
+      value?.revertedStatus !== 'ALL' ? value?.revertedStatus : null,
+    ].filter(Boolean).length;
   });
 
   protected readonly entityTypeOptions = AUDIT_LOG_ENTITY_TYPE_OPTIONS;

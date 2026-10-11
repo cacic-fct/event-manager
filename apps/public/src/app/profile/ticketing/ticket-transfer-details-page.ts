@@ -9,7 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { TicketRealtimeInvalidation, TicketTransfer } from '@cacic-fct/shared-ticketing';
 import { TicketTransferActionDialog } from './ticket-transfer-action-dialog';
 import type { TicketTransferActionDialogData } from './ticket-transfer-action-dialog';
@@ -20,9 +20,7 @@ import { redactIdentityDocument } from './ticket-document';
 import { nextDeadlineDelay, ticketStatusAt } from './ticket-expiration';
 import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
-type TicketTransferDetailsState =
-  | { status: 'loading' }
-  | { status: 'ready'; transfer: TicketTransfer };
+type TicketTransferDetailsState = { status: 'loading' } | { status: 'ready'; transfer: TicketTransfer };
 
 @Component({
   selector: 'app-ticket-transfer-details-page',
@@ -60,28 +58,28 @@ export class TicketTransferDetailsPage {
   readonly now = signal(Date.now());
   readonly canCancel = computed(() => {
     const current = this.state();
-    if (
-      current.status !== 'ready' ||
-      current.transfer.senderStatus !== 'PENDING'
-    ) return false;
+    if (current.status !== 'ready' || current.transfer.senderStatus !== 'PENDING') return false;
     return current.transfer.canCancel;
   });
   readonly canAccept = computed(() => {
     const current = this.state();
-    return current.status === 'ready' &&
+    return (
+      current.status === 'ready' &&
       current.transfer.canAccept &&
       current.transfer.senderStatus === 'PENDING' &&
       current.transfer.recipientStatus === 'PENDING' &&
-      !this.ticketIsUnavailable(current.transfer);
+      !this.ticketIsUnavailable(current.transfer)
+    );
   });
   readonly recipientIdentity = computed(() => {
     const recipient = this.readyTransfer()?.recipient;
     const claims = this.auth.user()?.claims;
     const fullName = typeof claims?.['name'] === 'string' ? claims['name'] : recipient?.fullName;
-    const avatarUrl = typeof claims?.['picture'] === 'string' ? claims['picture'] : recipient?.avatarUrl ?? null;
-    const identityDocument = typeof claims?.['identity_document'] === 'string'
-      ? redactIdentityDocument(claims['identity_document'])
-      : recipient?.redactedIdentityDocument;
+    const avatarUrl = typeof claims?.['picture'] === 'string' ? claims['picture'] : (recipient?.avatarUrl ?? null);
+    const identityDocument =
+      typeof claims?.['identity_document'] === 'string'
+        ? redactIdentityDocument(claims['identity_document'])
+        : recipient?.redactedIdentityDocument;
     return {
       fullName: fullName ?? 'Destinatário do bilhete',
       avatarUrl,
@@ -157,9 +155,13 @@ export class TicketTransferDetailsPage {
         },
         error: () => {
           this.isCanceling.set(false);
-          this.snackBar.open('Não foi possível cancelar o pedido agora. Atualize a página e tente novamente.', 'Fechar', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            'Não foi possível cancelar o pedido agora. Atualize a página e tente novamente.',
+            'Fechar',
+            {
+              duration: 4000,
+            },
+          );
           this.load();
         },
       });
@@ -193,7 +195,11 @@ export class TicketTransferDetailsPage {
     if (transfer.senderStatus === 'ACCEPTED') return 'Este bilhete foi recebido.';
     if (transfer.senderStatus === 'CANCELED') return 'Este pedido foi cancelado.';
     if (transfer.senderStatus === 'EXPIRED') return 'Este pedido expirou.';
-    if (transfer.recipientStatus === 'IGNORED' || transfer.recipientStatus === 'SYSTEM_INELIGIBLE' || transfer.recipientStatus === 'SYSTEM_DUPLICATE') {
+    if (
+      transfer.recipientStatus === 'IGNORED' ||
+      transfer.recipientStatus === 'SYSTEM_INELIGIBLE' ||
+      transfer.recipientStatus === 'SYSTEM_DUPLICATE'
+    ) {
       return this.ignoreReasonText(transfer);
     }
     return 'Este pedido está aguardando uma resposta.';
@@ -329,10 +335,7 @@ export class TicketTransferDetailsPage {
     }
     this.lastExpiryRefreshKey = '';
 
-    const delay = nextDeadlineDelay(
-      [ticket.effectiveExpiresAt],
-      now,
-    );
+    const delay = nextDeadlineDelay([ticket.effectiveExpiresAt], now);
     if (delay === null) return;
 
     this.expiryTimer = window.setTimeout(() => {
@@ -341,8 +344,7 @@ export class TicketTransferDetailsPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.load();
-      }
-      else this.scheduleExpiryRefresh(transfer);
+      } else this.scheduleExpiryRefresh(transfer);
     }, delay);
   }
 

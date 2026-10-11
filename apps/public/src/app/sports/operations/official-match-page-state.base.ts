@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { ActivatedRoute } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { Subscription } from 'rxjs';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { SportsOfflineQueueService } from './sports-offline-queue.service';

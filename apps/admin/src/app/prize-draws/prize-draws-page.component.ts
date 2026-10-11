@@ -68,6 +68,9 @@ import { EventTargetPickerComponent } from '../shared/event-target-picker.compon
     '../app-shell/layout/workspace-tabs.shared.scss',
     './prize-draws-page.eligibility.scss',
     './prize-draws-page.component.scss',
+    './prize-draws-page.setup.scss',
+    './prize-draws-page.roster.scss',
+    './prize-draws-page.responsive.scss',
   ],
 })
 export class PrizeDrawsPageComponent {
@@ -75,8 +78,11 @@ export class PrizeDrawsPageComponent {
   readonly workspace = inject(PrizeDrawWorkspaceService);
   protected readonly scopeEmoji = computed(() => {
     const scope = this.workspace.scopeFilter();
-    return scope?.eventId ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
-      : scope?.majorEventId ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji : null;
+    return scope?.eventId
+      ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
+      : scope?.majorEventId
+        ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji
+        : null;
   });
 
   protected readonly Permission = Permission;
@@ -87,26 +93,36 @@ export class PrizeDrawsPageComponent {
   private routeRequest = 0;
   constructor() {
     const shellContext = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ? inject(EventWorkspaceContextService) : null;
-    effect(() => { shellContext?.scopeSwitchBlocked.set(this.workspace.unsavedChanges()); });
-    inject(DestroyRef).onDestroy(() => { this.routeRequest++; shellContext?.scopeSwitchBlocked.set(false); });
+    effect(() => {
+      shellContext?.scopeSwitchBlocked.set(this.workspace.unsavedChanges());
+    });
+    inject(DestroyRef).onDestroy(() => {
+      this.routeRequest++;
+      shellContext?.scopeSwitchBlocked.set(false);
+    });
     const route = inject(ActivatedRoute);
     const router = inject(Router);
     combineLatest([route.paramMap, route.queryParamMap ?? of(convertToParamMap({}))])
-      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
+      .pipe(takeUntilDestroyed())
+      .subscribe(([params, query]) => {
         const request = ++this.routeRequest;
         const eventId = query.get('eventId') ?? undefined;
         const majorEventId = query.get('majorEventId') ?? undefined;
         void (async () => {
-          if (!await this.workspace.setScopeFromRoute(eventId ? { eventId } : majorEventId ? { majorEventId } : null)) return;
+          if (!(await this.workspace.setScopeFromRoute(eventId ? { eventId } : majorEventId ? { majorEventId } : null)))
+            return;
           if (request !== this.routeRequest) return;
           const drawId = params.get('drawId');
           await this.workspace.initialize(drawId);
           if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell) return;
           const draw = this.workspace.selected();
           if (draw?.id === drawId && !this.workspace.unsavedChanges()) {
-            await router.navigate([], { relativeTo: route,
+            await router.navigate([], {
+              relativeTo: route,
               queryParams: { [draw.target.type === 'EVENT' ? 'eventId' : 'majorEventId']: draw.target.id },
-              queryParamsHandling: 'merge', replaceUrl: true });
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
           }
         })();
       });

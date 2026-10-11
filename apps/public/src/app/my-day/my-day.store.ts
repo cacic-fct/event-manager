@@ -1,6 +1,6 @@
 import { DestroyRef, Service, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
 import { MyDayCacheService } from '@cacic-fct/public-indexed-db';
 import { Subject, firstValueFrom, filter, takeUntil } from 'rxjs';

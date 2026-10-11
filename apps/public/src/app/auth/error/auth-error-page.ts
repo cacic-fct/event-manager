@@ -1,14 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  PLATFORM_ID,
-  RESPONSE_INIT,
-  computed,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, RESPONSE_INIT, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -17,7 +8,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
-import { PAGE_ERROR_HEADERS } from '@cacic-fct/shared-angular/errors';
+import { PAGE_ERROR_HEADERS } from '@cacic-fct/shared-angular/errors/routing';
 
 export interface AuthErrorPageContent {
   title: string;
@@ -151,8 +142,13 @@ export class AuthErrorPage {
 
   private readSafeReturnTo(value: string | null): string {
     const returnTo = value?.trim();
-    if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//') || returnTo.includes('\\') ||
-      Array.from(returnTo).some((character) => character.charCodeAt(0) < 32)) {
+    if (
+      !returnTo ||
+      !returnTo.startsWith('/') ||
+      returnTo.startsWith('//') ||
+      returnTo.includes('\\') ||
+      Array.from(returnTo).some((character) => character.charCodeAt(0) < 32)
+    ) {
       return DEFAULT_AUTH_ERROR_CONTENT.returnTo;
     }
 

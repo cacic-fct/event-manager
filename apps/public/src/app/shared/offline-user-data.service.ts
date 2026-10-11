@@ -1,5 +1,6 @@
 import { Service, effect, inject } from '@angular/core';
-import { AuthService, AuthenticatedUser } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import type { AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
 import { PublicDataAccessService, OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
 import { NetworkStatusService } from './network-status.service';
 

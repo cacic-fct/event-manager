@@ -1,7 +1,7 @@
 import type { AttendanceCurrentAssessment } from '@cacic-fct/shared-frontend-types';
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
-import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular/realtime';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';

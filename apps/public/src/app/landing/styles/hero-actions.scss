@@ -1,0 +1,92 @@
+@use 'mixins';
+// Keep ripple keyframes with their references for Angular style encapsulation.
+@use 'animations';
+
+.hero-section {
+  .hero-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+
+    @media (max-width: 1000px) {
+      flex-direction: column;
+    }
+
+    .login-button {
+      @include mixins.glass-button;
+
+      padding: 1.2rem 2.5rem;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-wrap: nowrap;
+
+      border: 2px solid rgba(0, 0, 0, 0.2);
+
+      &:hover:not(:disabled) {
+        transform: translateY(-3px) scale(1.02);
+        background: rgba(255, 255, 255, 0.2);
+        border-color: black;
+
+        @media (prefers-color-scheme: dark) {
+          border-color: rgb(178, 178, 178);
+        }
+
+        &::after {
+          width: 300px;
+          height: 300px;
+          opacity: 1;
+        }
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(-1px) scale(0.98);
+        transition: all 0.15s ease;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        background: rgba(255, 255, 255, 0.1);
+
+        &::before,
+        &::after {
+          display: none;
+        }
+      }
+
+      mat-icon {
+        margin-right: 0.5rem;
+        position: relative;
+        z-index: 1;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+      }
+
+      span,
+      .mat-button-wrapper {
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .diagnostics-link {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      transition: all 0.3s ease;
+
+      &:hover {
+        color: var(--accent-color);
+        text-decoration: underline;
+      }
+
+      mat-icon {
+        margin-right: 0.3rem;
+        font-size: 1.1em;
+      }
+    }
+  }
+}

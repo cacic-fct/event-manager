@@ -41,7 +41,10 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { getErrorMessage } from '../feedback/error-message';
 import { PermissionsService } from '../permissions/permissions.service';
 import { EventContextPickerComponent, type EventContextRef } from '../shared/event-context-picker.component';
-import { TicketAdminPersonActionDialogComponent, type TicketAdminPersonActionData } from './ticket-admin-person-action-dialog.component';
+import {
+  TicketAdminPersonActionDialogComponent,
+  type TicketAdminPersonActionData,
+} from './ticket-admin-person-action-dialog.component';
 import { TicketAdminReasonDialogComponent } from './ticket-admin-reason-dialog.component';
 import { TicketHistoryDialogComponent } from './ticket-history-dialog.component';
 import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
@@ -90,6 +93,8 @@ type TicketPriceRow = FormGroup<TicketPriceRowControls>;
   styleUrls: [
     '../app-shell/layout/workspace-tabs.shared.scss',
     './ticket-admin-page.component.scss',
+    './ticket-admin-page.configuration.scss',
+    './ticket-admin-page.issued-tickets.scss',
   ],
 })
 export class TicketAdminPageComponent {
@@ -114,8 +119,12 @@ export class TicketAdminPageComponent {
     eventId: this.route.snapshot.paramMap.get('eventId'),
     majorEventId: this.route.snapshot.paramMap.get('majorEventId'),
   });
-  private get routeEventId() { return this.routeScope().eventId; }
-  private get routeMajorEventId() { return this.routeScope().majorEventId; }
+  private get routeEventId() {
+    return this.routeScope().eventId;
+  }
+  private get routeMajorEventId() {
+    return this.routeScope().majorEventId;
+  }
   private listRequest = 0;
   private configRequest = 0;
   protected readonly cursorHistory = signal<(string | null)[]>([null]);
@@ -152,9 +161,7 @@ export class TicketAdminPageComponent {
     { value: TicketSubscriptionRequirement.Required, label: 'Somente pessoas inscritas' },
     { value: TicketSubscriptionRequirement.None, label: 'Somente pessoas sem inscrição' },
   ];
-  protected readonly courseOptions = [
-    { code: '12', label: 'Ciência da Computação' },
-  ];
+  protected readonly courseOptions = [{ code: '12', label: 'Ciência da Computação' }];
   protected readonly ticketStatuses = [
     { value: TicketLifecycleState.Active, label: 'Ativo' },
     { value: TicketLifecycleState.Consumed, label: 'Utilizado' },
@@ -177,7 +184,10 @@ export class TicketAdminPageComponent {
     purchaseEnabled: false,
     purchaseUnlimited: true,
     purchaseLimit: this.formBuilder.nonNullable.control({ value: 100, disabled: true }, [
-      Validators.required, Validators.min(1), Validators.max(2_147_483_647), Validators.pattern(/^\d+$/),
+      Validators.required,
+      Validators.min(1),
+      Validators.max(2_147_483_647),
+      Validators.pattern(/^\d+$/),
     ]),
     purchaseVisibility: this.createPolicyGroup(),
     expirationMode: this.formBuilder.nonNullable.control<TicketExpirationMode>(TicketExpirationMode.EventEnd),
@@ -185,16 +195,16 @@ export class TicketAdminPageComponent {
   });
 
   protected readonly eventId = computed(() => this.routeEventId ?? this.selectedConfig()?.eventId ?? null);
-  protected readonly majorEventId = computed(() =>
-    this.routeMajorEventId ?? this.eventSummary()?.majorEventId ?? this.selectedConfig()?.majorEventId ?? null,
+  protected readonly majorEventId = computed(
+    () => this.routeMajorEventId ?? this.eventSummary()?.majorEventId ?? this.selectedConfig()?.majorEventId ?? null,
   );
   protected readonly canEditConfig = computed(() =>
     this.permissions.has(this.selectedConfig() ? Permission.TicketConfig.Update : Permission.TicketConfig.Create),
   );
   protected readonly canReadTickets = computed(() => this.permissions.has(Permission.Ticket.Read));
   protected readonly canIssueTickets = computed(() => this.permissions.has(Permission.Ticket.Issue));
-  protected readonly canIssueSelectedConfig = computed(() =>
-    this.canIssueTickets() && this.selectedConfig()?.enabled === true,
+  protected readonly canIssueSelectedConfig = computed(
+    () => this.canIssueTickets() && this.selectedConfig()?.enabled === true,
   );
   protected readonly canRevokeTickets = computed(() => this.permissions.has(Permission.Ticket.Revoke));
   protected readonly canManageTransfers = computed(() => this.permissions.has(Permission.TicketTransfer.Manage));
@@ -210,7 +220,8 @@ export class TicketAdminPageComponent {
     effect((onCleanup) => {
       const eventId = this.eventId();
       if (!eventId) return;
-      const subscription = this.realtime.watchEventTickets(eventId)
+      const subscription = this.realtime
+        .watchEventTickets(eventId)
         .pipe(debounceTime(150))
         .subscribe(() => void this.refreshLiveEvent(eventId));
       onCleanup(() => subscription.unsubscribe());
@@ -218,11 +229,13 @@ export class TicketAdminPageComponent {
     merge(
       this.configForm.controls.purchaseUnlimited.valueChanges,
       this.configForm.controls.purchaseEnabled.valueChanges,
-    ).pipe(takeUntilDestroyed()).subscribe(() => {
-      const controls = this.configForm.controls;
-      if (controls.purchaseUnlimited.value || !controls.purchaseEnabled.value) controls.purchaseLimit.disable();
-      else controls.purchaseLimit.enable();
-    });
+    )
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        const controls = this.configForm.controls;
+        if (controls.purchaseUnlimited.value || !controls.purchaseEnabled.value) controls.purchaseLimit.disable();
+        else controls.purchaseLimit.enable();
+      });
     this.configForm.controls.expirationMode.valueChanges.pipe(takeUntilDestroyed()).subscribe((mode) => {
       const expiry = this.configForm.controls.customExpiresAt;
       if (mode === TicketExpirationMode.Custom) expiry.addValidators(Validators.required);
@@ -269,14 +282,23 @@ export class TicketAdminPageComponent {
   }
 
   protected canSaveConfig(): boolean {
-    if (!this.canEditConfig() || this.saving() || this.configForm.invalid || !this.configForm.controls.displayName.value.trim()) return false;
+    if (
+      !this.canEditConfig() ||
+      this.saving() ||
+      this.configForm.invalid ||
+      !this.configForm.controls.displayName.value.trim()
+    )
+      return false;
     if (this.selectedConfig() && !this.hasUnsavedChanges()) return false;
     if (this.isCustomExpiry() && !this.configForm.controls.customExpiresAt.value) return false;
     if (!this.isPurchaseEnabled()) return true;
-    if (this.priceMode.value === 'SINGLE') return this.singlePrice.valid && this.priceInCents(this.singlePrice.value) !== null;
-    const rowsValid = this.priceRows.length > 0 && this.priceRows.controls.every((row) =>
-      Boolean(row.controls.priceTierId.value) && this.priceInCents(row.controls.amount.value) !== null,
-    );
+    if (this.priceMode.value === 'SINGLE')
+      return this.singlePrice.valid && this.priceInCents(this.singlePrice.value) !== null;
+    const rowsValid =
+      this.priceRows.length > 0 &&
+      this.priceRows.controls.every(
+        (row) => Boolean(row.controls.priceTierId.value) && this.priceInCents(row.controls.amount.value) !== null,
+      );
     if (!rowsValid) return false;
     const visibleTierIds = this.configForm.controls.purchaseVisibility.controls.allowedPriceTierIds.value;
     const coveredTierIds = new Set(this.priceRows.controls.map((row) => row.controls.priceTierId.value));
@@ -285,7 +307,9 @@ export class TicketAdminPageComponent {
   }
 
   protected isPriceTierAlreadySelected(tierId: string, currentIndex: number): boolean {
-    return this.priceRows.controls.some((row, index) => index !== currentIndex && row.controls.priceTierId.value === tierId);
+    return this.priceRows.controls.some(
+      (row, index) => index !== currentIndex && row.controls.priceTierId.value === tierId,
+    );
   }
 
   protected hasUnsavedChanges(): boolean {
@@ -382,7 +406,11 @@ export class TicketAdminPageComponent {
     const reference = this.dialog.open(TicketAdminReasonDialogComponent, {
       width: 'min(28rem, calc(100vw - 2rem))',
       maxWidth: 'calc(100vw - 2rem)',
-      data: { title: 'Revogar bilhete', actionLabel: 'Revogar bilhete', description: `O bilhete de ${ticket.holder?.fullName ?? 'titular atual'} deixará de ser válido. Registre o motivo para auditoria.` },
+      data: {
+        title: 'Revogar bilhete',
+        actionLabel: 'Revogar bilhete',
+        description: `O bilhete de ${ticket.holder?.fullName ?? 'titular atual'} deixará de ser válido. Registre o motivo para auditoria.`,
+      },
     });
     const reason = await firstValueFrom(reference.afterClosed());
     if (typeof reason !== 'string' || !reason.trim()) return;
@@ -449,7 +477,8 @@ export class TicketAdminPageComponent {
     if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) return;
     try {
       const configs = await firstValueFrom(this.api.getConfigs({ eventId }));
-      if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) return;
+      if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving())
+        return;
       const current = configs.find((config) => config.eventId === eventId) ?? null;
       this.selectedConfig.set(current);
       this.configs.update((previous) => [...previous.filter((config) => config.eventId !== eventId), ...configs]);
@@ -505,7 +534,8 @@ export class TicketAdminPageComponent {
     }
     try {
       const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
-      if (request === this.configRequest) this.priceTiers.set(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
+      if (request === this.configRequest)
+        this.priceTiers.set(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
     } catch {
       if (request === this.configRequest) this.priceTiers.set([]);
     }
@@ -522,16 +552,19 @@ export class TicketAdminPageComponent {
     this.ticketsError.set(null);
     try {
       const status = this.ticketStatus.value === 'ALL' ? null : this.ticketStatus.value;
-      const page = await firstValueFrom(this.api.getEventTickets({
-        eventId,
-        status,
-        search: this.ticketSearch.value.trim() || undefined,
-        take: 50,
-        cursor: cursor ?? undefined,
-      }));
+      const page = await firstValueFrom(
+        this.api.getEventTickets({
+          eventId,
+          status,
+          search: this.ticketSearch.value.trim() || undefined,
+          take: 50,
+          cursor: cursor ?? undefined,
+        }),
+      );
       if (request === this.listRequest) this.ticketPage.set(page);
     } catch (error) {
-      if (request === this.listRequest) this.ticketsError.set(getErrorMessage(error, 'Não foi possível carregar os bilhetes.'));
+      if (request === this.listRequest)
+        this.ticketsError.set(getErrorMessage(error, 'Não foi possível carregar os bilhetes.'));
     } finally {
       if (request === this.listRequest) this.ticketsLoading.set(false);
     }
@@ -569,7 +602,8 @@ export class TicketAdminPageComponent {
         requiresUnesp: recipientPolicy?.requiresUnesp ?? defaultPolicy.requiresUnesp,
         requiredAcademicIdPrefixes: (recipientPolicy?.requiredAcademicIdPrefixes ?? []).join('\n'),
         requiredCourseCodes: [...(recipientPolicy?.requiredCourseCodes ?? [])],
-        requiresAccountManagerVerification: recipientPolicy?.requiresAccountManagerVerification ?? defaultPolicy.requiresAccountManagerVerification,
+        requiresAccountManagerVerification:
+          recipientPolicy?.requiresAccountManagerVerification ?? defaultPolicy.requiresAccountManagerVerification,
         allowedPriceTierIds: [...(recipientPolicy?.allowedPriceTierIds ?? [])],
       },
       purchaseEnabled: config?.purchaseEnabled ?? false,
@@ -580,7 +614,8 @@ export class TicketAdminPageComponent {
         requiresUnesp: purchaseVisibility?.requiresUnesp ?? defaultPolicy.requiresUnesp,
         requiredAcademicIdPrefixes: (purchaseVisibility?.requiredAcademicIdPrefixes ?? []).join('\n'),
         requiredCourseCodes: [...(purchaseVisibility?.requiredCourseCodes ?? [])],
-        requiresAccountManagerVerification: purchaseVisibility?.requiresAccountManagerVerification ?? defaultPolicy.requiresAccountManagerVerification,
+        requiresAccountManagerVerification:
+          purchaseVisibility?.requiresAccountManagerVerification ?? defaultPolicy.requiresAccountManagerVerification,
         allowedPriceTierIds: [...(purchaseVisibility?.allowedPriceTierIds ?? [])],
       },
       expirationMode: config?.expirationMode ?? TicketExpirationMode.EventEnd,
@@ -612,9 +647,8 @@ export class TicketAdminPageComponent {
 
   private buildConfigInput(eventId: string): TicketConfigInput {
     const value = this.configForm.getRawValue();
-    const customExpiresAt = value.expirationMode === TicketExpirationMode.Custom
-      ? new Date(value.customExpiresAt).toISOString()
-      : null;
+    const customExpiresAt =
+      value.expirationMode === TicketExpirationMode.Custom ? new Date(value.customExpiresAt).toISOString() : null;
     return {
       eventId,
       enabled: value.enabled,
@@ -645,17 +679,30 @@ export class TicketAdminPageComponent {
       return this.priceRows.getRawValue().flatMap((row) => {
         const amount = this.priceInCents(row.amount);
         return row.priceTierId && amount !== null
-          ? [{ id: row.id || `ticket-tier-${row.priceTierId}`, priceTierId: row.priceTierId, label: row.label, amountCents: amount }]
+          ? [
+              {
+                id: row.id || `ticket-tier-${row.priceTierId}`,
+                priceTierId: row.priceTierId,
+                label: row.label,
+                amountCents: amount,
+              },
+            ]
           : [];
       });
     }
     const amountCents = this.priceInCents(this.singlePrice.value);
-    return amountCents === null ? [] : [{
-      id: this.selectedConfig()?.priceOptions.find((option) => option.priceTierId === null)?.id ?? `ticket-price-${this.eventId()}`,
-      priceTierId: null,
-      label: 'Preço único',
-      amountCents,
-    }];
+    return amountCents === null
+      ? []
+      : [
+          {
+            id:
+              this.selectedConfig()?.priceOptions.find((option) => option.priceTierId === null)?.id ??
+              `ticket-price-${this.eventId()}`,
+            priceTierId: null,
+            label: 'Preço único',
+            amountCents,
+          },
+        ];
   }
 
   private priceInCents(value: string): number | null {
@@ -676,7 +723,14 @@ export class TicketAdminPageComponent {
     return {
       subscriptionRequirement: value.subscriptionRequirement,
       requiresUnesp: value.requiresUnesp,
-      requiredAcademicIdPrefixes: [...new Set(value.requiredAcademicIdPrefixes.split(/[\n,;]/).map((item) => item.trim()).filter(Boolean))],
+      requiredAcademicIdPrefixes: [
+        ...new Set(
+          value.requiredAcademicIdPrefixes
+            .split(/[\n,;]/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      ],
       requiredCourseCodes: [...value.requiredCourseCodes],
       requiresAccountManagerVerification: value.requiresAccountManagerVerification,
       allowedPriceTierIds: [...value.allowedPriceTierIds],
@@ -688,16 +742,18 @@ export class TicketAdminPageComponent {
       id: option?.id ?? `ticket-tier-${tier.id}`,
       priceTierId: tier.id,
       label: option?.label ?? tier.name,
-      amount: this.formBuilder.nonNullable.control(
-        option ? (option.amountCents / 100).toFixed(2) : '',
-        [Validators.required, Validators.min(0.01)],
-      ),
+      amount: this.formBuilder.nonNullable.control(option ? (option.amountCents / 100).toFixed(2) : '', [
+        Validators.required,
+        Validators.min(0.01),
+      ]),
     }) as TicketPriceRow;
   }
 
   private createPolicyGroup() {
     return this.formBuilder.nonNullable.group({
-      subscriptionRequirement: this.formBuilder.nonNullable.control<TicketSubscriptionRequirement>(TicketSubscriptionRequirement.Any),
+      subscriptionRequirement: this.formBuilder.nonNullable.control<TicketSubscriptionRequirement>(
+        TicketSubscriptionRequirement.Any,
+      ),
       requiresUnesp: false,
       requiredAcademicIdPrefixes: '',
       requiredCourseCodes: this.formBuilder.nonNullable.control<string[]>([]),
@@ -733,7 +789,11 @@ export class TicketAdminPageComponent {
     const result = await firstValueFrom(reference.afterClosed());
     if (!result) return;
     this.operationError.set(null);
-    this.snackbar.open(data.action === 'ISSUE' ? 'Bilhete emitido.' : 'Transferência enviada para confirmação.', 'Fechar', { duration: 3500 });
+    this.snackbar.open(
+      data.action === 'ISSUE' ? 'Bilhete emitido.' : 'Transferência enviada para confirmação.',
+      'Fechar',
+      { duration: 3500 },
+    );
     await this.resetTicketPage();
   }
 

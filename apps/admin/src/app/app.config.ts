@@ -1,3 +1,4 @@
+import { initializeMaterialSymbols } from '@cacic-fct/shared-angular/material/icons';
 import {
   ApplicationConfig,
   LOCALE_ID,
@@ -19,10 +20,6 @@ import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/
 import { provideCacicObservability, startCacicAnalytics } from '@cacic-fct/shared-angular/observability';
 import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angular/privacy/startup';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
-import { MatIconRegistry } from '@angular/material/icon';
-import { MAT_DATE_LOCALE } from '@angular/material/core';
-import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
-import { ptBR } from 'date-fns/locale/pt-BR';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
 import { requestActivityInterceptor } from './feedback/request-activity.interceptor';
 
@@ -54,8 +51,6 @@ const buildIdentifyData = (user: AuthenticatedUser) => ({
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    { provide: MAT_DATE_LOCALE, useValue: ptBR },
-    provideDateFnsAdapter(),
     provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([requestActivityInterceptor, authInterceptor])),
@@ -79,10 +74,7 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     provideAppInitializer(initializeAccountPrivacyInBrowser),
-    provideAppInitializer(() => {
-      const registry = inject(MatIconRegistry);
-      registry.setDefaultFontSetClass('material-symbols-outlined');
-    }),
+    provideAppInitializer(initializeMaterialSymbols),
     provideAppInitializer(() => {
       return inject(CookieBannerFeatureFlagService).initialize();
     }),

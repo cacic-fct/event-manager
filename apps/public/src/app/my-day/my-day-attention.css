@@ -1,0 +1,126 @@
+.attention-list,
+.later-list {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.attention-row,
+.later-row {
+  color: inherit;
+  min-height: 72px;
+  padding: 10px 14px;
+  text-decoration: none;
+}
+
+.attention-row + .attention-row,
+.later-row + .later-row {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.attention-icon {
+  align-items: center;
+  background: var(--mat-sys-tertiary-container);
+  border-radius: 12px;
+  color: var(--mat-sys-on-tertiary-container);
+  display: flex;
+  height: 44px;
+  justify-content: center;
+  margin-right: 12px;
+  width: 44px;
+}
+
+.attention-icon.critical {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.attention-copy,
+.later-copy,
+.weather-alert span {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.attention-copy small,
+.later-copy small,
+.weather-alert small {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.weather-strip {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-top: 10px;
+}
+
+.weather-alert {
+  align-items: center;
+  background: var(--mat-sys-surface-container);
+  border-radius: 12px;
+  color: inherit;
+  display: flex;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.weather-alert > mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.later-emoji {
+  --twemoji-size: 32px;
+
+  margin-right: 12px;
+}
+
+.loading-copy,
+.empty-state {
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 240px;
+  padding-top: 64px;
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  color: var(--mat-sys-primary);
+  font-size: 40px;
+  height: 40px;
+  width: 40px;
+}
+
+.attention-row:focus-visible,
+.later-row:focus-visible,
+.weather-alert:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
+}
+
+@media (min-width: 720px) {
+  .my-day-toolbar {
+    padding-top: 28px;
+  }
+
+  .my-day-page {
+    padding-top: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expand-icon {
+    transition: none;
+  }
+
+  :host ::ng-deep .date-panel.mat-expansion-panel-animations-enabled > .mat-expansion-panel-content-wrapper {
+    transition-duration: 1ms;
+  }
+}

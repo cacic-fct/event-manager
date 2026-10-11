@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, Subject, Subscription, catchError, defer, filter, forkJoin, map, of, switchMap } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import {

@@ -37,6 +37,8 @@ import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     './attendance-subtabs.shared.scss',
+    './attendance-subtabs.review.shared.scss',
+    './attendance-subtabs.workbench.shared.scss',
   ],
 })
 export class MajorEventAttendancesComponent {
@@ -47,5 +49,4 @@ export class MajorEventAttendancesComponent {
   protected attendedEventCount(attendance: MajorEventUserAttendance): number {
     return attendance.attendances.filter((eventAttendance) => eventAttendance.attended).length;
   }
-
 }

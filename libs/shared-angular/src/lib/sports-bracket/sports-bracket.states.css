@@ -1,0 +1,54 @@
+.stage-empty {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  font: var(--mat-sys-body-medium);
+  padding: 16px;
+}
+
+.empty-state {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  margin-top: 18px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.empty-state > mat-icon {
+  color: var(--mat-sys-outline);
+  height: 32px;
+  margin-bottom: 4px;
+  width: 32px;
+}
+
+.empty-state p {
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+@media (max-width: 620px) {
+  .competition-heading {
+    align-items: start;
+    display: grid;
+  }
+
+  .round-track {
+    gap: 26px;
+    grid-auto-columns: minmax(214px, 84vw);
+  }
+
+  .stage-heading {
+    align-items: start;
+    display: grid;
+    gap: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-card {
+    transition: none;
+  }
+}

@@ -1,0 +1,36 @@
+@media (max-width: 900px) {
+  .page-nav,
+  .validation-header,
+  .validation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .validation-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .subscriber-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .validation-fab {
+    position: static;
+    justify-content: flex-end;
+    padding-block: 16px;
+  }
+
+  .receipt-validation-page {
+    padding-bottom: 16px;
+  }
+
+  .reject-panel {
+    position: static;
+  }
+}
+
+.receipt-image-shell:focus-visible,
+.ocr-fallback:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}

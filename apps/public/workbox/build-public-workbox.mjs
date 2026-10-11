@@ -1,9 +1,10 @@
-import { rm, readFile, writeFile } from 'node:fs/promises';
+import { readdir, rm, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { copyWorkboxLibraries, injectManifest } from 'workbox-build';
 import { transform } from 'esbuild';
+import { assertApplicationChunksPrecached } from './precache-coverage.mjs';
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const browserDirectory = join(workspaceRoot, 'dist/apps/public/browser');
@@ -30,6 +31,9 @@ const source = await readFile(workerSource, 'utf8');
 await writeFile(preparedWorkerSource, source.replaceAll('__WORKBOX_LIBRARY_DIRECTORY__', workboxDirectory));
 
 try {
+  const applicationFiles = (await readdir(browserDirectory)).filter((file) =>
+    /^(?:main|chunk|styles)-[a-zA-Z0-9_-]{8,}\.(?:js|css)$/.test(file),
+  );
   const result = await injectManifest({
     swSrc: preparedWorkerSource,
     swDest: workerDestination,
@@ -56,6 +60,12 @@ try {
       'safety-worker.js',
       'worker-basic.min.js',
       `${workboxDirectory}/**/*`,
+    ],
+    manifestTransforms: [
+      (manifest) => {
+        assertApplicationChunksPrecached(applicationFiles, manifest);
+        return { manifest, warnings: [] };
+      },
     ],
     dontCacheBustURLsMatching: /-[a-zA-Z0-9]{8,}\./,
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,

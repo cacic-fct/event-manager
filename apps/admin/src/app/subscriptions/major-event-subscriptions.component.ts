@@ -1,3 +1,4 @@
+import { providePortugueseDateFns } from '@cacic-fct/shared-angular/material/date-fns';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -34,6 +35,7 @@ import { ParticipantSummaryComponent } from '../shared/participant-summary.compo
 import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 
 @Component({
+  providers: providePortugueseDateFns(),
   selector: 'app-workspace-major-event-subscriptions-subtab',
   imports: [
     CurrencyPipe,
@@ -61,6 +63,9 @@ import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
     './subscription-subtabs.shared.scss',
+    './subscription-subtabs.panels.shared.scss',
+    './subscription-subtabs.sports.shared.scss',
+    './subscription-subtabs.responsive.shared.scss',
   ],
 })
 export class MajorEventSubscriptionsComponent {
@@ -74,9 +79,7 @@ export class MajorEventSubscriptionsComponent {
   protected readonly sportsParticipantSourceLabel = sportsParticipantSourceLabel;
 
   protected sportsWorkspaceRoute(majorEventId: string): string[] {
-    return majorEventId
-      ? adminSportsWorkspaceRoute({ majorEventId, area: 'reviews' })
-      : ['/sports'];
+    return majorEventId ? adminSportsWorkspaceRoute({ majorEventId, area: 'reviews' }) : ['/sports'];
   }
 
   protected eventSettingsRoute(majorEventId: string): string[] {
@@ -150,16 +153,13 @@ export class MajorEventSubscriptionsComponent {
     );
   }
 
-  protected eventOption(
-    eventItem: WorkspaceMajorEventSubscription['events'][number],
-  ): SubscriptionEventOptionView {
+  protected eventOption(eventItem: WorkspaceMajorEventSubscription['events'][number]): SubscriptionEventOptionView {
     return {
       id: eventItem.eventId,
       name: eventItem.eventName,
       emoji: eventItem.eventEmoji ?? '❔',
       description:
-        eventItem.eventShortDescription ||
-        (eventItem.eventType ? getEventTypeLabel(eventItem.eventType) : 'Evento'),
+        eventItem.eventShortDescription || (eventItem.eventType ? getEventTypeLabel(eventItem.eventType) : 'Evento'),
       startDate: eventItem.eventStartDate ?? null,
       endDate: eventItem.eventEndDate ?? null,
       locationDescription: eventItem.eventLocationDescription,

@@ -55,6 +55,8 @@ interface BrushEndEvent {
     '../../app-shell/layout/page-layout.shared.scss',
     '../../app-shell/layout/forms-feedback.shared.scss',
     './attendance-statistics-page.component.scss',
+    './attendance-statistics-page.analytics.scss',
+    './attendance-statistics-page.responsive.scss',
   ],
 })
 export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestroy {
@@ -148,7 +150,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       this.scheduleChartRender();
     } catch (error: unknown) {
       if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
-        this.connectionError.set(error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.');
+        this.connectionError.set(
+          error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.',
+        );
       }
     } finally {
       this.loading.set(false);

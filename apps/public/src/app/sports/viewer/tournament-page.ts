@@ -56,7 +56,12 @@ import { SportsAthletePreparationPanel } from './athlete-preparation-panel';
     TwemojiComponent,
   ],
   templateUrl: './tournament-page.html',
-  styleUrl: './tournament-page.css',
+  styleUrls: [
+    './tournament-page.css',
+    './tournament-page-matches.css',
+    './tournament-page-categories.css',
+    './tournament-page-responsive.css',
+  ],
 })
 export class SportsTournamentPage {
   private readonly api = inject(SportsViewerApiService);

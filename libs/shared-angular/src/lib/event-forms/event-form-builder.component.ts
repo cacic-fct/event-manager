@@ -1,3 +1,4 @@
+import { providePortugueseDateFns } from '../material/date-fns.providers';
 import { Component, input, output, signal } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,6 +30,7 @@ import {
 type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
 
 @Component({
+  providers: providePortugueseDateFns(),
   selector: 'lib-event-form-builder',
   imports: [
     MatButtonModule,
@@ -469,9 +471,22 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     </div>
   `,
   styles: `
-    :host { display: block; min-width: 0; }
-    mat-form-field { min-width: 0; width: 100%; }
-    .form-builder, .builder-list, .builder-item, .option-editor, .image-editor { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+    :host {
+      display: block;
+      min-width: 0;
+    }
+    mat-form-field {
+      min-width: 0;
+      width: 100%;
+    }
+    .form-builder,
+    .builder-list,
+    .builder-item,
+    .option-editor,
+    .image-editor {
+      grid-template-columns: minmax(0, 1fr);
+      min-width: 0;
+    }
     .form-builder {
       display: grid;
       gap: 16px;
@@ -618,7 +633,11 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
     }
 
     @media (max-width: 720px) {
-      .image-fields mat-form-field, .option-row mat-form-field, .availability-row mat-form-field { flex: none; }
+      .image-fields mat-form-field,
+      .option-row mat-form-field,
+      .availability-row mat-form-field {
+        flex: none;
+      }
       header,
       .builder-toolbar,
       .option-row,

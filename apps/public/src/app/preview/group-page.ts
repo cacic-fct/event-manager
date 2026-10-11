@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,9 +16,7 @@ import {
 } from '../major-events/registration/subscription-api.service';
 import { privateResourceErrorStatus } from '../shared/route-error-handling';
 
-type GroupPreviewState =
-  | { status: 'loading' }
-  | { status: 'ready'; preview: PublicationGroupPreview };
+type GroupPreviewState = { status: 'loading' } | { status: 'ready'; preview: PublicationGroupPreview };
 
 @Component({
   selector: 'app-group-preview',

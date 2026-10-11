@@ -1,8 +1,8 @@
 import { Service, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular';
+import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular/service';
 import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';

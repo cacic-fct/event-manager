@@ -7,7 +7,7 @@ import {
   OfflineAttendanceQueueItem,
   OralAttendanceOfflineService,
 } from '@cacic-fct/public-indexed-db';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { firstValueFrom } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import {

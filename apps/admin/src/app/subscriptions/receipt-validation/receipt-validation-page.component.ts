@@ -80,6 +80,8 @@ interface EventDayGroup {
     '../../app-shell/layout/entity-permissions.shared.scss',
     '../../app-shell/layout/forms-feedback.shared.scss',
     './receipt-validation-page.component.scss',
+    './receipt-validation-page.review.scss',
+    './receipt-validation-page.responsive.scss',
   ],
 })
 export class ReceiptValidationPageComponent {
@@ -111,7 +113,9 @@ export class ReceiptValidationPageComponent {
     reason: ['', Validators.required],
   });
 
-  protected readonly visibleItems = computed(() => filterAndSortReceiptValidationItems(this.queue().items, this.filters()));
+  protected readonly visibleItems = computed(() =>
+    filterAndSortReceiptValidationItems(this.queue().items, this.filters()),
+  );
   protected readonly pendingCount = computed(() => this.visibleItems().length);
   protected readonly totalItems = computed(() => this.visibleItems().length);
   protected readonly currentItem = computed(() => this.visibleItems()[this.selectedIndex()] ?? null);
@@ -126,8 +130,12 @@ export class ReceiptValidationPageComponent {
   protected readonly activeFilterSummary = computed(() => {
     const filters = this.filters();
     if (filters.category === 'ALL' && !filters.paymentTier) return null;
-    const category = filters.category === 'SUBSCRIPTION' ? 'Inscrições' : filters.category === 'TICKET' ? 'Bilhetes' : '';
-    const details = [category ? `Categoria: ${category}` : '', filters.paymentTier ? `Lote: ${filters.paymentTier}` : '']
+    const category =
+      filters.category === 'SUBSCRIPTION' ? 'Inscrições' : filters.category === 'TICKET' ? 'Bilhetes' : '';
+    const details = [
+      category ? `Categoria: ${category}` : '',
+      filters.paymentTier ? `Lote: ${filters.paymentTier}` : '',
+    ]
       .filter(Boolean)
       .join('. ');
     return `${this.pendingCount()} de ${this.queue().pendingCount} pendentes. ${details}.`;
@@ -314,13 +322,18 @@ export class ReceiptValidationPageComponent {
         filters: this.filters(),
       },
     });
-    reference.afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((filters: ReceiptValidationFilters | undefined) => {
-      if (!filters) return;
-      const currentId = this.currentItem()?.subscriptionId;
-      this.filters.set(filters);
-      const retainedIndex = currentId ? this.visibleItems().findIndex((item) => item.subscriptionId === currentId) : -1;
-      this.selectedIndex.set(retainedIndex >= 0 ? retainedIndex : 0);
-    });
+    reference
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((filters: ReceiptValidationFilters | undefined) => {
+        if (!filters) return;
+        const currentId = this.currentItem()?.subscriptionId;
+        this.filters.set(filters);
+        const retainedIndex = currentId
+          ? this.visibleItems().findIndex((item) => item.subscriptionId === currentId)
+          : -1;
+        this.selectedIndex.set(retainedIndex >= 0 ? retainedIndex : 0);
+      });
   }
   protected readonly processingStatusLabel = receiptProcessingStatusLabel;
 
@@ -368,11 +381,14 @@ export class ReceiptValidationPageComponent {
     const canValidate = this.isTicketPurchase(item)
       ? this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject])
       : this.permissions.hasAny([Permission.Receipt.Approve, Permission.Receipt.Reject, Permission.Receipt.Undo]);
-    return canValidate && (!isFrozenMajorEvent({
+    return (
+      canValidate &&
+      (!isFrozenMajorEvent({
         createdAt: item.majorEventCreatedAt,
         endDate: item.majorEventEndDate,
       }) ||
-        this.permissions.has(Permission.Frozen.Update));
+        this.permissions.has(Permission.Frozen.Update))
+    );
   }
 
   protected hasOcrMatches(item: ReceiptValidationQueueItem): boolean {

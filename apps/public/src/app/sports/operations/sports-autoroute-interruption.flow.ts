@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, catchError, map, of, take } from 'rxjs';
 import { DefaultRedirectApiService } from '../../landing/default-redirect-api.service';
 import { sportsAutorouteUrl } from '../../landing/default-redirect.service';

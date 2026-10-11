@@ -1,0 +1,105 @@
+.manual-entry-area,
+.roster-preview {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.manual-entry-area h5,
+.roster-preview h5 {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.manual-entry-area > p {
+  margin: -0.35rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.unsaved-roster-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.unsaved-roster-note mat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 1.1rem;
+}
+
+.free-entry-row,
+.manual-entry-row,
+.spin-limit-row,
+.planned-spin-row,
+.contact-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.free-entry-row mat-form-field,
+.manual-entry-row mat-form-field:nth-of-type(1) {
+  flex: 1 1 min(20rem, 100%);
+}
+
+.manual-entry-list,
+.planned-spin-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.manual-entry-row,
+.planned-spin-row {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.weight-field,
+.list-weight,
+.countdown-field {
+  width: 8rem;
+}
+
+.roster-preview mat-list {
+  max-height: 25rem;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+.planned-spin-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) minmax(7rem, 0.45fr) minmax(7rem, 0.35fr);
+}
+
+.planned-spin-row strong {
+  align-self: center;
+}
+
+.audit-id {
+  color: var(--mat-sys-on-surface-variant);
+  font-family: 'Source Code Pro Variable', monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.undone-result {
+  opacity: 0.62;
+  text-decoration: line-through;
+}
+
+.contact-details {
+  flex-wrap: wrap;
+  margin: 0 1rem 0.75rem 4.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+  font-size: 0.85rem;
+}

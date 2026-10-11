@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, catchError, map, of, take } from 'rxjs';
 import {
   INTERRUPTION_PRIORITY_ORDERS,

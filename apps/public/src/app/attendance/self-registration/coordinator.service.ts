@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Service, PLATFORM_ID, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, catchError, filter, map, of, take } from 'rxjs';
 import {
   INTERRUPTION_PRIORITY_ORDERS,

@@ -1,6 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { AuthService, CookieBannerSyncService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { CookieBannerSyncService } from '@cacic-fct/shared-angular/privacy/cookie-banner-sync';
 import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import { firstValueFrom } from 'rxjs';

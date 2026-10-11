@@ -9,10 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  type AuditLogEntityType,
-  type WorkspaceEventSubscription,
-} from '@cacic-fct/event-manager-admin-contracts';
+import { type AuditLogEntityType, type WorkspaceEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
@@ -47,6 +44,9 @@ import { ParticipantSummaryComponent } from '../shared/participant-summary.compo
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
     './subscription-subtabs.shared.scss',
+    './subscription-subtabs.panels.shared.scss',
+    './subscription-subtabs.sports.shared.scss',
+    './subscription-subtabs.responsive.shared.scss',
   ],
 })
 export class EventSubscriptionsComponent {

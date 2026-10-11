@@ -43,6 +43,8 @@ import { attendanceCreationMethodLabel } from './attendance-labels';
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
     './attendance-subtabs.shared.scss',
+    './attendance-subtabs.review.shared.scss',
+    './attendance-subtabs.workbench.shared.scss',
   ],
 })
 export class EventAttendancesComponent {

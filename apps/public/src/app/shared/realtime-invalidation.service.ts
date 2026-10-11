@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
 import { PLATFORM_ID, Service, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { AuthService } from '@cacic-fct/shared-angular';
-import { watchRecoveringReplayableEventSourcePing } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { watchRecoveringReplayableEventSourcePing } from '@cacic-fct/shared-angular/realtime';
 import { EMPTY, distinctUntilChanged, map, switchMap } from 'rxjs';
 import type { Observable, ObservableInput } from 'rxjs';
 

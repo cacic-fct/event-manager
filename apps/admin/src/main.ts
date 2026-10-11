@@ -1,5 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { appConfig } from './app/app.config';
-import { App } from './app/app';
 
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+// Load application setup separately from the core Angular entry point.
+Promise.all([import('./app/app.config'), import('./app/app')])
+  .then(([{ appConfig }, { App }]) => bootstrapApplication(App, appConfig))
+  .catch((err) => console.error(err));

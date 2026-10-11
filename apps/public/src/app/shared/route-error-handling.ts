@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors';
+import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors/routing';
 import { ForbiddenGraphqlError, GraphqlServiceError, NotFoundGraphqlError, RateLimitError } from './rate-limit-error';
 
 /** Maps a page-load failure without exposing API payloads as page copy. */
@@ -22,7 +22,14 @@ export function routePageErrorStatus(error: unknown): PageErrorStatus {
   if (error.status === 500) {
     return 500;
   }
-  if (error.status === 0 || error.status === 401 || error.status === 429 || error.status === 502 || error.status === 503 || error.status === 504) {
+  if (
+    error.status === 0 ||
+    error.status === 401 ||
+    error.status === 429 ||
+    error.status === 502 ||
+    error.status === 503 ||
+    error.status === 504
+  ) {
     return 503;
   }
 

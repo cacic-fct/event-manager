@@ -1,0 +1,68 @@
+// Hero section styles
+
+@use 'mixins';
+
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+// Dark
+@media (prefers-color-scheme: dark) {
+  .hero-section {
+    background: #0b003d !important;
+    color: inherit;
+  }
+}
+
+@media (max-height: 590px) and (max-width: 768px) {
+  app-doodles {
+    display: none;
+  }
+}
+
+.hero-section {
+  background: #fff9dd;
+  color: inherit;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: visible;
+
+  @media (max-width: 768px) {
+    align-items: center;
+  }
+
+  .hero-content {
+    @include mixins.container;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.2fr);
+    grid-template-areas: 'visual text';
+    gap: 2rem;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+
+    .hero-visual {
+      grid-area: visual;
+      min-width: 0;
+    }
+
+    .hero-text {
+      grid-area: text;
+    }
+
+    @media (max-width: 1000px) {
+      grid-template-columns: 1fr;
+      grid-template-areas: 'text';
+
+      text-align: center;
+      gap: 1rem;
+      min-height: 100vh;
+      align-items: center;
+    }
+  }
+}

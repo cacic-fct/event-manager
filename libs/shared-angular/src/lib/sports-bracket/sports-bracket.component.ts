@@ -60,7 +60,7 @@ const EMPTY_CONNECTOR_LAYOUT: SportsBracketConnectorLayout = {
   selector: 'lib-sports-bracket',
   imports: [MatIconModule, SportsLiveDotComponent, SportsTeamLogoComponent, TwemojiComponent],
   templateUrl: './sports-bracket.component.html',
-  styleUrl: './sports-bracket.component.css',
+  styleUrls: ['./sports-bracket.component.css', './sports-bracket.matches.css', './sports-bracket.states.css'],
 })
 export class SportsBracketComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

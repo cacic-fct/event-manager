@@ -10,7 +10,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
@@ -70,7 +70,10 @@ export class MajorEvent {
   private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly currentTime = toSignal(isPlatformBrowser(this.platformId) ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()), { initialValue: Date.now() });
+  private readonly currentTime = toSignal(
+    isPlatformBrowser(this.platformId) ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()),
+    { initialValue: Date.now() },
+  );
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
@@ -86,7 +89,9 @@ export class MajorEvent {
   readonly participationLoading = signal(false);
   readonly participationForms = signal<PublicEventForm[]>([]);
 
-  refreshParticipation(): void { this.participationRefresh.next(); }
+  refreshParticipation(): void {
+    this.participationRefresh.next();
+  }
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.auth.isAuthenticated;
@@ -272,33 +277,42 @@ export class MajorEvent {
   }
 
   private loadParticipation(events: PublicMajorEvent[]): void {
-    combineLatest([this.authChanges, this.onlineChanges]).pipe(
-      switchMap(([authenticated, online]) => {
-        if (!authenticated || !online) {
-          this.interestStates.set({});
-          this.participationForms.set([]);
-          this.participationLoading.set(false);
-          return EMPTY;
-        }
-        this.participationLoading.set(true);
-        return merge(of(undefined), this.interestApi.changes, this.participationRefresh, this.realtime.watchCatalog()).pipe(
-          auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
-          switchMap(() => {
-            this.participationLoading.set(true);
-            const targetIds = events.filter((event) => !this.isEventFinished(event)).map((event) => event.id);
-            return forkJoin({
-              states: this.interestApi.getStates('MAJOR_EVENT', targetIds).pipe(catchError(() => of({}))),
-              forms: this.formsApi.listCurrentUserFormsForMajorEvents(events.map((event) => event.id)).pipe(catchError(() => of([]))),
-            });
-          }),
-        );
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({ states, forms }) => {
-      this.interestStates.set(states);
-      this.participationForms.set(forms);
-      this.participationLoading.set(false);
-    });
+    combineLatest([this.authChanges, this.onlineChanges])
+      .pipe(
+        switchMap(([authenticated, online]) => {
+          if (!authenticated || !online) {
+            this.interestStates.set({});
+            this.participationForms.set([]);
+            this.participationLoading.set(false);
+            return EMPTY;
+          }
+          this.participationLoading.set(true);
+          return merge(
+            of(undefined),
+            this.interestApi.changes,
+            this.participationRefresh,
+            this.realtime.watchCatalog(),
+          ).pipe(
+            auditTime(PRIZE_DRAW_INVALIDATION_WINDOW_MS),
+            switchMap(() => {
+              this.participationLoading.set(true);
+              const targetIds = events.filter((event) => !this.isEventFinished(event)).map((event) => event.id);
+              return forkJoin({
+                states: this.interestApi.getStates('MAJOR_EVENT', targetIds).pipe(catchError(() => of({}))),
+                forms: this.formsApi
+                  .listCurrentUserFormsForMajorEvents(events.map((event) => event.id))
+                  .pipe(catchError(() => of([]))),
+              });
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(({ states, forms }) => {
+        this.interestStates.set(states);
+        this.participationForms.set(forms);
+        this.participationLoading.set(false);
+      });
   }
 
   private loadPrizeDrawAvailability(events: PublicMajorEvent[]): void {

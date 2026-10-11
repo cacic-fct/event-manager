@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { toCanvas, toSVG } from '@bwip-js/browser';
 import { parseEventTargetType } from '@cacic-fct/shared-utils';
 import { EMPTY, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
@@ -18,9 +18,7 @@ import { EmojiService } from '../../../shared/emoji.service';
 import { RealtimeInvalidationService } from '../../../shared/realtime-invalidation.service';
 import { privateResourceErrorStatus } from '../../../shared/route-error-handling';
 
-type OrganizerInfoState =
-  | { status: 'loading' }
-  | { status: 'ready'; info: OrganizerInfo };
+type OrganizerInfoState = { status: 'loading' } | { status: 'ready'; info: OrganizerInfo };
 
 @Component({
   selector: 'app-organizer-info',

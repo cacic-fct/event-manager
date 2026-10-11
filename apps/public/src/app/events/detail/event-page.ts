@@ -1,13 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import {
-  PLATFORM_ID,
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { PLATFORM_ID, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
@@ -25,7 +17,7 @@ import {
   MarkdownComponent,
   parseFormAnswersJson,
 } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
@@ -86,9 +78,7 @@ import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.serv
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
 import { InterestToggle } from '../../interests/interest-toggle';
 
-type EventPageState =
-  | { status: 'loading' }
-  | { status: 'ready'; data: EventPageData };
+type EventPageState = { status: 'loading' } | { status: 'ready'; data: EventPageData };
 
 type EventFormPageLink = {
   formId: string;
@@ -185,7 +175,10 @@ export class Event {
   private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private readonly currentTime = toSignal(this.isBrowser ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()), { initialValue: Date.now() });
+  private readonly currentTime = toSignal(
+    this.isBrowser ? timer(0, 30_000).pipe(map(() => Date.now())) : of(Date.now()),
+    { initialValue: Date.now() },
+  );
   private readonly isRegistrationEventDetail = [
     'major-event/:majorEventId/subscription',
     'major-event/:majorEventId/ranked-subscription',

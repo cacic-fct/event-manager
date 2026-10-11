@@ -1,7 +1,7 @@
 import { isPlatformBrowser, Location } from '@angular/common';
 import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { DefaultUrlSerializer, NavigationEnd, Router } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Observable, catchError, defer, filter, from, map, of } from 'rxjs';
 import { DefaultRedirectService } from './default-redirect.service';
 import {

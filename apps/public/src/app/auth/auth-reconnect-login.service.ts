@@ -1,5 +1,5 @@
 import { Service, inject } from '@angular/core';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { Subscription } from 'rxjs';
 import { NetworkStatusService } from '../shared/network-status.service';
 

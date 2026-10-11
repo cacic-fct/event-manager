@@ -1,0 +1,46 @@
+@media (max-width: 680px) {
+  .tournament-page {
+    padding: 20px 14px 48px;
+  }
+
+  h1 {
+    font: var(--mat-sys-headline-medium);
+  }
+
+  .tournament-emoji {
+    height: 52px;
+    width: 52px;
+  }
+
+  .match-ribbon {
+    margin: 24px 0;
+    padding: 16px;
+  }
+
+  .registration-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registration-action a {
+    width: 100%;
+  }
+
+  .category-heading {
+    display: grid;
+  }
+
+  .schedule-match {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+  }
+
+  .schedule-score {
+    grid-column: 2;
+    justify-items: start;
+  }
+
+  .schedule-match mat-icon {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}

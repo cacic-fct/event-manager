@@ -19,7 +19,16 @@ import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-e
 
 @Component({
   selector: 'app-workspace-subscriptions-tab',
-  imports: [EventContextPickerComponent, RouterLink, MatButtonModule, MatProgressBarModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
+  imports: [
+    EventContextPickerComponent,
+    RouterLink,
+    MatButtonModule,
+    MatProgressBarModule,
+    MatIconModule,
+    EventSubscriptionsComponent,
+    MajorEventSubscriptionsComponent,
+    EventInterestsComponent,
+  ],
   templateUrl: './subscriptions-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -28,6 +37,9 @@ import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-e
     '../app-shell/layout/forms-feedback.shared.scss',
     '../app-shell/layout/workspace-tabs.shared.scss',
     './subscription-subtabs.shared.scss',
+    './subscription-subtabs.panels.shared.scss',
+    './subscription-subtabs.sports.shared.scss',
+    './subscription-subtabs.responsive.shared.scss',
   ],
 })
 export class SubscriptionsPageComponent implements OnDestroy {
@@ -70,9 +82,13 @@ export class SubscriptionsPageComponent implements OnDestroy {
       const groupId = params.get('groupId');
       const interests = this.route.snapshot.url.some((segment) => segment.path === 'interests');
       this.interestsMode.set(interests);
-      const context: EventContextRef | null = eventId ? { kind: 'event', id: eventId }
-        : majorEventId ? { kind: 'major-event', id: majorEventId }
-        : groupId && interests ? { kind: 'group', id: groupId } : null;
+      const context: EventContextRef | null = eventId
+        ? { kind: 'event', id: eventId }
+        : majorEventId
+          ? { kind: 'major-event', id: majorEventId }
+          : groupId && interests
+            ? { kind: 'group', id: groupId }
+            : null;
       this.context.set(context);
       this.contextError.set('');
       this.contextLoading.set(false);
@@ -87,20 +103,31 @@ export class SubscriptionsPageComponent implements OnDestroy {
         this.selectedMajorEventPendingReceiptsCount.set(0);
       }
       this.contextLoading.set(true);
-      const load = context.kind === 'event' ? this.workspace.selectEventById(context.id)
-        : this.openMajorEventSubscriptionRoute(context.id, params.get('subscriptionId'), request);
-      void Promise.resolve(load).catch((error: unknown) => {
-        if (request === this.majorEventRouteRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
-          this.contextError.set('Não foi possível abrir as inscrições deste contexto. Escolha outro ou tente novamente.');
-        }
-      }).finally(() => {
-        if (request === this.majorEventRouteRequest) this.contextLoading.set(false);
-      });
+      const load =
+        context.kind === 'event'
+          ? this.workspace.selectEventById(context.id)
+          : this.openMajorEventSubscriptionRoute(context.id, params.get('subscriptionId'), request);
+      void Promise.resolve(load)
+        .catch((error: unknown) => {
+          if (request === this.majorEventRouteRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+            this.contextError.set(
+              'Não foi possível abrir as inscrições deste contexto. Escolha outro ou tente novamente.',
+            );
+          }
+        })
+        .finally(() => {
+          if (request === this.majorEventRouteRequest) this.contextLoading.set(false);
+        });
     });
   }
 
   selectContext(context: EventContextRef): void {
-    void this.router.navigate(['/subscriptions', context.kind, context.id, ...(this.interestsMode() ? ['interests'] : [])]);
+    void this.router.navigate([
+      '/subscriptions',
+      context.kind,
+      context.id,
+      ...(this.interestsMode() ? ['interests'] : []),
+    ]);
   }
 
   interestsLink(): string[] {
@@ -254,5 +281,4 @@ export class SubscriptionsPageComponent implements OnDestroy {
     this.receiptQueueRecoveryInFlight = false;
     this.receiptQueueTerminal = false;
   }
-
 }

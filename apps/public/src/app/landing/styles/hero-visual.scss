@@ -1,0 +1,61 @@
+@use 'mixins';
+
+.hero-section {
+  .hero-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .doodles {
+      width: 100%;
+    }
+
+    .hero-icon {
+      height: 15rem;
+
+      @media (max-width: 768px) {
+        height: 10rem;
+      }
+    }
+
+    @media (max-width: 1000px) {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 4rem;
+      z-index: 1;
+      pointer-events: none;
+
+      .doodles {
+        width: 100%;
+        max-height: 32vh;
+        overflow: hidden;
+      }
+    }
+  }
+
+  .hero-chevron {
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 3;
+    animation: chevron-bounce 1.8s ease-in-out infinite;
+
+    &:hover {
+      animation-play-state: paused;
+      transform: translateX(-50%) translateY(-2px);
+    }
+  }
+}
+
+@keyframes chevron-bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(6px);
+  }
+}

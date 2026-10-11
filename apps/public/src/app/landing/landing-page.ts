@@ -1,12 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  ElementRef,
-  inject,
-  PLATFORM_ID,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, DestroyRef, ElementRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { Router, RouterLink } from '@angular/router';
@@ -37,7 +29,15 @@ import { EventExtrasComponent } from './showcase/event-extras';
     EventExtrasComponent,
   ],
   templateUrl: './landing-page.html',
-  styleUrls: ['./landing-page.scss'],
+  styleUrls: [
+    './landing-page.scss',
+    './styles/container.scss',
+    './styles/hero-layout.scss',
+    './styles/hero-copy.scss',
+    './styles/hero-actions.scss',
+    './styles/hero-visual.scss',
+    './landing-showcase-placeholder.scss',
+  ],
 })
 export class LandingComponent {
   private readonly authService = inject(AuthService);

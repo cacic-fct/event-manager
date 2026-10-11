@@ -1,10 +1,13 @@
+import { initializeMaterialSymbols } from '@cacic-fct/shared-angular/material/icons';
 import {
   ApplicationConfig,
+  Injector,
   LOCALE_ID,
   inject,
   isDevMode,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
+  runInInjectionContext,
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
@@ -12,34 +15,22 @@ import { provideRouter, RouteReuseStrategy, Router, TitleStrategy } from '@angul
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import {
-  AUTH_ONBOARDING_ENFORCEMENT_ENABLED,
-  AuthOnlineStatusService,
-  AuthService,
-  ServiceWorkerService,
-  authInterceptor,
-  initializeCacicAccountPrivacyBestEffort,
-  provideCacicObservability,
-  provideCloudflareTurnstile,
-} from '@cacic-fct/shared-angular';
+import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from '@cacic-fct/shared-angular/auth/onboarding';
+import { AuthOnlineStatusService } from '@cacic-fct/shared-angular/auth/online-status';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { authInterceptor } from '@cacic-fct/shared-angular/auth/interceptor';
+import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angular/privacy/startup';
+import { provideCacicObservability } from '@cacic-fct/shared-angular/observability';
+import { provideCloudflareTurnstile } from '@cacic-fct/shared-angular/turnstile/config';
 import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/privacy/config';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
-import { MatIconRegistry } from '@angular/material/icon';
-import { MAT_DATE_LOCALE } from '@angular/material/core';
-import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
-import { ptBR } from 'date-fns/locale/pt-BR';
 import { AnalyticsService } from './analytics/analytics.service';
-import { AuthReconnectLoginService } from './auth/auth-reconnect-login.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/self-registration/coordinator.service';
-import { AttendanceOfflineSyncService } from './attendance/collection/offline/sync.service';
 import { RequiredSubscriptionFormInterruptionFlow } from './forms/required-subscription-form-interruption.flow';
 import { ImageLicenseAgreementInterruptionFlow } from './events/image-license-agreement-interruption.flow';
 import { InterruptionCoordinatorService } from './interruption/interruption-coordinator.service';
 import { provideInterruptionFlow } from './interruption/interruption-flow';
-import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
-import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
-import { TotpSeedSessionService } from './shared/totp/totp-seed-session.service';
 import { AppRouteReuseStrategy } from './layout/tab-reuse.strategy';
 import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
@@ -128,8 +119,6 @@ function readServerEnvironmentValue(key: string): string {
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    { provide: MAT_DATE_LOCALE, useValue: ptBR },
-    provideDateFnsAdapter(),
     { provide: PUBLIC_FEATURE_FLAG_CONFIG, useValue: publicFeatureFlagConfig },
     provideClientHydration(withNoIncrementalHydration()),
     provideBrowserGlobalErrorListeners(),
@@ -170,10 +159,7 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     provideAppInitializer(initializeCacicAccountPrivacyBestEffort),
-    provideAppInitializer(() => {
-      const registry = inject(MatIconRegistry);
-      registry.setDefaultFontSetClass('material-symbols-outlined');
-    }),
+    provideAppInitializer(initializeMaterialSymbols),
     provideAppInitializer(() => {
       inject(AppRouteReuseStrategy).start(inject(Router));
     }),
@@ -191,20 +177,24 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(AnalyticsService).start();
     }),
-    provideAppInitializer(() => {
+    provideAppInitializer(async () => {
+      const injector = inject(Injector);
       inject(InterruptionCoordinatorService).start();
-      inject(AttendanceOfflineSyncService).start();
-    }),
-    provideAppInitializer(() => {
-      inject(NetworkStatusService).start();
-      inject(NetworkStatusSnackbarService).start();
-      inject(AuthReconnectLoginService).start();
-      inject(OfflineUserDataService).start();
-      inject(TotpSeedSessionService).start();
-      inject(MyDayStore).start();
-    }),
-    provideAppInitializer(() => {
-      inject(ServiceWorkerService).start();
+      const [attendanceOfflineStartup, networkStartup, offlineUserDataStartup, totpSeedStartup, serviceWorkerStartup] =
+        await Promise.all([
+          import('./startup/attendance-offline-startup'),
+          import('./startup/network-status-startup'),
+          import('./startup/offline-user-data-startup'),
+          import('./startup/totp-seed-startup'),
+          import('./startup/service-worker-startup'),
+        ]);
+      attendanceOfflineStartup.startAttendanceOfflineSync(injector);
+      runInInjectionContext(injector, () => inject(NetworkStatusService).start());
+      networkStartup.startNetworkStatusServices(injector);
+      offlineUserDataStartup.startOfflineUserData(injector);
+      totpSeedStartup.startTotpSeedSession(injector);
+      runInInjectionContext(injector, () => inject(MyDayStore).start());
+      serviceWorkerStartup.startServiceWorker(injector);
     }),
     {
       provide: AuthOnlineStatusService,

@@ -5,15 +5,7 @@ import type {
   PublicEventForm,
   PublicPrizeDrawAvailability,
 } from '@cacic-fct/event-manager-public-contracts';
-import {
-  Component,
-  DestroyRef,
-  PLATFORM_ID,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -23,7 +15,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import {

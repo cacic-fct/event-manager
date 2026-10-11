@@ -11,7 +11,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import type { TicketRealtimeInvalidation, TicketTransfer, WalletTicket } from '@cacic-fct/shared-ticketing';
 import { forkJoin } from 'rxjs';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
@@ -68,7 +68,12 @@ export class TicketTransferStartPage {
   });
   readonly canStartTransfer = computed(() => {
     const current = this.state();
-    return current.status === 'ready' && this.ticketIsActive() && current.ticket.transferable && current.pendingTransfer === null;
+    return (
+      current.status === 'ready' &&
+      this.ticketIsActive() &&
+      current.ticket.transferable &&
+      current.pendingTransfer === null
+    );
   });
   readonly senderIdentity = computed(() => {
     const current = this.state();
@@ -77,9 +82,10 @@ export class TicketTransferStartPage {
     const claims = user?.claims;
     const name = typeof claims?.['name'] === 'string' ? claims['name'] : ticketHolder?.fullName;
     const picture = typeof claims?.['picture'] === 'string' ? claims['picture'] : ticketHolder?.avatarUrl;
-    const document = typeof claims?.['identity_document'] === 'string'
-      ? redactIdentityDocument(claims['identity_document'])
-      : ticketHolder?.redactedIdentityDocument;
+    const document =
+      typeof claims?.['identity_document'] === 'string'
+        ? redactIdentityDocument(claims['identity_document'])
+        : ticketHolder?.redactedIdentityDocument;
     return {
       fullName: name ?? 'Portador do bilhete',
       avatarUrl: picture ?? null,
@@ -95,12 +101,7 @@ export class TicketTransferStartPage {
   });
   readonly canCancel = computed(() => {
     const transfer = this.pendingTransfer();
-    return Boolean(
-      transfer &&
-        this.ticketIsActive() &&
-        transfer.senderStatus === 'PENDING' &&
-        transfer.canCancel,
-    );
+    return Boolean(transfer && this.ticketIsActive() && transfer.senderStatus === 'PENDING' && transfer.canCancel);
   });
 
   constructor() {
@@ -249,9 +250,10 @@ export class TicketTransferStartPage {
             this.navigateToError(404);
             return;
           }
-          const pending = transfers.outgoing.find(
-            (transfer) => transfer.ticket.id === ticket.id && transfer.senderStatus === 'PENDING',
-          ) ?? null;
+          const pending =
+            transfers.outgoing.find(
+              (transfer) => transfer.ticket.id === ticket.id && transfer.senderStatus === 'PENDING',
+            ) ?? null;
           this.state.set({ status: 'ready', ticket, pendingTransfer: pending });
           this.now.set(Date.now());
           this.scheduleExpiryRefresh(ticket);
@@ -284,10 +286,7 @@ export class TicketTransferStartPage {
     }
     this.lastExpiryRefreshKey = '';
 
-    const delay = nextDeadlineDelay(
-      [ticket.effectiveExpiresAt],
-      now,
-    );
+    const delay = nextDeadlineDelay([ticket.effectiveExpiresAt], now);
     if (delay === null) return;
 
     this.expiryTimer = window.setTimeout(() => {
@@ -296,8 +295,7 @@ export class TicketTransferStartPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.load();
-      }
-      else this.scheduleExpiryRefresh(ticket);
+      } else this.scheduleExpiryRefresh(ticket);
     }, delay);
   }
 

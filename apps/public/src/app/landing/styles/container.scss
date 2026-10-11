@@ -1,0 +1,5 @@
+@use 'mixins';
+
+.container {
+  @include mixins.container;
+}

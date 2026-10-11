@@ -9,7 +9,7 @@ import {
   type RequiredSubscriptionFormInterruption,
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
-import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { watchReplayableEventSource } from '@cacic-fct/shared-angular/realtime';
 import { Observable, map, of } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 
@@ -101,13 +101,18 @@ export class PublicEventFormApiService {
     if (ids.length === 0) return of([]);
     const variables = Object.fromEntries(ids.map((id, index) => [`majorEventId${index}`, id]));
     const declarations = ids.map((_, index) => `$majorEventId${index}: String!`).join(', ');
-    const fields = ids.map((_, index) => `
+    const fields = ids
+      .map(
+        (_, index) => `
       target${index}: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId${index}) {
         ${PUBLIC_EVENT_FORM_FIELDS}
       }
-    `).join('\n');
+    `,
+      )
+      .join('\n');
     return this.query<Record<string, PublicEventForm[]>>(
-      `query CurrentUserMajorEventForms(${declarations}) { ${fields} }`, variables,
+      `query CurrentUserMajorEventForms(${declarations}) { ${fields} }`,
+      variables,
     ).pipe(map((data) => Object.values(data).flat()));
   }
 

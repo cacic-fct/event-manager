@@ -4,7 +4,7 @@ import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors/routing';
 import { firstValueFrom } from 'rxjs';
 import { parseCsv } from '@cacic-fct/shared-utils';
 import { CertificateApiService } from '../graphql/certificate-api.service';
@@ -336,7 +336,9 @@ export class CertificatesService {
       ) {
         return;
       }
-      this.certificateFolders.set(scope === 'OTHER' ? applyPagedResult(items as CertificateFolder[], this.targetsPagination) : []);
+      this.certificateFolders.set(
+        scope === 'OTHER' ? applyPagedResult(items as CertificateFolder[], this.targetsPagination) : [],
+      );
       this.issuableEvents.set(scope === 'EVENT' ? applyPagedResult(items as Event[], this.targetsPagination) : []);
       this.issuableEventGroups.set(
         scope === 'EVENT_GROUP' ? applyPagedResult(items as EventGroup[], this.targetsPagination) : [],
@@ -424,7 +426,11 @@ export class CertificatesService {
       await this.applyTargetSelection(target);
       if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
     } catch (error) {
-      if (routeSelectionGeneration !== this.routeSelectionGeneration || this.routeResourceErrors.redirectIfUnavailable(error)) return;
+      if (
+        routeSelectionGeneration !== this.routeSelectionGeneration ||
+        this.routeResourceErrors.redirectIfUnavailable(error)
+      )
+        return;
       this.feedback.error(error, 'Não foi possível abrir este contexto de certificado.');
       return;
     }
@@ -516,7 +522,9 @@ export class CertificatesService {
 
   certificateConfigRoute(configId: string): string[] | null {
     const target = this.selectedTarget();
-    return target ? ['/certificates', this.scopeToTargetType(this.targetFiltersForm.controls.scope.value), target.id, configId] : null;
+    return target
+      ? ['/certificates', this.scopeToTargetType(this.targetFiltersForm.controls.scope.value), target.id, configId]
+      : null;
   }
 
   private applyCertificateConfigSelection(config: CertificateConfig, loadCertificates = true): void {
@@ -1013,14 +1021,10 @@ export class CertificatesService {
     const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
     const pageIndex = this.certificateConfigsPagination.pageIndex();
     const configs = await firstValueFrom(
-      this.api.listCertificateConfigs(
-        scope,
-        selectedTarget.id,
-        {
-          includeInactive: true,
-          ...pageVariables(pageIndex),
-        },
-      ),
+      this.api.listCertificateConfigs(scope, selectedTarget.id, {
+        includeInactive: true,
+        ...pageVariables(pageIndex),
+      }),
     );
     if (
       this.selectedTarget()?.id !== selectedTarget.id ||
@@ -1093,14 +1097,10 @@ export class CertificatesService {
     const configId = this.selectedCertificateConfig()?.id;
     const pageIndex = this.certificatesPagination.pageIndex();
     const certificates = await firstValueFrom(
-      this.api.listCertificates(
-        scope,
-        selectedTarget.id,
-        {
-          configId,
-          ...pageVariables(pageIndex),
-        },
-      ),
+      this.api.listCertificates(scope, selectedTarget.id, {
+        configId,
+        ...pageVariables(pageIndex),
+      }),
     );
     if (
       this.selectedTarget()?.id !== selectedTarget.id ||
