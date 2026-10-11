@@ -6,6 +6,7 @@ import { TICKET_FIXTURE_HOLDER_USER_ID } from '@cacic-fct/shared-ticketing/testi
 test('routes a ticket barcode through the existing scanner attendance mutation', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
+    window.sessionStorage.setItem('cacic-eventos:attendance-incognito-warning-shown', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
   await page.context().grantPermissions(['geolocation']);
@@ -44,11 +45,13 @@ test('routes a ticket barcode through the existing scanner attendance mutation',
 
   await expect(page.getByText('Presença registrada.')).toBeVisible();
   await expect.poll(() => scanRequests).toHaveLength(1);
-  expect(scanRequests[0]).toEqual(expect.objectContaining({
-    eventId: 'event-1',
-    code: `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
-    location: expect.objectContaining({ latitude: -22.12, longitude: -51.4 }),
-  }));
+  expect(scanRequests[0]).toEqual(
+    expect.objectContaining({
+      eventId: 'event-1',
+      code: `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
+      location: expect.objectContaining({ latitude: -22.12, longitude: -51.4 }),
+    }),
+  );
 });
 
 async function fulfillCollectionGraphql(
