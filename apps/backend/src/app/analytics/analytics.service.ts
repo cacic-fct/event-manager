@@ -10,7 +10,8 @@ export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
   async forwardEnvelope(project: SentryTunnelProject | string, req: RawBodyRequest<Request>): Promise<void> {
-    const body = req.rawBody ?? (Buffer.isBuffer(req.body) ? req.body : undefined);
+    const rawBody = Buffer.isBuffer(req.rawBody) ? req.rawBody : undefined;
+    const body = rawBody ?? (Buffer.isBuffer(req.body) ? req.body : undefined);
 
     if (!body || body.length === 0) {
       throw new BadRequestException('Monitoring envelope is required.');

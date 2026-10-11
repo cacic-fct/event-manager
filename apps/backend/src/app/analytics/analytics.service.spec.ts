@@ -40,6 +40,22 @@ describe('AnalyticsService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('checks raw request payloads are Buffers before reading them', async () => {
+    await expect(service.forwardEnvelope('public', createRequest('not a buffer'))).rejects.toThrow('required');
+    await expect(service.forwardEnvelope('public', createRequest(['not a buffer']))).rejects.toThrow('required');
+    await expect(
+      service.forwardEnvelope('public', createRequest(undefined, undefined, 'not a buffer')),
+    ).rejects.toThrow('required');
+
+    const envelope = validEnvelope();
+    await service.forwardEnvelope('public', createRequest('not a buffer', undefined, envelope));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      SENTRY_TUNNEL_TARGETS.public.envelopeUrl,
+      expect.objectContaining({ body: new Uint8Array(envelope) }),
+    );
+  });
+
   it('forwards the raw envelope to the configured GlitchTip target', async () => {
     const envelope = validEnvelope();
 
@@ -117,9 +133,10 @@ describe('AnalyticsService', () => {
     );
   });
 
-  function createRequest(rawBody?: Buffer, contentType?: string | string[]): RawBodyRequest<Request> {
+  function createRequest(rawBody?: unknown, contentType?: string | string[], body?: unknown): RawBodyRequest<Request> {
     return {
       rawBody,
+      body,
       headers:
         contentType === undefined
           ? {}
