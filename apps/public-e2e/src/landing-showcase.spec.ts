@@ -68,7 +68,9 @@ for (const scenario of [
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
       const productShowcase = page.locator('app-landing-product-showcase');
       await expect(productShowcase).toBeVisible({ timeout: 15_000 });
-      await productShowcase.locator('.audience-placeholder').first().scrollIntoViewIfNeeded();
+      await productShowcase.locator('.showcase-container').first().evaluate((container) => {
+        container.scrollIntoView({ block: 'end', behavior: 'instant' });
+      });
       await expect(page.locator('app-landing-participant-showcase')).toBeVisible({ timeout: 15_000 });
     });
 
@@ -102,8 +104,10 @@ for (const scenario of [
         }
       }
       const extrasPlaceholder = page.locator('.showcase-placeholder').filter({ hasText: 'Conheça os recursos para torneios' });
-      if (await extrasPlaceholder.count()) await extrasPlaceholder.scrollIntoViewIfNeeded();
       const extras = page.locator('app-landing-event-extras');
+      await extrasPlaceholder.or(extras).evaluate((section) => {
+        section.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
       await expect(extras).toBeVisible();
       await extras.scrollIntoViewIfNeeded();
       await expect(extras.locator('app-landing-sports-demo')).toBeVisible();
