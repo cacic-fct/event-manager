@@ -20,7 +20,7 @@
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
     "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json",
     "prepare": "node .husky/install.mjs",
-    "format:staged": "lint-staged"
+    "format:staged": "node node_modules/lint-staged/bin/lint-staged.js"
   },
   "nx": {
     "targets": {
@@ -213,6 +213,6 @@
     ]
   },
   "lint-staged": {
-    "*": "prettier --write --ignore-unknown"
+    "*": "node node_modules/prettier/bin/prettier.cjs --write --ignore-unknown"
   }
 }
