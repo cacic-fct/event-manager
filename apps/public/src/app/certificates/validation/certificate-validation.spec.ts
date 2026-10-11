@@ -1,17 +1,49 @@
 import '../../testing/observer-mocks';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { Component, DestroyRef, signal } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Params, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Params, RouteReuseStrategy, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import type { PublicCertificateValidation } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { MatDialog } from '@angular/material/dialog';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, Subject, of } from 'rxjs';
 import { CertificateFileDownloadService } from '../../shared/certificate-file-download.service';
 import { CertificateValidation } from './certificate-validation';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
+import { AppRouteReuseStrategy } from '../../layout/tab-reuse.strategy';
+import { appRoutes } from '../../app.routes';
 
 describe('CertificateValidation', () => {
+  it('cancels an unfinished validation when the page is destroyed', async () => {
+    const { api, component, fixture } = await createFixture({
+      queryParams: { certificateId: 'certificate-1' },
+    });
+    const response = new Subject<PublicCertificateValidation>();
+    api.validateCertificate.mockReturnValue(response);
+    component.onTurnstileTokenChange('turnstile-token');
+    expect(response.observed).toBe(true);
+
+    fixture.destroy();
+    response.next(certificateFixture);
+
+    expect(response.observed).toBe(false);
+    expect(component.state().status).toBe('loading');
+    expect(TestBed.createComponent(CertificateValidation).componentInstance.state().status).toBe('challenge');
+  });
+
+  it('cancels an unfinished download when the page is destroyed', async () => {
+    const { api, component, fixture } = await createFixture();
+    const response = new Subject<never>();
+    api.downloadCertificate.mockReturnValue(response);
+    component.download(certificateFixture);
+    expect(response.observed).toBe(true);
+
+    fixture.destroy();
+
+    expect(response.observed).toBe(false);
+    expect(component.downloading()).toBe(false);
+  });
   it('keeps the CACiC logo at the start of the global toolbar', async () => {
     const { fixture } = await createFixture();
     fixture.detectChanges();
@@ -69,6 +101,71 @@ describe('CertificateValidation', () => {
     component.onTurnstileTokenChange('scan-token');
 
     expect(api.validateCertificate).toHaveBeenCalledWith('scanned-certificate', 'scan-token');
+  });
+
+  it.each(['path', 'query'])(
+    'restores a successful %s lookup after leaving and recreating the page',
+    async (source) => {
+      const { api, component, fixture } = await createFixture(
+        source === 'path'
+          ? { routeParams: { certificateId: 'certificate-1' } }
+          : { queryParams: { certificateId: 'certificate-1' } },
+      );
+      component.onTurnstileTokenChange('turnstile-token');
+      fixture.destroy();
+
+      const returnedFixture = TestBed.createComponent(CertificateValidation);
+      const returnedComponent = returnedFixture.componentInstance;
+      returnedFixture.detectChanges();
+
+      expect(returnedComponent.state()).toEqual({ status: 'ready', certificate: certificateFixture });
+      expect(returnedComponent.certificateLookupModel().certificateId).toBe('certificate-1');
+      expect(returnedComponent.turnstileToken()).toBeNull();
+      expect(returnedFixture.nativeElement.textContent).toContain('Ada Lovelace');
+      expect(api.validateCertificate).toHaveBeenCalledTimes(1);
+
+      // A newly rendered CAPTCHA must not trigger another lookup for restored results.
+      returnedComponent.onTurnstileTokenChange('new-widget-token');
+      expect(api.validateCertificate).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('still validates a different certificate after restoring results', async () => {
+    const { api, component, fixture, router } = await createFixture({
+      queryParams: { certificateId: 'certificate-1' },
+    });
+    component.onTurnstileTokenChange('turnstile-token');
+    fixture.destroy();
+    const returnedComponent = TestBed.createComponent(CertificateValidation).componentInstance;
+
+    returnedComponent.validationForm.certificateId().value.set('certificate-2');
+    returnedComponent.submit();
+
+    expect(router.navigate).toHaveBeenLastCalledWith(['/validate'], {
+      queryParams: { certificateId: 'certificate-2' },
+    });
+    expect(returnedComponent.state().status).toBe('challenge');
+    returnedComponent.onTurnstileTokenChange('fresh-token');
+    expect(api.validateCertificate).toHaveBeenLastCalledWith('certificate-2', 'fresh-token');
+  });
+
+  it('performs explicit revalidation and discards old results when the certificate is no longer valid', async () => {
+    const { api, component, fixture } = await createFixture({
+      queryParams: { certificateId: 'certificate-1' },
+    });
+    component.onTurnstileTokenChange('turnstile-token');
+    fixture.destroy();
+    const returnedFixture = TestBed.createComponent(CertificateValidation);
+    const returnedComponent = returnedFixture.componentInstance;
+    api.validateCertificate.mockReturnValue(of(null));
+
+    returnedComponent.onTurnstileTokenChange('fresh-token');
+    returnedComponent.submit();
+
+    expect(api.validateCertificate).toHaveBeenCalledTimes(2);
+    expect(returnedComponent.state().status).toBe('error');
+    returnedFixture.destroy();
+    expect(TestBed.createComponent(CertificateValidation).componentInstance.state().status).toBe('challenge');
   });
 
   it('keeps an invalid route certificate id as a signal-form validation error until the value changes', async () => {
@@ -167,6 +264,50 @@ describe('CertificateValidation', () => {
     expect(text).toContain('Certificamos a palestra ministrada.');
     expect(text).toContain('Atividade apresentada durante o evento.');
   });
+});
+
+@Component({ template: '' })
+class OtherPage {}
+
+describe('CertificateValidation navigation lifecycle', () => {
+  it.each(['/elsewhere', '/event/linked-event'])(
+    'destroys the page when navigating to %s and restores data in a new instance',
+    async (destination) => {
+      const api = { validateCertificate: vi.fn(() => of(certificateFixture)) };
+      await TestBed.configureTestingModule({
+        providers: [
+          provideNoopAnimations(),
+          provideRouter([
+            ...appRoutes.filter((route) => route.path?.startsWith('validate')),
+            { path: 'elsewhere', component: OtherPage },
+            { path: 'event/:id', component: OtherPage },
+          ]),
+          { provide: RouteReuseStrategy, useClass: AppRouteReuseStrategy },
+          { provide: AuthService, useValue: { user: signal(null), isAuthenticated: signal(false) } },
+          { provide: CertificateValidationApiService, useValue: api },
+          { provide: CertificateFileDownloadService, useValue: { save: vi.fn() } },
+          { provide: MatDialog, useValue: { open: vi.fn() } },
+        ],
+      }).compileComponents();
+      const strategy = TestBed.inject(RouteReuseStrategy) as AppRouteReuseStrategy;
+      strategy.start(TestBed.inject(Router));
+      const harness = await RouterTestingHarness.create();
+      const page = await harness.navigateByUrl('/validate?certificateId=certificate-1', CertificateValidation);
+      const destroyed = vi.fn();
+      harness.routeDebugElement?.injector.get(DestroyRef).onDestroy(destroyed);
+      page.onTurnstileTokenChange('turnstile-token');
+
+      await harness.navigateByUrl(destination, OtherPage);
+
+      expect(destroyed).toHaveBeenCalledOnce();
+      expect(harness.routeNativeElement?.querySelector('.validation-page')).toBeNull();
+      const returnedPage = await harness.navigateByUrl('/validate?certificateId=certificate-1', CertificateValidation);
+      expect(returnedPage).not.toBe(page);
+      expect(returnedPage.state()).toEqual({ status: 'ready', certificate: certificateFixture });
+      expect(returnedPage.turnstileToken()).toBeNull();
+      expect(api.validateCertificate).toHaveBeenCalledOnce();
+    },
+  );
 });
 
 async function createFixture({

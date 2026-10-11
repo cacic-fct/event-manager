@@ -1,11 +1,10 @@
 import { appRoutes } from './app.routes';
 
 describe('certificate validation route wiring', () => {
-  it('keeps the validation component alive while opening linked events', () => {
+  it('destroys validation pages on navigation and retains only their result data', () => {
     const validationRoutes = appRoutes.filter((route) => route.path?.startsWith('validate'));
 
     expect(validationRoutes).toHaveLength(2);
-    expect(validationRoutes.every((route) => route.data?.['reuseTab'] === true)).toBe(true);
-    expect(validationRoutes.every((route) => route.data?.['reuseTabForEventNavigation'] === true)).toBe(true);
+    expect(validationRoutes.every((route) => route.data?.['reuseTab'] !== true)).toBe(true);
   });
 });

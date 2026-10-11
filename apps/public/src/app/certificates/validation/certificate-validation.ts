@@ -18,6 +18,7 @@ import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from
 import { CertificateFileDownloadService } from '../../shared/certificate-file-download.service';
 import { EmojiService } from '../../shared/emoji.service';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
+import { CertificateValidationStateService } from './certificate-validation-state.service';
 import {
   AuthService,
   AztecScannerDialogComponent,
@@ -64,6 +65,7 @@ export class CertificateValidation {
   public readonly route = inject(ActivatedRoute);
   public readonly router = inject(Router);
   private readonly api = inject(CertificateValidationApiService);
+  private readonly validationState = inject(CertificateValidationStateService);
   private readonly fileDownload = inject(CertificateFileDownloadService);
   private readonly analytics = inject(CacicAnalyticsService);
   private readonly auth = inject(AuthService);
@@ -132,7 +134,15 @@ export class CertificateValidation {
           return;
         }
 
-        this.queueValidation(certificateId, this.consumeNextValidationSource());
+        const source = this.consumeNextValidationSource();
+        const certificate = this.validationState.get(certificateId);
+        if (certificate && source === 'link') {
+          this.cancelPendingValidation();
+          this.state.set({ status: 'ready', certificate });
+          return;
+        }
+
+        this.queueValidation(certificateId, source);
       });
 
     this.destroyRef.onDestroy(() => this.activeValidation?.unsubscribe());
@@ -194,7 +204,10 @@ export class CertificateValidation {
 
     this.api
       .downloadCertificate(certificate.id)
-      .pipe(finalize(() => this.downloading.set(false)))
+      .pipe(
+        finalize(() => this.downloading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (download) => {
           this.analytics.trackEvent('certificate_download', {
@@ -317,6 +330,7 @@ export class CertificateValidation {
     }
 
     this.pendingCertificateId = normalizedCertificateId;
+    this.validationState.clear(normalizedCertificateId);
 
     const turnstileToken = this.turnstileToken();
     if (!turnstileToken) {
@@ -360,6 +374,7 @@ export class CertificateValidation {
             return;
           }
 
+          this.validationState.set(certificateId, certificate);
           this.state.set({
             status: 'ready',
             certificate,

@@ -26,6 +26,37 @@ test('shows the generic not-found error for certificates from disabled configs',
   await expect(page.getByText('disabled')).toHaveCount(0);
 });
 
+for (const returnMethod of ['browser', 'event button'] as const) {
+  test(`preserves certificate results when returning with ${returnMethod}`, async ({ page }) => {
+    let validationRequests = 0;
+    page.on('request', (request) => {
+      if (request.url().endsWith('/api/graphql') && request.method() === 'POST') {
+        const body = request.postDataJSON() as { query?: string };
+        if (body.query?.includes('publicCertificateValidation')) {
+          validationRequests += 1;
+        }
+      }
+    });
+    await page.goto('/app/validate?certificateId=certificate-with-event');
+    await expect(page.getByText('Certificado válido', { exact: true })).toBeVisible();
+    await page.getByRole('link', { name: /Atividade vinculada/ }).click();
+    await expect(page).toHaveURL(/\/event\/linked-event/);
+
+    if (returnMethod === 'browser') {
+      await page.goBack();
+    } else {
+      await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+    }
+
+    await expect(page.getByText('Certificado válido', { exact: true })).toBeVisible();
+    await expect(page.getByText('Maria Teste', { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-with-event');
+    await expect(page.getByRole('link', { name: /Atividade vinculada/ })).toBeVisible();
+    await expect(page.getByText('Conclua a verificação para validar.', { exact: true })).toHaveCount(0);
+    expect(validationRequests).toBe(1);
+  });
+}
+
 async function preventSilentSso(page: Page): Promise<void> {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
@@ -142,6 +173,24 @@ function standaloneCertificateFixture(certificateId: string): Record<string, unk
     targetName: 'Atividades complementares',
     targetEmoji: '🏅',
     totalCreditMinutes: 0,
-    sections: [],
+    sections:
+      certificateId === 'certificate-with-event'
+        ? [
+            {
+              title: 'Participação',
+              creditMinutes: 60,
+              events: [
+                {
+                  id: 'linked-event',
+                  name: 'Atividade vinculada',
+                  emoji: '🎓',
+                  startDate: new Date().toISOString(),
+                  endDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                  creditMinutes: 60,
+                },
+              ],
+            },
+          ]
+        : [],
   };
 }
