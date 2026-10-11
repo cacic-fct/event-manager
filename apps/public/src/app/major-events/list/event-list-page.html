@@ -9,11 +9,6 @@
     <mat-icon aria-hidden="true">hourglass_top</mat-icon>
     <p>Carregando eventos...</p>
   </section>
-  } @else if (state.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ state.message }}</p>
-  </section>
   } @else if (majorEvents().length === 0) {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">event_busy</mat-icon>

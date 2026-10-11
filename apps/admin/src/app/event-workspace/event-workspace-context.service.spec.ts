@@ -1,4 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
+import { GraphqlStatusError, RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { SportsApiService } from '../sports/sports-api.service';
 import { TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
@@ -7,7 +8,7 @@ import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { createAdminEvent, createAdminEventGroup, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
-import { EventWorkspaceContextService, contextOperations, eventContextFromUrl, eventCreationTarget } from './event-workspace-context.service';
+import { EventWorkspaceContextService, contextOperationGroups, contextOperations, eventContextFromUrl, eventCreationTarget } from './event-workspace-context.service';
 
 describe('event workspace routes', () => {
   it.each([
@@ -38,10 +39,37 @@ describe('event workspace routes', () => {
     expect(eventContextFromUrl(url)).toEqual({ kind, id });
   });
 
-  it('gives contextual operations stable unique identifiers', () => {
-    const operations = contextOperations({kind:'event',id:'e1'});
-    expect(operations.map((operation)=>operation.id)).toEqual(['settings','tickets','subscriptions','attendances','forms','draws','interests','certificates','publication']);
-    expect(new Set(operations.map((operation)=>operation.id)).size).toBe(operations.length);
+  it.each([
+    ['event', 'e1', ['settings', 'subscriptions', 'attendances', 'interests', 'draws', 'certificates', 'forms', 'tickets', 'publication']],
+    ['group', 'g1', ['settings', 'overview', 'interests', 'certificates', 'publication']],
+    ['major-event', 'm1', ['settings', 'overview', 'subscriptions', 'attendances', 'sports', 'interests', 'draws', 'certificates', 'forms', 'tickets', 'publication']],
+  ] as const)('orders %s context operations by workflow', (kind, id, expectedOrder) => {
+    const operations = contextOperations({ kind, id });
+    expect(operations.map((operation) => operation.id)).toEqual(expectedOrder);
+    expect(new Set(operations.map((operation) => operation.id)).size).toBe(operations.length);
+  });
+
+  it.each([
+    ['event', 'e1', [
+      ['settings', 'subscriptions', 'attendances', 'interests', 'draws'],
+      ['certificates', 'forms'],
+      ['tickets', 'publication'],
+    ]],
+    ['group', 'g1', [
+      ['settings', 'overview', 'interests', 'certificates', 'publication'],
+    ]],
+    ['major-event', 'm1', [
+      ['settings', 'overview', 'subscriptions', 'attendances', 'sports', 'interests', 'draws'],
+      ['certificates', 'forms'],
+      ['tickets', 'publication'],
+    ]],
+  ] as const)('groups %s operations without singleton dividers', (kind, id, expectedGroups) => {
+    const operations = contextOperations({ kind, id });
+    const groups = contextOperationGroups(operations);
+
+    expect(groups.map((group) => group.map((operation) => operation.id))).toEqual(expectedGroups);
+    expect(groups.flat()).toEqual(operations);
+    expect(groups.every((group) => group.length > 1)).toBe(true);
   });
 
   it('offers sports only from its owning major event', () => {
@@ -115,8 +143,40 @@ describe('EventWorkspaceContextService', () => {
     const service=TestBed.inject(EventWorkspaceContextService);
     await service.load({kind:'group',id:'g1'});
     expect(service.context()).toMatchObject({kind:'group',id:'g1',name:'Trilha',emoji:'🌐',isSportsManaged:false});
-    expect(service.operations().some((item)=>item.label==='Publicação')).toBe(false);
-    expect(service.operations().some((item)=>item.label==='Interessados')).toBe(true);
+    expect(service.operations().map((operation) => operation.id)).toEqual([
+      'settings', 'overview', 'interests', 'certificates',
+    ]);
+  });
+
+  it('preserves workflow order while filtering unreadable operations', async () => {
+    TestBed.overrideProvider(PermissionsService, {
+      useValue: {
+        has: () => true,
+        canReadTab: (tab: string) => tab !== 'forms' && tab !== 'tickets',
+      },
+    });
+    const service = TestBed.inject(EventWorkspaceContextService);
+    await service.load({ kind: 'event', id: 'e1' });
+    expect(service.operations().map((operation) => operation.id)).toEqual([
+      'settings', 'subscriptions', 'attendances', 'interests', 'draws', 'certificates', 'publication',
+    ]);
+  });
+
+  it('omits empty operation categories and merges singleton groups after permission filtering', async () => {
+    TestBed.overrideProvider(PermissionsService, {
+      useValue: {
+        has: () => true,
+        canReadTab: (tab: string) => tab === 'certificates' || tab === 'events',
+      },
+    });
+    const service = TestBed.inject(EventWorkspaceContextService);
+    await service.load({ kind: 'event', id: 'e1' });
+
+    expect(service.operations().map((operation) => operation.id)).toEqual(['settings', 'certificates']);
+    expect(service.operationGroups().map((group) => group.map((operation) => operation.id))).toEqual([
+      ['settings', 'certificates'],
+    ]);
+    expect(service.operationGroups().every((group) => group.length > 1)).toBe(true);
   });
 
   it('uses the immediate group as the parent of a grouped event', async () => {
@@ -181,5 +241,18 @@ describe('EventWorkspaceContextService', () => {
     events.getEvent.mockReturnValueOnce(throwError(()=>new Error('Forbidden')));
     await service.load({kind:'event',id:'e1'});
     expect(service.context()).toBeNull();expect(service.error()).not.toBe('');expect(service.operations()).toEqual([]);
+  });
+
+  it('maps a denied private context resource to the shared not-found route', async () => {
+    const routeErrors = { navigate: vi.fn().mockResolvedValue(true) };
+    TestBed.overrideProvider(RouteErrorService, { useValue: routeErrors });
+    events.getEvent.mockReturnValueOnce(throwError(() => new GraphqlStatusError('Access denied', 403)));
+    const service = TestBed.inject(EventWorkspaceContextService);
+
+    await service.load({ kind: 'event', id: 'private-event' });
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
+    expect(service.context()).toBeNull();
+    expect(service.error()).toBe('');
   });
 });

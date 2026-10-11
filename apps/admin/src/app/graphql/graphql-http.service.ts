@@ -1,10 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
+import { GraphqlStatusError, graphqlErrorStatus } from '@cacic-fct/shared-angular/errors';
 
 interface GraphqlResponse<TData> {
   data?: TData;
-  errors?: { message: string }[];
+  errors?: GraphqlResponseError[];
+}
+
+interface GraphqlResponseError {
+  message: string;
+  extensions?: unknown;
 }
 
 @Service()
@@ -20,7 +26,9 @@ export class GraphqlHttpService {
       .pipe(
         map((response) => {
           if (response.errors?.length) {
-            throw new Error(response.errors[0].message);
+            const error = response.errors[0];
+            const status = graphqlErrorStatus(error);
+            throw status === null ? new Error(error.message) : new GraphqlStatusError(error.message, status);
           }
           if (!response.data) {
             throw new Error('GraphQL response did not contain data.');

@@ -10,12 +10,6 @@
 <main class="ticket-transfers-page">
   @if (current.status === 'loading') {
     <mat-progress-bar mode="indeterminate" aria-label="Carregando transferências"></mat-progress-bar>
-  } @else if (current.status === 'error') {
-    <section class="transfer-page-message" aria-live="polite">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>Não foi possível carregar suas transferências.</p>
-      <button mat-button type="button" (click)="retry()">Tentar novamente</button>
-    </section>
   } @else if (!hasTransfers()) {
     <section class="transfer-page-message">
       <mat-icon aria-hidden="true">confirmation_number</mat-icon>

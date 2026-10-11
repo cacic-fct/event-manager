@@ -1,4 +1,5 @@
 import { computed, signal } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { ListNotificationsResponse, Notification, Preference } from '@novu/js';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -59,6 +60,7 @@ function notification(index: number, unreadCount: number): MutableNotification {
 
 class PublicNotificationsStoryService {
   private readonly configured = signal(true);
+  private readonly configurationVersion = signal(0);
   private readonly notifications = signal<MutableNotification[]>([]);
 
   readonly loadingConfig = signal(false);
@@ -67,7 +69,10 @@ class PublicNotificationsStoryService {
   readonly unreadCount = signal(0);
   readonly lastError = signal<string | null>(null);
   readonly isConfigured = computed(() => this.configured());
-  readonly client = computed(() => (this.configured() ? { storybook: true } : null));
+  readonly client = computed(() => {
+    this.configurationVersion();
+    return this.configured() ? { storybook: true } : null;
+  });
 
   configure(args: NotificationsTabStoryArgs): void {
     faker.seed(20260616 + args.unreadCount + args.archivedCount);
@@ -83,6 +88,7 @@ class PublicNotificationsStoryService {
     const items = [...active, ...archived];
     this.notifications.set(items);
     this.unreadCount.set(items.filter((item) => !item.isRead && !item.isArchived).length);
+    this.configurationVersion.update((version) => version + 1);
   }
 
   ensureReady(): void {
@@ -177,11 +183,11 @@ const notificationsService = new PublicNotificationsStoryService();
 
 const meta: Meta<NotificationsTabStoryArgs> = {
   component: NotificationsTabComponent,
-  title: 'CACiC Eventos/Notifications/Tab',
+  title: 'Public/Notifications/Tab',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
-      providers: [{ provide: NovuNotificationsService, useValue: notificationsService }],
+      providers: [provideRouter([]), { provide: NovuNotificationsService, useValue: notificationsService }],
     }),
   ],
   args: {
@@ -202,7 +208,7 @@ const meta: Meta<NotificationsTabStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -228,13 +234,12 @@ export const Empty: Story = {
   },
 };
 
-export const ManyUnreadDarkReducedMotion: Story = {
+export const ManyUnread: Story = {
   args: {
     permission: 'denied',
     unreadCount: 5,
     archivedCount: 5,
     empty: false,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

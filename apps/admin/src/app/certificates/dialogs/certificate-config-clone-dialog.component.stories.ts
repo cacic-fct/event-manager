@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import {
@@ -42,7 +42,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-certificate-config-clone-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -78,7 +77,7 @@ class CertificateConfigCloneDialogStoryHostComponent {
 
 const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
   component: CertificateConfigCloneDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Certificate Config Clone Dialog',
+  title: 'Admin/Settings/Certificates/Clone',
   tags: ['autodocs'],
   args: {
     defaultName: 'Certificado de participação (cópia)',
@@ -107,7 +106,7 @@ const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -138,7 +137,6 @@ export const NoTargets: Story = {
 };
 
 export const TargetLoadError: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     targetsMode: 'loading-error',
   },

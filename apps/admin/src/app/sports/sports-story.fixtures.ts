@@ -4,6 +4,7 @@ import type {
   SportsCategoryRead,
   SportsCategorySummary,
   SportsMatchReview,
+  SportsMatchSummary,
   SportsPendingMatchAction,
   SportsRegistrationRead,
   SportsTeamRead,
@@ -408,13 +409,15 @@ export function createAdminSportsApplications(count = 3): SportsApplication[] {
   }));
 }
 
-export function createAdminSportsMatchReview(): SportsMatchReview {
+export function createAdminSportsMatchReview(
+  matchOverrides: Partial<SportsMatchSummary> = {},
+): SportsMatchReview {
   const match = createAdminSportsCategoryRead().matches[0];
   if (!match) {
     throw new Error('The sports story match fixture is missing.');
   }
   return {
-    match,
+    match: { ...match, ...matchOverrides },
     actions: [
       {
         id: 'action-1',

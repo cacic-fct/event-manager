@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +9,6 @@ export interface OralAttendanceSyncFailureDialogData {
 
 @Component({
   selector: 'app-oral-attendance-sync-failure-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MatIconModule],
   template: `
     <h2 mat-dialog-title>Falha ao sincronizar a chamada</h2>

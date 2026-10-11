@@ -88,6 +88,11 @@ export class CurrentUserPublicEventService {
       paymentDate: true,
       paymentTier: true,
       imageLicenseAgreementAccepted: true,
+      subscriptionFlow: true,
+      desiredCourses: true,
+      desiredLectures: true,
+      desiredUncategorized: true,
+      receiptRejectionReason: true,
       majorEvent: {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       },

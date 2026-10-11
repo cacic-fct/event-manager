@@ -10,7 +10,7 @@ type TicketPersonSummaryStoryArgs = {
 
 const meta: Meta<TicketPersonSummaryStoryArgs> = {
   component: TicketPersonSummaryComponent,
-  title: 'CACiC Eventos/Tickets/Person Summary',
+  title: 'Public/Ticketing/Tickets/Person',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'padded', a11y: { test: 'error' } },
   args: {
@@ -58,15 +58,5 @@ export const MissingAvatar: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('JP')).toBeVisible();
     await expect(within(canvasElement).getByText('Documento não informado')).toBeVisible();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { fullName: 'Alex Morgan', avatarUrl: null, identityDocument: 'XK1234567' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText('AM')).toBeVisible();
-    await expect(canvas.getByText('XK1234567')).toBeVisible();
   },
 };

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -40,7 +40,6 @@ const COLUMN_ROLE_OPTIONS: Array<{ value: ColumnRole; label: string }> = [
 
 @Component({
   selector: 'app-subscription-csv-column-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>Importar inscrições</h2>

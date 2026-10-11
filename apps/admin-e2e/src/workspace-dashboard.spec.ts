@@ -96,5 +96,7 @@ test('workspace route falls back to the permission-denied view when evaluated ta
 
   await page.goto('/admin/event-workspace/new/event');
 
-  await expect(page).toHaveURL(/\/app\/?$/);
+  await expect(page).toHaveURL(/\/admin\/event-workspace\/new\/event$/);
+  await expect(page.getByRole('heading', { name: 'Você não tem acesso a esta página.' })).toBeVisible();
+  await expect(page.getByText('Erro 403', { exact: true })).toBeVisible();
 });

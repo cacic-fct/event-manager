@@ -11,14 +11,19 @@ import {
 
 const meta: Meta<PageStoryArgs> = {
   component: EventGroupsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Event Groups/Workspace Event Groups Tab',
+  title: 'Admin/Event Management/Event Groups',
   tags: ['autodocs'],
   args: defaultPageStoryArgs,
   argTypes: pageStoryArgTypes,
   decorators: [withPageStoryProviders],
   parameters: {
+    docs: {
+      description: {
+        component: 'Event group catalog with controls for group density, selection, and publication state.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -59,15 +64,12 @@ export const Loading: Story = {
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
-export const LongContentTablet: Story = {
+export const LongContent: Story = {
   args: { longContent: true, itemCount: 12, certificateMode: 'all' },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
 export const EmptyReadonly: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'readonly',
     itemCount: 0,
@@ -110,7 +112,9 @@ export const CertificateDisclosure: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole('checkbox', { name: 'Permitir certificado parcial' })).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Emitir certificado' }));
-    await expect(canvas.getByRole('checkbox', { name: 'Permitir certificado parcial' })).toBeVisible();
-    await expect(canvas.getByRole('checkbox', { name: 'Um certificado por evento' })).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Permitir certificado parcial' })).toBeInTheDocument();
+    await expect(canvas.getByText('Permitir certificado parcial')).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Um certificado por evento' })).toBeInTheDocument();
+    await expect(canvas.getByText('Um certificado por evento')).toBeVisible();
   },
 };

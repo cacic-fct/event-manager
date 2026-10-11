@@ -1,0 +1,29 @@
+<section class="error-panel" [attr.aria-label]="title() ?? copy().title">
+  <lib-cacic-logo class="error-logo" aria-hidden="true" />
+  <div class="error-copy">
+    <h1>{{ title() ?? copy().title }}</h1>
+    <p>{{ description() ?? copy().description }}</p>
+    <p class="status-code">Erro {{ status() }}</p>
+  </div>
+  <div class="actions">
+    @if (actionHref()) {
+      <a mat-flat-button [href]="actionHref()">{{ actionLabel() }}</a>
+    } @else {
+      <a mat-flat-button [routerLink]="actionUrl()">{{ actionLabel() }}</a>
+    }
+    @if (retryLabel()) {
+      <button mat-button type="button" (click)="retry.emit()">{{ retryLabel() }}</button>
+    }
+  </div>
+  <mat-expansion-panel class="technical-details">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Detalhes técnicos</mat-panel-title>
+    </mat-expansion-panel-header>
+    <div class="technical-details-body">
+      <button matIconButton type="button" aria-label="Copiar detalhes técnicos" (click)="copyDetails()">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+      </button>
+      <pre><code>{{ diagnostics() }}</code></pre>
+    </div>
+  </mat-expansion-panel>
+</section>

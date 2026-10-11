@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { authGuard } from '@cacic-fct/shared-angular';
 
 export const routes: Route[] = [
   {
@@ -7,6 +8,7 @@ export const routes: Route[] = [
   },
   {
     path: ':eventType/:eventId/organizer',
+    canActivate: [authGuard],
     loadComponent: () => import('./organizer-info/organizer-info').then((m) => m.OrganizerInfoComponent),
   },
   {

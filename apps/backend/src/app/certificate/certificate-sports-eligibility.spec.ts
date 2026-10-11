@@ -74,6 +74,7 @@ describe('CertificateSportsEligibility', () => {
     publishedAt: null,
     unpublishedAt: null,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     deletedAt: null,

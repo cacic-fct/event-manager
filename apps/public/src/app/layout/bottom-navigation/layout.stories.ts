@@ -4,16 +4,16 @@ import { ToolbarLayoutComponent } from './layout';
 
 const meta: Meta<ToolbarLayoutComponent> = {
   component: ToolbarLayoutComponent,
-  title: 'CACiC Eventos/Layout/Bottom Navigation/Layout',
+  title: 'Public/Layout/Navigation/Bottom Navigation',
   tags: ['autodocs'],
   argTypes: {
-    calendarTabEnabledOverride: { control: 'boolean', name: 'Aba de calendário habilitada' },
-    majorEventTabEnabledOverride: { control: 'boolean', name: 'Aba de eventos habilitada' },
-    notificationsTabEnabledOverride: { control: 'boolean', name: 'Aba de notificações habilitada' },
+    calendarTabEnabledOverride: { control: 'boolean', name: 'Calendar Tab Enabled' },
+    majorEventTabEnabledOverride: { control: 'boolean', name: 'Major Events Tab Enabled' },
+    notificationsTabEnabledOverride: { control: 'boolean', name: 'Notifications Tab Enabled' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -47,22 +47,20 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const EssentialTabsDarkReducedMotion: Story = {
+export const EssentialTabs: Story = {
   args: {
     calendarTabEnabledOverride: true,
     majorEventTabEnabledOverride: false,
     notificationsTabEnabledOverride: false,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const MenuOnlyMobile: Story = {
+export const MenuOnly: Story = {
   args: {
     calendarTabEnabledOverride: false,
     majorEventTabEnabledOverride: false,
     notificationsTabEnabledOverride: false,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

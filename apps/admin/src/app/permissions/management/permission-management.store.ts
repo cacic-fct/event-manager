@@ -29,6 +29,7 @@ import { PermissionManagementApiService } from '../permission-management-api.ser
 import { PendingPermissionChangesService } from './pending-permission-changes.service';
 import { PermissionDependencyDialogComponent } from './permission-dependency-dialog.component';
 import { isDateAfter } from '../../shared/date-range-validator';
+import { AdminRouteResourceErrorService } from '../../shared/admin-route-resource-error.service';
 
 export type RoleDraft = {
   id: string | null;
@@ -62,6 +63,7 @@ export class PermissionManagementStore {
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
   private readonly permissions = inject(PermissionsService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   readonly pending = inject(PendingPermissionChangesService);
 
   readonly loading = signal(true);
@@ -164,6 +166,7 @@ export class PermissionManagementStore {
         this.selectedTab.set(1);
       }
     } catch (error) {
+      if (personId && this.routeResourceErrors.redirectIfUnavailable(error)) return;
       this.loadError.set(true);
       this.feedback.error(error, 'Não foi possível carregar o gerenciamento de permissões.');
     } finally {

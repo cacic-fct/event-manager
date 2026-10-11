@@ -8,6 +8,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import {
   PublicPrizeDraw,
   PublicPrizeDrawScopeType,
@@ -15,7 +16,7 @@ import {
 } from '@cacic-fct/event-manager-public-contracts';
 import { publicPrizeDrawAnchorId } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
-import { ForbiddenGraphqlError } from '../shared/rate-limit-error';
+import { privateResourceErrorStatus } from '../shared/route-error-handling';
 import { PublicPrizeDrawApiService } from './prize-draw-api.service';
 
 type PrizeDrawPageState =
@@ -44,6 +45,7 @@ export class PublicPrizeDrawPage {
   private readonly location = inject(Location);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
 
   readonly state = signal<PrizeDrawPageState>({ status: 'loading' });
   readonly liveUpdatesUnavailable = signal(false);
@@ -105,7 +107,7 @@ export class PublicPrizeDrawPage {
 
   private async load(background = false): Promise<void> {
     if (!this.targetId) {
-      this.state.set({ status: 'error', message: 'Página de sorteios inválida.' });
+      this.navigateToError(404);
       return;
     }
     if (!background) this.state.set({ status: 'loading' });
@@ -115,13 +117,17 @@ export class PublicPrizeDrawPage {
       this.liveUpdatesUnavailable.set(false);
       this.scrollToDeepLinkedDraw();
     } catch (error) {
+      const pageErrorStatus = privateResourceErrorStatus(error);
       if (background && this.state().status === 'ready') {
-        if (error instanceof ForbiddenGraphqlError) {
-          this.state.set({ status: 'ready', draws: [] });
-          this.liveUpdatesUnavailable.set(false);
+        if (pageErrorStatus === 404) {
+          this.navigateToError(404);
           return;
         }
         this.liveUpdatesUnavailable.set(true);
+        return;
+      }
+      if (pageErrorStatus !== null) {
+        this.navigateToError(pageErrorStatus);
         return;
       }
       this.state.set({
@@ -137,6 +143,10 @@ export class PublicPrizeDrawPage {
       EVENT_GROUP: 'eventGroupId',
       MAJOR_EVENT: 'majorEventId',
     }[this.targetType];
+  }
+
+  private navigateToError(status: 403 | 404 | 500 | 503): void {
+    void this.routeErrors.navigate(status);
   }
 
   private scrollToDeepLinkedDraw(): void {

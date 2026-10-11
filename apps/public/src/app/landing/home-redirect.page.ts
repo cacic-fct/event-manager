@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { LandingComponent } from './landing-page';
@@ -17,7 +17,6 @@ import { DefaultRedirectService } from './default-redirect.service';
       <app-login-page />
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeComponent implements OnInit {
   protected readonly authService = inject(AuthService);

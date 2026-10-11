@@ -5,10 +5,15 @@ import { WalletAddCard } from './add-card';
 
 const meta: Meta<WalletAddCard> = {
   component: WalletAddCard,
-  title: 'CACiC Eventos/Profile/Wallet/Add Card',
+  title: 'Public/Profile/Wallet/Add Card',
   tags: ['autodocs', 'ticketing'],
   decorators: [applicationConfig({ providers: [provideRouter([])] })],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static wallet card entry page with links to supported registration flows.' } },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -21,16 +26,4 @@ export const Playground: Story = {
     await expect(canvas.getByRole('heading', { name: 'Adicionar cartão' })).toBeVisible();
     await expect(canvas.getByRole('link', { name: 'Transferência de bilhetes' })).toBeVisible();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-};
-
-export const MobileLight: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'light', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

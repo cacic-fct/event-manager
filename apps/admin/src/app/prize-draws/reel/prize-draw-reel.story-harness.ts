@@ -1,4 +1,5 @@
-import { Component, computed, effect, input, viewChild } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, computed, effect, inject, input, PLATFORM_ID, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { PrizeDrawSpeed } from '@cacic-fct/event-manager-admin-contracts';
 import { createPrizeDrawSpinResultStory, prizeDrawStoryFullNames } from '../prize-draw-story.fixtures';
@@ -45,7 +46,6 @@ import { PrizeDrawReelComponent } from '@cacic-fct/shared-angular';
 })
 export class PrizeDrawReelStoryHarness {
   readonly speed = input<PrizeDrawSpeed>('QUICK');
-  readonly reducedMotion = input(false);
   readonly rosterSize = input(18);
   readonly winnerName = input(prizeDrawStoryFullNames[2]);
   readonly countdownSeconds = input<3 | 5>(3);
@@ -63,6 +63,7 @@ export class PrizeDrawReelStoryHarness {
     }),
   );
   readonly rosterNames = computed(() => (this.rosterSize() < 1 ? [] : this.result().reelNames));
+  private readonly platformId = inject(PLATFORM_ID);
 
   constructor() {
     effect(() => {
@@ -73,7 +74,9 @@ export class PrizeDrawReelStoryHarness {
 
   play(): void {
     if (this.rosterSize() < 1) return;
-    void this.reel()?.play(this.result(), this.reducedMotion());
+    const prefersReducedMotion = isPlatformBrowser(this.platformId)
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    void this.reel()?.play(this.result(), prefersReducedMotion);
   }
 
   reset(): void {

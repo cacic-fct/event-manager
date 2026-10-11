@@ -85,6 +85,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     const subscription = {
       id: 'group-subscription-1',
       eventGroupId: 'group-1',
+      imageLicenseAgreementAccepted: false,
       createdAt: new Date('2026-06-21T12:00:00.000Z'),
       eventGroup: {},
     };
@@ -108,7 +109,7 @@ describe('CurrentUserEventSubscriptionService', () => {
         findMany: jest
           .fn()
           .mockResolvedValueOnce([{ eventId: 'event-1', eventGroupSubscriptionId: null }])
-          .mockResolvedValueOnce([]),
+          .mockResolvedValueOnce([{ event: { id: 'event-1' } }]),
         updateMany: jest.fn(),
         createMany: jest.fn(),
       },
@@ -136,9 +137,17 @@ describe('CurrentUserEventSubscriptionService', () => {
       expect.objectContaining({
         entityType: AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
         entityId: subscription.id,
+        after: {
+          id: subscription.id,
+          eventGroupId: 'group-1',
+          personId: 'person-1',
+          imageLicenseAgreementAccepted: false,
+          eventIds: ['event-1'],
+        },
       }),
       tx,
     );
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
   });
 
   it('requires standalone event subscriptions to target publicly listed events', async () => {

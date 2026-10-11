@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormField, form, minLength, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -12,7 +12,6 @@ import { buildDuplicatePeopleLookupFilters } from '../people-lookup';
 
 @Component({
   selector: 'app-person-create-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormField, MatDialogModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatProgressSpinnerModule],
   template: `
     <h2 mat-dialog-title>Criar pessoa</h2>
@@ -45,13 +44,20 @@ import { buildDuplicatePeopleLookupFilters } from '../people-lookup';
     </div>
     <div mat-dialog-actions>
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button (click)="onSaveClick()" [disabled]="isSaving()">
-        @if (isSaving()) {
-          <mat-spinner diameter="16"></mat-spinner>
-        } @else {
-          Criar pessoa
-        }
+      <button
+        mat-flat-button
+        type="button"
+        (click)="onSaveClick()"
+        [disabled]="isSaving()"
+        [attr.aria-busy]="isSaving()">
+        Criar pessoa
       </button>
+      @if (isSaving()) {
+        <span class="saving-status" role="status">
+          <mat-spinner diameter="16" aria-label="Salvando pessoa" />
+          <span>Salvando pessoa…</span>
+        </span>
+      }
     </div>
   `,
   styles: [
@@ -66,6 +72,12 @@ import { buildDuplicatePeopleLookupFilters } from '../people-lookup';
       .error {
         color: var(--mat-sys-error);
         margin: 0;
+      }
+
+      .saving-status {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.5rem;
       }
     `,
   ],

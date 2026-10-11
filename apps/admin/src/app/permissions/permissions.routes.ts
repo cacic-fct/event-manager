@@ -16,7 +16,7 @@ export const routes: Route[] = [
       {
         path: 'manage/people/:personId',
         canActivate: [
-          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read], '/permissions/mine'),
+          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read]),
         ],
         canDeactivate: [pendingPermissionChangesGuard],
         loadComponent: () =>
@@ -25,7 +25,7 @@ export const routes: Route[] = [
       {
         path: 'manage',
         canActivate: [
-          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read], '/permissions/mine'),
+          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read]),
         ],
         canDeactivate: [pendingPermissionChangesGuard],
         loadComponent: () =>

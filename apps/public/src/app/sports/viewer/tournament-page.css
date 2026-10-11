@@ -131,6 +131,34 @@ h5 {
   padding: 20px;
 }
 
+.livestream-section {
+  margin-block: 32px;
+}
+
+.livestream-section > h2 {
+  margin-block-end: 16px;
+}
+
+.livestream-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+}
+
+.livestream-grid article {
+  min-width: 0;
+}
+
+.livestream-grid h3 {
+  margin-block-end: 12px;
+}
+
+.livestream-grid a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
 .section-heading {
   align-items: center;
   display: flex;

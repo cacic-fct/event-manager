@@ -38,6 +38,7 @@ const EVENT_MUTABLE_FIELDS = [
   'onlineAttendanceEndDate',
   'isPubliclyListed',
   'youtubeCode',
+  'twitchChannel',
   'buttonText',
   'buttonLink',
   'deletedAt',

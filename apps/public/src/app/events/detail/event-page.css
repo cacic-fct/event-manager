@@ -165,21 +165,6 @@ h3 {
   margin: 0 0 12px;
 }
 
-.video-frame {
-  aspect-ratio: 16 / 9;
-  background: var(--mat-sys-surface-container-low);
-  border-radius: 8px;
-  overflow: hidden;
-  width: 100%;
-}
-
-.video-frame iframe {
-  border: 0;
-  display: block;
-  height: 100%;
-  width: 100%;
-}
-
 .lecturer-grid {
   display: grid;
   gap: 12px;

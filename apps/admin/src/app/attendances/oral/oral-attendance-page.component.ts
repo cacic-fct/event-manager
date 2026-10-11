@@ -1,7 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   OnDestroy,
@@ -28,6 +27,7 @@ import { EventApiService } from '../../graphql/event-api.service';
 import { AttendancesService } from '../attendances.service';
 import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync-failure-dialog.component';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
+import { AdminRouteResourceErrorService } from '../../shared/admin-route-resource-error.service';
 
 interface PendingAdminDecision {
   clientId: string;
@@ -48,8 +48,8 @@ const SYNC_RETRY_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-admin-oral-attendance-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [OralAttendanceComponent],
+  styleUrl: './oral-attendance-page.component.scss',
   template: `
     <lib-oral-attendance
       [title]="eventName()"
@@ -73,6 +73,7 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -118,7 +119,7 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
         if (!this.destroyed) {
           this.eventName.set(event.name);
         }
-      });
+      }, (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error));
     if (this.isBrowser) {
       fromEvent(window, 'online')
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -131,7 +132,7 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
         if (!this.destroyed) {
           this.applyRoster(items);
         }
-      });
+      }, (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error));
     this.scheduleSync();
   }
 

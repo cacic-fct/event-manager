@@ -207,6 +207,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   onlineAttendanceEndDate
   isPubliclyListed
   youtubeCode
+  twitchChannel
   buttonText
   buttonLink
   majorEvent {
@@ -270,6 +271,7 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
   onlineAttendanceStartDate
   onlineAttendanceEndDate
   youtubeCode
+  twitchChannel
   buttonText
   buttonLink
   majorEvent {

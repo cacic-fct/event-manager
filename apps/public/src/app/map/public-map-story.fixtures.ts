@@ -41,7 +41,7 @@ export function createPublicMapStoryEvents(controls: PublicMapEventFixtureContro
     const start = new Date(publicFixtureDateFromNow(controls.firstEventDayOffset + (index % 3), 9 + (index % 8)));
     const end = new Date(start.getTime() + controls.eventDurationMinutes * 60_000);
     const [longitude, latitude] = storyCoordinates(index, controls);
-    const generatedSuffix = index >= eventThemes.length ? ` · ${faker.word.adjective()}` : '';
+    const generatedSuffix = index >= eventThemes.length ? ` ${faker.word.adjective()}` : '';
 
     return {
       id: `map-event-${index + 1}`,
@@ -51,7 +51,7 @@ export function createPublicMapStoryEvents(controls: PublicMapEventFixtureContro
       emoji: theme.emoji,
       longitude,
       latitude,
-      locationDescription: `${theme.place} · FCT-Unesp`,
+      locationDescription: `${theme.place}, FCT-Unesp`,
     };
   });
 }

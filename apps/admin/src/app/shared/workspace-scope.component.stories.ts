@@ -4,7 +4,7 @@ import { WorkspaceScopeComponent } from './workspace-scope.component';
 
 const meta: Meta<WorkspaceScopeComponent> = {
   component: WorkspaceScopeComponent,
-  title: 'CACiC Eventos/Workspace/Components/Scope',
+  title: 'Admin/Event Management/Event Workspace/Scope',
   tags: ['autodocs'],
   args: { scopeId: 'selected-event', emoji: '🧠', title: 'Oficina de acessibilidade', emptyLabel: 'Selecionar evento', changeLabel: 'Trocar evento', description: 'Busque um evento para consultar sua participação.', disabled: false },
   argTypes: {
@@ -37,6 +37,5 @@ export const NoSelection: Story = {
     await expect(within(canvasElement).getByText('Seletor de eventos')).toBeVisible();
   },
 };
-export const DarkReducedMotion: Story = { globals: { theme: 'dark', motion: 'reduced' } };
 export const UnsavedChanges: Story = { args: { disabled: true } };
-export const LongTitle: Story = { args: { title: 'Semana de ciência e tecnologia: atividades de extensão, oficinas e encontros da comunidade universitária' }, globals: { viewport: { value: 'mobile1', isRotated: false } } };
+export const LongTitle: Story = { args: { title: 'Semana de ciência e tecnologia: atividades de extensão, oficinas e encontros da comunidade universitária' } };

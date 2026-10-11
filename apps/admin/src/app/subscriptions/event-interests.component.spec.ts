@@ -239,7 +239,7 @@ describe('EventInterestsComponent realtime refresh', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.selectedTarget()?.targetId).toBe('event-1');
     expect(fixture.componentInstance.interests()).toEqual([interestFixture()]);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Novos interesses desativados');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('novos interesses desativados');
   });
 
   it.each([InterestTargetType.EVENT, InterestTargetType.EVENT_GROUP])(

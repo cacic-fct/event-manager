@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,6 @@ import {
 
 @Component({
   selector: 'app-permission-dependency-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogModule, MatButtonModule, MatIconModule],
   template: `
     <h2 mat-dialog-title>Este acesso depende de outras permissões</h2>
@@ -46,6 +45,6 @@ export class PermissionDependencyDialogComponent {
   protected readonly data = inject<readonly PermissionContextDependency[]>(MAT_DIALOG_DATA);
   protected readonly label = (permission: string) => {
     const parsed = parsePermission(permission);
-    return `${getPermissionResourceLabel(parsed.resource)} · ${getPermissionScopeLabel(parsed.scope)}`;
+    return `${getPermissionResourceLabel(parsed.resource)}: ${getPermissionScopeLabel(parsed.scope)}`;
   };
 }

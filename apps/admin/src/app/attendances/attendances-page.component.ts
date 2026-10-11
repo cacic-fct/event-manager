@@ -9,6 +9,7 @@ import { AttendancesService } from './attendances.service';
 import { EventAttendancesComponent } from './event-attendances.component';
 import { MajorEventAttendancesComponent } from './major-event-attendances.component';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 @Component({
   selector: 'app-workspace-attendances-tab',
@@ -28,6 +29,7 @@ export class AttendancesPageComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly workspace = inject(AttendancesService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
 
   readonly context = signal<EventContextRef | null>(null);
   readonly contextLoading = signal(false);
@@ -58,8 +60,14 @@ export class AttendancesPageComponent implements OnDestroy {
             const personId = params.get('personId');
             if (personId) await this.workspace.selectMajorEventUserAttendanceById(context.id, personId);
           }
-        } catch {
-          if (request === this.contextRequest) this.contextError.set('Não foi possível abrir as presenças deste contexto. Escolha outro ou tente novamente.');
+        } catch (error) {
+          if (request === this.contextRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+            if (error instanceof Error && error.message === 'Participante não encontrado neste grande evento.') {
+              this.routeResourceErrors.redirectNotFound();
+            } else {
+              this.contextError.set('Não foi possível abrir as presenças deste contexto. Escolha outro ou tente novamente.');
+            }
+          }
         } finally {
           if (request === this.contextRequest) this.contextLoading.set(false);
         }

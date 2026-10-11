@@ -14,6 +14,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { Subscription, debounceTime, firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
@@ -38,6 +39,7 @@ import {
 } from './team-operations-page.utils';
 import { createTeamOperationsForms } from './team-operations-page.forms';
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 @Component({
   selector: 'app-sports-team-operations-page',
@@ -65,6 +67,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   private readonly api = inject(SportsOperationsApiService);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly realtime = inject(SportsOperationsRealtimeService);
@@ -73,7 +76,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   readonly workspace = signal<RepresentativeTeamWorkspace | null>(null);
   readonly loading = signal(true);
   readonly busy = signal(false);
-  readonly error = signal<string | null>(null);
   readonly lineupMembers = signal<LineupMember[]>([]);
   readonly lineupLoading = signal(false);
   readonly lineupError = signal<string | null>(null);
@@ -107,6 +109,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.teamId = this.route.snapshot.paramMap.get('teamId') ?? '';
+    if (!this.teamId) {
+      void this.routeErrors.navigate(404);
+      this.loading.set(false);
+      return;
+    }
     this.lineupForm.patchValue({
       matchId: this.route.snapshot.queryParamMap.get('matchId') ?? '',
       registrationId: this.route.snapshot.queryParamMap.get('registrationId') ?? '',
@@ -141,6 +148,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
           return;
         }
         this.lineupLoading.set(false);
+        const status = privateResourceErrorStatus(error);
+        if (status === 404) {
+          void this.routeErrors.navigate(status);
+          return;
+        }
         this.lineupError.set(error instanceof Error ? error.message : 'Não foi possível carregar a escalação.');
       },
     });
@@ -182,7 +194,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         }
         this.selectInitialMatch(workspace);
         this.loading.set(false);
-        this.error.set(null);
       },
       error: (error: unknown) => {
         if (requestId !== this.workspaceRequestId) {
@@ -191,11 +202,15 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         this.settleRealtimeRecovery();
         this.loading.set(false);
         if (preserveDrafts && this.workspace()) {
+          if (privateResourceErrorStatus(error) === 404) {
+            void this.routeErrors.navigate(404);
+            return;
+          }
           this.snackbar.open('Não foi possível atualizar a equipe. Os últimos dados continuam disponíveis.', 'Fechar', {
             duration: 6000,
           });
         } else {
-          this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
+          void this.routeErrors.navigate(privateResourceErrorStatus(error));
         }
       },
     });

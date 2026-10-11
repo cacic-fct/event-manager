@@ -15,21 +15,21 @@
         <div matListItemMeta class="permission-action-icons">
           @for (action of permission.actions; track action.scope) {
             <span
+              role="img"
               [attr.aria-label]="permission.label + ': ' + action.label"
               [matTooltip]="action.label"
               matTooltipPosition="above"
               class="permission-icon">
-              <mat-icon>{{ action.icon }}</mat-icon>
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
             </span>
           }
         </div>
       </mat-list-item>
     } @empty {
-      <mat-list-item>
-        <mat-icon matListItemIcon>shield</mat-icon>
-        <span matListItemTitle>Nenhuma permissão encontrada</span>
-        <span matListItemLine>Você ainda não recebeu um cargo ativo no Event Manager.</span>
-      </mat-list-item>
+      <div class="admin-list-empty">
+        <mat-icon aria-hidden="true">hide_source</mat-icon>
+        <p>Nenhuma permissão encontrada</p>
+      </div>
     }
   </mat-list>
 

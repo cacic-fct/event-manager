@@ -27,7 +27,7 @@ describe('SportsBackingResourceLifecycleService', () => {
             type: 'OTHER',
             latitude: -22.12,
             longitude: -51.4,
-            locationDescription: 'Ginásio · Quadra 1',
+            locationDescription: 'Ginásio, Quadra 1',
             isPubliclyListed: true,
             allowSubscription: false,
             requiresImageLicenseAgreement: false,
@@ -46,6 +46,7 @@ describe('SportsBackingResourceLifecycleService', () => {
             onlineAttendanceStartDate: null,
             onlineAttendanceEndDate: null,
             youtubeCode: 'video-1',
+            twitchChannel: null,
           },
         }),
       },
@@ -63,7 +64,7 @@ describe('SportsBackingResourceLifecycleService', () => {
         type: 'OTHER',
         latitude: -22.12,
         longitude: -51.4,
-        locationDescription: 'Ginásio · Quadra 1',
+        locationDescription: 'Ginásio, Quadra 1',
         allowSubscription: false,
         requiresImageLicenseAgreement: false,
         autoSubscribe: false,
@@ -74,6 +75,7 @@ describe('SportsBackingResourceLifecycleService', () => {
         isOnlineAttendanceAllowed: false,
         shouldProvideSubscriberListToLecturer: false,
         youtubeCode: 'video-1',
+        twitchChannel: null,
       }),
     ).resolves.toBeUndefined();
     await expect(
@@ -93,7 +95,10 @@ describe('SportsBackingResourceLifecycleService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { youtubeCode: 'outro-video' }),
-    ).resolves.toBeUndefined();
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.assertEventUpdateAllowed(tx as never, 'event-1', { twitchChannel: 'channel-1' }),
+    ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { shouldIssueCertificate: true }),
     ).rejects.toBeInstanceOf(ConflictException);

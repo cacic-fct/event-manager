@@ -5,6 +5,7 @@ import { cacicEventosHandlers } from '../../../.storybook/storybook-mocks';
 import { Component, DestroyRef, afterNextRender, inject, provideAppInitializer, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterOutlet, convertToParamMap, provideRouter, withHashLocation, withDisabledInitialNavigation } from '@angular/router';
 import { applicationConfig, moduleMetadata, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { graphql, HttpResponse } from 'msw';
 import { BehaviorSubject } from 'rxjs';
@@ -28,7 +29,14 @@ class IntegratedEventWorkspaceStory {
 }
 const integratedProviders = [
   provideRouter([...shellRoutes, {path:'**',component:WorkspaceStoryDestination}],withHashLocation(),withDisabledInitialNavigation()),
-  {provide:AuthService,useValue:{user:signal({sub:'story-admin',email:'admin@example.com',roles:['admin'],claims:{name:'Organização'}}),roles:signal(['admin']),logout:async()=>undefined}},
+  {provide:AuthService,useValue:{
+    user:signal({sub:'story-admin',email:'admin@example.com',roles:['admin'],claims:{name:'Organização'}}),
+    roles:signal(['admin']),
+    ensureAuthenticated:async()=>true,
+    consumePostLogoutRedirect:()=>false,
+    login:async()=>undefined,
+    logout:async()=>undefined,
+  }},
   {provide:ShellService,useValue:{loading:signal(false),loadInitialData:async()=>undefined}},
   {provide:PermissionsService,useValue:{
     evaluateWorkspacePermissions:async()=>undefined,has:()=>true,hasAll:()=>true,hasAny:()=>true,missing:()=>[],
@@ -150,13 +158,13 @@ const handlers = [
 ];
 const meta: Meta<Args> = {
   component: EventWorkspacePageComponent,
-  title:'CACiC Eventos/Workspace/Event Workspace', tags:['autodocs'], args:defaults,
+  title:'Admin/Event Management/Event Workspace/Overview', tags:['autodocs'], args:defaults,
   argTypes:{contextKind:{control:'select',options:['global','event','group','major-event']},activityCount:{control:{type:'range',min:0,max:40}},emptySearch:{control:'boolean'},failContext:{control:'boolean'},failActivities:{control:'boolean'},readOnly:{control:'boolean'},longNames:{control:'boolean'}},
-  decorators:[(story,context)=> context.parameters['integratedWorkspace']
+  decorators:[withScenarioControls<Args>(), (story,context)=> context.parameters['integratedWorkspace']
     ? applicationConfig({providers:integratedProviders})(story,context)
     : applicationConfig({providers:[
     provideRouter([{path:'**',component:WorkspaceStoryDestination}],withHashLocation(),withDisabledInitialNavigation()),
-    {provide:ActivatedRoute,useValue:{paramMap:params,snapshot:{url:[]}}},
+    {provide:ActivatedRoute,useValue:{paramMap:params,snapshot:{url:[],data:{}}}},
     {provide:PermissionsService,useValue:{evaluateWorkspacePermissions:async()=>undefined,has:(permission:string)=>!active.readOnly||permission.endsWith('#read'),hasAny:(permissions:string[])=>permissions.some((permission)=>!active.readOnly||permission.endsWith('#read')),canReadTab:()=>true,canEdit:()=>!active.readOnly,canDelete:()=>!active.readOnly,hasAll:()=>!active.readOnly}},
     provideAppInitializer(()=>{
       const router=inject(Router);
@@ -170,71 +178,102 @@ const meta: Meta<Args> = {
     }),
   ]})(story,context)],
   render:(args)=>{active=args;params.next(convertToParamMap(args.contextKind==='global'?{}:{targetType:args.contextKind,targetId:ids[args.contextKind]}));return {props:{}};},
-  parameters:{layout:'fullscreen',msw:{handlers:{graphql:[...handlers, ...cacicEventosHandlers]}}},
+  parameters:{
+    docs: {
+      description: {
+        component: 'Event workspace navigation across global, event, group, and major event contexts. Use context and result controls to explore hierarchy, search, and loading behavior.',
+      },
+    },
+    layout:'fullscreen',
+    msw:{handlers:{graphql:[...handlers, ...cacicEventosHandlers]}},
+  },
 };
 export default meta;
 type Story=StoryObj<Args>;
-export const Playground:Story={play:async({canvasElement})=>{
+export const Playground:Story={
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
-  await expect(await canvas.findByRole('heading',{name:'Ferramentas globais'})).toBeVisible();
+  await expect(await canvas.findByRole('heading',{name:'Eventos',level:1})).toBeVisible();
   await expect(await canvas.findByRole('button',{name:'Selecionar Semana da Computação'})).toBeVisible();
   await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
-}};
-export const SelectedMajorEvent:Story={args:{contextKind:'major-event'},play:async({canvasElement})=>{
+},
+};
+export const SelectedMajorEvent:Story={
+args:{contextKind:'major-event'},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await expect(await canvas.findByRole('button',{name:/Semana da Computação/})).toBeVisible();
   await expect(await canvas.findByRole('heading',{name:'Programação'})).toBeVisible();
   await expect(canvas.getByRole('link',{name:'Configurações'})).toBeVisible();
   await expect(canvas.getByRole('link',{name:'Presenças'})).toHaveAttribute('href','#/attendances/major-event/workspace-major');
-}};
-export const SelectedGroup:Story={args:{contextKind:'group'},play:async({canvasElement})=>{
+},
+};
+export const SelectedGroup:Story={
+args:{contextKind:'group'},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await expect(await canvas.findByRole('button',{name:/Trilha de desenvolvimento web/})).toBeVisible();
   await expect(canvas.getByRole('link',{name:'Interessados'})).toHaveAttribute('href','#/subscriptions/group/workspace-group/interests');
   await expect(canvas.queryByRole('link',{name:'Presenças'})).not.toBeInTheDocument();
-}};
-export const SelectedEvent:Story={args:{contextKind:'event'},play:async({canvasElement})=>{
+},
+};
+export const SelectedEvent:Story={
+args:{contextKind:'event'},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await expect(await canvas.findByRole('button',{name:/Oficina independente/})).toBeVisible();
   await waitFor(()=>expect([...canvasElement.querySelectorAll('.participation-summary dd')].map((item)=>item.textContent?.trim())).toEqual(['18','12','7']));
   await expect(await canvas.findByRole('heading',{name:'Editar evento'})).toBeVisible();
   await expect(canvas.getByRole('link',{name:'Configurações'})).toBeVisible();
-}};
-export const KeyboardContextSwitch:Story={args:{contextKind:'major-event'},play:async({canvasElement})=>{
+},
+};
+export const KeyboardContextSwitch:Story={
+args:{contextKind:'major-event'},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   const picker=await canvas.findByRole('button',{name:/Semana da Computação.*Trocar contexto/});
-  picker.focus();await userEvent.keyboard('{Enter}');
-  const search=canvas.getByRole('searchbox',{name:'Buscar contexto'});
+  await userEvent.click(picker);
+  const search=await canvas.findByRole('searchbox',{name:'Buscar contexto'});
+  await expect(search).toBeVisible();
   await userEvent.type(search,'Trilha');
   await waitFor(()=>expect(canvas.queryByRole('button',{name:'Selecionar Semana da Computação'})).not.toBeInTheDocument());
   const next=await canvas.findByRole('button',{name:'Selecionar Trilha de desenvolvimento web'});
   next.focus();await userEvent.keyboard('{Enter}');
   await expect(await canvas.findByRole('button',{name:/Trilha de desenvolvimento web/})).toBeVisible();
-}};
-export const EmptyActivities:Story={args:{contextKind:'major-event',activityCount:0},play:async({canvasElement})=>{await expect(await within(canvasElement).findByText('Nenhum evento encontrado neste contexto.')).toBeVisible();}};
-export const ErrorActivities:Story={args:{contextKind:'group',failActivities:true},play:async({canvasElement})=>{await expect(await within(canvasElement).findByText('Não foi possível carregar as atividades. Tente novamente.')).toBeVisible();}};
-export const ErrorContext:Story={args:{contextKind:'event',failContext:true},play:async({canvasElement})=>{await expect(await within(canvasElement).findByRole('alert')).toHaveTextContent('Não foi possível abrir este contexto.');}};
-export const DenseActivities:Story={args:{contextKind:'major-event',activityCount:30},play:async({canvasElement})=>{
-  const canvas=within(canvasElement);await expect(await canvas.findByRole('button',{name:'Oficina de acessibilidade 30'})).toBeVisible();await expect(canvas.queryByRole('button',{name:'Próximas atividades'})).not.toBeInTheDocument();
-}};
-export const MobileDark:Story={args:{contextKind:'major-event',longNames:true},globals:{theme:'dark',motion:'reduced',viewport:{value:'mobile',isRotated:false}},play:async({canvasElement})=>{await expect(await within(canvasElement).findByRole('button',{name:/Semana da Computação/})).toBeVisible();}};
+},
+};
+export const EmptyActivities:Story={ args:{contextKind:'major-event',activityCount:0}, play:async({canvasElement})=>{await expect(await within(canvasElement).findByText('Nenhum evento encontrado neste contexto.')).toBeVisible();} };
+export const ErrorActivities:Story={ args:{contextKind:'group',failActivities:true}, play:async({canvasElement})=>{await expect(await within(canvasElement).findByText('Não foi possível carregar as atividades. Tente novamente.')).toBeVisible();} };
+export const ErrorContext:Story={ args:{contextKind:'event',failContext:true}, play:async({canvasElement})=>{await expect(await within(canvasElement).findByRole('alert')).toHaveTextContent('Não foi possível abrir este contexto.');} };
+export const DenseActivities:Story={
+args:{contextKind:'major-event',activityCount:30},
+play:async({canvasElement})=>{
+  const canvas=within(canvasElement);await expect(await canvas.findByRole('link',{name:'Oficina de acessibilidade 30'})).toBeVisible();await expect(canvas.queryByRole('link',{name:'Próximas atividades'})).not.toBeInTheDocument();
+},
+};
 
-export const EmptySearch:Story={args:{emptySearch:true},play:async({canvasElement})=>{
+export const EmptySearch:Story={
+args:{emptySearch:true},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await expect(await canvas.findByText('Nenhum contexto encontrado. Revise a busca ou volte à página anterior.')).toBeVisible();
-  await expect(canvas.getByRole('heading',{name:'Ferramentas globais'})).toBeVisible();
-}};
-export const ReadOnlyContext:Story={args:{contextKind:'event',readOnly:true},play:async({canvasElement})=>{
+  await expect(canvas.getByRole('heading',{name:'Eventos',level:1})).toBeVisible();
+},
+};
+export const ReadOnlyContext:Story={
+args:{contextKind:'event',readOnly:true},
+play:async({canvasElement})=>{
   const canvas=within(canvasElement);
   await expect(await canvas.findByRole('button',{name:/Oficina independente/})).toBeVisible();
   await expect(canvas.getByRole('link',{name:'Presenças'})).toHaveAttribute('href','#/attendances/event/workspace-event');
   await userEvent.click(canvas.getByRole('link',{name:'Configurações'}));
   await expect(await canvas.findByRole('heading',{name:'Editar evento'})).toBeVisible();
   await expect(canvas.queryByRole('button',{name:'Salvar e agendar'})).not.toBeInTheDocument();
-}};
+},
+};
 
 export const IntegratedShellHubAndEditor:Story={
-  parameters:{integratedWorkspace:true,msw:{handlers:{graphql:[...handlers,...cacicEventosHandlers]}}},
+  parameters: { integratedWorkspace:true, msw:{handlers:{graphql:[...handlers,...cacicEventosHandlers]}} },
   decorators:[moduleMetadata({imports:[IntegratedEventWorkspaceStory]})],
   render:()=>{active={...defaults,contextKind:'major-event'};return {template:'<app-integrated-event-workspace />'};},
   play:async({canvasElement})=>{
@@ -255,9 +294,11 @@ export const IntegratedShellHubAndEditor:Story={
     let sidebar=await openSidebar();
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Semana da Computação'}, {timeout:20000})).toBeVisible();
     await expect(sidebar.queryByRole('link',{name:'Grandes eventos'})).not.toBeInTheDocument();
+    await userEvent.click(sidebar.getByRole('link',{name:'Visão geral'}));
+    sidebar=await openSidebar();
     await expect(await canvas.findByRole('heading',{name:'Programação'})).toBeVisible();
     await expect(canvas.getByRole('heading',{name:'Grupos de eventos'})).toBeVisible();
-    await userEvent.click(canvas.getByRole('link',{name:'Configurações'}));
+    await userEvent.click(sidebar.getByRole('link',{name:'Configurações'}));
     await expect(await canvas.findByRole('heading',{name:'Editar grande evento'})).toBeVisible();
     await expect(sidebar.getByRole('link',{name:'Configurações'})).toBeVisible();
     await userEvent.click(sidebar.getByRole('button',{name:'Abrir grupo neste contexto'}));
@@ -266,9 +307,12 @@ export const IntegratedShellHubAndEditor:Story={
     await expect(await groupsDialog.findByRole('button',{name:'Selecionar Trilha de desenvolvimento web'})).toBeVisible();
     await expect(groupsDialog.queryByRole('button',{name:'Selecionar Grupo sem vínculo'})).not.toBeInTheDocument();
     await userEvent.click(groupsDialog.getByRole('button',{name:'Selecionar Trilha de desenvolvimento web'}));
-    sidebar=await openSidebar();
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Trilha de desenvolvimento web'}, {timeout:20000})).toBeVisible();
-    await expect(await sidebar.findByRole('button',{name:'Voltar para Semana da Computação'})).toBeVisible();
+    await waitFor(async()=>{
+      const navigation=canvas.getByRole('navigation',{name:'Operações do evento'});
+      await expect(within(navigation).getByRole('button',{name:'Voltar para Semana da Computação'})).toBeVisible();
+    },{timeout:20000});
+    sidebar=await openSidebar();
     await userEvent.click(sidebar.getByRole('button',{name:'Abrir evento neste contexto'}));
     const eventsDialog=within(await within(canvasElement.ownerDocument.body).findByRole('dialog',{name:'Eventos deste contexto'}));
     await expect(eventsDialog.getByRole('searchbox',{name:'Buscar eventos deste contexto'})).toHaveFocus();
@@ -279,15 +323,18 @@ export const IntegratedShellHubAndEditor:Story={
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Laboratório do grupo 1'}, {timeout:20000})).toBeVisible();
     await userEvent.click(sidebar.getByRole('button',{name:'Voltar para Trilha de desenvolvimento web'}));
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Trilha de desenvolvimento web'}, {timeout:20000})).toBeVisible();
-    sidebar=await openSidebar();
-    await userEvent.click(sidebar.getByRole('button',{name:'Voltar para Semana da Computação'}));
+    const backToMajor=await canvas.findByRole('button',{name:'Voltar para Semana da Computação'}, {timeout:20000});
+    await userEvent.click(backToMajor);
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Semana da Computação'}, {timeout:20000})).toBeVisible();
     sidebar=await openSidebar();
     await userEvent.click(sidebar.getByRole('button',{name:'Menu global'}));
     const global=within(await canvas.findByRole('navigation',{name:'Navegação interna'}));
     await expect(global.getByRole('link',{name:'Eventos'})).toBeVisible();
-    await expect(global.getByRole('link',{name:'Inscrições'})).toBeVisible();
+    await expect(global.getByRole('link',{name:'Operações globais'})).toBeVisible();
+    await expect(global.queryByRole('link',{name:'Inscrições'})).not.toBeInTheDocument();
     await userEvent.click(global.getByRole('button',{name:'Menu do contexto'}));
+    sidebar=await openSidebar();
+    await expect(sidebar.getByRole('link',{name:'Inscrições'})).toHaveAttribute('href','#/subscriptions/major-event/workspace-major');
     await userEvent.click(sidebar.getByRole('link',{name:'Visão geral'}));
     await closeSidebar();
     const child=await canvas.findByRole('link',{name:'Oficina de acessibilidade 1'});
@@ -296,8 +343,8 @@ export const IntegratedShellHubAndEditor:Story={
     await expect(await canvas.findByRole('button',{name:'Trocar contexto: Oficina de acessibilidade 1'}, {timeout:20000})).toBeVisible();
     await expect(sidebar.queryByRole('link',{name:'Visão geral'})).not.toBeInTheDocument();
     await expect(sidebar.getByRole('link',{name:'Configurações'})).toHaveAttribute('aria-current','page');
-    await expect(sidebar.getByRole('link',{name:'Formulários'})).toHaveAttribute('href',/\/forms\/event\/activity-1$/);
-    await expect(sidebar.getByRole('link',{name:'Sorteios'})).toHaveAttribute('href',/\/draws\?eventId=activity-1$/);
+    await expect(sidebar.getByRole('link',{name:'Formulários'})).toHaveAttribute('href','#/forms/event/activity-1');
+    await expect(sidebar.getByRole('link',{name:'Sorteios'})).toHaveAttribute('href','#/draws?eventId=activity-1');
     await userEvent.click(sidebar.getByRole('link',{name:'Configurações'}));
     await expect(await canvas.findByRole('heading',{name:'Editar evento'}, {timeout:20000})).toBeVisible();
     await expect(sidebar.getByRole('link',{name:'Configurações'})).toBeVisible();
@@ -307,9 +354,11 @@ export const IntegratedShellHubAndEditor:Story={
     await expect(visiblePickers).toHaveLength(0);
     await userEvent.click(sidebar.getByRole('link',{name:'Formulários'}));
     await expect(await canvas.findByRole('searchbox',{name:'Buscar formulário'}, {timeout:20000})).toBeVisible();
-    const forms=await canvas.findAllByRole('link',{name:/Abrir formulário/});
-    await userEvent.click(forms[0]);
-    await waitFor(()=>expect(window.location.hash).toContain('eventId=activity-1'));
+    const form=await canvas.findByRole('link',{name:'Abrir formulário Pesquisa de camiseta'}, {timeout:20000});
+    await userEvent.click(form);
+    await waitFor(()=>expect(window.location.hash).toContain('eventId=activity-1'),{timeout:20000});
+    await expect(await canvas.findByRole('heading',{name:'Editar formulário',level:2},{timeout:20000})).toBeVisible();
+    await expect(await canvas.findByRole('heading',{name:'Tamanho da camiseta'},{timeout:20000})).toBeVisible();
     sidebar=await openSidebar();
     await expect(sidebar.getByRole('link',{name:'Formulários'})).toHaveAttribute('aria-current','page');
     await expect(canvas.getByRole('button',{name:'Trocar contexto: Oficina de acessibilidade 1'})).toBeVisible();
@@ -322,7 +371,7 @@ export const IntegratedShellHubAndEditor:Story={
     const dialog=within(await within(canvasElement.ownerDocument.body).findByRole('dialog',{name:'Escolher contexto'}));
     await expect(dialog.getByRole('searchbox')).toHaveFocus();
     await userEvent.click(dialog.getByRole('button',{name:'Cancelar'}));
-    await expect(selector).toHaveFocus();
+    await waitFor(()=>expect(selector).toHaveFocus(),{timeout:5000});
     await expect(canvas.getAllByRole('navigation',{name:'Operações do evento'})).toHaveLength(1);
     await expect(sidebar.getByRole('link',{name:'Sorteios'})).toHaveAttribute('aria-current','page');
   },

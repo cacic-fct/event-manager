@@ -30,7 +30,11 @@
         <section class="surface field-group" aria-labelledby="folder-editor-title">
           <div class="surface-heading">
             <div>
-              <h3 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h3>
+              @if (inWorkspaceShell) {
+                <h3 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h3>
+              } @else {
+                <h2 id="folder-editor-title">{{ mode === 'create' ? 'Nova pasta' : 'Editar pasta' }}</h2>
+              }
               <p>Defina um nome claro e um emoji para identificar a pasta.</p>
             </div>
           </div>
@@ -86,7 +90,7 @@
           } @empty {
             <div class="empty-state">
               <mat-icon>folder_open</mat-icon>
-              <h3>Nenhuma pasta encontrada</h3>
+              <h2>Nenhuma pasta encontrada</h2>
               <p>{{ workspace.targetFiltersForm.controls.query.value ? 'Tente outro termo de busca.' : 'Crie uma pasta para começar.' }}</p>
             </div>
           }
@@ -115,7 +119,7 @@
     <div class="panel-stack certificate-target-picker">
       <div class="panel-heading">
         <div>
-          <h3>Alvos</h3>
+          <h2>Alvos</h2>
           <p>Eventos, grupos e grandes eventos aptos à emissão.</p>
         </div>
       </div>
@@ -153,10 +157,10 @@
               <span recordDescription>{{ eventItem.startDate | date: 'shortDate' }}</span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum evento encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum evento encontrado</p>
+            </div>
           }
         } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT_GROUP') {
           @for (group of workspace.issuableEventGroups(); track group.id) {
@@ -171,10 +175,10 @@
               </span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum grupo encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum grupo encontrado</p>
+            </div>
           }
         } @else {
           @for (majorEvent of workspace.issuableMajorEvents(); track majorEvent.id) {
@@ -186,10 +190,10 @@
               </span>
             </app-workspace-record>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum grande evento encontrado</span>
-              <span matListItemLine>Ajuste a busca para continuar.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhum grande evento encontrado</p>
+            </div>
           }
         }
       </div>
@@ -235,7 +239,7 @@
       @if (workspace.selectedTarget()) {
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Configurações</h4>
+            <h2>Configurações</h2>
             @if (canEditSelectedTarget()) {
               <button mat-stroked-button type="button" [disabled]="workspace.unsavedChanges()" (click)="workspace.startNewCertificateConfig()">
                 <mat-icon>add</mat-icon>
@@ -253,8 +257,7 @@
                 [disabled]="workspace.unsavedChanges()"
                 [link]="workspace.certificateConfigRoute(config.id)">
                 <span recordDescription>
-                  {{ config.isActive ? 'Ativa' : 'Inativa' }} ·
-                  {{ config.certificateTemplate.name }}
+                  {{ config.isActive ? 'Ativa' : 'Inativa' }}, modelo: {{ config.certificateTemplate.name }}
                 </span>
                 @if (canCloneConfig(config)) {
                   <button
@@ -282,10 +285,10 @@
                 }
               </app-workspace-record>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhuma configuração</span>
-                <span matListItemLine>Crie uma configuração para emitir.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhuma configuração</p>
+              </div>
             }
           </div>
 
@@ -316,7 +319,7 @@
       } @else {
         <div class="empty-state">
           <mat-icon>folder_open</mat-icon>
-          <h3>Escolha um contexto</h3>
+          <h2>Escolha um contexto</h2>
           <p>O inventário de configurações aparecerá depois da seleção.</p>
         </div>
       }
@@ -326,7 +329,7 @@
       @if (workspace.selectedTarget()) {
         <div class="panel-heading">
           <div>
-            <h3>{{ workspace.selectedTarget()?.name }}</h3>
+            <h2>{{ workspace.selectedTarget()?.name }}</h2>
             <p>
               {{
                 workspace.isStandaloneScope()
@@ -409,7 +412,7 @@
         }
 
         <form class="surface field-group">
-          <h4>Configuração</h4>
+          <h3>Configuração</h3>
           <div class="field-grid">
             <mat-form-field>
               <mat-label>Nome público do certificado</mat-label>
@@ -541,7 +544,7 @@
 
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Emissão manual</h4>
+            <h3>Emissão manual</h3>
             <div class="panel-actions">
               <span>{{ workspace.personSearchResults().length }} resultados</span>
               @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
@@ -578,7 +581,7 @@
               "
               [disabledReason]="
                 !permissions.has(Permission.Person.Read)
-                  ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  ? 'Buscar pessoas exige permissão de Pessoa: Visualizar.'
                   : !canEditSelectedTarget()
                     ? 'Emitir certificados exige permissão para editar este destino.'
                     : 'Selecione um modelo de certificado disponível antes de emitir.'
@@ -595,14 +598,14 @@
 
         <section class="surface field-group">
           <div class="surface-heading">
-            <h4>Certificados emitidos</h4>
+            <h3>Certificados emitidos</h3>
             <span>{{ workspace.certificates().length }} certificados</span>
           </div>
 
           <mat-list class="detail-list">
             @for (certificate of workspace.certificates(); track certificate.id) {
               <mat-list-item>
-                <span matListItemTitle> {{ certificate.person.name }} · {{ certificate.config.name }} </span>
+                <span matListItemTitle> {{ certificate.person.name }}, certificado: {{ certificate.config.name }} </span>
                 <span matListItemLine> Emitido em {{ certificate.issuedAt | date: 'short' }} </span>
                 <button
                   matIconButton
@@ -624,10 +627,10 @@
                 }
               </mat-list-item>
             } @empty {
-              <mat-list-item>
-                <span matListItemTitle>Nenhum certificado emitido</span>
-                <span matListItemLine>As emissões aparecerão aqui.</span>
-              </mat-list-item>
+              <div class="admin-list-empty">
+                <mat-icon aria-hidden="true">hide_source</mat-icon>
+                <p>Nenhum certificado emitido</p>
+              </div>
             }
           </mat-list>
 
@@ -658,7 +661,7 @@
       } @else {
         <div class="empty-state">
           <mat-icon>workspace_premium</mat-icon>
-          <h3>{{ workspace.isStandaloneScope() ? 'Selecione uma pasta' : 'Selecione um alvo' }}</h3>
+        <h2>{{ workspace.isStandaloneScope() ? 'Selecione uma pasta' : 'Selecione um alvo' }}</h2>
           <p>
             {{
               workspace.isStandaloneScope()

@@ -11,6 +11,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type { TicketRealtimeInvalidation, TicketTransfer, WalletTicket } from '@cacic-fct/shared-ticketing';
 import { forkJoin } from 'rxjs';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
@@ -19,12 +20,11 @@ import { normalizeTicketIdentityDocument, ticketDocumentValidator } from './tick
 import { TicketPersonSummaryComponent } from './ticket-person-summary.component';
 import { redactIdentityDocument } from './ticket-document';
 import { nextDeadlineDelay, ticketStatusAt } from './ticket-expiration';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 type TransferStartState =
   | { status: 'loading' }
-  | { status: 'ready'; ticket: WalletTicket; pendingTransfer: TicketTransfer | null }
-  | { status: 'empty'; message: string }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; ticket: WalletTicket; pendingTransfer: TicketTransfer | null };
 
 @Component({
   selector: 'app-ticket-transfer-start-page',
@@ -50,6 +50,7 @@ export class TicketTransferStartPage {
   private readonly auth = inject(AuthService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly snackBar = inject(MatSnackBar);
   private requestId = 0;
   private ticketId = '';
@@ -107,7 +108,7 @@ export class TicketTransferStartPage {
       this.ticketId = params.get('ticketId') ?? '';
       this.clearExpiryTimer();
       if (!this.ticketId) {
-        this.state.set({ status: 'empty', message: 'Este bilhete não está disponível.' });
+        this.navigateToError(404);
         return;
       }
       this.load();
@@ -245,7 +246,7 @@ export class TicketTransferStartPage {
         next: ({ ticket, transfers }) => {
           if (requestId !== this.requestId) return;
           if (!ticket) {
-            this.state.set({ status: 'empty', message: 'Este bilhete não está disponível.' });
+            this.navigateToError(404);
             return;
           }
           const pending = transfers.outgoing.find(
@@ -255,12 +256,16 @@ export class TicketTransferStartPage {
           this.now.set(Date.now());
           this.scheduleExpiryRefresh(ticket);
         },
-        error: () => {
+        error: (error: unknown) => {
           if (requestId === this.requestId) {
-            this.state.set({ status: 'error', message: 'Não foi possível carregar este bilhete.' });
+            this.navigateToError(privateResourceErrorStatus(error));
           }
         },
       });
+  }
+
+  private navigateToError(status: 403 | 404 | 500 | 503): void {
+    void this.routeErrors.navigate(status);
   }
 
   private scheduleExpiryRefresh(ticket: WalletTicket): void {

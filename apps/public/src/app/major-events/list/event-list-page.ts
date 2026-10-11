@@ -10,6 +10,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
@@ -24,6 +25,7 @@ import { CurrentUserInterestState, InterestApiService } from '../../interests/in
 import { PublicEventFormApiService } from '../../forms/event-form-api.service';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { TargetFormLinks } from '../../forms/target-form-links';
+import { privateResourceErrorStatus, routePageErrorStatus } from '../../shared/route-error-handling';
 
 type MajorEventPageState =
   | { status: 'loading' }
@@ -33,8 +35,7 @@ type MajorEventPageState =
       subscriptions: CurrentUserMajorEventSubscription[];
       prizeDrawTargetIds: string[];
       preview?: { expiresAt: string } | null;
-    }
-  | { status: 'error'; message: string };
+    };
 
 const RECEIPT_UPLOAD_STATUSES = new Set([
   'WAITING_RECEIPT_UPLOAD',
@@ -73,6 +74,7 @@ export class MajorEvent {
   private readonly prizeDrawsApi = inject(PublicPrizeDrawApiService);
   private readonly realtime = inject(RealtimeInvalidationService);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
 
   private readonly interestApi = inject(InterestApiService);
   private readonly formsApi = inject(PublicEventFormApiService);
@@ -238,11 +240,9 @@ export class MajorEvent {
               prizeDrawTargetIds: [],
               preview: { expiresAt },
             }),
-          error: (error: unknown) =>
-            this.pageState.set({
-              status: 'error',
-              message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
-            }),
+          error: (error: unknown) => {
+            void this.routeErrors.navigate(privateResourceErrorStatus(error));
+          },
         });
       return;
     }
@@ -265,11 +265,9 @@ export class MajorEvent {
             authenticated: this.isAuthenticated(),
           });
         },
-        error: (error: unknown) =>
-          this.pageState.set({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Não foi possível carregar os eventos.',
-          }),
+        error: (error: unknown) => {
+          void this.routeErrors.navigate(routePageErrorStatus(error));
+        },
       });
   }
 

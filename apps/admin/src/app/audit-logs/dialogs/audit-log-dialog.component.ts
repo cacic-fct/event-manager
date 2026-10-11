@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,12 +28,11 @@ export interface AuditLogDialogData {
 
 @Component({
   selector: 'app-audit-log-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule],
   template: `
     <h2 mat-dialog-title>Histórico</h2>
 
-    <mat-dialog-content class="history-content">
+    <mat-dialog-content class="history-content" tabindex="0">
       <header class="history-header">
         <div>
           <span>Registro auditado</span>
@@ -190,7 +189,7 @@ export interface AuditLogDialogData {
     .entry-meta,
     .grouping-note,
     .reverted-note {
-      color: color-mix(in srgb, currentColor 68%, transparent);
+      color: var(--mat-sys-on-surface-variant);
       font: var(--mat-sys-body-small);
     }
 

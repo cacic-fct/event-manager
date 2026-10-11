@@ -181,6 +181,11 @@ h3 {
   opacity: 0.78;
 }
 
+.now-section .roles,
+.now-section .location {
+  opacity: 1;
+}
+
 .location {
   align-items: center;
   display: flex;

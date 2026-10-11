@@ -400,8 +400,12 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     if (!majorEvent) {
       throw new NotFoundException(`Major event ${majorEventId} was not found.`);
     }
-    const eventCount = await this.prisma.event.count({ where: { majorEventId, deletedAt: null } });
-    if (eventCount === 0) {
+    // Direct event queries apply audience restrictions; nested People predicates do not.
+    const events = await this.prisma.event.findMany({
+      where: { majorEventId, deletedAt: null },
+      select: { id: true },
+    });
+    if (events.length === 0) {
       return 0;
     }
     const search = personSearchWhere(query);
@@ -416,7 +420,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
           attendances: {
             some: {
               status: 'PRESENT',
-              event: { majorEventId, deletedAt: null },
+              eventId: { in: events.map(({ id }) => id) },
             },
           },
         },

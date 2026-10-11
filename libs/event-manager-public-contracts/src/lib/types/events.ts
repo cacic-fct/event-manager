@@ -143,6 +143,7 @@ export interface PublicEvent {
   onlineAttendanceEndDate?: DateTimeString | null;
   isPubliclyListed?: boolean | null;
   youtubeCode?: string | null;
+  twitchChannel?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;
   lecturers?: PublicLecturerProfile[];

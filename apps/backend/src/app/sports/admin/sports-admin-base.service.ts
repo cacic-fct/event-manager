@@ -92,7 +92,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
                 scope.venue.courtLabel,
               ]
                 .filter(Boolean)
-                .join(' · '),
+                .join(', '),
             }
           : {}),
         updatedById: actorId,

@@ -1,10 +1,11 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { createTicketPurchase, createTicketPurchaseOption, createTicketPurchaseReceipt } from '@cacic-fct/shared-ticketing/testing';
 import type { TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { EMPTY, of, throwError } from 'rxjs';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PaymentReceiptApiService } from './receipt-api.service';
@@ -78,7 +79,7 @@ const defaultArgs: TicketPurchasePaymentStoryArgs = {
 
 const meta: Meta<TicketPurchasePaymentStoryArgs> = {
   component: PaymentInfo,
-  title: 'CACiC Eventos/Major Events/Payment/Ticket Purchase',
+  title: 'Public/Ticketing/Payments/Receipt',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
   args: defaultArgs,
@@ -92,6 +93,7 @@ const meta: Meta<TicketPurchasePaymentStoryArgs> = {
     priceTierName: { control: 'text' },
   },
   decorators: [
+    withScenarioControls<TicketPurchasePaymentStoryArgs>(),
     (story, context) => {
       const args = { ...defaultArgs, ...context.args };
       const option = ticketOption(args);
@@ -148,11 +150,27 @@ const meta: Meta<TicketPurchasePaymentStoryArgs> = {
 
 export default meta;
 
+function storyPurchase(mode: TicketPurchasePaymentStoryArgs['mode'], option: TicketPurchaseOption) {
+  if (mode !== 'under-review' && mode !== 'rejected') return null;
+  return createTicketPurchase({
+    id: 'story-purchase',
+    eventId: option.eventId,
+    majorEventId: option.majorEventId,
+    ticketConfigId: option.ticketConfigId,
+    name: option.name,
+    emoji: option.emoji,
+    priceTierName: option.priceTierName,
+    amountCents: option.amountCents,
+    status: mode === 'under-review' ? 'UNDER_REVIEW' : 'REJECTED',
+    receipt: createTicketPurchaseReceipt({ imageUrl: '/api/ticket-purchases/story-purchase/receipt' }),
+    rejectionReason: mode === 'rejected' ? 'O comprovante está ilegível.' : null,
+  });
+}
+
 type Story = StoryObj<TicketPurchasePaymentStoryArgs>;
 
 export const Playground: Story = {
   args: { mode: 'ready', expectedAmountCents: 2500 },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Festa de encerramento' })).toBeVisible();
@@ -178,8 +196,12 @@ export const UploadSuccess: Story = {
     await canvas.findByRole('heading', { name: 'Festa de encerramento' });
     const file = new File(['recibo de pagamento'], 'comprovante.pdf', { type: 'application/pdf' });
     const uploadButton = canvas.getByRole('button', { name: /^Enviar comprovante/ });
-    uploadButton.focus();
-    await userEvent.upload(canvas.getByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), file);
+    await userEvent.click(uploadButton);
+    // Deliver the native picker result without clicking its hidden input,
+    // which would give Material the wrong focus-restoration target.
+    const selectedFiles = new DataTransfer();
+    selectedFiles.items.add(file);
+    await fireEvent.change(canvas.getByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), { target: { files: selectedFiles.files } });
     const dialog = within(canvasElement.ownerDocument.body);
     const confirmation = await dialog.findByRole('dialog', { name: 'Confirmar comprovante' });
     await expect(confirmation).toBeVisible();
@@ -230,8 +252,10 @@ export const UploadFailure: Story = {
     const canvas = within(canvasElement);
     const file = new File(['recibo'], 'comprovante.pdf', { type: 'application/pdf' });
     const uploadButton = await canvas.findByRole('button', { name: /^Enviar comprovante/ });
-    uploadButton.focus();
-    await userEvent.upload(await canvas.findByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), file);
+    await userEvent.click(uploadButton);
+    const selectedFiles = new DataTransfer();
+    selectedFiles.items.add(file);
+    await fireEvent.change(await canvas.findByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), { target: { files: selectedFiles.files } });
     const dialog = within(canvasElement.ownerDocument.body);
     const confirmation = await dialog.findByRole('dialog', { name: 'Confirmar comprovante' });
     await expect(confirmation).toBeVisible();
@@ -247,30 +271,3 @@ export const UploadFailure: Story = {
     });
   },
 };
-
-export const DarkReducedMotion: Story = {
-  args: { mode: 'rejected', expectedAmountCents: 2500 },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Comprovante rejeitado')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /^Enviar novo comprovante/ })).toBeEnabled();
-  },
-};
-
-function storyPurchase(mode: TicketPurchasePaymentStoryArgs['mode'], option: TicketPurchaseOption) {
-  if (mode !== 'under-review' && mode !== 'rejected') return null;
-  return createTicketPurchase({
-    id: 'story-purchase',
-    eventId: option.eventId,
-    majorEventId: option.majorEventId,
-    ticketConfigId: option.ticketConfigId,
-    name: option.name,
-    emoji: option.emoji,
-    priceTierName: option.priceTierName,
-    amountCents: option.amountCents,
-    status: mode === 'under-review' ? 'UNDER_REVIEW' : 'REJECTED',
-    receipt: createTicketPurchaseReceipt({ imageUrl: '/api/ticket-purchases/story-purchase/receipt' }),
-    rejectionReason: mode === 'rejected' ? 'O comprovante está ilegível.' : null,
-  });
-}

@@ -46,7 +46,7 @@ describe('SubscriptionEventList', () => {
     fixture.componentRef.setInput('autoSelectedEventIds', new Set());
     fixture.componentRef.setInput('disabledReasons', new Map());
 
-    expect(fixture.componentInstance.slotsLine(event)).toBe('2 vagas disponíveis · Posição 4 na fila');
+    expect(fixture.componentInstance.slotsLine(event)).toBe('2 vagas disponíveis, posição 4 na fila');
   });
 
   it('does not allow selecting an event with no available slots', async () => {

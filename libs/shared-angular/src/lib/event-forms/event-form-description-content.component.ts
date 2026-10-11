@@ -1,10 +1,9 @@
 import { NgOptimizedImage } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { FormImage } from '@cacic-fct/form-contracts';
 
 @Component({
   selector: 'lib-event-form-description-content',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgOptimizedImage],
   template: `
     @if (text(); as descriptionText) {

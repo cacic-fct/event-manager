@@ -22,7 +22,7 @@ env:
 jobs:
   speedy-release:
     name: Speedy release (tests skipped)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -41,7 +41,7 @@ jobs:
 
   lint:
     name: Lint all projects
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
 
   unit-tests:
     name: Unit tests (${{ matrix.project }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -250,7 +250,7 @@ jobs:
 
   frontend-e2e:
     name: Frontend E2E (${{ matrix.project }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -346,7 +346,7 @@ jobs:
 
   backend-e2e:
     name: Backend E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -452,7 +452,7 @@ jobs:
 
   build:
     name: Build deployable apps
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -496,7 +496,7 @@ jobs:
 
   checks:
     name: Lint, test, and build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     needs:
       - lint
@@ -530,7 +530,7 @@ jobs:
 
   prepare-untrusted-pr:
     name: Prepare untrusted PR dependencies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -596,7 +596,7 @@ jobs:
 
   untrusted-pr-lint:
     name: Untrusted PR lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     needs:
       - prepare-untrusted-pr
@@ -647,7 +647,7 @@ jobs:
 
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -713,7 +713,7 @@ jobs:
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     needs:
       - prepare-untrusted-pr
@@ -773,7 +773,7 @@ jobs:
 
   untrusted-pr-backend-e2e:
     name: Untrusted PR backend E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -845,7 +845,7 @@ jobs:
 
   untrusted-pr-build:
     name: Untrusted PR build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     needs:
       - prepare-untrusted-pr
@@ -887,7 +887,7 @@ jobs:
 
   untrusted-pr-checks:
     name: Untrusted PR checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     needs:
       - untrusted-pr-lint

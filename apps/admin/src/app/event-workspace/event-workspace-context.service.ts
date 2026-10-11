@@ -9,6 +9,7 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { NavigationLinkId } from '../app-shell/navigation';
 import { adminEventWorkspaceCreationRoute, adminEventWorkspaceRoute, adminSportsWorkspaceRoute, type AdminEventWorkspaceKind } from '@cacic-fct/shared-utils';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 export type EventWorkspaceKind = AdminEventWorkspaceKind;
 export interface EventWorkspaceRef { kind: EventWorkspaceKind; id: string }
@@ -30,6 +31,22 @@ export interface ContextOperation {
   permissionTab: NavigationLinkId;
   queryParams?: Record<string, string>;
 }
+
+type ContextOperationGroupKind = 'operational' | 'documents' | 'setup';
+
+const contextOperationGroupById: Record<ContextOperation['id'], ContextOperationGroupKind> = {
+  overview: 'operational',
+  settings: 'setup',
+  sports: 'operational',
+  tickets: 'setup',
+  subscriptions: 'operational',
+  attendances: 'operational',
+  forms: 'documents',
+  draws: 'operational',
+  interests: 'operational',
+  certificates: 'documents',
+  publication: 'setup',
+};
 
 export function eventContextFromUrl(url: string): EventWorkspaceRef | null {
   let segments: string[];
@@ -69,26 +86,59 @@ export function eventContextFromUrl(url: string): EventWorkspaceRef | null {
 export function contextOperations(context: EventWorkspaceRef): ContextOperation[] {
   const { kind, id } = context;
   const targetType = kind === 'group' ? 'event-group' : kind;
-  const operations: ContextOperation[] = kind === 'event' ? [] : [
-    { id: 'overview', label: 'Visão geral', icon: 'space_dashboard', path: adminEventWorkspaceRoute(context), permissionTab: kind === 'group' ? 'groups' : 'major-events' },
+  const operations: ContextOperation[] = [
+    { id: 'settings', label: 'Configurações', icon: 'settings', path: adminEventWorkspaceRoute({ ...context, section: 'settings' }), permissionTab: kind === 'group' ? 'groups' : kind === 'event' ? 'events' : 'major-events' },
   ];
-  operations.push({ id: 'settings', label: 'Configurações', icon: 'settings', path: adminEventWorkspaceRoute({ ...context, section: 'settings' }), permissionTab: kind === 'group' ? 'groups' : kind === 'event' ? 'events' : 'major-events' });
+  if (kind !== 'event') {
+    operations.push({ id: 'overview', label: 'Visão geral', icon: 'space_dashboard', path: adminEventWorkspaceRoute(context), permissionTab: kind === 'group' ? 'groups' : 'major-events' });
+  }
   if (kind !== 'group') {
     operations.push(
-      { id: 'tickets', label: 'Bilhetes', icon: 'confirmation_number', path: ['/tickets', kind, id], permissionTab: 'tickets' },
       { id: 'subscriptions', label: 'Inscrições', icon: 'how_to_reg', path: ['/subscriptions', kind, id], permissionTab: 'subscriptions' },
       { id: 'attendances', label: 'Presenças', icon: 'fact_check', path: ['/attendances', kind, id], permissionTab: 'attendances' },
-      { id: 'forms', label: 'Formulários', icon: 'list_alt', path: ['/forms', kind, id], permissionTab: 'forms' },
-      { id: 'draws', label: 'Sorteios', icon: 'rewarded_ads', path: ['/draws'], queryParams: { [kind === 'event' ? 'eventId' : 'majorEventId']: id }, permissionTab: 'prize-draws' },
     );
   }
-  if (kind === 'major-event') operations.push({ id: 'sports', label: 'Esportes', icon: 'sports', path: adminSportsWorkspaceRoute({ majorEventId: id }), permissionTab: 'sports' });
-  operations.push(
-    { id: 'interests', label: 'Interessados', icon: 'bookmark_add', path: ['/subscriptions', kind, id, 'interests'], permissionTab: 'subscriptions' },
-    { id: 'certificates', label: 'Certificados', icon: 'workspace_premium', path: ['/certificates', targetType, id], permissionTab: 'certificates' },
-    { id: 'publication', label: 'Publicação', icon: 'campaign', path: ['/publication', targetType, id], permissionTab: 'publication' },
-  );
+  if (kind === 'major-event') {
+    operations.push({ id: 'sports', label: 'Esportes', icon: 'sports', path: adminSportsWorkspaceRoute({ majorEventId: id }), permissionTab: 'sports' });
+  }
+  operations.push({ id: 'interests', label: 'Interessados', icon: 'bookmark_add', path: ['/subscriptions', kind, id, 'interests'], permissionTab: 'subscriptions' });
+  if (kind !== 'group') {
+    operations.push({ id: 'draws', label: 'Sorteios', icon: 'rewarded_ads', path: ['/draws'], queryParams: { [kind === 'event' ? 'eventId' : 'majorEventId']: id }, permissionTab: 'prize-draws' });
+  }
+  operations.push({ id: 'certificates', label: 'Certificados', icon: 'workspace_premium', path: ['/certificates', targetType, id], permissionTab: 'certificates' });
+  if (kind !== 'group') {
+    operations.push({ id: 'forms', label: 'Formulários', icon: 'list_alt', path: ['/forms', kind, id], permissionTab: 'forms' });
+    operations.push({ id: 'tickets', label: 'Bilhetes', icon: 'confirmation_number', path: ['/tickets', kind, id], permissionTab: 'tickets' });
+  }
+  operations.push({ id: 'publication', label: 'Publicação', icon: 'campaign', path: ['/publication', targetType, id], permissionTab: 'publication' });
   return operations;
+}
+
+export function contextOperationGroups(operations: ContextOperation[]): ContextOperation[][] {
+  const groups: ContextOperation[][] = [];
+  let currentGroupKind: ContextOperationGroupKind | undefined;
+  for (const operation of operations) {
+    const groupKind = contextOperationGroupById[operation.id];
+    if (groupKind !== currentGroupKind) groups.push([]);
+    groups[groups.length - 1].push(operation);
+    currentGroupKind = groupKind;
+  }
+
+  for (let index = 0; index < groups.length;) {
+    if (groups.length === 1 || groups[index].length > 1) {
+      index++;
+      continue;
+    }
+    if (index === 0) {
+      groups[1] = [...groups[0], ...groups[1]];
+      groups.shift();
+    } else {
+      groups[index - 1].push(...groups[index]);
+      groups.splice(index, 1);
+      index--;
+    }
+  }
+  return groups;
 }
 
 export function eventCreationTarget(kind: EventWorkspaceKind, parent?: EventWorkspaceContext | null): { commands: string[]; queryParams?: Record<string, string> } {
@@ -109,6 +159,7 @@ export class EventWorkspaceContextService {
   private readonly majors = inject(MajorEventApiService);
   private readonly permissions = inject(PermissionsService);
   private readonly injector = inject(Injector);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private request = 0;
   private readonly navigationParents = new Map<string, EventWorkspaceParent>();
   readonly context = signal<EventWorkspaceContext | null>(null);
@@ -119,6 +170,7 @@ export class EventWorkspaceContextService {
     const context = this.context();
     return context ? contextOperations(context).filter((operation) => this.permissions.canReadTab(operation.permissionTab)) : [];
   });
+  readonly operationGroups = computed(() => contextOperationGroups(this.operations()));
 
   async load(ref: EventWorkspaceRef | null): Promise<void> {
     const request = ++this.request;
@@ -146,8 +198,10 @@ export class EventWorkspaceContextService {
         ...('startDate' in entity ? { startDate: entity.startDate, endDate: entity.endDate } : {}) });
       const parent = await this.loadParent(ref, entity);
       if (request === this.request) this.context.update((context) => context ? { ...context, parent } : context);
-    } catch {
-      if (request === this.request) this.error.set('Não foi possível abrir este contexto. Confira seu acesso e tente novamente.');
+    } catch (error) {
+      if (request === this.request && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.error.set('Não foi possível abrir este contexto. Confira seu acesso e tente novamente.');
+      }
     } finally {
       if (request === this.request) this.loading.set(false);
     }

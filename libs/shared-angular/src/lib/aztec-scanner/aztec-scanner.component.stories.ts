@@ -13,7 +13,7 @@ type AztecScannerStoryArgs = {
 
 const meta: Meta<AztecScannerStoryArgs> = {
   component: AztecScannerComponent,
-  title: 'CACiC Eventos/Shared/Scanning/Aztec scanner',
+  title: 'Shared/Scanning/Aztec Scanner',
   tags: ['autodocs'],
   args: {
     title: 'Escanear carteira',
@@ -23,15 +23,21 @@ const meta: Meta<AztecScannerStoryArgs> = {
     formats: ['Aztec'],
   },
   argTypes: {
-    title: { control: 'text' },
-    acceptedPrefixes: { control: 'object' },
-    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 } },
-    frameSize: { control: { type: 'number', min: 480, max: 1920, step: 80 } },
-    formats: { control: 'object' },
+    title: { control: 'text', description: 'Instruction shown above the camera preview.' },
+    acceptedPrefixes: { control: 'object', description: 'Accepted barcode payload prefixes.' },
+    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 }, description: 'Pause the camera after a successful scan.' },
+    frameSize: { control: { type: 'number', min: 480, max: 1920, step: 80 }, description: 'Maximum camera preview dimension in pixels.' },
+    formats: { control: 'object', description: 'Barcode formats accepted by the scanner.' },
   },
   parameters: {
     layout: 'centered',
-    a11y: { test: 'todo' },
+    docs: {
+      description: {
+        component:
+          'This story uses the browser camera when permission is available. Use the controls to change accepted formats and payload prefixes.',
+      },
+    },
+    a11y: { test: 'error' },
   },
 };
 
@@ -53,23 +59,4 @@ export const QrAndAztec: Story = {
     acceptedPrefixes: ['ticket:', 'user:'],
     formats: ['Aztec', 'QRCode'],
   },
-};
-
-export const CompactFrame: Story = {
-  args: {
-    title: 'Escanear credencial em dispositivo móvel',
-    frameSize: 640,
-    pauseAfterScanMs: 900,
-  },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    title: 'Escanear credencial no modo noturno',
-    frameSize: 720,
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

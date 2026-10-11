@@ -1,6 +1,7 @@
 import { inject, provideAppInitializer } from '@angular/core';
 import { Router } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { of, throwError } from 'rxjs';
 import type { AdminEventContextPageOptions } from '@cacic-fct/event-manager-admin-contracts';
@@ -27,7 +28,7 @@ let navigate: ReturnType<typeof fn>;
 
 const meta: Meta<TicketLandingStoryArgs> = {
   component: TicketAdminLandingPageComponent,
-  title: 'CACiC Eventos/Workspace/Tickets/Ticket Admin Landing',
+  title: 'Admin/Ticketing/Overview',
   tags: ['autodocs', 'ticketing'],
   args: { pageState: 'ready', longNames: false },
   argTypes: {
@@ -35,6 +36,7 @@ const meta: Meta<TicketLandingStoryArgs> = {
     longNames: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<TicketLandingStoryArgs>(),
     (story, context) => {
       activeArgs = context.args;
       navigate = fn();
@@ -63,13 +65,21 @@ const meta: Meta<TicketLandingStoryArgs> = {
       })(story, context);
     },
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Ticket administration overview with controls for data availability and event listing behavior.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
 type Story = StoryObj<TicketLandingStoryArgs>;
 
-export const Playground: Story = {};
+export const Playground: Story = {  };
 
 export const ChooseEvent: Story = {
   play: async ({ canvasElement }) => {
@@ -95,8 +105,6 @@ export const ContextSearchError: Story = {
   },
 };
 
-export const LongNamesOnMobile: Story = {
+export const LongNames: Story = {
   args: { longNames: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { AuthService, CacicAnalyticsService, MailtoService } from '@cacic-fct/shared-angular';
@@ -57,7 +57,6 @@ function buildCertificates(args: CertificateDialogStoryArgs): Certificate[] {
 
 @Component({
   selector: 'app-storybook-certificate-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -119,7 +118,7 @@ class CertificateDialogStoryHost {
 
 const meta: Meta<CertificateDialogStoryArgs> = {
   component: CertificateDialogStoryHost,
-  title: 'CACiC Eventos/Profile/Attendance/Certificate Dialog',
+  title: 'Public/Profile/Attendance History/Certificates',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -132,7 +131,7 @@ const meta: Meta<CertificateDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -166,7 +165,6 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { state: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível carregar os certificados.')).toBeVisible();
   },
@@ -185,12 +183,10 @@ export const DenseFolder: Story = {
   args: { certificateCount: 30, namePrefix: 'Certificado interdisciplinar' },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     certificateCount: 8,
     title: 'Certificados de atividades acadêmicas, culturais, esportivas e de extensão universitária',
     namePrefix: 'Certificado detalhado de participação e contribuição',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

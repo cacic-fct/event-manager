@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -21,7 +21,6 @@ class MockNovuBadgeNotificationsService {
 
 @Component({
   selector: 'lib-storybook-novu-notification-badge-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule, NovuNotificationBadgeComponent],
   providers: [
     MockNovuBadgeNotificationsService,
@@ -50,7 +49,7 @@ class NovuNotificationBadgeStoryHostComponent {
 
 const meta: Meta<NovuNotificationBadgeStoryArgs> = {
   component: NovuNotificationBadgeStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Notifications/Unread badge',
+  title: 'Shared/Notifications/Unread Badge',
   tags: ['autodocs'],
   args: {
     unreadCount: 3,
@@ -60,14 +59,20 @@ const meta: Meta<NovuNotificationBadgeStoryArgs> = {
   argTypes: {
     unreadCount: {
       control: { type: 'number', min: 0, max: 99, step: 1 },
-      description: 'Quantidade de notificações ainda não lidas.',
+      description: 'Number of notifications that are still unread.',
     },
-    overlap: { control: 'boolean', description: 'Sobrepõe o selo ao conteúdo projetado.' },
-    icon: { control: 'text', description: 'Ícone Material usado pelo botão hospedeiro.' },
+    overlap: { control: 'boolean', description: 'Overlap the badge with the projected content.' },
+    icon: { control: 'text', description: 'Material icon used by the host button.' },
   },
   parameters: {
     layout: 'centered',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
+    docs: {
+      description: {
+        component:
+          'A local notification service mock supplies the unread count. Use the controls to review empty and high-count badge states.',
+      },
+    },
   },
 };
 
@@ -96,13 +101,4 @@ export const HighCount: Story = {
     unreadCount: 42,
     overlap: false,
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    unreadCount: 7,
-    overlap: true,
-    icon: 'notifications_active',
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -10,11 +10,6 @@
 <main class="detail-page">
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando detalhes da participação"></mat-progress-bar>
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else { @let detail = currentState.detail;
 
   <header class="detail-header">

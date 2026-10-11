@@ -86,7 +86,7 @@ let nextPickerId = 0;
           <div class="context-pager" aria-label="Paginação de contextos">
             <button mat-icon-button type="button" aria-label="Página anterior de contextos"
               [disabled]="disabled() || loading() || !cursorHistory().length" (click)="previousPage()"><mat-icon>chevron_left</mat-icon></button>
-            <span aria-live="polite">Página {{ cursorHistory().length + 1 }}@if (!loading() && !error()) { · {{ results().length }} nesta página }</span>
+            <span aria-live="polite">Página {{ cursorHistory().length + 1 }}@if (!loading() && !error()) {: {{ results().length }} resultados nesta página }</span>
             <button mat-icon-button type="button" aria-label="Próxima página de contextos"
               [disabled]="disabled() || loading() || !nextCursor()" (click)="nextPage()"><mat-icon>chevron_right</mat-icon></button>
           </div>
@@ -134,7 +134,7 @@ let nextPickerId = 0;
       </li>
     </ng-template>
     <ng-template #nodeMetadata let-node>
-      <span class="node-meta">{{ kindLabel(node.kind) }}@if (node.eventType) { · {{ eventTypeLabel(node.eventType) }} }@if (node.startDate) { · {{ node.startDate | date:'short' }} }@if (node.publicationState) { · {{ publicationLabel(node.publicationState) }} }</span>
+      <span class="node-meta">{{ kindLabel(node.kind) }}@if (node.eventType) {, tipo: {{ eventTypeLabel(node.eventType) }}}@if (node.startDate) {, {{ node.startDate | date:'short' }}}@if (node.publicationState) {, publicação: {{ publicationLabel(node.publicationState) }}}</span>
       @if (node.locationDescription) { <span class="node-meta">{{ node.locationDescription }}</span> }
       @if ((appliedQuery() || hasAppliedFilters()) && node.ancestors.length) {
         <span class="node-ancestry">Em: @for (ancestor of node.ancestors; track ancestor.kind + ':' + ancestor.id; let last = $last) {

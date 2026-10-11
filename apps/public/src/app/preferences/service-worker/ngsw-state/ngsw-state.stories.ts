@@ -1,14 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { NgswState } from './ngsw-state';
 
 const meta: Meta<NgswState> = {
   component: NgswState,
-  title: 'CACiC Eventos/Preferences/Service Worker/NGSW State',
+  title: 'Public/Settings/Service Worker/State',
   tags: ['autodocs'],
+  decorators: [withScenarioControls()],
   parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        component: 'Service worker diagnostics shown under enabled, disabled, and offline globals.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -35,18 +43,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineInstalled: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

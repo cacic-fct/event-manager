@@ -18,16 +18,16 @@
             <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
             {{ category.name }}
           </span>
-          <span matListItemLine>{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span>
+          <span matListItemLine>{{ category.division || 'Sem divisão' }}, {{ formatLabel(category.format) }}</span>
           <span matListItemMeta class="state-label category-state-label">{{
             categoryStatusLabel(category.status)
           }}</span>
         </mat-list-item>
       } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhuma modalidade</span>
-          <span matListItemLine>Comece por um preset e ajuste somente o necessário.</span>
-        </mat-list-item>
+        <div class="admin-list-empty">
+          <mat-icon aria-hidden="true">hide_source</mat-icon>
+          <p>Nenhuma modalidade</p>
+        </div>
       }
     </mat-list>
   </aside>
@@ -440,7 +440,7 @@
             <span>
               <strong>{{ workspace.teamNameForRegistration(registration.id) }}</strong>
               <small
-                >Seed {{ registration.seed || 'não definido' }} ·
+                >Seed {{ registration.seed || 'não definido' }},
                 {{ workspace.statusLabel(registration.status) }}</small
               >
             </span>

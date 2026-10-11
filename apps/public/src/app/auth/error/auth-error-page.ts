@@ -1,9 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   DestroyRef,
   PLATFORM_ID,
+  RESPONSE_INIT,
   computed,
   inject,
   input,
@@ -17,6 +17,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
+import { PAGE_ERROR_HEADERS } from '@cacic-fct/shared-angular/errors';
 
 export interface AuthErrorPageContent {
   title: string;
@@ -77,7 +78,6 @@ const DEFAULT_AUTH_ERROR_CONTENT: AuthErrorPageContent = {
   ],
   templateUrl: './auth-error-page.html',
   styleUrl: './auth-error-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AuthErrorPage {
   readonly contentOverride = input<AuthErrorPageContent | null>(null);
@@ -87,6 +87,7 @@ export class AuthErrorPage {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly response = inject(RESPONSE_INIT, { optional: true });
   public readonly isDarkSignal = signal(false);
   private readonly routeContent = signal<AuthErrorPageContent>(DEFAULT_AUTH_ERROR_CONTENT);
 
@@ -95,6 +96,13 @@ export class AuthErrorPage {
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const reason = this.readReason(params.get('reason'));
+
+      if (this.response) {
+        this.response.status = reason === 'server-error' ? 500 : 400;
+        const headers = new Headers(this.response.headers);
+        for (const [name, value] of Object.entries(PAGE_ERROR_HEADERS)) headers.set(name, value);
+        this.response.headers = headers;
+      }
 
       this.routeContent.set({
         ...AUTH_ERROR_COPY[reason],
@@ -129,8 +137,12 @@ export class AuthErrorPage {
       return;
     }
 
-    await navigator.clipboard.writeText(this.content().rawError);
-    this.snackBar.open('Detalhes técnicos copiados.', 'OK', { duration: 3000 });
+    try {
+      await navigator.clipboard.writeText(this.content().rawError);
+      this.snackBar.open('Detalhes técnicos copiados.', 'OK', { duration: 3000 });
+    } catch {
+      this.snackBar.open('Não foi possível copiar os detalhes.', 'OK', { duration: 3000 });
+    }
   }
 
   private readReason(value: string | null): AuthErrorReason {
@@ -139,7 +151,8 @@ export class AuthErrorPage {
 
   private readSafeReturnTo(value: string | null): string {
     const returnTo = value?.trim();
-    if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//') || returnTo.includes('\\') ||
+      Array.from(returnTo).some((character) => character.charCodeAt(0) < 32)) {
       return DEFAULT_AUTH_ERROR_CONTENT.returnTo;
     }
 

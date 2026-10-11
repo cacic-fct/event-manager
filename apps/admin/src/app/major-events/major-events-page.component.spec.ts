@@ -8,9 +8,10 @@ import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { createPageStoryProviders, defaultPageStoryArgs } from '../stories/page-story-support';
 import { MajorEventsPageComponent } from './major-events-page.component';
+import { MajorEventsService } from './major-events.service';
 
 describe('MajorEventsPageComponent', () => {
-  async function createFixture() {
+  async function createFixture(params: Record<string, string> = {}, data: Record<string, string> = {}) {
     const dialog = { open: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [MajorEventsPageComponent],
@@ -20,18 +21,26 @@ describe('MajorEventsPageComponent', () => {
         ...createPageStoryProviders(defaultPageStoryArgs),
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: of(convertToParamMap({})) },
+          useValue: { paramMap: of(convertToParamMap(params)), snapshot: { data } },
         },
       ],
     });
     TestBed.overrideProvider(MatDialog, { useValue: dialog });
     await TestBed.compileComponents();
+    const pickMajorEventById = vi.spyOn(TestBed.inject(MajorEventsService), 'pickMajorEventById');
     const fixture: ComponentFixture<MajorEventsPageComponent> = TestBed.createComponent(MajorEventsPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    return { dialog, fixture };
+    return { dialog, fixture, pickMajorEventById };
   }
+
+  it('loads the existing major event identified by workspace route metadata', async () => {
+    const { pickMajorEventById } = await createFixture(
+      { targetId: 'workspace-major' }, { targetType: 'major-event', section: 'settings' },
+    );
+    expect(pickMajorEventById).toHaveBeenCalledWith('workspace-major');
+  });
 
   it('removes a linked activity without navigating or bubbling to the list', async () => {
     const fixture = (await createFixture()).fixture;

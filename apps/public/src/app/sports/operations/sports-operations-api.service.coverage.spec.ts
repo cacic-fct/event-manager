@@ -187,7 +187,7 @@ describe('SportsOperationsApiService uncovered operations', () => {
       api.submitRoster({ matchId: 'match-1', registrationId: 'registration-1', entries: [] }),
     );
     http.expectOne('/api/graphql').flush({ errors: [{ message: 'Conflito' }, { message: 'Revisão necessária' }] });
-    await expect(errorResult).rejects.toThrow('Conflito Revisão necessária');
+    await expect(errorResult).rejects.toThrow('Conflito\nRevisão necessária');
 
     const missingResult = firstValueFrom(
       api.reviewTeamApplication({ applicationId: 'application-1', teamId: 'team-1', approved: true }),

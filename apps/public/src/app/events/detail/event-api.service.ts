@@ -14,7 +14,7 @@ import {
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
-import { graphqlError } from '../../shared/rate-limit-error';
+import { graphqlError, NotFoundGraphqlError } from '../../shared/rate-limit-error';
 
 export type { PublicEventSubscriptionSummary, PublicEventWeather } from '@cacic-fct/event-manager-public-contracts';
 
@@ -110,7 +110,7 @@ export class EventApiService {
       map((data) => {
         const event = data.publicationPreview.event;
         if (!event) {
-          throw new Error('Pré-visualização sem evento.');
+          throw new NotFoundGraphqlError('Pré-visualização sem evento.');
         }
 
         return {

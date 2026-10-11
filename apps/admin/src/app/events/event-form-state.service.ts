@@ -2,6 +2,7 @@ import { Service, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { EventAudience } from '@cacic-fct/shared-event-participation';
 import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import { dateRangeValidator } from '../shared/date-range-validator';
 
 @Service()
@@ -60,7 +61,8 @@ export class EventFormStateService {
         onlineAttendanceEndDate: [''],
         isPubliclyListed: [true],
         displayLecturerProfile: [true],
-        youtubeCode: [''],
+        youtubeCode: ['', optionalIdentifierValidator(normalizeYoutubeCode, 'invalidYoutubeCode')],
+        twitchChannel: ['', optionalIdentifierValidator(normalizeTwitchChannel, 'invalidTwitchChannel')],
         buttonText: [''],
         buttonLink: [''],
       },
@@ -155,4 +157,14 @@ export class EventFormStateService {
         : null;
     };
   }
+}
+
+function optionalIdentifierValidator(
+  normalize: (value: string) => string | null,
+  errorKey: string,
+): (control: AbstractControl) => ValidationErrors | null {
+  return (control) => {
+    const value = typeof control.value === 'string' ? control.value.trim() : '';
+    return value && normalize(value) === null ? { [errorKey]: true } : null;
+  };
 }

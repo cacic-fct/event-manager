@@ -8,7 +8,7 @@ describe('workspace nav', () => {
     const linkIds = globalNavigationItems.filter((item) => item.kind === 'link').map((item) => item.id);
 
     expect(linkIds).toEqual([
-      'dashboard', 'events', 'tickets', 'certificates', 'people', 'merge-candidates',
+      'dashboard', 'events', 'certificates', 'people', 'merge-candidates',
       'notifications', 'places', 'global-operations', 'permissions', 'audit-logs', 'preferences',
     ]);
   });

@@ -111,6 +111,7 @@ export const navigationItems = [
   {
     kind: 'link',
     id: 'tickets',
+    contextOnly: true,
     path: 'tickets',
     label: 'Bilhetes',
     description: 'Configure direitos transferíveis, emissões e compras de bilhetes por evento.',

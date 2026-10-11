@@ -1,6 +1,15 @@
+@use '../../app-shell/layout/admin-view-widths' as view-widths;
+
 .receipt-validation-page {
+  @include view-widths.view(2);
   position: relative;
   padding-bottom: 96px;
+}
+
+@media (max-width: 900px) {
+  .receipt-validation-page {
+    @include view-widths.view();
+  }
 }
 
 .page-nav,

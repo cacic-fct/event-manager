@@ -102,7 +102,8 @@ export class MajorEventsPageComponent {
 
   private async initializeContext(params: ParamMap): Promise<void> {
     const request = ++this.contextRequest;
-    const id = params.get('majorEventId') ?? (params.get('targetType') === 'major-event' ? params.get('targetId') : null);
+    const targetType = params.get('targetType') ?? this.route.snapshot.data['targetType'];
+    const id = params.get('majorEventId') ?? (targetType === 'major-event' ? params.get('targetId') : null);
     this.contextLoading.set(true);
     this.contextError.set('');
     this.creationParents.set([]);

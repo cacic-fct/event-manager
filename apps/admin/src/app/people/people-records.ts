@@ -48,8 +48,14 @@ export abstract class PeopleRecords extends PeopleState {
       return;
     }
 
-    const person = await firstValueFrom(this.api.getPerson(personId));
-    this.populatePersonSelection(person);
+    try {
+      const person = await firstValueFrom(this.api.getPerson(personId));
+      this.populatePersonSelection(person);
+    } catch (error) {
+      if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.feedback.error(error, 'Não foi possível abrir esta pessoa.');
+      }
+    }
   }
 
   resetPersonForm(): void {

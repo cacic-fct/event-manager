@@ -1,10 +1,11 @@
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { InterestConversionDialogComponent, type InterestConversionDialogData } from './interest-conversion-dialog.component';
 
 const meta: Meta<InterestConversionDialogData> = {
-  title: 'CACiC Eventos/Workspace/Subscriptions/Interest Conversion',
+  title: 'Admin/Registration/Interests/Conversion',
   component: InterestConversionDialogComponent,
   tags: ['autodocs'],
   args: { personName: 'Ana Clara Silva', targetName: 'Trilha de acessibilidade', requiresImageLicenseAgreement: true },
@@ -13,7 +14,7 @@ const meta: Meta<InterestConversionDialogData> = {
     targetName: { control: 'text' },
     requiresImageLicenseAgreement: { control: 'boolean' },
   },
-  decorators: [(story, context) => applicationConfig({ providers: [
+  decorators: [withScenarioControls<InterestConversionDialogData>(), (story, context) => applicationConfig({ providers: [
     { provide: MAT_DIALOG_DATA, useValue: context.args },
     { provide: MatDialogRef, useValue: { close: () => undefined } },
   ] })(story, context)],
@@ -32,4 +33,3 @@ export const Playground: Story = {
   },
 };
 export const NoConsentRequired: Story = { args: { requiresImageLicenseAgreement: false } };
-export const DarkReducedMotion: Story = { globals: { theme: 'dark', motion: 'reduced' }, play: Playground.play };

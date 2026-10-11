@@ -1,5 +1,6 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { NEVER, delay, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../../graphql/receipt-validation-api.service';
@@ -38,7 +39,7 @@ const defaultArgs: ReceiptValidationStoryArgs = {
 
 const meta: Meta<ReceiptValidationStoryArgs> = {
   component: ReceiptValidationPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Receipt Validation/Workspace Receipt Validation',
+  title: 'Admin/Registration/Receipts',
   tags: ['autodocs', 'ticketing'],
   args: defaultArgs,
   argTypes: {
@@ -53,12 +54,21 @@ const meta: Meta<ReceiptValidationStoryArgs> = {
     longContent: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<ReceiptValidationStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: createReceiptValidationStoryProviders(buildQueue(context.args), context.args),
       })(story, context),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Receipt review queue with controls for loading state, match quality, permissions, and content length. Stories cover review and filtering behavior.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -74,7 +84,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     await exerciseStory(canvasElement);
     await expect(await within(canvasElement).findByText(/Texto extraído/)).toBeVisible();
@@ -90,7 +99,6 @@ export const EmptyQueue: Story = {
 
 export const FrozenQueue: Story = {
   args: { queueCount: 4, frozenEvery: 1, latencyMs: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).queryByRole('button', { name: 'Aprovar comprovante' })).toBeNull();
   },
@@ -106,7 +114,6 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível atualizar a fila', { exact: true })).toBeVisible();
   },
@@ -120,10 +127,8 @@ export const ReadOnly: Story = {
   args: { canMutate: false, queueCount: 8, latencyMs: 0 },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: { queueCount: 12, longContent: true, conflictEvery: 2, latencyMs: 0 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const TicketPurchaseQueue: Story = {

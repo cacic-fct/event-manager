@@ -10,7 +10,7 @@ type StoryArgs = {
 
 const meta: Meta<StoryArgs> = {
   component: PrizeDrawQrCodeComponent,
-  title: 'CACiC Eventos/Sorteios/QR code do resultado',
+  title: 'Admin/Prize Draws/Results/QR Code',
   tags: ['autodocs'],
   args: {
     value: PRIZE_DRAW_STORY_PUBLIC_URL,
@@ -20,7 +20,15 @@ const meta: Meta<StoryArgs> = {
     value: { control: 'text' },
     size: { control: { type: 'range', min: 120, max: 240, step: 8 } },
   },
-  parameters: { layout: 'centered', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'QR code preview for public prize draw results, including compact sizing behavior.',
+      },
+    },
+    layout: 'centered',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -32,18 +40,4 @@ export const Playground: Story = {
     expect(canvas).toBeTruthy();
     expect(canvas?.width).toBeGreaterThan(0);
   },
-};
-
-export const Compact: Story = {
-  args: { size: 136 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-};
-
-export const DarkTheme: Story = {
-  globals: { theme: 'dark' },
-};
-
-export const ReducedMotion: Story = {
-  args: { size: 160 },
-  globals: { motion: 'reduced' },
 };

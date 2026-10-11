@@ -59,6 +59,7 @@ export function createPublicEventRecord(overrides: Record<string, unknown> = {})
     isPubliclyListed: true,
     displayLecturerProfile: true,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     lecturers: [],

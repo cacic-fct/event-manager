@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test as base } from '@playwright/test';
 import { addCoverageReport } from 'monocart-reporter';
 
@@ -41,5 +42,17 @@ export const test = base.extend<CoverageFixtures>({
     },
   ],
 });
+
+export async function waitForPublicLandingBootstrap(page: Page): Promise<void> {
+  await page.waitForResponse((response) => {
+    const request = response.request();
+    const pathname = new URL(response.url()).pathname.replace(/^\/app(?=\/api\/)/, '');
+    return (
+      request.method() === 'POST' &&
+      pathname === '/api/graphql' &&
+      (request.postData() ?? '').includes('query PublicPlatformStats')
+    );
+  });
+}
 
 export { expect };

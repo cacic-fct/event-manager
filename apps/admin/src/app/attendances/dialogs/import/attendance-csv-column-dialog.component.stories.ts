@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -23,7 +23,6 @@ const closeMock = fn();
 
 @Component({
   selector: 'app-storybook-attendance-csv-column-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -61,7 +60,7 @@ const defaultArgs: CsvColumnDialogStoryArgs = {
 
 const meta: Meta<CsvColumnDialogStoryArgs> = {
   component: AttendanceCsvColumnDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Attendance CSV Column',
+  title: 'Admin/Attendance/Import/Column Mapping',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -73,18 +72,17 @@ const meta: Meta<CsvColumnDialogStoryArgs> = {
     emptyValueEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
     longValues: { control: 'boolean' },
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<CsvColumnDialogStoryArgs>;
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(defaultArgs.fileName)).toBeVisible();
-    await expect(canvas.getAllByRole('listitem')).toHaveLength(8);
+    await expect(canvasElement.querySelectorAll('mat-list-item')).toHaveLength(8);
     await userEvent.click(canvas.getByRole('button', { name: 'Importar' }));
     await expect(closeMock).toHaveBeenCalledWith('Nome');
   },
@@ -93,7 +91,7 @@ export const Playground: Story = {
 export const DensePreview: Story = {
   args: { headerCount: 12, previewRowCount: 30 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getAllByRole('listitem')).toHaveLength(8);
+    await expect(canvasElement.querySelectorAll('mat-list-item')).toHaveLength(8);
   },
 };
 
@@ -107,19 +105,17 @@ export const EmptyHeaders: Story = {
 export const EmptyPreviewValues: Story = {
   args: { previewRowCount: 8, emptyValueEvery: 1 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).queryAllByRole('listitem')).toHaveLength(0);
+    await expect(canvasElement.querySelectorAll('mat-list-item')).toHaveLength(0);
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     fileName: 'lista-de-presencas-do-congresso-interdisciplinar-universitario-de-tecnologia-e-acessibilidade.csv',
     title: 'Selecionar a coluna usada para localizar cada participante no cadastro institucional',
     confirmLabel: 'Continuar com a importação',
     longValues: true,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/congresso-interdisciplinar/)).toBeVisible();
   },

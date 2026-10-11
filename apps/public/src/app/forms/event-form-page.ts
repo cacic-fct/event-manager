@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +6,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import {
   EventFormRendererComponent,
   EventFormDescriptionContentComponent,
@@ -23,6 +24,7 @@ import { type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { Observable, Subscription, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from './event-form-availability';
 import { PublicEventFormApiService } from './event-form-api.service';
+import { privateResourceErrorStatus } from '../shared/route-error-handling';
 
 type FormResultSummary = {
   questions: Array<{
@@ -49,12 +51,10 @@ type FormPageState =
       resultsReleased: boolean;
       elements: ReturnType<typeof parseFormElementsJson>;
       answers: FormResponseAnswer[];
-    }
-  | { status: 'error'; message: string };
+    };
 
 @Component({
   selector: 'app-event-form-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
     MatButtonModule,
@@ -72,6 +72,7 @@ export class EventFormPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly api = inject(PublicEventFormApiService);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly snackbar = inject(MatSnackBar);
   private resultsRequestId = 0;
 
@@ -158,7 +159,8 @@ export class EventFormPage {
     const requestedLinkId = query.get('linkId')?.trim() || null;
 
     if (!formId || !targetType || !targetId) {
-      return of({ status: 'error', message: 'Link de formulário inválido.' } satisfies FormPageState);
+      void this.routeErrors.navigate(404);
+      return of({ status: 'loading' } satisfies FormPageState);
     }
 
     const target = this.targetInput(targetType, targetId);
@@ -166,22 +168,19 @@ export class EventFormPage {
       switchMap((forms) => {
         const form = forms.find((item) => item.id === formId);
         if (!form) {
-          return of({
-            status: 'error',
-            message: 'Formulário não encontrado para esta inscrição.',
-          } satisfies FormPageState);
+          void this.routeErrors.navigate(404);
+          return of({ status: 'loading' } satisfies FormPageState);
         }
         const link = this.findLink(form, targetType, targetId, requestedLinkId);
         if (!link) {
-          return of({ status: 'error', message: 'Vínculo de formulário inválido.' } satisfies FormPageState);
+          void this.routeErrors.navigate(404);
+          return of({ status: 'loading' } satisfies FormPageState);
         }
         const canAnswer = isPublicFormLinkAvailable(link);
         const resultsReleased = arePublicFormResultsReleased(form, link);
         if (!canAnswer && !resultsReleased) {
-          return of({
-            status: 'error',
-            message: 'Este formulário não está disponível no momento.',
-          } satisfies FormPageState);
+          void this.routeErrors.navigate(404);
+          return of({ status: 'loading' } satisfies FormPageState);
         }
         if (!canAnswer) {
           return of({
@@ -218,12 +217,10 @@ export class EventFormPage {
         );
       }),
       startWith({ status: 'loading' } satisfies FormPageState),
-      catchError((error: unknown) =>
-        of({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar o formulário.',
-        } satisfies FormPageState),
-      ),
+      catchError((error: unknown) => {
+        void this.routeErrors.navigate(privateResourceErrorStatus(error));
+        return of({ status: 'loading' } satisfies FormPageState);
+      }),
     );
   }
 

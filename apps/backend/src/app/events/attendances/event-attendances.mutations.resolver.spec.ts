@@ -674,6 +674,7 @@ describe('EventAttendancesMutationsResolver', () => {
         entityId: 'offline:submission-1',
         after: {
           status: 'REJECTED',
+          personId: 'person-1',
           rejectionReason: 'sem documento',
         },
       }),

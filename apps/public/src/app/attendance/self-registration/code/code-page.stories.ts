@@ -1,4 +1,8 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
+import { Component } from '@angular/core';
+import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation, withHashLocation } from '@angular/router';
+import { of } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -14,21 +18,37 @@ import { OnlineAttendanceCodeComponent } from './code-page';
 
 const storyContext = createOnlineAttendanceStoryContext();
 
+@Component({ template: '' })
+class AttendanceStoryDestination {}
+
 const meta: Meta<OnlineAttendanceStoryControls> = {
   component: OnlineAttendanceCodeComponent,
-  title: 'CACiC Eventos/Attendance/Self-registration/Code',
+  title: 'Public/Attendance/Self Registration/Code',
   tags: ['autodocs'],
   args: onlineAttendanceStoryDefaultControls,
   argTypes: onlineAttendanceStoryControlArgTypes,
   render: (args) => renderOnlineAttendanceStory(args, storyContext),
   decorators: [
+    withScenarioControls<OnlineAttendanceStoryControls>(),
     applicationConfig({
-      providers: [ScannerFeedbackService],
+      providers: [
+        ScannerFeedbackService,
+        provideRouter([
+          { path: 'attendance/register', component: AttendanceStoryDestination },
+          { path: 'attendance/register/:eventId', component: AttendanceStoryDestination },
+          { path: 'profile/attendances/event/:eventId', component: AttendanceStoryDestination },
+        ], withHashLocation(), withDisabledInitialNavigation()),
+        { provide: ActivatedRoute, useValue: {
+          paramMap: of(convertToParamMap({ eventId: 'event-1' })),
+          queryParamMap: of(convertToParamMap({})),
+          snapshot: { paramMap: convertToParamMap({ eventId: 'event-1' }), queryParamMap: convertToParamMap({}), data: {} },
+        } },
+      ],
     }),
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: onlineAttendanceStoryHandlers(storyContext) } },
   },
 };
@@ -48,7 +68,6 @@ const enterCode = async (canvasElement: HTMLElement, code: string) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ args, canvasElement }) => {
     const { confirmButton } = await enterCode(canvasElement, args.expectedCode);
     await userEvent.click(confirmButton);
@@ -58,7 +77,7 @@ export const Playground: Story = {
 
 export const UnregisteredWalkIn: Story = {
   args: { unregisteredWalkIn: true },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ args, canvasElement }) => {
     const { confirmButton } = await enterCode(canvasElement, args.expectedCode);
     await expect(confirmButton).toBeEnabled();
@@ -76,7 +95,7 @@ export const InvalidCode: Story = {
 
 export const RateLimited: Story = {
   args: { confirmationOutcome: 'rate-limited', retryAfterSeconds: 8 },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const { canvas, confirmButton } = await enterCode(canvasElement, 'A1B2');
     await userEvent.click(confirmButton);
@@ -85,13 +104,12 @@ export const RateLimited: Story = {
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     name: 'Oficina interdisciplinar de acessibilidade para produtos digitais da comunidade universitária',
     majorEventName: 'Semana acadêmica de ciência, cultura e tecnologia',
     latencyMs: 0,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText(/Oficina interdisciplinar/)).toBeVisible();
   },

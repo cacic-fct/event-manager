@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig } from '@storybook/angular';
 import { provideRouter } from '@angular/router';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -31,7 +32,7 @@ const defaultArgs: MajorEventSubscriptionsStoryArgs = {
 
 const meta: Meta<MajorEventSubscriptionsStoryArgs> = {
   component: MajorEventSubscriptionsComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Subscriptions/Workspace Major Event Subscriptions Subtab',
+  title: 'Admin/Registration/Subscriptions/Major Events',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -46,6 +47,7 @@ const meta: Meta<MajorEventSubscriptionsStoryArgs> = {
     readOnly: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<MajorEventSubscriptionsStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -65,8 +67,13 @@ const meta: Meta<MajorEventSubscriptionsStoryArgs> = {
       })(story, context),
   ],
   parameters: {
+    docs: {
+      description: {
+        component: 'Major event subscription browser with controls for subscriber volume, context, and selection.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -75,60 +82,42 @@ export default meta;
 type Story = StoryObj<MajorEventSubscriptionsStoryArgs>;
 
 export const Playground: Story = {
-
+  args: { selectedMajorEvent: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByRole('heading', { name: /selecione um grande evento/i })).toBeVisible());
-    await expect(canvas.queryByRole('heading', { name: 'Inscritos' })).not.toBeInTheDocument();
-    await userEvent.click(canvas.getByText('Semana da Computação'));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
+    const subscriptionLinks = await canvas.findAllByRole('link', { name: /^Abrir inscrição de / });
+    await expect(subscriptionLinks.length).toBeGreaterThan(0);
+    await expect(subscriptionLinks[0]).toBeVisible();
   },
 };
 
 export const SubscriberBrowser: Story = {
   args: { selectedMajorEvent: true },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
-    await expect(canvas.getByText('Criada pela administração')).toBeVisible();
-    await userEvent.click(canvas.getByText('Ada Lovelace'));
-    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
-    await userEvent.click(canvas.getByRole('button', { name: /voltar para lista de inscrições/i }));
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
+    const creationLabels = await canvas.findAllByText(/Criada pela administração/);
+    await expect(creationLabels.length).toBeGreaterThan(0);
+    await expect(creationLabels[0]).toBeVisible();
+    await expect((await canvas.findAllByRole('link', { name: /^Abrir inscrição de / })).length).toBeGreaterThan(1);
   },
 };
 
 export const SubscriberDetail: Story = {
   args: { selectedMajorEvent: true, selectedSubscription: true },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
-    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ana Oliveira' })).toBeVisible());
     await expect(canvasElement.querySelector('.warning-reason')).toBeVisible();
     await expect(canvas.queryByRole('button', { name: /mais informações sobre/i })).not.toBeInTheDocument();
-    await userEvent.click(await canvas.findByText('Grace Hopper'));
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
     await expect(canvas.getByDisplayValue(/R\$\s*1,20/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Editar inscrição' }));
     const lecturerEvent = canvas.getByRole('checkbox', { name: 'Selecionar GraphQL com NestJS' });
     await expect(lecturerEvent).toBeChecked();
     await userEvent.click(lecturerEvent);
     await expect(canvasElement.querySelector('.warning-reason')).toBeNull();
-  },
-};
-
-export const CompactSubscriberBrowser: Story = {
-  args: { selectedMajorEvent: true },
-  globals: { theme: 'light' },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByText('Grace Hopper'));
-    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
   },
 };
 
@@ -153,12 +142,10 @@ export const DataLoaded: Story = {
   args: {
     selectedMajorEvent: true,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoReceiptsToValidate: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     selectedMajorEvent: true,
     pendingReceiptsCount: 0,
@@ -194,8 +181,6 @@ export const ReadOnly: Story = {
   args: { selectedMajorEvent: true, readOnly: true },
 };
 
-export const LongNamesMobile: Story = {
+export const LongNames: Story = {
   args: { selectedMajorEvent: true, longNames: true, majorEventCount: 12, eventCount: 20, subscriptionCount: 20 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

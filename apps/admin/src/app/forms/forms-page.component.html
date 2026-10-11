@@ -118,15 +118,15 @@
             [link]="['/forms', form.id]" [queryParams]="workspace.targetFilter()">
             <mat-icon recordIcon>{{ form.publicationState === 'PUBLISHED' ? 'fact_check' : 'list_alt' }}</mat-icon>
             <span recordDescription>
-              {{ stateLabel(form) }} · {{ form.responseCount }} resposta{{ form.responseCount === 1 ? '' : 's' }}
-              <span class="list-meta"> · {{ workspace.linkedTargetSummary(form) }}</span>
+              {{ stateLabel(form) }}, {{ form.responseCount }} resposta{{ form.responseCount === 1 ? '' : 's' }},
+              <span class="list-meta">{{ workspace.linkedTargetSummary(form) }}</span>
             </span>
           </app-workspace-record>
         } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum formulário encontrado</span>
-            <span matListItemLine>Crie o primeiro formulário no painel ao lado.</span>
-          </mat-list-item>
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
+            <p>Nenhum formulário encontrado</p>
+          </div>
         }
       </div>
       <div class="list-pager" role="group" aria-label="Paginação de formulários">
@@ -141,13 +141,13 @@
     <section class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>
+          <h2>
             @if (workspace.selectedForm()) {
               Editar formulário
             } @else {
               Novo formulário
             }
-          </h3>
+          </h2>
           <p>Campos, vínculo com eventos, sigilo e publicação.</p>
         </div>
 
@@ -236,7 +236,7 @@
 
       <form [formGroup]="workspace.form" class="panel-stack" (submit)="$event.preventDefault()">
         <section class="surface field-group">
-          <h4>Identidade e sigilo</h4>
+          <h3>Identidade e sigilo</h3>
           <div class="field-grid">
             <mat-form-field class="span-2">
               <mat-label>Nome</mat-label>
@@ -251,7 +251,7 @@
             <section class="form-image-editor span-2" aria-labelledby="form-images-title">
               <div class="surface-heading">
                 <div>
-                  <h5 id="form-images-title">Imagens da descrição</h5>
+                  <h4 id="form-images-title">Imagens da descrição</h4>
                   <span>Estas imagens aparecem antes das perguntas em tamanho amplo.</span>
                 </div>
                 <input
@@ -408,7 +408,7 @@
         <section class="surface field-group">
           <div class="surface-heading">
             <div>
-              <h4>Vínculos</h4>
+              <h3>Vínculos</h3>
               <span>Defina onde o formulário aparece e se entra no fluxo de inscrição.</span>
             </div>
             <div class="actions">

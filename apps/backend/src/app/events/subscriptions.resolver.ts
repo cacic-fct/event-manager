@@ -27,6 +27,7 @@ import { EventSubscriptionSyncService } from './event-subscription-sync.service'
 import { EventSubscriptionCountersService } from './subscription-counters.service';
 import { refreshSportsParticipantForSubscription } from '../sports/sports-payment.service';
 import { personSearchWhere } from '../people/person-search-where';
+import { buildMajorEventSubscriptionAuditSnapshot } from '../common/major-event-subscription-audit';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -151,6 +152,7 @@ const EVENT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   deletedAt: true,
@@ -359,7 +361,14 @@ export class EventSubscriptionsResolver {
           entityLabel: created.person.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: created,
+          after: {
+            id: created.id,
+            eventId: created.eventId,
+            personId: created.personId,
+            eventGroupSubscriptionId: created.eventGroupSubscriptionId,
+            createdByMethod: created.createdByMethod,
+            imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted ?? false,
+          },
           scope: { permission: Permission.Subscription.Create, eventId: created.eventId },
           summary: 'Inscrição em evento criada pelo painel administrativo.',
         },
@@ -536,7 +545,7 @@ export class EventSubscriptionsResolver {
           entityLabel: result.person.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: result,
+          after: buildMajorEventSubscriptionAuditSnapshot(majorEventSubscription, selectedEventIds),
           scope: { permission: Permission.Subscription.Create, majorEventId: result.majorEventId },
           summary: 'Inscrição em grande evento criada pelo painel administrativo.',
         },
@@ -599,6 +608,11 @@ export class EventSubscriptionsResolver {
       if (!previousSubscription) {
         throw new NotFoundException(`Subscription ${id} was not found.`);
       }
+      const previousSelectedEventIds = await tx.majorEventSubscriptionEventSelection.findMany({
+        where: { subscriptionId: id, deletedAt: null },
+        select: { eventId: true, preferenceOrder: true },
+        orderBy: [{ preferenceOrder: 'asc' }, { eventId: 'asc' }],
+      });
       const updateData: Prisma.MajorEventSubscriptionUpdateInput = {};
       if (input.subscriptionStatus !== undefined) {
         updateData.subscriptionStatus = this.normalizeStatus(input.subscriptionStatus);
@@ -625,18 +639,7 @@ export class EventSubscriptionsResolver {
       });
 
       const effectiveSelectedEventIds =
-        selectedEventIds ??
-        (
-          await tx.majorEventSubscriptionEventSelection.findMany({
-            where: {
-              subscriptionId: id,
-              deletedAt: null,
-            },
-            select: {
-              eventId: true,
-            },
-          })
-        ).map((selection) => selection.eventId);
+        selectedEventIds ?? previousSelectedEventIds.map((selection) => selection.eventId);
 
       await this.ensureMajorEventSubscriptionHasTarget(id, existing.majorEventId, effectiveSelectedEventIds, tx);
 
@@ -667,8 +670,11 @@ export class EventSubscriptionsResolver {
           entityLabel: result.person.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: previousSubscription,
-          after: result,
+          before: buildMajorEventSubscriptionAuditSnapshot(
+            previousSubscription,
+            previousSelectedEventIds.map((selection) => selection.eventId),
+          ),
+          after: buildMajorEventSubscriptionAuditSnapshot(result, effectiveSelectedEventIds),
           scope: { permission: Permission.Subscription.Update, majorEventId: result.majorEventId },
           summary: 'Inscrição em grande evento atualizada.',
         },
@@ -741,6 +747,11 @@ export class EventSubscriptionsResolver {
       paymentDate: true,
       paymentTier: true,
       imageLicenseAgreementAccepted: true,
+      subscriptionFlow: true,
+      desiredCourses: true,
+      desiredLectures: true,
+      desiredUncategorized: true,
+      receiptRejectionReason: true,
       createdAt: true,
       createdById: true,
       createdByMethod: true,

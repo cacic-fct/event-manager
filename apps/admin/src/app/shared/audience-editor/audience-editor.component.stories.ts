@@ -11,9 +11,14 @@ import { PermissionsService } from '../../permissions/permissions.service';
 
 const meta: Meta<AudienceEditorComponent> = {
   component: AudienceEditorComponent,
-  title: 'CACiC Eventos/Shared/Audience Editor',
+  title: 'Admin/Event Management/Audiences',
   tags: ['autodocs'],
   parameters: {
+    docs: {
+      description: {
+        component: 'Audience editor for public, course, and invitation-based access. Use the stories to compare editable and permission-limited states.',
+      },
+    },
     layout: 'centered',
     a11y: { test: 'error' },
   },
@@ -58,11 +63,14 @@ export default meta;
 
 type Story = StoryObj<AudienceEditorComponent>;
 
-export const Public: Story = {
+const publicStory: Story = {
   play: async ({ canvasElement }) => {
     await expectNoAxeViolations(canvasElement);
   },
 };
+
+export const Playground: Story = publicStory;
+
 
 export const CourseOnly: Story = {
   args: {
@@ -136,9 +144,3 @@ async function expectNoAxeViolations(canvasElement: HTMLElement): Promise<void> 
     throw error;
   }
 }
-
-export const Playground: Story = Public;
-export const DarkReducedMotion: Story = {
-  ...CourseOnly,
-  globals: { theme: 'dark', motion: 'reduced' },
-};

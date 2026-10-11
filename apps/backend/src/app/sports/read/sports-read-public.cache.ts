@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { SportsReadPublicMapper } from './sports-read-public.mapper';
 import { PublicSportsMatch, PublicSportsTournamentDetail } from './sports-read.models';
 import {
   SPORTS_PUBLIC_TOURNAMENT_CACHE_TTL_SECONDS,
@@ -22,6 +23,7 @@ interface CachedPublicSportsTournament {
 }
 
 export class SportsReadPublicCache {
+  private readonly mapper = new SportsReadPublicMapper();
   private readonly logger = new Logger(SportsReadPublicCache.name);
 
   constructor(private readonly redis?: Redis) {}
@@ -140,6 +142,10 @@ export class SportsReadPublicCache {
     for (const match of matches) {
       if (!match?.schedule) {
         return false;
+      }
+      if (!this.mapper.canRevealParticipants(match.state)) {
+        match.rosters = [];
+        match.officials = [];
       }
       const startDate = this.parseCachedDate(match.schedule.startDate);
       const endDate = this.parseCachedDate(match.schedule.endDate);

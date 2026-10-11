@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -21,7 +21,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-attendance-person-resolution-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -67,7 +66,7 @@ class AttendancePersonResolutionDialogStoryHostComponent {
 
 const meta: Meta<ResolutionDialogStoryArgs> = {
   component: AttendancePersonResolutionDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Attendance Person Resolution Dialog',
+  title: 'Admin/Attendance/Import/Person Resolution',
   tags: ['autodocs'],
   args: {
     title: 'Escolher pessoa correta',
@@ -87,7 +86,7 @@ const meta: Meta<ResolutionDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -138,9 +137,4 @@ export const NoCandidates: Story = {
     await expect(within(canvasElement).queryAllByRole('radio')).toHaveLength(0);
     await expect(within(canvasElement).getByRole('button', { name: /continuar importação/i })).toBeDisabled();
   },
-};
-
-export const DarkReducedMotion: Story = {
-  ...MultipleValues,
-  globals: { theme: 'dark', motion: 'reduced' },
 };

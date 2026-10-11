@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -7,7 +7,6 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [MatCardModule, MatIconModule],
   templateUrl: './explanation-card.html',
   styleUrl: './explanation-card.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExplanationCard {
   readonly title = input.required<string>();

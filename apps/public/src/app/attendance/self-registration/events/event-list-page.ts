@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,7 +30,6 @@ type OnlineAttendanceListState =
   ],
   templateUrl: './event-list-page.html',
   styleUrl: './event-list-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OnlineAttendanceListComponent {
   private readonly api = inject(OnlineAttendanceApiService);

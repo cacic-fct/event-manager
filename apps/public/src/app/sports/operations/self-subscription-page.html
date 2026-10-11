@@ -7,13 +7,6 @@
 
 @if (loading()) {
 <main class="state"><p>Carregando opções de inscrição…</p></main>
-} @else if (error()) {
-<main class="state">
-  <mat-icon>error_outline</mat-icon>
-  <h2>Inscrição indisponível</h2>
-  <p>{{ error() }}</p>
-  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
-</main>
 } @else if (submitted()) {
 <main class="state success">
   <mat-icon>check_circle</mat-icon>
@@ -83,7 +76,7 @@
           @if (selectedTeam(); as team) {
           <span class="team-select-value">
             <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
-            <span>{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+            <span>{{ team.name }}{{ team.institution ? ', ' + team.institution : '' }}</span>
           </span>
           } @else if (currentData.tournament.selfSubscriptionAllowNoTeam) {
           <span class="team-select-value">Sem equipe específica</span>
@@ -97,7 +90,7 @@
         <mat-option [value]="team.id">
           <span class="team-select-option">
             <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
-            <span class="team-option-name">{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+            <span class="team-option-name">{{ team.name }}{{ team.institution ? ', ' + team.institution : '' }}</span>
           </span>
         </mat-option>
         }
@@ -149,7 +142,7 @@
       <mat-label>Faixa de pagamento</mat-label>
       <mat-select formControlName="paymentTier">
         @for (tier of currentData.tournament.paymentTiers; track tier.id) {
-        <mat-option [value]="tier.name"> {{ tier.name }} · {{ tier.value / 100 | currency: 'BRL' }} </mat-option>
+        <mat-option [value]="tier.name"> {{ tier.name }}: {{ tier.value / 100 | currency: 'BRL' }} </mat-option>
         }
       </mat-select>
       <mat-hint>

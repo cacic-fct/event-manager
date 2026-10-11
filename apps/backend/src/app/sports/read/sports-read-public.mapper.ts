@@ -81,8 +81,8 @@ export class SportsReadPublicMapper {
         venueName: match.venue?.name ?? null,
         courtLabel: match.venue?.courtLabel ?? null,
       },
-      rosters,
-      officials,
+      rosters: this.canRevealParticipants(projection.state) ? rosters : [],
+      officials: this.canRevealParticipants(projection.state) ? officials : [],
     };
   }
 
@@ -110,7 +110,12 @@ export class SportsReadPublicMapper {
     };
   }
 
-  canRevealRoster(state: SportsMatchState | undefined): boolean {
-    return state === SportsMatchState.FINISHED || state === SportsMatchState.DRAW;
+  canRevealParticipants(state: SportsMatchState | undefined): boolean {
+    return (
+      state === SportsMatchState.LIVE ||
+      state === SportsMatchState.PAUSED ||
+      state === SportsMatchState.FINISHED ||
+      state === SportsMatchState.DRAW
+    );
   }
 }

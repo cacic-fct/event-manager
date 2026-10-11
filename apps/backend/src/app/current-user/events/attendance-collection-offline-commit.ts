@@ -20,7 +20,6 @@ import {
   getActorId,
   getAuthenticatedUser,
   isRequiredLocationError,
-  normalizeOptionalString,
 } from './attendance-collection-context';
 import { createAttendance, toEventAttendance } from './attendance-collection-records';
 import { OfflineAttendanceSubmissions, parseCommitReceiptMarker } from './attendance-collection-offline-submissions';
@@ -167,13 +166,8 @@ export class OfflineAttendanceCommitter {
             prisma: tx,
             metadata: {
               offlineClientId: item.clientId,
-              offlineAttendanceAuthor: {
-                userId: item.authorUserId,
-                name: normalizeOptionalString(item.authorName) ?? null,
-                email: normalizeOptionalString(item.authorEmail) ?? null,
-              },
+              offlineAuthorUserId: item.authorUserId,
               submittedById,
-              committedById: submittedById,
             },
           });
           await this.submissions.recordCommitReceipt(

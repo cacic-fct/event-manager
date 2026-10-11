@@ -135,6 +135,7 @@ export class CurrentUserEventMapperService {
       onlineAttendanceEndDate: event.onlineAttendanceEndDate ?? undefined,
       isPubliclyListed: event.isPubliclyListed,
       youtubeCode: event.youtubeCode ?? undefined,
+      twitchChannel: event.twitchChannel ?? undefined,
       buttonText: event.buttonText ?? undefined,
       buttonLink: event.buttonLink ?? undefined,
     };

@@ -10,9 +10,11 @@ import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNa
 import { SwUpdate } from '@angular/service-worker';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService, provideCloudflareTurnstile } from '@cacic-fct/shared-angular';
+import { applyStorybookEnvironment, waitForStorybookAnnouncements } from '@cacic-fct/shared-angular/storybook';
 import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 import type { Preview } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
+import { configure } from 'storybook/test';
 import { NEVER, of } from 'rxjs';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { publicHandlers } from './storybook-mocks';
@@ -22,6 +24,7 @@ import { RealtimeInvalidationService } from '../src/app/shared/realtime-invalida
 const [publicGraphqlHandler, ...publicRestHandlers] = publicHandlers;
 
 registerLocaleData(localePt);
+configure({ asyncUtilTimeout: 5_000 });
 
 initialize({
   onUnhandledRequest: 'bypass',
@@ -33,7 +36,6 @@ initialize({
   },
 });
 
-const originalNavigatorOnline = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
 const originalServiceWorker = Object.getOwnPropertyDescriptor(Navigator.prototype, 'serviceWorker');
 
 function ensureStorybookGlobalStyles(): void {
@@ -51,6 +53,8 @@ function ensureStorybookGlobalStyles(): void {
     body {
       margin: 0;
       font-family: 'Inter Variable', system-ui, sans-serif;
+      background-color: var(--mat-sys-surface, Canvas);
+      color: var(--mat-sys-on-surface, CanvasText);
     }
 
     @font-face {
@@ -167,6 +171,7 @@ const activatedRouteMock = {
   snapshot: {
     paramMap: convertToParamMap(storybookRouteParams),
     queryParamMap: convertToParamMap(storybookQueryParams),
+    pathFromRoot: [{ url: [{ path: 'storybook' }] }],
     data: {
       id: 'events',
       label: 'Eventos',
@@ -224,17 +229,10 @@ const publicDialogData = {
   ],
 };
 
-function applyBrowserGlobals(network: string, serviceWorker: string): void {
-  Object.defineProperty(Navigator.prototype, 'onLine', {
-    configurable: true,
-    get: () => network !== 'offline',
-  });
-
+function applyServiceWorkerAvailability(serviceWorker: string): void {
+  swUpdateMock.isEnabled = serviceWorker === 'enabled';
   if (serviceWorker === 'disabled') {
-    Object.defineProperty(Navigator.prototype, 'serviceWorker', {
-      configurable: true,
-      get: () => undefined,
-    });
+    Reflect.deleteProperty(Navigator.prototype, 'serviceWorker');
     return;
   }
 
@@ -249,11 +247,13 @@ function applyColorScheme(theme: string): void {
   document.body.style.colorScheme = colorScheme;
 }
 
-if (originalNavigatorOnline) {
-  Object.defineProperty(Navigator.prototype, 'onLine', originalNavigatorOnline);
-}
-
 const preview: Preview = {
+  initialGlobals: {
+    theme: 'light',
+    network: 'online',
+    serviceWorker: 'enabled',
+    motion: 'full',
+  },
   decorators: [
     applicationConfig({
       providers: [
@@ -291,7 +291,8 @@ const preview: Preview = {
       const motion = context.globals['motion'] === 'reduced' ? 'reduced' : 'full';
       ensureStorybookGlobalStyles();
       ensureStorybookTurnstile();
-      applyBrowserGlobals(network, serviceWorker);
+      applyStorybookEnvironment({ theme, network, motion });
+      applyServiceWorkerAvailability(serviceWorker);
       applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
@@ -301,6 +302,7 @@ const preview: Preview = {
     },
   ],
   loaders: [mswLoader],
+  afterEach: waitForStorybookAnnouncements,
   parameters: {
     msw: {
       handlers: {
@@ -309,17 +311,16 @@ const preview: Preview = {
       },
     },
     backgrounds: {
-      default: 'app',
-      values: [
-        { name: 'app', value: '#f7f8fa' },
-        { name: 'dark', value: '#111827' },
-      ],
+      options: {
+        app: { name: 'Light surface', value: '#f7f8fa' },
+        dark: { name: 'Dark surface', value: '#111827' },
+      },
     },
     viewport: {
-      viewports: {
-        mobile: { name: 'Mobile', styles: { width: '390px', height: '844px' } },
-        tablet: { name: 'Tablet', styles: { width: '834px', height: '1112px' } },
-        desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' } },
+      options: {
+        mobile: { name: 'Mobile', styles: { width: '390px', height: '844px' }, type: 'mobile' },
+        tablet: { name: 'Tablet', styles: { width: '834px', height: '1112px' }, type: 'tablet' },
+        desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' }, type: 'desktop' },
       },
     },
     controls: {
@@ -330,19 +331,27 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
-    docs: { toc: true },
+    docs: {
+      toc: true,
+      // Keep one live example: page mocks share module state. The sidebar
+      // contains the remaining workflows without rendering competing instances.
+      stories: { filter: () => false },
+    },
     options: {
       storySort: {
         method: 'alphabetical',
-        order: ['CACiC Eventos', ['Workspace', 'Sports', 'Attendance', 'Calendar', 'Events', 'Profile', 'Shared']],
+        order: [
+          'Public', ['Overview', 'Layout', 'Landing', 'Discovery', 'Registration', 'Attendance', 'Profile', 'Ticketing', 'Sports', 'Notifications', 'Settings', 'Support', 'Developer Tools'],
+          'Shared', ['Brand', 'Content', 'Feedback', 'Forms', 'Registration', 'Media', 'Attendance', 'Notifications', 'Scanning', 'Service Worker', 'Verification', 'Dialogs', 'Sports'],
+        ],
+        includeNames: false,
       },
     },
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   globalTypes: {
     theme: {
       description: 'Color scheme',
-      defaultValue: 'light',
       toolbar: {
         icon: 'contrast',
         items: [
@@ -353,7 +362,6 @@ const preview: Preview = {
     },
     network: {
       description: 'Network status',
-      defaultValue: 'online',
       toolbar: {
         icon: 'globe',
         items: [
@@ -364,7 +372,6 @@ const preview: Preview = {
     },
     serviceWorker: {
       description: 'Service worker availability',
-      defaultValue: 'enabled',
       toolbar: {
         icon: 'browser',
         items: [
@@ -375,7 +382,6 @@ const preview: Preview = {
     },
     motion: {
       description: 'Motion preference',
-      defaultValue: 'full',
       toolbar: {
         icon: 'accessibility',
         items: [

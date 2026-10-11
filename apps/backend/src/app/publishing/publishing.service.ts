@@ -826,7 +826,7 @@ export class PublicationService {
   }
 
   private eventParentLabel(event: PublicationWorkspaceEventRecord): string | null {
-    return [event.majorEvent?.name, event.eventGroup?.name].filter(Boolean).join(' · ') || null;
+    return [event.majorEvent?.name, event.eventGroup?.name].filter(Boolean).join(', ') || null;
   }
 
   private buildAccessibleEventWhere(targets: AccessibleEventGrantTargets | null): Prisma.EventWhereInput | null {

@@ -10,8 +10,16 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { LocationCoordinatePickerDialogComponent } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 import { createPageStoryProviders, defaultPageStoryArgs, type PageStoryMode } from '../stories/page-story-support';
 import { EventsPageComponent } from './events-page.component';
+import { EventsService } from './events.service';
 
 describe('EventsPageComponent', () => {
+  it('loads the existing event identified by workspace route metadata', async () => {
+    await configureComponent('populated', undefined,
+      { targetId: 'workspace-event' }, { targetType: 'event', section: 'settings' });
+    const select = vi.spyOn(TestBed.inject(EventsService), 'selectEventById');
+    await createComponent();
+    expect(select).toHaveBeenCalledWith('workspace-event', { skipIfCurrent: true });
+  });
   it('allows removing linked attendance collectors when delete permission is granted', async () => {
     await configureComponent('populated');
     const { element } = await createComponent();
@@ -66,6 +74,45 @@ describe('EventsPageComponent', () => {
       },
       maxWidth: 'calc(100vw - 32px)',
     });
+  });
+
+  it('strips pasted provider URLs on blur and keeps invalid links visible', async () => {
+    await configureComponent('populated');
+    const { element, fixture } = await createComponent();
+    const videoPanel = [...element.querySelectorAll('mat-expansion-panel-header')].find((header) =>
+      header.textContent?.includes('Vídeo e botão do evento'),
+    );
+    videoPanel?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const youtubeInput = element.querySelector<HTMLInputElement>('input[formcontrolname="youtubeCode"]');
+    const twitchInput = element.querySelector<HTMLInputElement>('input[formcontrolname="twitchChannel"]');
+    if (!youtubeInput || !twitchInput) {
+      throw new Error('Expected both provider fields to be visible in the event form.');
+    }
+
+    youtubeInput.value = 'https://youtu.be/Video_123';
+    youtubeInput.dispatchEvent(new Event('input'));
+    youtubeInput.dispatchEvent(new Event('blur'));
+    twitchInput.value = 'https://www.twitch.tv/CanalFct';
+    twitchInput.dispatchEvent(new Event('input'));
+    twitchInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.workspace.eventForm.controls.youtubeCode.value).toBe('Video_123');
+    expect(fixture.componentInstance.workspace.eventForm.controls.twitchChannel.value).toBe('canalfct');
+    expect(youtubeInput.value).toBe('Video_123');
+    expect(twitchInput.value).toBe('canalfct');
+
+    twitchInput.value = 'https://example.com/not-a-channel';
+    twitchInput.dispatchEvent(new Event('input'));
+    twitchInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.workspace.eventForm.controls.twitchChannel.value).toBe(
+      'https://example.com/not-a-channel',
+    );
+    expect(element.textContent).toContain('Informe um canal válido ou um link da Twitch reconhecido.');
   });
 
   it('copies coordinates confirmed in the map picker into the event form', async () => {
@@ -167,6 +214,8 @@ describe('EventsPageComponent', () => {
   async function configureComponent(
     mode: PageStoryMode,
     dialog: Partial<MatDialog> = { open: vi.fn() },
+    params: Record<string, string> = {},
+    data: Record<string, string> = {},
   ): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],
@@ -181,7 +230,8 @@ describe('EventsPageComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({})),
+            paramMap: of(convertToParamMap(params)),
+            snapshot: { data },
           },
         },
       ],

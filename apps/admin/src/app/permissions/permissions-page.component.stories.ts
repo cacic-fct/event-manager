@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { EVENT_MANAGER_PERMISSION_CATALOG, type Permission } from '@cacic-fct/shared-permissions';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { MyPermissionsComponent } from './my-permissions/my-permissions.component';
 import { PermissionsService } from './permissions.service';
@@ -48,7 +49,7 @@ function selectPermissions(args: PermissionsPageStoryArgs): Permission[] {
 
 const meta: Meta<PermissionsPageStoryArgs> = {
   component: MyPermissionsComponent,
-  title: 'CACiC Eventos/Workspace/Permissões/Minhas permissões',
+  title: 'Admin/Access/Permissions',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -63,6 +64,7 @@ const meta: Meta<PermissionsPageStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<PermissionsPageStoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -72,7 +74,15 @@ const meta: Meta<PermissionsPageStoryArgs> = {
       ],
     }),
   ],
-  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Permission overview for the current account. Use the preset control to inspect access combinations.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -111,10 +121,4 @@ export const Empty: Story = {
 
 export const LimitedPermissionSet: Story = {
   args: { preset: 'all', permissionCount: 8, reverseOrder: true },
-};
-
-export const CompactDark: Story = {
-  args: { preset: 'all', permissionCount: 24 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

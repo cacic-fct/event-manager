@@ -82,7 +82,7 @@ describe('LoginPageComponent', () => {
     await component.onSubmit();
 
     expect(authService.passwordLogin).toHaveBeenCalledWith('aluno@unesp.br', '1');
-    expect(navigateByUrl).toHaveBeenCalledWith('/admin/event-workspace');
+    expect(navigateByUrl).toHaveBeenCalledWith('/event-workspace');
   });
 
   it('keeps invalid password login failures on the local form', async () => {

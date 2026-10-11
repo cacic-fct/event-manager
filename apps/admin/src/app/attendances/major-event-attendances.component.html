@@ -2,7 +2,7 @@
   <aside class="major-selector">
     <div class="panel-heading">
       <div>
-        <h3>Presenças no grande evento</h3>
+        <h2>Presenças no grande evento</h2>
         <p>Consulte as atividades frequentadas por cada pessoa inscrita.</p>
       </div>
     </div>
@@ -14,7 +14,7 @@
     <section class="panel">
     @if (workspace.majorEventAttendanceForm.controls.majorEventId.value; as majorEventId) {
       <p class="empty-note">
-        {{ workspace.majorEventUserAttendanceCount() }} participantes ·
+        {{ workspace.majorEventUserAttendanceCount() }} participantes.
         <a matButton="text" [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']">Editar política de presença</a>
       </p>
       <mat-form-field class="query-field">
@@ -28,7 +28,7 @@
     <mat-list class="subscription-list categorized-list">
       @for (group of workspace.majorEventUserAttendanceGroups(); track group.category) {
         <div class="category-heading" [class.category-NON_REGULAR]="group.category === 'NON_REGULAR'">
-          <h4>{{ group.label }}</h4>
+          <h3>{{ group.label }}</h3>
           <span>{{ group.description }}</span>
         </div>
 
@@ -60,15 +60,15 @@
           </app-workspace-record>
         }
       } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhuma pessoa carregada</span>
-          <span matListItemLine>Escolha um grande evento para consultar as presenças.</span>
-        </mat-list-item>
+        <div class="admin-list-empty">
+          <mat-icon aria-hidden="true">hide_source</mat-icon>
+          <p>Nenhuma pessoa carregada</p>
+        </div>
       }
     </mat-list>
 
     <div class="list-pager" aria-label="Paginação de presenças do grande evento">
-      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }} · {{ workspace.majorEventUserAttendanceCount() }} no total</span>
+      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }}, {{ workspace.majorEventUserAttendanceCount() }} no total</span>
       <div class="list-pager-actions">
         <button
           mat-icon-button
@@ -97,7 +97,7 @@
     @if (workspace.selectedMajorEventUserAttendance(); as selectedAttendance) {
       <div class="panel-heading">
         <div>
-          <h3>{{ selectedAttendance.person?.name ?? 'Pessoa' }}</h3>
+          <h2>{{ selectedAttendance.person?.name ?? 'Pessoa' }}</h2>
           <p>
             {{ workspace.selectedMajorEventAttendances().length }}
             {{
@@ -122,7 +122,7 @@
         }
       </div>
 
-      <mat-list class="attendance-list attended-event-list" aria-label="Atividades frequentadas">
+      <mat-list class="attendance-list attended-event-list" aria-label="Atividades frequentadas" tabindex="0">
         @for (eventAttendance of workspace.selectedMajorEventAttendances(); track eventAttendance.eventId) {
           <mat-list-item>
             <span matListItemIcon class="event-twemoji" aria-hidden="true">
@@ -135,12 +135,12 @@
             <span matListItemTitle class="attendance-item-title">{{ eventAttendance.eventName }}</span>
             <span matListItemLine class="attendance-item-line">
               @if (eventAttendance.eventStartDate) {
-                {{ eventAttendance.eventStartDate | date: 'short' }}
+                Evento em {{ eventAttendance.eventStartDate | date: 'short' }}.
               }
               @if (eventAttendance.attendedAt) {
-                · Presença registrada em {{ eventAttendance.attendedAt | date: 'short' }}
+                Presença registrada em {{ eventAttendance.attendedAt | date: 'short' }}.
               }
-              · {{ workspace.getAttendanceCategoryLabel(eventAttendance.category) }}
+              Categoria de presença: {{ workspace.getAttendanceCategoryLabel(eventAttendance.category) }}.
             </span>
             @if (
               workspace.getAttendanceCategoryHistoricalExplanation(eventAttendance.category);
@@ -158,17 +158,16 @@
             }
           </mat-list-item>
         } @empty {
-          <mat-list-item>
-            <mat-icon matListItemIcon>event_busy</mat-icon>
-            <span matListItemTitle>Nenhuma presença registrada</span>
-            <span matListItemLine>Esta pessoa ainda não frequentou atividades deste grande evento.</span>
-          </mat-list-item>
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
+            <p>Nenhuma presença registrada</p>
+          </div>
         }
       </mat-list>
     } @else {
       <div class="empty-state">
         <mat-icon>fact_check</mat-icon>
-        <h3>Selecione uma pessoa</h3>
+        <h2>Selecione uma pessoa</h2>
         <p>As atividades frequentadas aparecerão aqui.</p>
       </div>
     }

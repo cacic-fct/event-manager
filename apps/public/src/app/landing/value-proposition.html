@@ -1,8 +1,7 @@
 <section class="value-proposition" aria-labelledby="platform-stats-title">
   <div class="value-proposition-container">
-    <section
+    <div
       class="value-proposition-stats"
-      aria-labelledby="platform-stats-title"
       [attr.aria-busy]="statsState() === 'loading'">
       <h3 id="platform-stats-title" class="value-proposition-stats-title">Nossos números</h3>
       @if (statsState() === 'ready' && statItems().length) {
@@ -28,6 +27,6 @@
       } @else {
       <p class="value-proposition-stats-unavailable">As estatísticas da plataforma estão indisponíveis.</p>
       }
-    </section>
+    </div>
   </div>
 </section>

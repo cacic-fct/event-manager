@@ -510,6 +510,7 @@ export function createAdminEvent(overrides: Partial<Event> = {}): Event {
     publishedAt: adminFixtureDate,
     unpublishedAt: null,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     deletedAt: null,
@@ -578,6 +579,7 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
     isPubliclyListed: input.isPubliclyListed ?? true,
     displayLecturerProfile: input.displayLecturerProfile ?? true,
     youtubeCode: input.youtubeCode,
+    twitchChannel: input.twitchChannel,
     buttonText: input.buttonText,
     buttonLink: input.buttonLink,
   });

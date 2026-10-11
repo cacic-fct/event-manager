@@ -1,17 +1,17 @@
 <header class="dashboard-header">
   <div>
     <h1>{{ greetings() }}</h1>
-    <p>{{ currentDate() | date: 'fullDate' }} · {{ currentDate() | date: 'shortTime' }}</p>
+    <p>{{ currentDate() | date: 'fullDate' }}, {{ currentDate() | date: 'shortTime' }}</p>
   </div>
 
   @if (loading() && insights()) {
-  <mat-spinner diameter="24" />
+  <mat-spinner diameter="24" aria-label="Atualizando painel" />
   }
 </header>
 
 @if (loading() && !insights()) {
 <section class="loading-state">
-  <mat-spinner diameter="32" />
+  <mat-spinner diameter="32" aria-label="Carregando insights do painel" />
   <span>Carregando insights...</span>
 </section>
 } @else if (error()) {
@@ -33,7 +33,7 @@
     </div>
 
     @if (dashboard.suggestions.length > 0) {
-    <div class="quick-actions" aria-label="Atalhos de criação">
+    <div class="quick-actions">
       @if (hasSuggestion(dashboard.suggestions, 'CREATE_EVENT_GROUP') && canCreateContext('group')) {
       <a matButton="outlined" [routerLink]="creationRoute('group')">
         <mat-icon>{{ navMap()['groups']?.icon }}</mat-icon>
@@ -99,7 +99,10 @@
                 <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.eventName }}</span>
               </span>
-              <span matListItemLine>{{ item.pendingCount }} sinal(is) · {{ item.startDate | date: 'shortDate' }}</span>
+              <span matListItemLine>
+                {{ item.pendingCount }} {{ item.pendingCount === 1 ? 'sinal' : 'sinais' }},
+                {{ item.startDate | date: 'shortDate' }}
+              </span>
               <a
                 matIconButton
                 matListItemMeta
@@ -132,7 +135,7 @@
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
-                {{ offlineAttendanceSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+                {{ offlineAttendanceSummary(item.pendingCount) }}, {{ item.startDate | date: 'shortDate' }}
               </span>
               <a
                 matIconButton
@@ -165,7 +168,7 @@
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
-                {{ receiptMajorEventSummary(item.pendingCount) }} · {{ item.startDate | date: 'shortDate' }}
+                {{ receiptMajorEventSummary(item.pendingCount) }}, {{ item.startDate | date: 'shortDate' }}
               </span>
               <a
                 matIconButton
@@ -263,8 +266,9 @@
             <mat-list-item>
               <span matListItemTitle>{{ match.eventName }}</span>
               <span matListItemLine>
-                {{ match.categoryName }} · {{ sportsMatchState(match.state) }} · {{ match.homeTeamName ?? 'A definir' }}
-                {{ match.homeScore }} × {{ match.awayScore }} {{ match.awayTeamName ?? 'A definir' }}
+                {{ match.categoryName }}, {{ sportsMatchState(match.state) }}:
+                {{ match.homeTeamName ?? 'A definir' }} {{ match.homeScore }} × {{ match.awayScore }}
+                {{ match.awayTeamName ?? 'A definir' }}
               </span>
               <a
                 matIconButton
@@ -294,10 +298,8 @@
                 <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
-              <span matListItemLine>
-                {{ sportsTournamentStatus(item.status) }} · {{ sportsTournamentSummary(item) }} · {{
-                sportsReviewSummary(item) }}
-              </span>
+              <span matListItemLine>{{ sportsTournamentStatus(item.status) }}</span>
+              <span matListItemLine>{{ sportsTournamentSummary(item) }}, {{ sportsReviewSummary(item) }}</span>
               <a
                 matIconButton
                 matListItemMeta
@@ -354,7 +356,7 @@
             @for (item of dashboard.pendingCertificates; track item.targetType + item.targetId) {
             <mat-list-item>
               <span matListItemTitle>{{ item.title }}</span>
-              <span matListItemLine> {{ item.subtitle }} · finalizado em {{ item.finishedAt | date: 'short' }} </span>
+              <span matListItemLine> {{ item.subtitle }}, finalizado em {{ item.finishedAt | date: 'short' }} </span>
               <a
                 matIconButton
                 matListItemMeta
@@ -431,15 +433,15 @@
           <span>{{ event.name }}</span>
         </span>
         <span matListItemLine>
-          {{ event.startDate | date: 'short' }} · {{ describeEventType(event.type) }} @if (event.majorEventName) { · {{
-          event.majorEventName }} }
+          {{ event.startDate | date: 'short' }},
+          {{ describeEventType(event.type) }}@if (event.majorEventName) {, grande evento: {{ event.majorEventName }} }
         </span>
         @if (event.locationDescription) {
         <span matListItemLine>{{ event.locationDescription }}</span>
         } @if (weatherAlertForEvent(event); as alert) {
         <span matListItemLine class="weather-line">
           <mat-icon inline aria-hidden="true">{{ alert.materialIcon }}</mat-icon>
-          <span>{{ alert.summary }} · {{ alert.temperature }}°C</span>
+          <span>{{ alert.summary }}, temperatura: {{ alert.temperature }}°C</span>
         </span>
         } @if (!isToday(event) && event.allowSubscription && (event.subscriptionEndDate || event.subscriptionStartDate))
         {

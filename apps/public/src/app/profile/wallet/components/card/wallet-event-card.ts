@@ -19,7 +19,7 @@ import { WalletCardUser } from './wallet-card.types';
       </div>
       <div class="holder-details">
         <h1>{{ user()?.name || 'Desconhecido' }}</h1>
-        <h2>{{ formatRole() }}</h2>
+          <h2>{{ formatRole() || 'Participante' }}</h2>
       </div>
     </section>
     <section class="ticket-credential" aria-label="Código de identificação">
@@ -34,7 +34,7 @@ import { WalletCardUser } from './wallet-card.types';
     </section>
     <footer class="ticket-footer">
       <p class="field-label">Documento</p>
-      <h3 class="identity-document">{{ formatDocument(user()?.identityDocument || '') }}</h3>
+      <p class="identity-document">{{ formatDocument(user()?.identityDocument || '') || 'Não informado' }}</p>
     </footer>
   `,
   styles: `

@@ -181,14 +181,14 @@
             <span matListItemTitle>{{ venue.name }}</span>
             <span matListItemLine
               >{{ venue.courtLabel || 'Área principal'
-              }}{{ venue.capacity ? ' · ' + venue.capacity + ' pessoas' : '' }}</span
+              }}{{ venue.capacity ? ', capacidade: ' + venue.capacity + ' pessoas' : '' }}</span
             >
           </mat-list-item>
         } @empty {
-          <mat-list-item
-            ><span matListItemTitle>Nenhum local esportivo</span
-            ><span matListItemLine>Cadastre quadras, piscinas ou arenas.</span></mat-list-item
-          >
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
+            <p>Nenhum local esportivo</p>
+          </div>
         }
       </mat-list>
       <form [formGroup]="workspace.venueForm" class="sports-venue-form" (ngSubmit)="workspace.saveVenue()">

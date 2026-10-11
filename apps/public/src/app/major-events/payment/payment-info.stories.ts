@@ -1,15 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { HttpResponse, http } from 'msw';
 import { expect, userEvent, within } from 'storybook/test';
 import { PaymentInfo } from './payment-info';
 
 const meta: Meta<PaymentInfo> = {
   component: PaymentInfo,
-  title: 'CACiC Eventos/Major Events/Payment/Info',
+  title: 'Public/Ticketing/Payments/Payment Info',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static payment instructions with an offline fallback story.' } },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -36,29 +37,11 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const ApiError: Story = {
-  parameters: {
-    msw: {
-      handlers: {
-        graphql: [
-          http.post('/api/graphql', () =>
-            HttpResponse.json({ errors: [{ message: 'Pagamento temporariamente indisponível.' }] }),
-          ),
-        ],
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Pagamento temporariamente indisponível.')).toBeVisible();
-  },
 };

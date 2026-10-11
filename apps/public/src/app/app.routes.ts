@@ -1,10 +1,28 @@
-import { Route } from '@angular/router';
-import { authGuard, developmentOnlyGuard } from '@cacic-fct/shared-angular';
+import { isDevMode, inject } from '@angular/core';
+import { CanActivateFn, Route } from '@angular/router';
+import { authGuard } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
+import type { PageErrorStatus } from '@cacic-fct/shared-angular/errors';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
 } from './attendance/collection/access.service';
 import { myDayFeatureGuard } from './my-day/my-day.guard';
+
+const developmentToolsAvailabilityGuard: CanActivateFn = (route, state) => {
+  const errors = inject(RouteErrorService);
+  if (!isDevMode()) return errors.guardRedirect(404);
+  return authGuard(route, state);
+};
+
+function errorPageRoute(status: PageErrorStatus, title: string): Route {
+  return {
+    path: `error/${status}`,
+    loadComponent: () => import('./shared/error-page').then((m) => m.ErrorPage),
+    title,
+    data: { pageError: { status } },
+  };
+}
 
 export const appRoutes: Route[] = [
   {
@@ -54,7 +72,7 @@ export const appRoutes: Route[] = [
     path: 'dev-tools',
     loadChildren: () => import('./developer-tools/development-tools.routes').then((m) => m.routes),
     title: 'Ferramentas de desenvolvimento',
-    canActivate: [developmentOnlyGuard],
+    canActivate: [developmentToolsAvailabilityGuard],
   },
   {
     path: 'auth/error',
@@ -111,6 +129,7 @@ export const appRoutes: Route[] = [
     path: 'tournament/:tournamentId/subscribe',
     loadComponent: () => import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
     title: 'Inscrição no torneio',
+    canActivate: [authGuard],
   },
   {
     path: 'tournament/:tournamentId',
@@ -126,16 +145,19 @@ export const appRoutes: Route[] = [
     path: 'sports/operate/:matchId',
     loadComponent: () => import('./sports/operations/official-match-page').then((m) => m.OfficialSportsMatchPage),
     title: 'Operar partida',
+    canActivate: [authGuard],
   },
   {
     path: 'sports/team/:teamId',
     loadComponent: () => import('./sports/operations/team-operations-page').then((m) => m.SportsTeamOperationsPage),
     title: 'Gerenciar equipe',
+    canActivate: [authGuard],
   },
   {
     path: 'sports',
     loadComponent: () => import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
     title: 'Minha próxima partida',
+    canActivate: [authGuard],
   },
   {
     path: 'major-event/:majorEventId/subscription',
@@ -183,6 +205,7 @@ export const appRoutes: Route[] = [
     path: 'major-event/:majorEventId/payment',
     loadComponent: () => import('./major-events/payment/payment-info').then((m) => m.PaymentInfo),
     title: 'Pagamento',
+    canActivate: [authGuard],
   },
   {
     path: 'attendance/register',
@@ -276,5 +299,15 @@ export const appRoutes: Route[] = [
   {
     path: 'licenses',
     redirectTo: '/about/legal',
+  },
+  errorPageRoute(403, 'Acesso negado'),
+  errorPageRoute(404, 'Página não encontrada'),
+  errorPageRoute(500, 'Erro interno'),
+  errorPageRoute(503, 'Serviço indisponível'),
+  {
+    path: '**',
+    loadComponent: () => import('./shared/error-page').then((m) => m.ErrorPage),
+    title: 'Página não encontrada',
+    data: { pageError: { status: 404 } },
   },
 ];

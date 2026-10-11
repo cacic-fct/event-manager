@@ -11,6 +11,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import {
   EMPTY,
   Observable,
@@ -29,6 +30,7 @@ import type { SportsOperationsApplicationInvalidation } from './sports-operation
 import { SportsOperationsRealtimeService } from './sports-operations-realtime.service';
 import { CurrentUserSportsPlayerApplication, CurrentUserTournamentOperations } from './sports-operations.types';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
 const ACTIVE_APPLICATION_STATUSES = ['APPROVED', 'WAITING_PAYMENT', 'ACTIVE'] as const;
@@ -57,6 +59,7 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
   private readonly api = inject(SportsOperationsApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly realtime = inject(SportsOperationsRealtimeService);
@@ -71,7 +74,6 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
   readonly busy = signal(false);
   readonly submitted = signal(false);
   readonly paymentTierLocked = signal(false);
-  readonly error = signal<string | null>(null);
   private readonly formRevision = signal(0);
   private applicationLoaded = false;
   private applicationRequestId = 0;
@@ -130,6 +132,11 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.tournamentId = this.route.snapshot.paramMap.get('tournamentId') ?? '';
+    if (!this.tournamentId) {
+      void this.routeErrors.navigate(404);
+      this.loading.set(false);
+      return;
+    }
     this.requestedPaymentTier = this.route.snapshot.queryParamMap.get('paymentTier')?.trim() || null;
     this.returnUrl = resolveInternalReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'), '') || null;
     this.load();
@@ -297,7 +304,6 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
       return new Set([...current].filter((categoryId) => availableCategoryIds.has(categoryId)));
     });
     this.loading.set(false);
-    this.error.set(null);
   }
 
   private watchCurrentUserApplications(): void {
@@ -412,7 +418,7 @@ export class SportsSelfSubscriptionPage implements OnInit, OnDestroy {
 
   private setLoadError(error: unknown): void {
     this.loading.set(false);
-    this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a inscrição.');
+    void this.routeErrors.navigate(privateResourceErrorStatus(error));
   }
 
   teamSelectionChanged(requestedTeamId: string): void {

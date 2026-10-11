@@ -17,7 +17,7 @@ type WorkspaceFormResultsStoryArgs = {
 
 const meta: Meta<WorkspaceFormResultsStoryArgs> = {
   component: FormResultsComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Forms/Workspace Form Results',
+  title: 'Admin/Forms/Results',
   tags: ['autodocs'],
   args: {
     mode: 'charts-and-text',
@@ -44,8 +44,13 @@ const meta: Meta<WorkspaceFormResultsStoryArgs> = {
     },
   }),
   parameters: {
+    docs: {
+      description: {
+        component: 'Form response summaries for reviewing submitted answers, privacy behavior, and empty response sets.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -85,7 +90,6 @@ export const EmptySummary: Story = {
 };
 
 export const InvalidSummary: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'invalid-summary',
   },

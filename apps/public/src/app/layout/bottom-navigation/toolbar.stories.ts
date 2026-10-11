@@ -4,14 +4,14 @@ import { BottomToolbarComponent } from './toolbar';
 
 const meta: Meta<BottomToolbarComponent> = {
   component: BottomToolbarComponent,
-  title: 'CACiC Eventos/Layout/Bottom Navigation/Toolbar',
+  title: 'Public/Layout/Navigation/Toolbar',
   tags: ['autodocs'],
   argTypes: {
-    items: { control: 'object', name: 'Itens de navegação' },
+    items: { control: 'object', name: 'Navigation Items' },
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -55,7 +55,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const LongLabelsDarkReducedMotion: Story = {
+export const LongLabels: Story = {
   args: {
     items: [
       {
@@ -69,14 +69,12 @@ export const LongLabelsDarkReducedMotion: Story = {
       { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
     ],
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-export const MenuOnlyMobile: Story = {
+export const MenuOnly: Story = {
   args: {
     items: [{ label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false }],
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

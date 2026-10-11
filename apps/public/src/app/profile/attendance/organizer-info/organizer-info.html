@@ -16,11 +16,6 @@
 <main class="organizer-page">
   @if (currentState.status === 'loading') {
   <mat-progress-bar mode="indeterminate" aria-label="Carregando informações da organização"></mat-progress-bar>
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">lock</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else {
   <header class="organizer-header">
     <h1>{{ currentState.info.title }}</h1>
@@ -53,17 +48,31 @@
         }
         <div class="event-actions">
           @if (item.onlineAttendanceCode) {
-          <p>
-            O código de barras pode ser incluído no material do evento, para que os participantes possam registrar a
-            presença de forma rápida e prática.
-          </p>
-          <button
-            mat-stroked-button
-            type="button"
-            (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode)">
-            <mat-icon>download</mat-icon>
-            Baixar código de barras para presença
-          </button>
+          <div class="attendance-code-actions">
+            <h3>Código Aztec para presença on-line</h3>
+            <p>
+              Inclua o código no material do evento para que os participantes registrem a presença de forma rápida e
+              prática.
+            </p>
+            <div class="attendance-code-download-buttons">
+              <button
+                mat-stroked-button
+                type="button"
+                aria-label="Baixar código Aztec em SVG"
+                (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'svg')">
+                <mat-icon>download</mat-icon>
+                SVG
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                aria-label="Baixar código Aztec em PNG"
+                (click)="downloadOnlineAttendanceCode(item.event.id, item.onlineAttendanceCode, 'png')">
+                <mat-icon>download</mat-icon>
+                PNG
+              </button>
+            </div>
+          </div>
           } @if (item.canDownloadSubscriberList) {
           <button mat-stroked-button type="button" (click)="downloadSubscriberList(item.event.id)">
             <mat-icon>download</mat-icon>

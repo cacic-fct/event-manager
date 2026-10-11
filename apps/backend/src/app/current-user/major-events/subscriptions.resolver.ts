@@ -30,6 +30,7 @@ import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { PUBLIC_MAJOR_EVENT_WHERE, publicRegularSubscriptionEventWhere } from '../../public-events/models';
 import { EventFormsService } from '../../event-forms/event-forms.service';
+import { buildMajorEventSubscriptionAuditSnapshot } from '../../common/major-event-subscription-audit';
 
 export function isConfirmedSportsOnlySubscription(subscription: {
   subscriptionStatus: SubscriptionStatus;
@@ -716,12 +717,14 @@ export class CurrentUserMajorEventSubscriptionsResolver {
               },
               select: {
                 eventId: true,
+                preferenceOrder: true,
               },
+              orderBy: [{ preferenceOrder: 'asc' }, { eventId: 'asc' }],
             })
           ).map((selection) => selection.eventId)
         : [];
       const previousAuditSnapshot = previousSubscription
-        ? { ...previousSubscription, selectedEventIds: previousSelectedEventIds }
+        ? buildMajorEventSubscriptionAuditSnapshot(previousSubscription, previousSelectedEventIds)
         : null;
 
       const nextStatus = this.majorEventSubscriptions.resolveNextSubscriptionStatus(
@@ -987,7 +990,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             entityLabel: person.id,
             operation: AuditLogOperation.USER_CREATE,
             actor: authenticatedUser,
-            after: { ...updatedSubscription, selectedEventIds },
+            after: buildMajorEventSubscriptionAuditSnapshot(updatedSubscription, selectedEventIds),
             scope: {
               permission: Permission.Subscription.Create,
               majorEventId: updatedSubscription.majorEventId,
@@ -1005,7 +1008,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             operation: AuditLogOperation.UPDATE,
             actor: authenticatedUser,
             before: previousAuditSnapshot,
-            after: { ...updatedSubscription, selectedEventIds },
+            after: buildMajorEventSubscriptionAuditSnapshot(updatedSubscription, selectedEventIds),
             scope: {
               permission: Permission.Subscription.Update,
               majorEventId: updatedSubscription.majorEventId,

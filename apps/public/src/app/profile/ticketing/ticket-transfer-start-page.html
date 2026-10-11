@@ -16,11 +16,6 @@
 <main class="ticket-transfer-start-page">
   @if (current.status === 'loading') {
     <mat-progress-bar mode="indeterminate" aria-label="Carregando bilhete"></mat-progress-bar>
-  } @else if (current.status === 'empty' || current.status === 'error') {
-    <section class="transfer-page-message" aria-live="polite">
-      <mat-icon aria-hidden="true">{{ current.status === 'error' ? 'error' : 'confirmation_number' }}</mat-icon>
-      <p>{{ current.message }}</p>
-    </section>
   } @else {
     @let ticket = current.ticket;
     <section class="transfer-ticket-basics" aria-label="Informações do bilhete">

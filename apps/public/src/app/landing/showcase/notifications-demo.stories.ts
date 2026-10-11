@@ -6,20 +6,19 @@ const destinationOpened = fn();
 
 const meta: Meta<NotificationsDemoComponent> = {
   component: NotificationsDemoComponent,
-  title: 'CACiC Eventos/Landing/Notifications',
+  title: 'Public/Landing/Demos/Notifications',
   tags: ['autodocs', 'landing-showcase'],
   render: () => ({
     props: { destinationOpened },
     template: '<app-landing-notifications-demo (openDestination)="destinationOpened($event)" />',
   }),
-  parameters: { a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<NotificationsDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Falta enviar seu comprovante' }));
     await expect(destinationOpened).toHaveBeenCalledWith('receipt');
@@ -27,7 +26,6 @@ export const Playground: Story = {
 };
 
 export const AllRead: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Marcar todas como lidas' }));
@@ -36,9 +34,7 @@ export const AllRead: Story = {
   },
 };
 
-export const MobileCertificateShortcut: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', motion: 'reduced' },
+export const CertificateShortcut: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Seu certificado está disponível' }));
     await expect(destinationOpened).toHaveBeenCalledWith('certificates');

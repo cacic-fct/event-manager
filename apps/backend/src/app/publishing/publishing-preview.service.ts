@@ -110,7 +110,6 @@ export class PublicationPreviewService {
       summary: 'Pré-visualização criada.',
       metadata: {
         previewId: preview.id,
-        previewPath: preview.publicPath,
         expiresAt: expiresAt.toISOString(),
         previewAt: previewAt.toISOString(),
       },

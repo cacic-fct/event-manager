@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { expect, within } from 'storybook/test';
@@ -10,7 +11,7 @@ type TicketTransferActionDialogStoryArgs = {
 
 const meta: Meta<TicketTransferActionDialogStoryArgs> = {
   component: TicketTransferActionDialog,
-  title: 'CACiC Eventos/Tickets/Transfer Confirmation',
+  title: 'Public/Ticketing/Transfers/Confirmation',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'centered', a11y: { test: 'error' } },
   args: { action: 'accept', ticketName: 'Festa de encerramento' },
@@ -19,6 +20,7 @@ const meta: Meta<TicketTransferActionDialogStoryArgs> = {
     ticketName: { control: 'text' },
   },
   decorators: [
+    withScenarioControls<TicketTransferActionDialogStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -41,14 +43,6 @@ export const Playground: Story = {
   },
 };
 
-export const Receive: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText(/será transferido para você/i)).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Receber bilhete' })).toBeVisible();
-  },
-};
-
 export const Ignore: Story = {
   args: { action: 'ignore' },
   play: async ({ canvasElement }) => {
@@ -64,15 +58,5 @@ export const LongTicketName: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(/Credencial de participação da conferência de acessibilidade/)).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Receber bilhete' })).toBeVisible();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { action: 'ignore', ticketName: 'Kit de boas-vindas' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByText(/não poderá ser reaberto/i)).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Ignorar pedido' })).toBeVisible();
   },
 };

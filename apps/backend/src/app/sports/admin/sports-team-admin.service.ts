@@ -75,7 +75,7 @@ export class SportsTeamAdminService extends SportsTeamAdminLifecycleService {
           entityLabel: team.name,
           operation: AuditLogOperation.CREATE,
           actor,
-          after: team,
+          after: this.teamAuditSnapshot(team),
           summary: 'Equipe esportiva criada.',
           scope: { majorEventId: tournament.majorEventId },
         },

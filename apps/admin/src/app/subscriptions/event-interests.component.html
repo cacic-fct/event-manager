@@ -5,7 +5,7 @@
       <div class="panel-heading">
         <div>
           <h3><lib-twemoji [emoji]="target.emoji" /> {{ target.name }}</h3>
-          <p>{{ targetTypeLabel(target.targetType) }}@if (!target.interestEnabled) { · Novos interesses desativados }</p>
+          <p>{{ targetTypeLabel(target.targetType) }}{{ target.interestEnabled ? '' : ': novos interesses desativados' }}</p>
         </div>
       </div>
 
@@ -40,8 +40,8 @@
                 <span matListItemTitle>{{ interest.personId }}</span>
               }
               <span matListItemLine>
-                {{ interest.person?.email ?? 'E-mail não informado' }} ·
-                Interesse registrado em {{ interest.createdAt | date: 'short' }}
+                {{ interest.person?.email ?? 'E-mail não informado' }},
+                interesse registrado em {{ interest.createdAt | date: 'short' }}
               </span>
               <div matListItemMeta class="item-actions">
                 <button
@@ -66,10 +66,10 @@
               </div>
             </mat-list-item>
           } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhuma manifestação encontrada</span>
-              <span matListItemLine>As novas manifestações aparecerão aqui.</span>
-            </mat-list-item>
+            <div class="admin-list-empty">
+              <mat-icon aria-hidden="true">hide_source</mat-icon>
+              <p>Nenhuma manifestação encontrada</p>
+            </div>
           }
         </mat-list>
 

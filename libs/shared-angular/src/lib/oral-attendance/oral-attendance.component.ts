@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { CdkDrag, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,7 +22,6 @@ export interface OralAttendancePerson {
 
 @Component({
   selector: 'lib-oral-attendance',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CdkDrag,
     ReactiveFormsModule,

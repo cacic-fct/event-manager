@@ -43,7 +43,7 @@ test('login page submits development password credentials without a real Keycloa
       email: 'aluno@unesp.br',
       password: '1',
     });
-  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page).toHaveURL(/\/admin\/event-workspace$/);
 });
 
 test('authenticated users are redirected away from the local login page', async ({ page }) => {

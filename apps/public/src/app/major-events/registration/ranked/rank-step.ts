@@ -1,6 +1,6 @@
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
@@ -12,7 +12,6 @@ import { RankedSubscriptionStore } from './registration.store';
   imports: [DatePipe, DragDropModule, MatButtonModule, MatIconModule],
   templateUrl: './rank-step.html',
   styleUrls: ['../standard/subscription.css', './ranked-subscription.css'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RankedSubscriptionRankStep {
   readonly store = inject(RankedSubscriptionStore);

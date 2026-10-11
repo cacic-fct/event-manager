@@ -1,0 +1,6 @@
+@use '../../app-shell/layout/admin-view-widths' as view-widths;
+
+:host {
+  display: block;
+  @include view-widths.view();
+}

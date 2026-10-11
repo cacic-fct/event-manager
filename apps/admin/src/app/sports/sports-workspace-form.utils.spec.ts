@@ -69,6 +69,16 @@ describe('sports workspace form utilities', () => {
     expect(livestreamValidator(form)).toEqual({ invalidLivestreamUrl: true });
     form.controls.livestreamUrl.setValue('https://www.youtube.com/watch?v=abc');
     expect(livestreamValidator(form)).toBeNull();
+
+    form.controls.livestreamProvider.setValue('TWITCH');
+    form.controls.livestreamUrl.setValue('https://www.twitch.tv/CanalFct');
+    expect(livestreamValidator(form)).toBeNull();
+    form.controls.livestreamUrl.setValue('https://example.com/live');
+    expect(livestreamValidator(form)).toEqual({ invalidLivestreamUrl: true });
+
+    form.controls.livestreamProvider.setValue('GENERAL');
+    form.controls.livestreamUrl.setValue('https://example.com/live');
+    expect(livestreamValidator(form)).toBeNull();
   });
 
   it('rejects invalid category, match, and numeric form values before submission', () => {
@@ -119,6 +129,14 @@ describe('sports workspace form utilities', () => {
     });
     expect(overallPlacementPointsValidator(new FormControl('{"101":1}', { nonNullable: true }))).toEqual({
       overallPlacementKey: true,
+    });
+  });
+
+  it('defaults missing canonical overall placement rules to no placement scoring', () => {
+    expect(overallScoringRulesToForm('{}')).toMatchObject({
+      overallScoringMode: 'NONE',
+      overallPlacementPointsJson: '{}',
+      overallPlacementPoints: [],
     });
   });
 

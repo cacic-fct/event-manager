@@ -1,4 +1,5 @@
 import { AbstractControl, ValidationErrors } from '@angular/forms';
+import { normalizeLivestreamValue } from '@cacic-fct/shared-livestream';
 import {
   DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
   DEFAULT_SPORTS_OVERALL_SCORING_RULES,
@@ -144,34 +145,31 @@ export function jsonObjectValidator(control: AbstractControl<string>): Validatio
 }
 
 export function livestreamValidator(control: AbstractControl): ValidationErrors | null {
-  const provider = control.get('livestreamProvider')?.value;
-  const url = control.get('livestreamUrl')?.value;
-  if (Boolean(provider) !== Boolean(url)) {
+  const providerValue = control.get('livestreamProvider')?.value;
+  const provider = typeof providerValue === 'string' ? providerValue : '';
+  const rawValue = control.get('livestreamUrl')?.value;
+  const value = typeof rawValue === 'string' ? rawValue : '';
+  if (Boolean(provider) !== Boolean(value)) {
     return { incompleteLivestream: true };
   }
-  if (!provider || !url) {
+  if (!provider || !value) {
     return null;
   }
-  let parsed: URL;
-  try {
-    parsed = new URL(String(url).trim());
-  } catch {
+  if (provider !== 'YOUTUBE' && provider !== 'TWITCH' && provider !== 'GENERAL') {
     return { invalidLivestreamUrl: true };
   }
-  if (parsed.protocol !== 'https:') {
-    return { invalidLivestreamUrl: true };
-  }
-  const hostname = parsed.hostname.toLocaleLowerCase('en-US');
-  if (
-    (provider === 'YOUTUBE' &&
-      hostname !== 'youtu.be' &&
-      hostname !== 'youtube.com' &&
-      !hostname.endsWith('.youtube.com')) ||
-    (provider === 'TWITCH' && hostname !== 'twitch.tv' && !hostname.endsWith('.twitch.tv'))
-  ) {
+  if (normalizeLivestreamValue(provider, value) === null) {
     return { invalidLivestreamUrl: true };
   }
   return null;
+}
+
+export function livestreamValueValidator(control: AbstractControl): ValidationErrors | null {
+  const form = control.parent;
+  if (!form) {
+    return null;
+  }
+  return livestreamValidator(form);
 }
 
 export function tournamentRegistrationWindowValidator(control: AbstractControl): ValidationErrors | null {
@@ -278,7 +276,7 @@ export function placementPointsValidator(control: AbstractControl): ValidationEr
   return new Set(positions).size === positions.length ? null : { duplicatePlacement: true };
 }
 
-export function overallScoringRulesToForm(value: string, legacyBracketRulesJson = '{}'): SportsOverallScoringFormValue {
+export function overallScoringRulesToForm(value: string): SportsOverallScoringFormValue {
   const fallback = {
     overallScoringMode: DEFAULT_SPORTS_OVERALL_SCORING_RULES.mode,
     overallMatchWinPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.win,
@@ -290,19 +288,10 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
   try {
     const rules = JSON.parse(value || '{}') as Record<string, unknown>;
     const match = (rules['match'] ?? {}) as Record<string, unknown>;
-    let legacyPlacement: unknown = undefined;
-    if (rules['placement'] === undefined) {
-      try {
-        const legacyBracketRules = JSON.parse(legacyBracketRulesJson || '{}') as Record<string, unknown>;
-        legacyPlacement = legacyBracketRules['placementPoints'];
-      } catch {
-        legacyPlacement = undefined;
-      }
-    }
-    const placement = rules['placement'] ?? legacyPlacement;
+    const placement = rules['placement'];
     const placementEnabled = placement && typeof placement === 'object' && !Array.isArray(placement);
-    const hasLegacyPlacement = placementEnabled && Object.keys(placement as Record<string, unknown>).length > 0;
-    const mode = String(rules['mode'] ?? (hasLegacyPlacement ? 'FINAL_PLACEMENT' : 'NONE'));
+    const hasPlacement = placementEnabled && Object.keys(placement as Record<string, unknown>).length > 0;
+    const mode = String(rules['mode'] ?? (hasPlacement ? 'FINAL_PLACEMENT' : 'NONE'));
     const normalizedMode: SportsOverallScoringMode = [
       'NONE',
       'MATCH_RESULT',

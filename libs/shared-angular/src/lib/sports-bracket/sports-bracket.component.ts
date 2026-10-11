@@ -1,6 +1,5 @@
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -62,7 +61,6 @@ const EMPTY_CONNECTOR_LAYOUT: SportsBracketConnectorLayout = {
   imports: [MatIconModule, SportsLiveDotComponent, SportsTeamLogoComponent, TwemojiComponent],
   templateUrl: './sports-bracket.component.html',
   styleUrl: './sports-bracket.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsBracketComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

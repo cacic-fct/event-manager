@@ -11,7 +11,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 
       <p>Não recarregue a página</p>
 
-      <mat-progress-bar mode="indeterminate" />
+      <mat-progress-bar mode="indeterminate" aria-label="Instalando atualização" />
     </div>
   `,
   styles: `

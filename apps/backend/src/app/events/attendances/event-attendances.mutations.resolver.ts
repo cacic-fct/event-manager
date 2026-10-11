@@ -13,7 +13,13 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import {
+  AttendanceCreationMethod,
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventAttendanceStatus,
+  Prisma,
+} from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -47,16 +53,10 @@ const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
   eventId: true,
   attendedAt: true,
-  createdAt: true,
-  createdById: true,
-  committedById: true,
   createdByMethod: true,
   category: true,
   currentAssessment: true,
   status: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
 } satisfies Prisma.EventAttendanceSelect;
 
 const MAX_OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
@@ -65,6 +65,18 @@ const ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE = 100;
 type EventAttendanceAuditRecord = Prisma.EventAttendanceGetPayload<{
   select: typeof EVENT_ATTENDANCE_AUDIT_SELECT;
 }>;
+
+function eventAttendanceAuditSnapshot(attendance: EventAttendanceAuditRecord) {
+  return {
+    personId: attendance.personId,
+    eventId: attendance.eventId,
+    status: attendance.status,
+    createdByMethod: attendance.createdByMethod,
+    ...(attendance.attendedAt ? { attendedAt: attendance.attendedAt.toISOString() } : {}),
+    category: attendance.category,
+    currentAssessment: attendance.currentAssessment,
+  };
+}
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {
@@ -590,12 +602,20 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           await this.auditLog.record(
             {
               entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-              entityId: this.auditLog.buildCompositeEntityId([personId, submission.eventId]),
-              entityLabel: personId,
+              entityId: `offline:${submission.id}`,
+              entityLabel: submission.id,
               operation: AuditLogOperation.UPDATE,
               actor: this.getUser(context),
-              before: existingAttendance,
-              after: existingAttendance,
+              before: {
+                status: 'PENDING',
+                personId: submission.personId,
+                createdByMethod: submission.createdByMethod,
+              },
+              after: {
+                status: 'COMMITTED',
+                personId,
+                createdByMethod: submission.createdByMethod,
+              },
               scope: {
                 permission: Permission.EventAttendance.Update,
                 eventId: submission.eventId,
@@ -707,7 +727,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       select: {
         id: true,
         eventId: true,
+        personId: true,
         status: true,
+        createdByMethod: true,
       },
     });
     if (!submission) {
@@ -743,8 +765,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           entityLabel: submission.id,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
+          before: { status: 'PENDING', personId: submission.personId },
           after: {
             status: 'REJECTED',
+            personId: submission.personId,
             rejectionReason: reason?.trim() || null,
           },
           scope: {
@@ -808,13 +832,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
           before: {
+            status: 'PENDING',
             personId: submission.personId,
             createdByMethod: submission.createdByMethod,
-            scannerCode: submission.scannerCode,
-            manualValue: submission.manualValue,
-            resolutionError: submission.resolutionError,
           },
-          after: data,
+          after: {
+            status: 'PENDING',
+            personId: data.personId ?? null,
+            createdByMethod: data.createdByMethod ?? submission.createdByMethod,
+          },
           scope: {
             permission: Permission.EventAttendance.Update,
             eventId: submission.eventId,
@@ -891,8 +917,8 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           entityLabel: attendance.person?.name ?? personId,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: previousAttendance,
-          after: auditAttendance,
+          before: eventAttendanceAuditSnapshot(previousAttendance),
+          after: eventAttendanceAuditSnapshot(auditAttendance),
           scope: { permission: Permission.EventAttendance.Update, eventId },
           summary: 'Presença atualizada.',
         },
@@ -923,6 +949,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     await this.prisma.$transaction(async (tx) => {
       const previousAttendance = await tx.eventAttendance.findUnique({
         where: { personId_eventId: { personId, eventId } },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
       if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
       await tx.eventAttendance.delete({ where: { personId_eventId: { personId, eventId } } });
@@ -933,7 +960,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           entityLabel: personId,
           operation: AuditLogOperation.DELETE,
           actor: this.getUser(context),
-          before: previousAttendance,
+          before: eventAttendanceAuditSnapshot(previousAttendance),
           after: {},
           scope: { permission: Permission.EventAttendance.Delete, eventId },
           summary: 'Presença removida.',
@@ -1214,6 +1241,11 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     attendance: {
       personId: string;
       eventId: string;
+      status?: EventAttendanceStatus;
+      createdByMethod?: AttendanceCreationMethod;
+      attendedAt?: Date;
+      category?: string | null;
+      currentAssessment?: string | null;
       person?: { name?: string | null } | null;
     },
     context: GraphqlContext,
@@ -1227,7 +1259,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         entityLabel: attendance.person?.name ?? attendance.personId,
         operation: AuditLogOperation.CREATE,
         actor: this.getUser(context),
-        after: attendance,
+        after: {
+          personId: attendance.personId,
+          eventId: attendance.eventId,
+          ...(attendance.status ? { status: attendance.status } : {}),
+          ...(attendance.createdByMethod ? { createdByMethod: attendance.createdByMethod } : {}),
+          ...(attendance.attendedAt ? { attendedAt: attendance.attendedAt.toISOString() } : {}),
+          ...(attendance.category !== undefined ? { category: attendance.category } : {}),
+          ...(attendance.currentAssessment !== undefined ? { currentAssessment: attendance.currentAssessment } : {}),
+        },
         scope: {
           permission: Permission.EventAttendance.Collect,
           eventId: attendance.eventId,

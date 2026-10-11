@@ -1,12 +1,12 @@
 import type { StorybookConfig } from '@storybook/angular';
+import { getLibraryStoryGlobs } from '../../../tools/storybook-library-stories.mjs';
 
 const config: StorybookConfig = {
   stories: [
     '../src/app/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',
-    '../../../libs/shared-angular/src/**/*.stories.ts',
-    '../../../libs/shared-notifications-angular/src/**/*.stories.ts',
+    ...getLibraryStoryGlobs('public'),
   ],
-  addons: ['@storybook/addon-a11y', 'msw-storybook-addon'],
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y', 'msw-storybook-addon'],
   staticDirs: [
     '../public',
     { from: '../public', to: '/app' },

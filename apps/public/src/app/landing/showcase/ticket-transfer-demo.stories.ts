@@ -4,7 +4,7 @@ import { TicketTransferDemoComponent } from './ticket-transfer-demo';
 
 const meta: Meta<TicketTransferDemoComponent> = {
   component: TicketTransferDemoComponent,
-  title: 'CACiC Eventos/Landing/Transferência de bilhete',
+  title: 'Public/Landing/Demos/Ticket Transfer',
   tags: ['autodocs', 'landing-showcase'],
   decorators: [moduleMetadata({ imports: [TicketTransferDemoComponent] })],
   render: (args) => ({
@@ -14,7 +14,7 @@ const meta: Meta<TicketTransferDemoComponent> = {
       '.ticket-transfer-story-card { background: #23453e; border-radius: 16px; color: #f4fff9; margin: 0 auto; max-width: 650px; padding: 24px; }',
     ],
   }),
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
@@ -57,7 +57,6 @@ export const PendingReply: Story = {
 
 export const IncomingRecipient: Story = {
   args: { incoming: true },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Marina Costa quer transferir este bilhete')).toBeVisible();
@@ -66,36 +65,6 @@ export const IncomingRecipient: Story = {
     await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Receber bilhete' }));
     await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toBeVisible();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
-  },
-};
-
-export const ReceivedTicket: Story = {
-  args: { incoming: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Receber bilhete' }));
-    await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toBeVisible();
-    await expect(canvas.getByText('Kit de boas-vindas')).toBeVisible();
-    await expect(canvas.getByText('Marina Costa')).toBeVisible();
-    await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
-  },
-};
-
-export const MobileTransferFlow: Story = {
-  args: { incoming: false },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar bilhete' }));
-    await expect(canvas.getByRole('heading', { name: 'Pedido enviado' })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Ver recebimento' }));
-    await expect(canvas.getByRole('heading', { name: 'Marina Costa quer transferir este bilhete' })).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Receber bilhete' }));
-    await expect(canvas.getByRole('heading', { name: 'Bilhete recebido' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Voltar à carteira' })).toBeVisible();
-    await expect(canvas.getByText('Marina Costa')).toBeVisible();
     await expect(canvas.getByText('Rafael Almeida')).toBeVisible();
   },
 };

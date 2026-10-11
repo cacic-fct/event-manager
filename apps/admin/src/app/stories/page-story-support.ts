@@ -1,5 +1,5 @@
 import { computed, inject, signal, type Provider } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, Validators, type AbstractControl, type ValidationErrors } from '@angular/forms';
 import {
   createStoryPublicEventGroups,
   createStoryPublicEvents,
@@ -8,10 +8,12 @@ import {
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import { EventAudience } from '@cacic-fct/shared-event-participation';
 import type { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type {
   Event,
   EventDraft,
@@ -124,17 +126,20 @@ export function createPageStoryProviders(args: PageStoryArgs): Provider[] {
 }
 
 export const withPageStoryProviders: Decorator<PageStoryArgs> = (story, context) =>
-  applicationConfig({
-    providers: createPageStoryProviders({
-      ...defaultPageStoryArgs,
-      ...context.args,
-    }),
-  })(story, context);
+  withScenarioControls<PageStoryArgs>()(
+    () => applicationConfig({
+      providers: createPageStoryProviders({
+        ...defaultPageStoryArgs,
+        ...context.args,
+      }),
+    })(story, context),
+    context,
+  );
 
 export async function exercisePageStory(canvasElement: HTMLElement): Promise<void> {
   const { expect, userEvent, within } = await import('storybook/test');
   const canvas = within(canvasElement);
-  await expect(canvas.getByRole('button', { name: /novo/i })).toBeVisible();
+  await expect(canvas.getByRole('heading', { name: /(?:novo|nova|editar) (?:evento|grupo|grande evento|rascunho)/i })).toBeVisible();
   await userEvent.tab();
   const enabledButton = canvas
     .queryAllByRole('button')
@@ -435,7 +440,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     onlineAttendanceEndDate: [''],
     isPubliclyListed: [true],
     displayLecturerProfile: [true],
-    youtubeCode: [''],
+    youtubeCode: ['', optionalIdentifierValidator(normalizeYoutubeCode, 'invalidYoutubeCode')],
+    twitchChannel: ['', optionalIdentifierValidator(normalizeTwitchChannel, 'invalidTwitchChannel')],
     buttonText: [''],
     buttonLink: [''],
   });
@@ -480,6 +486,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
       isPubliclyListed: selectedEvent.isPubliclyListed,
       displayLecturerProfile: selectedEvent.displayLecturerProfile,
       youtubeCode: selectedEvent.youtubeCode ?? '',
+      twitchChannel: selectedEvent.twitchChannel ?? '',
       buttonText: selectedEvent.buttonText ?? '',
       buttonLink: selectedEvent.buttonLink ?? '',
     });
@@ -582,6 +589,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     applyPlacePreset: () => undefined,
     displayPlacePresetSuggestion: (placeId: string) =>
       placePresets.find((place) => place.id === placeId)?.locationDescription ?? '',
+    normalizeYoutubeCodeInput: () => normalizeInput(eventForm.controls.youtubeCode, normalizeYoutubeCode),
+    normalizeTwitchChannelInput: () => normalizeInput(eventForm.controls.twitchChannel, normalizeTwitchChannel),
     randomizeOnlineAttendanceCode: () => undefined,
     searchLecturerCandidates: async () => undefined,
     createAndAddLecturer: async () => undefined,
@@ -598,6 +607,23 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     audiencePublicationError: () => null,
     audiencePublicationBlocked: () => false,
   };
+}
+
+function optionalIdentifierValidator(
+  normalize: (value: string) => string | null,
+  errorKey: string,
+): (control: AbstractControl) => ValidationErrors | null {
+  return (control) => {
+    const value = typeof control.value === 'string' ? control.value.trim() : '';
+    return value && normalize(value) === null ? { [errorKey]: true } : null;
+  };
+}
+
+function normalizeInput(control: AbstractControl<string>, normalize: (value: string) => string | null): void {
+  const value = normalize(control.value);
+  if (value !== null) {
+    control.setValue(value);
+  }
 }
 
 function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
@@ -805,6 +831,7 @@ function adaptEvent(
     publishedAt: publicationState === 'PUBLISHED' ? offsetDate(-1) : null,
     unpublishedAt: null,
     youtubeCode: eventItem.youtubeCode,
+    twitchChannel: eventItem.twitchChannel,
     buttonText: eventItem.buttonText,
     buttonLink: eventItem.buttonLink,
     createdAt: storyNow,

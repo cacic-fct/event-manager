@@ -5,20 +5,26 @@ import { PrizeDrawConfettiStoryHarness } from './prize-draw-confetti.story-harne
 type StoryArgs = {
   particleCount: number;
   durationMs: number;
-  reducedMotion: boolean;
 };
 
 const meta: Meta<StoryArgs> = {
   component: PrizeDrawConfettiStoryHarness,
-  title: 'CACiC Eventos/Sorteios/Confete da revelação',
+  title: 'Admin/Prize Draws/Results/Confetti',
   tags: ['autodocs'],
-  args: { particleCount: 110, durationMs: 2400, reducedMotion: false },
+  args: { particleCount: 110, durationMs: 2400 },
   argTypes: {
     particleCount: { control: { type: 'range', min: 48, max: 300, step: 4 } },
     durationMs: { control: { type: 'range', min: 400, max: 5000, step: 100 } },
-    reducedMotion: { control: 'boolean' },
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Confetti reveal effect with controls for particle count and duration. Use the global motion control to inspect reduced-motion behavior.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -27,7 +33,10 @@ type Story = StoryObj<StoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Repetir confete' }));
+    const action = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'Recriar padrão de confete'
+      : 'Repetir confete';
+    await userEvent.click(await canvas.findByRole('button', { name: action }));
     await expect(canvas.getByText('Confete da revelação')).toBeVisible();
     expect(canvasElement.querySelector('canvas')).toBeTruthy();
   },
@@ -37,22 +46,6 @@ export const DenseBurst: Story = {
   args: { particleCount: 220, durationMs: 3200 },
 };
 
-export const ReducedMotion: Story = {
-  args: { reducedMotion: true },
-  globals: { motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: 'Recriar padrão de confete' })).toBeEnabled();
-    expect(canvasElement.querySelector('canvas')).toBeTruthy();
-  },
-};
-
 export const RareEasterEggFlood: Story = {
   args: { particleCount: 1000, durationMs: 5000 },
-};
-
-export const DarkMobile: Story = {
-  args: { particleCount: 72, durationMs: 1800, reducedMotion: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

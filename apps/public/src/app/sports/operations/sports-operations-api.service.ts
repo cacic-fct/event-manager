@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
+import { graphqlError } from '../../shared/rate-limit-error';
 import {
   CurrentUserSportsPlayerApplication,
   CurrentUserTournamentOperations,
@@ -16,6 +17,7 @@ import {
 
 interface GraphqlError {
   message: string;
+  extensions?: unknown;
 }
 
 interface GraphqlResponse<T> {
@@ -345,7 +347,7 @@ export class SportsOperationsApiService {
     return this.http.post<GraphqlResponse<T>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
         if (response.errors?.length) {
-          throw new Error(response.errors.map((error) => error.message).join(' '));
+          throw graphqlError(response.errors);
         }
         if (!response.data) {
           throw new Error('A resposta do servidor não trouxe os dados esperados.');

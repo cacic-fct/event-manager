@@ -1,8 +1,9 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { NovuPushPermissionDialogComponent } from './novu-push-permission-dialog.component';
 
 type NovuPushPermissionDialogStoryArgs = {
@@ -11,9 +12,8 @@ type NovuPushPermissionDialogStoryArgs = {
 
 @Component({
   selector: 'lib-storybook-novu-push-permission-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
-  template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
+  template: `<ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" />`,
 })
 class NovuPushPermissionDialogStoryHostComponent {
   private readonly injector = inject(Injector);
@@ -30,8 +30,9 @@ class NovuPushPermissionDialogStoryHostComponent {
 
 const meta: Meta<NovuPushPermissionDialogStoryArgs> = {
   component: NovuPushPermissionDialogStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Notifications/Push permission dialog',
+  title: 'Shared/Notifications/Push Permission Dialog',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<NovuPushPermissionDialogStoryArgs>()],
   args: {
     closed: fn(),
   },
@@ -39,8 +40,9 @@ const meta: Meta<NovuPushPermissionDialogStoryArgs> = {
     closed: { table: { disable: true } },
   },
   parameters: {
+    controls: { disable: true },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -65,11 +67,4 @@ export const PermissionAccepted: Story = {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Permitir' }));
     await expect(args.closed).toHaveBeenCalledWith(true);
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    closed: fn(),
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

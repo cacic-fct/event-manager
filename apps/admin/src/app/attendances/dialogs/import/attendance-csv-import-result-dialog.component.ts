@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
@@ -14,7 +14,6 @@ export interface AttendanceCsvImportResultDialogData extends EventAttendanceCsvI
 
 @Component({
   selector: 'app-attendance-csv-import-result-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MatListModule],
   template: `
     <h2 mat-dialog-title>{{ data.title ?? 'Importação concluída' }}</h2>

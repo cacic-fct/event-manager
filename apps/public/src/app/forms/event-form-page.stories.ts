@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { createPublicEventForm, createPublicEventFormLink } from '@cacic-fct/event-manager-public-testing';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -10,7 +11,7 @@ import { EventFormPage } from './event-form-page';
 
 faker.seed(20260724);
 
-type EventFormPageStoryState = 'editable' | 'submitted' | 'closed' | 'results' | 'empty-results' | 'error' | 'loading';
+type EventFormPageStoryState = 'editable' | 'submitted' | 'closed' | 'results' | 'empty-results' | 'loading';
 
 interface EventFormPageStoryArgs {
   state: EventFormPageStoryState;
@@ -75,14 +76,14 @@ const route = {
 
 const meta: Meta<EventFormPageStoryArgs> = {
   component: EventFormPage,
-  title: 'CACiC Eventos/Forms/Event Form Page',
+  title: 'Public/Registration/Forms/Event Form',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
     state: {
       control: 'select',
-      options: ['editable', 'submitted', 'closed', 'results', 'empty-results', 'error', 'loading'],
-      description: 'Estado de dados e disponibilidade retornado pela API.',
+      options: ['editable', 'submitted', 'closed', 'results', 'empty-results', 'loading'],
+      description: 'Selects the data and availability state returned by the mock API.',
     },
     formName: { control: 'text' },
     description: { control: 'text' },
@@ -96,6 +97,7 @@ const meta: Meta<EventFormPageStoryArgs> = {
     withImages: { control: 'boolean' },
   },
   decorators: [
+    withScenarioControls<EventFormPageStoryArgs>(),
     applicationConfig({
       providers: [{ provide: ActivatedRoute, useValue: route }],
     }),
@@ -105,7 +107,7 @@ const meta: Meta<EventFormPageStoryArgs> = {
     docs: {
       description: {
         component:
-          'Página de resposta de formulários vinculados a inscrições, com carregamento, indisponibilidade, resposta existente, resultados agregados e falha de API.',
+          'Form response page for registration-linked forms, including loading, existing responses, and aggregated results.',
       },
     },
     msw: {
@@ -122,10 +124,6 @@ const meta: Meta<EventFormPageStoryArgs> = {
 
             const body = (await request.json()) as { query?: string };
             const query = body.query ?? '';
-            if (activeArgs.state === 'error' && query.includes('CurrentUserEventForms')) {
-              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o formulário.' }] });
-            }
-
             return HttpResponse.json({ data: graphqlData(query, activeArgs) });
           }),
         ],
@@ -160,7 +158,9 @@ export const ExistingResponse: Story = {
 export const Closed: Story = {
   args: { state: 'closed' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Este formulário está encerrado.')).toBeVisible();
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Este formulário está encerrado.')).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Resultados' })).toBeVisible();
   },
 };
 
@@ -169,7 +169,9 @@ export const ReleasedResults: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Resultados' })).toBeVisible();
-    await expect(await canvas.findByText('Excelente')).toBeVisible();
+    await expect(
+      await canvas.findByText('Excelente', { selector: '.results-section .bucket-list li span' }),
+    ).toBeVisible();
   },
 };
 
@@ -182,14 +184,6 @@ export const ReleasedWithoutAnswers: Story = {
   },
 };
 
-export const ApiError: Story = {
-  args: { state: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar o formulário.')).toBeVisible();
-  },
-};
-
 export const Loading: Story = {
   args: { state: 'loading', latencyMs: 0 },
 };
@@ -198,7 +192,7 @@ export const DenseQuestionnaire: Story = {
   args: { questionCount: 20, optionCount: 8, requiredEvery: 2, latencyMs: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect((await canvas.findAllByRole('heading', { level: 3 })).length).toBe(20);
+    await expect((await canvas.findAllByRole('heading', { level: 2 })).length).toBe(20);
   },
 };
 
@@ -206,15 +200,13 @@ export const NoQuestions: Story = {
   args: { questionCount: 0, latencyMs: 0 },
 };
 
-export const LongLabelsMobile: Story = {
+export const LongLabels: Story = {
   args: {
     questionCount: 8,
     optionCount: 6,
     longLabels: true,
     formName: 'Avaliação detalhada da experiência acadêmica, cultural e de acessibilidade da atividade',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const FormAndQuestionImages: Story = {
@@ -225,12 +217,6 @@ export const FormAndQuestionImages: Story = {
     await expect(await canvas.findAllByRole('img', { name: publicLandscapeImage.altText })).toHaveLength(2);
     await expect(await canvas.findByText(/reutilizada na pergunta sem duplicar/i)).toBeVisible();
   },
-};
-
-export const FormAndQuestionImagesMobile: Story = {
-  args: { withImages: true, latencyMs: 0, longLabels: true },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function graphqlData(query: string, args: EventFormPageStoryArgs): Record<string, unknown> {
@@ -296,7 +282,8 @@ function graphqlData(query: string, args: EventFormPageStoryArgs): Record<string
 }
 
 function storyForm(args: EventFormPageStoryArgs) {
-  const resultsReleased = args.state === 'results' || args.state === 'empty-results';
+  const resultsReleased = ['closed', 'results', 'empty-results'].includes(args.state);
+  const resultsLive = args.state === 'results' || args.state === 'empty-results';
   faker.seed(20260724 + args.questionCount + args.optionCount);
   const questionCount = Math.max(0, Math.min(20, Math.round(args.questionCount)));
   const optionCount = Math.max(1, Math.min(10, Math.round(args.optionCount)));
@@ -343,13 +330,14 @@ function storyForm(args: EventFormPageStoryArgs) {
     descriptionImages: args.withImages ? [publicPortraitImage, publicLandscapeImage] : [],
     allowResponseEdits: args.allowResponseEdits,
     resultsPublic: resultsReleased,
+    resultsLive,
     elementsJson: JSON.stringify(elements),
     links: [
       createPublicEventFormLink({
         id: 'link-story',
         formId: 'form-story',
         eventId: 'event-story',
-        availableUntil: args.state === 'closed' ? '2020-01-01T00:00:00.000Z' : null,
+        availableUntil: args.state === 'closed' ? new Date(Date.now() - 86_400_000).toISOString() : null,
       }),
     ],
   });

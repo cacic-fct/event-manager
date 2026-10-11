@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
@@ -43,7 +43,6 @@ import { MatIconModule } from '@angular/material/icon';
       font-size: inherit;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsTeamLogoComponent {
   readonly logoUrl = input<string | null | undefined>(null);

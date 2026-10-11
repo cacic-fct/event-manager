@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { catchError, map, of, startWith } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -13,11 +14,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendance/attendances-api.service';
+import { routePageErrorStatus } from '../../shared/route-error-handling';
 
 type LecturerProfileState =
   | { status: 'loading' }
-  | { status: 'ready'; profile: LecturerProfile | null }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; profile: LecturerProfile | null };
 
 @Component({
   selector: 'app-lecturer-profile',
@@ -35,11 +36,11 @@ type LecturerProfileState =
   ],
   templateUrl: './lecturer-profile.html',
   styleUrl: './lecturer-profile.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LecturerProfileComponent {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   readonly isEditing = signal(false);
@@ -64,12 +65,10 @@ export class LecturerProfileComponent {
         return { status: 'ready', profile } satisfies LecturerProfileState;
       }),
       startWith({ status: 'loading' } satisfies LecturerProfileState),
-      catchError((error: unknown) =>
-        of({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Não foi possível carregar o perfil de ministrante.',
-        } satisfies LecturerProfileState),
-      ),
+      catchError((error: unknown) => {
+        void this.routeErrors.navigate(routePageErrorStatus(error));
+        return of({ status: 'loading' } satisfies LecturerProfileState);
+      }),
     ),
     { initialValue: { status: 'loading' } satisfies LecturerProfileState },
   );

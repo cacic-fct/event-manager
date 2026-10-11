@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';
 import { NovuNotificationsService } from './novu-notifications.service';
 
 @Component({
   selector: 'lib-novu-notification-badge',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatBadgeModule],
   template: `
     <span

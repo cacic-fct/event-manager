@@ -35,7 +35,18 @@ export async function createAttendance(params: {
   refreshNonRegular?: boolean;
   idempotencyKey?: string;
   afterIdempotencyLock?: (tx: Prisma.TransactionClient) => Promise<void>;
-  afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
+  afterCreate?: (
+    attendance: {
+      personId: string;
+      eventId: string;
+      status: EventAttendanceStatus;
+      createdByMethod: AttendanceCreationMethod;
+      attendedAt: Date;
+      category: string | null;
+      currentAssessment: string | null;
+    },
+    tx: Prisma.TransactionClient,
+  ) => Promise<void>;
   afterCheckInStarted?: (attendance: { personId: string; eventId: string }) => Promise<void>;
 }) {
   getRequiredAttendanceLocationData(params.input.location);

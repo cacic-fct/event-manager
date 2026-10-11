@@ -6,17 +6,19 @@ import { ScannerDebug } from './scanner-debug';
 
 const meta: Meta<ScannerDebug> = {
   component: ScannerDebug,
-  title: 'CACiC Eventos/Developer Tools/Scanner Debug',
+  title: 'Public/Developer Tools/Scanner',
   tags: ['autodocs'],
+  parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static diagnostics for the attendance scanner and its browser permissions.' } },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
   decorators: [
     applicationConfig({
       providers: [ScannerFeedbackService],
     }),
   ],
-  parameters: {
-    layout: 'fullscreen',
-    a11y: { test: 'todo' },
-  },
 };
 
 export default meta;
@@ -43,17 +45,4 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileScannerControls: Story = {
-  ...Playground,
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
-
-export const OfflineDarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', network: 'offline', motion: 'reduced' },
 };

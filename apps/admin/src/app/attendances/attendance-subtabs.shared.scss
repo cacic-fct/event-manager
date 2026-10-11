@@ -1,3 +1,21 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+.subtab-layout {
+  @include view-widths.view();
+}
+
+@media (min-width: 901px) {
+  .major-attendance-layout {
+    @include view-widths.view(2);
+  }
+}
+
+@media (min-width: 1181px) {
+  .event-attendance-layout {
+    @include view-widths.view(2);
+  }
+}
+
 .subtab-layout {
   display: grid;
   gap: 1rem;

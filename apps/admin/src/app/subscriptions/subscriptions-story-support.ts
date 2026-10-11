@@ -17,6 +17,15 @@ import { WorkspacePermissionScope, PermissionsService } from '../permissions/per
 import { SubscriptionsService } from './subscriptions.service';
 import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../testing/admin-entity-fixtures';
 
+const storyDateReference = new Date();
+
+function storyDate(daysFromNow: number, hour = 12): string {
+  const date = new Date(storyDateReference);
+  date.setDate(date.getDate() + daysFromNow);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
+}
+
 export interface StoryWorkspaceOptions {
   majorEventId?: string | null;
   selectedMajorEventSubscriptionId?: string | null;
@@ -117,7 +126,11 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
         selectedMajorEventId || 'major-event-1',
         options.longNames
           ? `Maria Eduarda de ${faker.person.lastName()} ${faker.person.lastName()} — participante ${index + 1}`
-          : faker.person.fullName(),
+          : index === 0
+            ? 'Ana Oliveira'
+            : index === 1
+              ? 'Bruna Santos'
+              : faker.person.fullName(),
         statuses[index % statuses.length] ?? 'CONFIRMED',
       ),
     ),
@@ -169,7 +182,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
           : faker.person.fullName(),
       ),
       isLecturerSubscription: index % 4 === 0,
-      createdAt: '2026-05-20T12:00:00.000Z',
+      createdAt: storyDate(-1),
       createdById: 'storybook-user',
       createdByMethod: 'ADMIN_DASHBOARD',
     })),
@@ -192,7 +205,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventEditForm = new FormGroup({
     subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
     amountPaid: new FormControl<number | null>(1.2),
-    paymentDate: new FormControl<Date | null>(parseDateOnly('2026-05-19')),
+    paymentDate: new FormControl<Date | null>(parseDateOnly(storyDate(-1).slice(0, 10))),
     paymentTier: new FormControl<string | null>('Estudante'),
     imageLicenseAgreementAccepted: new FormControl(false, { nonNullable: true }),
   });
@@ -362,14 +375,14 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
     id,
     name,
     emoji,
-    startDate: '2026-06-01T12:00:00.000Z',
-    endDate: '2026-06-05T21:00:00.000Z',
+    startDate: storyDate(1),
+    endDate: storyDate(4, 21),
     isPaymentRequired: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
-    publishedAt: '2026-05-20T12:00:00.000Z',
+    publishedAt: storyDate(-1),
     unpublishedAt: null,
     majorEventPrices: [
       {
@@ -386,8 +399,8 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
         ],
       },
     ],
-    createdAt: '2026-05-01T12:00:00.000Z',
-    updatedAt: '2026-05-20T12:00:00.000Z',
+    createdAt: storyDate(-4),
+    updatedAt: storyDate(-1),
   });
 }
 
@@ -397,8 +410,8 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     name,
     emoji,
     type: 'MINICURSO',
-    startDate: '2026-06-02T12:00:00.000Z',
-    endDate: '2026-06-02T15:00:00.000Z',
+    startDate: storyDate(2),
+    endDate: storyDate(2, 15),
     shouldCollectAttendance: true,
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
@@ -409,10 +422,10 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     isPubliclyListed: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
-    publishedAt: '2026-05-20T12:00:00.000Z',
+    publishedAt: storyDate(-1),
     unpublishedAt: null,
-    createdAt: '2026-05-01T12:00:00.000Z',
-    updatedAt: '2026-05-20T12:00:00.000Z',
+    createdAt: storyDate(-4),
+    updatedAt: storyDate(-1),
   });
 }
 
@@ -422,8 +435,8 @@ function buildPerson(id: string, name: string): Person {
     name,
     email: `${id}@cacic.com.br`,
     identityDocument: '123.456.789-00',
-    createdAt: '2026-05-01T12:00:00.000Z',
-    updatedAt: '2026-05-20T12:00:00.000Z',
+    createdAt: storyDate(-4),
+    updatedAt: storyDate(-1),
   });
 }
 
@@ -441,9 +454,9 @@ function buildMajorEventSubscription(
     person: buildPerson(`${id}-person`, personName),
     subscriptionStatus,
     amountPaid: 120,
-    paymentDate: '2026-05-19T12:00:00.000Z',
+    paymentDate: storyDate(-1),
     paymentTier: 'Estudante',
-    createdAt: '2026-05-18T12:00:00.000Z',
+    createdAt: storyDate(-1, 9),
     createdById: 'storybook-user',
     createdByMethod: 'ADMIN_DASHBOARD',
     imageLicenseAgreementAccepted: false,
@@ -454,8 +467,8 @@ function buildMajorEventSubscription(
         eventEmoji: '📐',
         eventType: 'MINICURSO',
         eventShortDescription: 'Projeto de interfaces para a comunidade acadêmica',
-        eventStartDate: '2026-06-02T12:00:00.000Z',
-        eventEndDate: '2026-06-02T14:00:00.000Z',
+        eventStartDate: storyDate(2),
+        eventEndDate: storyDate(2, 14),
         eventLocationDescription: 'Laboratório 1',
         eventSlots: 40,
         availableSlots: 12,
@@ -469,8 +482,8 @@ function buildMajorEventSubscription(
         eventEmoji: '📡',
         eventType: 'PALESTRA',
         eventShortDescription: 'Inscrições e consultas de dados com GraphQL',
-        eventStartDate: '2026-06-03T12:00:00.000Z',
-        eventEndDate: '2026-06-03T13:00:00.000Z',
+        eventStartDate: storyDate(3),
+        eventEndDate: storyDate(3, 13),
         eventLocationDescription: 'Auditório principal',
         eventSlots: 30,
         availableSlots: 0,

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './support/e2e-test';
+import { expect, test, waitForPublicLandingBootstrap } from './support/e2e-test';
 
 type AxeApi = typeof import('axe-core');
 
@@ -58,13 +58,20 @@ for (const scenario of [
       // Allows the same browser contracts to run against the existing Storybook
       // when the public app server is unavailable locally. CI uses /app/.
       const storybookUrl = process.env['LANDING_STORYBOOK_URL'];
-      const storyId = scenario.colorScheme === 'dark' ? 'dark-system-preference' : 'playground';
+      const globals = `theme:${scenario.colorScheme};motion:${scenario.reducedMotion === 'reduce' ? 'reduced' : 'full'}`;
+      const landingBootstrap = storybookUrl ? Promise.resolve() : waitForPublicLandingBootstrap(page);
       await page.goto(storybookUrl
-        ? `${storybookUrl}/iframe.html?id=cacic-eventos-landing-page--${storyId}&viewMode=story`
+        ? `${storybookUrl}/iframe.html?id=public-landing-page--playground&viewMode=story&globals=${globals}`
         : '/app/');
+      await landingBootstrap;
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
-      await expect(page.locator('app-landing-participant-showcase')).toBeVisible();
+      const productShowcase = page.locator('app-landing-product-showcase');
+      await expect(productShowcase).toBeVisible({ timeout: 15_000 });
+      await productShowcase.locator('.showcase-container').first().evaluate((container) => {
+        container.scrollIntoView({ block: 'end', behavior: 'instant' });
+      });
+      await expect(page.locator('app-landing-participant-showcase')).toBeVisible({ timeout: 15_000 });
     });
 
     test('renders every feature with real shared controls, accessible selection and responsive layout', async ({ page }) => {
@@ -97,8 +104,10 @@ for (const scenario of [
         }
       }
       const extrasPlaceholder = page.locator('.showcase-placeholder').filter({ hasText: 'Conheça os recursos para torneios' });
-      if (await extrasPlaceholder.count()) await extrasPlaceholder.scrollIntoViewIfNeeded();
       const extras = page.locator('app-landing-event-extras');
+      await extrasPlaceholder.or(extras).evaluate((section) => {
+        section.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
       await expect(extras).toBeVisible();
       await extras.scrollIntoViewIfNeeded();
       await expect(extras.locator('app-landing-sports-demo')).toBeVisible();

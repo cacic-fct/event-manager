@@ -1,3 +1,10 @@
+@use '../app-shell/layout/admin-view-widths' as view-widths;
+
+:host {
+  display: block;
+  @include view-widths.view(3);
+}
+
 .dashboard-header {
   display: flex;
   align-items: flex-start;
@@ -41,8 +48,28 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+@media (max-width: 1040px) {
+  :host {
+    @include view-widths.view(2);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  :host {
+    @include view-widths.view();
+  }
+
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .section-title {

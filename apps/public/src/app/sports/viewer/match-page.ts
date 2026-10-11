@@ -1,12 +1,13 @@
 import { DatePipe, Location, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { SportsLiveDotComponent, SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
+import { LivestreamEmbedComponent, SportsLiveDotComponent, SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
+import { normalizeLivestreamValue } from '@cacic-fct/shared-livestream';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
@@ -14,7 +15,7 @@ import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
 import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import type { PublicSportsMatch, PublicSportsRosterEntry, SportsViewerPageState } from './sports-viewer.types';
 import {
-  isRosterPublic,
+  isMatchStarted,
   matchLocation,
   matchParticipantName,
   publicOfficialName,
@@ -34,12 +35,12 @@ import {
     MatIconModule,
     MatProgressBarModule,
     MatToolbarModule,
+    LivestreamEmbedComponent,
     SportsLiveDotComponent,
     SportsTeamLogoComponent,
   ],
   templateUrl: './match-page.html',
   styleUrl: './match-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SportsMatchPage {
   private readonly api = inject(SportsViewerApiService);
@@ -81,7 +82,7 @@ export class SportsMatchPage {
 
     this.route.paramMap
       .pipe(
-        map((params) => params.get('matchId') ?? params.get('id') ?? ''),
+        map((params) => params.get('matchId') ?? ''),
         filter(Boolean),
         distinctUntilChanged(),
         takeUntilDestroyed(this.destroyRef),
@@ -129,8 +130,8 @@ export class SportsMatchPage {
     return matchLocation(match);
   }
 
-  rosterIsPublic(match: PublicSportsMatch): boolean {
-    return isRosterPublic(match);
+  matchHasStarted(match: PublicSportsMatch): boolean {
+    return isMatchStarted(match);
   }
 
   playerName(name: string): string {
@@ -159,12 +160,8 @@ export class SportsMatchPage {
     return sportsLossReasonLabel(reason);
   }
 
-  livestreamLabel(provider: PublicSportsMatch['livestreamProvider']): string {
-    return {
-      YOUTUBE: 'Assistir no YouTube',
-      TWITCH: 'Assistir na Twitch',
-      GENERAL: 'Assistir à transmissão',
-    }[provider ?? 'GENERAL'];
+  hasLivestream(match: PublicSportsMatch): boolean {
+    return normalizeLivestreamValue(match.livestreamProvider ?? 'GENERAL', match.livestreamUrl) !== null;
   }
 
   overallClock(match: PublicSportsMatch): string {

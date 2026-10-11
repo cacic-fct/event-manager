@@ -63,7 +63,7 @@
   } @else { @if (!store.isPreparingSubscriptionFlow() && !store.subscriptionFormFlow() && store.decisions().hasTierStep
   && store.selectedPriceTier(); as tier) {
   <section class="selected-tier-summary" aria-label="Modalidade selecionada">
-    <p><strong>{{ tier.name }}</strong> · {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
+    <p><strong>{{ tier.name }}</strong>: {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
     <button matButton type="button" [disabled]="store.tierSelectionLocked()" (click)="returnToTier()">
       Alterar modalidade
     </button>

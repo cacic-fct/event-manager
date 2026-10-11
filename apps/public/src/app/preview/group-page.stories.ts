@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { provideHttpClient } from '@angular/common/http';
 import { LOCALE_ID } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
@@ -30,9 +31,10 @@ interface GroupPreviewStoryContext {
 
 const meta: Meta<GroupPreviewStoryArgs> = {
   component: GroupPreviewComponent,
-  title: 'CACiC Eventos/Preview/Event Group',
+  title: 'Public/Discovery/Preview/Group',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<GroupPreviewStoryArgs>(),
     applicationConfig({
       providers: [
         provideHttpClient(),
@@ -57,7 +59,7 @@ const meta: Meta<GroupPreviewStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -70,30 +72,27 @@ const noMajorEventContext = createStoryContext({ includeMajorEvent: false });
 const singleEventContext = createStoryContext({ eventCount: 1 });
 
 export const Playground: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   render: (args) => renderStory(args, playgroundContext),
   parameters: storyParameters(playgroundContext),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Pré-Visualização')).toBeVisible();
-    await expect(await canvas.findByText('Grupo de eventos')).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Minicursos de Férias' })).toBeVisible();
+    await expect(await canvas.findByText(/Pré-visualização temporária/)).toBeVisible();
   },
 };
 
-export const SemGrandeEvento: Story = {
+export const WithoutMajorEvent: Story = {
   args: {
     includeMajorEvent: false,
   },
-  globals: { theme: 'light' },
   render: (args) => renderStory(args, noMajorEventContext),
   parameters: storyParameters(noMajorEventContext),
 };
 
-export const EventoUnico: Story = {
+export const SingleEvent: Story = {
   args: {
     eventCount: 1,
   },
-  globals: { theme: 'light' },
   render: (args) => renderStory(args, singleEventContext),
   parameters: storyParameters(singleEventContext),
 };

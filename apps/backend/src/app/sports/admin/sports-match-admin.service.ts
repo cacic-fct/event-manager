@@ -133,6 +133,9 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
           permission: Permission.SportsMatch.Create,
         });
       }
+      const livestreamUrl = this.normalizeLivestreamUrl(input.livestreamProvider, input.livestreamUrl);
+      const youtubeCode = this.youtubeCodeForLivestream(input.livestreamProvider, livestreamUrl);
+      const twitchChannel = this.twitchChannelForLivestream(input.livestreamProvider, livestreamUrl);
       const match = await tx.sportsMatch.create({
         data: {
           eventId: event.id,
@@ -146,7 +149,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
           groupKey: input.groupKey?.trim() || null,
           notes: this.optionalText(input.notes, 'observações da partida', 4000),
           livestreamProvider: input.livestreamProvider ?? null,
-          livestreamUrl: this.normalizeLivestreamUrl(input.livestreamProvider, input.livestreamUrl),
+          livestreamUrl,
           winnerAdvancesToId: input.winnerAdvancesToId ?? null,
           winnerAdvancesToSide: input.winnerAdvancesToSide ?? null,
           loserAdvancesToId: input.loserAdvancesToId ?? null,
@@ -156,13 +159,13 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
         },
         include: { event: true },
       });
-      const youtubeCode = this.youtubeCodeForLivestream(input.livestreamProvider, input.livestreamUrl);
-      if (youtubeCode) {
+      if (input.livestreamProvider !== undefined || input.livestreamUrl !== undefined) {
         await tx.event.update({
           where: { id: event.id },
-          data: { youtubeCode, updatedById: actorId },
+          data: { youtubeCode, twitchChannel, updatedById: actorId },
         });
         match.event.youtubeCode = youtubeCode;
+        match.event.twitchChannel = twitchChannel;
       }
       await this.auditLog.record(
         {

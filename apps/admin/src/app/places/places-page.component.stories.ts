@@ -1,6 +1,7 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import type { PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createAdminPlacePreset } from '../testing/admin-entity-fixtures';
@@ -31,7 +32,7 @@ function placePreset(index: number, incomplete = false): PlacePreset {
 
   return createAdminPlacePreset({
     id: `place-${index + 1}`,
-    name: `${names[index % names.length]}${activeArgs.longNames ? ` · ${faker.company.catchPhrase()}` : ''}`,
+    name: `${names[index % names.length]}${activeArgs.longNames ? `, ${faker.company.catchPhrase()}` : ''}`,
     latitude: incomplete ? null : Number((-22.1211 + index * 0.001).toFixed(6)),
     longitude: incomplete ? null : Number((-51.4086 - index * 0.001).toFixed(6)),
     locationDescription: incomplete
@@ -56,8 +57,9 @@ function places(args: PlacesTabStoryArgs): PlacePreset[] {
 
 const meta: Meta<PlacesTabStoryArgs> = {
   component: PlacesPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Places/Workspace Places Tab',
+  title: 'Admin/Event Management/Places',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<PlacesTabStoryArgs>()],
   args: activeArgs,
   argTypes: {
     placeCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
@@ -70,11 +72,16 @@ const meta: Meta<PlacesTabStoryArgs> = {
   render: (args) => {
     activeArgs = args;
     faker.seed(20260616 + args.placeCount);
-    return { props: args };
+    return { props: {} };
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Place catalog with controls for loading state, result count, and long names. Stories cover empty results and coordinate details.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -141,10 +148,6 @@ export const EmptyList: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  ...EmptyList,
-  globals: { theme: 'dark', motion: 'reduced' },
-};
 
 export const DensePlaces: Story = {
   args: { placeCount: 30, incompleteEvery: 4, includeIncompletePlace: false, latencyMs: 0 },
@@ -156,13 +159,10 @@ export const Loading: Story = {
 
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
-export const LongNamesMobile: Story = {
+export const LongNames: Story = {
   args: { placeCount: 16, longNames: true, incompleteEvery: 3, latencyMs: 0 },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const CoordinateDisclosure: Story = {

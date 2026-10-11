@@ -171,7 +171,7 @@
           <strong>{{ event.name }}</strong>
           <small>
             {{ event.startDate | date: 'HH:mm' }}–{{ event.endDate | date: 'HH:mm' }} @if (event.locationDescription) {
-            · {{ event.locationDescription }} }
+            , {{ event.locationDescription }} }
           </small>
         </span>
         <mat-icon aria-hidden="true">chevron_right</mat-icon>

@@ -1,10 +1,30 @@
 import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphql';
 import { Test } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { graphql } from 'graphql';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventsResolver } from './resolver';
 
 describe('EventsResolver', () => {
+  it.each([
+    ['youtubeCode', 'https://example.com/video'],
+    ['twitchChannel', 'https://twitch.tv/videos/123'],
+  ] as const)('rejects invalid %s input instead of clearing the event field', async (field, value) => {
+    const prisma = { $transaction: jest.fn() };
+    const resolver = new EventsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      { assertEventCreateTargetsMutable: jest.fn() } as never,
+      { assertPermissions: jest.fn().mockResolvedValue(undefined) } as never,
+    );
+
+    await expect(resolver.createEvent({ [field]: value } as never, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('refreshes attendance classifications and realtime after an invitation-only edit', async () => {
     const event = { id: 'event-1', name: 'Evento', audience: 'PUBLIC', audienceCourseCodes: [],
       eventGroupId: null, majorEventId: null, attendanceEligibility: 'INVITED_ONLY', deletedAt: null };
@@ -114,12 +134,19 @@ describe('EventsResolver', () => {
           emoji: event.emoji,
           startDate: event.startDate,
           endDate: event.endDate,
+          youtubeCode: 'https://youtu.be/video-123',
+          twitchChannel: 'https://www.twitch.tv/My_Channel',
         },
         { req: { user: { sub: 'user-1' } } } as never,
       ),
     ).rejects.toThrow('audit unavailable');
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ youtubeCode: 'video-123', twitchChannel: 'my_channel' }),
+      }),
+    );
     expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ entityId: event.id }), tx);
     expect(typesenseSearch.upsertEvent).not.toHaveBeenCalled();
   });

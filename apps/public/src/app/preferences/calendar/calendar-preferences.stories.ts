@@ -1,6 +1,7 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@angular/core';
+import { Component, LOCALE_ID, input, signal } from '@angular/core';
 import { CalendarDefaultItemViewPreference, CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -59,7 +60,6 @@ const storyAuthState = signal(defaultArgs.authenticated);
       <app-calendar-preferences />
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 class CalendarPreferencesStoryHostComponent {
   readonly renderKey = input(0);
@@ -67,9 +67,10 @@ class CalendarPreferencesStoryHostComponent {
 
 const meta: Meta<CalendarPreferencesStoryArgs> = {
   component: CalendarPreferencesStoryHostComponent,
-  title: 'CACiC Eventos/Preferences/Calendar',
+  title: 'Public/Settings/Calendar Feed',
   tags: ['autodocs'],
   decorators: [
+    withScenarioControls<CalendarPreferencesStoryArgs>(),
     applicationConfig({
       providers: [
         { provide: LOCALE_ID, useValue: 'pt-BR' },
@@ -101,36 +102,36 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
     requestState: {
       control: 'select',
       options: ['success', 'loading', 'error'],
-      description: 'Resposta simulada pela API GraphQL.',
+      description: 'Selects the response returned by the GraphQL mock.',
       if: { arg: 'authenticated' },
     },
     authenticated: {
       control: 'boolean',
-      description: 'Exibe os controles privados do feed quando a sessão está autenticada.',
+      description: 'Shows private feed controls when the session is authenticated.',
     },
     defaultItemView: {
       control: 'select',
       options: ['automatic', 'list', 'week'],
-      description: 'Preferência local salva para a visualização inicial dos itens.',
+      description: 'Sets the locally saved preference for the initial item view.',
     },
     enabled: {
       control: 'boolean',
-      description: 'Estado inicial do feed privado.',
+      description: 'Selects the initial state of the private feed.',
       if: { arg: 'requestState', eq: 'success' },
     },
     includeFeedUrl: {
       control: 'boolean',
-      description: 'Retorna ou remove o link iCal privado.',
+      description: 'Returns or removes the private iCal link.',
       if: { arg: 'requestState', eq: 'success' },
     },
     disabledAutomatically: {
       control: 'boolean',
-      description: 'Simula desativação automática por login antigo.',
+      description: 'Simulates automatic deactivation after an older sign-in.',
       if: { arg: 'requestState', eq: 'success' },
     },
     responseDelay: {
       control: { type: 'range', min: 0, max: 1500, step: 100 },
-      description: 'Latência simulada pela API em milissegundos.',
+      description: 'Sets the simulated API latency in milliseconds.',
     },
     renderKey: {
       table: { disable: true },
@@ -147,7 +148,7 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: {
       handlers: {
         graphql: [
@@ -256,7 +257,6 @@ export const RequestError: Story = {
     requestState: 'error',
     responseDelay: 0,
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText('Não foi possível carregar as preferências de calendário simuladas.'),

@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
@@ -83,7 +84,7 @@ Object.defineProperty(globalThis.navigator, 'geolocation', {
 
 const meta: Meta<AttendanceScannerStoryArgs> = {
   component: AttendanceScanner,
-  title: 'CACiC Eventos/Attendance/Collection/Scanner',
+  title: 'Public/Attendance/Collection/Scanner',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -100,6 +101,7 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
     eventLocation: { control: 'text' },
   },
   decorators: [
+    withScenarioControls<AttendanceScannerStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -192,7 +194,7 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -230,7 +232,7 @@ export const QueueNeedsReview: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/conflito/i)).toBeVisible();
     await expect(await canvas.findByLabelText('Tentar novamente')).toBeVisible();
-    await expect(await canvas.findByLabelText('Remover pendência')).toBeVisible();
+    await expect(canvas.getAllByRole('button', { name: 'Remover pendência' })).toHaveLength(3);
   },
 };
 
@@ -244,7 +246,7 @@ export const CachedEventWithoutFeed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhuma presença registrada')).toBeVisible();
-    await expect(await canvas.findByText(/falhou/i)).toBeVisible();
+    await expect(canvas.getAllByText(/(?:scanner|manual), falhou/i)).toHaveLength(3);
   },
 };
 
@@ -253,7 +255,6 @@ export const LocationDenied: Story = {
     locationState: 'denied',
     queueScenario: 'empty',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText('Permita o acesso à localização precisa para continuar.'),
@@ -273,13 +274,11 @@ export const EventAlreadyEnded: Story = {
   args: { eventStartOffsetMinutes: -240, eventDurationMinutes: 60 },
 };
 
-export const LongEventNameMobile: Story = {
+export const LongEventName: Story = {
   args: {
     eventName: 'Credenciamento interdisciplinar de participantes, convidados, palestrantes e equipes esportivas',
     eventLocation: 'Auditório principal do Centro de Eventos, bloco acadêmico e cultural',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceCollectionEvent {

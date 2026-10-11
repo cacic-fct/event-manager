@@ -1,5 +1,5 @@
 import { MessageEvent } from '@nestjs/common';
-import { firstValueFrom, NEVER, of } from 'rxjs';
+import { concat, firstValueFrom, NEVER, of, Subject, toArray } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SPORTS_MATCH_OVERLAY_DEMO_ID } from '../overlays/sports-match-overlay.service';
 import { SportsRealtimeController } from './sports-realtime.controller';
@@ -147,7 +147,10 @@ describe('SportsRealtimeController', () => {
   it('applies the same publication gate to tournament replay streams', async () => {
     await expect(
       firstValueFrom(controller.streamPublicTournament('tournament-1', 'tournament-cursor')),
-    ).resolves.toEqual(event);
+    ).resolves.toEqual({
+      ...event,
+      data: { type: 'SPORTS_TOURNAMENT_INVALIDATED', tournamentId: 'tournament-1' },
+    });
 
     expect(prisma.sportsTournament.findFirstOrThrow).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -159,5 +162,78 @@ describe('SportsRealtimeController', () => {
       }),
       select: { id: true },
     });
+  });
+
+  it.each(['INVITATION_ONLY', 'UNESP_ONLY', 'COURSE_ONLY'])(
+    'reduces retained and live %s match details to tournament refresh signals',
+    async (audience) => {
+      const live = new Subject<MessageEvent>();
+      const restricted = {
+        type: 'MATCH_PROJECTION_CHANGED',
+        matchId: 'restricted-match',
+        categoryId: 'restricted-category',
+        tournamentId: 'tournament-1',
+        audience,
+        scoreboard: { home: 9, away: 2 },
+        state: 'LIVE',
+        canonicalState: 'LIVE',
+        reviewStatus: 'PENDING',
+        revision: 8,
+      };
+      realtime.watch.mockReturnValueOnce(live);
+      let notifyReplayStarted: () => void = () => undefined;
+      const replayStarted = new Promise<void>((resolve) => {
+        notifyReplayStarted = resolve;
+      });
+      replay.replay.mockImplementationOnce((_scope, _cursor, source) => {
+        notifyReplayStarted();
+        return concat(of({ id: 'retained-cursor', retry: 3000, data: restricted }), source);
+      });
+      const stream = controller.streamPublicTournament('tournament-1', 'previous-cursor');
+      const values = firstValueFrom(stream.pipe(toArray()));
+      // Wait for asynchronous tournament admission and subscription to replay/live delivery.
+      await replayStarted;
+      live.next({ id: 'live-cursor', retry: 3000, data: restricted });
+      live.next({
+        id: 'structure-cursor',
+        data: { type: 'SPORTS_STRUCTURE_INVALIDATED', matchIds: ['restricted-match'], categoryId: 'private' },
+      });
+      live.complete();
+
+      await expect(values).resolves.toEqual([
+        {
+          id: 'retained-cursor',
+          retry: 3000,
+          data: { type: 'SPORTS_TOURNAMENT_INVALIDATED', tournamentId: 'tournament-1' },
+        },
+        {
+          id: 'live-cursor',
+          retry: 3000,
+          data: { type: 'SPORTS_TOURNAMENT_INVALIDATED', tournamentId: 'tournament-1' },
+        },
+        {
+          id: 'structure-cursor',
+          data: { type: 'SPORTS_TOURNAMENT_INVALIDATED', tournamentId: 'tournament-1' },
+        },
+      ]);
+      expect(replay.replay).toHaveBeenCalledWith('tournament:tournament-1', 'previous-cursor', live);
+    },
+  );
+
+  it('keeps tournament heartbeats distinguishable without forwarding child data', async () => {
+    replay.replay.mockReturnValueOnce(of({ data: { type: 'heartbeat', matchId: 'restricted-match' } }));
+
+    await expect(firstValueFrom(controller.streamPublicTournament('tournament-1', undefined))).resolves.toEqual({
+      data: { type: 'heartbeat', tournamentId: 'tournament-1' },
+    });
+  });
+
+  it('does not disclose tournament replay history when tournament admission fails', async () => {
+    prisma.sportsTournament.findFirstOrThrow.mockRejectedValueOnce(new Error('Tournament unavailable'));
+
+    await expect(firstValueFrom(controller.streamPublicTournament('tournament-1', 'previous-cursor'))).rejects.toThrow(
+      'Tournament unavailable',
+    );
+    expect(replay.replay).not.toHaveBeenCalled();
   });
 });

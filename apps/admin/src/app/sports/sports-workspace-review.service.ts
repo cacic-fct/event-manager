@@ -311,7 +311,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     if (!registrations.length) {
       return 'Sem modalidade';
     }
-    return registrations.map((registration) => registration.categoryName).join(' · ');
+    return registrations.map((registration) => registration.categoryName).join(', ');
   }
 
   teamModalities(teamId: string) {
@@ -518,7 +518,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
   }
 
   protected categoryToForm(category: SportsCategorySummary) {
-    const scoring = overallScoringRulesToForm(category.overallScoringRulesJson, category.bracketRulesJson);
+    const scoring = overallScoringRulesToForm(category.overallScoringRulesJson);
     this.setPlacementPoints(scoring.overallPlacementPoints ?? []);
     const scoringControls = { ...scoring };
     delete scoringControls.overallPlacementPoints;

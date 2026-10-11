@@ -36,6 +36,7 @@ import {
   ConfirmationDialogData,
 } from '../app-shell/dialogs/confirmation-dialog.component';
 import { bindLiveSearch } from '../search/live-search';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -117,6 +118,7 @@ export class FormsService {
   private readonly router = inject(Router);
   private readonly ui = inject(ShellUiService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
 
   readonly loading = this.ui.loading;
   readonly forms = signal<EventForm[]>([]);
@@ -543,7 +545,9 @@ export class FormsService {
       await this.loadResults();
       return request === this.selectionRequest && this.selectedForm()?.id === formId && this.targetFilter() === scope;
     } catch (error) {
-      if (request === this.selectionRequest) this.showError(error, 'Não foi possível abrir o formulário.');
+      if (request === this.selectionRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.showError(error, 'Não foi possível abrir o formulário.');
+      }
       return false;
     } finally {
       if (this.pendingSelectionRequest === request) {
@@ -927,9 +931,9 @@ export class FormsService {
       return 'Sem vínculos de exibição';
     }
     if (targets.length <= 2) {
-      return targets.join(' · ');
+      return targets.join(', ');
     }
-    return `${targets.slice(0, 2).join(' · ')} +${targets.length - 2}`;
+    return `${targets.slice(0, 2).join(', ')} e mais ${targets.length - 2}`;
   }
 
   targetName(link: Pick<EventFormLinkDraft, 'targetType' | 'eventId' | 'majorEventId'>): string {

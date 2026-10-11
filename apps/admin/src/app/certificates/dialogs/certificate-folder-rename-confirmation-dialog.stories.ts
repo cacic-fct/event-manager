@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -18,7 +18,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-certificate-folder-rename-confirmation-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -53,7 +52,7 @@ class CertificateFolderRenameConfirmationDialogStoryComponent {
 
 const meta: Meta<CertificateFolderRenameStoryArgs> = {
   component: CertificateFolderRenameConfirmationDialogStoryComponent,
-  title: 'CACiC Eventos/Workspace/Certificates/Rename Folder Confirmation',
+  title: 'Admin/Settings/Certificates/Rename',
   tags: ['autodocs'],
   args: {
     newFolderName: 'Atividades complementares',
@@ -63,7 +62,7 @@ const meta: Meta<CertificateFolderRenameStoryArgs> = {
   },
   parameters: {
     layout: 'centered',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -80,10 +79,6 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-};
 
 export const LongFolderName: Story = {
   args: {

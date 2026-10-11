@@ -202,7 +202,7 @@ model PrizeDrawSpin {
   @@unique([drawId, sequence])
   @@index([drawId, undoneAt, sequence])
   @@index([winnerPersonId])
-  @@index([notificationStatus, presentationAcknowledgedAt])
+  @@index([notificationStatus, presentationAcknowledgedAt], map: "prize_draw_spins_notificationStatus_presentationAck_idx")
   @@index([plannedSpinId])
   @@map("prize_draw_spins")
 }

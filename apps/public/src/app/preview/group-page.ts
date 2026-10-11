@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,23 +14,23 @@ import {
   MajorEventSubscriptionApiService,
   PublicationGroupPreview,
 } from '../major-events/registration/subscription-api.service';
+import { privateResourceErrorStatus } from '../shared/route-error-handling';
 
 type GroupPreviewState =
   | { status: 'loading' }
-  | { status: 'ready'; preview: PublicationGroupPreview }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; preview: PublicationGroupPreview };
 
 @Component({
   selector: 'app-group-preview',
   imports: [DatePipe, MatCardModule, MatChipsModule, MatIconModule, MatProgressBarModule, MatToolbarModule],
   templateUrl: './group-page.html',
   styleUrl: './group-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GroupPreviewComponent {
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
 
   readonly emoji = inject(EmojiService);
   readonly state = signal<GroupPreviewState>({ status: 'loading' });
@@ -45,7 +46,7 @@ export class GroupPreviewComponent {
   constructor() {
     const previewToken = this.route.snapshot.paramMap.get('previewToken');
     if (!previewToken) {
-      this.state.set({ status: 'error', message: 'Pré-visualização inválida.' });
+      void this.routeErrors.navigate(404);
       return;
     }
 
@@ -54,11 +55,9 @@ export class GroupPreviewComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (preview) => this.state.set({ status: 'ready', preview }),
-        error: (error: unknown) =>
-          this.state.set({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Não foi possível carregar a pré-visualização.',
-          }),
+        error: (error: unknown) => {
+          void this.routeErrors.navigate(privateResourceErrorStatus(error));
+        },
       });
   }
 

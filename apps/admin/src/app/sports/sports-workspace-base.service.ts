@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { EventForm, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import {
   DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
@@ -49,6 +50,7 @@ import {
 import { bindLiveSearch } from '../search/live-search';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { RealtimeApiService } from '../graphql/realtime-api.service';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 interface SportsMajorEventWorkspaceFilters {
   query: string;
@@ -72,6 +74,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly realtime = inject(RealtimeApiService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   protected liveSubscription: Subscription | null = null;
   private workspaceIndexSubscription: Subscription | null = null;
   protected liveRefreshRunning = false;
@@ -260,6 +263,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       destroyRef: this.destroyRef,
       search: () => this.applyMajorEventWorkspaceFilters(),
     });
+    this.matchForm.controls.livestreamProvider.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.matchForm.controls.livestreamUrl.updateValueAndValidity({ emitEvent: false }));
   }
 
   private readonly forms = createSportsWorkspaceForms(this.fb);
@@ -437,20 +443,24 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.tournaments.set([]);
     const request = ++this.workspaceIndexRequest;
     await this.run('Não foi possível abrir a gestão esportiva deste grande evento.', async () => {
-      const tournaments = await firstValueFrom(this.api.tournaments({ majorEventId, take: 1 }));
-      const sportsMajorEvent = tournaments[0]?.majorEvent;
-      const fallbackMajorEvent = !sportsMajorEvent && this.permissions.has(Permission.MajorEvent.Read)
-        ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId))
-        : null;
-      const authorizedMajorEvent = sportsMajorEvent ?? fallbackMajorEvent;
-      if (request !== this.workspaceIndexRequest || this.majorEventRouteScopeId() !== majorEventId) return;
-      this.tournaments.set(tournaments);
-      this.majorEvents.set(fallbackMajorEvent ? [fallbackMajorEvent] : []);
-      if (authorizedMajorEvent) {
-        this.majorEventRouteScopeSummary.set(authorizedMajorEvent);
+      try {
+        const tournaments = await firstValueFrom(this.api.tournaments({ majorEventId, take: 1 }));
+        const sportsMajorEvent = tournaments[0]?.majorEvent;
+        const fallbackMajorEvent = !sportsMajorEvent && this.permissions.has(Permission.MajorEvent.Read)
+          ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId))
+          : null;
+        const authorizedMajorEvent = sportsMajorEvent ?? fallbackMajorEvent;
+        if (request !== this.workspaceIndexRequest || this.majorEventRouteScopeId() !== majorEventId) return;
+        this.tournaments.set(tournaments);
+        this.majorEvents.set(fallbackMajorEvent ? [fallbackMajorEvent] : []);
+        if (authorizedMajorEvent) {
+          this.majorEventRouteScopeSummary.set(authorizedMajorEvent);
+        }
+        const tournament = tournaments[0];
+        if (tournament) await this.loadTournament(tournament.tournament.id);
+      } catch (error) {
+        if (!this.routeResourceErrors.redirectIfUnavailable(error)) throw error;
       }
-      const tournament = tournaments[0];
-      if (tournament) await this.loadTournament(tournament.tournament.id);
     });
   }
 
@@ -591,7 +601,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       read = await firstValueFrom(this.api.tournament(id));
     } catch (error) {
       if (loadRevision === this.tournamentLoadRevision) {
-        this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar o torneio esportivo.');
+        if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+          this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar o torneio esportivo.');
+        }
       }
       throw error;
     }

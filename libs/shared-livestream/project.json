@@ -1,0 +1,9 @@
+{
+  "name": "shared-livestream",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared-livestream/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:util"],
+  "// targets": "to see all targets run: nx show project shared-livestream --web",
+  "targets": {}
+}

@@ -5,7 +5,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { SportsMatchPage } from './match-page';
 import { SportsViewerApiService } from './sports-viewer-api.service';
-import { createSportsViewerMatch } from './sports-viewer.fixtures';
+import { createSportsViewerMatch, createSportsViewerRoster } from './sports-viewer.fixtures';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
 
 describe('SportsMatchPage', () => {
@@ -34,6 +34,15 @@ describe('SportsMatchPage', () => {
     });
   });
 
+  it('loads only the canonical match route parameter', () => {
+    paramMap.next(convertToParamMap({ id: 'match-fixture' }));
+    TestBed.runInInjectionContext(() => new SportsMatchPage());
+    expect(getMatch).not.toHaveBeenCalled();
+
+    paramMap.next(convertToParamMap({ matchId: 'match-fixture' }));
+    expect(getMatch).toHaveBeenCalledWith('match-fixture');
+  });
+
   it('does not open a browser-only realtime stream during server rendering', () => {
     TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
 
@@ -53,19 +62,18 @@ describe('SportsMatchPage', () => {
     expect(page.isLive(match)).toBe(true);
     expect(page.teamName(match, 'home')).toBe('Atlética FCT');
     expect(page.locationLabel(match)).toContain('Ginásio da FCT');
-    expect(page.rosterIsPublic(match)).toBe(false);
+    expect(page.matchHasStarted(match)).toBe(true);
     expect(page.playerName('Ana Beatriz de Souza')).toBe('Ana Souza');
     expect(page.officialName('Mariana Clara dos Santos')).toBe('Mariana S.');
     expect(page.officialRoleLabel('REFEREE')).toBe('Arbitragem');
     expect(page.rosterRoleLabel('CAPTAIN')).toBe('Capitão');
     expect(page.lossReasonLabel('SCORE')).toBe('Placar');
-    expect(page.livestreamLabel('YOUTUBE')).toBe('Assistir no YouTube');
-    expect(page.livestreamLabel(null)).toBe('Assistir à transmissão');
+    expect(page.hasLivestream(match)).toBe(true);
 
     realtime.next();
     expect(getMatch).toHaveBeenCalledTimes(2);
-    paramMap.next(convertToParamMap({ id: 'match-fallback' }));
-    expect(getMatch).toHaveBeenLastCalledWith('match-fallback');
+    paramMap.next(convertToParamMap({ matchId: 'match-next' }));
+    expect(getMatch).toHaveBeenLastCalledWith('match-next');
     page.goBack();
     expect(back).toHaveBeenCalledOnce();
   });
@@ -78,21 +86,28 @@ describe('SportsMatchPage', () => {
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.querySelectorAll('.scoreboard .team h2')).toHaveLength(2);
     expect(element.querySelector('[aria-live="polite"][aria-atomic="true"]')?.textContent).toContain('Placar:');
+    expect(element.querySelector('iframe')?.getAttribute('src')).toContain('youtube-nocookie.com/embed/storybook-sports');
+    expect(element.querySelector('.livestream-section a')?.getAttribute('href')).toBe(
+      'https://www.youtube.com/watch?v=storybook-sports',
+    );
 
     fixture.destroy();
   });
 
-  it('renders a scheduled match as upcoming without exposing live-only controls', () => {
-    getMatch.mockReturnValue(
-      of(
-        createSportsViewerMatch({
-          state: 'SCHEDULED',
-          scoreboard: { homeScore: 0, awayScore: 0, activePeriod: null, periods: [] },
-          timerStartedAt: null,
-          periodTimers: [],
-        }),
-      ),
-    );
+  it('renders a scheduled match privately, then reveals organization and lineups when it starts', () => {
+    getMatch
+      .mockReturnValueOnce(
+        of(
+          createSportsViewerMatch({
+            state: 'SCHEDULED',
+            scoreboard: { homeScore: 0, awayScore: 0, activePeriod: null, periods: [] },
+            timerStartedAt: null,
+            periodTimers: [],
+            rosters: createSportsViewerRoster(),
+          }),
+        ),
+      )
+      .mockReturnValueOnce(of(createSportsViewerMatch({ state: 'LIVE', rosters: createSportsViewerRoster() })));
     const fixture = TestBed.createComponent(SportsMatchPage);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
@@ -101,10 +116,38 @@ describe('SportsMatchPage', () => {
     expect(element.querySelector('.score-hero.live')).toBeNull();
     expect(element.querySelector('.public-clock')).toBeNull();
     expect(element.textContent).toContain('Ginásio da FCT');
-    expect(element.textContent).toContain('As escalações são disponibilizadas após o encerramento da partida.');
+    expect(element.querySelector('.officials-section')).toBeNull();
+    expect(element.querySelector('.roster-section')).toBeNull();
+    expect(element.textContent).not.toContain('Ana Souza');
+
+    realtime.next();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.officials-section h2')?.textContent).toContain('Organização da partida');
+    expect(element.querySelector('.roster-section h2')?.textContent).toContain('Escalações');
+    expect(element.textContent).toContain('Ana Souza');
 
     fixture.destroy();
   });
+
+  it.each(['LIVE', 'PAUSED', 'FINISHED', 'DRAW'] as const)(
+    'shows organization and lineups after a match reaches %s',
+    (state) => {
+      getMatch.mockReturnValue(
+        of(createSportsViewerMatch({ id: 'match-fixture', state, rosters: createSportsViewerRoster() })),
+      );
+      const fixture = TestBed.createComponent(SportsMatchPage);
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('.officials-section h2')?.textContent).toContain('Organização da partida');
+      expect(element.querySelector('.roster-section h2')?.textContent).toContain('Escalações');
+      expect(element.textContent).toContain('Ana Souza');
+      expect(element.textContent).toContain('Mariana S.');
+
+      fixture.destroy();
+    },
+  );
 
   it('calculates capped and overtime clocks from fixture-relative timestamps', () => {
     const page = TestBed.runInInjectionContext(() => new SportsMatchPage());

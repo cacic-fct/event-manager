@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -17,7 +16,6 @@ import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-til
   selector: 'app-event-location-map',
   template: '<div #mapTarget class="map-target" aria-hidden="true"></div>',
   styleUrl: './location-map.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EventLocationMap implements OnDestroy {
   readonly latitude = input.required<number | null>();

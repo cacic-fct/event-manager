@@ -127,6 +127,7 @@ export const PUBLIC_EVENT_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   youtubeCode: true,
+  twitchChannel: true,
   buttonText: true,
   buttonLink: true,
   sportsMatch: {
@@ -996,6 +997,12 @@ export class PublicEvent {
     description: 'YouTube video identifier used when the event exposes public video content.',
   })
   youtubeCode?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Twitch channel identifier used when the event exposes public video content.',
+  })
+  twitchChannel?: string | null;
 
   @Field(() => String, {
     nullable: true,

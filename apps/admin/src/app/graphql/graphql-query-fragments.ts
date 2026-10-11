@@ -81,6 +81,7 @@ export const EVENT_DETAIL_FIELDS = `
   publishedAt
   unpublishedAt
   youtubeCode
+  twitchChannel
   buttonText
   buttonLink
   deletedAt

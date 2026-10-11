@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/core';
+import { Component, ViewEncapsulation } from '@angular/core';
 
 @Component({
   selector: 'app-wallet-print-styles',
@@ -27,6 +27,5 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
     }
   `,
   encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletPrintStyles {}

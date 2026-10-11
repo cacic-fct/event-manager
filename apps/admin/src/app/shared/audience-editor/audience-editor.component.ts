@@ -107,7 +107,7 @@ export class AudienceEditorComponent {
   protected readonly invitationDataWarning = computed(() => {
     const count = this.unresolvedInvitationCount();
     return count > 0
-      ? `${count === 1 ? 'Uma pessoa convidada está' : `${count} pessoas convidadas estão`} sem dados carregados. O convite será mantido; verifique a permissão de Pessoa · Visualizar para exibir os dados.`
+      ? `${count === 1 ? 'Uma pessoa convidada está' : `${count} pessoas convidadas estão`} sem dados carregados. O convite será mantido; verifique a permissão de Pessoa: Visualizar para exibir os dados.`
       : null;
   });
 
@@ -144,7 +144,7 @@ export class AudienceEditorComponent {
   protected readonly canSearchPeople = computed(() => this.permissions.has(Permission.Person.Read));
   protected readonly searchDisabledReason = computed(() => {
     if (!this.canSearchPeople()) {
-      return 'Buscar pessoas exige permissão de Pessoa · Visualizar.';
+      return 'Buscar pessoas exige permissão de Pessoa: Visualizar.';
     }
 
     return 'A edição de convites está bloqueada para este registro.';

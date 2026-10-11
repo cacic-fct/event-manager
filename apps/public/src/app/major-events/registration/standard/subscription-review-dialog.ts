@@ -1,5 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -45,7 +45,6 @@ interface SubscriptionReviewAnswerRow {
   imports: [CurrencyPipe, DatePipe, MatButtonModule, MatDialogModule, MatIconModule],
   templateUrl: './subscription-review-dialog.html',
   styleUrl: './subscription-review-dialog.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SubscriptionReviewDialog {
   private readonly dialogRef = inject(MatDialogRef<SubscriptionReviewDialog>);
@@ -102,7 +101,7 @@ export class SubscriptionReviewDialog {
       const slot = createSchedulingSlots(element.settings?.scheduling).find((item) => item.id === value.slotId);
       const invitees = value.invitees.map((invitee) => invitee.name).filter(Boolean);
       return invitees.length > 0
-        ? `${slot?.label ?? value.slotId} · ${invitees.join(', ')}`
+        ? `${slot?.label ?? value.slotId}: ${invitees.join(', ')}`
         : (slot?.label ?? value.slotId);
     }
 

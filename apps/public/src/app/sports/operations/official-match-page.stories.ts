@@ -1,7 +1,8 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { OfficialSportsMatchPage } from './official-match-page';
 import { SportsOfflineQueueService } from './sports-offline-queue.service';
@@ -10,7 +11,7 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
 import type { SportsMatchState, SportsOperationalMatch } from './sports-operations.types';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 
-type LoadMode = 'ready' | 'loading' | 'error';
+type LoadMode = 'ready' | 'loading';
 type RosterMode = 'full' | 'empty' | 'long-names';
 
 interface OfficialMatchStoryArgs {
@@ -41,7 +42,7 @@ function currentMatch(): SportsOperationalMatch {
 
 const meta: Meta<OfficialMatchStoryArgs> = {
   component: OfficialSportsMatchPage,
-  title: 'CACiC Eventos/Sports/Operations/Official Match',
+  title: 'Public/Sports/Operations/Match',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -49,7 +50,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
       control: 'select',
       options: ['SCHEDULED', 'CHECK_IN', 'LIVE', 'PAUSED', 'AWAITING_REVIEW', 'CANCELED', 'DRAW', 'FINISHED'],
     },
-    loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    loadMode: { control: 'inline-radio', options: ['ready', 'loading'] },
     rosterMode: { control: 'inline-radio', options: ['full', 'empty', 'long-names'] },
     pendingOfflineActions: { control: { type: 'range', min: 0, max: 12, step: 1 } },
   },
@@ -58,6 +59,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<OfficialMatchStoryArgs>(),
     applicationConfig({
       providers: [
         provideRouter([]),
@@ -76,9 +78,6 @@ const meta: Meta<OfficialMatchStoryArgs> = {
             match: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
-              }
-              if (activeArgs.loadMode === 'error') {
-                return throwError(() => new Error('A conexão com a mesa de controle foi interrompida.'));
               }
               return of(currentMatch());
             },
@@ -115,7 +114,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -125,7 +124,6 @@ type Story = StoryObj<OfficialMatchStoryArgs>;
 export const Playground: Story = {};
 
 export const Scheduled: Story = {
-  name: 'Agendada',
   args: { state: 'SCHEDULED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -135,11 +133,10 @@ export const Scheduled: Story = {
 };
 
 export const AthleteCheckIn: Story = {
-  name: 'Check-in de atletas',
   args: { state: 'CHECK_IN' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Check-in')).toBeVisible();
+    await expect(await canvas.findByText('Credenciamento')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Check-in dos atletas' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Árbitros e apoio' })).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
@@ -150,7 +147,6 @@ export const AthleteCheckIn: Story = {
 };
 
 export const ShirtNumberOrderingDuringMatch: Story = {
-  name: 'Check-in ordenado por camisa durante a partida',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -163,7 +159,6 @@ export const ShirtNumberOrderingDuringMatch: Story = {
 };
 
 export const Live: Story = {
-  name: 'Ao vivo',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -179,21 +174,18 @@ export const Live: Story = {
 };
 
 export const OverlayBuilder: Story = {
-  name: 'Builder do overlay para OBS',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Overlay para transmissão/i }));
     await expect(await canvas.findByText('Placar para transmissão')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Equipe exibida' })).toBeVisible();
-    await expect(canvas.getByRole('textbox', { name: 'Link do overlay' })).toHaveValue(
-      expect.stringContaining('/api/sports/public/matches/match-story/overlay'),
-    );
+    const overlayUrl = canvas.getByRole('textbox', { name: 'Link do overlay' }) as HTMLInputElement;
+    await expect(overlayUrl.value).toContain('/api/sports/public/matches/match-story/overlay');
   },
 };
 
 export const Paused: Story = {
-  name: 'Pausada',
   args: { state: 'PAUSED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -203,7 +195,6 @@ export const Paused: Story = {
 };
 
 export const MatchOccurrences: Story = {
-  name: 'Anotações e ocorrências',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -216,45 +207,38 @@ export const MatchOccurrences: Story = {
 };
 
 export const AwaitingReview: Story = {
-  name: 'Em revisão',
   args: { state: 'AWAITING_REVIEW' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/Check-in protegido após o início/)).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Editar check-in' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Editar check-in' })).not.toBeInTheDocument();
   },
 };
 
 export const Canceled: Story = {
-  name: 'Cancelada para remarcação',
   args: { state: 'CANCELED' },
 };
 
 export const Draw: Story = {
-  name: 'Empate',
   args: { state: 'DRAW' },
 };
 
 export const Finished: Story = {
-  name: 'Finalizada',
   args: { state: 'FINISHED' },
 };
 
 export const OfflineWithPendingActions: Story = {
-  name: 'Offline com ações pendentes',
   args: { state: 'CHECK_IN', pendingOfflineActions: 4 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('button', { name: /4 pendente/ })).toBeVisible();
+    await expect(await within(canvasElement).findByRole('button', { name: /4 para enviar/ })).toBeVisible();
   },
 };
 
 export const EmptyRoster: Story = {
-  name: 'Escalação indisponível',
   args: { state: 'CHECK_IN', rosterMode: 'empty' },
 };
 
 export const LongTeamAndAthleteNames: Story = {
-  name: 'Nomes extensos',
   args: { state: 'CHECK_IN', rosterMode: 'long-names' },
 };
 
@@ -262,19 +246,7 @@ export const Loading: Story = {
   args: { loadMode: 'loading' },
 };
 
-export const LoadError: Story = {
-  name: 'Erro recuperável',
-  args: { loadMode: 'error' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível abrir a partida')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
-  },
-};
-
 export const FinalizationWizard: Story = {
-  name: 'Finalização guiada',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

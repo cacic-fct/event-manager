@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,7 +7,6 @@ import { TwemojiComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   selector: 'app-role-template-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MatIconModule, TwemojiComponent],
   template: `
     <h2 mat-dialog-title>Novo cargo</h2>

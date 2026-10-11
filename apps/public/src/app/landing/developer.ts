@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -16,7 +16,6 @@ highlighter.registerLanguage('graphql', graphql);
   imports: [MatIconModule, MatButtonModule, MatSnackBarModule],
   templateUrl: './developer.html',
   styleUrl: './developer.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Developer {
   private readonly platformId = inject(PLATFORM_ID);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormField, form } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -67,7 +67,6 @@ type CalendarSubscriptionFilter = 'ALL' | 'SUBSCRIBED';
   ],
   templateUrl: './calendar-page.html',
   styleUrl: './calendar-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Calendar {
   private readonly api = inject(CalendarApiService);

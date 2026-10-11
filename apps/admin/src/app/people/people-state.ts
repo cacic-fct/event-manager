@@ -9,6 +9,7 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { createWorkspaceListPagination } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 export abstract class PeopleState {
   protected readonly api = inject(PeopleApiService);
@@ -18,6 +19,7 @@ export abstract class PeopleState {
   protected readonly formBuilder = inject(FormBuilder);
   protected readonly router = inject(Router);
   protected readonly destroyRef = inject(DestroyRef);
+  protected readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
 
   readonly people = signal<Person[]>([]);
   readonly peoplePagination = createWorkspaceListPagination();

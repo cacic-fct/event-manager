@@ -97,7 +97,7 @@ test('shows a live tournament and opens the privacy-safe match detail', async ({
   await expect(page.getByRole('heading', { name: 'Equipe Azul', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
   await expect(page.getByText('2', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('As escalações são disponibilizadas após o encerramento da partida.')).toBeVisible();
+  await expect(page.getByText('Nenhuma escalação foi publicada para esta partida.', { exact: true })).toBeVisible();
 });
 
 test('uses the authenticated personalized tournament projection and exposes self-subscription', async ({ page }) => {
@@ -141,7 +141,7 @@ test('redirects a one-shot check-in suggestion with its operation mode', async (
   expect(autorouteRequests.count).toBe(1);
 });
 
-test('renders a scheduled match view with location and private roster state', async ({ page }) => {
+test('renders a scheduled match view with location without exposing its roster before kickoff', async ({ page }) => {
   await mockSportsApi(page, { matchState: 'SCHEDULED' });
 
   await page.goto('/app/sports/match/match-1');
@@ -149,8 +149,9 @@ test('renders a scheduled match view with location and private roster state', as
   await expect(page.getByRole('heading', { name: 'Equipe Azul', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
   await expect(page.getByText('Agendada', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ginásio · Quadra 1 · Ginásio principal', { exact: true })).toBeVisible();
-  await expect(page.getByText('As escalações são disponibilizadas após o encerramento da partida.')).toBeVisible();
+  await expect(page.getByText('Ginásio, Quadra 1, Ginásio principal', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Escalações', exact: true })).toHaveCount(0);
+  await expect(page.getByText('Nenhuma escalação foi publicada para esta partida.', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Ao vivo', { exact: true })).toHaveCount(0);
 });
 
@@ -197,7 +198,7 @@ test('shows a stable empty state when the authenticated user has no sports assig
   await page.goto('/app/sports');
 
   await expect(page.getByRole('heading', { name: 'Nenhuma partida para operar agora' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  await expect(page.getByText('Quando uma partida estiver próxima, ela aparecerá aqui automaticamente.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ver calendário' })).toHaveAttribute('href', '/app/calendar');
 });
 

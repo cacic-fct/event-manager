@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -53,7 +53,6 @@ import { normalizeTicketBarcodeForAttendance } from './ticket-barcode';
   ],
   templateUrl: './scanner-page.html',
   styleUrl: './scanner-page.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendanceScanner implements OnInit {
   private readonly access = inject(AttendanceCollectionAccessService);

@@ -44,7 +44,10 @@ import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
     UnsavedChangesBarComponent,
   ],
   providers: [PermissionManagementStore],
-  host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
+  host: {
+    '(window:beforeunload)': 'onBeforeUnload($event)',
+    '[class.two-column-view]': 'store.selectedTab() !== 1',
+  },
   templateUrl: './permission-management-page.component.html',
   styleUrls: [
     '../../app-shell/layout/page-layout.shared.scss',

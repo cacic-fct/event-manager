@@ -37,17 +37,14 @@
       </form>
     </div>
 
-    <mat-list class="detail-list">
+    <mat-list class="detail-list" tabindex="0">
       @for (candidate of workspace.mergeCandidates(); track candidate.id) {
         <mat-list-item>
           <span matListItemTitle>Comparar registros</span>
           <span matListItemLine>
-            Método: {{ describeMergeMatchMethod(candidate.matchMethod) }}
-            @if (candidate.matchValue) {
-              · "{{ candidate.matchValue }}"
-            }
-            · Pontuação: {{ candidate.score ?? '-' }} ·
-            {{ describeMergeStatus(candidate.status) }}
+            Método: {{ describeMergeMatchMethod(candidate.matchMethod) }}{{
+              candidate.matchValue ? ', valor "' + candidate.matchValue + '"' : ''
+            }}, pontuação: {{ candidate.score ?? '-' }}. Situação: {{ describeMergeStatus(candidate.status) }}.
           </span>
           @if (candidate.personA) {
             <app-participant-summary matListItemLine [person]="candidate.personA" />
@@ -101,15 +98,15 @@
           </button>
         </mat-list-item>
       } @empty {
-        <mat-list-item>
-          <span matListItemTitle>Nenhum candidato neste status</span>
-          <span matListItemLine>Atualize ou rode uma nova verificação.</span>
-        </mat-list-item>
+        <div class="admin-list-empty">
+          <mat-icon aria-hidden="true">hide_source</mat-icon>
+          <p>Nenhum candidato neste status</p>
+        </div>
       }
     </mat-list>
 
     <div class="list-pager" aria-label="Paginação de candidatos de unificação">
-      <span>Itens {{ workspace.mergeCandidatesPagination.label() }} · {{ workspace.mergeCandidateCount() }} no total</span>
+      <span>Itens {{ workspace.mergeCandidatesPagination.label() }}, {{ workspace.mergeCandidateCount() }} no total</span>
       <div class="list-pager-actions">
         <button
           mat-icon-button

@@ -7,18 +7,19 @@ import { WorkspaceRecordComponent } from './workspace-record.component';
 
 const meta: Meta<WorkspaceRecordComponent> = {
   component: WorkspaceRecordComponent,
-  title: 'CACiC Eventos/Workspace/Components/Record',
+  title: 'Admin/Event Management/Event Workspace/Record',
   tags: ['autodocs'],
   decorators: [moduleMetadata({ imports: [MatButtonModule, MatIconModule] }), applicationConfig({ providers: [provideRouter([], withHashLocation(), withDisabledInitialNavigation())] })],
   args: { title: 'Oficina de acessibilidade', selected: false, disabled: false, readonly: false, label: '', activate: fn() },
   argTypes: {
     title: { control: 'text' }, label: { control: 'text' },
     readonly: { control: 'boolean' }, selected: { control: 'boolean' }, disabled: { control: 'boolean' },
+    activate: { action: 'activate', control: false, table: { disable: true } },
   },
   render: (args) => ({ props: args, template: `
     <app-workspace-record [title]="title" [label]="label" [selected]="selected" [disabled]="disabled" [readonly]="readonly" [link]="link" [queryParams]="queryParams" (activate)="activate($event)">
       <mat-icon recordIcon>event</mat-icon>
-      <span recordDescription>Minicurso · Auditório da FCT · 24 participantes</span>
+      <span recordDescription>Minicurso, no Auditório da FCT, com 24 participantes</span>
       <button recordActions matIconButton type="button" aria-label="Mais ações"><mat-icon>more_vert</mat-icon></button>
     </app-workspace-record>
   ` }),
@@ -40,7 +41,7 @@ export const Playground: Story = {
     await expect(args.activate).toHaveBeenCalledTimes(1);
   },
 };
-export const Selected: Story = { args: { selected: true }, globals: { theme: 'dark', motion: 'reduced' } };
+export const Selected: Story = { args: { selected: true } };
 export const DeepLink: Story = {
   args: { link: ['/forms', 'form-1'], queryParams: { eventId: 'event-1' }, selected: true },
   play: async ({ canvasElement, args }) => {
@@ -57,7 +58,6 @@ export const Unavailable: Story = {
 };
 export const LongName: Story = {
   args: { title: 'Oficina de acessibilidade e inclusão digital para estudantes, ministrantes e organizadores da comunidade universitária' },
-  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const ReadOnly: Story = {

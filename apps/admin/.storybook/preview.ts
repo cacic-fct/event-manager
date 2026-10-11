@@ -9,9 +9,11 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { provideRouter, withHashLocation, withDisabledInitialNavigation } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { applyStorybookEnvironment, waitForStorybookAnnouncements } from '@cacic-fct/shared-angular/storybook';
 import { EVENT_MANAGER_PERMISSION_CATALOG } from '@cacic-fct/shared-permissions';
 import type { Preview } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
+import { configure } from 'storybook/test';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
 import { ptBR } from 'date-fns/locale/pt-BR';
@@ -19,6 +21,7 @@ import { NEVER } from 'rxjs';
 import { RealtimeApiService } from '../src/app/graphql/realtime-api.service';
 
 registerLocaleData(localePt);
+configure({ asyncUtilTimeout: 5_000 });
 
 const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
 
@@ -32,8 +35,6 @@ initialize({
   },
 });
 
-const originalNavigatorOnline = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
-
 function ensureStorybookGlobalStyles(): void {
   const fontBase = new URL('./material-symbols-outlined-files/', document.baseURI).href;
   const style = document.getElementById('storybook-app-global-styles') ?? document.createElement('style');
@@ -46,6 +47,8 @@ function ensureStorybookGlobalStyles(): void {
     body {
       margin: 0;
       font-family: 'Inter Variable', system-ui, sans-serif;
+      background-color: var(--mat-sys-surface, Canvas);
+      color: var(--mat-sys-on-surface, CanvasText);
     }
 
     @font-face {
@@ -166,24 +169,14 @@ class StorybookAuthService {
   logout = async () => undefined;
 }
 
-function applyBrowserGlobals(network: string): void {
-  Object.defineProperty(Navigator.prototype, 'onLine', {
-    configurable: true,
-    get: () => network !== 'offline',
-  });
-}
-
 function applyColorScheme(theme: string): void {
   const colorScheme = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.style.colorScheme = colorScheme;
   document.body.style.colorScheme = colorScheme;
 }
 
-if (originalNavigatorOnline) {
-  Object.defineProperty(Navigator.prototype, 'onLine', originalNavigatorOnline);
-}
-
 const preview: Preview = {
+  initialGlobals: { theme: 'light', network: 'online', motion: 'full' },
   decorators: [
     applicationConfig({
       providers: [
@@ -214,7 +207,7 @@ const preview: Preview = {
       const network = context.globals['network'] === 'offline' ? 'offline' : 'online';
       const motion = context.globals['motion'] === 'reduced' ? 'reduced' : 'full';
       ensureStorybookGlobalStyles();
-      applyBrowserGlobals(network);
+      applyStorybookEnvironment({ theme, network, motion });
       applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
@@ -223,6 +216,7 @@ const preview: Preview = {
     },
   ],
   loaders: [mswLoader],
+  afterEach: waitForStorybookAnnouncements,
   parameters: {
     msw: {
       handlers: {
@@ -231,17 +225,16 @@ const preview: Preview = {
       },
     },
     backgrounds: {
-      default: 'workspace',
-      values: [
-        { name: 'workspace', value: '#f7f8fa' },
-        { name: 'dark', value: '#111827' },
-      ],
+      options: {
+        workspace: { name: 'Light surface', value: '#f7f8fa' },
+        dark: { name: 'Dark surface', value: '#111827' },
+      },
     },
     viewport: {
-      viewports: {
-        mobile: { name: 'Mobile', styles: { width: '390px', height: '844px' } },
-        tablet: { name: 'Tablet', styles: { width: '834px', height: '1112px' } },
-        desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' } },
+      options: {
+        mobile: { name: 'Mobile', styles: { width: '390px', height: '844px' }, type: 'mobile' },
+        tablet: { name: 'Tablet', styles: { width: '834px', height: '1112px' }, type: 'tablet' },
+        desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' }, type: 'desktop' },
       },
     },
     controls: {
@@ -252,19 +245,25 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
-    docs: { toc: true },
+    docs: {
+      toc: true,
+      // Keep one live example so page fixtures and overlays remain isolated.
+      stories: { filter: () => false },
+    },
     options: {
       storySort: {
         method: 'alphabetical',
-        order: ['CACiC Eventos', ['Workspace', 'Sports', 'Attendance', 'Calendar', 'Events', 'Profile', 'Shared']],
+        order: [
+          'Admin', ['Overview', 'Layout', 'Dashboard', 'Event Management', 'Registration', 'Attendance', 'Ticketing', 'People', 'Forms', 'Sports', 'Prize Draws', 'Notifications', 'Access', 'Settings', 'Audit'],
+        ],
+        includeNames: false,
       },
     },
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   globalTypes: {
     theme: {
       description: 'Color scheme',
-      defaultValue: 'light',
       toolbar: {
         icon: 'contrast',
         items: [
@@ -275,7 +274,6 @@ const preview: Preview = {
     },
     network: {
       description: 'Network status',
-      defaultValue: 'online',
       toolbar: {
         icon: 'globe',
         items: [
@@ -286,7 +284,6 @@ const preview: Preview = {
     },
     motion: {
       description: 'Motion preference',
-      defaultValue: 'full',
       toolbar: {
         icon: 'accessibility',
         items: [

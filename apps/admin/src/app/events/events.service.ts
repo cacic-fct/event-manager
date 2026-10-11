@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -443,6 +444,7 @@ export class EventsService {
       isPubliclyListed: true,
       displayLecturerProfile: true,
       youtubeCode: '',
+      twitchChannel: '',
       buttonText: '',
       buttonLink: '',
     });
@@ -485,6 +487,12 @@ export class EventsService {
 
   async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
     const saveRequest = this.selectionRequest;
+    this.normalizeYoutubeCodeInput();
+    this.normalizeTwitchChannelInput();
+    if (this.hasInvalidLivestreamIdentifiers()) {
+      return;
+    }
+
     if (this.hasInvalidDateRange()) {
       this.eventForm.markAllAsTouched();
       return;
@@ -1207,7 +1215,8 @@ export class EventsService {
       onlineAttendanceEndDate: isOnlineAttendanceAllowed ? toOptionalIsoDateTime(raw.onlineAttendanceEndDate) : null,
       isPubliclyListed: raw.isPubliclyListed,
       displayLecturerProfile: raw.displayLecturerProfile,
-      youtubeCode: raw.youtubeCode.trim() || null,
+      youtubeCode: normalizeYoutubeCode(raw.youtubeCode),
+      twitchChannel: normalizeTwitchChannel(raw.twitchChannel),
       buttonText: raw.buttonText.trim() || null,
       buttonLink: raw.buttonLink.trim() || null,
     };
@@ -1226,6 +1235,29 @@ export class EventsService {
       this.eventForm.hasError('subscriptionDateRange') ||
       this.eventForm.hasError('onlineAttendanceDateRange')
     );
+  }
+
+  normalizeYoutubeCodeInput(): void {
+    const control = this.eventForm.controls.youtubeCode;
+    const normalized = normalizeYoutubeCode(control.value);
+    if (normalized !== null) {
+      control.setValue(normalized);
+    }
+  }
+
+  normalizeTwitchChannelInput(): void {
+    const control = this.eventForm.controls.twitchChannel;
+    const normalized = normalizeTwitchChannel(control.value);
+    if (normalized !== null) {
+      control.setValue(normalized);
+    }
+  }
+
+  private hasInvalidLivestreamIdentifiers(): boolean {
+    const controls = [this.eventForm.controls.youtubeCode, this.eventForm.controls.twitchChannel];
+    const invalidControls = controls.filter((control) => control.invalid);
+    invalidControls.forEach((control) => control.markAsTouched());
+    return invalidControls.length > 0;
   }
 
   private syncWorkspaceContext(event: Event | null): void {
@@ -1337,6 +1369,7 @@ export class EventsService {
       isPubliclyListed: eventItem.isPubliclyListed,
       displayLecturerProfile: eventItem.displayLecturerProfile ?? true,
       youtubeCode: eventItem.youtubeCode ?? '',
+      twitchChannel: eventItem.twitchChannel ?? '',
       buttonText: eventItem.buttonText ?? '',
       buttonLink: eventItem.buttonLink ?? '',
     });

@@ -1,3 +1,16 @@
+@use '../../app-shell/layout/admin-view-widths' as view-widths;
+
+:host {
+  display: block;
+  @include view-widths.view();
+}
+
+@media (min-width: 1001px) {
+  :host(.two-column-view) {
+    @include view-widths.view(2);
+  }
+}
+
 .management-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

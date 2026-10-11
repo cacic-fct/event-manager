@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -9,7 +9,6 @@ import { NavigationLinkItem } from './navigation';
   selector: 'app-workspace-permission-denied',
   standalone: true,
   imports: [MatIconModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="permission-denied">
       <mat-icon>lock</mat-icon>
@@ -35,58 +34,7 @@ import { NavigationLinkItem } from './navigation';
       }
     </section>
   `,
-  styles: `
-    .permission-denied {
-      display: grid;
-      place-items: center;
-      gap: 0.75rem;
-
-      min-height: 18rem;
-      padding: 2rem;
-      text-align: center;
-    }
-
-    mat-icon {
-      width: 3rem;
-      height: 3rem;
-      font-size: 3rem;
-      color: var(--mat-sys-error);
-    }
-
-    h2,
-    p {
-      margin: 0;
-    }
-
-    p {
-      color: var(--mat-sys-on-surface-variant);
-    }
-
-    .permission-list {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-
-      margin-top: 0.5rem;
-    }
-
-    .permission-chip {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-
-      min-height: 1.75rem;
-      padding: 0 0.625rem;
-      border-radius: 999px;
-
-      background: var(--mat-sys-error-container);
-      color: var(--mat-sys-on-error-container);
-
-      font-size: 0.8125rem;
-      font-weight: 600;
-    }
-  `,
+  styleUrl: './permission-denied.component.scss',
 })
 export class PermissionDeniedComponent {
   private readonly route = inject(ActivatedRoute);

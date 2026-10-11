@@ -24,15 +24,15 @@ const images: FormImage[] = [
 
 const meta: Meta<EventFormDescriptionContentComponent> = {
   component: EventFormDescriptionContentComponent,
-  title: 'CACiC Eventos/Shared/Event forms/Description Content',
+  title: 'Shared/Forms/Form Description Content',
   tags: ['autodocs'],
   args: {
     text: 'As imagens mantêm as proporções originais e reservam espaço durante o carregamento.',
     images,
   },
   argTypes: {
-    text: { control: 'text' },
-    images: { control: 'object' },
+    text: { control: 'text', description: 'Participant-facing description text.' },
+    images: { control: 'object', description: 'Reference images shown alongside the description.' },
   },
   render: (args) => ({
     props: args,
@@ -54,9 +54,8 @@ export const LandscapeAndPortrait: Story = {
   },
 };
 
-export const ImageOnlyMobile: Story = {
+export const ImageOnly: Story = {
   args: { text: undefined, images: [images[1]] },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };
 
 export const DecorativeWithoutCaption: Story = {
@@ -64,5 +63,4 @@ export const DecorativeWithoutCaption: Story = {
     text: undefined,
     images: [{ ...images[0], altText: undefined, caption: undefined }],
   },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

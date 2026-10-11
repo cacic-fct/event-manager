@@ -4,16 +4,15 @@ import { ProductShowcaseComponent } from './product-showcase';
 
 const meta: Meta<ProductShowcaseComponent> = {
   component: ProductShowcaseComponent,
-  title: 'CACiC Eventos/Landing/Product Showcase',
+  title: 'Public/Landing/Demos/Product Overview',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<ProductShowcaseComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const participantRegion = canvas.getByRole('region', { name: 'Você participa. Tudo se conecta.' });
@@ -32,7 +31,6 @@ export const Playground: Story = {
 };
 
 export const OrganizerExperience: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: /Você organiza\s*com tudo à mão\./ });
     region.scrollIntoView();
@@ -46,9 +44,7 @@ export const OrganizerExperience: Story = {
   },
 };
 
-export const MobileAttendance: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', motion: 'reduced' },
+export const InvalidAttendanceCode: Story = {
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
     region.scrollIntoView();
@@ -61,7 +57,6 @@ export const MobileAttendance: Story = {
 };
 
 export const PendingReceipt: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
     region.scrollIntoView();
@@ -73,7 +68,6 @@ export const PendingReceipt: Story = {
 };
 
 export const AutomaticCodeEntry: Story = {
-  globals: { theme: 'light', motion: 'full' },
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
     region.scrollIntoView();
@@ -87,7 +81,6 @@ export const AutomaticCodeEntry: Story = {
 };
 
 export const NotificationDestinations: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: 'Você participa. Tudo se conecta.' });
     region.scrollIntoView();
@@ -108,7 +101,6 @@ export const NotificationDestinations: Story = {
 };
 
 export const OrganizerTeamAndAudit: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const region = within(canvasElement).getByRole('region', { name: /Você organiza\s*com tudo à mão\./ });
     region.scrollIntoView();

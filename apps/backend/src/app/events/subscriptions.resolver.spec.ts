@@ -599,7 +599,14 @@ describe('EventSubscriptionsResolver', () => {
       expect.objectContaining({
         entityId: 'event-subscription-1',
         entityLabel: 'Ana',
-        after: created,
+        after: {
+          id: created.id,
+          eventId: created.eventId,
+          personId: created.personId,
+          eventGroupSubscriptionId: created.eventGroupSubscriptionId,
+          createdByMethod: created.createdByMethod,
+          imageLicenseAgreementAccepted: consent ?? false,
+        },
         summary: 'Inscrição em evento criada pelo painel administrativo.',
       }),
       tx,
@@ -832,7 +839,7 @@ describe('EventSubscriptionsResolver', () => {
         entityLabel: 'Ana',
         summary: 'Inscrição em grande evento criada pelo painel administrativo.',
         after: expect.objectContaining({
-          events: expect.any(Array),
+          selectedEventIds: ['event-1', 'event-2'],
         }),
       }),
       tx,
@@ -880,6 +887,7 @@ describe('EventSubscriptionsResolver', () => {
         findMany: jest
           .fn()
           .mockResolvedValueOnce([{ eventId: 'event-1', subscriptionId: 'major-subscription-1' }])
+          .mockResolvedValueOnce([{ eventId: 'event-1', preferenceOrder: 1 }])
           .mockResolvedValueOnce([{ eventId: 'event-1' }, { eventId: 'event-2' }])
           .mockResolvedValueOnce([
             { eventId: 'event-2', subscriptionId: 'major-subscription-1' },

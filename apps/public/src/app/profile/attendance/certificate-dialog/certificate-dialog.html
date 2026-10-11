@@ -3,7 +3,7 @@
 <mat-dialog-content>
   @let currentState = state(); @if (currentState.status === 'loading') {
   <div class="loading-state">
-    <mat-spinner diameter="32"></mat-spinner>
+    <mat-spinner diameter="32" aria-label="Carregando certificados"></mat-spinner>
   </div>
   } @else if (currentState.status === 'error') {
   <p class="empty-state">{{ currentState.message }}</p>

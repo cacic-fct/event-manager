@@ -74,7 +74,7 @@
             </span>
             @if (item.tournament; as tournament) {
               <span matListItemLine>
-                {{ tournament.categoryCount }} modalidades · {{ tournament.teamCount }} equipes ·
+                {{ tournament.categoryCount }} modalidades e {{ tournament.teamCount }} equipes,
                 {{ workspace.statusLabel(tournament.tournament.status) }}
               </span>
             }
@@ -106,26 +106,16 @@
             }
           </mat-list-item>
         } @empty {
-          <mat-list-item>
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
             @if (workspace.majorEventRouteScopeId()) {
-              <span matListItemTitle>Grande evento indisponível</span>
+              <p>Grande evento indisponível</p>
+            } @else if (workspace.majorEventWorkspaceItems().length) {
+              <p>Nenhum grande evento encontrado</p>
+            } @else {
+              <p>Nenhum grande evento disponível</p>
             }
-            @if (workspace.majorEventRouteScopeId()) {
-              <span matListItemLine>Confira seu acesso e tente novamente.</span>
-            }
-            @if (!workspace.majorEventRouteScopeId() && workspace.majorEventWorkspaceItems().length) {
-              <span matListItemTitle>Nenhum grande evento encontrado</span>
-            }
-            @if (!workspace.majorEventRouteScopeId() && workspace.majorEventWorkspaceItems().length) {
-              <span matListItemLine>Revise a busca ou os filtros e tente novamente.</span>
-            }
-            @if (!workspace.majorEventRouteScopeId() && !workspace.majorEventWorkspaceItems().length) {
-              <span matListItemTitle>Nenhum grande evento disponível</span>
-            }
-            @if (!workspace.majorEventRouteScopeId() && !workspace.majorEventWorkspaceItems().length) {
-              <span matListItemLine>Crie um grande evento antes de ativar o modo esportivo.</span>
-            }
-          </mat-list-item>
+          </div>
         }
       </mat-list>
 

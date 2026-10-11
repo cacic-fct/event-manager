@@ -4,12 +4,23 @@ import { WalletDemoComponent } from './wallet-demo';
 
 const meta: Meta<WalletDemoComponent> = {
   component: WalletDemoComponent,
-  title: 'CACiC Eventos/Landing/Wallet Cards',
+  title: 'Public/Landing/Demos/Wallet',
   tags: ['autodocs', 'landing-showcase'],
   args: { selectedCard: null, initialView: 'cards' },
   argTypes: {
-    selectedCard: { control: 'select', options: [null, 'credential', 'ticket', 'offline'] },
-    initialView: { control: 'select', options: ['cards', 'transfer', 'incoming'] },
+    selectedCard: {
+      control: {
+        type: 'select',
+        labels: { null: 'No selection', credential: 'Credential', ticket: 'Ticket', offline: 'Offline code' },
+      },
+      options: [null, 'credential', 'ticket', 'offline'],
+      description: 'Initially selected wallet card.',
+    },
+    initialView: {
+      control: { type: 'select', labels: { cards: 'Cards', transfer: 'Transfer', incoming: 'Incoming transfer' } },
+      options: ['cards', 'transfer', 'incoming'],
+      description: 'Initial wallet view.',
+    },
   },
   parameters: { a11y: { test: 'error' } },
 };
@@ -18,7 +29,6 @@ export default meta;
 type Story = StoryObj<WalletDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Credencial do CACiC Eventos' })).toHaveAttribute(
@@ -34,9 +44,8 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedMotionTicket: Story = {
+export const SelectedTicket: Story = {
   args: { selectedCard: 'ticket' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Bilhete para Kit de boas-vindas' })).toHaveAttribute(
@@ -51,7 +60,6 @@ export const DarkReducedMotionTicket: Story = {
 
 export const OfflineCodeCountdown: Story = {
   args: { selectedCard: 'offline' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Código off-line' })).toHaveAttribute('aria-pressed', 'true');
@@ -60,9 +68,7 @@ export const OfflineCodeCountdown: Story = {
   },
 };
 
-export const MobileOpenAndClose: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', motion: 'reduced' },
+export const OpenAndCloseCard: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const ticket = canvas.getByRole('button', { name: 'Bilhete para Kit de boas-vindas' });
@@ -83,7 +89,6 @@ export const MobileOpenAndClose: Story = {
 
 export const TransferTicket: Story = {
   args: { selectedCard: 'ticket' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Transferir bilhete' }));
@@ -99,10 +104,11 @@ export const TransferTicket: Story = {
 
 export const IncomingTransfer: Story = {
   args: { initialView: 'incoming' },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('Marina Costa quer transferir este bilhete')).toBeVisible();
+    await expect(
+      await canvas.findByRole('heading', { name: 'Marina Costa quer transferir este bilhete' }),
+    ).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Voltar à carteira' }));
     await expect(canvas.getByRole('button', { name: 'Bilhete para Kit de boas-vindas' })).toHaveAttribute(
       'aria-pressed',
@@ -112,7 +118,7 @@ export const IncomingTransfer: Story = {
 };
 
 export const ManualSelectionStopsAutoplay: Story = {
-  globals: { theme: 'light', motion: 'full' },
+  globals: { motion: 'full' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const ticket = canvas.getByRole('button', { name: 'Bilhete para Kit de boas-vindas' });

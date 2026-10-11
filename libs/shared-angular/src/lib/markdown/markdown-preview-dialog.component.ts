@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MarkdownComponent } from './markdown.component';
@@ -10,7 +10,6 @@ export interface MarkdownPreviewDialogData {
 
 @Component({
   selector: 'lib-markdown-preview-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MarkdownComponent],
   template: `
     <h2 mat-dialog-title>{{ data.title || 'Pré-visualização da descrição' }}</h2>

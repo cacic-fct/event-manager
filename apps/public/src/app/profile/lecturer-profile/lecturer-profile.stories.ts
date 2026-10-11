@@ -1,9 +1,11 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { applicationConfig, type Decorator, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 import {
   createPublicStoryLecturerProfileFromControls,
   publicLecturerProfileStoryControlArgTypes,
@@ -31,11 +33,14 @@ const defaultArgs: LecturerProfileStoryArgs = {
   saveOutcome: 'success',
 };
 
+const navigateRouteError = fn(async () => true);
+
 const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story, context) =>
   applicationConfig({
     providers: [
       provideRouter([]),
       provideNoopAnimations(),
+      { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
       {
         provide: AuthService,
         useValue: {
@@ -58,7 +63,7 @@ const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story
 
 const meta: Meta<LecturerProfileStoryArgs> = {
   component: LecturerProfileComponent,
-  title: 'CACiC Eventos/Profile/Lecturer Profile',
+  title: 'Public/Profile/Lecturer',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -72,10 +77,16 @@ const meta: Meta<LecturerProfileStoryArgs> = {
     },
     ...publicLecturerProfileStoryControlArgTypes,
   },
-  decorators: [withLecturerProfileProviders],
+  decorators: [
+    withScenarioControls<LecturerProfileStoryArgs>(),
+    withLecturerProfileProviders,
+  ],
+  beforeEach: () => {
+    navigateRouteError.mockClear();
+  },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -86,10 +97,12 @@ type Story = StoryObj<LecturerProfileStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Seu perfil público')).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Perfil público' })).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /editar perfil/i }));
     await expect(await canvas.findByRole('button', { name: /salvar/i })).toBeVisible();
-    await expect(await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i })).toBeVisible();
+    const photoCheckbox = await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i });
+    await expect(photoCheckbox.closest('mat-checkbox')).toBeVisible();
+    await expect(photoCheckbox).toBeChecked();
     expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
   },
 };
@@ -117,7 +130,7 @@ export const MinimalPublicData: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Seu perfil público')).toBeVisible();
+    await expect(await canvas.findByRole('heading', { name: 'Perfil público' })).toBeVisible();
     await expect(canvas.queryByRole('link', { name: /ana@example.com/i })).toBeNull();
     await expect(canvas.queryByRole('link', { name: /whatsapp/i })).toBeNull();
   },
@@ -137,9 +150,8 @@ export const RequestError: Story = {
   args: {
     state: 'error',
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Não foi possível carregar o perfil de ministrante.')).toBeVisible();
+  play: async () => {
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(500));
   },
 };
 
@@ -147,7 +159,6 @@ export const SaveError: Story = {
   args: {
     saveOutcome: 'error',
   },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /editar perfil/i }));

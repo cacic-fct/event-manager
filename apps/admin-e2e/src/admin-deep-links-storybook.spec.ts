@@ -2,7 +2,7 @@ import { test, expect } from './support/e2e-test';
 import axe from 'axe-core';
 
 const storybookURL = process.env['STORYBOOK_URL'];
-const story = 'iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true';
+const story = 'iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true';
 
 test.describe('admin deep links', () => {
   test.skip(!storybookURL, 'Requires the existing admin Storybook server.');

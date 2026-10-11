@@ -1,13 +1,14 @@
 import type { StorybookConfig } from '@storybook/angular';
+import { getLibraryStoryGlobs } from '../../../tools/storybook-library-stories.mjs';
 
 const config: StorybookConfig = {
-  stories: ['../src/app/**/*.@(mdx|stories.@(js|jsx|ts|tsx))', '../../../libs/shared-angular/src/**/*.stories.ts'],
-  addons: ['@storybook/addon-a11y', 'msw-storybook-addon'],
+  stories: ['../src/app/**/*.@(mdx|stories.@(js|jsx|ts|tsx))', ...getLibraryStoryGlobs('admin')],
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y', 'msw-storybook-addon'],
   refs:
     process.env['STORYBOOK_PUBLISH_COMPOSITION'] === 'true'
       ? {
           public: {
-            title: 'Público',
+            title: 'Public and Shared',
             url: './public/',
           },
         }

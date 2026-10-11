@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +12,6 @@ let nextPersonSearchId = 0;
 
 @Component({
   selector: 'app-person-search',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
   templateUrl: './person-search.component.html',
   styleUrl: './person-search.component.scss',
@@ -23,7 +22,7 @@ export class PersonSearchComponent {
   readonly results = input<readonly Person[]>([]);
   readonly loading = input(false);
   readonly disabled = input(false);
-  readonly disabledReason = input('Buscar pessoas exige permissão de Pessoa · Visualizar.');
+  readonly disabledReason = input('Buscar pessoas exige permissão de Pessoa: Visualizar.');
   readonly minimumQueryLength = input(2);
   readonly resultActionIcon = input('person_add');
   readonly resultActionLabel = input('Selecionar');

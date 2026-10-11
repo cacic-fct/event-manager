@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
@@ -16,7 +16,6 @@ export interface CalendarWeekDay {
   imports: [CalendarEventListItem, CalendarWeekDateSelector, MatIconModule, MatListModule],
   templateUrl: './week-view.html',
   styleUrl: './week-view.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarWeekView {
   readonly weekDays = input.required<CalendarWeekDay[]>();

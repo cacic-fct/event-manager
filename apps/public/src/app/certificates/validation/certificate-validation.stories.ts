@@ -7,11 +7,17 @@ import { CertificateValidation } from './certificate-validation';
 
 const meta: Meta<CertificateValidation> = {
   component: CertificateValidation,
-  title: 'CACiC Eventos/Certificates/Validation',
+  title: 'Public/Support/Certificate Validation',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: {
+      description: {
+        component: 'Certificate validation examples for event, lecturer, disabled, and offline states.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -38,14 +44,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const StandaloneWithoutActivities: Story = {
   args: {},
   decorators: [routeDecorator('certificate-standalone')],
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Atividade complementar')).toBeVisible();
@@ -57,7 +62,7 @@ export const StandaloneWithoutActivities: Story = {
 export const LecturerCertificate: Story = {
   args: {},
   decorators: [routeDecorator('certificate-lecturer')],
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Palestrante')).toBeVisible();
@@ -68,16 +73,17 @@ export const LecturerCertificate: Story = {
 export const DisabledCertificate: Story = {
   args: {},
   decorators: [routeDecorator(null, 'certificate-disabled')],
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Certificado não encontrado.')).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Código do certificado' })).toHaveValue('certificate-disabled');
+    await expect(canvas.getByRole('button', { name: 'Validar' })).toBeDisabled();
   },
 };
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

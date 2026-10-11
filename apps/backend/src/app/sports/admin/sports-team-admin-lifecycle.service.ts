@@ -49,7 +49,7 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
 
       const memberships = await tx.sportsTeamMember.findMany({
         where: { participantId, deletedAt: null },
-        select: { id: true, teamId: true, status: true, revision: true },
+        select: { id: true, teamId: true, status: true },
       });
       const withdrawnMemberships = memberships.filter((membership) => membership.teamId !== teamId);
       if (withdrawnMemberships.length > 0) {
@@ -117,8 +117,17 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
           entityLabel: participant.person.name,
           operation: AuditLogOperation.UPDATE,
           actor,
-          before: memberships,
-          after: { participantId, teamId },
+          before: {
+            memberships,
+            membershipCount: memberships.length,
+          },
+          after: {
+            participantId,
+            teamId,
+            teamMemberId: assignedMembership?.id ?? null,
+            status: assignedMembership?.status ?? null,
+            withdrawnCount: withdrawnMemberships.length,
+          },
           summary: targetTeam
             ? `Equipe esportiva alterada para ${targetTeam.name}.`
             : 'Participante esportivo mantido sem equipe.',
@@ -201,8 +210,8 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
           entityLabel: `${person.name} - ${team.name}`,
           operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
           actor,
-          before: existing,
-          after: member,
+          before: existing ? this.teamMemberAuditSnapshot(existing) : undefined,
+          after: this.teamMemberAuditSnapshot(member),
           summary: 'Integrante incluído diretamente por administrador.',
           scope: {
             permission: Permission.SportsTeam.Update,
@@ -282,8 +291,8 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
           entityLabel: `${existing.participant.person.name} - ${existing.team.name}`,
           operation: AuditLogOperation.UPDATE,
           actor,
-          before: existing,
-          after: member,
+          before: this.teamMemberAuditSnapshot(existing),
+          after: this.teamMemberAuditSnapshot(member),
           summary: 'Status do integrante alterado diretamente por administrador.',
           scope: {
             permission: Permission.SportsTeam.Update,
@@ -502,11 +511,12 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
           entityLabel: team.name,
           operation: AuditLogOperation.DELETE,
           actor,
-          before: this.teamAuditSnapshot(team),
+          before: { ...this.teamAuditSnapshot(team), deleted: false },
           after: {
             ...this.teamAuditSnapshot(team),
             status: SportsTeamStatus.WITHDRAWN,
-            deletedAt,
+            revision: team.revision + 1,
+            deleted: true,
           },
           summary: 'Equipe esportiva excluída.',
           scope: {

@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { EmojiService } from './emoji.service';
 
 @Component({
   selector: 'lib-twemoji',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (emojiUrl()) {
       <img

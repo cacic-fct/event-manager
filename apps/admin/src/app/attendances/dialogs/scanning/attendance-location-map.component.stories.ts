@@ -12,7 +12,7 @@ type AttendanceLocationMapStoryArgs = {
 
 const meta: Meta<AttendanceLocationMapStoryArgs> = {
   component: AttendanceLocationMapComponent,
-  title: 'CACiC Eventos/Workspace/Dialogs/Attendance Location Map',
+  title: 'Admin/Attendance/Scanning/Location Map',
   tags: ['autodocs'],
   args: {
     latitude: -22.1211,
@@ -30,7 +30,7 @@ const meta: Meta<AttendanceLocationMapStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -53,7 +53,6 @@ export const WithoutAccuracy: Story = {
 };
 
 export const MissingLocation: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     latitude: null,
     longitude: null,

@@ -1,5 +1,5 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, Signal, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, Signal, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -69,8 +69,7 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
     TwemojiComponent,
   ],
   templateUrl: './home.html',
-  styleUrl: './home.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './home.scss',
 })
 export class Home implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
@@ -375,7 +374,7 @@ export class Home implements OnInit, OnDestroy {
   sportsTournamentSummary(item: DashboardSportsTournament): string {
     const categories = `${item.categoryCount} ${item.categoryCount === 1 ? 'modalidade' : 'modalidades'}`;
     const teams = `${item.teamCount} ${item.teamCount === 1 ? 'equipe' : 'equipes'}`;
-    return `${categories} · ${teams}`;
+    return `${categories} e ${teams}`;
   }
 
   sportsReviewSummary(item: DashboardSportsTournament): string {

@@ -5,11 +5,15 @@ import { Legal } from './legal';
 
 const meta: Meta<Legal> = {
   component: Legal,
-  title: 'CACiC Eventos/About/Legal/Page',
+  title: 'Public/Support/Legal',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: {
+      description: { component: 'Static legal information page with a separate license-loading error story.' },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -50,14 +54,5 @@ export const LicensesUnavailable: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível obter a lista de licenças.')).toBeVisible();
-  },
-};
-
-export const MobileDarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
   },
 };

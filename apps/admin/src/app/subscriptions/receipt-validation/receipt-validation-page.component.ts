@@ -29,6 +29,7 @@ import {
 } from '../../graphql/receipt-validation-api.service';
 import { getErrorMessage } from '../../feedback/error-message';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
+import { AdminRouteResourceErrorService } from '../../shared/admin-route-resource-error.service';
 import { isFrozenMajorEvent } from '../../resource-state/frozen-resource';
 import { PermissionsService } from '../../permissions/permissions.service';
 import { ReceiptValidationFiltersDialogComponent } from './receipt-validation-filters-dialog.component';
@@ -89,6 +90,7 @@ export class ReceiptValidationPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private readonly dialog = inject(MatDialog);
   protected readonly permissions = inject(PermissionsService);
   private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
@@ -389,7 +391,9 @@ export class ReceiptValidationPageComponent {
       this.clampSelectedIndex(this.visibleItems().length);
       this.error.set(null);
     } catch (error) {
-      this.showError(error, 'Não foi possível atualizar a fila.');
+      if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.showError(error, 'Não foi possível atualizar a fila.');
+      }
     }
   }
 

@@ -249,12 +249,12 @@ export class AdminShellComponent {
     if (sidenav) this.closeSidenavIfMobile(sidenav);
   }
 
-  protected async switchContext(ref: EventWorkspaceRef, operationId = this.currentOperationId()): Promise<void> {
+  protected async switchContext(ref: EventWorkspaceRef, operationId: ContextOperation['id'] = 'settings'): Promise<void> {
     if (this.eventWorkspace.scopeSwitchBlocked()) return;
     this.showGlobalNavigation.set(false);
     const operation = contextOperations(ref).find((candidate) => candidate.id === operationId);
     if (!(await this.pendingChanges.navigate(() => this.router.navigate(
-      operation?.path ?? adminEventWorkspaceRoute(ref),
+      operation?.path ?? adminEventWorkspaceRoute({ ...ref, section: 'settings' }),
       { queryParams: operation?.queryParams },
     )))) return;
     const sidenav = this.sidenavRef();

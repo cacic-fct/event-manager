@@ -4,16 +4,15 @@ import { MajorEventSubscriptionDemoComponent } from './major-event-subscription-
 
 const meta: Meta<MajorEventSubscriptionDemoComponent> = {
   component: MajorEventSubscriptionDemoComponent,
-  title: 'CACiC Eventos/Landing/Major Event Subscription',
+  title: 'Public/Landing/Demos/Major Event Signup',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<MajorEventSubscriptionDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(async () => {
@@ -25,7 +24,6 @@ export const Playground: Story = {
 };
 
 export const ConfirmedSubscription: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' }));
@@ -36,9 +34,7 @@ export const ConfirmedSubscription: Story = {
   },
 };
 
-export const MobileReview: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', motion: 'reduced' },
+export const ReviewSubscription: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' }));
@@ -49,7 +45,6 @@ export const MobileReview: Story = {
 };
 
 export const RestartSubscription: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' }));
@@ -62,7 +57,6 @@ export const RestartSubscription: Story = {
 };
 
 export const EventInformation: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Informações sobre Interfaces que incluem' }));

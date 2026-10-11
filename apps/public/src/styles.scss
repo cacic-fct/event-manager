@@ -187,3 +187,9 @@ mat-toolbar .global-toolbar-spacer {
   -webkit-line-clamp: unset;
   white-space: normal;
 }
+
+// Keep the package's privacy link distinguishable without relying on color.
+app-cookie-banner .cacic-cookie-banner .cacic-cookie-banner_text-content a[href] {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}

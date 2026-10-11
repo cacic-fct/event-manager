@@ -1,5 +1,5 @@
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -21,7 +21,6 @@ import { unespRoleListLabel, userRoleLabel } from './people-labels';
 
 @Component({
   selector: 'app-workspace-people-tab',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,

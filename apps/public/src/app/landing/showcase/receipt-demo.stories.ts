@@ -4,23 +4,21 @@ import { ReceiptDemoComponent } from './receipt-demo';
 
 const meta: Meta<ReceiptDemoComponent> = {
   component: ReceiptDemoComponent,
-  title: 'CACiC Eventos/Landing/Receipt Upload',
+  title: 'Public/Landing/Demos/Receipt Upload',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<ReceiptDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('button', { name: 'Enviar comprovante' })).toBeDisabled();
   },
 };
 
 export const AwaitingValidation: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const receipt = new File(['%PDF-1.7\n'], 'comprovante.pdf', { type: 'application/pdf' });
@@ -30,9 +28,7 @@ export const AwaitingValidation: Story = {
   },
 };
 
-export const MobileFileSelection: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'light', motion: 'reduced' },
+export const ImageReceiptSelection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.upload(canvas.getByLabelText('Arquivo do comprovante'), new File(['receipt'], 'recibo.png', { type: 'image/png' }));

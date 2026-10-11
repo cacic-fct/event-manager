@@ -42,10 +42,10 @@
             <app-participant-summary recordDescription [person]="person" [showName]="false" />
           </app-workspace-record>
         } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhuma pessoa encontrada</span>
-            <span matListItemLine>Use a busca para carregar resultados.</span>
-          </mat-list-item>
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
+            <p>Nenhuma pessoa encontrada</p>
+          </div>
         }
       </mat-list>
 

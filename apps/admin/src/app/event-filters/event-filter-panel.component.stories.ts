@@ -16,7 +16,7 @@ type EventFilterPanelStoryArgs = {
 
 const meta: Meta<EventFilterPanelStoryArgs> = {
   component: EventFilterPanelComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Shared/Event Filter Panel',
+  title: 'Admin/Event Management/Filters',
   tags: ['autodocs'],
   args: {
     query: 'angular',
@@ -44,6 +44,11 @@ const meta: Meta<EventFilterPanelStoryArgs> = {
     },
   }),
   parameters: {
+    docs: {
+      description: {
+        component: 'Reusable event filters for narrowing the event catalog by relationship, dates, and other criteria.',
+      },
+    },
     layout: 'fullscreen',
     a11y: { test: 'error' },
   },
@@ -80,12 +85,10 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const EmptyFilters: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     query: '',
     startDateFrom: '',
@@ -106,6 +109,5 @@ export const Filters: Story = {
     applyLabel: 'Buscar',
     resetLabel: 'Limpar',
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

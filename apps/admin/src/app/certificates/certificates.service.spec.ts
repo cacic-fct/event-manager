@@ -154,7 +154,7 @@ describe('CertificatesService', () => {
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
-        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
+        { provide: Router, useValue: { events: of(), navigate: vi.fn().mockResolvedValue(true) } },
         {
           provide: PermissionsService,
           useValue: permissions,
@@ -229,6 +229,18 @@ describe('CertificatesService', () => {
     expect(service.unsavedChanges()).toBe(true);
 
     service.startNewCertificateConfig();
+    expect(service.unsavedChanges()).toBe(false);
+  });
+
+  it('clears unsaved folder changes when cancelling back to the same baseline', () => {
+    service.startNewFolder();
+    expect(service.unsavedChanges()).toBe(false);
+
+    service.folderForm.controls.name.setValue('Extensão universitária');
+    expect(service.unsavedChanges()).toBe(true);
+
+    service.cancelFolderEdit();
+    expect(service.folderForm.controls.name.value).toBe('');
     expect(service.unsavedChanges()).toBe(false);
   });
 

@@ -5,17 +5,16 @@ import { AttendanceDemoComponent } from './attendance-demo';
 
 const meta: Meta<AttendanceDemoComponent> = {
   component: AttendanceDemoComponent,
-  title: 'CACiC Eventos/Landing/Chamada oral',
+  title: 'Public/Landing/Demos/Attendance',
   tags: ['autodocs', 'landing-showcase'],
   decorators: [applicationConfig({ providers: [provideNoopAnimations()] })],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<AttendanceDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Interfaces que incluem')).toBeVisible();
@@ -28,7 +27,6 @@ export const Playground: Story = {
 };
 
 export const ListAndReview: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('radio', { name: 'Exibir lista' }));
@@ -41,9 +39,7 @@ export const ListAndReview: Story = {
   },
 };
 
-export const MobileTapAlternative: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const AbsentDecision: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Marcar como faltou' }));
@@ -53,7 +49,6 @@ export const MobileTapAlternative: Story = {
 };
 
 export const ManualCallCompletion: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     for (const name of ['Marina Costa', 'Rafael Almeida', 'Beatriz Lima']) {

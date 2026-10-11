@@ -49,7 +49,7 @@ test('opens sports management from workspace navigation and lists configured tou
   await expect(tournamentList.locator('mat-list-item')).toHaveCount(1);
   const tournament = tournamentList
     .locator('mat-list-item')
-    .filter({ hasText: '2 modalidades · 8 equipes · Publicado' });
+    .filter({ hasText: '2 modalidades e 8 equipes, Publicado' });
   await expect(tournament).toBeVisible();
   await expect(tournament.getByText('Semana da Computação')).toBeVisible();
   await expect(tournament.getByText('3 pendências')).toBeVisible();
@@ -136,11 +136,10 @@ test('shows the sports permission boundary when every sports read permission is 
 
   await page.goto('/admin/sports');
 
-  await expect(page.getByRole('heading', { name: 'Seção indisponível' })).toBeVisible();
-  await expect(page.getByText('Faltam permissões de leitura para abrir')).toBeVisible();
-  const missingPermissions = page.getByLabel('Permissões ausentes');
-  await expect(missingPermissions.getByText('sports-tournament#read', { exact: true })).toBeVisible();
-  await expect(missingPermissions.getByText('sports-score#read', { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/sports$/);
+  await expect(page.getByRole('heading', { name: 'Você não tem acesso a esta página.' })).toBeVisible();
+  await expect(page.getByText('Erro 403', { exact: true })).toBeVisible();
+  await expect(page.getByText('sports-tournament#read', { exact: true })).toHaveCount(0);
 });
 
 async function fulfillGraphql(route: Route, data: Record<string, unknown>): Promise<void> {

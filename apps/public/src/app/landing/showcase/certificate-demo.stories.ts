@@ -4,16 +4,15 @@ import { CertificateDemoComponent } from './certificate-demo';
 
 const meta: Meta<CertificateDemoComponent> = {
   component: CertificateDemoComponent,
-  title: 'CACiC Eventos/Landing/Certificados',
+  title: 'Public/Landing/Demos/Certificates',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<CertificateDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Configurar certificado' })).toBeVisible();
@@ -27,7 +26,6 @@ export const Playground: Story = {
 };
 
 export const SpeakerIssuanceAndInspection: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('combobox', { name: 'Emitir para' }));
@@ -46,9 +44,7 @@ export const SpeakerIssuanceAndInspection: Story = {
   },
 };
 
-export const MobileIssuedInspection: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const ParticipantCertificateInspection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Emitir certificados pendentes' }));

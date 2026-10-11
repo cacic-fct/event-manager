@@ -52,6 +52,7 @@ export class SportsBackingResourceLifecycleService {
             onlineAttendanceStartDate: true,
             onlineAttendanceEndDate: true,
             youtubeCode: true,
+            twitchChannel: true,
           },
         },
       },
@@ -94,6 +95,8 @@ export class SportsBackingResourceLifecycleService {
       this.changed(input.onlineAttendanceCode, event.onlineAttendanceCode) ||
       this.changed(input.onlineAttendanceStartDate, event.onlineAttendanceStartDate) ||
       this.changed(input.onlineAttendanceEndDate, event.onlineAttendanceEndDate) ||
+      this.changed(input.youtubeCode, event.youtubeCode) ||
+      this.changed(input.twitchChannel, event.twitchChannel) ||
       input.publishAfterUpdate === true;
 
     if (changesOwnership) {

@@ -12,6 +12,7 @@ import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from 
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { eventContentAuditSnapshot } from '../events/event-content-audit';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -230,7 +231,7 @@ export class EventGroupsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: withAudienceAudit(created, audienceChange),
+          after: eventContentAuditSnapshot(withAudienceAudit(created, audienceChange)),
           scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id, ...(created.majorEventId ? { majorEventId: created.majorEventId } : {}) },
           summary: 'Grupo de eventos criado.',
         },
@@ -316,8 +317,8 @@ export class EventGroupsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: withAudienceAudit(previous, audienceChange, true),
-          after: withAudienceAudit(updated, audienceChange),
+          before: eventContentAuditSnapshot(withAudienceAudit(previous, audienceChange, true)),
+          after: eventContentAuditSnapshot(withAudienceAudit(updated, audienceChange)),
           scope: { permission: Permission.EventGroup.Update, eventGroupId: updated.id },
           summary: 'Grupo de eventos atualizado.',
         },
@@ -401,7 +402,7 @@ export class EventGroupsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: created,
+          after: eventContentAuditSnapshot(created),
           scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id },
           summary: `Grupo de eventos criado como cópia de ${source.name}.`,
         },
@@ -442,8 +443,8 @@ export class EventGroupsResolver {
           entityLabel: eventGroup.name,
           operation: AuditLogOperation.DELETE,
           actor: this.getUser(context),
-          before: eventGroup,
-          after: { ...eventGroup, deletedAt },
+          before: eventContentAuditSnapshot(eventGroup),
+          after: eventContentAuditSnapshot({ ...eventGroup, deletedAt }),
           scope: { permission: Permission.EventGroup.Delete, eventGroupId: id },
           summary: 'Grupo de eventos excluído.',
           force: true,

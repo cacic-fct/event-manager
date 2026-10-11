@@ -1,3 +1,28 @@
+@use './admin-view-widths' as view-widths;
+
+.workspace-tab-shell,
+.workspace-tab,
+.attendance-shell {
+  @include view-widths.view();
+}
+
+// These grids are primary list/detail workspaces. Nested form grids do not
+// change a page's width, and focused context editors remain one column.
+@media (min-width: 901px) {
+  .workspace-tab-shell:has(> .tab-grid:not(.context-editor)),
+  .workspace-tab:has(> app-workspace-major-event-subscriptions-subtab),
+  .workspace-tab:has(> app-workspace-event-subscriptions-subtab),
+  .attendance-shell:has(> app-workspace-major-event-attendances-subtab) {
+    @include view-widths.view(2);
+  }
+}
+
+@media (min-width: 1181px) {
+  .attendance-shell:has(> app-workspace-event-attendances-subtab) {
+    @include view-widths.view(2);
+  }
+}
+
 .section {
   padding: 1rem 0;
 }
@@ -43,8 +68,11 @@
 }
 
 .tab-header h2,
+.panel-heading h2,
 .panel-heading h3,
+.surface-heading h3,
 .surface-heading h4,
+.surface h3,
 .surface h4 {
   margin: 0;
 }
@@ -186,7 +214,5 @@
 
 .tab-grid.context-editor {
   grid-template-columns: minmax(0, 1fr);
-  width: 100%;
-  max-width: 840px;
-  margin-inline: auto;
+  @include view-widths.view();
 }

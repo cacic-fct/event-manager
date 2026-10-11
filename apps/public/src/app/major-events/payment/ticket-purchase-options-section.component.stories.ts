@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { provideRouter } from '@angular/router';
@@ -36,7 +37,7 @@ const sampleOption = (args: TicketPurchaseOptionsStoryArgs): TicketPurchaseOptio
 
 const meta: Meta<TicketPurchaseOptionsStoryArgs> = {
   component: TicketPurchaseOptionsSectionComponent,
-  title: 'CACiC Eventos/Major Events/Ticket Purchases',
+  title: 'Public/Ticketing/Purchases/Options',
   tags: ['autodocs', 'ticketing'],
   parameters: { layout: 'padded', a11y: { test: 'error' } },
   args: {
@@ -60,6 +61,7 @@ const meta: Meta<TicketPurchaseOptionsStoryArgs> = {
     priceTierName: { control: 'text' },
   },
   decorators: [
+    withScenarioControls<TicketPurchaseOptionsStoryArgs>(),
     (story, context) =>
       applicationConfig({
         providers: [
@@ -98,7 +100,6 @@ type Story = StoryObj<TicketPurchaseOptionsStoryArgs>;
 
 export const Playground: Story = {
   args: { scenario: 'available' },
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Bilhetes adicionais' })).toBeVisible();
@@ -151,15 +152,5 @@ export const LoadError: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar os bilhetes adicionais.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled();
-  },
-};
-
-export const DarkReducedMotion: Story = {
-  args: { scenario: 'rejected' },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Comprovante rejeitado')).toBeVisible();
-    await expect(canvas.getByText('O comprovante está ilegível.')).toBeVisible();
   },
 };

@@ -18,7 +18,7 @@ type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
 
 const meta: Meta<CalendarEventListItemStoryArgs> = {
   component: CalendarEventListItem,
-  title: 'CACiC Eventos/Calendar/Event List Item',
+  title: 'Public/Discovery/Events/List Item',
   tags: ['autodocs', 'ticketing'],
   args: {
     ...calendarStoryEventDefaultControls,
@@ -60,7 +60,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -71,7 +70,7 @@ export const OfflineFallback: Story = {
     slotsAvailable: 0,
     queueCount: 8,
   },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
@@ -149,13 +148,11 @@ export const MultipleParentContext: Story = {
   },
 };
 
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     name: 'Atividade interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
     locationDescription: 'Auditório principal do centro de eventos, bloco acadêmico e cultural',
     context: 'short-description',
     shortDescription: 'Uma descrição longa para validar a hierarquia da linha do calendário em telas estreitas.',
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

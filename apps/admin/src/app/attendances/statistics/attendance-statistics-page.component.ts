@@ -1,7 +1,6 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -30,6 +29,7 @@ import { PermissionsService } from '../../permissions/permissions.service';
 import { observeEChartsTheme, readEChartsThemeColor } from '../../shared/echarts-theme-colors';
 import { attendanceCreationMethodLabel, attendanceReviewKindLabel } from '../attendance-labels';
 import { AttendanceHeatmapComponent } from './attendance-heatmap.component';
+import { AdminRouteResourceErrorService } from '../../shared/admin-route-resource-error.service';
 
 type ChartName = 'throughput' | 'hours' | 'collectors' | 'methods';
 
@@ -39,7 +39,6 @@ interface BrushEndEvent {
 
 @Component({
   selector: 'app-attendance-statistics-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
     RouterLink,
@@ -66,6 +65,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
 
   private readonly api = inject(AttendanceApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   protected readonly permissions = inject(PermissionsService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eventId = this.route.snapshot.paramMap.get('eventId') ?? '';
@@ -105,6 +105,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.scheduleChartRender();
         },
         error: (error: unknown) => {
+          if (this.routeResourceErrors.redirectIfUnavailable(error)) return;
           if (!this.snapshot()) {
             void this.reload();
             return;
@@ -146,7 +147,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       this.liveUpdateGeneration.update((generation) => generation + 1);
       this.scheduleChartRender();
     } catch (error: unknown) {
-      this.connectionError.set(error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.');
+      if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.connectionError.set(error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.');
+      }
     } finally {
       this.loading.set(false);
     }
@@ -175,7 +178,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   methodSummary(methods: EventAttendanceAnalyticsSnapshot['collectors'][number]['methods']): string {
-    return methods.map((method) => `${this.methodLabel(method.method)}: ${method.count}`).join(' · ');
+    return methods.map((method) => `${this.methodLabel(method.method)}: ${method.count}`).join(', ');
   }
 
   reviewIcon(item: AttendanceReviewItem): string {

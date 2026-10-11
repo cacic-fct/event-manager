@@ -13,11 +13,6 @@
     <mat-icon aria-hidden="true">hourglass_top</mat-icon>
     <p>Carregando pré-visualização...</p>
   </section>
-  } @else if (currentState.status === 'error') {
-  <section class="empty-section" aria-live="polite">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>{{ currentState.message }}</p>
-  </section>
   } @else {
   <section class="preview-notice" aria-live="polite">
     <mat-icon aria-hidden="true">visibility</mat-icon>

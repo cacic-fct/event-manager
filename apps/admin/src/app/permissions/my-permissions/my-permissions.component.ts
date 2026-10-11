@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -11,7 +11,6 @@ import { PermissionsService } from '../permissions.service';
   imports: [MatChipsModule, MatIconModule, MatListModule, MatTooltip],
   templateUrl: './my-permissions.component.html',
   styleUrl: './my-permissions.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MyPermissionsComponent {
   private readonly workspacePermissions = inject(PermissionsService);

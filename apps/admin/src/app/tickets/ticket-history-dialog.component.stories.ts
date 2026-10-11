@@ -1,5 +1,6 @@
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, within } from 'storybook/test';
 import {
   createAdminEventTicket,
@@ -42,7 +43,7 @@ interface TicketHistoryStoryArgs {
 
 const meta: Meta<TicketHistoryStoryArgs> = {
   component: TicketHistoryDialogComponent,
-  title: 'CACiC Eventos/Workspace/Tickets/Ticket History',
+  title: 'Admin/Ticketing/History',
   tags: ['autodocs', 'ticketing'],
   args: { ticketName: ticket.name, empty: false, longReason: false, status: 'ACTIVE' },
   argTypes: {
@@ -52,6 +53,7 @@ const meta: Meta<TicketHistoryStoryArgs> = {
     status: { control: 'select', options: ['ACTIVE', 'CONSUMED', 'REVOKED'] },
   },
   decorators: [
+    withScenarioControls<TicketHistoryStoryArgs>(),
     (story, context) => applicationConfig({ providers: [{
       provide: MAT_DIALOG_DATA,
       useValue: {
@@ -73,7 +75,7 @@ const meta: Meta<TicketHistoryStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketHistoryStoryArgs>;
 
-export const Playground: Story = {};
+export const Playground: Story = {  };
 
 export const OwnershipTrail: Story = {
   play: async ({ canvasElement }) => {
@@ -108,8 +110,6 @@ export const NoMovements: Story = {
   },
 };
 
-export const LongReasonOnMobile: Story = {
+export const LongReason: Story = {
   args: { longReason: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

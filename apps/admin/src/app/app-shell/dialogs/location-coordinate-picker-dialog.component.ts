@@ -1,6 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -44,7 +43,6 @@ type NominatimSearchResult = Readonly<{
 
 @Component({
   selector: 'app-location-coordinate-picker-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
     <h2 mat-dialog-title>Selecionar localização no mapa</h2>

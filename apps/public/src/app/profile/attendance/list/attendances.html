@@ -35,6 +35,7 @@
       matButton="filled"
       type="button"
       class="download-button"
+      [attr.aria-label]="certificateArchiveDownloadButtonLabel()"
       [disabled]="isCertificateArchiveDownloadDisabled()"
       [disabledInteractive]="true"
       aria-describedby="certificate-archive-status"

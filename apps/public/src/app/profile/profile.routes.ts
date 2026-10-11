@@ -45,11 +45,13 @@ export const routes: Route[] = [
   {
     path: 'forms/:formId',
     title: 'Formulário',
+    canActivate: [authGuard],
     loadComponent: () => import('../forms/event-form-page').then((m) => m.EventFormPage),
   },
   {
     path: 'lecturer-profile',
     title: 'Perfil de palestrante',
+    canActivate: [authGuard],
     loadComponent: () => import('./lecturer-profile/lecturer-profile').then((m) => m.LecturerProfileComponent),
   },
 ];

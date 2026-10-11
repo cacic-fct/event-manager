@@ -91,7 +91,7 @@
     <div class="match-strip">
       @for (match of upcomingMatches().slice(0, 4); track match.id) {
       <a class="featured-match" [routerLink]="['/sports/match', match.id]">
-        <span>{{ match.schedule.startDate | date: 'dd/MM · HH:mm' }}</span>
+        <span>{{ match.schedule.startDate | date: "dd/MM 'às' HH:mm" }}</span>
         <strong class="featured-team-pair">
           <span class="featured-team">
             @if (match.homeTeam) {
@@ -114,6 +114,29 @@
     <p class="quiet-state">Nenhuma próxima partida foi publicada.</p>
     }
   </section>
+
+  @if (livestreamMatches().length) {
+  <section class="livestream-section">
+    <h2>Transmissões ao vivo</h2>
+    <div class="livestream-grid">
+      @for (match of livestreamMatches(); track match.id; let streamIndex = $index) {
+      @if (match.livestreamUrl; as livestreamValue) {
+      <article>
+        <h3>
+          <a [routerLink]="['/sports/match', match.id]">
+            {{ participantName(match, 'home') }} × {{ participantName(match, 'away') }}
+          </a>
+        </h3>
+        <lib-livestream-embed
+          [provider]="match.livestreamProvider ?? 'GENERAL'"
+          [value]="livestreamValue"
+          [title]="'Transmissão da partida ' + (streamIndex + 1) + ': ' + participantName(match, 'home') + ' × ' + participantName(match, 'away')" />
+      </article>
+      }
+      }
+    </div>
+  </section>
+  }
 
   <mat-tab-group
     animationDuration="180ms"

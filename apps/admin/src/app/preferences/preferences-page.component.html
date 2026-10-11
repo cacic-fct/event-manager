@@ -17,7 +17,7 @@
             <mat-list-item>
               <mat-icon matListItemIcon>error</mat-icon>
               <span matListItemTitle>{{ personalState.message }}</span>
-              <button matIconButton matListItemMeta type="button" matTooltip="Tentar novamente" (click)="reload()">
+              <button matIconButton matListItemMeta type="button" aria-label="Tentar novamente" matTooltip="Tentar novamente" (click)="reload()">
                 <mat-icon>refresh</mat-icon>
               </button>
             </mat-list-item>
@@ -29,7 +29,7 @@
             <mat-list-item>
               <mat-icon matListItemIcon>error</mat-icon>
               <span matListItemTitle>{{ superState.message }}</span>
-              <button matIconButton matListItemMeta type="button" matTooltip="Tentar novamente" (click)="reload()">
+              <button matIconButton matListItemMeta type="button" aria-label="Tentar novamente" matTooltip="Tentar novamente" (click)="reload()">
                 <mat-icon>refresh</mat-icon>
               </button>
             </mat-list-item>

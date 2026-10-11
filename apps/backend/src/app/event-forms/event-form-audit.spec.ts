@@ -6,7 +6,7 @@ import {
   EventFormSigilo,
   EventFormTargetType,
 } from '@prisma/client';
-import { eventFormAuditRecord } from './event-form-audit';
+import { eventFormAuditRecord, eventFormResponseAuditRecord } from './event-form-audit';
 import { EventFormRecord } from './event-form-records';
 
 function createFormRecord(overrides: Partial<EventFormRecord> = {}): EventFormRecord {
@@ -233,5 +233,71 @@ describe('eventFormAuditRecord', () => {
         permission: Permission.EventForm.Update,
       },
     });
+  });
+});
+
+describe('event-form audit payloads', () => {
+  it('keeps image references without copying stored image metadata', () => {
+    const form = createFormRecord({
+      descriptionImages: [{ id: 'image-1', altText: 'Cartaz', caption: 'Evento' }] as never,
+      images: [{ id: 'image-1', objectKey: 'private/path', sizeBytes: 1024 }] as never,
+    });
+
+    const record = eventFormAuditRecord(form, AuditLogOperation.CREATE, undefined, null, form, 'Criado.');
+
+    expect(record.after).toMatchObject({
+      descriptionImages: [{ id: 'image-1', altText: 'Cartaz', caption: 'Evento' }],
+    });
+    expect(record.after).not.toHaveProperty('images');
+    expect(record.after).not.toHaveProperty('descriptionImages.0.objectKey');
+  });
+
+  it('records answer edits without retaining submitted answer content', () => {
+    const form = createFormRecord();
+    const previous = {
+      id: 'response-1',
+      formId: 'form-1',
+      personId: 'person-1',
+      answers: [{ questionId: 'q1', value: 'old answer' }],
+      source: 'PUBLIC_FORM',
+    };
+    const response = { ...previous, answers: [{ questionId: 'q1', value: 'private answer' }] };
+
+    const record = eventFormResponseAuditRecord(
+      form,
+      response as never,
+      AuditLogOperation.UPDATE,
+      undefined,
+      previous as never,
+    );
+
+    expect(record.force).toBe(true);
+    expect(record.metadata).toMatchObject({ formId: 'form-1', answersChanged: true });
+    expect(record.before).toMatchObject({ personId: 'person-1' });
+    expect(record.after).toMatchObject({ personId: 'person-1' });
+    expect(record.before).not.toHaveProperty('answers');
+    expect(record.after).not.toHaveProperty('answers');
+  });
+
+  it('does not force a record when response answers are unchanged', () => {
+    const form = createFormRecord();
+    const response = {
+      id: 'response-1',
+      formId: 'form-1',
+      personId: 'person-1',
+      answers: [{ questionId: 'q1', value: 'same answer' }],
+      source: 'PUBLIC_FORM',
+    };
+
+    const record = eventFormResponseAuditRecord(
+      form,
+      response as never,
+      AuditLogOperation.UPDATE,
+      undefined,
+      { ...response, answers: [{ questionId: 'q1', value: 'same answer' }] } as never,
+    );
+
+    expect(record.force).toBe(false);
+    expect(record.metadata).toMatchObject({ answersChanged: false });
   });
 });

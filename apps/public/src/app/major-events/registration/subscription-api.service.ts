@@ -20,7 +20,7 @@ import {
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
-import { graphqlError } from '../../shared/rate-limit-error';
+import { graphqlError, NotFoundGraphqlError } from '../../shared/rate-limit-error';
 
 export type {
   PublicEventSubscriptionSummary,
@@ -67,7 +67,7 @@ export class MajorEventSubscriptionApiService {
       map((data) => {
         const majorEvent = data.publicationPreview.majorEvent;
         if (!majorEvent) {
-          throw new Error('Pré-visualização sem grande evento.');
+          throw new NotFoundGraphqlError('Pré-visualização sem grande evento.');
         }
 
         return {
@@ -105,7 +105,7 @@ export class MajorEventSubscriptionApiService {
     ).pipe(
       map((data) => {
         if (!data.publicationPreview.eventGroup) {
-          throw new Error('Pré-visualização sem grupo de eventos.');
+          throw new NotFoundGraphqlError('Pré-visualização sem grupo de eventos.');
         }
 
         return data.publicationPreview;

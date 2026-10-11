@@ -68,6 +68,7 @@ describe('CertificateEligibilityService', () => {
     onlineAttendanceEndDate: null,
     isPubliclyListed: true,
     youtubeCode: null,
+    twitchChannel: null,
     buttonText: null,
     buttonLink: null,
     deletedAt: null,

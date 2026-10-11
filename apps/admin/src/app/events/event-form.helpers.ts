@@ -118,6 +118,7 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
     isPubliclyListed: booleanValue(payload.isPubliclyListed, eventItem.isPubliclyListed),
     displayLecturerProfile: booleanValue(payload.displayLecturerProfile, eventItem.displayLecturerProfile ?? true),
     youtubeCode: nullableStringValue(payload.youtubeCode, eventItem.youtubeCode ?? null),
+    twitchChannel: nullableStringValue(payload.twitchChannel, eventItem.twitchChannel ?? null),
     buttonText: nullableStringValue(payload.buttonText, eventItem.buttonText ?? null),
     buttonLink: nullableStringValue(payload.buttonLink, eventItem.buttonLink ?? null),
   };

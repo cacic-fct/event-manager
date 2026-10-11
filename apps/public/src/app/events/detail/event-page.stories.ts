@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { createPublicEventInterest, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
@@ -22,7 +23,8 @@ import {
 import { Event } from './event-page';
 
 interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryControls {
-  apiState: 'ready' | 'loading' | 'error';
+  livestream: 'NONE' | 'YOUTUBE' | 'TWITCH' | 'BOTH';
+  apiState: 'ready' | 'loading';
   latencyMs: number;
   weatherState: 'forecast' | 'unavailable' | 'extreme-heat';
   allowSubscription: boolean;
@@ -39,6 +41,7 @@ const defaultArgs: EventStoryArgs = {
   ...publicEventStoryDefaultControls,
   ...publicLecturerStoryDefaultControls,
   apiState: 'ready',
+  livestream: 'NONE',
   latencyMs: 120,
   weatherState: 'forecast',
   allowSubscription: true,
@@ -66,13 +69,15 @@ const onlineContext = createStoryContext();
 
 const meta: Meta<EventStoryArgs> = {
   component: Event,
-  title: 'CACiC Eventos/Events/Detail Page',
+  title: 'Public/Discovery/Events/Details',
   tags: ['autodocs'],
+  decorators: [withScenarioControls<EventStoryArgs>()],
   args: defaultArgs,
   argTypes: {
     ...publicEventStoryControlArgTypes,
     ...publicLecturerStoryControlArgTypes,
-    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    livestream: { control: 'select', options: ['NONE', 'YOUTUBE', 'TWITCH', 'BOTH'] },
+    apiState: { control: 'inline-radio', options: ['ready', 'loading'] },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     weatherState: { control: 'select', options: ['forecast', 'unavailable', 'extreme-heat'] },
     allowSubscription: { control: 'boolean' },
@@ -116,13 +121,52 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const YouTubeLivestream: Story = {
+  args: { livestream: 'YOUTUBE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const iframe = await findLivestreamIframe(canvasElement, 'Transmissão do evento no YouTube');
+    await expect(iframe).toHaveAttribute('src', expect.stringContaining('youtube-nocookie.com/embed/storybook-event'));
+    await expect(canvas.getByRole('link', { name: /Abrir no YouTube/ })).toHaveAttribute(
+      'href',
+      'https://www.youtube.com/watch?v=storybook-event',
+    );
+  },
+};
+
+export const TwitchLivestream: Story = {
+  args: { livestream: 'TWITCH' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const iframe = await findLivestreamIframe(canvasElement, 'Transmissão do evento na Twitch');
+    await expect(iframe).toHaveAttribute(
+      'sandbox',
+      'allow-scripts allow-same-origin allow-popups-to-escape-sandbox',
+    );
+    await expect(await canvas.findByRole('link', { name: /Abrir na Twitch/ })).toHaveAttribute(
+      'href',
+      'https://www.twitch.tv/cacic',
+    );
+  },
+};
+
+export const BothLivestreamProviders: Story = {
+  args: { livestream: 'BOTH' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await findLivestreamIframe(canvasElement, 'Transmissão do evento no YouTube')).toBeInTheDocument();
+    await expect(await findLivestreamIframe(canvasElement, 'Transmissão do evento na Twitch')).toBeInTheDocument();
+    await expect(await canvas.findByRole('link', { name: /Abrir no YouTube/ })).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: /Abrir na Twitch/ })).toBeVisible();
+  },
 };
 
 export const InterestWithoutRegistration: Story = {
   args: { interestEnabled: true, allowSubscription: false, isInterested: true, isSubscribed: false, dayOffset: 1 },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const toggle = await canvas.findByRole('button', { name: /^Quero ir:/ });
@@ -133,14 +177,14 @@ export const InterestWithoutRegistration: Story = {
 
 export const InterestedAndRegistered: Story = {
   args: { interestEnabled: true, isInterested: true, isSubscribed: true, dayOffset: 1 },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
 };
 
 export const WithoutLecturers: Story = {
   args: {
     lecturerCount: 0,
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByText('Ministrantes')).toBeNull();
@@ -155,7 +199,7 @@ export const LecturerWithoutContact: Story = {
     lecturerLinkedin: '',
     publishGoogleUserPicture: false,
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Ministrantes')).toBeVisible();
@@ -169,7 +213,7 @@ export const WithAttendanceForms: Story = {
   args: {
     hasAttendance: true,
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Formulários')).toBeVisible();
@@ -183,11 +227,17 @@ export const SubscriptionFormReviewFlow: Story = {
     requiresLicenseAgreement: true,
     allowSubscription: true,
     context: 'short-description',
+    dayOffset: 2,
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Inscrever-se' }));
+    const subscribeButton = await canvas.findByRole('button', { name: 'Inscrever-se' });
+    await waitFor(() => {
+      expect(subscribeButton).toBeEnabled();
+      expect(subscribeButton).toHaveStyle({ pointerEvents: 'auto' });
+    });
+    await userEvent.click(subscribeButton);
     await expect(await canvas.findByRole('heading', { name: 'Camiseta do evento' })).toBeVisible();
     await userEvent.click(await canvas.findByRole('radio', { name: 'M' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Continuar' }));
@@ -198,41 +248,37 @@ export const SubscriptionFormReviewFlow: Story = {
     const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));
     await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
     await userEvent.click(await dialog.findByRole('button', { name: 'Confirmar inscrição' }));
+    await expect(await screen.findByText('Inscrição realizada.')).toBeVisible();
   },
 };
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const SoldOut: Story = {
   args: { hasAvailableSlots: false, slotsAvailable: 0, allowSubscription: true },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
 };
 
 export const AlreadySubscribed: Story = {
   args: { isSubscribed: true, hasAttendance: false },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
 };
 
 export const ExtremeHeatForecast: Story = {
   args: { weatherState: 'extreme-heat' },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
 };
 
 export const Loading: Story = {
   args: { apiState: 'loading', latencyMs: 0 },
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
 };
 
-export const LoadError: Story = {
-  args: { apiState: 'error', latencyMs: 0 },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
-};
-
-export const LongContentMobile: Story = {
+export const LongContent: Story = {
   args: {
     name: 'Encontro interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
     shortDescription:
@@ -241,13 +287,12 @@ export const LongContentMobile: Story = {
       'Pesquisadora e educadora com atuação interdisciplinar em produtos públicos digitais acessíveis.',
     lecturerCount: 8,
   },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  globals: { network: 'online' },
 };
 
 export const PreviewLink: Story = {
   args: defaultArgs,
-  globals: { theme: 'light', network: 'online' },
+  globals: { network: 'online' },
   render: (args) => renderStory(args, previewContext),
   decorators: [
     applicationConfig({
@@ -264,6 +309,18 @@ export const PreviewLink: Story = {
 
 function createStoryContext(args: Partial<EventStoryArgs> = {}): EventStoryContext {
   return createMutableStoryContext(defaultArgs, args);
+}
+
+async function findLivestreamIframe(canvasElement: HTMLElement, title: string): Promise<HTMLIFrameElement> {
+  let iframe: HTMLIFrameElement | null = null;
+  await waitFor(() => {
+    iframe = canvasElement.querySelector<HTMLIFrameElement>(`iframe[title="${title}"]`);
+    expect(iframe).not.toBeNull();
+  });
+  if (!iframe) {
+    throw new Error(`Livestream iframe titled "${title}" did not render.`);
+  }
+  return iframe;
 }
 
 function renderStory(args: EventStoryArgs, context: EventStoryContext) {
@@ -283,9 +340,6 @@ function eventParameters(context: EventStoryContext) {
               await delay(context.args.latencyMs);
             }
             const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-            if (context.args.apiState === 'error') {
-              return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
-            }
             return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', body.variables ?? {}, context.args) });
           }),
         ],
@@ -330,6 +384,8 @@ function buildEvent(args: EventStoryArgs) {
     lecturers: createPublicStoryLecturerProfilesFromControls(args),
     requiresImageLicenseAgreement: args.requiresLicenseAgreement,
     interestEnabled: args.interestEnabled,
+    youtubeCode: args.livestream === 'YOUTUBE' || args.livestream === 'BOTH' ? 'storybook-event' : null,
+    twitchChannel: args.livestream === 'TWITCH' || args.livestream === 'BOTH' ? 'cacic' : null,
   };
 }
 

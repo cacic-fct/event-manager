@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
@@ -6,7 +6,6 @@ import { MajorEventSubscriptionCsvImportResult } from '@cacic-fct/event-manager-
 
 @Component({
   selector: 'app-subscription-csv-import-result-dialog',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatDialogModule, MatListModule],
   template: `
     <h2 mat-dialog-title>Importação concluída</h2>

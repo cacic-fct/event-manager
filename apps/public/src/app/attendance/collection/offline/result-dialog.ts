@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 
@@ -53,7 +53,6 @@ export interface AttendanceOfflineSyncResultDialogData {
       margin-top: 0.15rem;
     }
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AttendanceOfflineSyncResultDialog {
   readonly data = inject<AttendanceOfflineSyncResultDialogData>(MAT_DIALOG_DATA);

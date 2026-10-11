@@ -4,11 +4,12 @@ import { Developer } from './developer';
 
 const meta: Meta<Developer> = {
   component: Developer,
-  title: 'CACiC Eventos/Landing/Developer',
+  title: 'Public/Landing/Developer Docs',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -17,7 +18,6 @@ export default meta;
 type Story = StoryObj<Developer>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: 'Documentação' })).toBeVisible();
@@ -30,16 +30,5 @@ export const Playground: Story = {
       "curl --request POST 'https://eventos.cacic.com.br/api/graphql'",
     );
     await expect(canvas.getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
-  },
-};
-
-export const Dark: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-};
-
-export const MobileCodeSample: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
   },
 };

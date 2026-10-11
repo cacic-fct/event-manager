@@ -22,6 +22,7 @@ import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scope
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { eventContentAuditSnapshot } from '../events/event-content-audit';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
@@ -332,7 +333,7 @@ export class MajorEventsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: withAudienceAudit(created, audienceChange),
+          after: eventContentAuditSnapshot(withAudienceAudit(created, audienceChange)),
           scope: { permission: Permission.MajorEvent.Create, majorEventId: created.id },
           summary: 'Grande evento criado.',
         },
@@ -456,8 +457,8 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: withAudienceAudit(omitPublicationAuditFields(majorEvent), audienceChange, true),
-          after: withAudienceAudit(omitPublicationAuditFields(updated), audienceChange),
+          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(majorEvent), audienceChange, true)),
+          after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updated), audienceChange)),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
         },
@@ -612,7 +613,7 @@ export class MajorEventsResolver {
           entityLabel: created.name,
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
-          after: created,
+          after: eventContentAuditSnapshot(created),
           scope: { permission: Permission.MajorEvent.Create, majorEventId: created.id },
           summary: `Grande evento criado como cópia de ${source.name}.`,
         },
@@ -655,8 +656,8 @@ export class MajorEventsResolver {
           entityLabel: majorEvent.name,
           operation: AuditLogOperation.DELETE,
           actor: this.getUser(context),
-          before: majorEvent,
-          after: { ...majorEvent, deletedAt },
+          before: eventContentAuditSnapshot(majorEvent),
+          after: eventContentAuditSnapshot({ ...majorEvent, deletedAt }),
           scope: { permission: Permission.MajorEvent.Delete, majorEventId: id },
           summary: 'Grande evento excluído.',
           force: true,

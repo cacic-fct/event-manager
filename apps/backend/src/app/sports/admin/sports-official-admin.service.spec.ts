@@ -56,7 +56,7 @@ describe('SportsOfficialAdminService', () => {
       },
     });
     expect(auditLog.record).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: AuditLogOperation.ASSIGN, entityLabel: 'Árbitra Ana · REFEREE' }),
+      expect.objectContaining({ operation: AuditLogOperation.ASSIGN, entityLabel: 'Árbitra Ana, função: REFEREE' }),
       tx,
     );
   });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -10,7 +10,6 @@ import { catchError, from, of, startWith, switchMap, Subject } from 'rxjs';
   imports: [MatDialogModule, MatButtonModule],
   templateUrl: './ngsw-state.html',
   styleUrl: './ngsw-state.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NgswState {
   private readonly serviceWorkerService = inject(ServiceWorkerService);

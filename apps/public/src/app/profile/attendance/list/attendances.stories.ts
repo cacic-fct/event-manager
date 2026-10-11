@@ -1,8 +1,9 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import {
@@ -62,14 +63,17 @@ const withStoryData: Decorator<AttendancesStoryControls> = (story, context) => {
 
 const meta: Meta<AttendancesStoryControls> = {
   component: Attendances,
-  title: 'CACiC Eventos/Profile/Attendance/List',
+  title: 'Public/Profile/Attendance History/List',
   tags: ['autodocs'],
   args: attendancesStoryDefaultControls,
   argTypes: attendancesStoryControlArgTypes,
-  decorators: [withStoryData],
+  decorators: [
+    withScenarioControls<AttendancesStoryControls>(),
+    withStoryData,
+  ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     docs: {
       description: {
         component:
@@ -82,23 +86,23 @@ const meta: Meta<AttendancesStoryControls> = {
 export default meta;
 type Story = StoryObj<AttendancesStoryControls>;
 
-export const InterestedEvents: Story = {
-  args: { interestedOnly: true, attendanceEvery: 0, majorEventCount: 0, eventCount: 2, certificateFolderCount: 0 },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
-    await expect(canvas.getAllByText('Quero ir').length).toBeGreaterThan(0);
-  },
-};
-
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
     await expect(await canvas.findByRole('heading', { name: 'Certificados avulsos' })).toBeVisible();
     await expect((await canvas.findAllByRole('link')).length).toBeGreaterThan(10);
+  },
+};
+
+
+export const InterestedEvents: Story = {
+  args: { interestedOnly: true, attendanceEvery: 0, majorEventCount: 0, eventCount: 2, certificateFolderCount: 0 },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Participações' })).toBeVisible();
+    await expect(canvas.getAllByRole('img', { name: 'Quero ir' }).length).toBeGreaterThan(0);
   },
 };
 
@@ -115,8 +119,8 @@ export const Empty: Story = {
   args: { majorEventCount: 0, eventCount: 0, certificateFolderCount: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('Nenhuma participação encontrada.')).toBeVisible();
-    await expect(canvas.getByText('Nenhum certificado avulso disponível.')).toBeVisible();
+    await expect(await canvas.findByText('Nenhuma participação encontrada.')).toBeVisible();
+    await expect(await canvas.findByText('Nenhum certificado avulso disponível.')).toBeVisible();
   },
 };
 
@@ -136,9 +140,9 @@ export const LoadError: Story = {
 
 export const OfflineCache: Story = {
   args: { state: 'offline', eventCount: 16, majorEventCount: 6 },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  globals: { network: 'offline' },
   play: async ({ canvasElement }) => {
-    await expect((await within(canvasElement).findAllByRole('link')).length).toBeGreaterThan(15);
+    await waitFor(() => expect(within(canvasElement).getAllByRole('link').length).toBeGreaterThan(15));
   },
 };
 
@@ -160,10 +164,8 @@ export const CertificateDownloadCooldown: Story = {
   },
 };
 
-export const LongContentTablet: Story = {
+export const LongContent: Story = {
   args: { longNames: true, eventCount: 18, majorEventCount: 8, certificateFolderCount: 4 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect((await within(canvasElement).findAllByText(/interdisciplinar/)).length).toBeGreaterThan(8);
   },

@@ -4,16 +4,15 @@ import { AuditLogDemoComponent } from './audit-log-demo';
 
 const meta: Meta<AuditLogDemoComponent> = {
   component: AuditLogDemoComponent,
-  title: 'CACiC Eventos/Landing/Auditoria',
+  title: 'Public/Landing/Demos/Audit Log',
   tags: ['autodocs', 'landing-showcase'],
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<AuditLogDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('heading', { name: 'Atividade recente' })).toBeVisible();
@@ -23,7 +22,6 @@ export const Playground: Story = {
 };
 
 export const EventEditReview: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Evento atualizado pelo painel administrativo/ }));
@@ -33,9 +31,7 @@ export const EventEditReview: Story = {
   },
 };
 
-export const ReceiptApprovalMobile: Story = {
-  globals: { theme: 'light', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const ReceiptApproval: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Comprovantes' }));
@@ -47,8 +43,7 @@ export const ReceiptApprovalMobile: Story = {
   },
 };
 
-export const DarkReducedPermissionAndCertificateReview: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const PermissionAndCertificateReview: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Permissões' }));

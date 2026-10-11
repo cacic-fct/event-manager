@@ -146,7 +146,7 @@ describe('EventLecturersResolver authorization', () => {
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: 'event-1:person-1',
-        after: { eventId: 'event-1', personId: 'person-1', createdById: 'user-1' },
+        after: { eventId: 'event-1', personId: 'person-1' },
         scope: { permission: Permission.EventLecturer.Create, eventId: 'event-1' },
       }),
       prisma,

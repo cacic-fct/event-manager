@@ -4,11 +4,13 @@ import { About } from './about';
 
 const meta: Meta<About> = {
   component: About,
-  title: 'CACiC Eventos/About/Overview',
+  title: 'Public/Support/About/Overview',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static about page with service status and project information.' } },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -35,18 +37,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const OfflineInstalled: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline', serviceWorker: 'enabled' },
+  globals: { network: 'offline', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'online', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

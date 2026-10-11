@@ -11,14 +11,19 @@ import {
 
 const meta: Meta<PageStoryArgs> = {
   component: EventsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',
+  title: 'Admin/Event Management/Events',
   tags: ['autodocs'],
   args: defaultPageStoryArgs,
   argTypes: pageStoryArgTypes,
   decorators: [withPageStoryProviders],
   parameters: {
+    docs: {
+      description: {
+        component: 'Standalone event catalog with controls for publication, density, and selection. Stories cover drafts, loading, frozen events, and audience settings.',
+      },
+    },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -53,15 +58,12 @@ export const FrozenSportsEvent: Story = {
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
-export const LongContentTablet: Story = {
+export const LongContent: Story = {
   args: { longContent: true, itemCount: 12 },
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
 export const EmptyReadonly: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'readonly',
     itemCount: 0,
@@ -124,7 +126,6 @@ export const OnlineAttendanceControls: Story = {
 
 export const ReadonlyLinkedPeople: Story = {
   args: { mode: 'readonly', itemCount: 4 },
-  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const linkedPeople = canvasElement.querySelectorAll('.linked-person');
     await expect(linkedPeople).toHaveLength(2);

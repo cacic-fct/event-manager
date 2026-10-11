@@ -10,33 +10,33 @@ declare global { interface Window { axe: typeof axe; adminAuditAxe: typeof axe }
 const storybookURL = process.env['STORYBOOK_URL'];
 const captureDirectory = process.env['ADMIN_UX_CAPTURE_DIR'];
 const pages = [
-  ['event-workspace', 'cacic-eventos-workspace-event-workspace--playground'],
-  ['major-event-overview', 'cacic-eventos-workspace-event-workspace--selected-major-event'],
-  ['event-with-counts', 'cacic-eventos-workspace-event-workspace--selected-event'],
-  ['dashboard', 'cacic-eventos-workspace-home-home--playground'],
-  ['shell', 'cacic-eventos-workspace-workspace-layout--playground'],
-  ['notifications', 'cacic-eventos-workspace-notifications--playground'],
-  ['global-operations', 'cacic-eventos-workspace-tabs-global-operations-workspace-global-operations-tab--playground'],
-  ['publication', 'cacic-eventos-workspace-tabs-publicação--playground'],
-  ['standalone-certificates', 'cacic-eventos-workspace-tabs-certificates-workspace-certificates-tab--standalone-certificate-folder'],
-  ['events', 'cacic-eventos-workspace-tabs-events-workspace-events-tab--playground'],
-  ['groups', 'cacic-eventos-workspace-tabs-event-groups-workspace-event-groups-tab--playground'],
-  ['major-events', 'cacic-eventos-workspace-tabs-major-events-workspace-major-events-tab--playground'],
-  ['forms', 'cacic-eventos-workspace-tabs-forms-workspace-forms-tab--playground'],
-  ['draws', 'cacic-eventos-sorteios-configuração-administrativa--playground'],
-  ['draw-targets', 'cacic-eventos-sorteios-configuração-administrativa--searchable-historical-targets'],
-  ['certificates', 'cacic-eventos-workspace-tabs-certificates-workspace-certificates-tab--playground'],
-  ['people', 'cacic-eventos-workspace-tabs-people-workspace-people-tab--playground'],
-  ['subscriptions', 'cacic-eventos-workspace-tabs-subscriptions-event-workbench--playground'],
-  ['major-subscriptions', 'cacic-eventos-workspace-tabs-subscriptions-workspace-major-event-subscriptions-subtab--playground'],
-  ['interests', 'cacic-eventos-workspace-subscriptions-quero-ir--playground'],
-  ['attendance', 'cacic-eventos-workspace-tabs-attendances-event-workbench--playground'],
-  ['major-attendance', 'cacic-eventos-workspace-tabs-attendances-major-event-workbench--playground'],
-  ['merge', 'cacic-eventos-workspace-tabs-merge-candidates-workspace-merge-candidates-tab--playground'],
-  ['places', 'cacic-eventos-workspace-tabs-places-workspace-places-tab--playground'],
-  ['permissions', 'cacic-eventos-workspace-permissões-gerenciamento--playground'],
-  ['audit', 'cacic-eventos-workspace-tabs-auditoria--playground'],
-  ['preferences', 'cacic-eventos-workspace-tabs-preferences-workspace-preferences-tab--playground'],
+  ['event-workspace', 'admin-event-management-event-workspace-overview--playground'],
+  ['major-event-overview', 'admin-event-management-event-workspace-overview--selected-major-event'],
+  ['event-with-counts', 'admin-event-management-event-workspace-overview--selected-event'],
+  ['dashboard', 'admin-dashboard-home--playground'],
+  ['shell', 'admin-layout-shell--playground'],
+  ['notifications', 'admin-notifications-inbox--playground'],
+  ['global-operations', 'admin-settings-global-operations--playground'],
+  ['publication', 'admin-event-management-publication--playground'],
+  ['standalone-certificates', 'admin-settings-certificates--standalone-certificate-folder'],
+  ['events', 'admin-event-management-events--playground'],
+  ['groups', 'admin-event-management-event-groups--playground'],
+  ['major-events', 'admin-event-management-major-events--playground'],
+  ['forms', 'admin-forms-events--playground'],
+  ['draws', 'admin-prize-draws-management--playground'],
+  ['draw-targets', 'admin-prize-draws-management--searchable-historical-targets'],
+  ['certificates', 'admin-settings-certificates--playground'],
+  ['people', 'admin-people-people--playground'],
+  ['subscriptions', 'admin-registration-subscriptions-events--playground'],
+  ['major-subscriptions', 'admin-registration-subscriptions-major-events--playground'],
+  ['interests', 'admin-registration-interests--playground'],
+  ['attendance', 'admin-attendance-events--playground'],
+  ['major-attendance', 'admin-attendance-major-events--playground'],
+  ['merge', 'admin-people-merge-candidates-queue--playground'],
+  ['places', 'admin-event-management-places--playground'],
+  ['permissions', 'admin-access-permissions-management--playground'],
+  ['audit', 'admin-audit-logs--playground'],
+  ['preferences', 'admin-settings-preferences--playground'],
 ] as const;
 
 test.describe('admin workspace Storybook regression', () => {
@@ -44,7 +44,7 @@ test.describe('admin workspace Storybook regression', () => {
 
   test('confirms before Novo, Limpar, or another form discards editor changes', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
     await page.getByRole('button', { name: 'Selecionar Oficina independente', exact: true }).click();
     await page.getByRole('navigation', { name: 'Operações do evento', exact: true }).getByRole('link', { name: 'Formulários', exact: true }).click();
     await expect(page.getByRole('searchbox', { name: 'Buscar formulário', exact: true })).toBeVisible();
@@ -68,7 +68,7 @@ test.describe('admin workspace Storybook regression', () => {
   });
 
   test('searches and pages historical draw targets independently of the current scope', async ({ page }) => {
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-sorteios-configuração-administrativa--searchable-historical-targets&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-prize-draws-management--searchable-historical-targets&viewMode=story&embed=true`);
     const picker = page.locator('app-event-target-picker');
     await expect(picker).toContainText('Evento 49');
     await picker.getByRole('button', { name: 'Trocar', exact: true }).click();
@@ -81,7 +81,7 @@ test.describe('admin workspace Storybook regression', () => {
   });
 
   test('keeps event date and membership filters available in the shared context picker', async ({ page }) => {
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-shared-event-context-picker--filter-controls&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-context-picker--filter-controls&viewMode=story&embed=true`);
     const filters = page.getByRole('button', { name: /Filtros/ });
     await expect(filters).toBeVisible();
     if (await filters.getAttribute('aria-expanded') !== 'true') await filters.click();
@@ -101,7 +101,7 @@ test.describe('admin workspace Storybook regression', () => {
 
   test('preserves form edits when navigation is cancelled and enables leaving after discard', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
     await page.getByRole('button', { name: 'Escolher evento', exact: true }).click();
     await page.getByRole('dialog', { name: 'Escolher contexto' }).getByRole('button', { name: 'Selecionar Semana da Computação', exact: true }).click();
     await page.getByRole('navigation', { name: 'Operações do evento', exact: true }).getByRole('link', { name: 'Formulários', exact: true }).click();
@@ -125,7 +125,7 @@ test.describe('admin workspace Storybook regression', () => {
   });
 
   test('searches form owners beyond the first page inside a scoped editor', async ({ page }) => {
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-tabs-forms-workspace-forms-tab--dense-target-controls&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-forms-events--dense-target-controls&viewMode=story&embed=true`);
     await expect(page.getByRole('searchbox', { name: 'Buscar evento ou grande evento', exact: true })).toHaveCount(0);
     const owner = page.locator('app-event-target-picker').first();
     await owner.getByRole('button', { name: 'Trocar', exact: true }).click();
@@ -219,7 +219,7 @@ test.describe('admin workspace Storybook regression', () => {
       const runtimeErrors: string[] = [];
       const collectRuntimeError = (error: Error) => runtimeErrors.push(error.message);
       page.on('pageerror', collectRuntimeError);
-      await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
+      await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
       await expect(page.locator('#webpack-hot-middleware-clientOverlay')).toHaveCount(0);
       const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
       if (viewport.name === 'mobile') {
@@ -279,7 +279,7 @@ test.describe('admin workspace Storybook regression', () => {
       page.on('request', collectChildQuery);
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: viewport.theme, reducedMotion: 'reduce' });
-      await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
+      await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
       const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
       const openContextNavigation = async () => {
         const navigation = page.getByRole('navigation', { name: 'Operações do evento', exact: true });
@@ -309,7 +309,7 @@ test.describe('admin workspace Storybook regression', () => {
       const rankedResults = dialog.getByRole('button', { name: /^Selecionar / });
       await expect(rankedResults.nth(0)).toHaveAccessibleName('Selecionar Oficina de acessibilidade 1');
       await expect(rankedResults.nth(1)).toHaveAccessibleName('Selecionar Oficina independente');
-      await expect(dialog.getByText(/Evento · Palestra .* Publicado/)).toBeVisible();
+      await expect(dialog.getByText(/Evento, tipo: Palestra .* publicação: Publicado/)).toBeVisible();
       await expect(dialog.getByText('Sala 1', { exact: true })).toBeVisible();
       await expect(dialog.getByText(/Em:.*Semana da Computação/)).toBeVisible();
       if (captureDirectory) await page.screenshot({ path: resolve(captureDirectory, `event-workspace-ranked-search-${viewport.name}.png`), fullPage: true });
@@ -361,7 +361,7 @@ test.describe('admin workspace Storybook regression', () => {
     for (const viewport of [{ name: 'desktop', width: 1440, height: 1000, theme: 'light' }, { name: 'mobile', width: 390, height: 844, theme: 'dark' }] as const) {
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: viewport.theme, reducedMotion: 'reduce' });
-      await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-tabs-certificates-workspace-certificates-tab--standalone-certificate-folder&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
+      await page.goto(`${storybookURL}/iframe.html?id=admin-settings-certificates--standalone-certificate-folder&viewMode=story&embed=true&globals=theme:${viewport.theme};motion:reduced`);
       await expect(page.locator('#webpack-hot-middleware-clientOverlay')).toHaveCount(0);
       await expect(page.getByRole('heading', { name: 'Certificados avulsos', level: 1 })).toBeVisible();
       await expect(page.getByRole('combobox', { name: 'Escopo' })).toHaveCount(0);
@@ -398,7 +398,7 @@ test.describe('admin workspace Storybook regression', () => {
   test('keeps operations in the contextual sidebar and exposes global tools without discarding work', async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
     await expect(page.locator('#webpack-hot-middleware-clientOverlay')).toHaveCount(0);
     await page.getByRole('button', { name: 'Escolher evento', exact: true }).click();
     await page.getByRole('dialog', { name: 'Escolher contexto' }).getByRole('button', { name: 'Selecionar Semana da Computação', exact: true }).click();
@@ -447,7 +447,7 @@ test.describe('admin workspace Storybook regression', () => {
 
   test('uses canonical creation routes and carries the selected parent into child editors', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    const storyUrl = `${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true`;
+    const storyUrl = `${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true`;
 
     await page.goto(storyUrl);
     await page.getByRole('button', { name: 'Escolher evento', exact: true }).click();
@@ -476,7 +476,7 @@ test.describe('admin workspace Storybook regression', () => {
 
   test('opens context search as a keyboard-focused dialog and switches the sidebar', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-event-workspace--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true`);
     await page.getByRole('button', { name: 'Escolher evento', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -492,7 +492,7 @@ test.describe('admin workspace Storybook regression', () => {
   });
 
   test('scope selection remains keyboard accessible and preserves a collapsed context', async ({ page }) => {
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-components-scope--playground&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-event-workspace-scope--playground&viewMode=story&embed=true`);
     const header = page.getByRole('button', { name: /Oficina de acessibilidade/ });
     await expect(header).toHaveAttribute('aria-expanded', 'false');
     await header.focus();
@@ -503,7 +503,7 @@ test.describe('admin workspace Storybook regression', () => {
   });
 
   test('event filters preserve membership choices across disclosure', async ({ page }) => {
-    await page.goto(`${storybookURL}/iframe.html?id=cacic-eventos-workspace-tabs-shared-event-filter-panel--empty-filters&viewMode=story&embed=true`);
+    await page.goto(`${storybookURL}/iframe.html?id=admin-event-management-filters--empty-filters&viewMode=story&embed=true`);
     const filters = page.getByRole('button', { name: /Filtros/ });
     await filters.click();
     await page.getByRole('combobox', { name: 'Vínculo com grupo', exact: true }).click();

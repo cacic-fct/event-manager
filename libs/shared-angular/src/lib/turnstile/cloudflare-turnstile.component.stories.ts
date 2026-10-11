@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { CloudflareTurnstileComponent } from './cloudflare-turnstile.component';
 import { provideCloudflareTurnstile } from './cloudflare-turnstile.config';
 import { CloudflareTurnstileService, TurnstileApi, TurnstileRenderOptions } from './cloudflare-turnstile.service';
+import { withScenarioControls } from '../storybook/scenario-controls.decorator';
 
 type TurnstileStoryStatus = 'ready' | 'error';
 
@@ -40,7 +41,6 @@ class MockCloudflareTurnstileService {
 
 @Component({
   selector: 'lib-storybook-cloudflare-turnstile-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CloudflareTurnstileComponent],
   providers: [
     MockCloudflareTurnstileService,
@@ -68,7 +68,7 @@ class CloudflareTurnstileStoryHostComponent {
 
 const meta: Meta<CloudflareTurnstileStoryArgs> = {
   component: CloudflareTurnstileStoryHostComponent,
-  title: 'CACiC Eventos/Shared/Verification/Cloudflare Turnstile',
+  title: 'Shared/Verification/Cloudflare Turnstile',
   tags: ['autodocs'],
   args: {
     status: 'ready',
@@ -77,13 +77,13 @@ const meta: Meta<CloudflareTurnstileStoryArgs> = {
   },
   argTypes: {
     status: {
-      control: 'select',
+      control: { type: 'select', labels: { ready: 'Ready', error: 'Load error' } },
       options: ['ready', 'error'],
-      description: 'Resultado simulado do carregamento do provedor anti-spam.',
+      description: 'Simulated load result returned by the anti-spam provider.',
     },
-    action: { control: 'text', description: 'Ação enviada ao Turnstile para classificação do desafio.' },
+    action: { control: 'text', description: 'Action sent to Turnstile for challenge classification.' },
     theme: {
-      control: 'select',
+      control: { type: 'select', labels: { auto: 'Automatic', light: 'Light', dark: 'Dark' } },
       options: ['auto', 'light', 'dark'],
     },
   },
@@ -91,10 +91,11 @@ const meta: Meta<CloudflareTurnstileStoryArgs> = {
     applicationConfig({
       providers: [provideCloudflareTurnstile({ siteKey: '1x00000000000000000000AA' })],
     }),
+    withScenarioControls<CloudflareTurnstileStoryArgs>(),
   ],
   parameters: {
     layout: 'centered',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -106,6 +107,7 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: /verificação anti-spam/i })).toBeVisible();
+    await expect(await canvas.findByText('Token emitido: storybook-turnstile-token')).toBeVisible();
   },
 };
 
@@ -120,12 +122,4 @@ export const AuthenticationAction: Story = {
     action: 'account-link',
     theme: 'light',
   },
-};
-
-export const DarkReducedMotion: Story = {
-  args: {
-    action: 'subscription-submit-night',
-    theme: 'dark',
-  },
-  globals: { theme: 'dark', motion: 'reduced' },
 };

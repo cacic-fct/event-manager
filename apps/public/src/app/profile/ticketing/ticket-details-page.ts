@@ -8,17 +8,17 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type { TicketRealtimeInvalidation, WalletTicket } from '@cacic-fct/shared-ticketing';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
 import { TicketingApiService } from './ticketing-api.service';
 import { ticketStatusAt } from './ticket-expiration';
 import { nextDeadlineDelay } from './ticket-expiration';
+import { privateResourceErrorStatus } from '../../shared/route-error-handling';
 
 type TicketDetailsState =
   | { status: 'loading' }
-  | { status: 'ready'; ticket: WalletTicket }
-  | { status: 'empty'; message: string }
-  | { status: 'error'; message: string };
+  | { status: 'ready'; ticket: WalletTicket };
 
 @Component({
   selector: 'app-ticket-details-page',
@@ -40,6 +40,7 @@ export class TicketDetailsPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
+  private readonly routeErrors = inject(RouteErrorService);
   private requestId = 0;
   private expiryTimer: number | null = null;
   private lastExpiryRefreshKey = '';
@@ -58,7 +59,7 @@ export class TicketDetailsPage {
       const ticketId = params.get('ticketId');
       this.clearExpiryTimer();
       if (!ticketId) {
-        this.state.set({ status: 'empty', message: 'Este bilhete não está disponível.' });
+        this.navigateToError(404);
         return;
       }
       this.loadTicket(ticketId);
@@ -115,17 +116,20 @@ export class TicketDetailsPage {
       .subscribe({
         next: (ticket) => {
           if (requestId !== this.requestId) return;
+          if (!ticket) {
+            this.navigateToError(404);
+            return;
+          }
           this.state.set(
-            ticket
-              ? { status: 'ready', ticket }
-              : { status: 'empty', message: 'Este bilhete não está disponível.' },
+            { status: 'ready', ticket },
           );
           this.now.set(Date.now());
-          if (ticket) this.scheduleExpiryRefresh(ticket);
+          this.scheduleExpiryRefresh(ticket);
         },
-        error: () => {
+        error: (error: unknown) => {
           if (requestId === this.requestId) {
-            this.state.set({ status: 'error', message: 'Não foi possível carregar as informações deste bilhete.' });
+            const status = privateResourceErrorStatus(error);
+            this.navigateToError(status);
           }
         },
       });
@@ -164,6 +168,10 @@ export class TicketDetailsPage {
   private clearExpiryTimer(): void {
     if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) window.clearTimeout(this.expiryTimer);
     this.expiryTimer = null;
+  }
+
+  private navigateToError(status: 403 | 404 | 500 | 503): void {
+    void this.routeErrors.navigate(status);
   }
 
   private refreshIfRelevant(invalidation: TicketRealtimeInvalidation): void {

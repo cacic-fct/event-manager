@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
@@ -13,7 +13,6 @@ import { PackageCookieBannerComponent } from './privacy/package-cookie-banner.co
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
   private readonly auth = inject(AuthService);

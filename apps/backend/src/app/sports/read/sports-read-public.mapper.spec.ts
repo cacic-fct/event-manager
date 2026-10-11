@@ -40,11 +40,15 @@ describe('SportsReadPublicMapper', () => {
   it.each([
     [SportsMatchState.SCHEDULED, false],
     [SportsMatchState.IN_PROGRESS, false],
+    [SportsMatchState.CHECK_IN, false],
+    [SportsMatchState.CANCELED, false],
+    [SportsMatchState.LIVE, true],
+    [SportsMatchState.PAUSED, true],
     [SportsMatchState.FINISHED, true],
     [SportsMatchState.DRAW, true],
     [undefined, false],
-  ])('reveals rosters only after a canonical final state', (state, expected) => {
-    expect(mapper.canRevealRoster(state)).toBe(expected);
+  ])('reveals participants only once play has started', (state, expected) => {
+    expect(mapper.canRevealParticipants(state)).toBe(expected);
   });
 
   it('maps the full privacy-safe match projection including winner, timers, venue, rosters, and officials', () => {
@@ -89,6 +93,22 @@ describe('SportsReadPublicMapper', () => {
       }),
     );
   });
+
+  it.each([SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN, SportsMatchState.CANCELED])(
+    'strips supplied participant details for %s',
+    (state) => {
+      const match = sportsPublicMatchRecord();
+      const projection = { ...mapper.projectPublicMatch(match as never), state };
+      const result = mapper.mapPublicMatch(
+        match as never,
+        projection,
+        [{ team: { id: 'team-home' }, entries: [] }] as never,
+        [{ name: 'Carlos S.', role: 'REFEREE' }] as never,
+      );
+      expect(result.rosters).toEqual([]);
+      expect(result.officials).toEqual([]);
+    },
+  );
 
   it('maps absent teams, results, timers, and venues to null', () => {
     const match = sportsPublicMatchRecord({

@@ -5,6 +5,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterLink } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import type {
   TicketRealtimeInvalidation,
   TicketTransfer,
@@ -12,11 +13,11 @@ import type {
 } from '@cacic-fct/shared-ticketing';
 import { CalendarListItem, CalendarListItemData } from '../../calendar/event-list/calendar-list-item';
 import { TicketingApiService } from './ticketing-api.service';
+import { routePageErrorStatus } from '../../shared/route-error-handling';
 
 type TransferListState =
   | { status: 'loading' }
-  | { status: 'ready'; transfers: TicketTransferLists }
-  | { status: 'error' };
+  | { status: 'ready'; transfers: TicketTransferLists };
 
 @Component({
   selector: 'app-ticket-transfers-page',
@@ -26,6 +27,7 @@ type TransferListState =
 })
 export class TicketTransfersPage {
   private readonly api = inject(TicketingApiService);
+  private readonly routeErrors = inject(RouteErrorService);
   private readonly destroyRef = inject(DestroyRef);
   private requestId = 0;
 
@@ -94,8 +96,8 @@ export class TicketTransfersPage {
         next: (transfers) => {
           if (requestId === this.requestId) this.state.set({ status: 'ready', transfers });
         },
-        error: () => {
-          if (requestId === this.requestId) this.state.set({ status: 'error' });
+        error: (error: unknown) => {
+          if (requestId === this.requestId) void this.routeErrors.navigate(routePageErrorStatus(error));
         },
       });
   }

@@ -345,6 +345,36 @@ describe('SportsStandingsService', () => {
     );
   });
 
+  it('does not apply bracket placement points without canonical overall scoring rules', async () => {
+    const source = match({
+      category: {
+        ...category(SportsFormat.SINGLE_ELIMINATION),
+        bracketRules: { placementPoints: { '1': 10, '2': 6 } },
+        overallScoringRules: {},
+        tournament: {
+          scoringMode: SportsScoringMode.OVERALL,
+          majorEventId: 'major-1',
+        },
+      },
+      stage: { type: SportsStageType.ELIMINATION, settings: {} },
+      winnerAdvancesToId: null,
+    });
+    const tx = transaction(source);
+    tx.sportsRegistration.findMany.mockResolvedValue([
+      { id: 'home', teamId: 'team-home' },
+      { id: 'away', teamId: 'team-away' },
+    ]);
+
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+
+    expect(tx.sportsCategoryPlacement.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ pointsAwarded: null }),
+      }),
+    );
+    expect(tx.sportsTournamentScoreEntry.createMany).not.toHaveBeenCalled();
+  });
+
   it('does not create overall placement score entries in per-sport scoring mode', async () => {
     const source = match({
       category: {

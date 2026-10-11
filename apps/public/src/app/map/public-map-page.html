@@ -70,7 +70,7 @@
           type="button"
           [disabled]="!mapInteractionReady()"
           [class.control-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
-          [attr.aria-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
+          [aria-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
           [attr.aria-busy]="isLocating()"
           matTooltip="Usar minha localização"
           aria-label="Usar minha localização"

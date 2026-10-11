@@ -42,7 +42,10 @@
         <img class="event-emoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
         <span>
           <strong>{{ event.name }}</strong>
-          <small>{{ event.startDate | date: "EEE, dd/MM '·' HH:mm" }}–{{ event.endDate | date: 'HH:mm' }}</small>
+          <small>
+            {{ event.startDate | date: 'EEE, dd/MM' }}, das {{ event.startDate | date: 'HH:mm' }} às
+            {{ event.endDate | date: 'HH:mm' }}
+          </small>
         </span>
       </li>
       }

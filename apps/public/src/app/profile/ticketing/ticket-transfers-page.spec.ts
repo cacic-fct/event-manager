@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import {
   createTicketPersonSummary,
   createTicketTransfer,
@@ -15,15 +16,18 @@ describe('TicketTransfersPage', () => {
   let api: { myTicketTransfers: ReturnType<typeof vi.fn> };
   let invalidations: Subject<TicketRealtimeInvalidation>;
   let fixture: ComponentFixture<TicketTransfersPage>;
+  let routeErrors: { navigate: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     invalidations = new Subject<TicketRealtimeInvalidation>();
+    routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
     api = { myTicketTransfers: vi.fn(() => of(createTicketTransferLists())) };
     await TestBed.configureTestingModule({
       imports: [TicketTransfersPage],
       providers: [
         provideRouter([]),
         { provide: TicketingApiService, useValue: { ...api, watchCurrentUser: () => invalidations } },
+        { provide: RouteErrorService, useValue: routeErrors },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(TicketTransfersPage);
@@ -145,23 +149,10 @@ describe('TicketTransfersPage', () => {
     expect(api.myTicketTransfers).toHaveBeenCalledTimes(initialCallCount + 2);
   });
 
-  it('shows a retry after a load error and recovers when transfers become available', () => {
-    const recovered = createTicketTransferLists({
-      outgoing: [createTicketTransfer({ id: 'retry-transfer', ticket: createWalletTicket({ name: 'Retry request' }) })],
-    });
-    api.myTicketTransfers
-      .mockReset()
-      .mockReturnValueOnce(throwError(() => new Error('temporary failure')))
-      .mockReturnValue(of(recovered));
+  it('routes a transfer list load failure to the shared page error', () => {
+    api.myTicketTransfers.mockReturnValueOnce(throwError(() => new Error('temporary failure')));
 
     fixture.componentInstance.retry();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar suas transferências.');
-
-    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.state()).toEqual({ status: 'ready', transfers: recovered });
-    expect(fixture.nativeElement.textContent).toContain('Retry request');
+    expect(routeErrors.navigate).toHaveBeenCalledWith(500);
   });
 });

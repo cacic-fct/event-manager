@@ -44,6 +44,7 @@ import { EventContextPickerComponent, type EventContextRef } from '../shared/eve
 import { TicketAdminPersonActionDialogComponent, type TicketAdminPersonActionData } from './ticket-admin-person-action-dialog.component';
 import { TicketAdminReasonDialogComponent } from './ticket-admin-reason-dialog.component';
 import { TicketHistoryDialogComponent } from './ticket-history-dialog.component';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 
 interface EventWorkspaceSummary {
   id: string;
@@ -86,7 +87,10 @@ type TicketPriceRow = FormGroup<TicketPriceRowControls>;
     TwemojiComponent,
   ],
   templateUrl: './ticket-admin-page.component.html',
-  styleUrl: './ticket-admin-page.component.scss',
+  styleUrls: [
+    '../app-shell/layout/workspace-tabs.shared.scss',
+    './ticket-admin-page.component.scss',
+  ],
 })
 export class TicketAdminPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -103,6 +107,7 @@ export class TicketAdminPageComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
   private readonly feedback = inject(AdminFeedbackService);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   protected readonly permissions = inject(PermissionsService);
 
   private readonly routeScope = signal({
@@ -484,7 +489,7 @@ export class TicketAdminPageComponent {
         this.priceTiers.set(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
       }
     } catch (error) {
-      if (request === this.configRequest) {
+      if (request === this.configRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
         this.error.set(getErrorMessage(error, 'Não foi possível carregar os bilhetes deste contexto.'));
         this.feedback.showErrorMessage(this.error() ?? 'Não foi possível carregar os bilhetes deste contexto.');
       }

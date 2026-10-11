@@ -1,7 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
@@ -28,7 +27,6 @@ import { CloudflareTurnstileService, TurnstileApi } from './cloudflare-turnstile
     }
   `,
   styleUrl: './cloudflare-turnstile.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CloudflareTurnstileComponent implements AfterViewInit, OnDestroy {
   private readonly config = inject(CLOUDFLARE_TURNSTILE_CONFIG);

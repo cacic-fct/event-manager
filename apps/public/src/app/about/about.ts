@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, Injector, PLATFORM_ID } from '@angular/core';
+import { Component, inject, Injector, PLATFORM_ID } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,7 +14,6 @@ import { ServerVersionApiService } from './server-version-api.service';
   imports: [MatToolbarModule, MatIconModule, MatListModule, MatButtonModule, RouterLink],
   templateUrl: './about.html',
   styleUrl: './about.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class About {
   private injector = inject(Injector);

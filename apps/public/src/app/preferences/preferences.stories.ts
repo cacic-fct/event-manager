@@ -16,11 +16,11 @@ interface PreferencesStoryArgs {
 
 const meta: Meta<PreferencesStoryArgs> = {
   component: Preferences,
-  title: 'CACiC Eventos/Preferences/Page',
+  title: 'Public/Settings/Preferences',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   decorators: [
     applicationConfig({
@@ -44,8 +44,16 @@ const meta: Meta<PreferencesStoryArgs> = {
   ],
   args: { authenticated: false, serviceWorkerAvailable: true },
   argTypes: {
-    authenticated: { control: 'boolean', description: 'Exibe as ações associadas à conta do participante.' },
-    serviceWorkerAvailable: { control: 'boolean', description: 'Estado do suporte ao aplicativo off-line.' },
+    authenticated: {
+      control: 'boolean',
+      name: 'Authenticated',
+      description: 'Shows the actions available to a signed-in participant.',
+    },
+    serviceWorkerAvailable: {
+      control: 'boolean',
+      name: 'Service Worker Available',
+      description: 'Selects whether offline app support is available.',
+    },
   },
   render: (args) => {
     authState.set(args.authenticated);
@@ -59,7 +67,6 @@ export default meta;
 type Story = StoryObj<PreferencesStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Preferências')).toBeVisible();
@@ -71,7 +78,7 @@ export const Playground: Story = {
 
 export const LoggedIn: Story = {
   args: { authenticated: true },
-  globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
+  globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Conta')).toBeVisible();
@@ -82,7 +89,7 @@ export const LoggedIn: Story = {
 
 export const OfflineWithoutServiceWorker: Story = {
   args: { authenticated: false, serviceWorkerAvailable: false },
-  globals: { theme: 'dark', network: 'offline', serviceWorker: 'disabled', motion: 'reduced' },
+  globals: { network: 'offline', serviceWorker: 'disabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Indisponível')).toBeVisible();

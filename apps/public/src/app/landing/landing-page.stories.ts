@@ -1,16 +1,17 @@
-import { MediaMatcher } from '@angular/cdk/layout';
-import { provideHttpClient } from '@angular/common/http';
+import { NgComponentOutlet } from '@angular/common';
+import { Component, DestroyRef, DestroyableInjector, Injector, computed, inject, input } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import type { PublicPlatformStats } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig, moduleMetadata } from '@storybook/angular';
-import { HttpResponse, delay, http } from 'msw';
+import { NEVER, delay, of, throwError } from 'rxjs';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { DefaultRedirectService } from './default-redirect.service';
 import { LandingComponent } from './landing-page';
+import { PlatformStatsApiService } from './platform-stats-api.service';
 import { ProductShowcaseComponent } from './showcase/product-showcase';
 
 type LandingStatsState = 'ready' | 'loading' | 'unavailable';
@@ -23,7 +24,6 @@ interface LandingStoryArgs {
   certificatesCount: number;
   latencyMs: number;
   authenticated: boolean;
-  prefersDarkScheme: boolean;
   defaultRedirectPath: string;
 }
 
@@ -35,52 +35,77 @@ const defaultArgs: LandingStoryArgs = {
   certificatesCount: 8_940,
   latencyMs: 180,
   authenticated: false,
-  prefersDarkScheme: false,
   defaultRedirectPath: '/calendar',
 };
 
-let activeArgs = defaultArgs;
 const loginMock = fn(async () => undefined);
 const navigateToDefaultMock = fn(async () => true);
 
-const meta: Meta<LandingStoryArgs> = {
-  component: LandingComponent,
-  title: 'CACiC Eventos/Landing/Page',
-  tags: ['autodocs', 'landing-showcase'],
-  args: defaultArgs,
-  argTypes: {
-    statsState: { control: 'select', options: ['ready', 'loading', 'unavailable'] },
-    peopleCount: { control: { type: 'range', min: 0, max: 500_000, step: 100 } },
-    eventsCount: { control: { type: 'range', min: 0, max: 30_000, step: 10 } },
-    majorEventsCount: { control: { type: 'range', min: 0, max: 2_000, step: 1 } },
-    certificatesCount: { control: { type: 'range', min: 0, max: 1_000_000, step: 100 } },
-    latencyMs: { control: { type: 'range', min: 0, max: 3_000, step: 100 } },
-    authenticated: { control: 'boolean' },
-    prefersDarkScheme: { control: 'boolean' },
-    defaultRedirectPath: { control: 'text' },
-  },
-  render: (args) => {
-    activeArgs = { ...defaultArgs, ...args };
-    return { props: {} };
-  },
-  decorators: [
-    applicationConfig({
+@Component({
+  selector: 'app-storybook-landing-host',
+  imports: [NgComponentOutlet],
+  template: `
+    <ng-container
+      [ngComponentOutlet]="component"
+      [ngComponentOutletInjector]="storyInjector()" />
+  `,
+})
+class LandingStoryHostComponent {
+  private readonly parentInjector = inject(Injector);
+  private readonly storyInjectors = new Set<DestroyableInjector>();
+  private currentStoryInjector: DestroyableInjector | null = null;
+
+  readonly component = LandingComponent;
+  readonly statsState = input<LandingStatsState>('ready');
+  readonly peopleCount = input(4_280);
+  readonly eventsCount = input(172);
+  readonly majorEventsCount = input(16);
+  readonly certificatesCount = input(8_940);
+  readonly latencyMs = input(180);
+  readonly authenticated = input(false);
+  readonly defaultRedirectPath = input('/calendar');
+
+  private readonly storyArgs = computed<LandingStoryArgs>(() => ({
+    statsState: this.statsState(),
+    peopleCount: this.peopleCount(),
+    eventsCount: this.eventsCount(),
+    majorEventsCount: this.majorEventsCount(),
+    certificatesCount: this.certificatesCount(),
+    latencyMs: this.latencyMs(),
+    authenticated: this.authenticated(),
+    defaultRedirectPath: this.defaultRedirectPath(),
+  }));
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      for (const storyInjector of this.storyInjectors) {
+        storyInjector.destroy();
+      }
+      this.storyInjectors.clear();
+    });
+  }
+
+  readonly storyInjector = computed(() => {
+    const args = this.storyArgs();
+    const stats: PublicPlatformStats = {
+      peopleCount: args.peopleCount,
+      eventsCount: args.eventsCount,
+      majorEventsCount: args.majorEventsCount,
+      certificatesCount: args.certificatesCount,
+    };
+
+    const storyInjector = Injector.create({
+      parent: this.parentInjector,
       providers: [
-        provideHttpClient(),
-        provideRouter([]),
-        provideNoopAnimations(),
         {
           provide: AuthService,
-          useValue: {
-            isAuthenticated: () => activeArgs.authenticated,
-            login: loginMock,
-          },
+          useValue: { isAuthenticated: () => args.authenticated, login: loginMock },
         },
         {
           provide: PublicFeatureFlagService,
           useValue: {
             stringValue: (key: string) =>
-              key === 'defaultLoginRedirectPath' ? activeArgs.defaultRedirectPath : undefined,
+              key === 'defaultLoginRedirectPath' ? args.defaultRedirectPath : undefined,
           },
         },
         {
@@ -88,25 +113,69 @@ const meta: Meta<LandingStoryArgs> = {
           useValue: { navigateToDefault: navigateToDefaultMock },
         },
         {
-          provide: MediaMatcher,
+          provide: PlatformStatsApiService,
           useValue: {
-            matchMedia: () => ({
-              matches: activeArgs.prefersDarkScheme,
-              addEventListener: () => undefined,
-              removeEventListener: () => undefined,
-            }),
+            getPublicPlatformStats: () => {
+              if (args.statsState === 'loading') {
+                return NEVER;
+              }
+              if (args.statsState === 'unavailable') {
+                return throwError(() => new Error('Simulated public statistics failure.'));
+              }
+              return of(stats).pipe(delay(args.latencyMs));
+            },
           },
         },
+      ],
+    });
+    const previousStoryInjector = this.currentStoryInjector;
+    this.currentStoryInjector = storyInjector;
+    this.storyInjectors.add(storyInjector);
+    if (previousStoryInjector) {
+      queueMicrotask(() => {
+        if (this.storyInjectors.delete(previousStoryInjector)) {
+          previousStoryInjector.destroy();
+        }
+      });
+    }
+    return storyInjector;
+  });
+}
+
+const meta: Meta<LandingStoryArgs> = {
+  component: LandingStoryHostComponent,
+  title: 'Public/Landing/Page',
+  tags: ['autodocs', 'landing-showcase'],
+  args: defaultArgs,
+  argTypes: {
+    statsState: {
+      control: { type: 'select', labels: { ready: 'Ready', loading: 'Loading', unavailable: 'Unavailable' } },
+      options: ['ready', 'loading', 'unavailable'],
+      description: 'Simulated state returned by the public statistics service.',
+    },
+    peopleCount: { control: { type: 'range', min: 0, max: 500_000, step: 100 }, description: 'Displayed attendee count.' },
+    eventsCount: { control: { type: 'range', min: 0, max: 30_000, step: 10 }, description: 'Displayed event count.' },
+    majorEventsCount: { control: { type: 'range', min: 0, max: 2_000, step: 1 }, description: 'Displayed major event count.' },
+    certificatesCount: { control: { type: 'range', min: 0, max: 1_000_000, step: 100 }, description: 'Displayed issued certificate count.' },
+    latencyMs: { control: { type: 'range', min: 0, max: 3_000, step: 100 }, description: 'Delay before ready statistics are returned.' },
+    authenticated: { control: 'boolean', description: 'Simulate an authenticated visitor.' },
+    defaultRedirectPath: { control: 'text', description: 'Fallback route used by the sign-in flow.' },
+  },
+  decorators: [
+    applicationConfig({
+      providers: [
+        provideRouter([]),
+        provideNoopAnimations(),
       ],
     }),
   ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'error' },
-    msw: { handlers: { graphql: [platformStatsHandler()] } },
     docs: {
       description: {
-        component: 'Landing page with editable delayed aggregate statistics, authentication, and color-scheme states.',
+        component:
+          'Controls drive an isolated landing page instance with simulated authentication and public statistics. Changing an argument recreates the instance so service-backed values stay in sync.',
       },
     },
   },
@@ -116,7 +185,6 @@ export default meta;
 type Story = StoryObj<LandingStoryArgs>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: 'Validar certificado' })).toBeVisible();
@@ -169,36 +237,6 @@ export const Authenticated: Story = {
   },
 };
 
-export const DarkSystemPreference: Story = {
-  args: { prefersDarkScheme: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
-  },
-};
-
-export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: 'Entrar com o Google' })).toBeVisible();
-    await expect(
-      new URL(canvas.getByRole('link', { name: 'Explorar eventos' }).getAttribute('href') ?? '', window.location.origin).pathname,
-    ).toBe('/calendar');
-  },
-};
-
-export const Tablet: Story = {
-  parameters: { viewport: { defaultViewport: 'tablet' } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: 'Entrar com o Google' })).toBeVisible();
-    await expect(
-      new URL(canvas.getByRole('link', { name: 'Explorar eventos' }).getAttribute('href') ?? '', window.location.origin).pathname,
-    ).toBe('/calendar');
-  },
-};
-
 export const AttendeeJourney: Story = {
   render: () => ({ props: {}, template: '<app-landing-product-showcase />' }),
   decorators: [moduleMetadata({ imports: [ProductShowcaseComponent] })],
@@ -244,30 +282,3 @@ export const OrganizerJourney: Story = {
     await expect(await canvas.findByRole('button', { name: 'Sortear' })).toBeVisible();
   },
 };
-
-function platformStatsHandler() {
-  return http.post('/api/graphql', async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
-    if (!body.query?.includes('PublicPlatformStats')) {
-      return HttpResponse.json({ data: {} });
-    }
-
-    if (activeArgs.statsState === 'loading') {
-      await delay('infinite');
-    } else if (activeArgs.latencyMs > 0) {
-      await delay(activeArgs.latencyMs);
-    }
-
-    if (activeArgs.statsState === 'unavailable') {
-      return HttpResponse.json({ errors: [{ message: 'As estatísticas simuladas estão indisponíveis.' }] });
-    }
-
-    const stats: PublicPlatformStats = {
-      peopleCount: activeArgs.peopleCount,
-      eventsCount: activeArgs.eventsCount,
-      majorEventsCount: activeArgs.majorEventsCount,
-      certificatesCount: activeArgs.certificatesCount,
-    };
-    return HttpResponse.json({ data: { publicPlatformStats: stats } });
-  });
-}

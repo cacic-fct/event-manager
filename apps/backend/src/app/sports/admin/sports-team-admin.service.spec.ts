@@ -60,7 +60,17 @@ describe('SportsTeamAdminService', () => {
         ],
       });
       expect(auditLog.record).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: AuditLogOperation.CREATE }),
+        expect.objectContaining({
+          operation: AuditLogOperation.CREATE,
+          after: {
+            id: team.id,
+            tournamentId: team.tournamentId,
+            name: team.name,
+            institution: team.institution,
+            status: team.status,
+            revision: team.revision,
+          },
+        }),
         tx,
       );
     });
@@ -170,9 +180,16 @@ describe('SportsTeamAdminService', () => {
       });
       tx.sportsTeam.findFirst.mockResolvedValue({ id: 'team-2', name: 'Equipe Verde' });
       tx.sportsTeamMember.findMany.mockResolvedValue([
-        { id: 'member-1', teamId: 'team-1', status: SportsTeamMemberStatus.APPROVED, revision: 1 },
+        { id: 'member-1', teamId: 'team-1', status: SportsTeamMemberStatus.APPROVED },
       ]);
-      tx.sportsTeamMember.create.mockResolvedValue({ id: 'member-2', teamId: 'team-2' });
+      tx.sportsTeamMember.create.mockResolvedValue({
+        id: 'member-2',
+        teamId: 'team-2',
+        participantId: 'participant-1',
+        status: SportsTeamMemberStatus.APPROVED,
+        revision: 1,
+        rejectionReason: null,
+      });
 
       await expect(service.setParticipantTeam('participant-1', 'team-2', actor as never)).resolves.toEqual({
         id: 'participant-1',
@@ -192,6 +209,22 @@ describe('SportsTeamAdminService', () => {
       expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ eligibility: SportsEligibilityStatus.INELIGIBLE }) }),
       );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: {
+            memberships: [{ id: 'member-1', teamId: 'team-1', status: SportsTeamMemberStatus.APPROVED }],
+            membershipCount: 1,
+          },
+          after: {
+            participantId: 'participant-1',
+            teamId: 'team-2',
+            teamMemberId: 'member-2',
+            status: SportsTeamMemberStatus.APPROVED,
+            withdrawnCount: 1,
+          },
+        }),
+        tx,
+      );
     });
 
     it('creates a participant-backed approved team member', async () => {
@@ -208,6 +241,20 @@ describe('SportsTeamAdminService', () => {
       );
       expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: SportsTeamMemberStatus.APPROVED }) }),
+      );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: undefined,
+          after: {
+            id: 'member-1',
+            teamId: 'team-1',
+            participantId: 'participant-1',
+            status: SportsTeamMemberStatus.APPROVED,
+            revision: 1,
+            rejectionReason: null,
+          },
+        }),
+        tx,
       );
     });
 
@@ -252,6 +299,28 @@ describe('SportsTeamAdminService', () => {
         tx.sportsTeamMember.findUniqueOrThrow.mockResolvedValue(sportsAdminTeamMemberRecord({ status, revision: 2 }));
 
         await service.updateTeamMember('member-1', 1, status, actor as never);
+
+        expect(auditLog.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            before: {
+              id: 'member-1',
+              teamId: 'team-1',
+              participantId: 'participant-1',
+              status: SportsTeamMemberStatus.APPROVED,
+              revision: 1,
+              rejectionReason: null,
+            },
+            after: {
+              id: 'member-1',
+              teamId: 'team-1',
+              participantId: 'participant-1',
+              status,
+              revision: 2,
+              rejectionReason: null,
+            },
+          }),
+          tx,
+        );
 
         if (status === SportsTeamMemberStatus.APPROVED) {
           expect(tx.sportsRegistrationMember.updateMany).not.toHaveBeenCalled();
@@ -346,13 +415,41 @@ describe('SportsTeamAdminService', () => {
       await expect(service.deleteTeam('team-1', 2, actor as never)).resolves.toBeUndefined();
 
       expect(tx.sportsRegistration.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: SportsRegistrationStatus.WITHDRAWN }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: SportsRegistrationStatus.WITHDRAWN,
+            deletedAt: expect.any(Date),
+          }),
+        }),
       );
       expect(tx.sportsTeamMember.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: SportsTeamMemberStatus.WITHDRAWN }) }),
       );
       expect(tx.sportsTeamRepresentative.updateMany).toHaveBeenCalled();
       expect(tx.sportsTournamentScoreEntry.updateMany).toHaveBeenCalled();
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: {
+            id: 'team-1',
+            tournamentId: 'tournament-1',
+            name: 'Equipe Azul',
+            institution: 'FCT',
+            status: SportsTeamStatus.ACTIVE,
+            revision: 2,
+            deleted: false,
+          },
+          after: {
+            id: 'team-1',
+            tournamentId: 'tournament-1',
+            name: 'Equipe Azul',
+            institution: 'FCT',
+            status: SportsTeamStatus.WITHDRAWN,
+            revision: 3,
+            deleted: true,
+          },
+        }),
+        tx,
+      );
     });
 
     it('rejects missing teams, active matches, or concurrent deletion changes', async () => {

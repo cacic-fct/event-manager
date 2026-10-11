@@ -15,6 +15,7 @@ import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PrizeDrawApiService } from '../graphql/prize-draw-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PrizeDrawReelComponent } from '@cacic-fct/shared-angular';
+import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-error.service';
 import { PrizeDrawResultDialogComponent, PrizeDrawResultDialogData } from './result/prize-draw-result-dialog.component';
 
 @Component({
@@ -32,6 +33,7 @@ export class PrizeDrawPageComponent {
   private readonly router = inject(Router);
   private readonly inWorkspaceShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
   private readonly destroyRef = inject(DestroyRef);
+  private readonly routeResourceErrors = inject(AdminRouteResourceErrorService);
   private requestGeneration = 0;
   private loadGeneration = 0;
   private readonly reel = viewChild(PrizeDrawReelComponent);
@@ -156,7 +158,10 @@ export class PrizeDrawPageComponent {
       this.lastResult.set(null);
       queueMicrotask(() => this.reel()?.reset(this.shortNames(entries)));
     } catch (error) {
-      if (!this.destroyRef.destroyed && generation === this.loadGeneration) this.feedback.error(error, 'Não foi possível preparar o sorteio.');
+      if (!this.destroyRef.destroyed && generation === this.loadGeneration &&
+        !this.routeResourceErrors.redirectIfUnavailable(error)) {
+        this.feedback.error(error, 'Não foi possível preparar o sorteio.');
+      }
     } finally {
       if (generation === this.loadGeneration) this.loading.set(false);
     }

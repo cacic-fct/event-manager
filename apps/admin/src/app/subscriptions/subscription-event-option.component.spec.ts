@@ -19,7 +19,7 @@ describe('SubscriptionEventOptionComponent', () => {
       description: 'Minicurso',
       startDate,
       endDate,
-      availabilityLine: '2 vagas disponíveis · Próxima posição para nova inscrição na fila: 4',
+      availabilityLine: '2 vagas disponíveis. Próxima posição para nova inscrição na fila: 4',
     });
     fixture.componentRef.setInput('warningReason', 'Palestrante inscrito no próprio evento');
     fixture.componentInstance.selectionChange.subscribe(selectionChange);

@@ -172,6 +172,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         venue,
         venueChanged: input.venueId !== undefined,
         youtubeCode: this.youtubeCodeForLivestream(livestreamProvider, livestreamUrl),
+        twitchChannel: this.twitchChannelForLivestream(livestreamProvider, livestreamUrl),
         livestreamChanged: input.livestreamProvider !== undefined || input.livestreamUrl !== undefined,
         actorId,
       });

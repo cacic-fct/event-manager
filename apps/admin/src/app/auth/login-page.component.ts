@@ -1,6 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
   Component,
   InjectionToken,
   PLATFORM_ID,
@@ -25,7 +24,6 @@ export const LOGIN_DEVELOPMENT_MODE = new InjectionToken<boolean>('LOGIN_DEVELOP
 
 @Component({
   selector: 'app-login-page',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -164,7 +162,7 @@ export class LoginPageComponent {
 
   constructor() {
     if (this.authService.isAuthenticated()) {
-      void this.router.navigateByUrl(this.returnTo() ?? '/');
+      void this.router.navigateByUrl(this.internalReturnTo() ?? '/');
     }
 
     if (isPlatformBrowser(this.platformId)) {
@@ -193,7 +191,7 @@ export class LoginPageComponent {
     try {
       const { email, password } = this.form.getRawValue();
       await this.authService.passwordLogin(email, password);
-      await this.router.navigateByUrl(this.returnTo() ?? '/');
+      await this.router.navigateByUrl(this.internalReturnTo() ?? '/');
     } catch {
       this.errorMessage.set('E-mail ou senha inválidos.');
     } finally {
@@ -207,5 +205,13 @@ export class LoginPageComponent {
 
   private returnTo(): string | undefined {
     return this.route.snapshot.queryParamMap.get('returnTo') ?? undefined;
+  }
+
+  private internalReturnTo(): string | undefined {
+    const returnTo = this.returnTo();
+    if (!returnTo) return undefined;
+    if (!/^\/admin(?:\/|[?#]|$)/.test(returnTo)) return returnTo;
+    const appRelativeUrl = returnTo.slice('/admin'.length);
+    return appRelativeUrl.startsWith('/') ? appRelativeUrl : `/${appRelativeUrl}`;
   }
 }

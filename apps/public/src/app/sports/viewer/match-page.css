@@ -86,8 +86,12 @@ h3 {
   justify-content: space-between;
 }
 
-.livestream-action {
-  margin-block-start: 16px;
+.livestream-section {
+  margin-block-start: 24px;
+}
+
+.livestream-section h2 {
+  margin-block-end: 12px;
 }
 
 .score-hero time {
@@ -244,15 +248,11 @@ dd {
 
 .period-list .active-period {
   background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
+  color: var(--mat-sys-on-surface);
 }
 
 .period-list small {
   color: var(--mat-sys-on-surface-variant);
-}
-
-.active-period small {
-  color: color-mix(in srgb, var(--mat-sys-on-primary-container) 76%, transparent);
 }
 
 .result-section p {

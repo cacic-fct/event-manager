@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { Subject, of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -22,6 +23,7 @@ describe('SportsSelfSubscriptionPage', () => {
   });
   let realtimeStreams: Subject<SportsOperationsApplicationInvalidation>[];
   let watchCurrentUserApplications: ReturnType<typeof vi.fn>;
+  let routeErrors: { navigate: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     open.mockReset();
@@ -32,6 +34,7 @@ describe('SportsSelfSubscriptionPage', () => {
     tournament.mockReset();
     tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
     realtimeStreams = [];
+    routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
     watchCurrentUserApplications = vi.fn(() => {
       const stream = new Subject<SportsOperationsApplicationInvalidation>();
       realtimeStreams.push(stream);
@@ -53,6 +56,7 @@ describe('SportsSelfSubscriptionPage', () => {
         { provide: MatSnackBar, useValue: { open } },
         { provide: SportsOperationsApiService, useValue: { tournament, currentUserApplications, submitApplication } },
         { provide: SportsOperationsRealtimeService, useValue: { watchCurrentUserApplications } },
+        { provide: RouteErrorService, useValue: routeErrors },
       ],
     });
   });
@@ -332,9 +336,9 @@ describe('SportsSelfSubscriptionPage', () => {
     await page.submit();
     expect(open).toHaveBeenCalledWith('Inscrição recusada', 'Fechar', { duration: 6000 });
 
-    tournament.mockReturnValueOnce(throwError(() => 'offline'));
+    tournament.mockReturnValueOnce(throwError(() => new Error('offline')));
     page.load();
-    expect(page.error()).toBe('Não foi possível abrir a inscrição.');
+    expect(routeErrors.navigate).toHaveBeenCalledWith(500);
     expect(page.loading()).toBe(false);
   });
 

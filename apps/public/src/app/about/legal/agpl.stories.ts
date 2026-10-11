@@ -4,11 +4,13 @@ import { AGPL } from './agpl';
 
 const meta: Meta<AGPL> = {
   component: AGPL,
-  title: 'CACiC Eventos/About/Legal/AGPL',
+  title: 'Public/Support/Legal/AGPL',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static AGPL license text for reading and reference.' } },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -36,21 +38,4 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileReading: Story = {
-  ...Playground,
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
-
-export const TabletDarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'tablet' },
-  },
 };

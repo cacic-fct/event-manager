@@ -579,6 +579,33 @@ describe('EventsService', () => {
     });
   });
 
+  it('normalizes pasted YouTube and Twitch URLs before saving an event', async () => {
+    service.eventForm.patchValue({
+      youtubeCode: 'https://www.youtube.com/watch?v=Video_123',
+      twitchChannel: 'https://www.twitch.tv/CanalFct',
+    });
+    service.normalizeYoutubeCodeInput();
+    service.normalizeTwitchChannelInput();
+    expect(service.eventForm.controls.youtubeCode.value).toBe('Video_123');
+    expect(service.eventForm.controls.twitchChannel.value).toBe('canalfct');
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({ youtubeCode: 'Video_123', twitchChannel: 'canalfct' });
+  });
+
+  it('keeps invalid livestream input visible and blocks saving it', async () => {
+    const invalidYoutubeUrl = 'https://example.com/not-a-video';
+    service.eventForm.controls.youtubeCode.setValue(invalidYoutubeUrl);
+
+    await service.saveEvent('DRAFT');
+
+    expect(service.eventForm.controls.youtubeCode.value).toBe(invalidYoutubeUrl);
+    expect(service.eventForm.controls.youtubeCode.hasError('invalidYoutubeCode')).toBe(true);
+    expect(service.eventForm.controls.youtubeCode.touched).toBe(true);
+    expect(api.createEvent).not.toHaveBeenCalled();
+  });
+
   it('routes schedule saves to the publication scheduling screen after saving a draft', async () => {
     await service.saveEvent('SCHEDULE');
 

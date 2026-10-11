@@ -4,11 +4,13 @@ import { UserDebug } from './user-debug';
 
 const meta: Meta<UserDebug> = {
   component: UserDebug,
-  title: 'CACiC Eventos/Developer Tools/User Debug',
+  title: 'Public/Developer Tools/User',
   tags: ['autodocs'],
   parameters: {
+    controls: { disable: true },
+    docs: { description: { component: 'Static inspection view for the current authenticated user claims.' } },
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -36,17 +38,4 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
-};
-
-export const MobileClaims: Story = {
-  ...Playground,
-  parameters: {
-    ...Playground.parameters,
-    viewport: { defaultViewport: 'mobile' },
-  },
-};
-
-export const OfflineDarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', network: 'offline', motion: 'reduced' },
 };

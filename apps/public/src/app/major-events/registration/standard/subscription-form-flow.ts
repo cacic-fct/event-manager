@@ -1,7 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import type { StepperOrientation, StepperSelectionEvent } from '@angular/cdk/stepper';
 import {
-  ChangeDetectionStrategy,
   Component,
   ViewEncapsulation,
   computed,
@@ -50,7 +49,6 @@ import {
   templateUrl: './subscription-form-flow.html',
   styleUrl: './subscription-form-flow.scss',
   encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SubscriptionFormFlow {
   private readonly breakpointObserver = inject(BreakpointObserver);

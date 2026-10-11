@@ -7,12 +7,14 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { createPublicMajorEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { NEVER, Subject, of, throwError } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { RouteErrorService } from '@cacic-fct/shared-angular/errors';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { MajorEvent } from './event-list-page';
 import { MajorEventSubscriptionApiService } from '../registration/subscription-api.service';
 import { PublicPrizeDrawApiService } from '../../prize-draws/prize-draw-api.service';
 import { waitForDrawRefresh } from '../../testing/prize-draw-test-helpers';
 import { RealtimeInvalidationService } from '../../shared/realtime-invalidation.service';
+import { ForbiddenGraphqlError } from '../../shared/rate-limit-error';
 
 describe('MajorEvent', () => {
   let component: MajorEvent;
@@ -59,6 +61,7 @@ describe('MajorEvent', () => {
           useValue: { availability: vi.fn(() => of([])), watch: vi.fn(() => NEVER) },
         },
         { provide: RealtimeInvalidationService, useValue: { watchCatalog: () => NEVER } },
+        { provide: RouteErrorService, useValue: { navigate: vi.fn(() => Promise.resolve(true)) } },
       ],
     }).compileComponents();
 
@@ -69,6 +72,37 @@ describe('MajorEvent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('shows shared 403 for a denied public event-list request', async () => {
+    TestBed.resetTestingModule();
+    const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
+    const { fixture } = await createMajorEventFixture({
+      events: [],
+      availability: vi.fn(() => of([])),
+      watchCatalog: () => new Subject<void>(),
+      apiError: new ForbiddenGraphqlError('forbidden'),
+      routeErrors,
+    });
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(403);
+    fixture.destroy();
+  });
+
+  it('masks denied preview-token lookups as shared not found', async () => {
+    TestBed.resetTestingModule();
+    const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
+    const { fixture } = await createMajorEventFixture({
+      events: [],
+      availability: vi.fn(() => of([])),
+      watchCatalog: () => new Subject<void>(),
+      previewError: new ForbiddenGraphqlError('forbidden'),
+      routeParams: { previewToken: 'private-preview-token' },
+      routeErrors,
+    });
+
+    expect(routeErrors.navigate).toHaveBeenCalledWith(404);
+    fixture.destroy();
   });
 
   it('loads participation once for the list and refreshes it after invalidation', async () => {
@@ -194,6 +228,10 @@ async function createMajorEventFixture(input: {
   authenticated?: boolean;
   interestApi?: Partial<InterestApiService>;
   formsApi?: Partial<PublicEventFormApiService>;
+  apiError?: unknown;
+  previewError?: unknown;
+  routeErrors?: Partial<RouteErrorService>;
+  routeParams?: { previewToken?: string };
 }): Promise<{ component: MajorEvent; fixture: ComponentFixture<MajorEvent> }> {
   await TestBed.configureTestingModule({
     imports: [MajorEvent],
@@ -211,16 +249,20 @@ async function createMajorEventFixture(input: {
       {
         provide: ActivatedRoute,
         useValue: {
-          paramMap: of(convertToParamMap({})),
-          snapshot: { paramMap: convertToParamMap({}) },
+          paramMap: of(convertToParamMap(input.routeParams ?? {})),
+          snapshot: { paramMap: convertToParamMap(input.routeParams ?? {}) },
         },
       },
       {
         provide: MajorEventSubscriptionApiService,
         useValue: {
-          listMajorEvents: vi.fn(() => of(input.events)),
+          listMajorEvents: vi.fn(() => input.apiError ? throwError(() => input.apiError) : of(input.events)),
           listCurrentUserSubscriptions: vi.fn(() => of([])),
-          getPreviewMajorEvents: vi.fn(() => of({ events: [], expiresAt: publicFixtureDateFromNow(1) })),
+          getPreviewMajorEvents: vi.fn(() =>
+            input.previewError
+              ? throwError(() => input.previewError)
+              : of({ events: [], expiresAt: publicFixtureDateFromNow(1) }),
+          ),
         },
       },
       {
@@ -228,6 +270,7 @@ async function createMajorEventFixture(input: {
         useValue: { availability: input.availability, watch: vi.fn(() => NEVER) },
       },
       { provide: RealtimeInvalidationService, useValue: { watchCatalog: vi.fn(input.watchCatalog) } },
+      { provide: RouteErrorService, useValue: input.routeErrors ?? { navigate: vi.fn(() => Promise.resolve(true)) } },
     ],
   }).compileComponents();
 

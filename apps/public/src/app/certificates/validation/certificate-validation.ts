@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, form, required, submit as submitSignalForm, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -44,7 +44,6 @@ type ValidationSource = 'link' | 'manual' | 'scan';
   selector: 'app-certificate-validation',
   templateUrl: './certificate-validation.html',
   styleUrl: './certificate-validation.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButtonModule,
     MatChipsModule,

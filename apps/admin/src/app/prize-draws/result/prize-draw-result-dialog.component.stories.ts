@@ -12,28 +12,33 @@ type StoryArgs = {
   drawTitle: string;
   spinDescription: string;
   demo: boolean;
-  reducedMotion: boolean;
 };
 
 const meta: Meta<StoryArgs> = {
   component: PrizeDrawResultDialogStoryHarness,
-  title: 'CACiC Eventos/Sorteios/Resultado em tela cheia',
+  title: 'Admin/Prize Draws/Results/Winner Dialog',
   tags: ['autodocs'],
   args: {
     winnerFullName: prizeDrawStoryFullNames[2],
     drawTitle: 'Sorteio de boas-vindas',
     spinDescription: 'Camiseta do evento',
     demo: false,
-    reducedMotion: false,
   },
   argTypes: {
     winnerFullName: { control: 'select', options: prizeDrawStoryFullNames.slice(0, 24) },
     drawTitle: { control: 'text' },
     spinDescription: { control: 'text' },
     demo: { control: 'boolean' },
-    reducedMotion: { control: 'boolean' },
   },
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: {
+    docs: {
+      description: {
+        component: 'Prize draw winner result dialog with a public link and full-screen presentation. Use the global motion control to inspect reduced-motion behavior.',
+      },
+    },
+    layout: 'fullscreen',
+    a11y: { test: 'error' },
+  },
 };
 
 export default meta;
@@ -65,30 +70,8 @@ export const DemoMode: Story = {
   },
 };
 
-export const ReducedMotion: Story = {
-  args: { reducedMotion: true },
-  globals: { motion: 'reduced' },
-  play: async ({ canvasElement }) => openOverlay(canvasElement),
-};
-
-export const LongFullNameOnMobile: Story = {
-  args: { winnerFullName: prizeDrawStoryLongFullName, reducedMotion: true },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
-  play: async ({ canvasElement }) => openOverlay(canvasElement),
-};
-
-export const ShortLandscape: Story = {
-  args: { winnerFullName: prizeDrawStoryLongFullName, reducedMotion: true },
-  globals: { motion: 'reduced' },
-  parameters: {
-    viewport: {
-      defaultViewport: 'shortLandscape',
-      viewports: {
-        shortLandscape: { name: 'Paisagem baixa', styles: { width: '844px', height: '390px' } },
-      },
-    },
-  },
+export const LongFullName: Story = {
+  args: { winnerFullName: prizeDrawStoryLongFullName },
   play: async ({ canvasElement }) => openOverlay(canvasElement),
 };
 

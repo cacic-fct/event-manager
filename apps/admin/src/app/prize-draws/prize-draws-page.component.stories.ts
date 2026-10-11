@@ -1,8 +1,17 @@
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  Router,
+  convertToParamMap,
+  provideRouter,
+  withDisabledInitialNavigation,
+  withHashLocation,
+} from '@angular/router';
 import { PrizeDrawChanceMode } from '@cacic-fct/event-manager-admin-contracts';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
-import { of } from 'rxjs';
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AdminPrizeDrawStoryState, createAdminPrizeDrawStoryHandlers } from './prize-draw-story.handlers';
@@ -13,6 +22,7 @@ import { graphql, HttpResponse } from 'msw';
 import { createAdminEvent, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
 import { EventWorkspaceContextService } from '../event-workspace/event-workspace-context.service';
+import { filter, map, of, startWith } from 'rxjs';
 
 type StoryArgs = AdminPrizeDrawStoryState & {
   canEdit: boolean;
@@ -33,9 +43,38 @@ const defaultArgs: StoryArgs = {
 
 let activeArgs = defaultArgs;
 
+@Component({ template: '' })
+class PrizeDrawStoryRouteComponent {}
+
+function prizeDrawActivatedRoute() {
+  const router = inject(Router);
+  const currentRoute = () => {
+    const parsedUrl = router.parseUrl(router.url);
+    const segments = parsedUrl.root.children['primary']?.segments ?? [];
+    const drawId = segments.length > 1 ? segments[1]?.path : activeArgs.empty ? undefined : PRIZE_DRAW_STORY_ID;
+    return {
+      paramMap: convertToParamMap(drawId ? { drawId } : {}),
+      queryParamMap: convertToParamMap(parsedUrl.queryParams),
+    };
+  };
+  const routeState = router.events.pipe(
+    filter((event) => event instanceof NavigationEnd),
+    map(currentRoute),
+    startWith({
+      paramMap: convertToParamMap(activeArgs.empty ? {} : { drawId: PRIZE_DRAW_STORY_ID }),
+      queryParamMap: convertToParamMap({}),
+    }),
+  );
+  return {
+    paramMap: routeState.pipe(map((state) => state.paramMap)),
+    queryParamMap: routeState.pipe(map((state) => state.queryParamMap)),
+    snapshot: { paramMap: convertToParamMap(activeArgs.empty ? {} : { drawId: PRIZE_DRAW_STORY_ID }) },
+  };
+}
+
 const meta: Meta<StoryArgs> = {
   component: PrizeDrawsPageComponent,
-  title: 'CACiC Eventos/Sorteios/Configuração administrativa',
+  title: 'Admin/Prize Draws/Management',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -51,6 +90,11 @@ const meta: Meta<StoryArgs> = {
     countdownSeconds: { table: { disable: true } },
   },
   parameters: {
+    docs: {
+      description: {
+        component: 'Prize draw administration with controls for target selection, participant eligibility, and draw configuration.',
+      },
+    },
     layout: 'fullscreen',
     a11y: { test: 'error' },
     msw: { handlers: { graphql: createAdminPrizeDrawStoryHandlers(() => activeArgs) } },
@@ -60,15 +104,13 @@ const meta: Meta<StoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<StoryArgs>(),
     applicationConfig({
       providers: [
+        provideRouter([{ path: '**', component: PrizeDrawStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
         {
           provide: ActivatedRoute,
-          useFactory: () => {
-            const drawId = activeArgs.empty ? null : PRIZE_DRAW_STORY_ID;
-            const paramMap = convertToParamMap(drawId ? { drawId } : {});
-            return { paramMap: of(paramMap), snapshot: { paramMap } };
-          },
+          useFactory: prizeDrawActivatedRoute,
         },
         { provide: PermissionsService, useValue: { has: () => activeArgs.canEdit } },
         { provide: AdminFeedbackService, useValue: { error: () => undefined } },
@@ -112,7 +154,8 @@ export const SearchableHistoricalTargets: Story = {
       snapshot: { paramMap: convertToParamMap({}) },
     } },
   ] })],
-  parameters: { msw: { handlers: { graphql: [
+  parameters: {
+      msw: { handlers: { graphql: [
     graphql.query('ListEvents', ({ variables }) => {
       const skip = Number(variables['skip'] ?? 0);
       const take = Number(variables['take'] ?? 20);
@@ -127,7 +170,8 @@ export const SearchableHistoricalTargets: Story = {
     }),
     graphql.query('GetEvent', ({ variables }) => HttpResponse.json({ data: { event: targetEvents.find((event) => event.id === variables['id']) } })),
     ...createAdminPrizeDrawStoryHandlers(() => activeArgs),
-  ] } } },
+  ] } }
+    },
   play: async ({ canvasElement }) => {
     if (new URL(canvasElement.ownerDocument.URL).searchParams.get('embed') === 'true') return;
     const picker = canvasElement.querySelector('app-event-target-picker');
@@ -135,7 +179,9 @@ export const SearchableHistoricalTargets: Story = {
     const targets = within(picker as HTMLElement);
     await expect(await targets.findByText('Evento 49')).toBeVisible();
     await userEvent.click(targets.getByRole('button', { name: 'Trocar' }));
-    await userEvent.click(await targets.findByRole('button', { name: 'Próxima página' }));
+    const nextPage = await targets.findByRole('button', { name: 'Próxima página' });
+    await waitFor(() => expect(nextPage).toBeEnabled());
+    await userEvent.click(nextPage);
     await userEvent.click(await targets.findByRole('button', { name: 'Selecionar Evento 26' }));
     await expect(targets.getByText('Evento 26')).toBeVisible();
   },
@@ -147,6 +193,7 @@ export const WeightedFrozenList: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Lista congelada')).toBeVisible();
     await expect(canvas.getByText('Lista da configuração salva')).toBeVisible();
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Descongelar lista' })).toBeEnabled());
   },
 };
 
@@ -157,9 +204,8 @@ export const ScopedEventInventory: Story = {
     await expect(contextHeader).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(contextHeader);
     await userEvent.click(await canvas.findByRole('link', { name: 'Mostrar sorteios de Abertura da SECOMPP' }));
-    await expect(
-      canvas.getByRole('button', { name: /Abertura da SECOMPP/i }),
-    ).toHaveAttribute('aria-expanded', 'false');
+    const selectedScope = await canvas.findByRole('button', { name: /Abertura da SECOMPP/i });
+    await expect(selectedScope).toHaveAttribute('aria-expanded', 'false');
     await expect(canvas.getByRole('heading', { name: 'Novo sorteio' })).toBeVisible();
     await expect(canvasElement.querySelector('app-event-target-picker')).toHaveTextContent('Abertura da SECOMPP');
   },
@@ -193,7 +239,11 @@ export const EmptyNewSetup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Novo sorteio' })).toBeVisible();
-    await expect(canvas.getByText('Nenhum sorteio salvo')).toBeVisible();
+    const emptyMessage = canvas.getByText('Nenhum sorteio salvo');
+    await expect(emptyMessage).toBeVisible();
+    const emptyState = emptyMessage.closest('.admin-list-empty');
+    await expect(emptyState?.querySelector('mat-icon')).toHaveTextContent('hide_source');
+    await expect(canvas.queryByText('Crie a primeira configuração no painel ao lado.')).not.toBeInTheDocument();
   },
 };
 
@@ -204,8 +254,6 @@ export const Loading: Story = {
   },
 };
 
-export const ReadOnlyMobile: Story = {
+export const ReadOnly: Story = {
   args: { canEdit: false, chanceMode: 'WEIGHTED', eligibleCount: 56 },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };

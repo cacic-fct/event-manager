@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 
@@ -16,7 +16,6 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
       <button mat-flat-button type="button" (click)="close(false)">Não</button>
     </mat-dialog-actions>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PrintDialog {
   private readonly dialogRef = inject(MatDialogRef<PrintDialog>);

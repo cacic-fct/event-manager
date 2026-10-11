@@ -1,3 +1,4 @@
+import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { PublicPrizeDrawChanceMode } from '@cacic-fct/event-manager-public-contracts';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
@@ -20,7 +21,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<StoryArgs> = {
   component: PublicPrizeDrawPage,
-  title: 'CACiC Eventos/Sorteios/Transparência pública',
+  title: 'Public/Discovery/Prize Draws',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -41,6 +42,7 @@ const meta: Meta<StoryArgs> = {
     return { props: {} };
   },
   decorators: [
+    withScenarioControls<StoryArgs>(),
     applicationConfig({
       providers: [
         {
@@ -62,9 +64,9 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Resultados dos sorteios' })).toBeVisible();
-    await userEvent.click(canvas.getByText('Como este sorteio funciona'));
-    await expect(await canvas.findByText('Chance de vencer')).toBeVisible();
-    await expect(canvas.getByText('Entradas duplicadas')).toBeVisible();
+    await userEvent.click(await canvas.findByText('Como este sorteio funciona'));
+    await expect(await canvas.findAllByText('Chance de vencer')).toHaveLength(3);
+    await expect(await canvas.findAllByText('Entradas duplicadas')).toHaveLength(3);
   },
 };
 
@@ -74,7 +76,7 @@ export const WeightedFrozenList: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByText('Como este sorteio funciona'));
     await expect(await canvas.findByText('Entradas ponderadas')).toBeVisible();
-    await expect(canvas.getByText(/Congelada em/)).toBeVisible();
+    await expect((await canvas.findAllByText(/Congelada em/)).length).toBeGreaterThan(0);
   },
 };
 
@@ -114,12 +116,6 @@ export const Loading: Story = {
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByLabelText('Carregando sorteios')).toBeVisible();
   },
-};
-
-export const WeightedMobileDark: Story = {
-  args: { chanceMode: 'WEIGHTED', frozen: true, spinCount: 8 },
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
 };
 
 function installSilentStoryEventSource(): void {

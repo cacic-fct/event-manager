@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
+import { Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
@@ -13,7 +13,6 @@ const dialogRefMock = {
 
 @Component({
   selector: 'app-storybook-delete-event-form-dialog-host',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgComponentOutlet],
   template: `<ng-container *ngComponentOutlet="component; injector: storyInjector()" />`,
 })
@@ -43,7 +42,7 @@ class DeleteEventFormDialogStoryHostComponent {
 
 const meta: Meta<DeleteEventFormDialogStoryArgs> = {
   component: DeleteEventFormDialogStoryHostComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Forms/Delete Event Form Dialog',
+  title: 'Admin/Forms/Dialogs',
   tags: ['autodocs'],
   args: {
     name: 'Pesquisa de satisfação',
@@ -55,7 +54,7 @@ const meta: Meta<DeleteEventFormDialogStoryArgs> = {
   },
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
@@ -79,7 +78,6 @@ export const SingleResponse: Story = {
 };
 
 export const NoResponses: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     name: 'Rascunho sem respostas',
     responseCount: 0,

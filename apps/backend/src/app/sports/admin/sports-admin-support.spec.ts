@@ -31,6 +31,9 @@ class TestSportsAdminSupport extends SportsAdminSupport {
   youtube(provider: SportsLivestreamProvider | null | undefined, value: string | null | undefined) {
     return this.youtubeCodeForLivestream(provider, value);
   }
+  twitch(provider: SportsLivestreamProvider | null | undefined, value: string | null | undefined) {
+    return this.twitchChannelForLivestream(provider, value);
+  }
   date(value: Date | undefined) {
     return this.requireDate(value, 'a data');
   }
@@ -113,7 +116,7 @@ describe('SportsAdminSupport', () => {
     expect(() => support.optional('x'.repeat(11))).toThrow('Descrição deve ter no máximo 10 caracteres.');
   });
 
-  it('normalizes secure livestream URLs and enforces provider hosts', () => {
+  it('stores provider identifiers while retaining secure GENERAL URLs', () => {
     expect(support.livestream(null, null)).toBeNull();
     expect(() => support.livestream(SportsLivestreamProvider.YOUTUBE, null)).toThrow(
       'Informe a URL da transmissão ao selecionar um provedor.',
@@ -131,6 +134,10 @@ describe('SportsAdminSupport', () => {
     expect(support.livestream(SportsLivestreamProvider.GENERAL, ' https://example.com/live ')).toBe(
       'https://example.com/live',
     );
+    expect(support.livestream(SportsLivestreamProvider.YOUTUBE, 'https://www.youtube.com/watch?v=video-1')).toBe(
+      'video-1',
+    );
+    expect(support.livestream(SportsLivestreamProvider.TWITCH, 'https://www.twitch.tv/MyChannel')).toBe('mychannel');
   });
 
   it.each([
@@ -141,9 +148,18 @@ describe('SportsAdminSupport', () => {
     expect(support.youtube(SportsLivestreamProvider.YOUTUBE, url)).toBe(expected);
   });
 
-  it('returns no YouTube identifier for other providers or empty URLs', () => {
+  it('returns no YouTube identifier for other providers or empty values', () => {
     expect(support.youtube(SportsLivestreamProvider.TWITCH, 'https://twitch.tv/channel')).toBeNull();
     expect(support.youtube(SportsLivestreamProvider.YOUTUBE, null)).toBeNull();
+  });
+
+  it('normalizes Twitch channel names and full channel URLs', () => {
+    expect(support.twitch(SportsLivestreamProvider.TWITCH, 'https://www.twitch.tv/MyChannel')).toBe('mychannel');
+    expect(support.twitch(SportsLivestreamProvider.TWITCH, '  OTHER_CHANNEL  ')).toBe('other_channel');
+    expect(support.twitch(SportsLivestreamProvider.YOUTUBE, 'https://twitch.tv/channel')).toBeNull();
+    expect(() => support.livestream(SportsLivestreamProvider.TWITCH, 'https://twitch.tv/videos/123')).toThrow(
+      'Informe uma URL válida da Twitch.',
+    );
   });
 
   it('requires dates and authenticated actor identifiers', () => {

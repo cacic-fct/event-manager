@@ -5,7 +5,7 @@ import { MatchOperationsDemoComponent } from './match-operations-demo';
 
 const meta: Meta<MatchOperationsDemoComponent> = {
   component: MatchOperationsDemoComponent,
-  title: 'CACiC Eventos/Landing/Operação de partida',
+  title: 'Public/Landing/Demos/Match Operations',
   tags: ['autodocs', 'landing-showcase'],
   decorators: [
     moduleMetadata({ imports: [MatchOperationsDemoComponent] }),
@@ -18,14 +18,13 @@ const meta: Meta<MatchOperationsDemoComponent> = {
       '.match-operations-story-surface { background: #153f38; border-radius: 16px; color: #f0fff7; margin: 0 auto; max-width: 570px; padding: 24px; }',
     ],
   }),
-  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
+  parameters: { controls: { disable: true }, layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
 type Story = StoryObj<MatchOperationsDemoComponent>;
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('button', { name: 'Pausar cronômetro' })).toBeEnabled();
@@ -37,8 +36,7 @@ export const Playground: Story = {
   },
 };
 
-export const DarkReducedMotionClockPause: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
+export const ClockPause: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Partida em andamento')).toBeVisible();
@@ -49,9 +47,7 @@ export const DarkReducedMotionClockPause: Story = {
   },
 };
 
-export const MobileFinalized: Story = {
-  globals: { theme: 'dark', motion: 'reduced' },
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+export const FinalizedAndRestarted: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Finalizar partida' }));

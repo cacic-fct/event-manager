@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RESPONSE_INIT } from '@angular/core';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -10,8 +11,10 @@ describe('AuthErrorPage', () => {
   let queryParamMap: BehaviorSubject<ParamMap>;
   let auth: { login: ReturnType<typeof vi.fn> };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  let response: ResponseInit;
 
   beforeEach(async () => {
+    response = { headers: { 'X-Request-Id': 'test-request' } };
     queryParamMap = new BehaviorSubject(
       convertToParamMap({
         raw: JSON.stringify({
@@ -31,6 +34,7 @@ describe('AuthErrorPage', () => {
     await TestBed.configureTestingModule({
       imports: [AuthErrorPage],
       providers: [
+        { provide: RESPONSE_INIT, useValue: response },
         provideNoopAnimations(),
         provideRouter([]),
         {
@@ -123,6 +127,36 @@ describe('AuthErrorPage', () => {
     expect(fixture.nativeElement.querySelector('h1')?.textContent).toBe('Ocorreu um erro.');
     expect(text(fixture)).toContain('Tente novamente mais tarde');
     expect(text(fixture)).not.toContain('O tempo de login expirou.');
+  });
+
+  it.each([
+    ['login-expired', 400],
+    ['server-error', 500],
+  ])('returns the appropriate SSR status and headers for %s', (reason, status) => {
+    queryParamMap.next(convertToParamMap({ reason }));
+    createFixture();
+
+    expect(response.status).toBe(status);
+    const headers = new Headers(response.headers);
+    expect(headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    expect(headers.get('X-Request-Id')).toBe('test-request');
+  });
+
+  it('rejects backslashes in return paths', () => {
+    queryParamMap.next(convertToParamMap({ returnTo: '/\\evil.example' }));
+    const fixture = createFixture();
+    clickButton(fixture, 'Entrar com o Google');
+    expect(auth.login).toHaveBeenCalledWith({ returnTo: '/calendar' });
+  });
+
+  it('explains a rejected clipboard permission without failing', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    await createFixture().componentInstance.copyRawError();
+    expect(snackBar.open).toHaveBeenCalledWith('Não foi possível copiar os detalhes.', 'OK', { duration: 3000 });
   });
 
   it('copies raw technical details when the clipboard is available', async () => {
