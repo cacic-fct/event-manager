@@ -102,7 +102,6 @@ type FormEditorState = {
   ownerTargetSummary: { type: FormOwnerType; id: string; name: string; emoji?: string | null } | null;
 };
 
-
 @Service()
 export class FormsService {
   private readonly singleImageCache = new WeakMap<FormImage, readonly FormImage[]>();
@@ -132,12 +131,21 @@ export class FormsService {
   readonly events = signal<Event[]>([]);
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
-  private readonly ownerTargetSummary = signal<{ type: FormOwnerType; id: string; name: string; emoji?: string | null } | null>(null);
+  private readonly ownerTargetSummary = signal<{
+    type: FormOwnerType;
+    id: string;
+    name: string;
+    emoji?: string | null;
+  } | null>(null);
   readonly formsPagination = createWorkspaceListPagination();
   readonly targetSearchLoading = signal(false);
   readonly targetFilterId = computed(() => {
     const filter = this.targetFilter();
-    return filter?.eventId ? `event:${filter.eventId}` : filter?.majorEventId ? `major-event:${filter.majorEventId}` : null;
+    return filter?.eventId
+      ? `event:${filter.eventId}`
+      : filter?.majorEventId
+        ? `major-event:${filter.majorEventId}`
+        : null;
   });
   readonly targetFilterLabel = computed(() => {
     const filter = this.targetFilter();
@@ -241,7 +249,12 @@ export class FormsService {
   });
   readonly canSave = computed(() => {
     this.formStatus();
-    return !this.form.invalid && !this.hasInvalidLinkDateRange() && !this.hasInvalidLinkAudiences() && !this.hasUntitledQuestions();
+    return (
+      !this.form.invalid &&
+      !this.hasInvalidLinkDateRange() &&
+      !this.hasInvalidLinkAudiences() &&
+      !this.hasUntitledQuestions()
+    );
   });
 
   constructor() {
@@ -249,8 +262,11 @@ export class FormsService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((resultsPublic) => {
         const control = this.form.controls.resultsLive;
-        if (resultsPublic) control.enable({ emitEvent: false });
-        else control.disable({ emitEvent: false });
+        if (resultsPublic) {
+          control.enable({ emitEvent: false });
+        } else {
+          control.disable({ emitEvent: false });
+        }
       });
     this.savedEditorState = this.captureEditorState();
     this.savedEditorSnapshot.set(this.editorStateSignature(this.savedEditorState));
@@ -285,7 +301,9 @@ export class FormsService {
         firstValueFrom(this.eventApi.listEvents({ query, take: 20 })),
         firstValueFrom(this.majorEventApi.listMajorEvents({ query, take: 20 })),
       ]);
-      if (requestId !== this.loadTargetsRequestId) return;
+      if (requestId !== this.loadTargetsRequestId) {
+        return;
+      }
       this.events.set(this.keepSelectedEvents(events));
       this.majorEvents.set(this.keepSelectedMajorEvents(majorEvents));
     } catch (error) {
@@ -293,7 +311,9 @@ export class FormsService {
         this.showError(error, 'Não foi possível buscar os contextos de formulário.');
       }
     } finally {
-      if (requestId === this.loadTargetsRequestId) this.targetSearchLoading.set(false);
+      if (requestId === this.loadTargetsRequestId) {
+        this.targetSearchLoading.set(false);
+      }
     }
   }
 
@@ -335,10 +355,16 @@ export class FormsService {
 
   async createForm(navigate = true): Promise<void> {
     const request = ++this.selectionRequest;
-    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) return;
-    if (request !== this.selectionRequest) return;
+    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) {
+      return;
+    }
+    if (request !== this.selectionRequest) {
+      return;
+    }
     this.clearSelectedForm();
-    if (navigate) void this.router.navigate(this.formsRoute());
+    if (navigate) {
+      void this.router.navigate(this.formsRoute());
+    }
   }
 
   async confirmDiscardChanges(): Promise<boolean> {
@@ -446,8 +472,8 @@ export class FormsService {
       return summary.name;
     }
     return value.ownerType === 'EVENT'
-      ? this.events().find((event) => event.id === id)?.name ?? 'Evento selecionado'
-      : this.majorEvents().find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado';
+      ? (this.events().find((event) => event.id === id)?.name ?? 'Evento selecionado')
+      : (this.majorEvents().find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado');
   }
 
   ownerTargetEmoji(): string | null {
@@ -461,8 +487,8 @@ export class FormsService {
       return summary.emoji ?? null;
     }
     return value.ownerType === 'EVENT'
-      ? this.events().find((event) => event.id === id)?.emoji ?? null
-      : this.majorEvents().find((majorEvent) => majorEvent.id === id)?.emoji ?? null;
+      ? (this.events().find((event) => event.id === id)?.emoji ?? null)
+      : (this.majorEvents().find((majorEvent) => majorEvent.id === id)?.emoji ?? null);
   }
 
   setOwnerTarget(selection: EventTargetSelection): void {
@@ -518,9 +544,14 @@ export class FormsService {
   async selectForm(form: EventForm): Promise<void> {
     const scope = this.targetFilter();
     if (await this.selectFormById(form.id)) {
-      if (this.selectedForm()?.id !== form.id || this.targetFilter() !== scope) return;
-      if (scope) void this.router.navigate(['/forms', form.id], { queryParams: scope });
-      else void this.router.navigate(['/forms', form.id]);
+      if (this.selectedForm()?.id !== form.id || this.targetFilter() !== scope) {
+        return;
+      }
+      if (scope) {
+        void this.router.navigate(['/forms', form.id], { queryParams: scope });
+      } else {
+        void this.router.navigate(['/forms', form.id]);
+      }
     }
   }
 
@@ -530,8 +561,12 @@ export class FormsService {
     }
 
     const request = ++this.selectionRequest;
-    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) return false;
-    if (request !== this.selectionRequest) return false;
+    if (this.unsavedChanges() && !(await this.confirmDiscardChanges())) {
+      return false;
+    }
+    if (request !== this.selectionRequest) {
+      return false;
+    }
     const generation = this.editorGeneration;
     const snapshot = this.editorStateSignature();
     const scope = this.targetFilter();
@@ -539,8 +574,14 @@ export class FormsService {
     this.ui.loading.set(true);
     try {
       const detail = await firstValueFrom(this.api.getForm(formId));
-      if (request !== this.selectionRequest || generation !== this.editorGeneration ||
-        this.targetFilter() !== scope || this.editorStateSignature() !== snapshot) return false;
+      if (
+        request !== this.selectionRequest ||
+        generation !== this.editorGeneration ||
+        this.targetFilter() !== scope ||
+        this.editorStateSignature() !== snapshot
+      ) {
+        return false;
+      }
       this.patchSelectedForm(detail);
       await this.loadResults();
       return request === this.selectionRequest && this.selectedForm()?.id === formId && this.targetFilter() === scope;
@@ -570,9 +611,15 @@ export class FormsService {
   }
 
   async uploadImage(file: File | null, elementId?: string): Promise<void> {
-    if (!file) return;
-    if (this.uploadingImageTarget() !== null) return;
-    if (!this.validateForSave()) return;
+    if (!file) {
+      return;
+    }
+    if (this.uploadingImageTarget() !== null) {
+      return;
+    }
+    if (!this.validateForSave()) {
+      return;
+    }
     const formId = this.selectedForm()?.id ?? null;
     const formValue = this.form.getRawValue();
     const target = elementId ?? 'form';
@@ -627,7 +674,9 @@ export class FormsService {
   }
 
   async removeImage(image: FormImage, elementId?: string): Promise<void> {
-    if (this.uploadingImageTarget() !== null) return;
+    if (this.uploadingImageTarget() !== null) {
+      return;
+    }
     const formId = this.selectedForm()?.id;
     const target = elementId ?? 'form';
     let saveInput: EventFormInput | null = null;
@@ -680,7 +729,9 @@ export class FormsService {
     const expectedValue = image[key] ?? '';
     const cached = this.imageTextControls.get(cacheKey);
     if (cached) {
-      if (cached.value !== expectedValue) cached.setValue(expectedValue, { emitEvent: false });
+      if (cached.value !== expectedValue) {
+        cached.setValue(expectedValue, { emitEvent: false });
+      }
       return cached;
     }
     const control = new FormControl(expectedValue, { nonNullable: true });
@@ -695,7 +746,9 @@ export class FormsService {
 
   singleImage(image: FormImage): readonly FormImage[] {
     const cached = this.singleImageCache.get(image);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
     const value = [image] as const;
     this.singleImageCache.set(image, value);
     return value;
@@ -728,9 +781,7 @@ export class FormsService {
       {
         ...current,
         ...patch,
-        ...(patch.targetType && patch.targetType !== current.targetType
-          ? { targetName: null, targetEmoji: null }
-          : {}),
+        ...(patch.targetType && patch.targetType !== current.targetType ? { targetName: null, targetEmoji: null } : {}),
         ...(startsRequiredSubscriptionFlow && patch.notifyOnPublish === undefined ? { notifyOnPublish: true } : {}),
       },
       current,
@@ -1032,13 +1083,9 @@ export class FormsService {
     this.setSavedEditorBaseline();
   }
 
-  private setOwnerTargetSummary(
-    summary: EventForm['owner'] | null | undefined,
-  ): void {
+  private setOwnerTargetSummary(summary: EventForm['owner'] | null | undefined): void {
     this.ownerTargetSummary.set(
-      summary
-        ? { type: summary.type, id: summary.id, name: summary.name, emoji: summary.emoji }
-        : null,
+      summary ? { type: summary.type, id: summary.id, name: summary.name, emoji: summary.emoji } : null,
     );
   }
 

@@ -53,7 +53,9 @@ export abstract class SportsWorkspaceSection {
 
   protected readonly bracketStages = computed<SportsBracketStageView[]>(() => {
     const read = this.workspace.categoryRead();
-    if (!read) return [];
+    if (!read) {
+      return [];
+    }
     return read.stages.map((stage) => ({
       id: stage.id,
       name: stage.name,
@@ -76,7 +78,9 @@ export abstract class SportsWorkspaceSection {
 
   protected readonly bracketStandings = computed<SportsBracketStandingView[]>(() => {
     const read = this.workspace.categoryRead();
-    if (!read) return [];
+    if (!read) {
+      return [];
+    }
     return read.standings.map((standing) => ({
       team: this.bracketTeam(read, standing.registrationId) ?? {
         id: standing.registrationId,
@@ -103,13 +107,13 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected categoryStatusLabel(status: string): string {
-    return (
-      this.categoryStatuses.find((item) => item[0] === status)?.[1] ?? 'Situação da modalidade não informada'
-    );
+    return this.categoryStatuses.find((item) => item[0] === status)?.[1] ?? 'Situação da modalidade não informada';
   }
 
   protected teamLogoForRegistration(registrationId?: string | null): string | null {
-    if (!registrationId) return null;
+    if (!registrationId) {
+      return null;
+    }
     const registration = this.workspace.categoryRead()?.registrations.find((item) => item.id === registrationId);
     return this.workspace.tournamentRead()?.teams.find((team) => team.id === registration?.teamId)?.logoUrl ?? null;
   }
@@ -123,12 +127,16 @@ export abstract class SportsWorkspaceSection {
 
   protected selectCategoryById(categoryId: string): void {
     const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === categoryId);
-    if (category) void this.workspace.selectCategory(category);
+    if (category) {
+      void this.workspace.selectCategory(category);
+    }
   }
 
   protected selectBracketMatch(read: SportsCategoryRead, matchId: string): void {
     const match = read.matches.find((item) => item.id === matchId);
-    if (match) void this.workspace.selectMatch(match);
+    if (match) {
+      void this.workspace.selectMatch(match);
+    }
   }
 
   protected officialRoleLabel(role: string): string {
@@ -199,7 +207,9 @@ export abstract class SportsWorkspaceSection {
   }
 
   private bracketTeam(read: SportsCategoryRead, registrationId?: string | null): SportsBracketTeamView | null {
-    if (!registrationId) return null;
+    if (!registrationId) {
+      return null;
+    }
     const registration = read.registrations.find((item) => item.id === registrationId);
     const team = this.workspace.tournamentRead()?.teams.find((item) => item.id === registration?.teamId);
     return team ? { id: team.id, name: team.name, logoUrl: team.logoUrl } : null;

@@ -79,8 +79,11 @@ export class FormsPageComponent implements OnDestroy {
   private routeReverting = false;
   protected readonly scopeEmoji = computed(() => {
     const scope = this.workspace.targetFilter();
-    return scope?.eventId ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
-      : scope?.majorEventId ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji : null;
+    return scope?.eventId
+      ? this.workspace.events().find((event) => event.id === scope.eventId)?.emoji
+      : scope?.majorEventId
+        ? this.workspace.majorEvents().find((event) => event.id === scope.majorEventId)?.emoji
+        : null;
   });
 
   private readonly route = inject(ActivatedRoute);
@@ -100,7 +103,10 @@ export class FormsPageComponent implements OnDestroy {
     effect(() => this.shellContext?.scopeSwitchBlocked.set(this.workspace.unsavedChanges()));
     this.destroyRef.onDestroy(() => this.shellContext?.scopeSwitchBlocked.set(false));
     combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(convertToParamMap({}))])
-      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => { void this.applyRouteParams(params, query); });
+      .pipe(takeUntilDestroyed())
+      .subscribe(([params, query]) => {
+        void this.applyRouteParams(params, query);
+      });
   }
 
   canDeactivate(nextUrl?: string): boolean | Promise<boolean> {
@@ -114,8 +120,12 @@ export class FormsPageComponent implements OnDestroy {
       // That navigation keeps the same editor and scope, including edits entered meanwhile.
       if (segments.length === 2 && segments[0] === 'forms' && segments[1] === this.workspace.selectedForm()?.id) {
         const scope = this.workspace.targetFilter();
-        if ((next.queryParams['eventId'] || undefined) === scope?.eventId &&
-          (next.queryParams['majorEventId'] || undefined) === scope?.majorEventId) return true;
+        if (
+          (next.queryParams['eventId'] || undefined) === scope?.eventId &&
+          (next.queryParams['majorEventId'] || undefined) === scope?.majorEventId
+        ) {
+          return true;
+        }
       }
     }
     return this.workspace.confirmDiscardChanges();
@@ -276,7 +286,9 @@ export class FormsPageComponent implements OnDestroy {
     const eventId = (params.get('eventId') ?? query.get('eventId'))?.trim();
     const majorEventId = (params.get('majorEventId') ?? query.get('majorEventId'))?.trim();
     const formId = params.get('formId')?.trim();
-    const accepted = await this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
+    const accepted = await this.workspace.setTargetFilter(
+      eventId ? { eventId } : majorEventId ? { majorEventId } : null,
+    );
     if (!accepted) {
       if (request === this.routeRequest) {
         this.routeReverting = true;
@@ -288,22 +300,46 @@ export class FormsPageComponent implements OnDestroy {
       }
       return;
     }
-    if (request !== this.routeRequest) return;
+    if (request !== this.routeRequest) {
+      return;
+    }
     if (!formId) {
       this.workspace.cancelPendingSelection();
-      if (this.workspace.selectedForm()) await this.workspace.createForm(false);
-      if (request !== this.routeRequest) return;
+      if (this.workspace.selectedForm()) {
+        await this.workspace.createForm(false);
+      }
+      if (request !== this.routeRequest) {
+        return;
+      }
     }
     await this.workspace.initialize();
-    if (request !== this.routeRequest) return;
+    if (request !== this.routeRequest) {
+      return;
+    }
     if (formId) {
       await this.workspace.selectFormById(formId, { skipIfCurrent: true });
-      if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell || this.workspace.unsavedChanges()) return;
+      if (
+        request !== this.routeRequest ||
+        eventId ||
+        majorEventId ||
+        !this.inWorkspaceShell ||
+        this.workspace.unsavedChanges()
+      ) {
+        return;
+      }
       const form = this.workspace.selectedForm();
-      const scope = form?.ownerEventId ? { eventId: form.ownerEventId }
-        : form?.ownerMajorEventId ? { majorEventId: form.ownerMajorEventId } : null;
+      const scope = form?.ownerEventId
+        ? { eventId: form.ownerEventId }
+        : form?.ownerMajorEventId
+          ? { majorEventId: form.ownerMajorEventId }
+          : null;
       if (form?.id === formId && scope) {
-        await this.router.navigate([], { relativeTo: this.route, queryParams: scope, queryParamsHandling: 'merge', replaceUrl: true });
+        await this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: scope,
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
       }
     }
   }

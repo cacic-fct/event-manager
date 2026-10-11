@@ -144,7 +144,9 @@ export class Wallet {
 
   public readonly stackedCards = computed<readonly WalletCardEntry[]>(() => {
     const cards: WalletCardEntry[] = [{ selectionId: 'offline-code', kind: 'offline-code' }];
-    if (this.hasAcademicRecord()) cards.push({ selectionId: 'academic-record', kind: 'academic-record' });
+    if (this.hasAcademicRecord()) {
+      cards.push({ selectionId: 'academic-record', kind: 'academic-record' });
+    }
     for (const ticket of this.activeTickets()) {
       cards.push({
         selectionId: `ticket:${ticket.id}`,
@@ -158,15 +160,24 @@ export class Wallet {
 
   public readonly selectedCardEntry = computed<WalletCardEntry | null>(() => {
     const selection = this.selectedCard();
-    if (!selection) return null;
+    if (!selection) {
+      return null;
+    }
 
     const stackEntry = this.stackedCards().find((entry) => entry.selectionId === selection);
-    if (stackEntry) return stackEntry;
+    if (stackEntry) {
+      return stackEntry;
+    }
 
     const ticketId = selection.startsWith('ticket:') ? selection.slice('ticket:'.length) : null;
     const ticket = ticketId ? this.tickets().find((item) => item.id === ticketId) : null;
     return ticket
-      ? { selectionId: selection, kind: 'eventos', ticket, ticketStatus: ticketStatusAt(ticket, this.ticketExpiryNow()) }
+      ? {
+          selectionId: selection,
+          kind: 'eventos',
+          ticket,
+          ticketStatus: ticketStatusAt(ticket, this.ticketExpiryNow()),
+        }
       : null;
   });
 
@@ -181,7 +192,9 @@ export class Wallet {
       }
 
       void this.offlineUserData.getOfflineSnapshot().then((snapshot) => {
-        if (request === this.offlineSnapshotRequest) this.offlineSnapshot.set(snapshot);
+        if (request === this.offlineSnapshotRequest) {
+          this.offlineSnapshot.set(snapshot);
+        }
       });
     });
 
@@ -197,11 +210,15 @@ export class Wallet {
         this.showExpiredTickets.set(false);
         this.selectedCard.set(null);
         this.walletView.set('list');
-        if (this.selectionTimeout !== null && this.isBrowser) window.clearTimeout(this.selectionTimeout);
+        if (this.selectionTimeout !== null && this.isBrowser) {
+          window.clearTimeout(this.selectionTimeout);
+        }
         this.selectionTimeout = null;
         this.selectionAnimation?.cancel();
       }
-      if (!userId) return;
+      if (!userId) {
+        return;
+      }
 
       untracked(() => this.loadTickets());
       const stream = this.ticketApi
@@ -209,7 +226,10 @@ export class Wallet {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (invalidation) => this.refreshForTicketChange(invalidation),
-          error: () => this.snackBar.open('Não foi possível acompanhar seus bilhetes em tempo real.', 'Fechar', { duration: 3500 }),
+          error: () =>
+            this.snackBar.open('Não foi possível acompanhar seus bilhetes em tempo real.', 'Fechar', {
+              duration: 3500,
+            }),
         });
       onCleanup(() => {
         stream.unsubscribe();
@@ -218,7 +238,9 @@ export class Wallet {
     });
 
     this.destroyRef.onDestroy(() => {
-      if (this.selectionTimeout !== null) window.clearTimeout(this.selectionTimeout);
+      if (this.selectionTimeout !== null) {
+        window.clearTimeout(this.selectionTimeout);
+      }
       this.selectionAnimation?.cancel();
       this.clearTicketExpiryTimer();
     });
@@ -254,20 +276,28 @@ export class Wallet {
       return;
     }
 
-    if (card === 'eventos' || this.walletView() !== 'list') return;
+    if (card === 'eventos' || this.walletView() !== 'list') {
+      return;
+    }
 
     const cardIndex = this.stackedCards().findIndex((entry) => entry.selectionId === card);
-    if (cardIndex < 0) return;
+    if (cardIndex < 0) {
+      return;
+    }
     const cardElement = this.walletCardList()?.nativeElement.children.item(cardIndex);
     const topCardSlot = this.topCardSlot()?.nativeElement;
     const startingCardTop = cardElement?.getBoundingClientRect().top;
 
-    if (this.isBrowser) this.listScrollPosition = window.scrollY;
+    if (this.isBrowser) {
+      this.listScrollPosition = window.scrollY;
+    }
     this.selectedCard.set(card);
     this.walletView.set('selecting');
 
     if (!this.isBrowser || this.prefersReducedMotion) {
-      if (this.isBrowser) window.scrollTo(window.scrollX, 0);
+      if (this.isBrowser) {
+        window.scrollTo(window.scrollX, 0);
+      }
       this.walletView.set('detail');
       return;
     }
@@ -298,7 +328,9 @@ export class Wallet {
   }
 
   public returnToCardList(): void {
-    if (this.walletView() === 'detail' && this.animateCardToList()) return;
+    if (this.walletView() === 'detail' && this.animateCardToList()) {
+      return;
+    }
 
     this.finishCardListTransition();
   }
@@ -306,13 +338,19 @@ export class Wallet {
   public cardMotionClass(card: WalletCardSelection): string {
     const selectedCard = this.selectedCard();
     const view = this.walletView();
-    if ((view !== 'selecting' && view !== 'closing') || !selectedCard) return '';
+    if ((view !== 'selecting' && view !== 'closing') || !selectedCard) {
+      return '';
+    }
 
     const selectedIndex = this.stackedCards().findIndex((entry) => entry.selectionId === selectedCard);
     const index = this.stackedCards().findIndex((entry) => entry.selectionId === card);
 
-    if (index === selectedIndex) return 'wallet-card-selected';
-    if (view === 'closing') return 'wallet-card-returning';
+    if (index === selectedIndex) {
+      return 'wallet-card-selected';
+    }
+    if (view === 'closing') {
+      return 'wallet-card-returning';
+    }
     return index > selectedIndex ? 'wallet-card-after-selected' : 'wallet-card-before-selected';
   }
 
@@ -325,11 +363,17 @@ export class Wallet {
   }
 
   public openArchivedTicket(ticketId: string): void {
-    if (this.walletView() !== 'list' || !this.expiredTickets().some((ticket) => ticket.id === ticketId)) return;
-    if (this.isBrowser) this.listScrollPosition = window.scrollY;
+    if (this.walletView() !== 'list' || !this.expiredTickets().some((ticket) => ticket.id === ticketId)) {
+      return;
+    }
+    if (this.isBrowser) {
+      this.listScrollPosition = window.scrollY;
+    }
     this.selectedCard.set(`ticket:${ticketId}`);
     this.walletView.set('detail');
-    if (this.isBrowser) window.scrollTo(window.scrollX, 0);
+    if (this.isBrowser) {
+      window.scrollTo(window.scrollX, 0);
+    }
   }
 
   private loadTickets(): void {
@@ -340,7 +384,9 @@ export class Wallet {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (tickets) => {
-          if (requestId !== this.ticketRequestId) return;
+          if (requestId !== this.ticketRequestId) {
+            return;
+          }
           this.tickets.set(tickets);
           const selection = this.selectedCard();
           if (selection?.startsWith('ticket:') && !tickets.some((ticket) => `ticket:${ticket.id}` === selection)) {
@@ -351,7 +397,9 @@ export class Wallet {
           this.scheduleTicketExpiryRefresh();
         },
         error: () => {
-          if (requestId !== this.ticketRequestId) return;
+          if (requestId !== this.ticketRequestId) {
+            return;
+          }
           this.ticketsLoading.set(false);
           this.snackBar.open('Não foi possível carregar seus bilhetes.', 'Fechar', { duration: 3500 });
         },
@@ -370,14 +418,19 @@ export class Wallet {
 
   private scheduleTicketExpiryRefresh(): void {
     this.clearTicketExpiryTimer();
-    if (!this.isBrowser) return;
+    if (!this.isBrowser) {
+      return;
+    }
 
     const now = Date.now();
     this.ticketExpiryNow.set(now);
     const dueTickets = this.tickets().filter(
       (ticket) => ticket.status === 'ACTIVE' && ticketStatusAt(ticket, now) === 'EXPIRED',
     );
-    const dueSignature = dueTickets.map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`).sort().join('|');
+    const dueSignature = dueTickets
+      .map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`)
+      .sort()
+      .join('|');
     if (dueSignature && dueSignature !== this.lastExpiredTicketRefreshSignature) {
       this.lastExpiredTicketRefreshSignature = dueSignature;
       this.loadTickets();
@@ -386,10 +439,14 @@ export class Wallet {
     }
 
     const delay = nextDeadlineDelay(
-      this.tickets().filter((ticket) => ticket.status === 'ACTIVE').map((ticket) => ticket.effectiveExpiresAt),
+      this.tickets()
+        .filter((ticket) => ticket.status === 'ACTIVE')
+        .map((ticket) => ticket.effectiveExpiresAt),
       now,
     );
-    if (delay === null) return;
+    if (delay === null) {
+      return;
+    }
 
     this.ticketExpiryTimer = window.setTimeout(() => {
       this.ticketExpiryTimer = null;
@@ -398,7 +455,10 @@ export class Wallet {
       const newlyDue = this.tickets().filter(
         (ticket) => ticket.status === 'ACTIVE' && ticketStatusAt(ticket, currentNow) === 'EXPIRED',
       );
-      const signature = newlyDue.map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`).sort().join('|');
+      const signature = newlyDue
+        .map((ticket) => `${ticket.id}:${ticket.effectiveExpiresAt}`)
+        .sort()
+        .join('|');
       if (signature && signature !== this.lastExpiredTicketRefreshSignature) {
         this.lastExpiredTicketRefreshSignature = signature;
         this.loadTickets();
@@ -408,7 +468,9 @@ export class Wallet {
   }
 
   private clearTicketExpiryTimer(): void {
-    if (this.ticketExpiryTimer !== null && this.isBrowser) window.clearTimeout(this.ticketExpiryTimer);
+    if (this.ticketExpiryTimer !== null && this.isBrowser) {
+      window.clearTimeout(this.ticketExpiryTimer);
+    }
     this.ticketExpiryTimer = null;
   }
 
@@ -417,7 +479,9 @@ export class Wallet {
     const cardIndex = this.stackedCards().findIndex((entry) => entry.selectionId === selectedCard);
     const detailCardTop = this.detailCardSlot()?.nativeElement.getBoundingClientRect().top;
     if (!this.isBrowser || this.prefersReducedMotion || !selectedCard || cardIndex < 0 || detailCardTop === undefined) {
-      if (this.isBrowser) window.scrollTo(window.scrollX, this.listScrollPosition);
+      if (this.isBrowser) {
+        window.scrollTo(window.scrollX, this.listScrollPosition);
+      }
       return false;
     }
 
@@ -427,7 +491,9 @@ export class Wallet {
     window.scrollTo(window.scrollX, this.listScrollPosition);
 
     const cardElement = this.walletCardList()?.nativeElement.children.item(cardIndex);
-    if (!cardElement?.animate) return false;
+    if (!cardElement?.animate) {
+      return false;
+    }
 
     const stackCardTop = cardElement.getBoundingClientRect().top;
     this.selectionAnimation = cardElement.animate(
@@ -444,7 +510,9 @@ export class Wallet {
 
   private finishCardListTransition(): void {
     this.cancelCardTransition();
-    if (this.isBrowser) window.scrollTo(window.scrollX, this.listScrollPosition);
+    if (this.isBrowser) {
+      window.scrollTo(window.scrollX, this.listScrollPosition);
+    }
     this.selectedCard.set(null);
     this.walletView.set('list');
   }

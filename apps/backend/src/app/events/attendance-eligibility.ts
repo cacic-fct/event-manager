@@ -62,10 +62,8 @@ export function eventAttendanceEligibility(event: AttendancePolicyContext): Atte
   };
   return resolveAttendanceEligibility({
     ...event,
-    eventGroup:
-      candidate.eventGroupId && !candidate.eventGroup?.deletedAt ? candidate.eventGroup : null,
-    majorEvent:
-      candidate.majorEventId && !candidate.majorEvent?.deletedAt ? candidate.majorEvent : null,
+    eventGroup: candidate.eventGroupId && !candidate.eventGroup?.deletedAt ? candidate.eventGroup : null,
+    majorEvent: candidate.majorEventId && !candidate.majorEvent?.deletedAt ? candidate.majorEvent : null,
   });
 }
 

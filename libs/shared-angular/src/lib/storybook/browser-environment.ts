@@ -19,14 +19,18 @@ let dialogObserver: MutationObserver | null = null;
 
 function synchronizeDialogBackground(): void {
   const root = document.getElementById('storybook-root');
-  if (!root || root === observedRoot) return;
+  if (!root || root === observedRoot) {
+    return;
+  }
   dialogObserver?.disconnect();
   observedRoot = root;
   // Material dialogs hide the preview behind their overlay. Storybook adds
   // focusable canvas content, so also remove that hidden background from focus.
   let lastRootFocus: HTMLElement | null = null;
   root.addEventListener('focusin', (event) => {
-    if (event.target instanceof HTMLElement && !root.inert) lastRootFocus = event.target;
+    if (event.target instanceof HTMLElement && !root.inert) {
+      lastRootFocus = event.target;
+    }
   });
   const synchronize = () => {
     const wasInert = root.inert;
@@ -48,9 +52,13 @@ function synchronizeDialogBackground(): void {
 
 /** Wait for Material to move snackbar actions into their announced live region. */
 export async function waitForStorybookAnnouncements(): Promise<void> {
-  await new Promise<void>((resolve) => { window.requestAnimationFrame(() => resolve()); });
+  await new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
   const pendingSelector = '.mat-mdc-snack-bar-container [aria-hidden="true"] button';
-  if (!document.querySelector(pendingSelector)) return;
+  if (!document.querySelector(pendingSelector)) {
+    return;
+  }
   await new Promise<void>((resolve, reject) => {
     const cleanup = () => {
       observer.disconnect();
@@ -66,7 +74,12 @@ export async function waitForStorybookAnnouncements(): Promise<void> {
       cleanup();
       reject(new Error('Snackbar actions remained hidden from assistive technology.'));
     }, 2_000);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-hidden'] });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-hidden'],
+    });
   });
 }
 
@@ -79,19 +92,27 @@ class StorybookMediaQueryList extends EventTarget implements MediaQueryList {
 
   get matches(): boolean {
     switch (this.media.replace(/\s/g, '')) {
-      case '(prefers-color-scheme:dark)': return environment.theme === 'dark';
-      case '(prefers-color-scheme:light)': return environment.theme === 'light';
-      case '(prefers-reduced-motion:reduce)': return environment.motion === 'reduced';
-      default: return environment.motion === 'full';
+      case '(prefers-color-scheme:dark)':
+        return environment.theme === 'dark';
+      case '(prefers-color-scheme:light)':
+        return environment.theme === 'light';
+      case '(prefers-reduced-motion:reduce)':
+        return environment.motion === 'reduced';
+      default:
+        return environment.motion === 'full';
     }
   }
 
   addListener(listener: Parameters<MediaQueryList['addListener']>[0]): void {
-    if (listener) this.addEventListener('change', listener as EventListener);
+    if (listener) {
+      this.addEventListener('change', listener as EventListener);
+    }
   }
 
   removeListener(listener: Parameters<MediaQueryList['removeListener']>[0]): void {
-    if (listener) this.removeEventListener('change', listener as EventListener);
+    if (listener) {
+      this.removeEventListener('change', listener as EventListener);
+    }
   }
 
   notify(): void {
@@ -111,7 +132,9 @@ export function applyStorybookEnvironment(next: StorybookEnvironment): void {
   if (!installed) {
     const nativeMatchMedia = window.matchMedia.bind(window);
     window.matchMedia = (query) => {
-      if (!simulatedQueries.has(query.replace(/\s/g, ''))) return nativeMatchMedia(query);
+      if (!simulatedQueries.has(query.replace(/\s/g, ''))) {
+        return nativeMatchMedia(query);
+      }
       let list = mediaQueries.get(query);
       if (!list) {
         list = new StorybookMediaQueryList(query);
@@ -127,7 +150,11 @@ export function applyStorybookEnvironment(next: StorybookEnvironment): void {
   }
 
   for (const [query, list] of mediaQueries) {
-    if (previousMatches.get(query) !== list.matches) list.notify();
+    if (previousMatches.get(query) !== list.matches) {
+      list.notify();
+    }
   }
-  if (previousOnline !== navigator.onLine) window.dispatchEvent(new Event(next.network));
+  if (previousOnline !== navigator.onLine) {
+    window.dispatchEvent(new Event(next.network));
+  }
 }

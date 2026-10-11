@@ -16,9 +16,7 @@ type Story = StoryObj<RegistrationDemoComponent>;
 
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
-    await expect(
-      within(canvasElement).getByRole('region', { name: 'Inscrição em grande evento' }),
-    ).toBeVisible();
+    await expect(within(canvasElement).getByRole('region', { name: 'Inscrição em grande evento' })).toBeVisible();
   },
 };
 

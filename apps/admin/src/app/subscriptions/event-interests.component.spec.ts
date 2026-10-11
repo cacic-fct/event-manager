@@ -60,7 +60,10 @@ describe('EventInterestsComponent realtime refresh', () => {
         { provide: MajorEventApiService, useValue: { listMajorEvents: vi.fn(() => of([])), getMajorEvent: vi.fn() } },
         { provide: InterestApiService, useValue: api },
         { provide: RealtimeApiService, useValue: realtime },
-        { provide: PermissionsService, useValue: { has: vi.fn(() => true), evaluateWorkspacePermissions: vi.fn(async () => undefined) } },
+        {
+          provide: PermissionsService,
+          useValue: { has: vi.fn(() => true), evaluateWorkspacePermissions: vi.fn(async () => undefined) },
+        },
         { provide: AdminFeedbackService, useValue: { error: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
@@ -91,7 +94,8 @@ describe('EventInterestsComponent realtime refresh', () => {
 
   it('ignores an old scope lookup after another deep link is selected', async () => {
     const oldScope = new Subject<Event>();
-    vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValueOnce(oldScope)
+    vi.mocked(TestBed.inject(EventApiService).getEvent)
+      .mockReturnValueOnce(oldScope)
       .mockReturnValueOnce(of(eventFixture({ id: 'event-2' })));
     const fixture = TestBed.createComponent(EventInterestsComponent);
     fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
@@ -113,22 +117,37 @@ describe('EventInterestsComponent realtime refresh', () => {
   });
 
   it.each([InterestTargetType.MAJOR_EVENT, InterestTargetType.EVENT_GROUP])(
-    'excludes backing sports matches from %s conversion activities', async (targetType) => {
-      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(of([
-        eventFixture({ id: 'activity-1' }), eventFixture({ id: 'match-1', isSportsMatch: true }),
-      ]));
+    'excludes backing sports matches from %s conversion activities',
+    async (targetType) => {
+      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(
+        of([eventFixture({ id: 'activity-1' }), eventFixture({ id: 'match-1', isSportsMatch: true })]),
+      );
       const fixture = TestBed.createComponent(EventInterestsComponent);
       fixture.detectChanges();
       await flushAsync();
       const component = fixture.componentInstance;
-      await component.selectTarget({ targetType, targetId: 'target-1', name: 'Alvo', emoji: '📅', kindLabel: 'Alvo', interestEnabled: true });
+      await component.selectTarget({
+        targetType,
+        targetId: 'target-1',
+        name: 'Alvo',
+        emoji: '📅',
+        kindLabel: 'Alvo',
+        interestEnabled: true,
+      });
       expect(component.targetEventIds()).toEqual(['activity-1']);
       expect(component.targetEvents().map(({ id }) => id)).toEqual(['activity-1']);
 
-      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(of([
-        eventFixture({ id: 'match-1', isSportsMatch: true }),
-      ]));
-      await component.selectTarget({ targetType, targetId: 'sports-only', name: 'Esportes', emoji: '⚽', kindLabel: 'Alvo', interestEnabled: true });
+      vi.mocked(TestBed.inject(EventApiService).listEvents).mockReturnValue(
+        of([eventFixture({ id: 'match-1', isSportsMatch: true })]),
+      );
+      await component.selectTarget({
+        targetType,
+        targetId: 'sports-only',
+        name: 'Esportes',
+        emoji: '⚽',
+        kindLabel: 'Alvo',
+        interestEnabled: true,
+      });
       expect(component.targetEventIds()).toEqual([]);
       expect(component.canConvertInterest(interestFixture())).toBe(false);
     },
@@ -156,7 +175,14 @@ describe('EventInterestsComponent realtime refresh', () => {
     fixture.detectChanges();
     await flushAsync();
     const component = fixture.componentInstance;
-    const targetA = { targetType: InterestTargetType.MAJOR_EVENT, targetId: 'major-a', name: 'A', emoji: '🎓', kindLabel: 'Grande evento', interestEnabled: true };
+    const targetA = {
+      targetType: InterestTargetType.MAJOR_EVENT,
+      targetId: 'major-a',
+      name: 'A',
+      emoji: '🎓',
+      kindLabel: 'Grande evento',
+      interestEnabled: true,
+    };
     const targetB = { ...targetA, targetId: 'major-b', name: 'B' };
     await component.selectTarget(targetA);
     const targetAPromise = component.selectTarget(targetA);
@@ -175,16 +201,19 @@ describe('EventInterestsComponent realtime refresh', () => {
     ]);
   });
 
-  it.each([undefined, { imageLicenseAgreementAccepted: false }])('does not convert without required consent: %s', async (result) => {
-    vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ afterClosed: () => of(result) } as never);
-    const fixture = TestBed.createComponent(EventInterestsComponent);
-    fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
-    fixture.detectChanges();
-    await flushAsync();
-    await fixture.componentInstance.convertInterest(interestFixture());
-    expect(api.convertInterestToSubscription).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.convertingInterestId()).toBeNull();
-  });
+  it.each([undefined, { imageLicenseAgreementAccepted: false }])(
+    'does not convert without required consent: %s',
+    async (result) => {
+      vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ afterClosed: () => of(result) } as never);
+      const fixture = TestBed.createComponent(EventInterestsComponent);
+      fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
+      fixture.detectChanges();
+      await flushAsync();
+      await fixture.componentInstance.convertInterest(interestFixture());
+      expect(api.convertInterestToSubscription).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.convertingInterestId()).toBeNull();
+    },
+  );
 
   it('forwards explicitly confirmed consent for a grouped event', async () => {
     vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({
@@ -195,11 +224,16 @@ describe('EventInterestsComponent realtime refresh', () => {
     fixture.detectChanges();
     await flushAsync();
     await fixture.componentInstance.convertInterest(interestFixture());
-    expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      data: expect.objectContaining({ requiresImageLicenseAgreement: true }),
-    }));
+    expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: expect.objectContaining({ requiresImageLicenseAgreement: true }),
+      }),
+    );
     expect(api.convertInterestToSubscription).toHaveBeenCalledWith({
-      interestId: 'interest-1', selectedEventIds: ['event-1'], imageLicenseAgreementAccepted: true,
+      interestId: 'interest-1',
+      selectedEventIds: ['event-1'],
+      imageLicenseAgreementAccepted: true,
     });
   });
 
@@ -232,9 +266,9 @@ describe('EventInterestsComponent realtime refresh', () => {
     fixture.componentRef.setInput('context', { kind: 'event', id: 'event-1' });
     fixture.detectChanges();
     await flushAsync();
-    vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValue(of(
-      { ...eventFixture(), interestEnabled: false },
-    ));
+    vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValue(
+      of({ ...eventFixture(), interestEnabled: false }),
+    );
     await fixture.componentInstance.loadTargets();
     fixture.detectChanges();
     expect(fixture.componentInstance.selectedTarget()?.targetId).toBe('event-1');
@@ -243,13 +277,23 @@ describe('EventInterestsComponent realtime refresh', () => {
   });
 
   it.each([InterestTargetType.EVENT, InterestTargetType.EVENT_GROUP])(
-    'requires parent major-event consent when converting a %s interest', async (targetType) => {
+    'requires parent major-event consent when converting a %s interest',
+    async (targetType) => {
       const majorEvent = createAdminMajorEvent({ id: 'major-1', requiresImageLicenseAgreement: true });
       vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValue(of(majorEvent));
-      vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValue(of({
-        ...eventFixture(), majorEventId: majorEvent.id, requiresImageLicenseAgreement: false,
-      }));
-      const group = createAdminEventGroup({ id: 'group-1', majorEventId: majorEvent.id, interestEnabled: true, requiresImageLicenseAgreement: false });
+      vi.mocked(TestBed.inject(EventApiService).getEvent).mockReturnValue(
+        of({
+          ...eventFixture(),
+          majorEventId: majorEvent.id,
+          requiresImageLicenseAgreement: false,
+        }),
+      );
+      const group = createAdminEventGroup({
+        id: 'group-1',
+        majorEventId: majorEvent.id,
+        interestEnabled: true,
+        requiresImageLicenseAgreement: false,
+      });
       vi.mocked(TestBed.inject(EventGroupApiService).getEventGroup).mockReturnValue(of(group));
       vi.mocked(TestBed.inject(EventGroupApiService).listEventGroups).mockReturnValue(of([group]));
       vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({
@@ -258,14 +302,26 @@ describe('EventInterestsComponent realtime refresh', () => {
       const fixture = TestBed.createComponent(EventInterestsComponent);
       fixture.detectChanges();
       await flushAsync();
-      const target = { targetType, targetId: targetType === InterestTargetType.EVENT ? 'event-1' : 'group-1', name: 'Atividade', emoji: '🎓', kindLabel: 'Atividade', interestEnabled: true };
+      const target = {
+        targetType,
+        targetId: targetType === InterestTargetType.EVENT ? 'event-1' : 'group-1',
+        name: 'Atividade',
+        emoji: '🎓',
+        kindLabel: 'Atividade',
+        interestEnabled: true,
+      };
       await fixture.componentInstance.selectTarget(target);
       await fixture.componentInstance.convertInterest({ ...interestFixture(), targetType, targetId: target.targetId });
       expect(TestBed.inject(MajorEventApiService).getMajorEvent).toHaveBeenCalledWith('major-1');
-      expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-        data: expect.objectContaining({ requiresImageLicenseAgreement: true }),
-      }));
-      expect(api.convertInterestToSubscription).toHaveBeenCalledWith(expect.objectContaining({ imageLicenseAgreementAccepted: true }));
+      expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({ requiresImageLicenseAgreement: true }),
+        }),
+      );
+      expect(api.convertInterestToSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ imageLicenseAgreementAccepted: true }),
+      );
     },
   );
 });

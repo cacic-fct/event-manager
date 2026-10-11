@@ -1,10 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types';
-import {
-  normalizeLivestreamValue,
-  normalizeTwitchChannel,
-  normalizeYoutubeCode,
-} from '@cacic-fct/shared-livestream';
+import { normalizeLivestreamValue, normalizeTwitchChannel, normalizeYoutubeCode } from '@cacic-fct/shared-livestream';
 import {
   Prisma,
   SportsAthleteIdentifierMode,

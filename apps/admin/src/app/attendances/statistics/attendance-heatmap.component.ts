@@ -109,13 +109,17 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.mapRenderFrame !== undefined) cancelAnimationFrame(this.mapRenderFrame);
+    if (this.mapRenderFrame !== undefined) {
+      cancelAnimationFrame(this.mapRenderFrame);
+    }
     this.stopObservingMapTarget();
     this.destroyMap();
   }
 
   private scheduleMapRender(): void {
-    if (!this.isBrowser || this.mapRenderFrame !== undefined) return;
+    if (!this.isBrowser || this.mapRenderFrame !== undefined) {
+      return;
+    }
 
     this.mapRenderFrame = requestAnimationFrame(() => {
       this.mapRenderFrame = undefined;
@@ -193,7 +197,9 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   }
 
   private observeMapTarget(target: HTMLElement): void {
-    if (!('ResizeObserver' in globalThis) || this.observedMapTarget === target) return;
+    if (!('ResizeObserver' in globalThis) || this.observedMapTarget === target) {
+      return;
+    }
 
     this.stopObservingMapTarget();
     this.observedMapTarget = target;

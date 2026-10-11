@@ -52,7 +52,9 @@ describe('SportsReadPublicCache', () => {
 
     expect(result?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
     expect(result?.categories[0]?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
-    expect(result?.categories[0]?.brackets[0]?.matches[0]).toEqual(expect.objectContaining({ rosters: [], officials: [] }));
+    expect(result?.categories[0]?.brackets[0]?.matches[0]).toEqual(
+      expect.objectContaining({ rosters: [], officials: [] }),
+    );
   });
 
   it.each([

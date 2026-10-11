@@ -23,15 +23,7 @@ type TicketPurchaseSectionState =
 
 @Component({
   selector: 'app-ticket-purchase-options-section',
-  imports: [
-    CurrencyPipe,
-    DatePipe,
-    MatButtonModule,
-    MatCardModule,
-    MatIconModule,
-    MatListModule,
-    MatProgressBarModule,
-  ],
+  imports: [CurrencyPipe, DatePipe, MatButtonModule, MatCardModule, MatIconModule, MatListModule, MatProgressBarModule],
   templateUrl: './ticket-purchase-options-section.component.html',
   styleUrl: './ticket-purchase-options-section.component.css',
 })
@@ -62,9 +54,7 @@ export class TicketPurchaseOptionsSectionComponent {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (invalidation) => {
-            if (
-              invalidation.type === 'PURCHASES_CHANGED' || invalidation.type === 'TICKETS_CHANGED'
-            ) {
+            if (invalidation.type === 'PURCHASES_CHANGED' || invalidation.type === 'TICKETS_CHANGED') {
               this.load(majorEventId);
             }
           },
@@ -119,21 +109,29 @@ export class TicketPurchaseOptionsSectionComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (options) => {
-          if (requestId !== this.requestId) return;
+          if (requestId !== this.requestId) {
+            return;
+          }
           this.purchaseApi
             .getPurchases(majorEventId)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (purchases) => {
-                if (requestId === this.requestId) this.state.set({ status: 'ready', options, purchases });
+                if (requestId === this.requestId) {
+                  this.state.set({ status: 'ready', options, purchases });
+                }
               },
               error: () => {
-                if (requestId === this.requestId) this.state.set({ status: 'error' });
+                if (requestId === this.requestId) {
+                  this.state.set({ status: 'error' });
+                }
               },
             });
         },
         error: () => {
-          if (requestId === this.requestId) this.state.set({ status: 'error' });
+          if (requestId === this.requestId) {
+            this.state.set({ status: 'error' });
+          }
         },
       });
   }

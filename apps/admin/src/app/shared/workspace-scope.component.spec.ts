@@ -4,7 +4,9 @@ import { WorkspaceScopeComponent } from './workspace-scope.component';
 
 @Component({
   imports: [WorkspaceScopeComponent],
-  template: `<app-workspace-scope [scopeId]="scopeId()" [title]="title()"><input aria-label="Buscar evento" value="busca preservada" /></app-workspace-scope>`,
+  template: `<app-workspace-scope [scopeId]="scopeId()" [title]="title()"
+    ><input aria-label="Buscar evento" value="busca preservada"
+  /></app-workspace-scope>`,
 })
 class ScopeHost {
   scopeId = signal<string | null>(null);
@@ -17,7 +19,9 @@ describe('WorkspaceScopeComponent', () => {
     fixture.componentRef.setInput('title', 'Todos os formulários');
     fixture.componentRef.setInput('emoji', '🧠');
     await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('mat-expansion-panel-header').getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('mat-expansion-panel-header').getAttribute('aria-expanded')).toBe(
+      'false',
+    );
     expect(fixture.nativeElement.querySelector('lib-twemoji')).not.toBeNull();
   });
 

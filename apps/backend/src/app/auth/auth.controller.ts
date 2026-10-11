@@ -402,8 +402,7 @@ export class AuthController {
   @ApiBody({
     type: LogoutDto,
     required: false,
-    description:
-      'Optional redirect URI for the browser logout step. Token hints are never accepted from the request.',
+    description: 'Optional redirect URI for the browser logout step. Token hints are never accepted from the request.',
   })
   @ApiOkResponse({
     description: 'Local session cleared; globalLogoutComplete reports whether back-channel Keycloak logout succeeded.',
@@ -434,11 +433,7 @@ export class AuthController {
       },
     },
   })
-  async logout(
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-    @Body() body?: LogoutDto,
-  ) {
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() body?: LogoutDto) {
     const postLogoutRedirectUri = resolvePostLogoutRedirectUri(
       body?.postLogoutRedirectUri ?? process.env.KEYCLOAK_POST_LOGOUT_REDIRECT_URI,
       this.allowedPostLogoutRedirectOrigins,

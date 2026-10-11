@@ -31,13 +31,15 @@ describe('typesense reindex helpers', () => {
           publicationState: 'PUBLISHED',
         },
       ],
-      eventGroup: [{
-        id: 'group-1',
-        name: 'Grupo',
-        emoji: '👥',
-        majorEventId: 'major-1',
-        majorEvent: { name: 'Semana', deletedAt: null },
-      }],
+      eventGroup: [
+        {
+          id: 'group-1',
+          name: 'Grupo',
+          emoji: '👥',
+          majorEventId: 'major-1',
+          majorEvent: { name: 'Semana', deletedAt: null },
+        },
+      ],
       people: [{ id: 'person-1', name: 'Ana', secondaryEmails: [] }],
       placePreset: [{ id: 'place-1', name: 'Lab' }],
       certificateTemplate: [{ id: 'template-1', name: 'Certificado', isActive: true }],
@@ -64,12 +66,14 @@ describe('typesense reindex helpers', () => {
       { action: 'upsert' },
     );
     expect(client.documents.import).toHaveBeenCalledWith(
-      [expect.objectContaining({
-        id: 'group-1',
-        emoji: '👥',
-        majorEventId: 'major-1',
-        majorEventName: 'Semana',
-      })],
+      [
+        expect.objectContaining({
+          id: 'group-1',
+          emoji: '👥',
+          majorEventId: 'major-1',
+          majorEventName: 'Semana',
+        }),
+      ],
       { action: 'upsert' },
     );
   });
@@ -109,13 +113,15 @@ describe('typesense reindex helpers', () => {
   it('reindexes groups after major-event metadata changes', async () => {
     const client = createClientMock();
     const prisma = createPrismaMock({
-      eventGroup: [{
-        id: 'group-1',
-        name: 'Grupo',
-        emoji: '👥',
-        majorEventId: 'major-1',
-        majorEvent: { name: 'Semana atualizada', deletedAt: null },
-      }],
+      eventGroup: [
+        {
+          id: 'group-1',
+          name: 'Grupo',
+          emoji: '👥',
+          majorEventId: 'major-1',
+          majorEvent: { name: 'Semana atualizada', deletedAt: null },
+        },
+      ],
     });
 
     await reindexEventGroupSearchDocuments({
@@ -129,10 +135,12 @@ describe('typesense reindex helpers', () => {
       where: { majorEventId: 'major-1', deletedAt: null },
       select: expect.objectContaining({ id: true, majorEvent: expect.any(Object) }),
     });
-    expect(client.documents.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'group-1',
-      majorEventName: 'Semana atualizada',
-    }));
+    expect(client.documents.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'group-1',
+        majorEventName: 'Semana atualizada',
+      }),
+    );
   });
 
   it('imports audit-log entries in cursor batches', async () => {

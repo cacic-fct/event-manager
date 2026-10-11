@@ -239,10 +239,13 @@ describe('Event', () => {
   it('masks forbidden event resource lookups as shared not found', async () => {
     TestBed.resetTestingModule();
     const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
-    const eventFixture = await createEventComponentFixture({}, {
-      eventApi: { getEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
-      routeErrors,
-    });
+    const eventFixture = await createEventComponentFixture(
+      {},
+      {
+        eventApi: { getEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
+        routeErrors,
+      },
+    );
     eventFixture.detectChanges();
     await eventFixture.whenStable();
 
@@ -253,11 +256,14 @@ describe('Event', () => {
   it('masks forbidden preview token lookups as shared not found', async () => {
     TestBed.resetTestingModule();
     const routeErrors = { navigate: vi.fn(() => Promise.resolve(true)) };
-    const previewFixture = await createEventComponentFixture({}, {
-      eventApi: { getPreviewEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
-      routeParams: { previewToken: 'private-preview-token' },
-      routeErrors,
-    });
+    const previewFixture = await createEventComponentFixture(
+      {},
+      {
+        eventApi: { getPreviewEventPageData: () => throwError(() => new ForbiddenGraphqlError('forbidden')) },
+        routeParams: { previewToken: 'private-preview-token' },
+        routeErrors,
+      },
+    );
     previewFixture.detectChanges();
     await previewFixture.whenStable();
 
@@ -298,9 +304,12 @@ describe('Event', () => {
       eventGroupId: 'group-1',
       eventGroup: { id: 'group-1', name: 'Grupo aberto', emoji: '🎓', interestEnabled: true },
     };
-    const getState = vi.fn(() => of({ interest: null, enabled: true, subscribed: false,
-      endsAt: new Date(Date.now() + 86_400_000).toISOString() }));
-    TestBed.configureTestingModule({ providers: [{ provide: InterestApiService, useValue: { getState, changes: NEVER } }] });
+    const getState = vi.fn(() =>
+      of({ interest: null, enabled: true, subscribed: false, endsAt: new Date(Date.now() + 86_400_000).toISOString() }),
+    );
+    TestBed.configureTestingModule({
+      providers: [{ provide: InterestApiService, useValue: { getState, changes: NEVER } }],
+    });
     const fixture = await createEventComponentFixture({}, { eventPageData: data, authenticated: true });
     await fixture.whenStable();
     expect(getState).toHaveBeenCalledWith('EVENT_GROUP', 'group-1');

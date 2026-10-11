@@ -43,7 +43,9 @@ const deleteCandidate = fn((candidate: MergeCandidate) => Promise.resolve(candid
 const undoCandidate = fn((candidate: MergeCandidate) => Promise.resolve(candidate.id));
 
 function statusAt(index: number, scenario: CandidateStatusScenario): MergeCandidateStatus {
-  if (scenario !== 'MIXED') return scenario;
+  if (scenario !== 'MIXED') {
+    return scenario;
+  }
   return (['PENDING', 'MERGED', 'REJECTED', 'STALE'] as const)[index % 4];
 }
 
@@ -175,7 +177,8 @@ const meta: Meta<MergeCandidatesPageStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Duplicate person review queue with controls for match method, candidate status, density, and editing permissions.',
+        component:
+          'Duplicate person review queue with controls for match method, candidate status, density, and editing permissions.',
       },
     },
     layout: 'fullscreen',

@@ -1,4 +1,9 @@
-import { livestreamExternalUrl, normalizeLivestreamValue, normalizeTwitchChannel, normalizeYoutubeCode } from './shared-livestream';
+import {
+  livestreamExternalUrl,
+  normalizeLivestreamValue,
+  normalizeTwitchChannel,
+  normalizeYoutubeCode,
+} from './shared-livestream';
 
 describe('livestream identifiers', () => {
   it.each([
@@ -13,8 +18,10 @@ describe('livestream identifiers', () => {
   });
 
   it.each([
-    ' CACiC ', 'https://www.twitch.tv/CACiC?referrer=tracking',
-    'twitch.tv/CACiC', 'https://twitch.tv/cacic/about',
+    ' CACiC ',
+    'https://www.twitch.tv/CACiC?referrer=tracking',
+    'twitch.tv/CACiC',
+    'https://twitch.tv/cacic/about',
     'https://player.twitch.tv/?channel=CACiC&parent=example.com',
   ])('extracts Twitch channels from %s', (value) => {
     expect(normalizeTwitchChannel(value)).toBe('cacic');
@@ -22,18 +29,24 @@ describe('livestream identifiers', () => {
 
   it.each([
     'https://youtube.com.evil.example/watch?v=abc',
-    'https://evil.example/abc', 'javascript:alert(1)',
-    'https://youtube.com/watch?v=abc%2Fdef', 'https://youtube.com/playlist?list=abc',
+    'https://evil.example/abc',
+    'javascript:alert(1)',
+    'https://youtube.com/watch?v=abc%2Fdef',
+    'https://youtube.com/playlist?list=abc',
     'https://user:password@youtube.com/watch?v=abc',
   ])('rejects unsafe or unsupported YouTube input %s', (value) => {
     expect(normalizeYoutubeCode(value)).toBeNull();
   });
 
   it.each([
-    'https://twitch.tv.evil.example/cacic', 'https://clips.twitch.tv/SomeClip',
-    'https://twitch.tv/videos/123', 'https://twitch.tv/directory',
-    'https://twitch.tv/cacic/clip/SomeClip', 'https://evil.example/cacic',
-    'https://twitch.tv/abc%2Fdef', 'a'.repeat(26),
+    'https://twitch.tv.evil.example/cacic',
+    'https://clips.twitch.tv/SomeClip',
+    'https://twitch.tv/videos/123',
+    'https://twitch.tv/directory',
+    'https://twitch.tv/cacic/clip/SomeClip',
+    'https://evil.example/cacic',
+    'https://twitch.tv/abc%2Fdef',
+    'a'.repeat(26),
   ])('rejects unsupported Twitch input %s', (value) => {
     expect(normalizeTwitchChannel(value)).toBeNull();
   });

@@ -25,7 +25,13 @@ import { EventPostCommitEffectsService } from '../events/event-post-commit-effec
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
-import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import {
+  applyAudienceSettings,
+  assertAudienceCloneAllowed,
+  withAudienceAudit,
+  withoutAudienceInput,
+  type AudienceChange,
+} from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { eventGroupBelongsToMajorEventWhere } from './major-event-membership';
 
@@ -212,7 +218,9 @@ export class EventGroupsResolver {
     @Context() context: GraphqlContext,
   ) {
     if (input.majorEventId) {
-      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create], { majorEventId: input.majorEventId });
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventGroup.Create], {
+        majorEventId: input.majorEventId,
+      });
       await this.frozenResources.assertMajorEventMutable(input.majorEventId, this.getUser(context), 'edit');
     }
     const normalizedInput = this.normalizeEventGroupCertificateInput({
@@ -222,8 +230,17 @@ export class EventGroupsResolver {
     let audienceChange: AudienceChange | undefined;
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       let created = await tx.eventGroup.create({ data: normalizedInput });
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT_GROUP', targetId: created.id }, input, undefined, this.getUser(context)?.sub);
-      if (audienceChange) created = await tx.eventGroup.findUniqueOrThrow({ where: { id: created.id } });
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'EVENT_GROUP', targetId: created.id },
+        input,
+        undefined,
+        this.getUser(context)?.sub,
+      );
+      if (audienceChange) {
+        created = await tx.eventGroup.findUniqueOrThrow({ where: { id: created.id } });
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT_GROUP,
@@ -232,7 +249,11 @@ export class EventGroupsResolver {
           operation: AuditLogOperation.CREATE,
           actor: this.getUser(context),
           after: eventContentAuditSnapshot(withAudienceAudit(created, audienceChange)),
-          scope: { permission: Permission.EventGroup.Create, eventGroupId: created.id, ...(created.majorEventId ? { majorEventId: created.majorEventId } : {}) },
+          scope: {
+            permission: Permission.EventGroup.Create,
+            eventGroupId: created.id,
+            ...(created.majorEventId ? { majorEventId: created.majorEventId } : {}),
+          },
           summary: 'Grupo de eventos criado.',
         },
         tx,
@@ -245,7 +266,12 @@ export class EventGroupsResolver {
       emoji: eventGroup.emoji,
       majorEventId: eventGroup.majorEventId,
     });
-    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name }, audienceChange.personIds);
+    if (audienceChange) {
+      await this.audienceInvitations.notifyInvited(
+        { type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name },
+        audienceChange.personIds,
+      );
+    }
     return eventGroup;
   }
 
@@ -262,11 +288,20 @@ export class EventGroupsResolver {
     let audienceChange: AudienceChange | undefined;
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
-      if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      if (!previous) {
+        throw new NotFoundException(`Event group ${id} was not found.`);
+      }
       if (input.majorEventId !== undefined && input.majorEventId !== (previous.majorEventId ?? null)) {
         throw new BadRequestException('O vínculo do grupo com um grande evento deve ser definido na criação.');
       }
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT_GROUP', targetId: id }, input, previous, this.getUser(context)?.sub);
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'EVENT_GROUP', targetId: id },
+        input,
+        previous,
+        this.getUser(context)?.sub,
+      );
       await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(tx, id, normalizedInput);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
@@ -327,7 +362,12 @@ export class EventGroupsResolver {
       return updated;
     });
     if (eventGroup) {
-      if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name }, audienceChange.personIds);
+      if (audienceChange) {
+        await this.audienceInvitations.notifyInvited(
+          { type: 'EVENT_GROUP', id: eventGroup.id, name: eventGroup.name },
+          audienceChange.personIds,
+        );
+      }
       await this.postCommitEffects.upsertEventGroup({
         id: eventGroup.id,
         name: eventGroup.name,
@@ -426,7 +466,9 @@ export class EventGroupsResolver {
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
       const eventGroup = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
-      if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
+      if (!eventGroup) {
+        throw new NotFoundException(`Event group ${id} was not found.`);
+      }
       await this.sportsBackingLifecycle.assertEventGroupDeleteAllowed(tx, id);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       const events = await tx.event.findMany({

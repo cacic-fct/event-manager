@@ -270,7 +270,8 @@ describe('CertificateDownloadService', () => {
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     const render = jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
-      fileName: 'certificate.pdf', content: Buffer.alloc(1024),
+      fileName: 'certificate.pdf',
+      content: Buffer.alloc(1024),
     });
     const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
     await service.createCertificatesArchive('Ana', ['first', 'second'], {});
@@ -287,17 +288,28 @@ describe('CertificateDownloadService', () => {
 
   it('rejects excess simultaneous archives without launching another browser', async () => {
     const archives = [createArchive(), createArchive()];
-    for (const archive of archives) { archive.append.mockImplementation(() => undefined); }
-    jest.mocked(createZipArchive).mockResolvedValueOnce(archives[0] as never).mockResolvedValueOnce(archives[1] as never);
+    for (const archive of archives) {
+      archive.append.mockImplementation(() => undefined);
+    }
+    jest
+      .mocked(createZipArchive)
+      .mockResolvedValueOnce(archives[0] as never)
+      .mockResolvedValueOnce(archives[1] as never);
     jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockResolvedValue(undefined) } as never);
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-    jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({ fileName: 'certificate.pdf', content: Buffer.from('pdf') });
+    jest
+      .spyOn(service as never, 'renderCertificateFile')
+      .mockResolvedValue({ fileName: 'certificate.pdf', content: Buffer.from('pdf') });
     await service.createCertificatesArchive('Ana', ['first'], {});
     await service.createCertificatesArchive('Bia', ['second'], {});
-    await expect(service.createCertificatesArchive('Caio', ['third'], {})).rejects.toThrow('Certificate downloads are busy.');
+    await expect(service.createCertificatesArchive('Caio', ['third'], {})).rejects.toThrow(
+      'Certificate downloads are busy.',
+    );
     expect(chromium.launch).toHaveBeenCalledTimes(2);
-    for (const archive of archives) { archive.destroy(); }
+    for (const archive of archives) {
+      archive.destroy();
+    }
     await new Promise(setImmediate);
     expect(service['activeArchives']).toBe(0);
   });
@@ -391,7 +403,9 @@ function createArchive() {
     complete = resolve;
   });
   return Object.assign(archive, {
-    append: jest.fn().mockImplementation(() => { queueMicrotask(() => archive.emit('entry')); }),
+    append: jest.fn().mockImplementation(() => {
+      queueMicrotask(() => archive.emit('entry'));
+    }),
     finalize: jest.fn().mockImplementation(async () => complete()),
     completed,
   });

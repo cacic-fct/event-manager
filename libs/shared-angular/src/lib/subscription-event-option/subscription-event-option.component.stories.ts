@@ -170,7 +170,9 @@ export const PublicWithInfoAction: Story = {
   args: { showInfoButton: true, info: fn() },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Mais informações sobre Arquitetura Angular para aplicações acadêmicas' }));
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Mais informações sobre Arquitetura Angular para aplicações acadêmicas' }),
+    );
     await expect(args.info).toHaveBeenCalledOnce();
   },
 };

@@ -50,10 +50,16 @@
       <mat-card-header>
         <mat-icon mat-card-avatar>{{ queue().items.length === 0 ? 'task_alt' : 'filter_alt_off' }}</mat-icon>
         <mat-card-title>
-          {{ queue().items.length === 0 ? 'Nenhum comprovante pendente' : 'Nenhum comprovante corresponde aos filtros' }}
+          {{
+            queue().items.length === 0 ? 'Nenhum comprovante pendente' : 'Nenhum comprovante corresponde aos filtros'
+          }}
         </mat-card-title>
         <mat-card-subtitle>
-          {{ queue().items.length === 0 ? 'A fila será atualizada automaticamente.' : 'Altere os filtros para ver outros itens da fila.' }}
+          {{
+            queue().items.length === 0
+              ? 'A fila será atualizada automaticamente.'
+              : 'Altere os filtros para ver outros itens da fila.'
+          }}
         </mat-card-subtitle>
       </mat-card-header>
     </mat-card>
@@ -66,8 +72,18 @@
           <mat-card-subtitle class="queue-context">
             <span>{{ item.majorEventName }}</span>
             <span>{{ isTicketPurchase(item) ? 'Compra enviada em' : 'Última alteração em' }}</span>
-            <time [attr.datetime]="isTicketPurchase(item) ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt : item.subscriptionUpdatedAt">
-              {{ (isTicketPurchase(item) ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt : item.subscriptionUpdatedAt) | date: 'dd/MM/yyyy HH:mm' }}
+            <time
+              [attr.datetime]="
+                isTicketPurchase(item)
+                  ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt
+                  : item.subscriptionUpdatedAt
+              ">
+              {{
+                (isTicketPurchase(item)
+                  ? item.subscriptionCreatedAt || item.subscriptionUpdatedAt
+                  : item.subscriptionUpdatedAt
+                ) | date: 'dd/MM/yyyy HH:mm'
+              }}
             </time>
           </mat-card-subtitle>
         </mat-card-header>
@@ -120,11 +136,21 @@
       </mat-card>
 
       <section class="stack-toolbar" aria-label="Navegação de comprovantes">
-        <button matIconButton type="button" aria-label="Comprovante anterior" [disabled]="selectedIndex() === 0" (click)="previousReceipt()">
+        <button
+          matIconButton
+          type="button"
+          aria-label="Comprovante anterior"
+          [disabled]="selectedIndex() === 0"
+          (click)="previousReceipt()">
           <mat-icon>chevron_left</mat-icon>
         </button>
         <span>{{ currentPosition() }} de {{ totalItems() }}</span>
-        <button matIconButton type="button" aria-label="Próximo comprovante" [disabled]="selectedIndex() + 1 >= totalItems()" (click)="nextReceipt()">
+        <button
+          matIconButton
+          type="button"
+          aria-label="Próximo comprovante"
+          [disabled]="selectedIndex() + 1 >= totalItems()"
+          (click)="nextReceipt()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </section>
@@ -133,7 +159,9 @@
         <mat-card appearance="outlined" class="events-panel">
           <mat-card-header>
             <mat-icon mat-card-avatar>event</mat-icon>
-            <mat-card-title>{{ isTicketPurchase(item) ? 'Bilhete solicitado' : 'Eventos selecionados' }}</mat-card-title>
+            <mat-card-title>{{
+              isTicketPurchase(item) ? 'Bilhete solicitado' : 'Eventos selecionados'
+            }}</mat-card-title>
             <mat-card-subtitle>
               @if (isTicketPurchase(item)) {
                 {{ item.ticketName || 'Compra de bilhete' }}
@@ -206,7 +234,9 @@
             <mat-card-subtitle class="receipt-meta">
               @if (item.receipt) {
                 <span>Enviado em</span>
-                <time [attr.datetime]="item.receipt.uploadedAt">{{ item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</time>
+                <time [attr.datetime]="item.receipt.uploadedAt">{{
+                  item.receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm'
+                }}</time>
                 <span>Situação: {{ processingStatusLabel(item.receipt.processingStatus) }}</span>
               } @else {
                 Nenhum arquivo encontrado
@@ -240,7 +270,9 @@
                 <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
               </div>
             } @else if (item.receipt?.ocrText) {
-              <pre class="ocr-fallback" tabindex="0" role="region" aria-label="Texto do comprovante">{{ item.receipt.ocrText }}</pre>
+              <pre class="ocr-fallback" tabindex="0" role="region" aria-label="Texto do comprovante">{{
+                item.receipt.ocrText
+              }}</pre>
             } @else {
               <div class="missing-receipt">
                 <mat-icon>image_not_supported</mat-icon>

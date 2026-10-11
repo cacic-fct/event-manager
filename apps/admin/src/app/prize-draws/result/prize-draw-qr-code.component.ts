@@ -31,7 +31,9 @@ export class PrizeDrawQrCodeComponent implements AfterViewInit {
     effect(() => {
       const value = this.value();
       this.size();
-      if (this.viewReady) queueMicrotask(() => this.render(value));
+      if (this.viewReady) {
+        queueMicrotask(() => this.render(value));
+      }
     });
   }
 
@@ -41,7 +43,9 @@ export class PrizeDrawQrCodeComponent implements AfterViewInit {
   }
 
   private render(value: string): void {
-    if (!isPlatformBrowser(this.platformId) || !value) return;
+    if (!isPlatformBrowser(this.platformId) || !value) {
+      return;
+    }
     try {
       toCanvas(this.canvas().nativeElement, {
         bcid: 'qrcode',

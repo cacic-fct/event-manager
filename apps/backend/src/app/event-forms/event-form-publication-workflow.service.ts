@@ -171,7 +171,9 @@ export class EventFormPublicationWorkflowService {
 
   async publishDueScheduledForms(): Promise<number> {
     const published = await publishDueScheduledEventForms(this.prisma, this.formNotifications, this.auditLog);
-    if (published > 0) await this.publishInvalidationsBestEffort();
+    if (published > 0) {
+      await this.publishInvalidationsBestEffort();
+    }
     return published;
   }
 

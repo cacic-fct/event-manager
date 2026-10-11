@@ -1,13 +1,5 @@
 import { DatePipe } from '@angular/common';
-import {
-  afterNextRender,
-  Component,
-  ElementRef,
-  Injector,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { afterNextRender, Component, ElementRef, Injector, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';

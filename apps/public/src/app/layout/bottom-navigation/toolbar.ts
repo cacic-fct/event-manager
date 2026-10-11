@@ -57,7 +57,9 @@ export class BottomToolbarComponent implements AfterViewInit {
   });
 
   ngAfterViewInit(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
 
     const toolbarEl = this.toolbarRef?.nativeElement ?? null;
 

@@ -6,9 +6,10 @@
           <mat-form-field>
             <mat-label>Buscar local</mat-label>
             <input matInput type="search" formControlName="query" />
-            <button matIconButton matSuffix type="submit" aria-label="Buscar locais"><mat-icon>search</mat-icon></button>
+            <button matIconButton matSuffix type="submit" aria-label="Buscar locais">
+              <mat-icon>search</mat-icon>
+            </button>
           </mat-form-field>
-
         </form>
 
         <button mat-stroked-button type="button" (click)="workspace.startNewPlacePreset()">
@@ -17,25 +18,51 @@
         </button>
       </div>
 
-      @if (workspace.loadingPlaces()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando locais" /> }
+      @if (workspace.loadingPlaces()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Carregando locais" />
+      }
       @if (workspace.placesError()) {
-        <div class="notice" role="alert"><span>{{ workspace.placesError() }}</span><button mat-button type="button" (click)="workspace.loadPlacePresets()">Tentar novamente</button></div>
+        <div class="notice" role="alert">
+          <span>{{ workspace.placesError() }}</span
+          ><button mat-button type="button" (click)="workspace.loadPlacePresets()">Tentar novamente</button>
+        </div>
       }
       <div class="result-list" role="group" aria-label="Locais encontrados">
         @for (place of workspace.sortedPlacePresets(); track place.id) {
-          <app-workspace-record [title]="place.name" [selected]="workspace.selectedPlacePreset()?.id === place.id" [link]="['/places', place.id]">
+          <app-workspace-record
+            [title]="place.name"
+            [selected]="workspace.selectedPlacePreset()?.id === place.id"
+            [link]="['/places', place.id]">
             <span recordDescription>{{ place.locationDescription || 'Sem descrição' }}</span>
             <div recordActions>
-              <button matIconButton type="button" aria-label="Selecionar para unificar" matTooltip="Selecionar duplicado"
-                [disabled]="workspace.selectedPlacePreset()?.id === place.id || !permissions.canEdit(Permission.PlacePreset.Merge) || !permissions.canDelete(Permission.PlacePreset.Delete)"
-                (click)="workspace.chooseMergeSource(place)"><mat-icon>call_merge</mat-icon></button>
-              <button matIconButton type="button" aria-label="Excluir local" matTooltip="Excluir"
+              <button
+                matIconButton
+                type="button"
+                aria-label="Selecionar para unificar"
+                matTooltip="Selecionar duplicado"
+                [disabled]="
+                  workspace.selectedPlacePreset()?.id === place.id ||
+                  !permissions.canEdit(Permission.PlacePreset.Merge) ||
+                  !permissions.canDelete(Permission.PlacePreset.Delete)
+                "
+                (click)="workspace.chooseMergeSource(place)">
+                <mat-icon>call_merge</mat-icon>
+              </button>
+              <button
+                matIconButton
+                type="button"
+                aria-label="Excluir local"
+                matTooltip="Excluir"
                 [disabled]="!permissions.canDelete(Permission.PlacePreset.Delete)"
-                (click)="workspace.deletePlacePreset(place)"><mat-icon>delete</mat-icon></button>
+                (click)="workspace.deletePlacePreset(place)">
+                <mat-icon>delete</mat-icon>
+              </button>
             </div>
           </app-workspace-record>
         } @empty {
-          @if (!workspace.loadingPlaces() && !workspace.placesError()) { <p class="empty-note">Nenhum local encontrado. Revise a busca ou cadastre um local.</p> }
+          @if (!workspace.loadingPlaces() && !workspace.placesError()) {
+            <p class="empty-note">Nenhum local encontrado. Revise a busca ou cadastre um local.</p>
+          }
         }
       </div>
 
@@ -106,7 +133,8 @@
             mat-flat-button
             type="button"
             [disabled]="
-              workspace.placeForm.invalid || !permissions.canEdit(
+              workspace.placeForm.invalid ||
+              !permissions.canEdit(
                 workspace.selectedPlacePreset() ? Permission.PlacePreset.Update : Permission.PlacePreset.Create
               )
             "
@@ -120,7 +148,10 @@
       @if (workspace.mergeSource(); as source) {
         <div class="notice" role="status">
           <mat-icon>call_merge</mat-icon>
-          <span>Local a unificar: <strong>{{ source.name }}</strong>. Selecione o local que deve permanecer e use Unificar.</span>
+          <span
+            >Local a unificar: <strong>{{ source.name }}</strong
+            >. Selecione o local que deve permanecer e use Unificar.</span
+          >
           <button mat-button type="button" (click)="workspace.mergeSource.set(null)">Cancelar unificação</button>
         </div>
       }
@@ -145,18 +176,19 @@
             </mat-form-field>
           </div>
           <mat-expansion-panel>
-            <mat-expansion-panel-header><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header>
+            <mat-expansion-panel-header
+              ><mat-panel-title>Ajustar coordenadas</mat-panel-title></mat-expansion-panel-header
+            >
             <div class="field-grid">
-            <mat-form-field>
-              <mat-label>Latitude</mat-label>
-              <input matInput formControlName="latitude" />
-            </mat-form-field>
+              <mat-form-field>
+                <mat-label>Latitude</mat-label>
+                <input matInput formControlName="latitude" />
+              </mat-form-field>
 
-            <mat-form-field>
-              <mat-label>Longitude</mat-label>
-              <input matInput formControlName="longitude" />
-            </mat-form-field>
-
+              <mat-form-field>
+                <mat-label>Longitude</mat-label>
+                <input matInput formControlName="longitude" />
+              </mat-form-field>
             </div>
           </mat-expansion-panel>
         </section>

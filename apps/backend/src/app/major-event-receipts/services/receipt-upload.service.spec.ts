@@ -1,5 +1,11 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, SportsParticipantStatus, SportsPaymentStatus, SubscriptionStatus } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  SportsParticipantStatus,
+  SportsPaymentStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
@@ -180,7 +186,9 @@ describe('ReceiptUploadService', () => {
         findUnique: jest.fn().mockResolvedValue(null),
       },
     };
-    prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx));
+    prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+      callback(tx),
+    );
     auditLog.record.mockRejectedValueOnce(new Error('Audit unavailable'));
 
     await expect(service.uploadReceipt('major-1', createValidFile(), user)).rejects.toThrow('Audit unavailable');
@@ -240,14 +248,17 @@ describe('ReceiptUploadService', () => {
     );
 
     expect(auditLog.record).toHaveBeenCalledTimes(1);
-    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
-      entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
-      entityId: 'subscription-1',
-      operation: AuditLogOperation.SUBMIT,
-      actor: user,
-      after: { receiptId: 'receipt-1', personId: 'person-1', majorEventId: 'major-1', uploadedAt: expect.any(Date) },
-      scope: expect.objectContaining({ majorEventId: 'major-1' }),
-    }), tx);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+        entityId: 'subscription-1',
+        operation: AuditLogOperation.SUBMIT,
+        actor: user,
+        after: { receiptId: 'receipt-1', personId: 'person-1', majorEventId: 'major-1', uploadedAt: expect.any(Date) },
+        scope: expect.objectContaining({ majorEventId: 'major-1' }),
+      }),
+      tx,
+    );
     expect(JSON.stringify(auditLog.record.mock.calls[0][0])).not.toContain('object-key');
 
     expect(s3.uploadFile).toHaveBeenCalledWith(

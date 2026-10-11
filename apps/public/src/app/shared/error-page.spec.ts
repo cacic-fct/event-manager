@@ -13,15 +13,17 @@ const customTitle = 'Você não tem acesso à gestão deste evento.';
 describe('shared error page routing', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter([
-        {
-          path: 'private',
-          component: ProtectedPage,
-          canActivate: [() => inject(RouteErrorService).guardRedirect(403, { title: customTitle })],
-        },
-        { path: 'error/403', component: ErrorPage, data: { pageError: { status: 403 } } },
-        { path: 'error/404', component: ErrorPage, data: { pageError: { status: 404 } } },
-      ])],
+      providers: [
+        provideRouter([
+          {
+            path: 'private',
+            component: ProtectedPage,
+            canActivate: [() => inject(RouteErrorService).guardRedirect(403, { title: customTitle })],
+          },
+          { path: 'error/403', component: ErrorPage, data: { pageError: { status: 403 } } },
+          { path: 'error/404', component: ErrorPage, data: { pageError: { status: 404 } } },
+        ]),
+      ],
     });
   });
 

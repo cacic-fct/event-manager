@@ -32,8 +32,10 @@ export class EventAudienceService {
   ) {}
 
   async principalForUser(user?: AuthenticatedUser): Promise<EventAudiencePrincipal> {
-    if (!user?.sub) return ANONYMOUS_AUDIENCE;
-    const userId = await this.accountMerge.resolveFinalUserId(user.sub) ?? user.sub;
+    if (!user?.sub) {
+      return ANONYMOUS_AUDIENCE;
+    }
+    const userId = (await this.accountMerge.resolveFinalUserId(user.sub)) ?? user.sub;
     user = { ...user, sub: userId };
     const people = await this.prisma.people.findMany({
       where: { userId, deletedAt: null, mergedIntoId: null },
@@ -52,7 +54,7 @@ export class EventAudienceService {
   }
 
   async principalForStoredUser(userId: string): Promise<EventAudiencePrincipal> {
-    userId = await this.accountMerge.resolveFinalUserId(userId) ?? userId;
+    userId = (await this.accountMerge.resolveFinalUserId(userId)) ?? userId;
     const [user, people] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
       this.prisma.people.findMany({
@@ -125,27 +127,41 @@ export class EventAudienceService {
     return resolveAudienceIdentity({ email: accountProfile.email ?? email, claims }, verificationDisabled);
   }
 
-  private async lookupAccountProfile(email: string, expectedUserId: string): Promise<M2MUserIdentifierLookupMatch | null> {
+  private async lookupAccountProfile(
+    email: string,
+    expectedUserId: string,
+  ): Promise<M2MUserIdentifierLookupMatch | null> {
     const key = JSON.stringify([expectedUserId, email.trim().toLowerCase()]);
     const cached = this.profileCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return cached.value;
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
     const pending = this.pendingProfiles.get(key);
-    if (pending) return pending;
-    const lookup = this.fetchAccountProfile(email, expectedUserId).then((value) => {
-      this.profileCache.delete(key);
-      while (this.profileCache.size >= this.profileCacheLimit) {
-        const oldest = this.profileCache.keys().next().value;
-        if (oldest === undefined) break;
-        this.profileCache.delete(oldest);
-      }
-      this.profileCache.set(key, { value, expiresAt: Date.now() + this.profileCacheTtlMs });
-      return value;
-    }).finally(() => this.pendingProfiles.delete(key));
+    if (pending) {
+      return pending;
+    }
+    const lookup = this.fetchAccountProfile(email, expectedUserId)
+      .then((value) => {
+        this.profileCache.delete(key);
+        while (this.profileCache.size >= this.profileCacheLimit) {
+          const oldest = this.profileCache.keys().next().value;
+          if (oldest === undefined) {
+            break;
+          }
+          this.profileCache.delete(oldest);
+        }
+        this.profileCache.set(key, { value, expiresAt: Date.now() + this.profileCacheTtlMs });
+        return value;
+      })
+      .finally(() => this.pendingProfiles.delete(key));
     this.pendingProfiles.set(key, lookup);
     return lookup;
   }
 
-  private async fetchAccountProfile(email: string, expectedUserId: string): Promise<M2MUserIdentifierLookupMatch | null> {
+  private async fetchAccountProfile(
+    email: string,
+    expectedUserId: string,
+  ): Promise<M2MUserIdentifierLookupMatch | null> {
     if (!this.accountManager) {
       return null;
     }
@@ -165,13 +181,19 @@ export class EventAudienceService {
 }
 
 function hasEnrollmentClaim(value: unknown): boolean {
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value === 'string') return value.trim().length > 0;
+  if (typeof value === 'number') {
+    return Number.isFinite(value);
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
   return false;
 }
 
 function hasRoleClaim(value: unknown): boolean {
-  if (typeof value === 'string') return value.trim().length > 0;
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
   return Array.isArray(value) && value.some((role) => typeof role === 'string' && role.trim().length > 0);
 }
 

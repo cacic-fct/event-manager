@@ -15,18 +15,14 @@ export const routes: Route[] = [
       },
       {
         path: 'manage/people/:personId',
-        canActivate: [
-          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read]),
-        ],
+        canActivate: [requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read])],
         canDeactivate: [pendingPermissionChangesGuard],
         loadComponent: () =>
           import('./management/permission-management-page.component').then((m) => m.PermissionManagementPageComponent),
       },
       {
         path: 'manage',
-        canActivate: [
-          requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read]),
-        ],
+        canActivate: [requiredPermissionsGuard([Permission.PermissionGrant.Read, Permission.Person.Read])],
         canDeactivate: [pendingPermissionChangesGuard],
         loadComponent: () =>
           import('./management/permission-management-page.component').then((m) => m.PermissionManagementPageComponent),

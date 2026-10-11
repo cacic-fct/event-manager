@@ -35,7 +35,9 @@ export function normalizeWgs84Coordinates(
   longitude: number | null,
   context = 'coordinate pair',
 ): Wgs84Coordinates {
-  if (latitude === null && longitude === null) return { latitude: null, longitude: null };
+  if (latitude === null && longitude === null) {
+    return { latitude: null, longitude: null };
+  }
   if (latitude === null || longitude === null) {
     throw new Error(`${context} must include both latitude and longitude.`);
   }
@@ -61,7 +63,9 @@ function isNodeError(value: unknown): value is NodeJS.ErrnoException {
 }
 
 export function databaseUrlFromOptions(options: DatabaseOptions = {}): string {
-  if (options?.databaseUrl) return options.databaseUrl;
+  if (options?.databaseUrl) {
+    return options.databaseUrl;
+  }
 
   const user = encodeURIComponent(options?.dbUser ?? 'postgres');
   const password = encodeURIComponent(options?.dbPassword ?? 'postgres');
@@ -92,7 +96,9 @@ export function formatCounter(
   counter: ReadonlyMap<string, number> | Readonly<Record<string, number>> | null | undefined,
 ): string {
   const entries = counter instanceof Map ? [...counter.entries()] : Object.entries(counter ?? {});
-  if (entries.length === 0) return 'none';
+  if (entries.length === 0) {
+    return 'none';
+  }
   return entries
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}=${value}`)
@@ -113,7 +119,9 @@ export function parseEnvFile(envPath: string): Record<string, string> {
   const values: Record<string, string> = {};
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    if (!line || line.startsWith('#') || !line.includes('=')) {
+      continue;
+    }
     const separator = line.indexOf('=');
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
@@ -151,26 +159,38 @@ export function sanitizePostgresUrl(databaseUrl: string): string {
   } catch {
     return databaseUrl;
   }
-  if (parsed.protocol !== 'postgresql:' && parsed.protocol !== 'postgres:') return databaseUrl;
+  if (parsed.protocol !== 'postgresql:' && parsed.protocol !== 'postgres:') {
+    return databaseUrl;
+  }
 
-  for (const key of UNSUPPORTED_POSTGRES_URL_PARAMS) parsed.searchParams.delete(key);
+  for (const key of UNSUPPORTED_POSTGRES_URL_PARAMS) {
+    parsed.searchParams.delete(key);
+  }
   return parsed.toString();
 }
 
 export function resolveDatabaseUrlFromEnvOptions(
   options: Pick<DatabaseOptions, 'databaseUrl' | 'envFile'> = {},
 ): string {
-  if (options?.databaseUrl) return options.databaseUrl;
+  if (options?.databaseUrl) {
+    return options.databaseUrl;
+  }
   const envPath = options?.envFile ?? '.env';
   const envValues = parseEnvFile(envPath);
   let databaseUrl = (envValues.DATABASE_URL ?? '').trim();
-  if (!databaseUrl) throw new Error(`DATABASE_URL is missing in ${envPath}`);
-  if (databaseUrl.startsWith('prisma+postgres://')) databaseUrl = decodePrismaPostgresUrl(databaseUrl);
+  if (!databaseUrl) {
+    throw new Error(`DATABASE_URL is missing in ${envPath}`);
+  }
+  if (databaseUrl.startsWith('prisma+postgres://')) {
+    databaseUrl = decodePrismaPostgresUrl(databaseUrl);
+  }
   return sanitizePostgresUrl(databaseUrl);
 }
 
 export function isMain(importMetaUrl: string, entryPoint: string | undefined = process.argv[1]): boolean {
-  if (!entryPoint) return false;
+  if (!entryPoint) {
+    return false;
+  }
   try {
     return resolve(fileURLToPath(importMetaUrl)) === resolve(entryPoint);
   } catch {

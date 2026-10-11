@@ -8,9 +8,14 @@ describe('InterestConversionDialogComponent', () => {
     await TestBed.configureTestingModule({
       imports: [InterestConversionDialogComponent],
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: {
-          personName: 'Ana Clara', targetName: 'Oficina', requiresImageLicenseAgreement: true,
-        } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            personName: 'Ana Clara',
+            targetName: 'Oficina',
+            requiresImageLicenseAgreement: true,
+          },
+        },
         { provide: MatDialogRef, useValue: { close } },
       ],
     }).compileComponents();

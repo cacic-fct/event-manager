@@ -55,7 +55,12 @@ export const PersistentStopwatch: Story = {
     const initialTime = clock?.textContent;
     await userEvent.click(await canvas.findByRole('button', { name: 'Classificação' }));
     await expect(operation?.isConnected).toBe(true);
-    await waitFor(async () => { await expect(clock?.textContent).not.toBe(initialTime); }, { timeout: 2500 });
+    await waitFor(
+      async () => {
+        await expect(clock?.textContent).not.toBe(initialTime);
+      },
+      { timeout: 2500 },
+    );
     await userEvent.click(await canvas.findByRole('button', { name: 'Operação' }));
     await expect(canvasElement.querySelector('app-landing-match-operations-demo')).toBe(operation);
     await expect(canvas.getByRole('button', { name: 'Pausar cronômetro' })).toBeVisible();

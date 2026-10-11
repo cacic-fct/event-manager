@@ -13,7 +13,9 @@ describe('NotificationsDemoComponent', () => {
     component.openDestination.subscribe(open);
     component.unreadOnly.set(true);
     const notification = component.visibleNotifications().find((item) => item.destination === 'ticket-transfer');
-    if (!notification) throw new Error('Expected a ticket notification');
+    if (!notification) {
+      throw new Error('Expected a ticket notification');
+    }
     component.openNotification(notification);
 
     expect(open).toHaveBeenCalledWith('ticket-transfer');

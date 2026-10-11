@@ -30,10 +30,7 @@ describe('OrganizerInfoComponent', () => {
       .subscribe((state) => states.push(state));
     second.error(new Error('Falha ao carregar B'));
 
-    expect(states).toEqual([
-      { status: 'ready', info: firstInfo },
-      { status: 'loading' },
-    ]);
+    expect(states).toEqual([{ status: 'ready', info: firstInfo }, { status: 'loading' }]);
     expect(routeErrors.navigate).toHaveBeenCalledWith(500);
   });
 });

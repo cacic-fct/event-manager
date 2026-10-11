@@ -69,8 +69,7 @@ const meta: Meta<SubscriptionTierSelection> = {
 export default meta;
 type Story = StoryObj<SubscriptionTierSelection>;
 
-export const Playground: Story = {
-};
+export const Playground: Story = {};
 
 export const CompareModalities: Story = {
   play: async ({ canvasElement }) => {

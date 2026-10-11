@@ -38,25 +38,36 @@ function getFeatureRouteData(id: NavigationLinkId) {
   return item;
 }
 
-function guardedFeatureRoute(path: string, data: NavigationLinkItem, loadComponent: Route['loadComponent'], guard: CanMatchFn = canReadFeatureGuard): Route[] {
+function guardedFeatureRoute(
+  path: string,
+  data: NavigationLinkItem,
+  loadComponent: Route['loadComponent'],
+  guard: CanMatchFn = canReadFeatureGuard,
+): Route[] {
   return [
     {
       path,
       data,
       canMatch: [guard],
-      ...(data.id === 'forms' ? {
-        canDeactivate: [formsUnsavedChangesGuard],
-        runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
-      } : {}),
-      ...(data.id === 'prize-draws' && !path.endsWith('/draw') ? {
-        canDeactivate: [prizeDrawsUnsavedChangesGuard],
-        runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
-      } : {}),
-      ...(['events', 'groups', 'major-events', 'certificates', 'tickets', 'sports'].includes(data.id) ? {
-        canActivate: [workspacePendingChangesActivateGuard],
-        canDeactivate: [workspacePendingChangesGuard],
-        runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
-      } : {}),
+      ...(data.id === 'forms'
+        ? {
+            canDeactivate: [formsUnsavedChangesGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
+          }
+        : {}),
+      ...(data.id === 'prize-draws' && !path.endsWith('/draw')
+        ? {
+            canDeactivate: [prizeDrawsUnsavedChangesGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
+          }
+        : {}),
+      ...(['events', 'groups', 'major-events', 'certificates', 'tickets', 'sports'].includes(data.id)
+        ? {
+            canActivate: [workspacePendingChangesActivateGuard],
+            canDeactivate: [workspacePendingChangesGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
+          }
+        : {}),
       loadComponent,
     },
   ];
@@ -80,18 +91,25 @@ export const routes: Route[] = [
       {
         path: 'event-workspace',
         pathMatch: 'full',
-        loadComponent: () => import('../event-workspace/event-workspace-page.component').then((m) => m.EventWorkspacePageComponent),
+        loadComponent: () =>
+          import('../event-workspace/event-workspace-page.component').then((m) => m.EventWorkspacePageComponent),
       },
-      ...guardedFeatureRoute('event-workspace/new/event', eventsData, () =>
-        import('../events/events-page.component').then((m) => m.EventsPageComponent),
+      ...guardedFeatureRoute(
+        'event-workspace/new/event',
+        eventsData,
+        () => import('../events/events-page.component').then((m) => m.EventsPageComponent),
         canCreateContextGuard,
       ),
-      ...guardedFeatureRoute('event-workspace/new/group', groupsData, () =>
-        import('../event-groups/event-groups-page.component').then((m) => m.EventGroupsPageComponent),
+      ...guardedFeatureRoute(
+        'event-workspace/new/group',
+        groupsData,
+        () => import('../event-groups/event-groups-page.component').then((m) => m.EventGroupsPageComponent),
         canCreateContextGuard,
       ),
-      ...guardedFeatureRoute('event-workspace/new/major-event', majorEventsData, () =>
-        import('../major-events/major-events-page.component').then((m) => m.MajorEventsPageComponent),
+      ...guardedFeatureRoute(
+        'event-workspace/new/major-event',
+        majorEventsData,
+        () => import('../major-events/major-events-page.component').then((m) => m.MajorEventsPageComponent),
         canCreateContextGuard,
       ),
 
@@ -100,7 +118,8 @@ export const routes: Route[] = [
         pathMatch: 'full',
         data: ticketsData,
         canMatch: [canReadFeatureGuard],
-        loadComponent: () => import('../tickets/ticket-admin-landing-page.component').then((m) => m.TicketAdminLandingPageComponent),
+        loadComponent: () =>
+          import('../tickets/ticket-admin-landing-page.component').then((m) => m.TicketAdminLandingPageComponent),
       },
       ...guardedFeatureRoute('tickets/event/:eventId', ticketsData, () =>
         import('../tickets/ticket-admin-page.component').then((m) => m.TicketAdminPageComponent),
@@ -112,17 +131,13 @@ export const routes: Route[] = [
         const data = kind === 'event' ? eventsData : kind === 'group' ? groupsData : majorEventsData;
         const routeData = { ...data, targetType: kind };
         const settingsRouteData = { ...routeData, section: 'settings' };
-        const loadComponent = () => import('../event-workspace/event-workspace-page.component').then((m) => m.EventWorkspacePageComponent);
+        const loadComponent = () =>
+          import('../event-workspace/event-workspace-page.component').then((m) => m.EventWorkspacePageComponent);
         return [
           ...guardedFeatureRoute(`event-workspace/${kind}/:targetId`, routeData, loadComponent),
-          ...guardedFeatureRoute(
-            `event-workspace/${kind}/:targetId/settings`,
-            settingsRouteData,
-            loadComponent,
-          ),
+          ...guardedFeatureRoute(`event-workspace/${kind}/:targetId/settings`, settingsRouteData, loadComponent),
         ];
       }),
-
 
       ...guardedFeatureRoute(placesData.path, placesData, () =>
         import('../places/places-page.component').then((m) => m.PlacesPageComponent),
@@ -130,8 +145,6 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${placesData.path}/:placeId`, placesData, () =>
         import('../places/places-page.component').then((m) => m.PlacesPageComponent),
       ),
-
-
 
       ...sportsWorkspaceRoutePaths.map((path) => ({
         path,
@@ -209,8 +222,10 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${attendancesData.path}/major-event/:majorEventId`, attendancesData, () =>
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),
-      ...guardedFeatureRoute(`${attendancesData.path}/major-event/:majorEventId/person/:personId`, attendancesData, () =>
-        import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
+      ...guardedFeatureRoute(
+        `${attendancesData.path}/major-event/:majorEventId/person/:personId`,
+        attendancesData,
+        () => import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),
 
       ...guardedFeatureRoute(`${subscriptionsData.path}/event/:eventId/interests`, subscriptionsData, () =>

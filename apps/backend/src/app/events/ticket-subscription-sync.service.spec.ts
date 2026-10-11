@@ -18,9 +18,19 @@ describe('ticket subscription synchronization', () => {
     const service = new TicketSubscriptionSyncService(tickets as never);
     const tx = { ticketConfig: { findMany: jest.fn().mockResolvedValue([{ eventId: 'hidden-kit' }]) } };
     await service.forMajorEvent(tx as never, 'major', 'person');
-    expect(tx.ticketConfig.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {
-      event: { OR: [{ majorEventId: 'major' }, { majorEventId: null, eventGroup: { majorEventId: 'major' } }] },
-    } }));
-    expect(tickets.syncForPerson).toHaveBeenCalledWith(tx, 'hidden-kit', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:hidden-kit:person');
+    expect(tx.ticketConfig.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          event: { OR: [{ majorEventId: 'major' }, { majorEventId: null, eventGroup: { majorEventId: 'major' } }] },
+        },
+      }),
+    );
+    expect(tickets.syncForPerson).toHaveBeenCalledWith(
+      tx,
+      'hidden-kit',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:hidden-kit:person',
+    );
   });
 });

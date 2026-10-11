@@ -5,7 +5,9 @@ import { NovuNotificationsService } from './novu-notifications.service';
 
 describe('NovuNotificationsService', () => {
   it.each(['disabled', 'missing-key'])('completes ticket notifications when Novu is %s', async (mode) => {
-    config.get.mockImplementation((key: string) => key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined);
+    config.get.mockImplementation((key: string) =>
+      key === 'NOVU_SECURE_MODE_ENABLED' ? (mode === 'disabled' ? 'false' : 'true') : undefined,
+    );
     await expect(service.notifyTicketTransfer({} as never)).resolves.toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
   });

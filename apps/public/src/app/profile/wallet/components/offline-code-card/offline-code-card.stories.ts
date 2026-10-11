@@ -25,8 +25,12 @@ const meta: Meta<OfflineCodeCardStoryArgs> = {
             useValue: {
               getWalletSeed: () => {
                 state = context.args.state;
-                if (state === 'loading') return new Promise(() => undefined);
-                if (state === 'unavailable') return Promise.resolve(null);
+                if (state === 'loading') {
+                  return new Promise(() => undefined);
+                }
+                if (state === 'unavailable') {
+                  return Promise.resolve(null);
+                }
                 return createWalletStoryTotpSession().getWalletSeed();
               },
             },

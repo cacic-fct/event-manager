@@ -1,5 +1,9 @@
 import type { Page, Route } from '@playwright/test';
-import { createTicketTransfer, createTicketTransferLists, createWalletTicket } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createTicketTransfer,
+  createTicketTransferLists,
+  createWalletTicket,
+} from '@cacic-fct/shared-ticketing/testing';
 import type { TicketTransfer, WalletTicket } from '@cacic-fct/shared-ticketing';
 import { expect, test } from './support/e2e-test';
 import { authenticatedUserFixture } from './support/authenticated-user.fixture';
@@ -19,9 +23,7 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
   await page.addInitScript(installControlledEventSource);
-  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
-    route.fulfill({ json: { toggles: [] } }),
-  );
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) => route.fulfill({ json: { toggles: [] } }));
   await page.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({
       status: 200,
@@ -35,9 +37,18 @@ test('opens archived passes with their barcodes and returns to the archive', asy
   const now = new Date();
   const active = createWalletTicket({ id: '018f47a1-3d5b-7abc-8def-0123456789ab' }, now);
   const archived = [
-    createWalletTicket({ id: '018f47a1-3d5b-7abc-8def-0123456789ac', name: 'Ingresso utilizado', status: 'CONSUMED' }, now),
-    createWalletTicket({ id: '018f47a1-3d5b-7abc-8def-0123456789ad', name: 'Ingresso revogado', status: 'REVOKED' }, now),
-    createWalletTicket({ id: '018f47a1-3d5b-7abc-8def-0123456789ae', name: 'Ingresso expirado', status: 'EXPIRED' }, now),
+    createWalletTicket(
+      { id: '018f47a1-3d5b-7abc-8def-0123456789ac', name: 'Ingresso utilizado', status: 'CONSUMED' },
+      now,
+    ),
+    createWalletTicket(
+      { id: '018f47a1-3d5b-7abc-8def-0123456789ad', name: 'Ingresso revogado', status: 'REVOKED' },
+      now,
+    ),
+    createWalletTicket(
+      { id: '018f47a1-3d5b-7abc-8def-0123456789ae', name: 'Ingresso expirado', status: 'EXPIRED' },
+      now,
+    ),
   ];
   const state = createTicketApiState([active, ...archived]);
   await mockTicketingApi(page, state);
@@ -78,10 +89,13 @@ test('opens archived passes with their barcodes and returns to the archive', asy
 test('an expiry update keeps the open pass and its barcode in the wallet', async ({ page }) => {
   const now = new Date();
   await page.clock.install({ time: now });
-  const ticket = createWalletTicket({
-    id: '018f47a1-3d5b-7abc-8def-0123456789af',
-    effectiveExpiresAt: new Date(now.getTime() + 5_000).toISOString(),
-  }, now);
+  const ticket = createWalletTicket(
+    {
+      id: '018f47a1-3d5b-7abc-8def-0123456789af',
+      effectiveExpiresAt: new Date(now.getTime() + 5_000).toISOString(),
+    },
+    now,
+  );
   const state = createTicketApiState([ticket]);
   await mockTicketingApi(page, state);
 
@@ -143,9 +157,11 @@ test('recovers and reconnects the replayable ticket stream after an SSE failure'
   });
   expect(disconnectDetails).toEqual(expect.objectContaining({ onerror: true }));
   await expect.poll(() => state.recoveryQueries).toBe(1);
-  await expect.poll(async () =>
-    page.evaluate(() => (window as Window & { __controlledTicketSseCount?: number }).__controlledTicketSseCount ?? 0),
-  ).toBeGreaterThan(1);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => (window as Window & { __controlledTicketSseCount?: number }).__controlledTicketSseCount ?? 0),
+    )
+    .toBeGreaterThan(1);
   await page.getByRole('button', { name: 'Ver 1 bilhetes expirados' }).click();
   await expect(page.getByText('Bilhete já utilizado')).toBeVisible();
 });
@@ -169,9 +185,11 @@ test('transfer sender can submit a passport request and cancel it after the serv
 
   await expect(page.locator('.pending-document')).toHaveText('XK7654321');
   await expect(page.locator('.person-document')).toHaveText('XK1234567');
-  await expect(page.getByText(
-    'Seu nome completo e seu CPF parcialmente oculto ou o passaporte serão compartilhados com quem receber o bilhete.',
-  )).toBeVisible();
+  await expect(
+    page.getByText(
+      'Seu nome completo e seu CPF parcialmente oculto ou o passaporte serão compartilhados com quem receber o bilhete.',
+    ),
+  ).toBeVisible();
   expect(state.graphqlRequests.find((item) => item.query.includes('mutation StartTicketTransfer'))?.variables).toEqual({
     ticketId: ticket.id,
     destinationIdentityDocument: 'XK7654321',
@@ -180,9 +198,11 @@ test('transfer sender can submit a passport request and cancel it after the serv
   await page.getByRole('button', { name: 'Cancelar pedido' }).click();
   await expect(page.getByRole('button', { name: 'Enviar bilhete' })).toBeDisabled();
   await expect(identityInput).toHaveValue('');
-  expect(state.graphqlRequests.find((item) => item.query.includes('mutation cancelTicketTransfer'))?.variables).toEqual({
-    transferId: state.transfer.id,
-  });
+  expect(state.graphqlRequests.find((item) => item.query.includes('mutation cancelTicketTransfer'))?.variables).toEqual(
+    {
+      transferId: state.transfer.id,
+    },
+  );
 });
 
 test('recipient confirmation keeps the page open when eligibility changes before acceptance', async ({ page }) => {
@@ -199,9 +219,11 @@ test('recipient confirmation keeps the page open when eligibility changes before
 
   await expect(page.getByText(/Você não era elegível para receber este bilhete/)).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/app/profile/wallet/ticket-transfers/${transfer.id}$`));
-  expect(state.graphqlRequests.find((item) => item.query.includes('mutation acceptTicketTransfer'))?.variables).toEqual({
-    transferId: transfer.id,
-  });
+  expect(state.graphqlRequests.find((item) => item.query.includes('mutation acceptTicketTransfer'))?.variables).toEqual(
+    {
+      transferId: transfer.id,
+    },
+  );
 });
 
 test('recipient confirms an ignore decision and sees its final status', async ({ page }) => {
@@ -217,9 +239,11 @@ test('recipient confirms an ignore decision and sees its final status', async ({
   await page.getByRole('dialog').getByRole('button', { name: 'Ignorar pedido' }).click();
 
   await expect(page.getByText(/Você ignorou este pedido/)).toBeVisible();
-  expect(state.graphqlRequests.find((item) => item.query.includes('mutation ignoreTicketTransfer'))?.variables).toEqual({
-    transferId: transfer.id,
-  });
+  expect(state.graphqlRequests.find((item) => item.query.includes('mutation ignoreTicketTransfer'))?.variables).toEqual(
+    {
+      transferId: transfer.id,
+    },
+  );
 });
 
 function createTicketApiState(walletTickets: WalletTicket[]): TicketApiState {
@@ -266,7 +290,11 @@ async function fulfillTicketGraphql(route: Route, state: TicketApiState): Promis
     state.recoveryQueries++;
     await fulfillGraphql(route, {
       myWalletTickets: state.walletTickets.map(({ id }) => ({ id })),
-      myTicketTransfers: { incomingPending: [], incomingIgnored: [], outgoing: state.outgoing.map(({ id }) => ({ id })) },
+      myTicketTransfers: {
+        incomingPending: [],
+        incomingIgnored: [],
+        outgoing: state.outgoing.map(({ id }) => ({ id })),
+      },
     });
     return;
   }
@@ -381,9 +409,10 @@ function installControlledEventSource(): void {
   });
   Object.defineProperty(window, '__controlledTicketSseCount', {
     configurable: true,
-    get: () => ControlledEventSource.instances.filter((source) =>
-      source.url.endsWith('/api/current-user/tickets/realtime/events'),
-    ).length,
+    get: () =>
+      ControlledEventSource.instances.filter((source) =>
+        source.url.endsWith('/api/current-user/tickets/realtime/events'),
+      ).length,
   });
   Object.defineProperty(window, '__inspectControlledTicketSse', {
     configurable: true,
@@ -391,7 +420,9 @@ function installControlledEventSource(): void {
       const source = ControlledEventSource.instances
         .filter((item) => item.url.endsWith('/api/current-user/tickets/realtime/events'))
         .at(-1);
-      if (!source) return null;
+      if (!source) {
+        return null;
+      }
       const state = {
         url: source.url,
         readyState: source.readyState,
@@ -408,7 +439,9 @@ function installControlledEventSource(): void {
 }
 
 function requireTransfer(state: TicketApiState): TicketTransfer {
-  if (!state.transfer) throw new Error('Ticket transfer fixture is required for this mutation.');
+  if (!state.transfer) {
+    throw new Error('Ticket transfer fixture is required for this mutation.');
+  }
   return state.transfer;
 }
 

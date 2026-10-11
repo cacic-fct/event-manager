@@ -6,7 +6,11 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { PrizeDrawWorkspaceService } from './prize-draw-workspace.service';
 import { prizeDrawsUnsavedChangesGuard } from './prize-draws-unsaved-changes.guard';
 
-const workspace = { unsavedChanges: signal(false), selected: signal({ id: 'draw-1' }), scopeFilter: signal({ eventId: 'event-1' }) };
+const workspace = {
+  unsavedChanges: signal(false),
+  selected: signal({ id: 'draw-1' }),
+  scopeFilter: signal({ eventId: 'event-1' }),
+};
 
 @Component({ template: 'Editor', providers: [{ provide: PrizeDrawWorkspaceService, useValue: workspace }] })
 class DrawGuardDestination {
@@ -17,14 +21,21 @@ describe('prizeDrawsUnsavedChangesGuard', () => {
   it('cancels same-route and global navigation until changes are saved or discarded', async () => {
     workspace.unsavedChanges.set(false);
     const snackbar = { open: vi.fn() };
-    TestBed.configureTestingModule({ providers: [
-      provideRouter([
-        { path: 'draws/:drawId', component: DrawGuardDestination, canDeactivate: [prizeDrawsUnsavedChangesGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange' },
-        { path: 'people', component: DrawGuardDestination },
-      ]),
-      { provide: PrizeDrawWorkspaceService, useValue: { unsavedChanges: signal(false) } },
-      { provide: MatSnackBar, useValue: snackbar },
-    ] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          {
+            path: 'draws/:drawId',
+            component: DrawGuardDestination,
+            canDeactivate: [prizeDrawsUnsavedChangesGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+          },
+          { path: 'people', component: DrawGuardDestination },
+        ]),
+        { provide: PrizeDrawWorkspaceService, useValue: { unsavedChanges: signal(false) } },
+        { provide: MatSnackBar, useValue: snackbar },
+      ],
+    });
     await RouterTestingHarness.create('/draws/draw-1?eventId=event-1');
     const router = TestBed.inject(Router);
     workspace.unsavedChanges.set(true);

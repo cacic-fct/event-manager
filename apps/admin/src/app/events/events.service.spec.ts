@@ -200,40 +200,51 @@ describe('EventsService', () => {
   });
 
   it('does not replace a fresh creator when an earlier save finishes later', async () => {
-    const created = new Subject<{id:string}>();
+    const created = new Subject<{ id: string }>();
     api.createEvent.mockReturnValueOnce(created);
-    const saving=service.saveEvent('DRAFT');
+    const saving = service.saveEvent('DRAFT');
     service.resetEventForm(false);
-    created.next({id:'old-saved-event'});created.complete();await saving;
+    created.next({ id: 'old-saved-event' });
+    created.complete();
+    await saving;
     expect(service.eventForm.controls.id.value).toBe('');
     expect(service.selectedEvent()).toBeNull();
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('refreshes the current scope identity after saving on the same scope URL', async () => {
-    const context=TestBed.inject(EventWorkspaceContextService);
-    context.context.set({kind:'event',id:'event-1',name:'Nome antigo',emoji:'📌'});
-    service.eventForm.patchValue({id:'event-1',name:'Nome novo',emoji:'🧪'});
-    api.getEvent.mockReturnValueOnce(of(createAdminEvent({id:'event-1',name:'Nome novo',emoji:'🧪'})));
+    const context = TestBed.inject(EventWorkspaceContextService);
+    context.context.set({ kind: 'event', id: 'event-1', name: 'Nome antigo', emoji: '📌' });
+    service.eventForm.patchValue({ id: 'event-1', name: 'Nome novo', emoji: '🧪' });
+    api.getEvent.mockReturnValueOnce(of(createAdminEvent({ id: 'event-1', name: 'Nome novo', emoji: '🧪' })));
     await service.saveEvent('PUBLISH');
-    expect(context.context()).toEqual(expect.objectContaining({id:'event-1',name:'Nome novo',emoji:'🧪'}));
+    expect(context.context()).toEqual(expect.objectContaining({ id: 'event-1', name: 'Nome novo', emoji: '🧪' }));
   });
 
   it('creates a fresh event under the group direct parent without changing the previously selected event', async () => {
-    const group = createAdminEventGroup({id:'parent-group',majorEventId:'parent-major',name:'Trilha',emoji:'🌐'});
+    const group = createAdminEventGroup({
+      id: 'parent-group',
+      majorEventId: 'parent-major',
+      name: 'Trilha',
+      emoji: '🌐',
+    });
     vi.mocked(TestBed.inject(EventGroupApiService).getEventGroup).mockReturnValueOnce(of(group));
-    majorEventApi.getMajorEvent.mockReturnValue(of(createAdminMajorEvent({id:'parent-major',name:'Semana',emoji:'🎓'})));
-    service.selectedEvent.set(createAdminEvent({id:'old-event'}));
+    majorEventApi.getMajorEvent.mockReturnValue(
+      of(createAdminMajorEvent({ id: 'parent-major', name: 'Semana', emoji: '🎓' })),
+    );
+    service.selectedEvent.set(createAdminEvent({ id: 'old-event' }));
     service.eventForm.controls.id.setValue('old-event');
-    const parents = await service.initializeNewEvent({eventGroupId:'parent-group'});
+    const parents = await service.initializeNewEvent({ eventGroupId: 'parent-group' });
     expect(service.selectedEvent()).toBeNull();
     expect(service.eventForm.controls.id.value).toBe('');
     expect(service.eventForm.controls.majorEventId.value).toBe('parent-major');
     expect(service.eventForm.controls.eventGroupId.value).toBe('parent-group');
-    expect(parents.map((parent)=>parent.emoji)).toEqual(['🎓','🌐']);
+    expect(parents.map((parent) => parent.emoji)).toEqual(['🎓', '🌐']);
     expect(router.navigate).not.toHaveBeenCalled();
     await service.saveEvent('DRAFT');
-    expect(api.createEvent).toHaveBeenCalledWith(expect.objectContaining({majorEventId:'parent-major',eventGroupId:'parent-group'}));
+    expect(api.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ majorEventId: 'parent-major', eventGroupId: 'parent-group' }),
+    );
     expect(api.updateEvent).not.toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/event-workspace', 'event', 'event-1', 'settings']);
   });
@@ -241,11 +252,22 @@ describe('EventsService', () => {
   it('ignores a prior event whose group metadata arrives after another selection', async () => {
     const group = new Subject<ReturnType<typeof createAdminEventGroup>>();
     vi.mocked(TestBed.inject(EventGroupApiService).getEventGroup).mockReturnValueOnce(group);
-    api.getEvent.mockImplementation((id:string)=>of(createAdminEvent({id,name:id,eventGroupId:id==='a'?'group-a':null,eventGroup:null,locationDescription:''})));
-    const first = service.selectEventById('a',{forceOriginal:true});
+    api.getEvent.mockImplementation((id: string) =>
+      of(
+        createAdminEvent({
+          id,
+          name: id,
+          eventGroupId: id === 'a' ? 'group-a' : null,
+          eventGroup: null,
+          locationDescription: '',
+        }),
+      ),
+    );
+    const first = service.selectEventById('a', { forceOriginal: true });
     await flushAsync();
-    await service.selectEventById('b',{forceOriginal:true});
-    group.next(createAdminEventGroup({id:'group-a'}));group.complete();
+    await service.selectEventById('b', { forceOriginal: true });
+    group.next(createAdminEventGroup({ id: 'group-a' }));
+    group.complete();
     await expect(first).resolves.toBe(false);
     expect(service.selectedEvent()?.id).toBe('b');
     expect(service.eventForm.controls.id.value).toBe('b');
@@ -255,9 +277,10 @@ describe('EventsService', () => {
   it('does not apply creation parent metadata after a later reset', async () => {
     const major = new Subject<ReturnType<typeof createAdminMajorEvent>>();
     majorEventApi.getMajorEvent.mockReturnValueOnce(major);
-    const pending = service.initializeNewEvent({majorEventId:'old-parent'});
+    const pending = service.initializeNewEvent({ majorEventId: 'old-parent' });
     service.resetEventForm(false);
-    major.next(createAdminMajorEvent({id:'old-parent'}));major.complete();
+    major.next(createAdminMajorEvent({ id: 'old-parent' }));
+    major.complete();
     await pending;
     expect(service.eventForm.controls.majorEventId.value).toBe('');
     expect(service.selectedEvent()).toBeNull();
@@ -420,9 +443,7 @@ describe('EventsService', () => {
     await service.selectEventById('event-1', { draftId: draft.id });
 
     expect(peopleApi.getPerson).toHaveBeenCalledWith('person-new');
-    expect(service.eventAudienceInvitations()).toEqual([
-      { id: 'person-new', name: 'Pessoa do rascunho', email: null },
-    ]);
+    expect(service.eventAudienceInvitations()).toEqual([{ id: 'person-new', name: 'Pessoa do rascunho', email: null }]);
   });
 
   it('preserves recipients when draft metadata lookup is forbidden', async () => {

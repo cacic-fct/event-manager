@@ -243,7 +243,9 @@ export class NovuNotificationsService {
   async notifyTicketTransfer(input: TicketTransferNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     // Disabled delivery completes the outbox item; only delivery failures need retries.
-    if (!secretKey) return true;
+    if (!secretKey) {
+      return true;
+    }
 
     const { title, body, recipientWorkflow } = this.ticketTransferCopy(input);
     const actionUrl = input.actionUrl;
@@ -476,7 +478,9 @@ export class NovuNotificationsService {
 
   async notifyPrizeDrawWinner(input: PrizeDrawNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
-    if (!secretKey) return false;
+    if (!secretKey) {
+      return false;
+    }
     const actionUrl = this.prizeDrawActionUrl(input);
     const title = `Você ganhou: ${input.drawTitle}`;
     const body = input.spinDescription
@@ -507,7 +511,9 @@ export class NovuNotificationsService {
 
   async notifyPrizeDrawUndone(input: PrizeDrawNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
-    if (!secretKey) return false;
+    if (!secretKey) {
+      return false;
+    }
     const actionUrl = this.prizeDrawActionUrl(input);
     const title = `Sorteio desfeito: ${input.drawTitle}`;
     const body = 'O último resultado foi invalidado pela organização e não vale mais.';

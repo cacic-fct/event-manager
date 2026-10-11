@@ -56,11 +56,7 @@ describe('RegistrationDemoComponent', () => {
     const component = fixture.componentInstance;
 
     clickTab(fixture, 'Inscrições');
-    expect(subscriptionRows(fixture)).toEqual([
-      'Marina Costa',
-      'Rafael Almeida',
-      'Beatriz Lima',
-    ]);
+    expect(subscriptionRows(fixture)).toEqual(['Marina Costa', 'Rafael Almeida', 'Beatriz Lima']);
 
     const search = fixture.nativeElement.querySelector('.subscription-search input') as HTMLInputElement;
     setInputValue(fixture, search, 'Beatriz');
@@ -77,11 +73,7 @@ describe('RegistrationDemoComponent', () => {
     const clearedSearch = fixture.nativeElement.querySelector('.subscription-search input') as HTMLInputElement;
     expect(clearedSearch.value).toBe('');
     expect(component.subscriptionSearchModel().query).toBe('');
-    expect(subscriptionRows(fixture)).toEqual([
-      'Joana Martins',
-      'Pedro Oliveira',
-      'Ana Clara Silva',
-    ]);
+    expect(subscriptionRows(fixture)).toEqual(['Joana Martins', 'Pedro Oliveira', 'Ana Clara Silva']);
     expect(fixture.nativeElement.querySelector('table caption')?.textContent).toContain('Realidade Virtual');
   });
 });
@@ -96,7 +88,8 @@ function createFixture(organizer = true): ComponentFixture<RegistrationDemoCompo
 function buttonNamed(fixture: ComponentFixture<RegistrationDemoComponent>, name: string): HTMLButtonElement {
   const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
     (candidate) =>
-      candidate.getAttribute('aria-label') === name || candidate.textContent?.replace(/\s+/g, ' ').trim().includes(name),
+      candidate.getAttribute('aria-label') === name ||
+      candidate.textContent?.replace(/\s+/g, ' ').trim().includes(name),
   );
   if (!button) {
     throw new Error(`Button not found: ${name}`);
@@ -142,7 +135,8 @@ function text(fixture: ComponentFixture<RegistrationDemoComponent>): string {
 }
 
 function subscriptionRows(fixture: ComponentFixture<RegistrationDemoComponent>): string[] {
-  return Array.from(fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>, (row) =>
-    row.querySelector('td')?.textContent?.trim() ?? '',
+  return Array.from(
+    fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>,
+    (row) => row.querySelector('td')?.textContent?.trim() ?? '',
   );
 }

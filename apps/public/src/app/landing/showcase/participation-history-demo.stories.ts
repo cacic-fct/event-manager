@@ -31,7 +31,9 @@ export const CertificateAndArchiveActions: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Baixar certificado de Interfaces que incluem' }));
     await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Certificado baixado'), { timeout: 2000 });
     await userEvent.click(canvas.getByRole('button', { name: 'Baixar todos os certificados' }));
-    await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Certificados preparados'), { timeout: 2000 });
+    await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Certificados preparados'), {
+      timeout: 2000,
+    });
   },
 };
 

@@ -117,9 +117,7 @@ describe('ticket relations during People merges', () => {
     });
 
     tx.ticketPurchase.updateMany.mockResolvedValueOnce({ count: 0 });
-    await expect(restoreTicketPersonRelations(tx as never, snapshot)).rejects.toThrow(
-      'foi alterada após a unificação',
-    );
+    await expect(restoreTicketPersonRelations(tx as never, snapshot)).rejects.toThrow('foi alterada após a unificação');
   });
 
   it('rejects active purchase collisions before changing any ticket relations', async () => {
@@ -220,7 +218,6 @@ describe('ticket relations during People merges', () => {
       where: { id: 'archive-history', ticketId: 'ticket-active', operation: 'REVOKED' },
     });
 
-
     expect(tx.eventTicket.updateMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -241,9 +238,7 @@ describe('ticket relations during People merges', () => {
     );
 
     tx.eventTicket.updateMany.mockResolvedValueOnce({ count: 0 });
-    await expect(restoreTicketPersonRelations(tx as never, snapshot)).rejects.toThrow(
-      'foi alterado após a unificação',
-    );
+    await expect(restoreTicketPersonRelations(tx as never, snapshot)).rejects.toThrow('foi alterado após a unificação');
   });
 
   it('rejects merges that would turn pending transfers into self-transfers', async () => {

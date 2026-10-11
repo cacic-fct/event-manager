@@ -10,13 +10,15 @@
   display: grid;
   gap: 0.625rem;
 
-  @include mat.button-overrides((
-    outlined-label-text-color: #f0fff7,
-    outlined-outline-color: #b7d7cb,
-    text-label-text-color: #f0fff7,
-    filled-container-color: #d1f2de,
-    filled-label-text-color: #10362e,
-  ));
+  @include mat.button-overrides(
+    (
+      outlined-label-text-color: #f0fff7,
+      outlined-outline-color: #b7d7cb,
+      text-label-text-color: #f0fff7,
+      filled-container-color: #d1f2de,
+      filled-label-text-color: #10362e,
+    )
+  );
 }
 
 .match-operations__header,

@@ -19,7 +19,8 @@ const meta: Meta<PageStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Standalone event catalog with controls for publication, density, and selection. Stories cover drafts, loading, frozen events, and audience settings.',
+        component:
+          'Standalone event catalog with controls for publication, density, and selection. Stories cover drafts, loading, frozen events, and audience settings.',
       },
     },
     layout: 'fullscreen',
@@ -112,7 +113,9 @@ export const OnlineAttendanceControls: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const online = canvas.getByRole('checkbox', { name: 'Presença on-line' });
-    if ((online as HTMLInputElement).checked) await userEvent.click(online);
+    if ((online as HTMLInputElement).checked) {
+      await userEvent.click(online);
+    }
     await expect(canvas.queryByLabelText('Código da presença on-line')).not.toBeInTheDocument();
     await userEvent.click(online);
     const code = canvas.getByLabelText('Código da presença on-line');
@@ -129,7 +132,9 @@ export const ReadonlyLinkedPeople: Story = {
   play: async ({ canvasElement }) => {
     const linkedPeople = canvasElement.querySelectorAll('.linked-person');
     await expect(linkedPeople).toHaveLength(2);
-    for (const person of linkedPeople) await expect(person).toBeVisible();
+    for (const person of linkedPeople) {
+      await expect(person).toBeVisible();
+    }
     await expect(within(canvasElement).queryByRole('button', { name: 'Editar evento' })).not.toBeInTheDocument();
   },
 };

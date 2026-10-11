@@ -34,11 +34,11 @@ describe('EventTargetPickerComponent', () => {
       createAdminEvent({ id: `event-${index}`, name: `Evento ${index}` }),
     );
     const overlap = firstPage[20];
-    if (!overlap) throw new Error('Expected the first page lookahead target.');
+    if (!overlap) {
+      throw new Error('Expected the first page lookahead target.');
+    }
     const secondPageTarget = createAdminEvent({ id: 'event-21', name: 'Evento 21' });
-    eventApi.listEvents
-      .mockReturnValueOnce(of(firstPage))
-      .mockReturnValueOnce(of([overlap, secondPageTarget]));
+    eventApi.listEvents.mockReturnValueOnce(of(firstPage)).mockReturnValueOnce(of([overlap, secondPageTarget]));
     const selection = vi.fn();
     fixture.componentInstance.targetChange.subscribe(selection);
 

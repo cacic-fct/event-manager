@@ -27,15 +27,22 @@ export interface InterestConversionDialogResult {
           A pessoa concordou com o contrato de licença de uso de imagem do CACiC.
         </mat-checkbox>
         <p>
-          <a href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
-            target="_blank" rel="noopener noreferrer">Consultar contrato (abre em nova aba)</a>
+          <a
+            href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Consultar contrato (abre em nova aba)</a
+          >
         </p>
       }
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
-      <button mat-flat-button type="button"
-        [disabled]="data.requiresImageLicenseAgreement && !accepted()" (click)="confirm()">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="data.requiresImageLicenseAgreement && !accepted()"
+        (click)="confirm()">
         Converter em inscrição
       </button>
     </div>

@@ -229,10 +229,7 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
    * method is intentionally post-commit: a provider outage must never roll
    * back an invitation that has already been persisted.
    */
-  async notifyInvited(
-    target: AudienceInvitationNotificationTarget,
-    personIds: readonly string[],
-  ): Promise<void> {
+  async notifyInvited(target: AudienceInvitationNotificationTarget, personIds: readonly string[]): Promise<void> {
     if (!this.notifications || personIds.length === 0) {
       return;
     }
@@ -249,9 +246,8 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
 
     let invitationRecords: AudienceInvitationDeliveryRecord[];
     try {
-      invitationRecords = await audienceContext.run(
-        { ...ANONYMOUS_AUDIENCE, bypass: true },
-        () => this.listInvitationDeliveryRecords(invitationTarget, normalizedPersonIds),
+      invitationRecords = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+        this.listInvitationDeliveryRecords(invitationTarget, normalizedPersonIds),
       );
     } catch (error: unknown) {
       this.logger.warn(
@@ -300,7 +296,9 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
       const principalCache = new Map<string, Promise<import('./audience-context').EventAudiencePrincipal>>();
       for (let offset = 0; offset < pending.length; offset += NOTIFICATION_CONCURRENCY) {
         const batch = pending.slice(offset, offset + NOTIFICATION_CONCURRENCY);
-        await Promise.allSettled(batch.map((invitation) => this.deliverInvitation(invitation, undefined, principalCache)));
+        await Promise.allSettled(
+          batch.map((invitation) => this.deliverInvitation(invitation, undefined, principalCache)),
+        );
       }
     } catch (error: unknown) {
       this.logger.warn(
@@ -317,112 +315,106 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
       OR: [{ notificationAttemptedAt: null }, { notificationAttemptedAt: { lte: retryBefore } }],
     };
 
-    const pending = await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, bypass: true },
-      async () => {
-        const [events, groups, majors] = await Promise.all([
-          this.prisma.eventAudienceInvitation.findMany({
-            where: {
-              ...pendingWhere,
-              event: {
-                audience: 'INVITATION_ONLY',
-                deletedAt: null,
-                publicationState: 'PUBLISHED',
-              },
+    const pending = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+      const [events, groups, majors] = await Promise.all([
+        this.prisma.eventAudienceInvitation.findMany({
+          where: {
+            ...pendingWhere,
+            event: {
+              audience: 'INVITATION_ONLY',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
             },
-            select: {
-              eventId: true,
-              personId: true,
-              createdAt: true,
-              notifiedAt: true,
-              notificationAttemptedAt: true,
-              person: { select: NOTIFICATION_PERSON_SELECT },
-              event: { select: { id: true, name: true } },
+          },
+          select: {
+            eventId: true,
+            personId: true,
+            createdAt: true,
+            notifiedAt: true,
+            notificationAttemptedAt: true,
+            person: { select: NOTIFICATION_PERSON_SELECT },
+            event: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+          take: PENDING_NOTIFICATION_PER_TARGET,
+        }),
+        this.prisma.eventGroupAudienceInvitation.findMany({
+          where: {
+            ...pendingWhere,
+            eventGroup: {
+              audience: 'INVITATION_ONLY',
+              deletedAt: null,
+              events: { some: { deletedAt: null, publicationState: 'PUBLISHED' } },
+              OR: [{ majorEventId: null }, { majorEvent: { deletedAt: null, publicationState: 'PUBLISHED' } }],
             },
-            orderBy: { createdAt: 'asc' },
-            take: PENDING_NOTIFICATION_PER_TARGET,
-          }),
-          this.prisma.eventGroupAudienceInvitation.findMany({
-            where: {
-              ...pendingWhere,
-              eventGroup: {
-                audience: 'INVITATION_ONLY',
-                deletedAt: null,
-                events: { some: { deletedAt: null, publicationState: 'PUBLISHED' } },
-                OR: [
-                  { majorEventId: null },
-                  { majorEvent: { deletedAt: null, publicationState: 'PUBLISHED' } },
-                ],
-              },
+          },
+          select: {
+            eventGroupId: true,
+            personId: true,
+            createdAt: true,
+            notifiedAt: true,
+            notificationAttemptedAt: true,
+            person: { select: NOTIFICATION_PERSON_SELECT },
+            eventGroup: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+          take: PENDING_NOTIFICATION_PER_TARGET,
+        }),
+        this.prisma.majorEventAudienceInvitation.findMany({
+          where: {
+            ...pendingWhere,
+            majorEvent: {
+              audience: 'INVITATION_ONLY',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
             },
-            select: {
-              eventGroupId: true,
-              personId: true,
-              createdAt: true,
-              notifiedAt: true,
-              notificationAttemptedAt: true,
-              person: { select: NOTIFICATION_PERSON_SELECT },
-              eventGroup: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-            take: PENDING_NOTIFICATION_PER_TARGET,
-          }),
-          this.prisma.majorEventAudienceInvitation.findMany({
-            where: {
-              ...pendingWhere,
-              majorEvent: {
-                audience: 'INVITATION_ONLY',
-                deletedAt: null,
-                publicationState: 'PUBLISHED',
-              },
-            },
-            select: {
-              majorEventId: true,
-              personId: true,
-              createdAt: true,
-              notifiedAt: true,
-              notificationAttemptedAt: true,
-              person: { select: NOTIFICATION_PERSON_SELECT },
-              majorEvent: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-            take: PENDING_NOTIFICATION_PER_TARGET,
-          }),
-        ]);
+          },
+          select: {
+            majorEventId: true,
+            personId: true,
+            createdAt: true,
+            notifiedAt: true,
+            notificationAttemptedAt: true,
+            person: { select: NOTIFICATION_PERSON_SELECT },
+            majorEvent: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+          take: PENDING_NOTIFICATION_PER_TARGET,
+        }),
+      ]);
 
-        return [
-          ...events.map((invitation) => ({
-            personId: invitation.personId,
-            person: invitation.person,
-            createdAt: invitation.createdAt,
-            notifiedAt: invitation.notifiedAt,
-            notificationAttemptedAt: invitation.notificationAttemptedAt,
-            target: { targetType: 'EVENT' as const, targetId: invitation.eventId },
-            targetName: invitation.event.name,
-          })),
-          ...groups.map((invitation) => ({
-            personId: invitation.personId,
-            person: invitation.person,
-            createdAt: invitation.createdAt,
-            notifiedAt: invitation.notifiedAt,
-            notificationAttemptedAt: invitation.notificationAttemptedAt,
-            target: { targetType: 'EVENT_GROUP' as const, targetId: invitation.eventGroupId },
-            targetName: invitation.eventGroup.name,
-          })),
-          ...majors.map((invitation) => ({
-            personId: invitation.personId,
-            person: invitation.person,
-            createdAt: invitation.createdAt,
-            notifiedAt: invitation.notifiedAt,
-            notificationAttemptedAt: invitation.notificationAttemptedAt,
-            target: { targetType: 'MAJOR_EVENT' as const, targetId: invitation.majorEventId },
-            targetName: invitation.majorEvent.name,
-          })),
-        ]
-          .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
-          .slice(0, PENDING_NOTIFICATION_LIMIT);
-      },
-    );
+      return [
+        ...events.map((invitation) => ({
+          personId: invitation.personId,
+          person: invitation.person,
+          createdAt: invitation.createdAt,
+          notifiedAt: invitation.notifiedAt,
+          notificationAttemptedAt: invitation.notificationAttemptedAt,
+          target: { targetType: 'EVENT' as const, targetId: invitation.eventId },
+          targetName: invitation.event.name,
+        })),
+        ...groups.map((invitation) => ({
+          personId: invitation.personId,
+          person: invitation.person,
+          createdAt: invitation.createdAt,
+          notifiedAt: invitation.notifiedAt,
+          notificationAttemptedAt: invitation.notificationAttemptedAt,
+          target: { targetType: 'EVENT_GROUP' as const, targetId: invitation.eventGroupId },
+          targetName: invitation.eventGroup.name,
+        })),
+        ...majors.map((invitation) => ({
+          personId: invitation.personId,
+          person: invitation.person,
+          createdAt: invitation.createdAt,
+          notifiedAt: invitation.notifiedAt,
+          notificationAttemptedAt: invitation.notificationAttemptedAt,
+          target: { targetType: 'MAJOR_EVENT' as const, targetId: invitation.majorEventId },
+          targetName: invitation.majorEvent.name,
+        })),
+      ]
+        .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime())
+        .slice(0, PENDING_NOTIFICATION_LIMIT);
+    });
     return pending;
   }
 
@@ -450,13 +442,19 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
         : { ...ANONYMOUS_AUDIENCE, personIds: [invitation.personId] };
       visible = await this.isVisibleToPrincipal(invitation.target, principal);
       if (visible && invitation.target.targetType === 'EVENT_GROUP' && !resolvedActionUrl) {
-        const event = await audienceContext.run(principal, async () => this.prisma.event.findFirst({
-          where: { AND: [{ eventGroupId: invitation.target.targetId }, PUBLIC_EVENT_WHERE, eventAudienceWhere(principal)] },
-          select: { id: true },
-          orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
-        }));
+        const event = await audienceContext.run(principal, async () =>
+          this.prisma.event.findFirst({
+            where: {
+              AND: [{ eventGroupId: invitation.target.targetId }, PUBLIC_EVENT_WHERE, eventAudienceWhere(principal)],
+            },
+            select: { id: true },
+            orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+          }),
+        );
         visible = Boolean(event);
-        if (event) resolvedActionUrl = `/event/${encodeURIComponent(event.id)}`;
+        if (event) {
+          resolvedActionUrl = `/event/${encodeURIComponent(event.id)}`;
+        }
       }
     } catch (error: unknown) {
       this.logger.warn(
@@ -465,14 +463,22 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
         }`,
       );
     }
-    if (!visible) return;
+    if (!visible) {
+      return;
+    }
 
     try {
       const delivered = await this.notifications.notifyAudienceInvitation({
         targetType: invitation.target.targetType,
         targetId: invitation.target.targetId,
         targetName: invitation.targetName,
-        actionUrl: resolvedActionUrl ?? defaultAudienceActionUrl({ type: invitation.target.targetType, id: invitation.target.targetId, name: invitation.targetName }),
+        actionUrl:
+          resolvedActionUrl ??
+          defaultAudienceActionUrl({
+            type: invitation.target.targetType,
+            id: invitation.target.targetId,
+            name: invitation.targetName,
+          }),
         recipient: this.notifications.mapPersonToRecipient(invitation.person),
         invitationCreatedAt: invitation.createdAt,
       });
@@ -522,43 +528,40 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
       notifiedAt: null,
       OR: [{ notificationAttemptedAt: null }, { notificationAttemptedAt: { lte: retryBefore } }],
     };
-    const updated = await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, bypass: true },
-      async () => {
-        switch (target.targetType) {
-          case 'EVENT':
-            return this.prisma.eventAudienceInvitation.updateMany({
-              where: {
-                ...where,
-                eventId: target.targetId,
-                personId,
-                createdAt,
-              },
-              data: { notificationAttemptedAt: attemptedAt },
-            });
-          case 'EVENT_GROUP':
-            return this.prisma.eventGroupAudienceInvitation.updateMany({
-              where: {
-                ...where,
-                eventGroupId: target.targetId,
-                personId,
-                createdAt,
-              },
-              data: { notificationAttemptedAt: attemptedAt },
-            });
-          case 'MAJOR_EVENT':
-            return this.prisma.majorEventAudienceInvitation.updateMany({
-              where: {
-                ...where,
-                majorEventId: target.targetId,
-                personId,
-                createdAt,
-              },
-              data: { notificationAttemptedAt: attemptedAt },
-            });
-        }
-      },
-    );
+    const updated = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+      switch (target.targetType) {
+        case 'EVENT':
+          return this.prisma.eventAudienceInvitation.updateMany({
+            where: {
+              ...where,
+              eventId: target.targetId,
+              personId,
+              createdAt,
+            },
+            data: { notificationAttemptedAt: attemptedAt },
+          });
+        case 'EVENT_GROUP':
+          return this.prisma.eventGroupAudienceInvitation.updateMany({
+            where: {
+              ...where,
+              eventGroupId: target.targetId,
+              personId,
+              createdAt,
+            },
+            data: { notificationAttemptedAt: attemptedAt },
+          });
+        case 'MAJOR_EVENT':
+          return this.prisma.majorEventAudienceInvitation.updateMany({
+            where: {
+              ...where,
+              majorEventId: target.targetId,
+              personId,
+              createdAt,
+            },
+            data: { notificationAttemptedAt: attemptedAt },
+          });
+      }
+    });
     return updated.count === 1;
   }
 
@@ -568,49 +571,46 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
     createdAt: Date,
     attemptedAt: Date,
   ): Promise<void> {
-    await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, bypass: true },
-      async () => {
-        switch (target.targetType) {
-          case 'EVENT':
-            await this.prisma.eventAudienceInvitation.updateMany({
-              where: {
-                eventId: target.targetId,
-                personId,
-                createdAt,
-                notifiedAt: null,
-                notificationAttemptedAt: attemptedAt,
-              },
-              data: { notifiedAt: new Date() },
-            });
-            return;
-          case 'EVENT_GROUP':
-            await this.prisma.eventGroupAudienceInvitation.updateMany({
-              where: {
-                eventGroupId: target.targetId,
-                personId,
-                createdAt,
-                notifiedAt: null,
-                notificationAttemptedAt: attemptedAt,
-              },
-              data: { notifiedAt: new Date() },
-            });
-            return;
-          case 'MAJOR_EVENT':
-            await this.prisma.majorEventAudienceInvitation.updateMany({
-              where: {
-                majorEventId: target.targetId,
-                personId,
-                createdAt,
-                notifiedAt: null,
-                notificationAttemptedAt: attemptedAt,
-              },
-              data: { notifiedAt: new Date() },
-            });
-            return;
-        }
-      },
-    );
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+      switch (target.targetType) {
+        case 'EVENT':
+          await this.prisma.eventAudienceInvitation.updateMany({
+            where: {
+              eventId: target.targetId,
+              personId,
+              createdAt,
+              notifiedAt: null,
+              notificationAttemptedAt: attemptedAt,
+            },
+            data: { notifiedAt: new Date() },
+          });
+          return;
+        case 'EVENT_GROUP':
+          await this.prisma.eventGroupAudienceInvitation.updateMany({
+            where: {
+              eventGroupId: target.targetId,
+              personId,
+              createdAt,
+              notifiedAt: null,
+              notificationAttemptedAt: attemptedAt,
+            },
+            data: { notifiedAt: new Date() },
+          });
+          return;
+        case 'MAJOR_EVENT':
+          await this.prisma.majorEventAudienceInvitation.updateMany({
+            where: {
+              majorEventId: target.targetId,
+              personId,
+              createdAt,
+              notifiedAt: null,
+              notificationAttemptedAt: attemptedAt,
+            },
+            data: { notifiedAt: new Date() },
+          });
+          return;
+      }
+    });
   }
 
   private async listInvitationDeliveryRecords(
@@ -685,10 +685,7 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
                         AND: [PUBLIC_EVENT_WHERE, eventAudienceWhere(principal)],
                       },
                     },
-                    OR: [
-                      { majorEventId: null },
-                      { majorEvent: { deletedAt: null, publicationState: 'PUBLISHED' } },
-                    ],
+                    OR: [{ majorEventId: null }, { majorEvent: { deletedAt: null, publicationState: 'PUBLISHED' } }],
                   },
                   groupAudienceWhere(principal),
                 ],
@@ -700,7 +697,10 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
           return Boolean(
             await this.prisma.majorEvent.findFirst({
               where: {
-                AND: [{ id: target.targetId, deletedAt: null, publicationState: 'PUBLISHED' }, majorEventAudienceWhere(principal)],
+                AND: [
+                  { id: target.targetId, deletedAt: null, publicationState: 'PUBLISHED' },
+                  majorEventAudienceWhere(principal),
+                ],
               },
               select: { id: true },
             }),
@@ -808,18 +808,14 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
     const groupIds = [
       ...new Set(
         normalizedEvents.flatMap((event) =>
-          event.eventGroupId && hasActiveRelation(event.eventGroup)
-            ? [event.eventGroupId]
-            : [],
+          event.eventGroupId && hasActiveRelation(event.eventGroup) ? [event.eventGroupId] : [],
         ),
       ),
     ];
     const majorEventIds = [
       ...new Set(
         normalizedEvents.flatMap((event) =>
-          event.majorEventId && hasActiveRelation(event.majorEvent)
-            ? [event.majorEventId]
-            : [],
+          event.majorEventId && hasActiveRelation(event.majorEvent) ? [event.majorEventId] : [],
         ),
       ),
     ];
@@ -843,7 +839,9 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
     ]);
 
     const eventKeys = new Set(eventInvitations.map((invitation) => `${invitation.eventId}:${invitation.personId}`));
-    const groupKeys = new Set(groupInvitations.map((invitation) => `${invitation.eventGroupId}:${invitation.personId}`));
+    const groupKeys = new Set(
+      groupInvitations.map((invitation) => `${invitation.eventGroupId}:${invitation.personId}`),
+    );
     const majorEventKeys = new Set(
       majorEventInvitations.map((invitation) => `${invitation.majorEventId}:${invitation.personId}`),
     );
@@ -853,11 +851,13 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
         facts.set(`${personId}:${event.id}`, {
           event: eventKeys.has(`${event.id}:${personId}`),
           eventGroup: Boolean(
-            event.eventGroupId && hasActiveRelation(event.eventGroup) &&
+            event.eventGroupId &&
+              hasActiveRelation(event.eventGroup) &&
               groupKeys.has(`${event.eventGroupId}:${personId}`),
           ),
           majorEvent: Boolean(
-            event.majorEventId && hasActiveRelation(event.majorEvent) &&
+            event.majorEventId &&
+              hasActiveRelation(event.majorEvent) &&
               majorEventKeys.has(`${event.majorEventId}:${personId}`),
           ),
         });
@@ -906,9 +906,7 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
         ? [{ targetType: 'MAJOR_EVENT' as const, targetId: event.majorEventId }]
         : []),
     ];
-    const invitations = await Promise.all(
-      targets.map((target) => this.listNotificationInvitations(target, tx)),
-    );
+    const invitations = await Promise.all(targets.map((target) => this.listNotificationInvitations(target, tx)));
     const unique = new Map<string, AudienceInvitationPerson>();
     for (const invitation of invitations.flat()) {
       unique.set(invitation.personId, invitation);
@@ -1013,7 +1011,9 @@ export class AudienceInvitationService implements OnModuleInit, OnModuleDestroy 
     return { targetType: target.targetType, targetId };
   }
 
-  private normalizeNotificationTarget(target: AudienceInvitationNotificationTarget): AudienceInvitationNotificationTarget {
+  private normalizeNotificationTarget(
+    target: AudienceInvitationNotificationTarget,
+  ): AudienceInvitationNotificationTarget {
     const id = target.id?.trim();
     const name = target.name?.trim();
     if (!id || !name || !['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'].includes(target.type)) {

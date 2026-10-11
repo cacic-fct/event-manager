@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
   AuditLogEntityType,
@@ -102,10 +109,14 @@ export class TicketsResolver {
   async myWalletTickets(@Context() context: GraphqlContext): Promise<WalletTicketModel[]> {
     const user = this.requireUser(context);
     const userId = user.sub;
-    if (!userId) throw new UnauthorizedException('Usuário não autenticado.');
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado.');
+    }
     return audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId, bypass: true, personIds: [] }, async () => {
       const personIds = await this.personIdsForUser(this.prisma, userId);
-      if (personIds.length === 0) return [];
+      if (personIds.length === 0) {
+        return [];
+      }
       const tickets = await this.prisma.eventTicket.findMany({
         where: { holderPersonId: { in: personIds } },
         include: WALLET_TICKET_INCLUDE,
@@ -122,10 +133,14 @@ export class TicketsResolver {
   ): Promise<WalletTicketModel | null> {
     const user = this.requireUser(context);
     const userId = user.sub;
-    if (!userId) throw new UnauthorizedException('Usuário não autenticado.');
+    if (!userId) {
+      throw new UnauthorizedException('Usuário não autenticado.');
+    }
     return audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId, bypass: true, personIds: [] }, async () => {
       const personIds = await this.personIdsForUser(this.prisma, userId);
-      if (personIds.length === 0) return null;
+      if (personIds.length === 0) {
+        return null;
+      }
       const ticket = await this.prisma.eventTicket.findFirst({
         where: { id: ticketId, holderPersonId: { in: personIds } },
         include: WALLET_TICKET_INCLUDE,
@@ -155,7 +170,9 @@ export class TicketsResolver {
       const { transfer, view } = await this.transfers.findForUser(transferId, user);
       return mapTicketTransfer(transfer, view, this.transfers);
     } catch (error: unknown) {
-      if (error instanceof NotFoundException) return null;
+      if (error instanceof NotFoundException) {
+        return null;
+      }
       throw error;
     }
   }
@@ -168,7 +185,11 @@ export class TicketsResolver {
     @Args('destinationIdentityDocument', { type: () => String }) destinationIdentityDocument: string,
     @Context() context: GraphqlContext,
   ): Promise<TicketTransferModel> {
-    const transfer = await this.transfers.startForUser(ticketId, destinationIdentityDocument, this.requireUser(context));
+    const transfer = await this.transfers.startForUser(
+      ticketId,
+      destinationIdentityDocument,
+      this.requireUser(context),
+    );
     return mapTicketTransfer(transfer, 'AUTHOR', this.transfers);
   }
 
@@ -213,7 +234,9 @@ export class TicketsResolver {
       const event = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
         this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true } }),
       );
-      if (!event) throw new NotFoundException('Evento não encontrado.');
+      if (!event) {
+        throw new NotFoundException('Evento não encontrado.');
+      }
       await this.authorization.assertPermissions(user, [Permission.TicketConfig.Read], { eventId });
       return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
         const config = await this.prisma.ticketConfig.findUnique({ where: { eventId }, include: ADMIN_CONFIG_INCLUDE });
@@ -221,11 +244,15 @@ export class TicketsResolver {
       });
     }
 
-    if (!majorEventId) throw new BadRequestException('Informe um grande evento válido.');
+    if (!majorEventId) {
+      throw new BadRequestException('Informe um grande evento válido.');
+    }
     const majorEvent = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.majorEvent.findUnique({ where: { id: majorEventId }, select: { id: true } }),
     );
-    if (!majorEvent) throw new NotFoundException('Grande evento não encontrado.');
+    if (!majorEvent) {
+      throw new NotFoundException('Grande evento não encontrado.');
+    }
     await this.authorization.assertPermissions(user, [Permission.TicketConfig.Read], { majorEventId: majorEvent.id });
     const configs = await this.prisma.ticketConfig.findMany({
       where: {
@@ -259,7 +286,9 @@ export class TicketsResolver {
         },
       }),
     );
-    if (!event) throw new NotFoundException('Evento não encontrado.');
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
     const existing = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.ticketConfig.findUnique({ where: { eventId: input.eventId } }),
     );
@@ -273,8 +302,10 @@ export class TicketsResolver {
       this.frozenResources.assertEventMutable(input.eventId, user, 'edit'),
     );
     const saved = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
-
-      const normalized = await this.normalizeTicketConfigInput(input, event.majorEventId ?? event.eventGroup?.majorEventId ?? null);
+      const normalized = await this.normalizeTicketConfigInput(
+        input,
+        event.majorEventId ?? event.eventGroup?.majorEventId ?? null,
+      );
       const savedConfig = await runSerializablePrismaTransaction(this.prisma, async (tx) => {
         await this.issuance.lockEventExpirationAlignment(tx, input.eventId, 'UPDATE');
         const before = await tx.ticketConfig.findUnique({
@@ -290,7 +321,9 @@ export class TicketsResolver {
             where: { ticketConfigId: before.id, status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
           });
           if (normalized.purchaseLimit < reserved) {
-            throw new BadRequestException('O limite não pode ser menor que a quantidade de compras aprovadas ou em análise.');
+            throw new BadRequestException(
+              'O limite não pode ser menor que a quantidade de compras aprovadas ou em análise.',
+            );
           }
         }
         const data = {
@@ -346,22 +379,25 @@ export class TicketsResolver {
           enqueueInvalidations: false,
         });
         await this.attendanceCategories.refreshForEvent(input.eventId, tx);
-        await this.audit.record({
-          entityType: AuditLogEntityType.TICKET_CONFIG,
-          entityId: config.id,
-          entityLabel: normalized.displayName ?? event.name,
-          operation: before ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
-          actor: user,
-          summary: before ? 'Configuração de bilhetes atualizada.' : 'Configuração de bilhetes criada.',
-          before: before ? this.ticketConfigSnapshot(before) : undefined,
-          after: this.ticketConfigSnapshot(after),
-          scope: {
-            permission: before ? Permission.TicketConfig.Update : Permission.TicketConfig.Create,
-            eventId: event.id,
-            majorEventId: event.majorEventId ?? event.eventGroup?.majorEventId,
+        await this.audit.record(
+          {
+            entityType: AuditLogEntityType.TICKET_CONFIG,
+            entityId: config.id,
+            entityLabel: normalized.displayName ?? event.name,
+            operation: before ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+            actor: user,
+            summary: before ? 'Configuração de bilhetes atualizada.' : 'Configuração de bilhetes criada.',
+            before: before ? this.ticketConfigSnapshot(before) : undefined,
+            after: this.ticketConfigSnapshot(after),
+            scope: {
+              permission: before ? Permission.TicketConfig.Update : Permission.TicketConfig.Create,
+              eventId: event.id,
+              majorEventId: event.majorEventId ?? event.eventGroup?.majorEventId,
+            },
+            squashWindowMs: 0,
           },
-          squashWindowMs: 0,
-        }, tx);
+          tx,
+        );
         const [holders, pendingTransfers] = await Promise.all([
           tx.eventTicket.findMany({
             where: { eventId: input.eventId },
@@ -372,18 +408,26 @@ export class TicketsResolver {
             select: { authorUserId: true, recipientUserId: true, senderUserId: true },
           }),
         ]);
-        await this.realtime.enqueueForUsers(tx, holders.map(({ holder }) => holder?.userId), {
-          type: 'TICKETS_CHANGED',
-          eventId: input.eventId,
-        });
-        await this.realtime.enqueueForUsers(tx, pendingTransfers.flatMap((transfer) => [
-          transfer.authorUserId,
-          transfer.recipientUserId,
-          transfer.senderUserId,
-        ]), {
-          type: 'TRANSFERS_CHANGED',
-          eventId: input.eventId,
-        });
+        await this.realtime.enqueueForUsers(
+          tx,
+          holders.map(({ holder }) => holder?.userId),
+          {
+            type: 'TICKETS_CHANGED',
+            eventId: input.eventId,
+          },
+        );
+        await this.realtime.enqueueForUsers(
+          tx,
+          pendingTransfers.flatMap((transfer) => [
+            transfer.authorUserId,
+            transfer.recipientUserId,
+            transfer.senderUserId,
+          ]),
+          {
+            type: 'TRANSFERS_CHANGED',
+            eventId: input.eventId,
+          },
+        );
         await this.issuance.enqueueExistingSubscriptionReconciliation(tx, input.eventId, after.updatedAt);
         return after;
       });
@@ -399,11 +443,7 @@ export class TicketsResolver {
     @Context() context: GraphqlContext,
   ): Promise<AdminTicketEligibilityModel> {
     const user = this.requireUser(context);
-    await this.authorization.assertPermissions(
-      user,
-      [Permission.RelatedPerson.Read],
-      { eventId },
-    );
+    await this.authorization.assertPermissions(user, [Permission.RelatedPerson.Read], { eventId });
     await this.assertAnyPermission(user, [Permission.Ticket.Issue, Permission.TicketTransfer.Manage], { eventId });
     const result = await this.eligibility.evaluateManualIssueEligibility(this.prisma, eventId, personId);
     return mapAdminEligibilityWarnings(result);
@@ -422,7 +462,9 @@ export class TicketsResolver {
     const event = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true } }),
     );
-    if (!event) throw new NotFoundException('Evento não encontrado.');
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
     await this.authorization.assertPermissions(user, [Permission.Ticket.Read], { eventId });
 
     const now = new Date();
@@ -434,10 +476,7 @@ export class TicketsResolver {
       stateWhere = {
         status: EventTicketStatus.ACTIVE,
         expiresAt: { gt: now },
-        OR: [
-          { ticketConfig: { enabled: false } },
-          { event: { is: { deletedAt: { not: null } } } },
-        ],
+        OR: [{ ticketConfig: { enabled: false } }, { event: { is: { deletedAt: { not: null } } } }],
       };
     } else if (normalizedStatus === 'ACTIVE') {
       stateWhere = {
@@ -457,9 +496,7 @@ export class TicketsResolver {
       eventId,
       ...stateWhere,
       ...(cursor ? { id: { lt: cursor } } : {}),
-      ...(normalizedSearch
-        ? { holder: { is: { name: { contains: normalizedSearch, mode: 'insensitive' } } } }
-        : {}),
+      ...(normalizedSearch ? { holder: { is: { name: { contains: normalizedSearch, mode: 'insensitive' } } } } : {}),
     };
     const pageSize = Math.max(1, Math.min(100, Math.trunc(take ?? 50)));
     const [rows, totalCount] = await Promise.all([
@@ -469,15 +506,21 @@ export class TicketsResolver {
         orderBy: { id: 'desc' },
         take: pageSize + 1,
       }),
-      this.prisma.eventTicket.count({ where: { eventId, ...stateWhere, ...(normalizedSearch
-        ? { holder: { is: { name: { contains: normalizedSearch, mode: 'insensitive' } } } }
-        : {}) } }),
+      this.prisma.eventTicket.count({
+        where: {
+          eventId,
+          ...stateWhere,
+          ...(normalizedSearch
+            ? { holder: { is: { name: { contains: normalizedSearch, mode: 'insensitive' } } } }
+            : {}),
+        },
+      }),
     ]);
     const tickets = rows.slice(0, pageSize);
     return {
       tickets: tickets.map((ticket) => mapAdminEventTicket(ticket)),
       totalCount,
-      nextCursor: rows.length > pageSize ? tickets[tickets.length - 1]?.id ?? null : null,
+      nextCursor: rows.length > pageSize ? (tickets[tickets.length - 1]?.id ?? null) : null,
     };
   }
 
@@ -488,23 +531,17 @@ export class TicketsResolver {
   ): Promise<AdminEventTicketModel> {
     const user = this.requireUser(context);
     const reason = this.requireReason(input.reason);
-    await this.authorization.assertPermissions(
-      user,
-      [Permission.Ticket.Issue, Permission.RelatedPerson.Read],
-      { eventId: input.eventId },
-    );
+    await this.authorization.assertPermissions(user, [Permission.Ticket.Issue, Permission.RelatedPerson.Read], {
+      eventId: input.eventId,
+    });
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.frozenResources.assertEventMutable(input.eventId, user, 'edit'),
     );
     const ticket = await runSerializablePrismaTransaction(this.prisma, async (tx) =>
-      this.issuance.issueForPerson(
-        tx,
-        input.eventId,
-        input.personId,
-        EventTicketIssueSource.ADMIN,
-        null,
-        { actorUserId: user.sub, reason },
-      ),
+      this.issuance.issueForPerson(tx, input.eventId, input.personId, EventTicketIssueSource.ADMIN, null, {
+        actorUserId: user.sub,
+        reason,
+      }),
     );
     const fullTicket = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.eventTicket.findUniqueOrThrow({ where: { id: ticket.id }, include: ADMIN_TICKET_INCLUDE }),
@@ -525,7 +562,9 @@ export class TicketsResolver {
         include: { event: { include: { eventGroup: true } } },
       }),
     );
-    if (!existing) throw new NotFoundException('Bilhete não encontrado.');
+    if (!existing) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     await this.authorization.assertPermissions(user, [Permission.Ticket.Revoke], { eventId: existing.eventId });
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.frozenResources.assertEventMutable(existing.eventId, user, 'edit'),
@@ -540,7 +579,9 @@ export class TicketsResolver {
         where: { id: input.ticketId, status: EventTicketStatus.ACTIVE },
         data: { status: EventTicketStatus.REVOKED, revokedAt: new Date(), revokedReason: reason },
       });
-      if (changed.count !== 1) throw new ConflictException('O bilhete foi alterado por outra operação.');
+      if (changed.count !== 1) {
+        throw new ConflictException('O bilhete foi alterado por outra operação.');
+      }
 
       await tx.eventTicketHistory.create({
         data: {
@@ -588,18 +629,30 @@ export class TicketsResolver {
           before: { senderStatus: 'PENDING' },
           after: { senderStatus: 'EXPIRED' },
         });
-        await this.realtime.enqueueForUsers(tx, [transfer.authorUserId, transfer.senderUserId, transfer.recipientUserId], {
-          type: 'TRANSFERS_CHANGED',
+        await this.realtime.enqueueForUsers(
+          tx,
+          [transfer.authorUserId, transfer.senderUserId, transfer.recipientUserId],
+          {
+            type: 'TRANSFERS_CHANGED',
+            eventId: ticket.eventId,
+            ticketId: ticket.id,
+            transferId: transfer.id,
+          },
+        );
+      }
+      await this.realtime.enqueueForUsers(
+        tx,
+        [
+          existing.holderPersonId
+            ? (await tx.people.findUnique({ where: { id: existing.holderPersonId }, select: { userId: true } }))?.userId
+            : null,
+        ],
+        {
+          type: 'TICKETS_CHANGED',
           eventId: ticket.eventId,
           ticketId: ticket.id,
-          transferId: transfer.id,
-        });
-      }
-      await this.realtime.enqueueForUsers(tx, [existing.holderPersonId ? (await tx.people.findUnique({ where: { id: existing.holderPersonId }, select: { userId: true } }))?.userId : null], {
-        type: 'TICKETS_CHANGED',
-        eventId: ticket.eventId,
-        ticketId: ticket.id,
-      });
+        },
+      );
     });
 
     const revoked = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
@@ -618,7 +671,9 @@ export class TicketsResolver {
     const ticket = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.eventTicket.findUnique({ where: { id: input.ticketId }, select: { eventId: true } }),
     );
-    if (!ticket) throw new NotFoundException('Bilhete não encontrado.');
+    if (!ticket) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     await this.authorization.assertPermissions(
       user,
       [Permission.TicketTransfer.Manage, Permission.RelatedPerson.Read],
@@ -640,7 +695,9 @@ export class TicketsResolver {
         select: { id: true, eventId: true },
       }),
     );
-    if (!ticket) throw new NotFoundException('Bilhete não encontrado.');
+    if (!ticket) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     await this.authorization.assertPermissions(user, [Permission.TicketTransfer.Read], { eventId: ticket.eventId });
     const history = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.eventTicketHistory.findMany({
@@ -649,26 +706,32 @@ export class TicketsResolver {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
     );
-    const actorIds = [...new Set(history.map(({ actorUserId }) => actorUserId).filter((id): id is string => Boolean(id)))];
+    const actorIds = [
+      ...new Set(history.map(({ actorUserId }) => actorUserId).filter((id): id is string => Boolean(id))),
+    ];
     const actors = actorIds.length
       ? await this.prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
       : [];
     const actorNameById = new Map(actors.map((actor) => [actor.id, actor.name]));
-    return history.map((entry) => mapAdminTicketHistory({
-      id: entry.id,
-      ticketId: entry.ticketId,
-      operation: entry.operation,
-      previousHolder: entry.previousHolder,
-      newHolder: entry.newHolder,
-      actorName: entry.actorName ?? (entry.actorUserId ? actorNameById.get(entry.actorUserId) ?? null : null),
-      reason: entry.reason,
-      createdAt: entry.createdAt,
-    }));
+    return history.map((entry) =>
+      mapAdminTicketHistory({
+        id: entry.id,
+        ticketId: entry.ticketId,
+        operation: entry.operation,
+        previousHolder: entry.previousHolder,
+        newHolder: entry.newHolder,
+        actorName: entry.actorName ?? (entry.actorUserId ? (actorNameById.get(entry.actorUserId) ?? null) : null),
+        reason: entry.reason,
+        createdAt: entry.createdAt,
+      }),
+    );
   }
 
   private requireUser(context: GraphqlContext): AuthenticatedUser {
     const user = context.req?.user ?? context.request?.user;
-    if (!user?.sub) throw new UnauthorizedException('Usuário não autenticado.');
+    if (!user?.sub) {
+      throw new UnauthorizedException('Usuário não autenticado.');
+    }
     return user;
   }
 
@@ -708,7 +771,10 @@ export class TicketsResolver {
   }
 
   private async normalizeTicketConfigInput(input: TicketConfigInputModel, majorEventId: string | null) {
-    if (input.purchaseVisibility.subscriptionRequirement !== 'REQUIRED' || !input.purchaseVisibility.requiresValidatedSubscription) {
+    if (
+      input.purchaseVisibility.subscriptionRequirement !== 'REQUIRED' ||
+      !input.purchaseVisibility.requiresValidatedSubscription
+    ) {
       throw new BadRequestException('Compras de bilhete exigem inscrição com comprovante validado.');
     }
     if (!Object.values(TicketSubscriptionRequirement).includes(input.recipientPolicy.subscriptionRequirement)) {
@@ -717,8 +783,13 @@ export class TicketsResolver {
     if (!Object.values(TicketExpirationMode).includes(input.expirationMode)) {
       throw new BadRequestException('Selecione um critério de validade válido.');
     }
-    if (input.purchaseLimit != null && (!Number.isInteger(input.purchaseLimit) || input.purchaseLimit < 1 || input.purchaseLimit > 2_147_483_647)) {
-      throw new BadRequestException('Informe uma quantidade inteira de bilhetes entre 1 e 2.147.483.647, ou selecione vendas ilimitadas.');
+    if (
+      input.purchaseLimit != null &&
+      (!Number.isInteger(input.purchaseLimit) || input.purchaseLimit < 1 || input.purchaseLimit > 2_147_483_647)
+    ) {
+      throw new BadRequestException(
+        'Informe uma quantidade inteira de bilhetes entre 1 e 2.147.483.647, ou selecione vendas ilimitadas.',
+      );
     }
     const recipientAllowedPriceTierIds = normalizeIds(input.recipientPolicy.allowedPriceTierIds);
     const purchaseVisiblePriceTierIds = normalizeIds(input.purchaseVisibility.allowedPriceTierIds);
@@ -769,7 +840,9 @@ export class TicketsResolver {
       throw new BadRequestException('Faixas de preço só podem ser usadas em eventos associados a um grande evento.');
     }
     if (configuredTierIds.size > 0) {
-      if (!majorEventId) throw new BadRequestException('Faixas de preço só podem ser usadas em eventos associados a um grande evento.');
+      if (!majorEventId) {
+        throw new BadRequestException('Faixas de preço só podem ser usadas em eventos associados a um grande evento.');
+      }
       const tiers = await this.prisma.priceTier.findMany({
         where: { id: { in: [...configuredTierIds] }, price: { majorEventId } },
         select: { id: true },
@@ -803,7 +876,7 @@ export class TicketsResolver {
       purchaseRequiresAccountManagerVerification: input.purchaseVisibility.requiresAccountManagerVerification,
       purchaseVisiblePriceTierIds,
       expirationMode: input.expirationMode as TicketExpirationMode,
-      customExpiresAt: input.expirationMode === TicketExpirationMode.CUSTOM ? input.customExpiresAt ?? null : null,
+      customExpiresAt: input.expirationMode === TicketExpirationMode.CUSTOM ? (input.customExpiresAt ?? null) : null,
       priceOptions,
     };
   }
@@ -875,19 +948,27 @@ function normalizeIds(values: readonly string[]): string[] {
 
 function normalizePrefixes(values: readonly string[]): string[] {
   const prefixes = values.map((value) => value.trim().normalize('NFKC')).filter(Boolean);
-  if (prefixes.some((prefix) => prefix.length > 24)) throw new BadRequestException('O prefixo da matrícula é muito longo.');
+  if (prefixes.some((prefix) => prefix.length > 24)) {
+    throw new BadRequestException('O prefixo da matrícula é muito longo.');
+  }
   return [...new Set(prefixes)];
 }
 
 function normalizeCourseCodes(values: readonly string[]): string[] {
   const codes = values.map((value) => value.trim()).filter(Boolean);
-  if (codes.some((code) => !/^\d{1,8}$/.test(code))) throw new BadRequestException('Informe códigos de curso válidos.');
+  if (codes.some((code) => !/^\d{1,8}$/.test(code))) {
+    throw new BadRequestException('Informe códigos de curso válidos.');
+  }
   return [...new Set(codes)];
 }
 
 function normalizeOptionalText(value: string | null | undefined, maxLength: number): string | null {
   const normalized = value?.trim();
-  if (!normalized) return null;
-  if (normalized.length > maxLength) throw new BadRequestException('Um dos textos ultrapassa o tamanho permitido.');
+  if (!normalized) {
+    return null;
+  }
+  if (normalized.length > maxLength) {
+    throw new BadRequestException('Um dos textos ultrapassa o tamanho permitido.');
+  }
   return normalized;
 }

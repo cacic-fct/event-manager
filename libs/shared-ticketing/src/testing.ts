@@ -95,10 +95,7 @@ export function createWalletTicket(overrides: WalletTicketFixtureOverrides = {},
   };
 }
 
-export function createTicketTransfer(
-  overrides: TicketTransferFixtureOverrides = {},
-  now = new Date(),
-): TicketTransfer {
+export function createTicketTransfer(overrides: TicketTransferFixtureOverrides = {}, now = new Date()): TicketTransfer {
   const {
     ticket: ticketOverrides,
     event: eventOverrides,
@@ -123,19 +120,21 @@ export function createTicketTransfer(
     canAccept: true,
     ...transferOverrides,
     event: { ...ticket.event, ...eventOverrides },
-    sender: senderOverride === null
-      ? null
-      : { ...createTicketPersonSummary({ personId: 'person-ticket-sender' }), ...senderOverride },
-    recipient: recipientOverride === null
-      ? null
-      : {
-          ...createTicketPersonSummary({
-            personId: 'person-ticket-recipient',
-            fullName: 'João Pedro Oliveira',
-            firstName: 'João',
-          }),
-          ...recipientOverride,
-        },
+    sender:
+      senderOverride === null
+        ? null
+        : { ...createTicketPersonSummary({ personId: 'person-ticket-sender' }), ...senderOverride },
+    recipient:
+      recipientOverride === null
+        ? null
+        : {
+            ...createTicketPersonSummary({
+              personId: 'person-ticket-recipient',
+              fullName: 'João Pedro Oliveira',
+              firstName: 'João',
+            }),
+            ...recipientOverride,
+          },
   };
 }
 
@@ -204,10 +203,7 @@ export function createTicketPurchaseReceipt(
   };
 }
 
-export function createTicketPurchase(
-  overrides: TicketPurchaseFixtureOverrides = {},
-  now = new Date(),
-): TicketPurchase {
+export function createTicketPurchase(overrides: TicketPurchaseFixtureOverrides = {}, now = new Date()): TicketPurchase {
   const { receipt: receiptOverride, ...purchaseOverrides } = overrides;
   const option = createTicketPurchaseOption(undefined, now);
   return {
@@ -247,10 +243,7 @@ export function createAdminTicketHistoryEntry(
   };
 }
 
-export function createAdminEventTicket(
-  overrides: Partial<AdminEventTicket> = {},
-  now = new Date(),
-): AdminEventTicket {
+export function createAdminEventTicket(overrides: Partial<AdminEventTicket> = {}, now = new Date()): AdminEventTicket {
   return {
     ...createWalletTicket(overrides, now),
     originalHolder: createTicketPersonSummary(),

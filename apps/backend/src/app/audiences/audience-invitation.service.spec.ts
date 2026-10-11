@@ -21,10 +21,18 @@ describe('audience invitation attendance facts', () => {
       mapPersonToRecipient: jest.fn(() => ({ subscriberId: 'person-1' })),
       notifyAudienceInvitation: jest.fn().mockResolvedValue(true),
     };
-    const service = new AudienceInvitationService(prisma as never, notifications as never, { principalForStoredUser: jest.fn() } as never);
+    const service = new AudienceInvitationService(
+      prisma as never,
+      notifications as never,
+      { principalForStoredUser: jest.fn() } as never,
+    );
     await service.notifyInvited({ type: 'EVENT_GROUP', id: 'group-1', name: 'Grupo convidado' }, ['person-1']);
-    expect(notifications.notifyAudienceInvitation).toHaveBeenCalledWith(expect.objectContaining({ actionUrl: '/event/visible-child' }));
-    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ AND: expect.any(Array) }) }));
+    expect(notifications.notifyAudienceInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ actionUrl: '/event/visible-child' }),
+    );
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ AND: expect.any(Array) }) }),
+    );
   });
   it('accepts a direct, group, or major invitation for inherited INVITED_ONLY attendance', () => {
     const event = {
@@ -105,9 +113,11 @@ describe('audience invitation attendance facts', () => {
         ]),
       },
       majorEventAudienceInvitation: {
-        findMany: jest.fn().mockResolvedValue([
-          { personId: 'person-major', person: { id: 'person-major', name: 'Major', email: null } },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { personId: 'person-major', person: { id: 'person-major', name: 'Major', email: null } },
+          ]),
       },
     };
     const service = new AudienceInvitationService(prisma as never);
@@ -251,30 +261,34 @@ function createRetryPrisma(input: ReturnType<typeof pendingInvitation> | Array<R
   const prisma = {
     eventAudienceInvitation: {
       findMany: jest.fn().mockImplementation(async () => rows.map((row) => cloneInvitation(row))),
-      updateMany: jest.fn().mockImplementation(async ({
-        where,
-        data,
-      }: {
-        where: { eventId?: string; personId?: string; createdAt?: Date };
-        data: Record<string, unknown>;
-      }) => {
-        const row = rows.find(
-          (candidate) =>
-            candidate.eventId === where.eventId &&
-            candidate.personId === where.personId &&
-            (!where.createdAt || candidate.createdAt.getTime() === where.createdAt.getTime()),
-        );
-        if (!row) {
-          return { count: 0 };
-        }
-        if ('notificationAttemptedAt' in data) {
-          row.notificationAttemptedAt = data.notificationAttemptedAt as Date;
-        }
-        if ('notifiedAt' in data) {
-          row.notifiedAt = data.notifiedAt as Date;
-        }
-        return { count: 1 };
-      }),
+      updateMany: jest
+        .fn()
+        .mockImplementation(
+          async ({
+            where,
+            data,
+          }: {
+            where: { eventId?: string; personId?: string; createdAt?: Date };
+            data: Record<string, unknown>;
+          }) => {
+            const row = rows.find(
+              (candidate) =>
+                candidate.eventId === where.eventId &&
+                candidate.personId === where.personId &&
+                (!where.createdAt || candidate.createdAt.getTime() === where.createdAt.getTime()),
+            );
+            if (!row) {
+              return { count: 0 };
+            }
+            if ('notificationAttemptedAt' in data) {
+              row.notificationAttemptedAt = data.notificationAttemptedAt as Date;
+            }
+            if ('notifiedAt' in data) {
+              row.notifiedAt = data.notifiedAt as Date;
+            }
+            return { count: 1 };
+          },
+        ),
     },
     eventGroupAudienceInvitation: { findMany: jest.fn().mockResolvedValue([]) },
     majorEventAudienceInvitation: { findMany: jest.fn().mockResolvedValue([]) },

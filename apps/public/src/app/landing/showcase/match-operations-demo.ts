@@ -42,7 +42,9 @@ export class MatchOperationsDemoComponent {
   constructor() {
     this.destroyRef.onDestroy(() => this.stopInterval());
     afterNextRender(() => {
-      if (this.state() === 'LIVE') this.resumeClock();
+      if (this.state() === 'LIVE') {
+        this.resumeClock();
+      }
     });
   }
 

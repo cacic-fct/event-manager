@@ -13,11 +13,7 @@ describe('TicketingApiService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: PLATFORM_ID, useValue: 'browser' },
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: PLATFORM_ID, useValue: 'browser' }],
     });
     service = TestBed.inject(TicketingApiService);
     http = TestBed.inject(HttpTestingController);

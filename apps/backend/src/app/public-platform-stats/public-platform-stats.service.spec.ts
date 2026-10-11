@@ -94,9 +94,8 @@ describe('PublicPlatformStatsService', () => {
     prisma.majorEvent.count.mockResolvedValue(3);
     prisma.certificate.count.mockResolvedValue(40);
 
-    await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, isUnesp: true, verifiedCourseCode: '12' },
-      () => service.getPublicPlatformStats(),
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, isUnesp: true, verifiedCourseCode: '12' }, () =>
+      service.getPublicPlatformStats(),
     );
 
     expect(observedPrincipal).toEqual(ANONYMOUS_AUDIENCE);

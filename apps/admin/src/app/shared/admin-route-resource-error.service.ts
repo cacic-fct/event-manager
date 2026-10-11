@@ -8,9 +8,7 @@ export class AdminRouteResourceErrorService {
   private readonly injector = inject(Injector);
 
   redirectIfUnavailable(error: unknown): boolean {
-    const status = error instanceof HttpErrorResponse || error instanceof GraphqlStatusError
-      ? error.status
-      : undefined;
+    const status = error instanceof HttpErrorResponse || error instanceof GraphqlStatusError ? error.status : undefined;
     if (status !== 403 && status !== 404) {
       return false;
     }
@@ -20,6 +18,9 @@ export class AdminRouteResourceErrorService {
   }
 
   redirectNotFound(): void {
-    void this.injector.get(RouteErrorService).navigate(404).catch(() => undefined);
+    void this.injector
+      .get(RouteErrorService)
+      .navigate(404)
+      .catch(() => undefined);
   }
 }

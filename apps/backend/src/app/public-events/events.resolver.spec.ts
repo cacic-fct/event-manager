@@ -91,9 +91,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
     });
     const resolver = new PublicEventsResolver(prisma as never, typesenseSearch as never);
 
-    await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, isUnesp: true },
-      () => resolver.publicEvents('aula', undefined, undefined, undefined, undefined, 0, 10),
+    await audienceContext.run({ ...ANONYMOUS_AUDIENCE, isUnesp: true }, () =>
+      resolver.publicEvents('aula', undefined, undefined, undefined, undefined, 0, 10),
     );
 
     expect(typesenseSearch.searchEvents).not.toHaveBeenCalled();

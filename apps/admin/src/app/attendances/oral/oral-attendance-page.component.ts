@@ -1,15 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import {
-  Component,
-  DestroyRef,
-  OnDestroy,
-  OnInit,
-  PLATFORM_ID,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -115,11 +106,14 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
     this.eventApi
       .getEvent(this.eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((event) => {
-        if (!this.destroyed) {
-          this.eventName.set(event.name);
-        }
-      }, (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error));
+      .subscribe(
+        (event) => {
+          if (!this.destroyed) {
+            this.eventName.set(event.name);
+          }
+        },
+        (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error),
+      );
     if (this.isBrowser) {
       fromEvent(window, 'online')
         .pipe(takeUntilDestroyed(this.destroyRef))
@@ -128,11 +122,14 @@ export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
     this.api
       .listEventAttendanceOralRoster(this.eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((items) => {
-        if (!this.destroyed) {
-          this.applyRoster(items);
-        }
-      }, (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error));
+      .subscribe(
+        (items) => {
+          if (!this.destroyed) {
+            this.applyRoster(items);
+          }
+        },
+        (error: unknown) => this.routeResourceErrors.redirectIfUnavailable(error),
+      );
     this.scheduleSync();
   }
 

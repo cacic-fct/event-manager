@@ -23,7 +23,12 @@ import { AttendanceCategoryService } from './attendance-category.service';
 import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
-import { applyAudienceSettings, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import {
+  applyAudienceSettings,
+  withAudienceAudit,
+  withoutAudienceInput,
+  type AudienceChange,
+} from '../audiences/audience-input';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import { PUBLICATION_EVENT_SELECT } from '../publishing/publishing.selects';
@@ -391,7 +396,14 @@ export class EventDraftsService {
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, draft.sourceEventId, payload);
 
       await validateAttendancePriceTiers(tx, payload, previousEvent);
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: draft.sourceEventId }, payload, previousEvent, user?.sub);
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'EVENT', targetId: draft.sourceEventId },
+        payload,
+        previousEvent,
+        user?.sub,
+      );
       await tx.event.updateMany({
         where: { id: draft.sourceEventId, deletedAt: null },
         data: {
@@ -452,7 +464,9 @@ export class EventDraftsService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true)),
+          before: eventContentAuditSnapshot(
+            withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
+          ),
           after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange)),
           scope: {
             permission: Permission.Event.Update,
@@ -474,7 +488,12 @@ export class EventDraftsService {
     });
 
     await this.runAppliedDraftSideEffects(event, payload, draft.id, audienceChange?.invitationsChanged);
-    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
+    if (audienceChange) {
+      await this.audienceInvitations.notifyInvited(
+        { type: 'EVENT', id: event.id, name: event.name },
+        audienceChange.personIds,
+      );
+    }
     return event;
   }
 

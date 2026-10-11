@@ -111,19 +111,21 @@ describe('typesense query helpers', () => {
       ],
     });
 
-    await expect(searchTypesenseRankedDocumentIds({
-      client: client.instance as never,
-      logger: { error: jest.fn() } as never,
-      collectionName: 'events',
-      query: 'semana laboratorio',
-      queryBy: 'name,locationDescription',
-      options: {
-        limit: 2,
-        offset: 3,
-        queryByWeights: '10,2',
-        sortBy: '_text_match:desc,startDate:desc',
-      },
-    })).resolves.toEqual({
+    await expect(
+      searchTypesenseRankedDocumentIds({
+        client: client.instance as never,
+        logger: { error: jest.fn() } as never,
+        collectionName: 'events',
+        query: 'semana laboratorio',
+        queryBy: 'name,locationDescription',
+        options: {
+          limit: 2,
+          offset: 3,
+          queryByWeights: '10,2',
+          sortBy: '_text_match:desc,startDate:desc',
+        },
+      }),
+    ).resolves.toEqual({
       available: true,
       found: 2,
       hits: [

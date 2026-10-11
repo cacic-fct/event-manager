@@ -16,18 +16,18 @@ describe('ticket transfer GraphQL mutation integration', () => {
       {} as never,
     );
 
-    const result = await resolver.startTicketTransfer(
-      'ticket-1',
-      'PASS-12345',
-      { req: { user: { sub: 'sender-user' } } } as never,
-    );
+    const result = await resolver.startTicketTransfer('ticket-1', 'PASS-12345', {
+      req: { user: { sub: 'sender-user' } },
+    } as never);
 
-    expect(result).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      recipient: null,
-      submittedDestinationIdentityDocument: 'PASS-12345',
-    }));
+    expect(result).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        recipient: null,
+        submittedDestinationIdentityDocument: 'PASS-12345',
+      }),
+    );
     expect(result.ticket.aztecPayload).toBeNull();
     expect(JSON.stringify(result)).not.toContain('recipient-user');
     expect(JSON.stringify(result)).not.toContain('recipient-person');

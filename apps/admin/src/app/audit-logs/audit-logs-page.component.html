@@ -22,58 +22,59 @@
       <mat-expansion-panel class="advanced-audit-filters">
         <mat-expansion-panel-header>
           <mat-panel-title><mat-icon>tune</mat-icon>Filtros avançados</mat-panel-title>
-          @if (advancedFilterCount()) { <mat-panel-description>{{ advancedFilterCount() }} ativos</mat-panel-description> }
+          @if (advancedFilterCount()) {
+            <mat-panel-description>{{ advancedFilterCount() }} ativos</mat-panel-description>
+          }
         </mat-expansion-panel-header>
         <div class="audit-filter-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>Item alterado</mat-label>
-        <input matInput formControlName="entity" autocomplete="off" />
-        <mat-icon matPrefix>database_search</mat-icon>
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Item alterado</mat-label>
+            <input matInput formControlName="entity" autocomplete="off" />
+            <mat-icon matPrefix>database_search</mat-icon>
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Tipo de item</mat-label>
-        <mat-select formControlName="entityType">
-          <mat-option value="">Todos</mat-option>
-          @for (option of entityTypeOptions; track option.value) {
-            <mat-option [value]="option.value">{{ option.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de item</mat-label>
+            <mat-select formControlName="entityType">
+              <mat-option value="">Todos</mat-option>
+              @for (option of entityTypeOptions; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Operação</mat-label>
-        <mat-select formControlName="operation">
-          <mat-option value="">Todas</mat-option>
-          @for (option of operationOptions; track option.value) {
-            <mat-option [value]="option.value">{{ option.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Operação</mat-label>
+            <mat-select formControlName="operation">
+              <mat-option value="">Todas</mat-option>
+              @for (option of operationOptions; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Data inicial</mat-label>
-        <input matInput [matDatepicker]="dateFromPicker" formControlName="dateFrom" />
-        <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker" />
-        <mat-datepicker #dateFromPicker />
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Data inicial</mat-label>
+            <input matInput [matDatepicker]="dateFromPicker" formControlName="dateFrom" />
+            <mat-datepicker-toggle matIconSuffix [for]="dateFromPicker" />
+            <mat-datepicker #dateFromPicker />
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Data final</mat-label>
-        <input matInput [matDatepicker]="dateToPicker" formControlName="dateTo" />
-        <mat-datepicker-toggle matIconSuffix [for]="dateToPicker" />
-        <mat-datepicker #dateToPicker />
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Data final</mat-label>
+            <input matInput [matDatepicker]="dateToPicker" formControlName="dateTo" />
+            <mat-datepicker-toggle matIconSuffix [for]="dateToPicker" />
+            <mat-datepicker #dateToPicker />
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Reversão</mat-label>
-        <mat-select formControlName="revertedStatus">
-          @for (option of revertedStatusOptions; track option.value) {
-            <mat-option [value]="option.value">{{ option.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
+          <mat-form-field appearance="outline">
+            <mat-label>Reversão</mat-label>
+            <mat-select formControlName="revertedStatus">
+              @for (option of revertedStatusOptions; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
         </div>
       </mat-expansion-panel>
 
@@ -159,7 +160,9 @@
                     <span class="entry-main">
                       <span class="entry-text">
                         <span class="entry-title">{{ entry.summary || fallbackSummary(entry) }}</span>
-                        <span class="entry-subtitle">{{ entityTypeLabel(entry.entityType) }}: {{ entry.entityLabel || entry.entityId }}</span>
+                        <span class="entry-subtitle"
+                          >{{ entityTypeLabel(entry.entityType) }}: {{ entry.entityLabel || entry.entityId }}</span
+                        >
                       </span>
                       <span class="entry-actor">
                         <span>{{ entry.actorName }}</span>

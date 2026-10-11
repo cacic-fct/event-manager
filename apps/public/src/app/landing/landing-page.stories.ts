@@ -44,11 +44,7 @@ const navigateToDefaultMock = fn(async () => true);
 @Component({
   selector: 'app-storybook-landing-host',
   imports: [NgComponentOutlet],
-  template: `
-    <ng-container
-      [ngComponentOutlet]="component"
-      [ngComponentOutletInjector]="storyInjector()" />
-  `,
+  template: ` <ng-container [ngComponentOutlet]="component" [ngComponentOutletInjector]="storyInjector()" /> `,
 })
 class LandingStoryHostComponent {
   private readonly parentInjector = inject(Injector);
@@ -104,8 +100,7 @@ class LandingStoryHostComponent {
         {
           provide: PublicFeatureFlagService,
           useValue: {
-            stringValue: (key: string) =>
-              key === 'defaultLoginRedirectPath' ? args.defaultRedirectPath : undefined,
+            stringValue: (key: string) => (key === 'defaultLoginRedirectPath' ? args.defaultRedirectPath : undefined),
           },
         },
         {
@@ -153,20 +148,29 @@ const meta: Meta<LandingStoryArgs> = {
       options: ['ready', 'loading', 'unavailable'],
       description: 'Simulated state returned by the public statistics service.',
     },
-    peopleCount: { control: { type: 'range', min: 0, max: 500_000, step: 100 }, description: 'Displayed attendee count.' },
+    peopleCount: {
+      control: { type: 'range', min: 0, max: 500_000, step: 100 },
+      description: 'Displayed attendee count.',
+    },
     eventsCount: { control: { type: 'range', min: 0, max: 30_000, step: 10 }, description: 'Displayed event count.' },
-    majorEventsCount: { control: { type: 'range', min: 0, max: 2_000, step: 1 }, description: 'Displayed major event count.' },
-    certificatesCount: { control: { type: 'range', min: 0, max: 1_000_000, step: 100 }, description: 'Displayed issued certificate count.' },
-    latencyMs: { control: { type: 'range', min: 0, max: 3_000, step: 100 }, description: 'Delay before ready statistics are returned.' },
+    majorEventsCount: {
+      control: { type: 'range', min: 0, max: 2_000, step: 1 },
+      description: 'Displayed major event count.',
+    },
+    certificatesCount: {
+      control: { type: 'range', min: 0, max: 1_000_000, step: 100 },
+      description: 'Displayed issued certificate count.',
+    },
+    latencyMs: {
+      control: { type: 'range', min: 0, max: 3_000, step: 100 },
+      description: 'Delay before ready statistics are returned.',
+    },
     authenticated: { control: 'boolean', description: 'Simulate an authenticated visitor.' },
     defaultRedirectPath: { control: 'text', description: 'Fallback route used by the sign-in flow.' },
   },
   decorators: [
     applicationConfig({
-      providers: [
-        provideRouter([]),
-        provideNoopAnimations(),
-      ],
+      providers: [provideRouter([]), provideNoopAnimations()],
     }),
   ],
   parameters: {

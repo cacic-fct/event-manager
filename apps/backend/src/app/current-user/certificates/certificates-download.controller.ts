@@ -136,23 +136,24 @@ export class CurrentUserCertificatesDownloadController {
     yield `{"schemaVersion":1,"generatedAt":${JSON.stringify(issuedBefore.toISOString())},"certificates":[`;
     let separator = '';
     for await (const certificate of this.archiveCertificates(personId, issuedBefore)) {
-      yield separator + JSON.stringify({
-        certificateId: certificate.id,
-        issuedAt: certificate.issuedAt.toISOString(),
-        configId: certificate.configId,
-        scope: certificate.config.scope,
-        targetId:
-          certificate.config.scope === CertificateScope.MAJOR_EVENT
-          ? certificate.config.majorEventId
-          : certificate.config.scope === CertificateScope.EVENT_GROUP
-            ? certificate.config.eventGroupId
-            : certificate.config.scope === CertificateScope.EVENT
-              ? certificate.config.eventId
-              : certificate.config.folderId,
-        targetName: certificate.config.folder?.name ?? null,
-        targetEmoji: certificate.config.folder?.emoji ?? null,
-        eventIds: this.readRenderedEventIds(certificate.renderedData),
-      });
+      yield separator +
+        JSON.stringify({
+          certificateId: certificate.id,
+          issuedAt: certificate.issuedAt.toISOString(),
+          configId: certificate.configId,
+          scope: certificate.config.scope,
+          targetId:
+            certificate.config.scope === CertificateScope.MAJOR_EVENT
+              ? certificate.config.majorEventId
+              : certificate.config.scope === CertificateScope.EVENT_GROUP
+                ? certificate.config.eventGroupId
+                : certificate.config.scope === CertificateScope.EVENT
+                  ? certificate.config.eventId
+                  : certificate.config.folderId,
+          targetName: certificate.config.folder?.name ?? null,
+          targetEmoji: certificate.config.folder?.emoji ?? null,
+          eventIds: this.readRenderedEventIds(certificate.renderedData),
+        });
       separator = ',';
     }
     yield ']}\n';

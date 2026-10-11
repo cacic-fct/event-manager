@@ -56,11 +56,13 @@ export class TicketingApiService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   myWalletTickets(): Observable<WalletTicket[]> {
-    return this.query<{ myWalletTickets: WalletTicket[] }>(`
+    return this.query<{ myWalletTickets: WalletTicket[] }>(
+      `
       query MyWalletTickets {
         myWalletTickets { ${WALLET_TICKET_FIELDS} }
       }
-    `).pipe(map((data) => data.myWalletTickets));
+    `,
+    ).pipe(map((data) => data.myWalletTickets));
   }
 
   myWalletTicket(ticketId: string): Observable<WalletTicket | null> {
@@ -73,7 +75,8 @@ export class TicketingApiService {
   }
 
   myTicketTransfers(): Observable<TicketTransferLists> {
-    return this.query<{ myTicketTransfers: TicketTransferLists }>(`
+    return this.query<{ myTicketTransfers: TicketTransferLists }>(
+      `
       query MyTicketTransfers {
         myTicketTransfers {
           incomingPending { ${TICKET_TRANSFER_FIELDS} }
@@ -81,7 +84,8 @@ export class TicketingApiService {
           outgoing { ${TICKET_TRANSFER_FIELDS} }
         }
       }
-    `).pipe(map((data) => data.myTicketTransfers));
+    `,
+    ).pipe(map((data) => data.myTicketTransfers));
   }
 
   ticketTransfer(transferId: string): Observable<TicketTransfer | null> {
@@ -117,7 +121,9 @@ export class TicketingApiService {
   }
 
   watchCurrentUser(): Observable<TicketRealtimeInvalidation> {
-    if (!this.isBrowser || typeof EventSource === 'undefined') return EMPTY;
+    if (!this.isBrowser || typeof EventSource === 'undefined') {
+      return EMPTY;
+    }
 
     return new Observable<TicketRealtimeInvalidation>((subscriber) => {
       const recoveredInvalidations = new Subject<TicketRealtimeInvalidation>();
@@ -178,8 +184,12 @@ export class TicketingApiService {
   private query<TData>(query: string, variables?: Record<string, unknown>): Observable<TData> {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
-        if (response.errors?.length) throw graphqlError(response.errors);
-        if (!response.data) throw new Error('Resposta GraphQL sem dados.');
+        if (response.errors?.length) {
+          throw graphqlError(response.errors);
+        }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
         return response.data;
       }),
     );
@@ -189,7 +199,9 @@ export class TicketingApiService {
 function decodeTicketRealtimeInvalidation(event: MessageEvent<string>): TicketRealtimeInvalidation | null {
   try {
     const value: unknown = JSON.parse(event.data);
-    if (!isRecord(value)) return null;
+    if (!isRecord(value)) {
+      return null;
+    }
 
     const type = value['type'];
     if (

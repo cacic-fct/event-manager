@@ -69,9 +69,7 @@ export function auditLogEntityTypeLabel(entityType: string): string {
 }
 
 export function auditLogOperationLabel(operation: string): string {
-  return (
-    AUDIT_LOG_OPERATION_OPTIONS.find((option) => option.value === operation)?.label ?? 'Ação não identificada'
-  );
+  return AUDIT_LOG_OPERATION_OPTIONS.find((option) => option.value === operation)?.label ?? 'Ação não identificada';
 }
 
 export function auditLogActorTypeLabel(actorType: string): string {

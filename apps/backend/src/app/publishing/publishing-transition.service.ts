@@ -246,7 +246,9 @@ export class PublicationTransitionService {
   }
 
   private async publishInvalidations(sync: TargetSync): Promise<void> {
-    if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) return;
+    if (sync.eventIds.length === 0 && sync.majorEventIds.length === 0) {
+      return;
+    }
     const payload = {
       type: 'PUBLICATION_INVALIDATED',
       eventIds: sync.eventIds,

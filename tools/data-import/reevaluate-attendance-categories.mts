@@ -93,7 +93,9 @@ export function loadRawEvents(inputPath: string | URL): LegacyCollection {
   const source = loadFirestoreExport(inputPath);
   const collections = source.__collections__ ?? {};
   const rawEvents = isRecord(collections) ? (collections.events ?? {}) : {};
-  if (!isRecord(rawEvents)) throw new Error("Expected '__collections__.events' to be an object.");
+  if (!isRecord(rawEvents)) {
+    throw new Error("Expected '__collections__.events' to be an object.");
+  }
   return rawEvents;
 }
 
@@ -101,11 +103,15 @@ export function buildFirestoreAttendances(rawEvents: LegacyCollection): Firestor
   const rows: FirestoreAttendanceRow[] = [];
   for (const legacyEventId of sortedKeys(rawEvents)) {
     const rawEvent = rawEvents[legacyEventId];
-    if (!isRecord(rawEvent)) continue;
+    if (!isRecord(rawEvent)) {
+      continue;
+    }
     const eventName = coerceText(rawEvent.name) || `Legacy Event ${legacyEventId}`;
     const eventStartDate =
       parseFirestoreTimestamp(rawEvent.eventStartDate) || parseFirestoreTimestamp(rawEvent.createdOn);
-    if (eventStartDate === null) continue;
+    if (eventStartDate === null) {
+      continue;
+    }
     const subscriptions = extractSubcollection(rawEvent, 'subscriptions');
     const allowSubscription = coerceBool(rawEvent.allowSubscription);
     const eventRows = new Map<string, FirestoreAttendanceRow>();
@@ -156,7 +162,9 @@ export function normalizeDatetime(value: unknown): Date {
     value instanceof Date
       ? value
       : new Date(typeof value === 'number' || typeof value === 'string' ? value : String(value));
-  if (Number.isNaN(date.getTime())) throw new Error(`Invalid datetime: ${String(value)}`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid datetime: ${String(value)}`);
+  }
   return new Date(date.getTime());
 }
 
@@ -173,19 +181,27 @@ function sameDatetime(left: unknown, right: unknown): boolean {
 
 function dbEventValues(row: unknown): DbEventRow | null {
   const values = Array.isArray(row) ? { id: row[0], name: row[1], startDate: row[2] } : row;
-  if (!isRecord(values)) return null;
+  if (!isRecord(values)) {
+    return null;
+  }
   const id = coerceText(values.id);
   const name = coerceText(values.name);
-  if (id === null || name === null) return null;
+  if (id === null || name === null) {
+    return null;
+  }
   return { id, name, startDate: values.startDate };
 }
 
 function dbPersonValues(row: unknown): DbPersonRow | null {
   const values = Array.isArray(row) ? { id: row[0], externalRef: row[1] } : row;
-  if (!isRecord(values)) return null;
+  if (!isRecord(values)) {
+    return null;
+  }
   const id = coerceText(values.id);
   const externalRef = coerceText(values.externalRef);
-  if (id === null || externalRef === null) return null;
+  if (id === null || externalRef === null) {
+    return null;
+  }
   return { id, externalRef };
 }
 
@@ -214,8 +230,12 @@ export async function matchAttendances(
     .filter((row): row is DbEventRow => row !== null);
 
   const sortedEventKeys = [...eventKeys.values()].sort((left, right) => {
-    if (left.legacyEventId !== right.legacyEventId) return left.legacyEventId < right.legacyEventId ? -1 : 1;
-    if (left.eventName !== right.eventName) return left.eventName < right.eventName ? -1 : 1;
+    if (left.legacyEventId !== right.legacyEventId) {
+      return left.legacyEventId < right.legacyEventId ? -1 : 1;
+    }
+    if (left.eventName !== right.eventName) {
+      return left.eventName < right.eventName ? -1 : 1;
+    }
     return normalizeDatetime(left.eventStartDate).getTime() - normalizeDatetime(right.eventStartDate).getTime();
   });
   for (const event of sortedEventKeys) {
@@ -225,7 +245,9 @@ export async function matchAttendances(
     );
     if (matches.length === 1) {
       const [match] = matches;
-      if (match) eventIdByLegacyId.set(event.legacyEventId, match.id);
+      if (match) {
+        eventIdByLegacyId.set(event.legacyEventId, match.id);
+      }
       continue;
     }
     const candidateCount = allDbEvents.filter((row) => normalizeName(row.name) === normalizedFirestoreName).length;
@@ -252,7 +274,9 @@ export async function matchAttendances(
     );
     for (const row of rowsOf(result)) {
       const values = dbPersonValues(row);
-      if (values) personIdByExternalRef.set(values.externalRef, values.id);
+      if (values) {
+        personIdByExternalRef.set(values.externalRef, values.id);
+      }
     }
   }
 
@@ -260,7 +284,9 @@ export async function matchAttendances(
   const unmatchedPeople = new Set<string>();
   for (const row of firestoreAttendances) {
     const eventId = eventIdByLegacyId.get(row.legacyEventId);
-    if (!eventId) continue;
+    if (!eventId) {
+      continue;
+    }
     const personId = personIdByExternalRef.get(row.legacyPersonId);
     if (!personId) {
       unmatchedPeople.add(row.legacyPersonId);
@@ -295,7 +321,9 @@ export async function filterExistingAttendances(
     );
     for (const row of rowsOf(result)) {
       const values = Array.isArray(row) ? [row[0], row[1]] : isRecord(row) ? [row.personId, row.eventId] : [];
-      if (values.length === 2) existingPairs.add(JSON.stringify([values[0], values[1]]));
+      if (values.length === 2) {
+        existingPairs.add(JSON.stringify([values[0], values[1]]));
+      }
     }
   }
   return {
@@ -322,13 +350,14 @@ export async function selectChangedAttendances(
       [chunk.map((row) => row.personId), chunk.map((row) => row.eventId)],
     );
     for (const row of rowsOf(result)) {
-      if (Array.isArray(row))
+      if (Array.isArray(row)) {
         currentCategoryByPair.set(JSON.stringify([row[0], row[1]]), { category: row[2], currentAssessment: row[3] });
-      else if (isRecord(row))
+      } else if (isRecord(row)) {
         currentCategoryByPair.set(JSON.stringify([row.personId, row.eventId]), {
           category: row.category,
           currentAssessment: row.currentAssessment,
         });
+      }
     }
   }
   return existing.filter((row) => {
@@ -337,9 +366,12 @@ export async function selectChangedAttendances(
     if (
       currentCategory?.category === desired.category &&
       currentCategory.currentAssessment === desired.currentAssessment
-    )
+    ) {
       return false;
-    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
+    }
+    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) {
+      return false;
+    }
     return true;
   });
 }
@@ -360,7 +392,9 @@ export async function applyUpdates(db: DatabaseClient, updates: readonly Attenda
 }
 
 export function printUnmatchedEvents(unmatchedEvents: readonly UnmatchedEvent[]): void {
-  if (unmatchedEvents.length === 0) return;
+  if (unmatchedEvents.length === 0) {
+    return;
+  }
   console.log('Unmatched events:');
   for (const event of unmatchedEvents) {
     console.log(
@@ -371,7 +405,9 @@ export function printUnmatchedEvents(unmatchedEvents: readonly UnmatchedEvent[])
 
 function parseOptionValue(argv: readonly string[], index: number, option: string): string {
   const value = argv[index + 1];
-  if (!value || value.startsWith('--')) throw new Error(`${option} requires a value.`);
+  if (!value || value.startsWith('--')) {
+    throw new Error(`${option} requires a value.`);
+  }
   return value;
 }
 
@@ -390,7 +426,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Reev
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === undefined) break;
+    if (argument === undefined) {
+      break;
+    }
     if (argument === '--apply') {
       options.apply = true;
       continue;
@@ -414,9 +452,13 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Reev
       '--db-user',
       '--db-password',
     ]);
-    if (!valueOptions.has(option)) throw new Error(`Unknown option: ${argument}`);
+    if (!valueOptions.has(option)) {
+      throw new Error(`Unknown option: ${argument}`);
+    }
     const value = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : parseOptionValue(argv, index, option);
-    if (equalsIndex < 0) index += 1;
+    if (equalsIndex < 0) {
+      index += 1;
+    }
     switch (option) {
       case '--input':
         options.input = value;
@@ -429,7 +471,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Reev
         break;
       case '--db-port': {
         const parsed = Number(value);
-        if (!Number.isInteger(parsed) || parsed <= 0) throw new Error('--db-port must be a positive integer.');
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          throw new Error('--db-port must be a positive integer.');
+        }
         options.dbPort = parsed;
         break;
       }
@@ -459,8 +503,9 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   const rawEvents = loadRawEvents(options.input);
   const firestoreAttendances = buildFirestoreAttendances(rawEvents);
   const categoryCounter = new Map();
-  for (const row of firestoreAttendances)
+  for (const row of firestoreAttendances) {
     categoryCounter.set(row.category, (categoryCounter.get(row.category) ?? 0) + 1);
+  }
   console.log(`Firestore category intent -> ${formatCounter(categoryCounter)}`);
 
   const db = (await connectPostgres(databaseUrl)) as unknown as DatabaseClient;
@@ -471,7 +516,9 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
       const { existing, missing } = await filterExistingAttendances(db, matched);
       const updates = await selectChangedAttendances(db, existing, { includeNonUnknown: options.includeNonUnknown });
       const updateCounter = new Map();
-      for (const row of updates) updateCounter.set(row.category, (updateCounter.get(row.category) ?? 0) + 1);
+      for (const row of updates) {
+        updateCounter.set(row.category, (updateCounter.get(row.category) ?? 0) + 1);
+      }
 
       console.log(`Matched attendance rows: ${matched.length}`);
       console.log(`Existing database attendance rows: ${existing.length}`);
@@ -499,7 +546,9 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
       throw error;
     }
   } finally {
-    if (db.end) await db.end();
+    if (db.end) {
+      await db.end();
+    }
   }
 }
 

@@ -14,13 +14,13 @@ import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { bindLiveSearch } from '../search/live-search';
-import {
-  applyPagedResult,
-  createWorkspaceListPagination,
-  resetPagination,
-} from '../pagination/list-pagination';
+import { applyPagedResult, createWorkspaceListPagination, resetPagination } from '../pagination/list-pagination';
 import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
-export interface EventTargetSelection { id: string; name: string; emoji?: string | null; }
+export interface EventTargetSelection {
+  id: string;
+  name: string;
+  emoji?: string | null;
+}
 
 export type EventTargetType = 'EVENT' | 'MAJOR_EVENT';
 
@@ -44,7 +44,9 @@ const TARGET_PAGE_SIZE = 20;
     <div class="form-target-picker">
       <div class="selection-row">
         <div class="selection-summary">
-          @if (selectedEmoji(); as emoji) { <lib-twemoji [emoji]="emoji" /> }
+          @if (selectedEmoji(); as emoji) {
+            <lib-twemoji [emoji]="emoji" />
+          }
           <span>{{ selectedName() || (selectedId() ? 'Alvo selecionado' : emptyLabel()) }}</span>
         </div>
         <button
@@ -55,7 +57,7 @@ const TARGET_PAGE_SIZE = 20;
           [attr.aria-expanded]="expanded()"
           (click)="toggle()">
           <mat-icon>{{ expanded() ? 'expand_less' : 'search' }}</mat-icon>
-          {{ expanded() ? 'Fechar busca' : (selectedId() ? 'Trocar' : 'Escolher') }}
+          {{ expanded() ? 'Fechar busca' : selectedId() ? 'Trocar' : 'Escolher' }}
         </button>
       </div>
 
@@ -67,7 +69,9 @@ const TARGET_PAGE_SIZE = 20;
             <input matInput type="search" [formControl]="query" autocomplete="off" [readonly]="disabled()" />
           </mat-form-field>
 
-          @if (loading()) { <mat-progress-bar mode="indeterminate" [attr.aria-label]="'Buscando ' + label().toLowerCase()" /> }
+          @if (loading()) {
+            <mat-progress-bar mode="indeterminate" [attr.aria-label]="'Buscando ' + label().toLowerCase()" />
+          }
           @if (error()) {
             <div class="picker-error" role="alert">
               <span>{{ error() }}</span>
@@ -87,7 +91,9 @@ const TARGET_PAGE_SIZE = 20;
                 <span recordDescription>{{ target.startDate | date: 'short' }}</span>
               </app-workspace-record>
             } @empty {
-              @if (!loading() && !error()) { <p class="empty-note">Nenhum resultado encontrado.</p> }
+              @if (!loading() && !error()) {
+                <p class="empty-note">Nenhum resultado encontrado.</p>
+              }
             }
           </div>
 
@@ -119,19 +125,76 @@ const TARGET_PAGE_SIZE = 20;
     </div>
   `,
   styles: `
-    :host { display: block; min-width: 0; }
-    .form-target-picker { display: grid; gap: 0.5rem; min-width: 0; }
-    .selection-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
-    .selection-summary { display: flex; align-items: center; gap: 0.5rem; min-width: 0; overflow-wrap: anywhere; }
-    .selection-summary span { min-width: 0; overflow-wrap: anywhere; }
-    .picker-panel { display: grid; gap: 0.5rem; border-top: 1px solid var(--mat-sys-outline-variant); padding-top: 0.75rem; }
-    .picker-panel mat-form-field { width: 100%; }
-    .target-results { display: grid; gap: 0.125rem; max-height: 18rem; overflow: auto; }
-    .target-pager { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: var(--mat-sys-on-surface-variant); font: var(--mat-sys-body-small); }
-    .target-pager > div { display: flex; }
-    .picker-error { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: var(--mat-sys-error); }
-    .empty-note { margin: 0; color: var(--mat-sys-on-surface-variant); }
-    @media (max-width: 480px) { .selection-row { align-items: stretch; flex-direction: column; } }
+    :host {
+      display: block;
+      min-width: 0;
+    }
+    .form-target-picker {
+      display: grid;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+    .selection-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+    .selection-summary {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .selection-summary span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .picker-panel {
+      display: grid;
+      gap: 0.5rem;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding-top: 0.75rem;
+    }
+    .picker-panel mat-form-field {
+      width: 100%;
+    }
+    .target-results {
+      display: grid;
+      gap: 0.125rem;
+      max-height: 18rem;
+      overflow: auto;
+    }
+    .target-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      color: var(--mat-sys-on-surface-variant);
+      font: var(--mat-sys-body-small);
+    }
+    .target-pager > div {
+      display: flex;
+    }
+    .picker-error {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      color: var(--mat-sys-error);
+    }
+    .empty-note {
+      margin: 0;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    @media (max-width: 480px) {
+      .selection-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
   `,
 })
 export class EventTargetPickerComponent {
@@ -190,15 +253,21 @@ export class EventTargetPickerComponent {
       resetPagination(this.pagination);
       this.results.set([]);
       this.targetCache = null;
-      if (this.expanded()) void this.search();
+      if (this.expanded()) {
+        void this.search();
+      }
     });
   }
 
   toggle(): void {
-    if (this.disabled()) return;
+    if (this.disabled()) {
+      return;
+    }
     const expanded = !this.expanded();
     this.expanded.set(expanded);
-    if (expanded && this.results().length === 0) void this.search();
+    if (expanded && this.results().length === 0) {
+      void this.search();
+    }
   }
 
   async search(): Promise<void> {
@@ -211,7 +280,9 @@ export class EventTargetPickerComponent {
     try {
       const requiredCount = (pageIndex + 1) * TARGET_PAGE_SIZE + 1;
       const items = await this.collectVisibleTargets(targetType, query, requiredCount, requestId);
-      if (!items) return;
+      if (!items) {
+        return;
+      }
       if (
         requestId !== this.requestId ||
         targetType !== this.targetType() ||
@@ -223,9 +294,13 @@ export class EventTargetPickerComponent {
       const pageItems = items.slice(pageIndex * TARGET_PAGE_SIZE, requiredCount);
       this.results.set(applyPagedResult(pageItems, this.pagination, TARGET_PAGE_SIZE));
     } catch {
-      if (requestId === this.requestId) this.error.set(`Não foi possível buscar ${this.label().toLowerCase()}.`);
+      if (requestId === this.requestId) {
+        this.error.set(`Não foi possível buscar ${this.label().toLowerCase()}.`);
+      }
     } finally {
-      if (requestId === this.requestId) this.loading.set(false);
+      if (requestId === this.requestId) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -236,19 +311,25 @@ export class EventTargetPickerComponent {
   }
 
   async previousPage(): Promise<void> {
-    if (!this.pagination.hasPreviousPage() || this.loading()) return;
+    if (!this.pagination.hasPreviousPage() || this.loading()) {
+      return;
+    }
     this.pagination.pageIndex.update((page) => Math.max(0, page - 1));
     await this.search();
   }
 
   async nextPage(): Promise<void> {
-    if (!this.pagination.hasNextPage() || this.loading()) return;
+    if (!this.pagination.hasNextPage() || this.loading()) {
+      return;
+    }
     this.pagination.pageIndex.update((page) => page + 1);
     await this.search();
   }
 
   select(target: Event | MajorEvent): void {
-    if (this.disabled()) return;
+    if (this.disabled()) {
+      return;
+    }
     this.requestId++;
     this.targetChange.emit({ id: target.id, name: target.name, emoji: target.emoji });
     this.expanded.set(false);
@@ -268,11 +349,7 @@ export class EventTargetPickerComponent {
     requiredCount: number,
     requestId: number,
   ): Promise<Array<Event | MajorEvent> | null> {
-    if (
-      !this.targetCache ||
-      this.targetCache.targetType !== targetType ||
-      this.targetCache.query !== query
-    ) {
+    if (!this.targetCache || this.targetCache.targetType !== targetType || this.targetCache.query !== query) {
       this.targetCache = {
         targetType,
         query,
@@ -285,10 +362,13 @@ export class EventTargetPickerComponent {
 
     while (this.targetCache.items.length < requiredCount && !this.targetCache.exhausted) {
       const filters = { query, skip: this.targetCache.nextSkip, take: TARGET_PAGE_SIZE + 1 };
-      const rawItems = targetType === 'EVENT'
-        ? await firstValueFrom(this.eventApi.listEvents(filters))
-        : await firstValueFrom(this.majorEventApi.listMajorEvents(filters));
-      if (requestId !== this.requestId) return null;
+      const rawItems =
+        targetType === 'EVENT'
+          ? await firstValueFrom(this.eventApi.listEvents(filters))
+          : await firstValueFrom(this.majorEventApi.listMajorEvents(filters));
+      if (requestId !== this.requestId) {
+        return null;
+      }
 
       for (const item of rawItems as Array<Event | MajorEvent>) {
         if (
@@ -309,7 +389,9 @@ export class EventTargetPickerComponent {
   }
 
   private isOngoingOrFuture(value: string | null | undefined): boolean {
-    if (!value) return true;
+    if (!value) {
+      return true;
+    }
     const date = parseISO(value);
     return !isValid(date) || !isBefore(date, new Date());
   }

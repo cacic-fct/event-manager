@@ -88,8 +88,12 @@ describe('CertificateDemoComponent', () => {
       ['Voltar à lista', 'Certificados emitidos'],
       ['Nova emissão', 'Configurar certificado'],
     ]) {
-      const button = [...element.querySelectorAll('button')].find((candidate) => candidate.textContent?.includes(label));
-      if (!button) throw new Error(`Certificate button not found: ${label}`);
+      const button = [...element.querySelectorAll('button')].find((candidate) =>
+        candidate.textContent?.includes(label),
+      );
+      if (!button) {
+        throw new Error(`Certificate button not found: ${label}`);
+      }
       button.focus();
       button.click();
       fixture.detectChanges();

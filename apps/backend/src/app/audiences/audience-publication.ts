@@ -25,14 +25,22 @@ export function assertAudiencePublicationReady(target: AudiencePublicationTarget
     (candidate) => candidate && !candidate.deletedAt && candidate.attendanceEligibility != null,
   );
   if (policyOwner?.attendanceEligibility === 'INVITED_ONLY' && !policyOwner.audienceInvitations?.length) {
-    throw new BadRequestException('Adicione pelo menos uma pessoa convidada para confirmar presença antes de publicar ou agendar este registro.');
+    throw new BadRequestException(
+      'Adicione pelo menos uma pessoa convidada para confirmar presença antes de publicar ou agendar este registro.',
+    );
   }
 }
 
 function assertAccessInvitationsReady(target: AudiencePublicationTarget): void {
   if (target.audience === 'INVITATION_ONLY' && !target.audienceInvitations?.length) {
-    throw new BadRequestException('Adicione pelo menos uma pessoa convidada antes de publicar ou agendar este registro.');
+    throw new BadRequestException(
+      'Adicione pelo menos uma pessoa convidada antes de publicar ou agendar este registro.',
+    );
   }
-  if (target.eventGroup && !target.eventGroup.deletedAt) assertAccessInvitationsReady(target.eventGroup);
-  if (target.majorEvent && !target.majorEvent.deletedAt) assertAccessInvitationsReady(target.majorEvent);
+  if (target.eventGroup && !target.eventGroup.deletedAt) {
+    assertAccessInvitationsReady(target.eventGroup);
+  }
+  if (target.majorEvent && !target.majorEvent.deletedAt) {
+    assertAccessInvitationsReady(target.majorEvent);
+  }
 }

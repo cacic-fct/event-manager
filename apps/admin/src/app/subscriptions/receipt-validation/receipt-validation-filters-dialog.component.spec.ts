@@ -2,10 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormControl } from '@angular/forms';
-import {
-  DEFAULT_RECEIPT_VALIDATION_FILTERS,
-  type ReceiptValidationFilters,
-} from './receipt-validation-filtering';
+import { DEFAULT_RECEIPT_VALIDATION_FILTERS, type ReceiptValidationFilters } from './receipt-validation-filtering';
 import {
   ReceiptValidationFiltersDialogComponent,
   type ReceiptValidationFiltersDialogData,

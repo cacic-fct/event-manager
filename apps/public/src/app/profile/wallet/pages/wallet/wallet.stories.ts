@@ -140,32 +140,35 @@ const meta: Meta<WalletStoryArgs> = {
           {
             provide: TicketingApiService,
             useValue: {
-              myWalletTickets: () => of([
-                ...(context.args.includeEventTicket
-                  ? [createWalletStoryTicket({
-                      name: context.args.ticketName,
-                      emoji: context.args.ticketEmoji,
-                      description: context.args.ticketDescription || null,
-                      transferEligibilityDescription: context.args.eligibilityDescription || null,
-                      transferable: context.args.transferable,
-                      event: {
-                        ...createWalletStoryTicket().event,
-                        name: context.args.ticketName,
-                        emoji: context.args.ticketEmoji,
-                        publicUrl: context.args.publiclyListed ? '/event/party-event' : null,
-                      },
-                    })]
-                  : []),
-                ...(context.args.includeExpiredTicket
-                  ? [
-                      createWalletStoryTicket({
-                        id: '018f47a1-3d5b-7abc-8def-0123456789ac',
-                        name: context.args.archivedTicketName,
-                        status: context.args.archivedTicketStatus,
-                      }),
-                    ]
-                  : []),
-              ]),
+              myWalletTickets: () =>
+                of([
+                  ...(context.args.includeEventTicket
+                    ? [
+                        createWalletStoryTicket({
+                          name: context.args.ticketName,
+                          emoji: context.args.ticketEmoji,
+                          description: context.args.ticketDescription || null,
+                          transferEligibilityDescription: context.args.eligibilityDescription || null,
+                          transferable: context.args.transferable,
+                          event: {
+                            ...createWalletStoryTicket().event,
+                            name: context.args.ticketName,
+                            emoji: context.args.ticketEmoji,
+                            publicUrl: context.args.publiclyListed ? '/event/party-event' : null,
+                          },
+                        }),
+                      ]
+                    : []),
+                  ...(context.args.includeExpiredTicket
+                    ? [
+                        createWalletStoryTicket({
+                          id: '018f47a1-3d5b-7abc-8def-0123456789ac',
+                          name: context.args.archivedTicketName,
+                          status: context.args.archivedTicketStatus,
+                        }),
+                      ]
+                    : []),
+                ]),
               watchCurrentUser: () => EMPTY,
             },
           },
@@ -225,12 +228,16 @@ export const EventTicketStack: Story = {
   globals: { network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const backgrounds = await Promise.all(['CACiC Eventos', 'Código off-line', 'Registro Acadêmico'].map(async (name) => {
-      const header = await canvas.findByRole('button', { name });
-      const surface = header.closest('mat-card');
-      if (!surface) throw new Error(`Card surface missing for ${name}`);
-      return getComputedStyle(surface).backgroundColor;
-    }));
+    const backgrounds = await Promise.all(
+      ['CACiC Eventos', 'Código off-line', 'Registro Acadêmico'].map(async (name) => {
+        const header = await canvas.findByRole('button', { name });
+        const surface = header.closest('mat-card');
+        if (!surface) {
+          throw new Error(`Card surface missing for ${name}`);
+        }
+        return getComputedStyle(surface).backgroundColor;
+      }),
+    );
     await expect(new Set(backgrounds).size).toBe(3);
   },
 };
@@ -243,19 +250,23 @@ export const EventTicket: Story = {
     await expect(await canvas.findByRole('button', { name: /festa de encerramento/i })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Ver 1 bilhetes expirados' })).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /festa de encerramento/i }));
-    await expect(await canvas.findByRole('link', { name: /mais informações sobre festa de encerramento/i })).toBeVisible();
+    await expect(
+      await canvas.findByRole('link', { name: /mais informações sobre festa de encerramento/i }),
+    ).toBeVisible();
   },
 };
 
 export const ExpiredTicket: Story = {
   args: { includeEventTicket: true, includeExpiredTicket: true, archivedTicketStatus: 'EXPIRED' },
   globals: { network: 'online', serviceWorker: 'enabled' },
-  play: async ({ canvasElement, args }) => showArchivedPass(canvasElement, 'Prazo de validade encerrado', args.archivedTicketName),
+  play: async ({ canvasElement, args }) =>
+    showArchivedPass(canvasElement, 'Prazo de validade encerrado', args.archivedTicketName),
 };
 
 export const ConsumedTicket: Story = {
   args: { includeExpiredTicket: true, archivedTicketStatus: 'CONSUMED' },
-  play: async ({ canvasElement, args }) => showArchivedPass(canvasElement, 'Bilhete já utilizado', args.archivedTicketName),
+  play: async ({ canvasElement, args }) =>
+    showArchivedPass(canvasElement, 'Bilhete já utilizado', args.archivedTicketName),
 };
 
 export const RevokedTicket: Story = {
@@ -310,7 +321,9 @@ async function showArchivedPass(
   await expect(await canvas.findByText('Expirado')).toBeVisible();
   await expect(canvas.getByText(reason)).toBeVisible();
   const barcode = canvasElement.querySelector('.expired-barcode .barcode-content');
-  if (!barcode) throw new Error('Expired ticket barcode should remain rendered.');
+  if (!barcode) {
+    throw new Error('Expired ticket barcode should remain rendered.');
+  }
   await expect(barcode).toHaveAttribute('aria-hidden', 'true');
 }
 

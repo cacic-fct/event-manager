@@ -175,7 +175,9 @@ export class PlacePresetsResolver {
         where: { id, deletedAt: null },
         select: PLACE_PRESET_SELECT,
       });
-      if (!previousPlace) throw new NotFoundException(`Place preset ${id} was not found.`);
+      if (!previousPlace) {
+        throw new NotFoundException(`Place preset ${id} was not found.`);
+      }
       const place = await tx.placePreset.update({
         where: { id, deletedAt: null },
         data: this.normalizePlaceInput(input),
@@ -214,7 +216,9 @@ export class PlacePresetsResolver {
         where: { id, deletedAt: null },
         select: PLACE_PRESET_SELECT,
       });
-      if (!place) throw new NotFoundException(`Place preset ${id} was not found.`);
+      if (!place) {
+        throw new NotFoundException(`Place preset ${id} was not found.`);
+      }
       await tx.placePreset.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {

@@ -100,7 +100,8 @@ const meta: Meta<LoginStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Login form states for successful sign-in, invalid credentials, and SSO responses. Use the outcome controls to explore each result.',
+        component:
+          'Login form states for successful sign-in, invalid credentials, and SSO responses. Use the outcome controls to explore each result.',
       },
     },
     layout: 'fullscreen',

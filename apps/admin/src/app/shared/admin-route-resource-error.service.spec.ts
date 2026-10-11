@@ -10,9 +10,7 @@ describe('AdminRouteResourceErrorService', () => {
   beforeEach(() => {
     routeErrors.navigate.mockClear();
     TestBed.configureTestingModule({
-      providers: [
-        { provide: RouteErrorService, useValue: routeErrors },
-      ],
+      providers: [{ provide: RouteErrorService, useValue: routeErrors }],
     });
     service = TestBed.inject(AdminRouteResourceErrorService);
   });

@@ -18,9 +18,13 @@ export class ReceiptDemoComponent {
 
   selectReceipt(event: Event): void {
     const input = event.target;
-    if (!(input instanceof HTMLInputElement)) return;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
     const file = input.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     this.errorMessage.set('');
     if (file.size > 15 * 1024 * 1024) {
       this.errorMessage.set('Escolha um arquivo de até 15 MB.');
@@ -38,7 +42,9 @@ export class ReceiptDemoComponent {
   }
 
   sendReceipt(): void {
-    if (!this.filename()) return;
+    if (!this.filename()) {
+      return;
+    }
     this.submitted.set(true);
     this.receiptSubmitted.emit();
   }

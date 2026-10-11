@@ -103,10 +103,7 @@ const meta: Meta<OrganizerInfoStoryArgs> = {
       options: ['success', 'error'],
     },
   },
-  decorators: [
-    withScenarioControls<OrganizerInfoStoryArgs>(),
-    withOrganizerInfoProviders,
-  ],
+  decorators: [withScenarioControls<OrganizerInfoStoryArgs>(), withOrganizerInfoProviders],
   beforeEach: () => {
     navigateRouteError.mockClear();
   },

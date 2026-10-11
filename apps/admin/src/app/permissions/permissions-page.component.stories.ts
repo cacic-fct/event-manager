@@ -77,7 +77,8 @@ const meta: Meta<PermissionsPageStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Permission overview for the current account. Use the preset control to inspect access combinations.',
+        component:
+          'Permission overview for the current account. Use the preset control to inspect access combinations.',
       },
     },
     layout: 'fullscreen',

@@ -71,24 +71,24 @@
       <strong>{{ elapsedLabel() }}</strong>
     </div>
     @if (state() !== 'ENDED') {
-      <button matButton="outlined" type="button" (click)="toggleClock()">
-        <mat-icon aria-hidden="true">{{ state() === 'LIVE' ? 'pause' : 'play_arrow' }}</mat-icon>
-        {{ state() === 'LIVE' ? 'Pausar cronômetro' : 'Retomar cronômetro' }}
-      </button>
+    <button matButton="outlined" type="button" (click)="toggleClock()">
+      <mat-icon aria-hidden="true">{{ state() === 'LIVE' ? 'pause' : 'play_arrow' }}</mat-icon>
+      {{ state() === 'LIVE' ? 'Pausar cronômetro' : 'Retomar cronômetro' }}
+    </button>
     }
   </section>
 
   <div class="match-operations__actions">
     @if (state() === 'ENDED') {
-      <button matButton="filled" type="button" (click)="restartMatch()">
-        <mat-icon aria-hidden="true">restart_alt</mat-icon>
-        Recomeçar
-      </button>
+    <button matButton="filled" type="button" (click)="restartMatch()">
+      <mat-icon aria-hidden="true">restart_alt</mat-icon>
+      Recomeçar
+    </button>
     } @else {
-      <button matButton="text" type="button" (click)="finishMatch()">
-        <mat-icon aria-hidden="true">sports_score</mat-icon>
-        Finalizar partida
-      </button>
+    <button matButton="text" type="button" (click)="finishMatch()">
+      <mat-icon aria-hidden="true">sports_score</mat-icon>
+      Finalizar partida
+    </button>
     }
   </div>
 </div>

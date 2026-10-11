@@ -85,9 +85,10 @@ export class SseReplayService {
             return;
           }
 
-          const recorded = event.id && this.isCursorForScope(event.id, scope)
-            ? Promise.resolve(event)
-            : this.publish(scope, event).then((stored) => this.toMessageEvent(stored));
+          const recorded =
+            event.id && this.isCursorForScope(event.id, scope)
+              ? Promise.resolve(event)
+              : this.publish(scope, event).then((stored) => this.toMessageEvent(stored));
           const publication = recorded
             .then((stored) => {
               if (replayFinished) {

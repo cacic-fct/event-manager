@@ -151,72 +151,72 @@ export class AccountMergeService {
     try {
       await this.runAsSystem(() =>
         this.prisma.$transaction(async (tx) => {
-        const existing = await tx.externalAccountMergeOperation.findUnique({
-          where: { eventId: input.eventId },
-        });
-
-        if (existing?.status === 'APPLIED') {
-          this.ensureSameEvent(existing, input);
-          return;
-        }
-
-        await this.ensureAccountMapping(tx, input.oldUserId, input.newUserId);
-        const applied = await this.applyLocalMerge(tx, input, actorId);
-        await reassignTicketUserRelations(tx, input.oldUserId, input.newUserId);
-
-        if (existing) {
-          await tx.externalAccountMergeOperation.update({
+          const existing = await tx.externalAccountMergeOperation.findUnique({
             where: { eventId: input.eventId },
-            data: {
-              status: 'APPLIED',
-              result: applied.result,
-              peopleMergeOperationId: applied.peopleMergeOperationId,
-              errorMessage: null,
-              requestPayload: input.requestPayload,
-              attemptCount: { increment: 1 },
-              updatedById: actorId ?? undefined,
-            },
           });
-        } else {
-          await tx.externalAccountMergeOperation.create({
-            data: {
-              eventId: input.eventId,
-              type: input.type,
-              oldUserId: input.oldUserId,
-              newUserId: input.newUserId,
-              occurredAt: input.occurredAt,
-              status: 'APPLIED',
-              result: applied.result,
-              peopleMergeOperationId: applied.peopleMergeOperationId,
-              requestPayload: input.requestPayload,
-              createdById: actorId ?? undefined,
-              updatedById: actorId ?? undefined,
-            },
-          });
-        }
 
-        await this.auditLog.record(
-          {
-            entityType: AuditLogEntityType.SYSTEM,
-            entityId: input.eventId,
-            entityLabel: 'Unificação de contas',
-            operation: AuditLogOperation.MERGE,
-            actor: this.accountMergeAuditActor(actorId),
-            summary: 'Unificação de contas aplicada no gerenciador de eventos.',
-            scope: { permission: 'account-merge:write' },
-            metadata: {
-              eventId: input.eventId,
-              oldUserId: input.oldUserId,
-              newUserId: input.newUserId,
-              sourcePersonId: applied.sourcePersonId ?? null,
-              targetPersonId: applied.targetPersonId ?? null,
-              result: applied.result,
-              peopleMergeOperationId: applied.peopleMergeOperationId ?? null,
+          if (existing?.status === 'APPLIED') {
+            this.ensureSameEvent(existing, input);
+            return;
+          }
+
+          await this.ensureAccountMapping(tx, input.oldUserId, input.newUserId);
+          const applied = await this.applyLocalMerge(tx, input, actorId);
+          await reassignTicketUserRelations(tx, input.oldUserId, input.newUserId);
+
+          if (existing) {
+            await tx.externalAccountMergeOperation.update({
+              where: { eventId: input.eventId },
+              data: {
+                status: 'APPLIED',
+                result: applied.result,
+                peopleMergeOperationId: applied.peopleMergeOperationId,
+                errorMessage: null,
+                requestPayload: input.requestPayload,
+                attemptCount: { increment: 1 },
+                updatedById: actorId ?? undefined,
+              },
+            });
+          } else {
+            await tx.externalAccountMergeOperation.create({
+              data: {
+                eventId: input.eventId,
+                type: input.type,
+                oldUserId: input.oldUserId,
+                newUserId: input.newUserId,
+                occurredAt: input.occurredAt,
+                status: 'APPLIED',
+                result: applied.result,
+                peopleMergeOperationId: applied.peopleMergeOperationId,
+                requestPayload: input.requestPayload,
+                createdById: actorId ?? undefined,
+                updatedById: actorId ?? undefined,
+              },
+            });
+          }
+
+          await this.auditLog.record(
+            {
+              entityType: AuditLogEntityType.SYSTEM,
+              entityId: input.eventId,
+              entityLabel: 'Unificação de contas',
+              operation: AuditLogOperation.MERGE,
+              actor: this.accountMergeAuditActor(actorId),
+              summary: 'Unificação de contas aplicada no gerenciador de eventos.',
+              scope: { permission: 'account-merge:write' },
+              metadata: {
+                eventId: input.eventId,
+                oldUserId: input.oldUserId,
+                newUserId: input.newUserId,
+                sourcePersonId: applied.sourcePersonId ?? null,
+                targetPersonId: applied.targetPersonId ?? null,
+                result: applied.result,
+                peopleMergeOperationId: applied.peopleMergeOperationId ?? null,
+              },
+              force: true,
             },
-            force: true,
-          },
-          tx,
-        );
+            tx,
+          );
         }),
       );
 
@@ -537,7 +537,12 @@ export class AccountMergeService {
     sourcePersonId: string,
     revokedRepresentativeById: string | null = null,
   ): Promise<MovedRelationsSnapshot> {
-    const ticketRelations = await moveTicketPersonRelations(tx, targetPersonId, sourcePersonId, revokedRepresentativeById);
+    const ticketRelations = await moveTicketPersonRelations(
+      tx,
+      targetPersonId,
+      sourcePersonId,
+      revokedRepresentativeById,
+    );
     const sportsRelations = await moveSportsPersonRelations(
       tx,
       targetPersonId,
@@ -562,7 +567,7 @@ export class AccountMergeService {
       sourcePersonId,
     );
     const movedEventSubscriptionIds = await this.coalesceEventSubscriptions(tx, targetPersonId, sourcePersonId);
-  const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
+    const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
       tx,
       targetPersonId,
       sourcePersonId,

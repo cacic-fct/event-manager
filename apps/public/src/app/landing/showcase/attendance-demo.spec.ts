@@ -84,12 +84,15 @@ describe('AttendanceDemoComponent', () => {
 
   it('prevents native form navigation and completes a submitted manual presence', () => {
     const component = fixture.componentInstance;
-    for (const person of component.people()) component.registerDecision({ person, decision: 'PRESENT' });
+    for (const person of component.people()) {
+      component.registerDecision({ person, decision: 'PRESENT' });
+    }
     fixture.detectChanges();
 
     for (let step = 0; step < 2; step += 1) {
-      const continueButton = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
-        .find((button) => button.textContent?.trim() === 'Continuar');
+      const continueButton = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === 'Continuar',
+      );
       expect(continueButton).toBeDefined();
       continueButton?.click();
       fixture.detectChanges();
@@ -98,7 +101,9 @@ describe('AttendanceDemoComponent', () => {
     const host = fixture.nativeElement as HTMLElement;
     const input = host.querySelector('input');
     const form = host.querySelector('form');
-    if (!input || !form) throw new Error('Expected the manual attendance form.');
+    if (!input || !form) {
+      throw new Error('Expected the manual attendance form.');
+    }
     input.value = 'visitante@exemplo.com.br';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();

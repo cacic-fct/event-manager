@@ -119,8 +119,8 @@
   <section class="livestream-section">
     <h2>Transmissões ao vivo</h2>
     <div class="livestream-grid">
-      @for (match of livestreamMatches(); track match.id; let streamIndex = $index) {
-      @if (match.livestreamUrl; as livestreamValue) {
+      @for (match of livestreamMatches(); track match.id; let streamIndex = $index) { @if (match.livestreamUrl; as
+      livestreamValue) {
       <article>
         <h3>
           <a [routerLink]="['/sports/match', match.id]">
@@ -132,8 +132,7 @@
           [value]="livestreamValue"
           [title]="'Transmissão da partida ' + (streamIndex + 1) + ': ' + participantName(match, 'home') + ' × ' + participantName(match, 'away')" />
       </article>
-      }
-      }
+      } }
     </div>
   </section>
   }

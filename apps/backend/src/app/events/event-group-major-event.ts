@@ -11,7 +11,9 @@ export async function syncEventGroupMajorEvent(
   // in this check after the caller has authorized the requested event change.
   return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
     const uniqueGroupIds = [...new Set(groupIds.filter((id): id is string => Boolean(id)))];
-    if (uniqueGroupIds.length === 0) return;
+    if (uniqueGroupIds.length === 0) {
+      return;
+    }
 
     const groups = await prisma.eventGroup.findMany({
       where: { id: { in: uniqueGroupIds }, deletedAt: null },

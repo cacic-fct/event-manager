@@ -88,25 +88,33 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     subscription.unsubscribe();
   });
 
-  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'])('includes invited attendance from the %s policy and excludes uninvited people', async (scope) => {
-    const { audienceInvitations, mapper, prisma, service } = createService();
-    const event = {
-      id: 'event-1',
-      majorEventId: scope === 'MAJOR_EVENT' ? 'major-1' : null,
-      eventGroupId: scope === 'EVENT_GROUP' ? 'group-1' : null,
-      attendanceEligibility: scope === 'EVENT' ? 'INVITED_ONLY' : null,
-      eventGroup: scope === 'EVENT_GROUP' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
-      majorEvent: scope === 'MAJOR_EVENT' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
-    };
-    prisma.event.findMany.mockResolvedValue([event]);
-    mapper.mapPublicEvent.mockReturnValue({ id: 'event-1' });
-    audienceInvitations.getEventInvitationFacts.mockResolvedValue(new Map([
-      ['person-1:event-1', { event: scope === 'EVENT', eventGroup: scope === 'EVENT_GROUP', majorEvent: scope === 'MAJOR_EVENT' }],
-    ]));
+  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'])(
+    'includes invited attendance from the %s policy and excludes uninvited people',
+    async (scope) => {
+      const { audienceInvitations, mapper, prisma, service } = createService();
+      const event = {
+        id: 'event-1',
+        majorEventId: scope === 'MAJOR_EVENT' ? 'major-1' : null,
+        eventGroupId: scope === 'EVENT_GROUP' ? 'group-1' : null,
+        attendanceEligibility: scope === 'EVENT' ? 'INVITED_ONLY' : null,
+        eventGroup: scope === 'EVENT_GROUP' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
+        majorEvent: scope === 'MAJOR_EVENT' ? { attendanceEligibility: 'INVITED_ONLY' } : null,
+      };
+      prisma.event.findMany.mockResolvedValue([event]);
+      mapper.mapPublicEvent.mockReturnValue({ id: 'event-1' });
+      audienceInvitations.getEventInvitationFacts.mockResolvedValue(
+        new Map([
+          [
+            'person-1:event-1',
+            { event: scope === 'EVENT', eventGroup: scope === 'EVENT_GROUP', majorEvent: scope === 'MAJOR_EVENT' },
+          ],
+        ]),
+      );
 
-    await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toHaveLength(1);
-    await expect(service.listPendingOnlineAttendanceEvents('person-2')).resolves.toEqual([]);
-  });
+      await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toHaveLength(1);
+      await expect(service.listPendingOnlineAttendanceEvents('person-2')).resolves.toEqual([]);
+    },
+  );
 
   it('lists pending online attendance events and maps public event records', async () => {
     const { mapper, prisma, service } = createService();
@@ -170,9 +178,11 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
     await expect(service.listPendingOnlineAttendanceEvents('person-1')).resolves.toEqual([
       { eventId: 'event-anyone', event: mappedEvent },
     ]);
-    expect(prisma.event.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ AND: [PUBLIC_EVENT_WHERE] }),
-    }));
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ AND: [PUBLIC_EVENT_WHERE] }),
+      }),
+    );
   });
 
   it('lists invited-only events when the person is invited', async () => {
@@ -186,9 +196,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       majorEvent: null,
     };
     const mappedEvent = { id: event.id };
-    const invitationFacts = new Map([
-      [`person-1:${event.id}`, { event: true, eventGroup: false, majorEvent: false }],
-    ]);
+    const invitationFacts = new Map([[`person-1:${event.id}`, { event: true, eventGroup: false, majorEvent: false }]]);
     const { mapper, prisma, service, audienceInvitations } = createService({
       getEventInvitationFacts: jest.fn().mockResolvedValue(invitationFacts),
     });
@@ -451,9 +459,8 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       audienceContext.run(ANONYMOUS_AUDIENCE, () => service.stream({ headers: {} } as Request, ['major-1'], [])),
     );
     const unespMessages = collectMessages(
-      audienceContext.run(
-        { ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true },
-        () => service.stream({ headers: { cookie: 'session=unesp' } } as Request, ['major-1'], []),
+      audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true }, () =>
+        service.stream({ headers: { cookie: 'session=unesp' } } as Request, ['major-1'], []),
       ),
     );
     await waitForMessages(publicMessages.messages, 1);

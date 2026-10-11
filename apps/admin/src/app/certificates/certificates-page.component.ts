@@ -73,9 +73,7 @@ export class CertificatesPageComponent {
     const targetType = this.routeTargetType();
     return targetType === null || targetType === 'other' || targetType === 'folder';
   });
-  protected readonly showGenericTargetPicker = computed(
-    () => !this.inWorkspaceShell && !this.isStandalonePage(),
-  );
+  protected readonly showGenericTargetPicker = computed(() => !this.inWorkspaceShell && !this.isStandalonePage());
 
   constructor() {
     effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
@@ -104,7 +102,9 @@ export class CertificatesPageComponent {
   }
 
   protected async saveFolder(): Promise<void> {
-    if (await this.workspace.saveCertificateFolder()) this.folderEditorMode.set(null);
+    if (await this.workspace.saveCertificateFolder()) {
+      this.folderEditorMode.set(null);
+    }
   }
 
   protected canEditSelectedTarget(): boolean {

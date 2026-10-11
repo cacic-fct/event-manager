@@ -151,14 +151,18 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   const valueFlags = new Set(['--input', '--output', '--env-file', '--database-url', '--event-year']);
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
-    if (token === undefined) continue;
+    if (token === undefined) {
+      continue;
+    }
     if (token === '--help' || token === '-h') {
       args.help = true;
       continue;
     }
     const equalsIndex = token.indexOf('=');
     const flag = equalsIndex >= 0 ? token.slice(0, equalsIndex) : token;
-    if (!valueFlags.has(flag)) throw new Secompp25InputError(`Unknown argument: ${token}`);
+    if (!valueFlags.has(flag)) {
+      throw new Secompp25InputError(`Unknown argument: ${token}`);
+    }
     const inlineValue = equalsIndex >= 0 ? token.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
     if (value === undefined || value.startsWith('--')) {
@@ -219,20 +223,28 @@ export function isEventColumn(columnName: string): boolean {
 
 export function findColumnName(fieldnames: readonly string[], expectedKey: string): string {
   const match = fieldnames.find((name) => canonicalHeader(name) === expectedKey);
-  if (match) return match;
+  if (match) {
+    return match;
+  }
   throw new Secompp25InputError(`CSV column not found: ${expectedKey}`);
 }
 
 export function detectPartNumber(value: unknown): EventPartNumber {
   const normalized = normalizeTextKey(value);
-  if (PART_1_PATTERN.test(normalized)) return 1;
-  if (PART_2_PATTERN.test(normalized)) return 2;
+  if (PART_1_PATTERN.test(normalized)) {
+    return 1;
+  }
+  if (PART_2_PATTERN.test(normalized)) {
+    return 2;
+  }
   return null;
 }
 
 export function stripScheduleSuffixParentheses(value: string): string {
   const match = SCHEDULE_SUFFIX_PATTERN.exec(value);
-  if (!match) return value;
+  if (!match) {
+    return value;
+  }
   const suffixKey = normalizeTextKey(match[1]);
   if ([...SCHEDULE_HINTS].some((hint) => suffixKey.split(' ').includes(hint))) {
     return value.slice(0, match.index).trim();
@@ -258,7 +270,9 @@ export function isNonEventValue(value: unknown): boolean {
 }
 
 export function extractEventName(rawValue: unknown): string | null {
-  if (rawValue == null) return null;
+  if (rawValue == null) {
+    return null;
+  }
   const text = normalizeSpaces(String(rawValue).normalize('NFKC'));
   if (
     !text ||
@@ -267,9 +281,13 @@ export function extractEventName(rawValue: unknown): string | null {
   ) {
     return null;
   }
-  if (isNonEventValue(text)) return null;
+  if (isNonEventValue(text)) {
+    return null;
+  }
   const eventName = text.replace(VAGAS_SUFFIX_PATTERN, '').trim();
-  if (!eventName || isNonEventValue(eventName)) return null;
+  if (!eventName || isNonEventValue(eventName)) {
+    return null;
+  }
   return eventName;
 }
 
@@ -300,7 +318,9 @@ export function dedupePreservingOrder<T>(values: readonly T[]): T[] {
   const seen = new Set<T>();
   const ordered: T[] = [];
   for (const value of values) {
-    if (seen.has(value)) continue;
+    if (seen.has(value)) {
+      continue;
+    }
     seen.add(value);
     ordered.push(value);
   }
@@ -313,13 +333,19 @@ export function findTokenMatches(
   eventRows: readonly EventRow[],
 ): EventRow[] {
   const tokens = baseKey.split(' ').filter((token) => token.length >= 4 && !STOP_WORDS.has(token));
-  if (tokens.length === 0) return [];
+  if (tokens.length === 0) {
+    return [];
+  }
   const tokenMatches = eventRows.filter((row) => tokens.every((token) => row.baseKey.includes(token)));
   if (partNumber != null) {
     const exactPartMatches = tokenMatches.filter((row) => row.partNumber === partNumber);
-    if (exactPartMatches.length > 0) return exactPartMatches;
+    if (exactPartMatches.length > 0) {
+      return exactPartMatches;
+    }
     const noPartMatches = tokenMatches.filter((row) => row.partNumber == null);
-    if (noPartMatches.length > 0) return noPartMatches;
+    if (noPartMatches.length > 0) {
+      return noPartMatches;
+    }
   }
   return tokenMatches;
 }
@@ -343,7 +369,9 @@ function longestCommonSubstring(
   for (let ai = aStart; ai < aEnd; ai += 1) {
     const current: number[] = new Array(previous.length).fill(0);
     for (let bi = bStart; bi < bEnd; bi += 1) {
-      if (a[ai] !== b[bi]) continue;
+      if (a[ai] !== b[bi]) {
+        continue;
+      }
       const length = (previous[bi - bStart] ?? 0) + 1;
       current[bi - bStart + 1] = length;
       const matchStart = ai - length + 1;
@@ -369,9 +397,13 @@ function sequenceMatcherMatches(
   bStart = 0,
   bEnd = b.length,
 ): number {
-  if (aStart >= aEnd || bStart >= bEnd) return 0;
+  if (aStart >= aEnd || bStart >= bEnd) {
+    return 0;
+  }
   const match = longestCommonSubstring(a, b, aStart, aEnd, bStart, bEnd);
-  if (match.length === 0) return 0;
+  if (match.length === 0) {
+    return 0;
+  }
   return (
     match.length +
     sequenceMatcherMatches(a, b, aStart, match.aStart, bStart, match.bStart) +
@@ -380,7 +412,9 @@ function sequenceMatcherMatches(
 }
 
 export function sequenceMatcherRatio(a: string, b: string): number {
-  if (a === b) return 1;
+  if (a === b) {
+    return 1;
+  }
   const total = a.length + b.length;
   return total === 0 ? 1 : (2 * sequenceMatcherMatches(a, b)) / total;
 }
@@ -437,12 +471,16 @@ export function resolveEventNames(
     let candidateMatches: EventRow[] = [];
     if (partNumber != null) {
       candidateMatches = baseMatches.filter((row) => row.partNumber === partNumber);
-      if (candidateMatches.length === 0) candidateMatches = baseMatches.filter((row) => row.partNumber == null);
+      if (candidateMatches.length === 0) {
+        candidateMatches = baseMatches.filter((row) => row.partNumber == null);
+      }
     } else {
       const noPartMatches = baseMatches.filter((row) => row.partNumber == null);
       candidateMatches = noPartMatches.length === 1 ? noPartMatches : baseMatches;
     }
-    if (candidateMatches.length === 0) candidateMatches = findTokenMatches(baseKey, partNumber, eventRows);
+    if (candidateMatches.length === 0) {
+      candidateMatches = findTokenMatches(baseKey, partNumber, eventRows);
+    }
     const candidateMatch = candidateMatches[0];
     if (candidateMatches.length === 1 && candidateMatch) {
       eventIdByInputName.set(eventName, candidateMatch.eventId);
@@ -463,7 +501,9 @@ export function resolveEventNames(
         continue;
       }
     }
-    if (isNonEventValue(eventName)) continue;
+    if (isNonEventValue(eventName)) {
+      continue;
+    }
     const normalizedInput = normalizeTextKey(eventName);
     if (normalizedInput === 'la tex' || normalizedInput === 'latex') {
       const latexCandidates = findTokenMatches('latex', null, eventRows);
@@ -481,13 +521,17 @@ export function resolveEventNames(
         continue;
       }
     }
-    if (candidateMatches.length === 0) missingEventNames.push(eventName);
+    if (candidateMatches.length === 0) {
+      missingEventNames.push(eventName);
+    }
   }
   return { eventIdByInputName, missingEventNames, ambiguousEventNames, eventRows, eventsByFullKey };
 }
 
 function printResolutionErrors({ missingEventNames, ambiguousEventNames, eventsByFullKey }: EventResolution): void {
-  if (missingEventNames.length === 0 && ambiguousEventNames.length === 0) return;
+  if (missingEventNames.length === 0 && ambiguousEventNames.length === 0) {
+    return;
+  }
   if (missingEventNames.length > 0) {
     process.stderr.write('ERROR: Some events were not found in database:\n');
     const keys = [...eventsByFullKey.keys()];
@@ -522,7 +566,9 @@ export async function runSecompp25(args: Secompp25Args): Promise<CsvRow[]> {
   const enrollmentColumn = findColumnName(parsed.headers, ENROLLMENT_COLUMN_KEY);
   const identityColumn = findColumnName(parsed.headers, IDENTITY_COLUMN_KEY);
   const eventColumns = parsed.headers.filter(isEventColumn);
-  if (eventColumns.length === 0) throw new Secompp25InputError('No event columns found in CSV.');
+  if (eventColumns.length === 0) {
+    throw new Secompp25InputError('No event columns found in CSV.');
+  }
 
   const rowPayloads: RowPayload[] = [];
   const eventNamesToResolve: string[] = [];
@@ -530,7 +576,9 @@ export async function runSecompp25(args: Secompp25Args): Promise<CsvRow[]> {
     const selectedEventNames: string[] = [];
     for (const column of eventColumns) {
       const eventName = extractEventName(rawRow[column]);
-      if (eventName == null || selectedEventNames.includes(eventName)) continue;
+      if (eventName == null || selectedEventNames.includes(eventName)) {
+        continue;
+      }
       selectedEventNames.push(eventName);
     }
     eventNamesToResolve.push(...selectedEventNames);

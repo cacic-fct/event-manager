@@ -7,7 +7,10 @@ import { createAdminPerson } from '../testing/admin-entity-fixtures';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { TicketAdminApiService } from '../graphql/ticket-admin-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
-import { TicketAdminPersonActionDialogComponent, type TicketAdminPersonActionData } from './ticket-admin-person-action-dialog.component';
+import {
+  TicketAdminPersonActionDialogComponent,
+  type TicketAdminPersonActionData,
+} from './ticket-admin-person-action-dialog.component';
 
 const person = createAdminPerson({ id: 'person-1', name: 'Marina da Silva', email: 'marina@example.edu' });
 const ineligible: AdminTicketEligibility = {
@@ -38,7 +41,10 @@ function setup(action: 'ISSUE' | 'TRANSFER', eligibility: AdminTicketEligibility
       { provide: MatDialogRef, useValue: { close } },
       { provide: PeopleApiService, useValue: { listRelatedPeople } },
       { provide: TicketAdminApiService, useValue: api },
-      { provide: PermissionsService, useValue: { has: (permission: string) => canSearch && permission === Permission.RelatedPerson.Read } },
+      {
+        provide: PermissionsService,
+        useValue: { has: (permission: string) => canSearch && permission === Permission.RelatedPerson.Read },
+      },
     ],
   });
   const fixture = TestBed.createComponent(TicketAdminPersonActionDialogComponent);
@@ -53,10 +59,17 @@ async function settle(fixture: ComponentFixture<TicketAdminPersonActionDialogCom
   fixture.detectChanges();
 }
 
-function button(fixture: ComponentFixture<TicketAdminPersonActionDialogComponent>, label: string): HTMLButtonElement | null {
-  return [...fixture.nativeElement.querySelectorAll('button')].find((candidate: HTMLButtonElement) =>
-    candidate.getAttribute('aria-label') === label || candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
-  ) ?? null;
+function button(
+  fixture: ComponentFixture<TicketAdminPersonActionDialogComponent>,
+  label: string,
+): HTMLButtonElement | null {
+  return (
+    [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) =>
+        candidate.getAttribute('aria-label') === label ||
+        candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    ) ?? null
+  );
 }
 
 async function selectMarina(fixture: ComponentFixture<TicketAdminPersonActionDialogComponent>): Promise<void> {
@@ -133,7 +146,9 @@ describe('TicketAdminPersonActionDialogComponent', () => {
     await settle(fixture);
     const search = fixture.nativeElement.querySelector('app-person-search input') as HTMLInputElement;
     expect(search.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Buscar pessoas exige a permissão de leitura de pessoas relacionadas ao evento.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Buscar pessoas exige a permissão de leitura de pessoas relacionadas ao evento.',
+    );
     expect(api.getEligibilityWarnings).not.toHaveBeenCalled();
   });
 });

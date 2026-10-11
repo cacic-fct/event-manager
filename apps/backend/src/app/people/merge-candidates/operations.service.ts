@@ -1,6 +1,12 @@
 import { MergeCandidateMergeInput } from '@cacic-fct/shared-data-types';
 import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, EventManagerPermissionArchiveReason, Prisma } from '@prisma/client';
+import {
+  AuditLogActorType,
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventManagerPermissionArchiveReason,
+  Prisma,
+} from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -127,139 +133,139 @@ export class MergeCandidateOperationsService {
 
     const mergeResult = await this.runAsSystem(() =>
       this.prisma.$transaction(async (tx) => {
-      const candidate = await tx.mergeCandidate.findUnique({
-        where: {
-          id: input.candidateId,
-        },
-        include: {
-          personA: true,
-          personB: true,
-        },
-      });
+        const candidate = await tx.mergeCandidate.findUnique({
+          where: {
+            id: input.candidateId,
+          },
+          include: {
+            personA: true,
+            personB: true,
+          },
+        });
 
-      if (!candidate) {
-        throw new NotFoundException(`Merge candidate ${input.candidateId} was not found.`);
-      }
+        if (!candidate) {
+          throw new NotFoundException(`Merge candidate ${input.candidateId} was not found.`);
+        }
 
-      if (candidate.status !== 'PENDING') {
-        throw new ConflictException(`Merge candidate ${candidate.id} is not pending anymore.`);
-      }
+        if (candidate.status !== 'PENDING') {
+          throw new ConflictException(`Merge candidate ${candidate.id} is not pending anymore.`);
+        }
 
-      if (input.targetPersonId !== candidate.personAId && input.targetPersonId !== candidate.personBId) {
-        throw new UnprocessableEntityException('The selected target person does not belong to this merge candidate.');
-      }
+        if (input.targetPersonId !== candidate.personAId && input.targetPersonId !== candidate.personBId) {
+          throw new UnprocessableEntityException('The selected target person does not belong to this merge candidate.');
+        }
 
-      const sourcePersonId = input.targetPersonId === candidate.personAId ? candidate.personBId : candidate.personAId;
+        const sourcePersonId = input.targetPersonId === candidate.personAId ? candidate.personBId : candidate.personAId;
 
-      const [targetPerson, sourcePerson] = await Promise.all([
-        tx.people.findUnique({
-          where: { id: input.targetPersonId },
-        }),
-        tx.people.findUnique({
-          where: { id: sourcePersonId },
-        }),
-      ]);
+        const [targetPerson, sourcePerson] = await Promise.all([
+          tx.people.findUnique({
+            where: { id: input.targetPersonId },
+          }),
+          tx.people.findUnique({
+            where: { id: sourcePersonId },
+          }),
+        ]);
 
-      if (!targetPerson) {
-        throw new NotFoundException(`Target person ${input.targetPersonId} was not found.`);
-      }
+        if (!targetPerson) {
+          throw new NotFoundException(`Target person ${input.targetPersonId} was not found.`);
+        }
 
-      if (!sourcePerson) {
-        throw new NotFoundException(`Source person ${sourcePersonId} was not found.`);
-      }
+        if (!sourcePerson) {
+          throw new NotFoundException(`Source person ${sourcePersonId} was not found.`);
+        }
 
-      if (targetPerson.deletedAt || targetPerson.mergedIntoId) {
-        throw new ConflictException(`Target person ${targetPerson.id} is not available for merge.`);
-      }
+        if (targetPerson.deletedAt || targetPerson.mergedIntoId) {
+          throw new ConflictException(`Target person ${targetPerson.id} is not available for merge.`);
+        }
 
-      if (sourcePerson.deletedAt || sourcePerson.mergedIntoId) {
-        throw new ConflictException(`Source person ${sourcePerson.id} is not available for merge.`);
-      }
+        if (sourcePerson.deletedAt || sourcePerson.mergedIntoId) {
+          throw new ConflictException(`Source person ${sourcePerson.id} is not available for merge.`);
+        }
 
-      const targetSnapshot = toPersonSnapshot(targetPerson);
-      const sourceSnapshot = toPersonSnapshot(sourcePerson);
-      const targetMigrationData = buildTargetMigrationData(migrateFields, targetPerson, sourcePerson);
+        const targetSnapshot = toPersonSnapshot(targetPerson);
+        const sourceSnapshot = toPersonSnapshot(sourcePerson);
+        const targetMigrationData = buildTargetMigrationData(migrateFields, targetPerson, sourcePerson);
 
-      const movedRelations = await moveRelations(tx, targetPerson.id, sourcePerson.id, actorId);
+        const movedRelations = await moveRelations(tx, targetPerson.id, sourcePerson.id, actorId);
 
-      await tx.people.update({
-        where: {
-          id: sourcePerson.id,
-        },
-        data: {
-          mergedIntoId: targetPerson.id,
-          deletedAt: new Date(),
-          updatedById: actorId ?? undefined,
-        },
-      });
-
-      if (Object.keys(targetMigrationData).length > 0) {
         await tx.people.update({
           where: {
-            id: targetPerson.id,
+            id: sourcePerson.id,
           },
           data: {
-            ...targetMigrationData,
+            mergedIntoId: targetPerson.id,
+            deletedAt: new Date(),
             updatedById: actorId ?? undefined,
           },
         });
-      }
 
-      const operation = await tx.peopleMergeOperation.create({
-        data: {
-          targetPersonId: targetPerson.id,
-          sourcePersonId: sourcePerson.id,
-          mergeCandidateId: candidate.id,
-          migratedFields: migrateFields,
-          targetSnapshot,
-          sourceSnapshot,
-          movedRelations,
-          createdById: actorId ?? undefined,
-        },
-      });
+        if (Object.keys(targetMigrationData).length > 0) {
+          await tx.people.update({
+            where: {
+              id: targetPerson.id,
+            },
+            data: {
+              ...targetMigrationData,
+              updatedById: actorId ?? undefined,
+            },
+          });
+        }
 
-      const updatedCandidate = await tx.mergeCandidate.update({
-        where: {
-          id: candidate.id,
-        },
-        data: {
-          status: 'MERGED',
-          resolvedById: actorId ?? undefined,
-          updatedById: actorId ?? undefined,
-        },
-        include: {
-          personA: true,
-          personB: true,
-        },
-      });
-
-      await this.auditLog.record(
-        {
-          entityType: AuditLogEntityType.MERGE_CANDIDATE,
-          entityId: candidate.id,
-          entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
-          operation: AuditLogOperation.MERGE,
-          force: true,
-          actor: await this.resolveAuditActor(actorId, tx),
-          before: { status: candidate.status },
-          after: { status: updatedCandidate.status },
-          metadata: {
-            mergeOperationId: operation.id,
-            sourcePersonId: sourcePerson.id,
+        const operation = await tx.peopleMergeOperation.create({
+          data: {
             targetPersonId: targetPerson.id,
+            sourcePersonId: sourcePerson.id,
+            mergeCandidateId: candidate.id,
             migratedFields: migrateFields,
+            targetSnapshot,
+            sourceSnapshot,
+            movedRelations,
+            createdById: actorId ?? undefined,
           },
-          scope: { permission: Permission.MergeCandidate.Merge },
-          summary: 'Pessoas unificadas e vínculos transferidos.',
-        },
-        tx,
-      );
+        });
 
-      this.logger.log(
-        `Merged people for candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, fields=${migrateFields.join(',') || '(none)'}, actor=${actorId ?? 'system'}.`,
-      );
+        const updatedCandidate = await tx.mergeCandidate.update({
+          where: {
+            id: candidate.id,
+          },
+          data: {
+            status: 'MERGED',
+            resolvedById: actorId ?? undefined,
+            updatedById: actorId ?? undefined,
+          },
+          include: {
+            personA: true,
+            personB: true,
+          },
+        });
 
-      return updatedCandidate;
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MERGE_CANDIDATE,
+            entityId: candidate.id,
+            entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
+            operation: AuditLogOperation.MERGE,
+            force: true,
+            actor: await this.resolveAuditActor(actorId, tx),
+            before: { status: candidate.status },
+            after: { status: updatedCandidate.status },
+            metadata: {
+              mergeOperationId: operation.id,
+              sourcePersonId: sourcePerson.id,
+              targetPersonId: targetPerson.id,
+              migratedFields: migrateFields,
+            },
+            scope: { permission: Permission.MergeCandidate.Merge },
+            summary: 'Pessoas unificadas e vínculos transferidos.',
+          },
+          tx,
+        );
+
+        this.logger.log(
+          `Merged people for candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, fields=${migrateFields.join(',') || '(none)'}, actor=${actorId ?? 'system'}.`,
+        );
+
+        return updatedCandidate;
       }),
     );
 
@@ -277,408 +283,413 @@ export class MergeCandidateOperationsService {
   async undoMergeCandidatePeople(candidateId: string, actorId: string | null) {
     return this.runAsSystem(() =>
       this.prisma.$transaction(async (tx) => {
-      const candidate = await tx.mergeCandidate.findUnique({
-        where: {
-          id: candidateId,
-        },
-      });
-
-      if (!candidate) {
-        throw new NotFoundException(`Merge candidate ${candidateId} was not found.`);
-      }
-
-      const operation = await tx.peopleMergeOperation.findFirst({
-        where: {
-          mergeCandidateId: candidateId,
-          status: 'APPLIED',
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      if (!operation) {
-        throw new NotFoundException(`No applied merge operation was found for merge candidate ${candidateId}.`);
-      }
-
-      const targetSnapshot = parsePersonSnapshot(operation.targetSnapshot, 'targetSnapshot');
-      const sourceSnapshot = parsePersonSnapshot(operation.sourceSnapshot, 'sourceSnapshot');
-      const movedRelations = parseMovedRelations(operation.movedRelations);
-
-      const [targetPerson, sourcePerson] = await Promise.all([
-        tx.people.findUnique({ where: { id: operation.targetPersonId } }),
-        tx.people.findUnique({ where: { id: operation.sourcePersonId } }),
-      ]);
-
-      if (!targetPerson || !sourcePerson) {
-        throw new NotFoundException(`Merge operation ${operation.id} references missing people.`);
-      }
-
-      if (sourcePerson.mergedIntoId !== targetPerson.id) {
-        throw new ConflictException(`Source person ${sourcePerson.id} is not merged into target ${targetPerson.id}.`);
-      }
-
-      if (movedRelations.movedEventSubscriptionIds.length > 0) {
-        await tx.eventSubscription.updateMany({
+        const candidate = await tx.mergeCandidate.findUnique({
           where: {
-            id: {
-              in: movedRelations.movedEventSubscriptionIds,
-            },
-            personId: targetPerson.id,
-          },
-          data: {
-            personId: sourcePerson.id,
+            id: candidateId,
           },
         });
-      }
 
-      if (movedRelations.movedEventInterestIds?.length) {
-        await tx.eventInterest.updateMany({
-          where: { id: { in: movedRelations.movedEventInterestIds }, personId: targetPerson.id },
-          data: { personId: sourcePerson.id },
-        });
-      }
+        if (!candidate) {
+          throw new NotFoundException(`Merge candidate ${candidateId} was not found.`);
+        }
 
-      if (movedRelations.retiredEventInterestIds?.length) {
-        await tx.eventInterest.updateMany({
-          where: { id: { in: movedRelations.retiredEventInterestIds }, personId: sourcePerson.id },
-          data: { deletedAt: null },
-        });
-      }
-
-      if (movedRelations.movedEventGroupSubscriptionIds.length > 0) {
-        await tx.eventGroupSubscription.updateMany({
+        const operation = await tx.peopleMergeOperation.findFirst({
           where: {
-            id: {
-              in: movedRelations.movedEventGroupSubscriptionIds,
-            },
-            personId: targetPerson.id,
+            mergeCandidateId: candidateId,
+            status: 'APPLIED',
           },
-          data: {
-            personId: sourcePerson.id,
+          orderBy: {
+            createdAt: 'desc',
           },
         });
-      }
 
-      if (movedRelations.movedMajorEventSubscriptionIds.length > 0) {
-        await tx.majorEventSubscription.updateMany({
-          where: {
-            id: {
-              in: movedRelations.movedMajorEventSubscriptionIds,
-            },
-            personId: targetPerson.id,
-          },
-          data: {
-            personId: sourcePerson.id,
-          },
-        });
-      }
-
-      if (movedRelations.movedAudienceInvitationSnapshots.length > 0) {
-        await restoreAudienceInvitations(
-          tx,
-          movedRelations.movedAudienceInvitationSnapshots,
-          sourcePerson.id,
-          targetPerson.id,
-        );
-      }
-
-      if (movedRelations.insertedAttendanceEventIds.length > 0) {
-        await tx.eventAttendance.deleteMany({
-          where: {
-            personId: targetPerson.id,
-            eventId: {
-              in: movedRelations.insertedAttendanceEventIds,
-            },
-          },
-        });
-      }
-
-      if (movedRelations.insertedLectureEventIds.length > 0) {
-        await tx.eventLecturer.deleteMany({
-          where: {
-            personId: targetPerson.id,
-            eventId: {
-              in: movedRelations.insertedLectureEventIds,
-            },
-          },
-        });
-      }
-
-      if (movedRelations.sourceAttendances.length > 0) {
-        await tx.eventAttendance.createMany({
-          data: movedRelations.sourceAttendances.map((attendance) =>
-            toAttendanceCreateData(sourcePerson.id, attendance),
-          ),
-          skipDuplicates: true,
-        });
-      }
-
-      if (movedRelations.sourceLectures.length > 0) {
-        await tx.eventLecturer.createMany({
-          data: movedRelations.sourceLectures.map((lecture) => ({
-            personId: sourcePerson.id,
-            eventId: lecture.eventId,
-            createdAt: new Date(lecture.createdAt),
-            createdById: lecture.createdById,
-          })),
-          skipDuplicates: true,
-        });
-      }
-
-      if (movedRelations.roleAssignmentSnapshots.length > 0) {
-        for (const snapshot of movedRelations.roleAssignmentSnapshots) {
-          await tx.eventManagerRoleAssignment.update({
-            where: { id: snapshot.id },
-            data: {
-              personId: snapshot.personId,
-              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
-              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
-              unlimited: snapshot.unlimited,
-              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
-              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
-            },
-          });
+        if (!operation) {
+          throw new NotFoundException(`No applied merge operation was found for merge candidate ${candidateId}.`);
         }
-        for (const snapshot of movedRelations.roleAssignmentScopeSnapshots) {
-          await tx.eventManagerRoleAssignmentScope.update({
-            where: { id: snapshot.id },
-            data: {
-              assignmentId: snapshot.assignmentId,
-              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
-              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
-              unlimited: snapshot.unlimited,
-              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
-              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
-            },
-          });
-        }
-      } else {
-        if (movedRelations.movedRoleAssignmentIds.length > 0) {
-          await tx.eventManagerRoleAssignment.updateMany({
-            where: { id: { in: movedRelations.movedRoleAssignmentIds } },
-            data: { personId: sourcePerson.id },
-          });
-        }
-        if (movedRelations.archivedRoleAssignmentIds.length > 0) {
-          await tx.eventManagerRoleAssignment.updateMany({
-            where: { id: { in: movedRelations.archivedRoleAssignmentIds } },
-            data: { archivedAt: null, archivedReason: null },
-          });
-        }
-      }
 
-      if (movedRelations.sportsTeamRepresentativeSnapshots.length > 0) {
-        const snapshotsById = new Map(
-          movedRelations.sportsTeamRepresentativeSnapshots.map((snapshot) => [snapshot.id, snapshot]),
-        );
-        for (const representativeId of movedRelations.movedSportsTeamRepresentativeIds) {
-          const snapshot = snapshotsById.get(representativeId);
-          if (!snapshot) {
-            throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
-          }
-          const restored = await tx.sportsTeamRepresentative.updateMany({
-            where: { id: representativeId, personId: targetPerson.id },
-            data: { personId: sourcePerson.id },
-          });
-          if (restored.count !== 1) {
-            throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
-          }
+        const targetSnapshot = parsePersonSnapshot(operation.targetSnapshot, 'targetSnapshot');
+        const sourceSnapshot = parsePersonSnapshot(operation.sourceSnapshot, 'sourceSnapshot');
+        const movedRelations = parseMovedRelations(operation.movedRelations);
+
+        const [targetPerson, sourcePerson] = await Promise.all([
+          tx.people.findUnique({ where: { id: operation.targetPersonId } }),
+          tx.people.findUnique({ where: { id: operation.sourcePersonId } }),
+        ]);
+
+        if (!targetPerson || !sourcePerson) {
+          throw new NotFoundException(`Merge operation ${operation.id} references missing people.`);
         }
-        for (const representativeId of movedRelations.revokedSportsTeamRepresentativeIds) {
-          const snapshot = snapshotsById.get(representativeId);
-          if (!snapshot) {
-            throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
-          }
-          if (!snapshot.mergeRevokedAt) {
-            throw new ConflictException(`Sports representative ${representativeId} has no merge state guard.`);
-          }
-          if (!snapshot.mergeTargetRepresentativeId) {
-            throw new ConflictException(`Sports representative ${representativeId} has no coalesced target guard.`);
-          }
-          const targetRepresentative = await tx.sportsTeamRepresentative.findUnique({
-            where: { id: snapshot.mergeTargetRepresentativeId },
-            select: { personId: true, active: true, revokedAt: true },
-          });
-          if (
-            !targetRepresentative ||
-            targetRepresentative.personId !== targetPerson.id ||
-            !targetRepresentative.active ||
-            targetRepresentative.revokedAt !== null
-          ) {
-            throw new ConflictException(
-              `The target sports representative ${snapshot.mergeTargetRepresentativeId} changed after the merge.`,
-            );
-          }
-          const restored = await tx.sportsTeamRepresentative.updateMany({
+
+        if (sourcePerson.mergedIntoId !== targetPerson.id) {
+          throw new ConflictException(`Source person ${sourcePerson.id} is not merged into target ${targetPerson.id}.`);
+        }
+
+        if (movedRelations.movedEventSubscriptionIds.length > 0) {
+          await tx.eventSubscription.updateMany({
             where: {
-              id: representativeId,
-              personId: snapshot.personId,
-              active: false,
-              revokedAt: new Date(snapshot.mergeRevokedAt),
-              revokedById: snapshot.mergeRevokedById,
+              id: {
+                in: movedRelations.movedEventSubscriptionIds,
+              },
+              personId: targetPerson.id,
             },
             data: {
-              active: snapshot.active,
-              assignedAt: new Date(snapshot.assignedAt),
-              assignedById: snapshot.assignedById,
-              revokedAt: snapshot.revokedAt ? new Date(snapshot.revokedAt) : null,
-              revokedById: snapshot.revokedById,
-              createdAt: new Date(snapshot.createdAt),
+              personId: sourcePerson.id,
             },
           });
-          if (restored.count !== 1) {
-            throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
-          }
         }
-      }
 
-      if (movedRelations.sportsTournamentParticipantSnapshots.length > 0) {
-        const participantSnapshotsById = new Map(
-          movedRelations.sportsTournamentParticipantSnapshots.map((snapshot) => [snapshot.id, snapshot]),
-        );
-        for (const participantId of movedRelations.movedSportsTournamentParticipantIds) {
-          if (!participantSnapshotsById.has(participantId)) {
-            throw new ConflictException(`Missing sports participant snapshot for ${participantId}.`);
-          }
-          const restored = await tx.sportsTournamentParticipant.updateMany({
-            where: { id: participantId, personId: targetPerson.id },
+        if (movedRelations.movedEventInterestIds?.length) {
+          await tx.eventInterest.updateMany({
+            where: { id: { in: movedRelations.movedEventInterestIds }, personId: targetPerson.id },
             data: { personId: sourcePerson.id },
           });
-          if (restored.count !== 1) {
-            throw new ConflictException(`Sports participant ${participantId} changed after the merge.`);
-          }
         }
-      }
 
-      if (movedRelations.sportsOfficialAssignmentSnapshots.length > 0) {
-        const assignmentSnapshotsById = new Map(
-          movedRelations.sportsOfficialAssignmentSnapshots.map((snapshot) => [snapshot.id, snapshot]),
-        );
-        for (const assignmentId of movedRelations.movedSportsOfficialAssignmentIds) {
-          if (!assignmentSnapshotsById.has(assignmentId)) {
-            throw new ConflictException(`Missing sports official assignment snapshot for ${assignmentId}.`);
-          }
-          const restored = await tx.sportsOfficialAssignment.updateMany({
-            where: { id: assignmentId, personId: targetPerson.id },
-            data: { personId: sourcePerson.id },
+        if (movedRelations.retiredEventInterestIds?.length) {
+          await tx.eventInterest.updateMany({
+            where: { id: { in: movedRelations.retiredEventInterestIds }, personId: sourcePerson.id },
+            data: { deletedAt: null },
           });
-          if (restored.count !== 1) {
-            throw new ConflictException(`Sports official assignment ${assignmentId} changed after the merge.`);
-          }
         }
-      }
-      if (movedRelations.permissionGroupMembershipSnapshots.length > 0) {
-        for (const snapshot of movedRelations.permissionGroupMembershipSnapshots) {
-          await tx.eventManagerPermissionGroupMember.update({
-            where: { id: snapshot.id },
+
+        if (movedRelations.movedEventGroupSubscriptionIds.length > 0) {
+          await tx.eventGroupSubscription.updateMany({
+            where: {
+              id: {
+                in: movedRelations.movedEventGroupSubscriptionIds,
+              },
+              personId: targetPerson.id,
+            },
             data: {
-              personId: snapshot.personId,
-              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
-              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
-              unlimited: snapshot.unlimited,
-              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
-              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+              personId: sourcePerson.id,
             },
           });
         }
-      } else {
-        if (movedRelations.movedPermissionGroupMembershipIds.length > 0) {
-          await tx.eventManagerPermissionGroupMember.updateMany({
-            where: { id: { in: movedRelations.movedPermissionGroupMembershipIds } },
-            data: { personId: sourcePerson.id },
+
+        if (movedRelations.movedMajorEventSubscriptionIds.length > 0) {
+          await tx.majorEventSubscription.updateMany({
+            where: {
+              id: {
+                in: movedRelations.movedMajorEventSubscriptionIds,
+              },
+              personId: targetPerson.id,
+            },
+            data: {
+              personId: sourcePerson.id,
+            },
           });
         }
-        if (movedRelations.archivedPermissionGroupMembershipIds.length > 0) {
-          await tx.eventManagerPermissionGroupMember.updateMany({
-            where: { id: { in: movedRelations.archivedPermissionGroupMembershipIds } },
-            data: { archivedAt: null, archivedReason: null },
+
+        if (movedRelations.movedAudienceInvitationSnapshots.length > 0) {
+          await restoreAudienceInvitations(
+            tx,
+            movedRelations.movedAudienceInvitationSnapshots,
+            sourcePerson.id,
+            targetPerson.id,
+          );
+        }
+
+        if (movedRelations.insertedAttendanceEventIds.length > 0) {
+          await tx.eventAttendance.deleteMany({
+            where: {
+              personId: targetPerson.id,
+              eventId: {
+                in: movedRelations.insertedAttendanceEventIds,
+              },
+            },
           });
         }
-      }
 
-      if (movedRelations.ticketRelations) {
-        await restoreTicketPersonRelations(tx, movedRelations.ticketRelations);
-      }
+        if (movedRelations.insertedLectureEventIds.length > 0) {
+          await tx.eventLecturer.deleteMany({
+            where: {
+              personId: targetPerson.id,
+              eventId: {
+                in: movedRelations.insertedLectureEventIds,
+              },
+            },
+          });
+        }
 
-      await tx.people.update({
-        where: {
-          id: targetPerson.id,
-        },
-        data: {
-          ...toPersonUpdateData(targetSnapshot),
-          updatedById: actorId ?? undefined,
-        },
-      });
+        if (movedRelations.sourceAttendances.length > 0) {
+          await tx.eventAttendance.createMany({
+            data: movedRelations.sourceAttendances.map((attendance) =>
+              toAttendanceCreateData(sourcePerson.id, attendance),
+            ),
+            skipDuplicates: true,
+          });
+        }
 
-      await tx.people.update({
-        where: {
-          id: sourcePerson.id,
-        },
-        data: {
-          ...toPersonUpdateData(sourceSnapshot),
-          updatedById: actorId ?? undefined,
-        },
-      });
+        if (movedRelations.sourceLectures.length > 0) {
+          await tx.eventLecturer.createMany({
+            data: movedRelations.sourceLectures.map((lecture) => ({
+              personId: sourcePerson.id,
+              eventId: lecture.eventId,
+              createdAt: new Date(lecture.createdAt),
+              createdById: lecture.createdById,
+            })),
+            skipDuplicates: true,
+          });
+        }
 
-      await tx.peopleMergeOperation.update({
-        where: {
-          id: operation.id,
-        },
-        data: {
-          status: 'ROLLED_BACK',
-          rolledBackAt: new Date(),
-          rolledBackById: actorId ?? undefined,
-        },
-      });
+        if (movedRelations.roleAssignmentSnapshots.length > 0) {
+          for (const snapshot of movedRelations.roleAssignmentSnapshots) {
+            await tx.eventManagerRoleAssignment.update({
+              where: { id: snapshot.id },
+              data: {
+                personId: snapshot.personId,
+                validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+                validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+                unlimited: snapshot.unlimited,
+                archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+                archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+              },
+            });
+          }
+          for (const snapshot of movedRelations.roleAssignmentScopeSnapshots) {
+            await tx.eventManagerRoleAssignmentScope.update({
+              where: { id: snapshot.id },
+              data: {
+                assignmentId: snapshot.assignmentId,
+                validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+                validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+                unlimited: snapshot.unlimited,
+                archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+                archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+              },
+            });
+          }
+        } else {
+          if (movedRelations.movedRoleAssignmentIds.length > 0) {
+            await tx.eventManagerRoleAssignment.updateMany({
+              where: { id: { in: movedRelations.movedRoleAssignmentIds } },
+              data: { personId: sourcePerson.id },
+            });
+          }
+          if (movedRelations.archivedRoleAssignmentIds.length > 0) {
+            await tx.eventManagerRoleAssignment.updateMany({
+              where: { id: { in: movedRelations.archivedRoleAssignmentIds } },
+              data: { archivedAt: null, archivedReason: null },
+            });
+          }
+        }
 
-      const updatedCandidate = await tx.mergeCandidate.update({
-        where: {
-          id: candidate.id,
-        },
-        data: {
-          status: 'PENDING',
-          resolvedById: null,
-          updatedById: actorId ?? undefined,
-        },
-        include: {
-          personA: true,
-          personB: true,
-        },
-      });
+        if (movedRelations.sportsTeamRepresentativeSnapshots.length > 0) {
+          const snapshotsById = new Map(
+            movedRelations.sportsTeamRepresentativeSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+          );
+          for (const representativeId of movedRelations.movedSportsTeamRepresentativeIds) {
+            const snapshot = snapshotsById.get(representativeId);
+            if (!snapshot) {
+              throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
+            }
+            const restored = await tx.sportsTeamRepresentative.updateMany({
+              where: { id: representativeId, personId: targetPerson.id },
+              data: { personId: sourcePerson.id },
+            });
+            if (restored.count !== 1) {
+              throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
+            }
+          }
+          for (const representativeId of movedRelations.revokedSportsTeamRepresentativeIds) {
+            const snapshot = snapshotsById.get(representativeId);
+            if (!snapshot) {
+              throw new ConflictException(`Missing sports representative snapshot for ${representativeId}.`);
+            }
+            if (!snapshot.mergeRevokedAt) {
+              throw new ConflictException(`Sports representative ${representativeId} has no merge state guard.`);
+            }
+            if (!snapshot.mergeTargetRepresentativeId) {
+              throw new ConflictException(`Sports representative ${representativeId} has no coalesced target guard.`);
+            }
+            const targetRepresentative = await tx.sportsTeamRepresentative.findUnique({
+              where: { id: snapshot.mergeTargetRepresentativeId },
+              select: { personId: true, active: true, revokedAt: true },
+            });
+            if (
+              !targetRepresentative ||
+              targetRepresentative.personId !== targetPerson.id ||
+              !targetRepresentative.active ||
+              targetRepresentative.revokedAt !== null
+            ) {
+              throw new ConflictException(
+                `The target sports representative ${snapshot.mergeTargetRepresentativeId} changed after the merge.`,
+              );
+            }
+            const restored = await tx.sportsTeamRepresentative.updateMany({
+              where: {
+                id: representativeId,
+                personId: snapshot.personId,
+                active: false,
+                revokedAt: new Date(snapshot.mergeRevokedAt),
+                revokedById: snapshot.mergeRevokedById,
+              },
+              data: {
+                active: snapshot.active,
+                assignedAt: new Date(snapshot.assignedAt),
+                assignedById: snapshot.assignedById,
+                revokedAt: snapshot.revokedAt ? new Date(snapshot.revokedAt) : null,
+                revokedById: snapshot.revokedById,
+                createdAt: new Date(snapshot.createdAt),
+              },
+            });
+            if (restored.count !== 1) {
+              throw new ConflictException(`Sports representative ${representativeId} changed after the merge.`);
+            }
+          }
+        }
 
-      await this.auditLog.record(
-        {
-          entityType: AuditLogEntityType.MERGE_CANDIDATE,
-          entityId: candidate.id,
-          entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
-          operation: AuditLogOperation.UNDO,
-          force: true,
-          actor: await this.resolveAuditActor(actorId, tx),
-          before: { status: candidate.status },
-          after: { status: updatedCandidate.status },
-          metadata: {
-            mergeOperationId: operation.id,
-            sourcePersonId: sourcePerson.id,
-            targetPersonId: targetPerson.id,
+        if (movedRelations.sportsTournamentParticipantSnapshots.length > 0) {
+          const participantSnapshotsById = new Map(
+            movedRelations.sportsTournamentParticipantSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+          );
+          for (const participantId of movedRelations.movedSportsTournamentParticipantIds) {
+            if (!participantSnapshotsById.has(participantId)) {
+              throw new ConflictException(`Missing sports participant snapshot for ${participantId}.`);
+            }
+            const restored = await tx.sportsTournamentParticipant.updateMany({
+              where: { id: participantId, personId: targetPerson.id },
+              data: { personId: sourcePerson.id },
+            });
+            if (restored.count !== 1) {
+              throw new ConflictException(`Sports participant ${participantId} changed after the merge.`);
+            }
+          }
+        }
+
+        if (movedRelations.sportsOfficialAssignmentSnapshots.length > 0) {
+          const assignmentSnapshotsById = new Map(
+            movedRelations.sportsOfficialAssignmentSnapshots.map((snapshot) => [snapshot.id, snapshot]),
+          );
+          for (const assignmentId of movedRelations.movedSportsOfficialAssignmentIds) {
+            if (!assignmentSnapshotsById.has(assignmentId)) {
+              throw new ConflictException(`Missing sports official assignment snapshot for ${assignmentId}.`);
+            }
+            const restored = await tx.sportsOfficialAssignment.updateMany({
+              where: { id: assignmentId, personId: targetPerson.id },
+              data: { personId: sourcePerson.id },
+            });
+            if (restored.count !== 1) {
+              throw new ConflictException(`Sports official assignment ${assignmentId} changed after the merge.`);
+            }
+          }
+        }
+        if (movedRelations.permissionGroupMembershipSnapshots.length > 0) {
+          for (const snapshot of movedRelations.permissionGroupMembershipSnapshots) {
+            await tx.eventManagerPermissionGroupMember.update({
+              where: { id: snapshot.id },
+              data: {
+                personId: snapshot.personId,
+                validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+                validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+                unlimited: snapshot.unlimited,
+                archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+                archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+              },
+            });
+          }
+        } else {
+          if (movedRelations.movedPermissionGroupMembershipIds.length > 0) {
+            await tx.eventManagerPermissionGroupMember.updateMany({
+              where: { id: { in: movedRelations.movedPermissionGroupMembershipIds } },
+              data: { personId: sourcePerson.id },
+            });
+          }
+          if (movedRelations.archivedPermissionGroupMembershipIds.length > 0) {
+            await tx.eventManagerPermissionGroupMember.updateMany({
+              where: { id: { in: movedRelations.archivedPermissionGroupMembershipIds } },
+              data: { archivedAt: null, archivedReason: null },
+            });
+          }
+        }
+
+        if (movedRelations.ticketRelations) {
+          await restoreTicketPersonRelations(tx, movedRelations.ticketRelations);
+        }
+
+        await tx.people.update({
+          where: {
+            id: targetPerson.id,
           },
-          scope: { permission: Permission.MergeCandidate.Undo },
-          summary: 'Unificação de pessoas desfeita e vínculos restaurados.',
-        },
-        tx,
-      );
+          data: {
+            ...toPersonUpdateData(targetSnapshot),
+            updatedById: actorId ?? undefined,
+          },
+        });
 
-      this.logger.warn(
-        `Rolled back merge operation=${operation.id}, candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, actor=${actorId ?? 'system'}.`,
-      );
+        await tx.people.update({
+          where: {
+            id: sourcePerson.id,
+          },
+          data: {
+            ...toPersonUpdateData(sourceSnapshot),
+            updatedById: actorId ?? undefined,
+          },
+        });
 
-      return updatedCandidate;
+        await tx.peopleMergeOperation.update({
+          where: {
+            id: operation.id,
+          },
+          data: {
+            status: 'ROLLED_BACK',
+            rolledBackAt: new Date(),
+            rolledBackById: actorId ?? undefined,
+          },
+        });
+
+        const updatedCandidate = await tx.mergeCandidate.update({
+          where: {
+            id: candidate.id,
+          },
+          data: {
+            status: 'PENDING',
+            resolvedById: null,
+            updatedById: actorId ?? undefined,
+          },
+          include: {
+            personA: true,
+            personB: true,
+          },
+        });
+
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MERGE_CANDIDATE,
+            entityId: candidate.id,
+            entityLabel: `${sourcePerson.name} → ${targetPerson.name}`,
+            operation: AuditLogOperation.UNDO,
+            force: true,
+            actor: await this.resolveAuditActor(actorId, tx),
+            before: { status: candidate.status },
+            after: { status: updatedCandidate.status },
+            metadata: {
+              mergeOperationId: operation.id,
+              sourcePersonId: sourcePerson.id,
+              targetPersonId: targetPerson.id,
+            },
+            scope: { permission: Permission.MergeCandidate.Undo },
+            summary: 'Unificação de pessoas desfeita e vínculos restaurados.',
+          },
+          tx,
+        );
+
+        this.logger.warn(
+          `Rolled back merge operation=${operation.id}, candidate=${candidate.id}, target=${targetPerson.id}, source=${sourcePerson.id}, actor=${actorId ?? 'system'}.`,
+        );
+
+        return updatedCandidate;
       }),
     );
   }
 
-  private async resolveAuditActor(actorId: string | null, tx: Prisma.TransactionClient): Promise<AuditActor | undefined> {
-    if (!actorId) return undefined;
+  private async resolveAuditActor(
+    actorId: string | null,
+    tx: Prisma.TransactionClient,
+  ): Promise<AuditActor | undefined> {
+    if (!actorId) {
+      return undefined;
+    }
     const user = await tx.user.findUnique({
       where: { id: actorId },
       select: { name: true, email: true },

@@ -329,7 +329,6 @@ function createPeople(count: number, longNames = false): Person[] {
   }));
 }
 
-
 function createPagination(getCount: () => number) {
   return {
     label: () => (getCount() === 0 ? '0' : `1–${getCount()} de ${getCount()}`),

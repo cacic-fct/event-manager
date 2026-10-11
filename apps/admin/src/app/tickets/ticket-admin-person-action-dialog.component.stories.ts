@@ -4,12 +4,20 @@ import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, userEvent, within } from 'storybook/test';
 import { of } from 'rxjs';
 import type { AdminTicketEligibility } from '@cacic-fct/shared-ticketing';
-import { createAdminEventTicket, createTicketEventSummary, createTicketPersonSummary, createTicketTransfer } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createAdminEventTicket,
+  createTicketEventSummary,
+  createTicketPersonSummary,
+  createTicketTransfer,
+} from '@cacic-fct/shared-ticketing/testing';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { TicketAdminApiService } from '../graphql/ticket-admin-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { adminFixtureDateFromNow, createAdminPerson } from '../testing/admin-entity-fixtures';
-import { TicketAdminPersonActionDialogComponent, type TicketAdminPersonActionData } from './ticket-admin-person-action-dialog.component';
+import {
+  TicketAdminPersonActionDialogComponent,
+  type TicketAdminPersonActionData,
+} from './ticket-admin-person-action-dialog.component';
 
 interface TicketActionStoryArgs {
   action: 'ISSUE' | 'TRANSFER';
@@ -81,7 +89,7 @@ const meta: Meta<TicketActionStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketActionStoryArgs>;
 
-export const Playground: Story = {  };
+export const Playground: Story = {};
 
 export const ManualIssueWithEligibilityWarning: Story = {
   args: { action: 'ISSUE', eligible: false, allowPeopleSearch: true },
@@ -106,7 +114,9 @@ export const AdminTransferAwaitingReceiver: Story = {
     await userEvent.type(search, 'Ana');
     await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Selecionar Ana Souza' }));
-    await expect(await canvas.findByText('A pessoa atende aos critérios configurados para este bilhete.')).toBeVisible();
+    await expect(
+      await canvas.findByText('A pessoa atende aos critérios configurados para este bilhete.'),
+    ).toBeVisible();
     await userEvent.type(canvas.getByRole('textbox', { name: 'Motivo para auditoria' }), 'Ajuste administrativo');
     await expect(canvas.getByRole('button', { name: 'Enviar para confirmação' })).toBeEnabled();
   },
@@ -124,7 +134,10 @@ export const PersonSearchPermissionMissing: Story = {
 function createProviders(args: TicketActionStoryArgs) {
   const eligibility: AdminTicketEligibility = args.eligible
     ? { eligible: true, warnings: [] }
-    : { eligible: false, warnings: [{ code: 'COURSE_REQUIRED', message: 'É necessário estar matriculado em Ciência da Computação.' }] };
+    : {
+        eligible: false,
+        warnings: [{ code: 'COURSE_REQUIRED', message: 'É necessário estar matriculado em Ciência da Computação.' }],
+      };
   const api = {
     getEligibilityWarnings: () => of(eligibility),
     issueTicket: () => of(ticket),

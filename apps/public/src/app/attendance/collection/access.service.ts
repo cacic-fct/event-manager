@@ -113,7 +113,9 @@ export const attendanceCollectionListGuard: CanActivateFn = async (route, state)
   const router = inject(Router);
   const errors = inject(RouteErrorService);
   const authResult = await authGuard(route, state);
-  if (authResult !== true) return authResult;
+  if (authResult !== true) {
+    return authResult;
+  }
 
   let events: AttendanceCollectionEvent[];
   try {
@@ -139,9 +141,13 @@ export const attendanceCollectionListGuard: CanActivateFn = async (route, state)
 
   try {
     const grantedPermissions = await firstValueFrom(auth.evaluatePermissions(COLLECTION_PERMISSIONS));
-    if (grantedPermissions.length === 0) return errors.guardRedirect(403);
+    if (grantedPermissions.length === 0) {
+      return errors.guardRedirect(403);
+    }
   } catch (error: unknown) {
-    if (isPermissionDenied(error)) return errors.guardRedirect(403);
+    if (isPermissionDenied(error)) {
+      return errors.guardRedirect(403);
+    }
     return errors.guardRedirect(routePageErrorStatus(error));
   }
 
@@ -157,7 +163,9 @@ export const attendanceCollectionScannerGuard: CanActivateFn = async (route, sta
   const errors = inject(RouteErrorService);
   const eventId = route.paramMap.get('eventId');
   const authResult = await authGuard(route, state);
-  if (authResult !== true) return authResult;
+  if (authResult !== true) {
+    return authResult;
+  }
 
   if (!eventId) {
     return errors.guardRedirect(404);
@@ -176,7 +184,9 @@ export const attendanceCollectionScannerGuard: CanActivateFn = async (route, sta
     const userId = auth.user()?.sub;
     try {
       const cachedEvent = userId ? await offlineQueue.getCollectionEvent(userId, eventId) : null;
-      if (cachedEvent) event = cachedEvent;
+      if (cachedEvent) {
+        event = cachedEvent;
+      }
     } catch {
       return errors.guardRedirect(503);
     }

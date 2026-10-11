@@ -2,11 +2,14 @@
   class="subtab-layout major-subscription-layout"
   [class.detail-active]="workspace.selectedMajorEventSubscription() || workspace.editMode()">
   <aside class="major-selector">
-
-<form [formGroup]="workspace.majorEventForm" class="major-event-form">
+    <form [formGroup]="workspace.majorEventForm" class="major-event-form">
       <input type="hidden" formControlName="majorEventId" />
 
-      <button mat-flat-button type="button" [disabled]="!workspace.majorEventForm.controls.majorEventId.value" (click)="workspace.loadMajorEventSubscriptions()">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="!workspace.majorEventForm.controls.majorEventId.value"
+        (click)="workspace.loadMajorEventSubscriptions()">
         <mat-icon>groups</mat-icon>
         Carregar inscrições
       </button>
@@ -55,7 +58,6 @@
         </button>
       }
     </form>
-
   </aside>
 
   <div class="major-subscription-workspace">
@@ -65,8 +67,13 @@
           <div>
             <h2>Inscritos</h2>
             <p>
-              {{ workspace.majorEventSubscriptionCount() }} registros, {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'pagamento exigido' : 'pagamento não exigido' }}.
-              <a matButton="text" [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)">Editar política</a>
+              {{ workspace.majorEventSubscriptionCount() }} registros,
+              {{ workspace.selectedMajorEvent()?.isPaymentRequired ? 'pagamento exigido' : 'pagamento não exigido' }}.
+              <a
+                matButton="text"
+                [routerLink]="eventSettingsRoute(workspace.majorEventForm.controls.majorEventId.value)"
+                >Editar política</a
+              >
             </p>
           </div>
         </div>
@@ -85,15 +92,20 @@
               [title]="subscription.person?.name ?? subscription.personId"
               [label]="'Abrir inscrição de ' + (subscription.person?.name ?? subscription.personId)"
               [selected]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
-              [link]="['/subscriptions', 'major-event', workspace.majorEventForm.controls.majorEventId.value, 'subscription', subscription.id]">
+              [link]="[
+                '/subscriptions',
+                'major-event',
+                workspace.majorEventForm.controls.majorEventId.value,
+                'subscription',
+                subscription.id,
+              ]">
               @if (subscription.person) {
                 <app-participant-summary recordDescription [person]="subscription.person" [showName]="false" />
               }
               <span recordDescription>
                 {{ statusLabel(subscription.subscriptionStatus) }},
-                {{ subscriptionCreationMethodLabel(subscription.createdByMethod) }}{{
-                  hasSubscribedLecturer(subscription) ? ', palestrante inscrito no próprio evento' : ''
-                }}
+                {{ subscriptionCreationMethodLabel(subscription.createdByMethod)
+                }}{{ hasSubscribedLecturer(subscription) ? ', palestrante inscrito no próprio evento' : '' }}
               </span>
               <div recordActions class="item-actions">
                 <button
@@ -124,7 +136,10 @@
         </mat-list>
 
         <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
-          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}, {{ workspace.majorEventSubscriptionCount() }} no total</span>
+          <span
+            >Itens {{ workspace.majorEventSubscriptionsPagination.label() }},
+            {{ workspace.majorEventSubscriptionCount() }} no total</span
+          >
           <div class="list-pager-actions">
             <button
               mat-icon-button
@@ -163,7 +178,9 @@
               <h2 id="sports-subscriptions-title">Participações esportivas</h2>
               <p>Solicitações, modalidades de interesse e equipe são independentes da inscrição nas atividades.</p>
             </div>
-            <a mat-stroked-button [routerLink]="sportsWorkspaceRoute(workspace.majorEventForm.controls.majorEventId.value)">
+            <a
+              mat-stroked-button
+              [routerLink]="sportsWorkspaceRoute(workspace.majorEventForm.controls.majorEventId.value)">
               <mat-icon>sports</mat-icon>
               Abrir gestão esportiva
             </a>
@@ -332,7 +349,11 @@
             <p>
               @if (workspace.selectedMajorEventSubscription()) {
                 {{ workspace.selectedMajorEventSubscription()?.createdAt | date: 'short' }},
-                {{ subscriptionCreationMethodLabel(workspace.selectedMajorEventSubscription()?.createdByMethod ?? 'UNKNOWN') }}
+                {{
+                  subscriptionCreationMethodLabel(
+                    workspace.selectedMajorEventSubscription()?.createdByMethod ?? 'UNKNOWN'
+                  )
+                }}
               } @else {
                 Selecione a pessoa e os eventos para criar a inscrição.
               }

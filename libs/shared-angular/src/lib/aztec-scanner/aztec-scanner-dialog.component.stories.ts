@@ -71,7 +71,10 @@ const meta: Meta<AztecScannerDialogStoryArgs> = {
   argTypes: {
     title: { control: 'text', description: 'Instruction shown in the scanner dialog.' },
     acceptedPrefixes: { control: 'object', description: 'Accepted barcode payload prefixes.' },
-    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 }, description: 'Pause the camera after a successful scan.' },
+    pauseAfterScanMs: {
+      control: { type: 'number', min: 0, max: 5000, step: 100 },
+      description: 'Pause the camera after a successful scan.',
+    },
     continuousMode: { control: 'boolean', description: 'Keep scanning after a successful result.' },
     mode: { control: 'object', description: 'Barcode formats accepted by the dialog scanner.' },
   },

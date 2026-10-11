@@ -55,7 +55,8 @@ const meta: Meta<PermissionDeniedStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Permission boundary view for checking missing roles and permissions. Use the controls to change the protected section and required access.',
+        component:
+          'Permission boundary view for checking missing roles and permissions. Use the controls to change the protected section and required access.',
       },
     },
     layout: 'fullscreen',

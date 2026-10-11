@@ -96,7 +96,9 @@ test('commits successful writes and rolls back failed writes with an injected cl
   const failedClient: LegacyPostgresClient = {
     async query(text: string) {
       failedQueries.push(text);
-      if (text === 'COMMIT') throw new Error('commit failed');
+      if (text === 'COMMIT') {
+        throw new Error('commit failed');
+      }
       return { rows: [] };
     },
   };

@@ -72,7 +72,9 @@ export class S3Service implements OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
     this.destroyed = true;
     this.s3Client?.destroy();
   }

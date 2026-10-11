@@ -46,7 +46,9 @@ if (!command || command === '--help' || command === '-h') {
     const result = spawnSync(process.execPath, [fileURLToPath(new URL(entryPoint, import.meta.url)), ...args], {
       stdio: 'inherit',
     });
-    if (result.error) throw result.error;
+    if (result.error) {
+      throw result.error;
+    }
     process.exitCode = result.status ?? 1;
   }
 }

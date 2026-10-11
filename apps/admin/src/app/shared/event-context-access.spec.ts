@@ -19,19 +19,26 @@ describe('context creation access', () => {
     };
     const { guardRedirect } = configureGuard(permissions);
     expect(canCreateEventContext(permissions, 'event')).toBe(false);
-    expect(await TestBed.runInInjectionContext(() => canCreateContextGuard({ path: 'event-workspace/new/event' }))).toBe(false);
+    expect(
+      await TestBed.runInInjectionContext(() => canCreateContextGuard({ path: 'event-workspace/new/event' })),
+    ).toBe(false);
     expect(guardRedirect).toHaveBeenCalledWith(403);
   });
 
   it('accepts creation once the matching editor can load its required data', async () => {
-    const grants = new Set<Permission>([Permission.Event.Create, ...(WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === 'events')?.read ?? [])]);
+    const grants = new Set<Permission>([
+      Permission.Event.Create,
+      ...(WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === 'events')?.read ?? []),
+    ]);
     const permissions = {
       has: (permission: Permission) => grants.has(permission),
       evaluateWorkspacePermissions: vi.fn(async () => undefined),
     };
     const { guardRedirect } = configureGuard(permissions);
     expect(canCreateEventContext(permissions, 'event')).toBe(true);
-    expect(await TestBed.runInInjectionContext(() => canCreateContextGuard({ path: 'event-workspace/new/event' }))).toBe(true);
+    expect(
+      await TestBed.runInInjectionContext(() => canCreateContextGuard({ path: 'event-workspace/new/event' })),
+    ).toBe(true);
     expect(guardRedirect).not.toHaveBeenCalled();
     grants.delete(Permission.Event.Create);
     expect(canCreateEventContext(permissions, 'event')).toBe(false);

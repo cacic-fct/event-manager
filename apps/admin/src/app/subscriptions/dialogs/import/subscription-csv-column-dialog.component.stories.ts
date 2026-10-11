@@ -41,15 +41,21 @@ function buildData(args: CsvColumnStoryArgs): SubscriptionCsvColumnDialogData {
   const previewRows = Array.from({ length: Math.max(0, Math.min(30, args.previewRowCount)) }, (_, index) =>
     Object.fromEntries(
       headers.map((header) => {
-        if (header === args.emailHeader) return [header, faker.internet.email().toLocaleLowerCase('pt-BR')];
-        if (header === args.nameHeader) return [header, faker.person.fullName()];
+        if (header === args.emailHeader) {
+          return [header, faker.internet.email().toLocaleLowerCase('pt-BR')];
+        }
+        if (header === args.nameHeader) {
+          return [header, faker.person.fullName()];
+        }
         if (header === args.eventIdsHeader) {
           const value = args.longValues
             ? `evento-interdisciplinar-${index + 1};oficina-acessibilidade-${index + 1};palestra-seguranca-${index + 1}`
             : `event-${index + 1};event-${index + 2}`;
           return [header, value];
         }
-        if (header === args.documentHeader) return [header, faker.string.numeric(11)];
+        if (header === args.documentHeader) {
+          return [header, faker.string.numeric(11)];
+        }
         return [header, faker.company.catchPhrase()];
       }),
     ),

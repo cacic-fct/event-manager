@@ -54,7 +54,8 @@ const meta: Meta<EventSubscriptionsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Event subscription management with controls for event count, subscriber volume, sports events, and read-only access.',
+        component:
+          'Event subscription management with controls for event count, subscriber volume, sports events, and read-only access.',
       },
     },
     layout: 'fullscreen',

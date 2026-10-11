@@ -101,40 +101,46 @@ describe('ticket configuration expiry integration', () => {
       attendanceCategories as never,
     );
 
-    await resolver.saveTicketConfig({
-      eventId: event.id,
-      enabled: true,
-      transferable: true,
-      issueOnEventSubscription: false,
-      issueOnMajorEventSubscription: false,
-      includedPriceTierIds: [],
-      recipientPolicy: {
-        subscriptionRequirement: 'ANY',
-        requiresUnesp: false,
-        requiredAcademicIdPrefixes: [],
-        requiredCourseCodes: [],
-        requiresAccountManagerVerification: false,
-        allowedPriceTierIds: [],
-      },
-      purchaseEnabled: false,
-      purchaseLimit,
-      purchaseVisibility: {
-        subscriptionRequirement: 'REQUIRED',
-        requiresUnesp: false,
-        requiredAcademicIdPrefixes: [],
-        requiredCourseCodes: [],
-        requiresAccountManagerVerification: false,
-        allowedPriceTierIds: [],
-        requiresValidatedSubscription: true,
-      },
-      priceOptions: [],
-      expirationMode: TicketExpirationMode.CUSTOM,
-      customExpiresAt: expiresAt,
-    } as never, { request: { user: { sub: 'admin-1' } } } as never);
+    await resolver.saveTicketConfig(
+      {
+        eventId: event.id,
+        enabled: true,
+        transferable: true,
+        issueOnEventSubscription: false,
+        issueOnMajorEventSubscription: false,
+        includedPriceTierIds: [],
+        recipientPolicy: {
+          subscriptionRequirement: 'ANY',
+          requiresUnesp: false,
+          requiredAcademicIdPrefixes: [],
+          requiredCourseCodes: [],
+          requiresAccountManagerVerification: false,
+          allowedPriceTierIds: [],
+        },
+        purchaseEnabled: false,
+        purchaseLimit,
+        purchaseVisibility: {
+          subscriptionRequirement: 'REQUIRED',
+          requiresUnesp: false,
+          requiredAcademicIdPrefixes: [],
+          requiredCourseCodes: [],
+          requiresAccountManagerVerification: false,
+          allowedPriceTierIds: [],
+          requiresValidatedSubscription: true,
+        },
+        priceOptions: [],
+        expirationMode: TicketExpirationMode.CUSTOM,
+        customExpiresAt: expiresAt,
+      } as never,
+      { request: { user: { sub: 'admin-1' } } } as never,
+    );
 
-    expect(tx.ticketConfig.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ purchaseLimit }), update: expect.objectContaining({ purchaseLimit }),
-    }));
+    expect(tx.ticketConfig.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ purchaseLimit }),
+        update: expect.objectContaining({ purchaseLimit }),
+      }),
+    );
     expect(issuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, event.id, {
       scope: 'ALL_ACTIVE',
       actorUserId: 'admin-1',
@@ -142,13 +148,20 @@ describe('ticket configuration expiry integration', () => {
       enqueueInvalidations: false,
     });
     expect(issuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, event.id, 'UPDATE');
-    expect(issuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
-      .toBeLessThan(tx.ticketConfig.upsert.mock.invocationCallOrder[0]);
-    expect(tx.ticketConfig.upsert.mock.invocationCallOrder[0])
-      .toBeLessThan(issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
+    expect(issuance.lockEventExpirationAlignment.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.ticketConfig.upsert.mock.invocationCallOrder[0],
+    );
+    expect(tx.ticketConfig.upsert.mock.invocationCallOrder[0]).toBeLessThan(
+      issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0],
+    );
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith(event.id, tx);
-    expect(issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0])
-      .toBeLessThan(attendanceCategories.refreshForEvent.mock.invocationCallOrder[0]);
-    expect(issuance.enqueueExistingSubscriptionReconciliation).toHaveBeenCalledWith(tx, event.id, savedConfig.updatedAt);
+    expect(issuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]).toBeLessThan(
+      attendanceCategories.refreshForEvent.mock.invocationCallOrder[0],
+    );
+    expect(issuance.enqueueExistingSubscriptionReconciliation).toHaveBeenCalledWith(
+      tx,
+      event.id,
+      savedConfig.updatedAt,
+    );
   });
 });

@@ -339,8 +339,9 @@ describe('EventDraftsService', () => {
     await service.applyEventDraft('draft-1', user as never);
 
     expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
-    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
-      .toBeLessThan(tx.event.updateMany.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.event.updateMany.mock.invocationCallOrder[0],
+    );
     expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
       scope: 'EVENT_END_ONLY',
       actorUserId: 'user-1',
@@ -390,51 +391,57 @@ describe('EventDraftsService', () => {
       });
 
     await expect(service.applyEventDraft('draft-1', user as never)).rejects.toThrow('convidada');
-    expect(tx.event.findUniqueOrThrow).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      where: { id: 'event-1', deletedAt: null },
-      select: expect.objectContaining({ eventGroup: expect.any(Object), majorEvent: expect.any(Object) }),
-    }));
+    expect(tx.event.findUniqueOrThrow).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        where: { id: 'event-1', deletedAt: null },
+        select: expect.objectContaining({ eventGroup: expect.any(Object), majorEvent: expect.any(Object) }),
+      }),
+    );
   });
 
-  it.each(['policy', 'invitations'] as const)('refreshes attendance classification when a draft changes %s', async (change) => {
-    const previousEvent = {
-      id: 'event-1',
-      name: 'Evento publicado',
-      publicationState: PublicationState.PUBLISHED,
-      publishedAt: new Date(Date.now() - 86_400_000),
-      majorEventId: null,
-      eventGroupId: null,
-      attendanceEligibility: 'REGISTERED_ONLY',
-    };
-    const updatedEvent = {
-      ...previousEvent,
-      ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : {}),
-    };
-    const draft = {
-      ...draftRecord,
-      payload: {
-        ...draftRecord.payload,
-        ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }),
-      },
-    };
-    const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({
-      audienceInvitations: {
-        replaceInvitations: jest.fn().mockResolvedValue({
-          invitations: [{ personId: 'person-new' }],
-          addedPersonIds: ['person-new'],
-          removedPersonIds: [],
-        }),
-      },
-    });
-    prisma.eventDraft.findUnique.mockResolvedValue(draft);
-    tx.event.findFirst.mockResolvedValue(previousEvent);
-    tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);
+  it.each(['policy', 'invitations'] as const)(
+    'refreshes attendance classification when a draft changes %s',
+    async (change) => {
+      const previousEvent = {
+        id: 'event-1',
+        name: 'Evento publicado',
+        publicationState: PublicationState.PUBLISHED,
+        publishedAt: new Date(Date.now() - 86_400_000),
+        majorEventId: null,
+        eventGroupId: null,
+        attendanceEligibility: 'REGISTERED_ONLY',
+      };
+      const updatedEvent = {
+        ...previousEvent,
+        ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : {}),
+      };
+      const draft = {
+        ...draftRecord,
+        payload: {
+          ...draftRecord.payload,
+          ...(change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }),
+        },
+      };
+      const { service, prisma, tx, attendanceRealtime, attendanceCategories } = buildService({
+        audienceInvitations: {
+          replaceInvitations: jest.fn().mockResolvedValue({
+            invitations: [{ personId: 'person-new' }],
+            addedPersonIds: ['person-new'],
+            removedPersonIds: [],
+          }),
+        },
+      });
+      prisma.eventDraft.findUnique.mockResolvedValue(draft);
+      tx.event.findFirst.mockResolvedValue(previousEvent);
+      tx.event.findUniqueOrThrow.mockResolvedValue(updatedEvent);
 
-    await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
+      await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
 
-    expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
-    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
-  });
+      expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
+      expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('refreshes attendance classification and notifies online users when a draft changes event group', async () => {
     const previousEvent = {

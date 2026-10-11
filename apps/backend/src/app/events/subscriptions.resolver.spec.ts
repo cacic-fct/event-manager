@@ -501,117 +501,120 @@ describe('EventSubscriptionsResolver', () => {
     );
   });
 
-  it.each([true, false, undefined])('persists workspace event consent (%s) through a serializable transaction', async (consent) => {
-    const createdAt = new Date('2026-06-22T12:00:00.000Z');
-    const created = {
-      id: 'event-subscription-1',
-      eventId: 'event-1',
-      event: {
-        id: 'event-1',
-        majorEventId: null,
-      },
-      personId: 'person-1',
-      person: {
-        id: 'person-1',
-        name: 'Ana',
-      },
-      eventGroupSubscriptionId: null,
-      createdAt,
-      createdById: 'admin-1',
-      createdByMethod: 'ADMIN_DASHBOARD',
-    };
-    const tx = {
-      eventSubscription: {
-        create: jest.fn().mockResolvedValue(created),
-      },
-    };
-    const prisma = {
-      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
-      people: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'person-1' }),
-      },
-      event: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),
-      },
-      eventLecturer: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-    };
-    const attendanceCategories = {
-      refreshForAttendance: jest.fn().mockResolvedValue(undefined),
-    };
-    const frozenResources = {
-      assertEventMutable: jest.fn().mockResolvedValue(undefined),
-    };
-    const auditLog = {
-      record: jest.fn().mockResolvedValue(undefined),
-    };
-    const counters = {
-      refresh: jest.fn().mockResolvedValue(undefined),
-    };
-    const eventSubscriptionSync = {
-      ensureEventIdsHaveAvailableSlots: jest.fn().mockResolvedValue(undefined),
-    };
-    const resolver = new EventSubscriptionsResolver(
-      prisma as never,
-      attendanceCategories as never,
-      {} as never,
-      frozenResources as never,
-      auditLog as never,
-      counters as never,
-      eventSubscriptionSync as never,
-    );
-    const user = {
-      sub: 'admin-1',
-    };
+  it.each([true, false, undefined])(
+    'persists workspace event consent (%s) through a serializable transaction',
+    async (consent) => {
+      const createdAt = new Date('2026-06-22T12:00:00.000Z');
+      const created = {
+        id: 'event-subscription-1',
+        eventId: 'event-1',
+        event: {
+          id: 'event-1',
+          majorEventId: null,
+        },
+        personId: 'person-1',
+        person: {
+          id: 'person-1',
+          name: 'Ana',
+        },
+        eventGroupSubscriptionId: null,
+        createdAt,
+        createdById: 'admin-1',
+        createdByMethod: 'ADMIN_DASHBOARD',
+      };
+      const tx = {
+        eventSubscription: {
+          create: jest.fn().mockResolvedValue(created),
+        },
+      };
+      const prisma = {
+        $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+        people: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'person-1' }),
+        },
+        event: {
+          findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),
+        },
+        eventLecturer: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+      const attendanceCategories = {
+        refreshForAttendance: jest.fn().mockResolvedValue(undefined),
+      };
+      const frozenResources = {
+        assertEventMutable: jest.fn().mockResolvedValue(undefined),
+      };
+      const auditLog = {
+        record: jest.fn().mockResolvedValue(undefined),
+      };
+      const counters = {
+        refresh: jest.fn().mockResolvedValue(undefined),
+      };
+      const eventSubscriptionSync = {
+        ensureEventIdsHaveAvailableSlots: jest.fn().mockResolvedValue(undefined),
+      };
+      const resolver = new EventSubscriptionsResolver(
+        prisma as never,
+        attendanceCategories as never,
+        {} as never,
+        frozenResources as never,
+        auditLog as never,
+        counters as never,
+        eventSubscriptionSync as never,
+      );
+      const user = {
+        sub: 'admin-1',
+      };
 
-    await expect(
-      resolver.createWorkspaceEventSubscription(
-        {
-          eventId: 'event-1',
-          personId: 'person-1',
-          imageLicenseAgreementAccepted: consent,
-        },
-        { req: { user } } as never,
-      ),
-    ).resolves.toEqual({
-      ...created,
-      majorEventSubscriptionId: null,
-      isLecturerSubscription: false,
-    });
+      await expect(
+        resolver.createWorkspaceEventSubscription(
+          {
+            eventId: 'event-1',
+            personId: 'person-1',
+            imageLicenseAgreementAccepted: consent,
+          },
+          { req: { user } } as never,
+        ),
+      ).resolves.toEqual({
+        ...created,
+        majorEventSubscriptionId: null,
+        isLecturerSubscription: false,
+      });
 
-    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', user, 'edit');
-    expect(eventSubscriptionSync.ensureEventIdsHaveAvailableSlots).toHaveBeenCalledWith(tx, ['event-1']);
-    expect(tx.eventSubscription.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: {
-          eventId: 'event-1',
-          personId: 'person-1',
-          createdById: 'admin-1',
-          createdByMethod: 'ADMIN_DASHBOARD',
-          imageLicenseAgreementAccepted: consent ?? false,
-        },
-      }),
-    );
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
-    expect(counters.refresh).toHaveBeenCalledWith(tx, ['event-1']);
-    expect(auditLog.record).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entityId: 'event-subscription-1',
-        entityLabel: 'Ana',
-        after: {
-          id: created.id,
-          eventId: created.eventId,
-          personId: created.personId,
-          eventGroupSubscriptionId: created.eventGroupSubscriptionId,
-          createdByMethod: created.createdByMethod,
-          imageLicenseAgreementAccepted: consent ?? false,
-        },
-        summary: 'Inscrição em evento criada pelo painel administrativo.',
-      }),
-      tx,
-    );
-  });
+      expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', user, 'edit');
+      expect(eventSubscriptionSync.ensureEventIdsHaveAvailableSlots).toHaveBeenCalledWith(tx, ['event-1']);
+      expect(tx.eventSubscription.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            eventId: 'event-1',
+            personId: 'person-1',
+            createdById: 'admin-1',
+            createdByMethod: 'ADMIN_DASHBOARD',
+            imageLicenseAgreementAccepted: consent ?? false,
+          },
+        }),
+      );
+      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
+      expect(counters.refresh).toHaveBeenCalledWith(tx, ['event-1']);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: 'event-subscription-1',
+          entityLabel: 'Ana',
+          after: {
+            id: created.id,
+            eventId: created.eventId,
+            personId: created.personId,
+            eventGroupSubscriptionId: created.eventGroupSubscriptionId,
+            createdByMethod: created.createdByMethod,
+            imageLicenseAgreementAccepted: consent ?? false,
+          },
+          summary: 'Inscrição em evento criada pelo painel administrativo.',
+        }),
+        tx,
+      );
+    },
+  );
 
   it('rejects event subscription creation without an authenticated actor id', async () => {
     const prisma = {

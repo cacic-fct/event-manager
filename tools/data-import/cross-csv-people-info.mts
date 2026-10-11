@@ -106,7 +106,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Cros
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
-    if (token === undefined) continue;
+    if (token === undefined) {
+      continue;
+    }
     if (token === '--help' || token === '-h') {
       args.help = true;
       continue;
@@ -172,11 +174,15 @@ export function findNameColumn(fieldnames: readonly string[], explicitColumn = '
   if (explicitColumn) {
     const explicitKey = normalizeTextKey(explicitColumn);
     const match = fieldnames.find((fieldname) => normalizeTextKey(fieldname) === explicitKey);
-    if (match) return match;
+    if (match) {
+      return match;
+    }
     throw new CrossPeopleInputError(`Name column '${explicitColumn}' not found in input CSV.`);
   }
   const match = fieldnames.find((fieldname) => DEFAULT_NAME_COLUMN_KEYS.has(normalizeTextKey(fieldname)));
-  if (match) return match;
+  if (match) {
+    return match;
+  }
   throw new CrossPeopleInputError('Could not detect full-name column. Use --name-column to set it explicitly.');
 }
 
@@ -201,9 +207,13 @@ export async function readPeopleLookup(peopleDbPath: string): Promise<PeopleLook
   let collisions = 0;
   for (const row of parsed.rows) {
     const fullName = normalizeSpaces(row.fullName);
-    if (!fullName) continue;
+    if (!fullName) {
+      continue;
+    }
     const nameKey = normalizeTextKey(fullName);
-    if (!nameKey) continue;
+    if (!nameKey) {
+      continue;
+    }
 
     const candidate: PersonRecord = {
       fullName,
@@ -353,7 +363,9 @@ export async function runCrossPeople(args: CrossPeopleArgs): Promise<CrossPeople
         `Processed ${inputCsvPath} -> ${outputCsvPath} (rows=${stats.rowsTotal}, matched=${stats.rowsMatched}, unmatched=${stats.rowsUnmatched})\n`,
       );
     } catch (error) {
-      if (!(error instanceof CrossPeopleInputError || error instanceof CsvError)) throw error;
+      if (!(error instanceof CrossPeopleInputError || error instanceof CsvError)) {
+        throw error;
+      }
       process.stderr.write(`WARNING: Skipped ${inputCsvPath} -> ${error.message}\n`);
     }
   }

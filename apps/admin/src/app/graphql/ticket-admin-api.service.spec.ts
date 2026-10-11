@@ -4,7 +4,11 @@ import { firstValueFrom, of } from 'rxjs';
 import type { TicketConfigInput } from '@cacic-fct/shared-ticketing';
 import { GraphqlHttpService } from './graphql-http.service';
 import { TicketAdminApiService } from './ticket-admin-api.service';
-import { createAdminEventTicket, createAdminTicketConfig, createTicketEventSummary } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createAdminEventTicket,
+  createAdminTicketConfig,
+  createTicketEventSummary,
+} from '@cacic-fct/shared-ticketing/testing';
 import { adminFixtureDateFromNow } from '../testing/admin-entity-fixtures';
 
 describe('TicketAdminApiService', () => {
@@ -14,11 +18,7 @@ describe('TicketAdminApiService', () => {
   beforeEach(() => {
     graphql = { request: vi.fn((query: string) => responseFor(query)) };
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        TicketAdminApiService,
-        { provide: GraphqlHttpService, useValue: graphql },
-      ],
+      providers: [provideHttpClient(), TicketAdminApiService, { provide: GraphqlHttpService, useValue: graphql }],
     });
     service = TestBed.inject(TicketAdminApiService);
   });
@@ -121,17 +121,22 @@ describe('TicketAdminApiService', () => {
   });
 
   it('uses bounded status and search filters for the holder list', async () => {
-    await firstValueFrom(service.getEventTickets({
+    await firstValueFrom(
+      service.getEventTickets({
+        eventId: 'event-1',
+        status: 'ACTIVE',
+        search: 'Ada',
+        take: 50,
+        cursor: 'cursor-1',
+      }),
+    );
+    expect(graphql.request).toHaveBeenCalledWith(expect.stringContaining('adminEventTickets('), {
       eventId: 'event-1',
       status: 'ACTIVE',
       search: 'Ada',
       take: 50,
       cursor: 'cursor-1',
-    }));
-    expect(graphql.request).toHaveBeenCalledWith(
-      expect.stringContaining('adminEventTickets('),
-      { eventId: 'event-1', status: 'ACTIVE', search: 'Ada', take: 50, cursor: 'cursor-1' },
-    );
+    });
   });
 
   it('maps holder rows with lifecycle, origin, and masked identity', async () => {
@@ -153,9 +158,13 @@ describe('TicketAdminApiService', () => {
   });
 
   it('sends audit reasons for manual issue, revocation, and admin transfer', async () => {
-    await firstValueFrom(service.issueTicket({ eventId: 'event-1', personId: 'person-1', reason: 'Inclusão especial.' }));
+    await firstValueFrom(
+      service.issueTicket({ eventId: 'event-1', personId: 'person-1', reason: 'Inclusão especial.' }),
+    );
     await firstValueFrom(service.revokeTicket({ ticketId: 'ticket-1', reason: 'Solicitação do participante.' }));
-    await firstValueFrom(service.startTransfer({ ticketId: 'ticket-1', recipientPersonId: 'person-2', reason: 'Ajuste administrativo.' }));
+    await firstValueFrom(
+      service.startTransfer({ ticketId: 'ticket-1', recipientPersonId: 'person-2', reason: 'Ajuste administrativo.' }),
+    );
 
     expect(graphql.request).toHaveBeenNthCalledWith(1, expect.stringContaining('adminIssueTicket(input: $input)'), {
       input: { eventId: 'event-1', personId: 'person-1', reason: 'Inclusão especial.' },
@@ -163,17 +172,20 @@ describe('TicketAdminApiService', () => {
     expect(graphql.request).toHaveBeenNthCalledWith(2, expect.stringContaining('adminRevokeTicket(input: $input)'), {
       input: { ticketId: 'ticket-1', reason: 'Solicitação do participante.' },
     });
-    expect(graphql.request).toHaveBeenNthCalledWith(3, expect.stringContaining('adminStartTicketTransfer(input: $input)'), {
-      input: { ticketId: 'ticket-1', recipientPersonId: 'person-2', reason: 'Ajuste administrativo.' },
-    });
+    expect(graphql.request).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('adminStartTicketTransfer(input: $input)'),
+      {
+        input: { ticketId: 'ticket-1', recipientPersonId: 'person-2', reason: 'Ajuste administrativo.' },
+      },
+    );
   });
 
   it('loads the auditable ticket trail by the immutable ticket identifier', async () => {
     await expect(firstValueFrom(service.getHistory('ticket-uuid'))).resolves.toEqual([]);
-    expect(graphql.request).toHaveBeenCalledWith(
-      expect.stringContaining('adminTicketHistory(ticketId: $ticketId)'),
-      { ticketId: 'ticket-uuid' },
-    );
+    expect(graphql.request).toHaveBeenCalledWith(expect.stringContaining('adminTicketHistory(ticketId: $ticketId)'), {
+      ticketId: 'ticket-uuid',
+    });
     const query = graphql.request.mock.calls[0]?.[0] as string;
     expect(query).toContain('operation');
     expect(query).toContain('previousHolder');
@@ -184,13 +196,29 @@ describe('TicketAdminApiService', () => {
 });
 
 function responseFor(query: string) {
-  if (query.includes('AdminTicketConfigs')) return of({ adminTicketConfigs: [] });
-  if (query.includes('AdminTicketEligibilityWarnings')) return of({ adminTicketEligibilityWarnings: { eligible: true, warnings: [] } });
-  if (query.includes('AdminEventTickets')) return of({ adminEventTickets: { tickets: [], nextCursor: null, totalCount: 0 } });
-  if (query.includes('AdminTicketHistory')) return of({ adminTicketHistory: [] });
-  if (query.includes('SaveTicketConfig')) return of({ saveTicketConfig: {} });
-  if (query.includes('AdminIssueTicket')) return of({ adminIssueTicket: {} });
-  if (query.includes('AdminRevokeTicket')) return of({ adminRevokeTicket: {} });
-  if (query.includes('AdminStartTicketTransfer')) return of({ adminStartTicketTransfer: {} });
+  if (query.includes('AdminTicketConfigs')) {
+    return of({ adminTicketConfigs: [] });
+  }
+  if (query.includes('AdminTicketEligibilityWarnings')) {
+    return of({ adminTicketEligibilityWarnings: { eligible: true, warnings: [] } });
+  }
+  if (query.includes('AdminEventTickets')) {
+    return of({ adminEventTickets: { tickets: [], nextCursor: null, totalCount: 0 } });
+  }
+  if (query.includes('AdminTicketHistory')) {
+    return of({ adminTicketHistory: [] });
+  }
+  if (query.includes('SaveTicketConfig')) {
+    return of({ saveTicketConfig: {} });
+  }
+  if (query.includes('AdminIssueTicket')) {
+    return of({ adminIssueTicket: {} });
+  }
+  if (query.includes('AdminRevokeTicket')) {
+    return of({ adminRevokeTicket: {} });
+  }
+  if (query.includes('AdminStartTicketTransfer')) {
+    return of({ adminStartTicketTransfer: {} });
+  }
   return of({});
 }

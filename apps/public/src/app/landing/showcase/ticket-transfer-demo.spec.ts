@@ -12,8 +12,9 @@ describe('TicketTransferDemoComponent', () => {
   });
 
   function buttonNamed(name: string): HTMLButtonElement {
-    const button = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'))
-      .find((candidate) => candidate.textContent?.includes(name));
+    const button = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'),
+    ).find((candidate) => candidate.textContent?.includes(name));
 
     expect(button).toBeDefined();
     return button as HTMLButtonElement;

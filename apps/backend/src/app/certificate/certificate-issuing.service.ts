@@ -412,7 +412,9 @@ export class CertificateIssuingService {
         where: { id: normalizedCertificateId, deletedAt: null },
         select: CERTIFICATE_SELECT,
       });
-      if (!certificate) throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
+      if (!certificate) {
+        throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
+      }
       const deleted = await tx.certificate.update({
         where: { id: normalizedCertificateId },
         data: { deletedAt: new Date() },

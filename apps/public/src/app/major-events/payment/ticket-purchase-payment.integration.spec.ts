@@ -36,7 +36,12 @@ describe('ticket purchase payment integration', () => {
         id: 'major-1',
         name: 'Congresso de Computação',
         isPaymentRequired: true,
-        paymentInfo: { bankName: 'Banco de teste', pixKey: 'pix@example.com', holder: 'Evento de teste', pixCity: 'São Paulo' },
+        paymentInfo: {
+          bankName: 'Banco de teste',
+          pixKey: 'pix@example.com',
+          holder: 'Evento de teste',
+          pixCity: 'São Paulo',
+        },
         additionalPaymentInfo: null,
         majorEventPrices: [],
       },
@@ -58,7 +63,10 @@ describe('ticket purchase payment integration', () => {
             },
           },
         },
-        { provide: MajorEventSubscriptionApiService, useValue: { getCurrentUserSubscription: () => of(majorEventSubscription) } },
+        {
+          provide: MajorEventSubscriptionApiService,
+          useValue: { getCurrentUserSubscription: () => of(majorEventSubscription) },
+        },
         { provide: PaymentReceiptApiService, useValue: { getCurrentReceipt: vi.fn(), uploadReceipt: vi.fn() } },
         {
           provide: RealtimeInvalidationService,
@@ -87,12 +95,24 @@ describe('ticket purchase payment integration', () => {
 
   function loadOffer(expiresAt: string): void {
     const requests = http.match('/api/graphql');
-    requests.find((request) => request.request.body.query.includes('myTicketPurchaseOptions'))?.flush({
-      data: { myTicketPurchaseOptions: [createTicketPurchaseOption({
-        eventId: 'party-event', majorEventId: 'major-1', ticketConfigId: 'party-config', amountCents: 2500, expiresAt,
-      })] },
-    });
-    requests.find((request) => request.request.body.query.includes('myTicketPurchases'))?.flush({ data: { myTicketPurchases: [] } });
+    requests
+      .find((request) => request.request.body.query.includes('myTicketPurchaseOptions'))
+      ?.flush({
+        data: {
+          myTicketPurchaseOptions: [
+            createTicketPurchaseOption({
+              eventId: 'party-event',
+              majorEventId: 'major-1',
+              ticketConfigId: 'party-config',
+              amountCents: 2500,
+              expiresAt,
+            }),
+          ],
+        },
+      });
+    requests
+      .find((request) => request.request.body.query.includes('myTicketPurchases'))
+      ?.flush({ data: { myTicketPurchases: [] } });
     fixture.detectChanges();
   }
 
@@ -110,7 +130,9 @@ describe('ticket purchase payment integration', () => {
     expect(fixture.nativeElement.querySelector('input[type="file"]')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Copiar chave Pix');
     expect(fixture.nativeElement.textContent).not.toContain('Banco de teste');
-    expect(fixture.nativeElement.textContent).toContain('O prazo de compra deste bilhete encerrou. Não faça o pagamento.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'O prazo de compra deste bilhete encerrou. Não faça o pagamento.',
+    );
     expect(fixture.componentInstance.canUpload()).toBe(false);
     expect(fixture.componentInstance.pixPayload()).toBeNull();
   });
@@ -129,33 +151,49 @@ describe('ticket purchase payment integration', () => {
     confirmation.next(true);
 
     http.expectNone('/api/ticket-purchases/party-event/receipt');
-    expect(snackBar.open).toHaveBeenCalledWith('O prazo de compra deste bilhete encerrou. Não faça o pagamento.', 'OK', { duration: 4500 });
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'O prazo de compra deste bilhete encerrou. Não faça o pagamento.',
+      'OK',
+      { duration: 4500 },
+    );
   });
 
   it('shows the ticket receipt only after the upload endpoint succeeds', async () => {
     fixture.detectChanges();
     const graphqlRequests = http.match('/api/graphql');
     expect(graphqlRequests).toHaveLength(2);
-    const optionsRequest = graphqlRequests.find((request) => request.request.body.query.includes('myTicketPurchaseOptions'));
-    const purchasesRequest = graphqlRequests.find((request) => request.request.body.query.includes('myTicketPurchases'));
+    const optionsRequest = graphqlRequests.find((request) =>
+      request.request.body.query.includes('myTicketPurchaseOptions'),
+    );
+    const purchasesRequest = graphqlRequests.find((request) =>
+      request.request.body.query.includes('myTicketPurchases'),
+    );
     expect(optionsRequest).toBeDefined();
     expect(purchasesRequest).toBeDefined();
-    optionsRequest?.flush({ data: { myTicketPurchaseOptions: [createTicketPurchaseOption({
-      eventId: 'party-event',
-      majorEventId: 'major-1',
-      ticketConfigId: 'party-config',
-      amountCents: 2500,
-      priceTierId: 'student-tier',
-      priceTierName: 'Estudante',
-      event: { id: 'party-event', name: 'Festa de encerramento' },
-    })] } });
+    optionsRequest?.flush({
+      data: {
+        myTicketPurchaseOptions: [
+          createTicketPurchaseOption({
+            eventId: 'party-event',
+            majorEventId: 'major-1',
+            ticketConfigId: 'party-config',
+            amountCents: 2500,
+            priceTierId: 'student-tier',
+            priceTierName: 'Estudante',
+            event: { id: 'party-event', name: 'Festa de encerramento' },
+          }),
+        ],
+      },
+    });
     purchasesRequest?.flush({ data: { myTicketPurchases: [] } });
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('25,00');
     expect(fixture.nativeElement.textContent).toContain('Festa de encerramento');
-    expect(fixture.nativeElement.textContent).toContain('A compra só será registrada depois que o envio do comprovante for concluído.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'A compra só será registrada depois que o envio do comprovante for concluído.',
+    );
 
     const file = new File(['recibo de pagamento'], 'comprovante.pdf', { type: 'application/pdf' });
     const fileInput = fixture.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
@@ -179,8 +217,12 @@ describe('ticket purchase payment integration', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Comprovante em análise');
-    expect(fixture.nativeElement.textContent).toContain('O comprovante do bilhete foi enviado e está vinculado a esta compra.');
-    expect(snackBar.open).toHaveBeenCalledWith('Comprovante enviado. A compra está em análise.', 'OK', { duration: 3500 });
+    expect(fixture.nativeElement.textContent).toContain(
+      'O comprovante do bilhete foi enviado e está vinculado a esta compra.',
+    );
+    expect(snackBar.open).toHaveBeenCalledWith('Comprovante enviado. A compra está em análise.', 'OK', {
+      duration: 3500,
+    });
     expect(analytics.trackEvent).toHaveBeenCalledWith('ticket_purchase_receipt_uploaded', {
       major_event_id: 'major-1',
       event_id: 'party-event',

@@ -65,7 +65,10 @@ describe('PrizeDrawPageComponent', () => {
   });
 
   it('keeps a legacy draw-stage bookmark inside its target context', () => {
-    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { eventId: 'event-1' }, replaceUrl: true }));
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { eventId: 'event-1' }, replaceUrl: true }),
+    );
   });
 
   it('loads the draw and roster, computes the next planned label, and shortens reel names', () => {

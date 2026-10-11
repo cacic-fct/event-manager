@@ -105,7 +105,9 @@ describe('CertificateConfigsService', () => {
       const { prisma, service, input } = setup();
       await service.createConfig({ ...input, attendeeEligibility: AttendanceEligibility.INVITED_ONLY });
       expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ attendeeEligibility: AttendanceEligibility.INVITED_ONLY }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ attendeeEligibility: AttendanceEligibility.INVITED_ONLY }),
+        }),
       );
     });
 

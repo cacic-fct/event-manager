@@ -43,9 +43,7 @@ describe('CertificateIssuanceAudit', () => {
         create: jest.fn().mockResolvedValue({ id: 'audit-entry-1' }),
       },
     };
-    const audit = new CertificateIssuanceAudit(
-      new AuditLogService(prisma as never, {} as never, {} as never),
-    );
+    const audit = new CertificateIssuanceAudit(new AuditLogService(prisma as never, {} as never, {} as never));
     const before = {
       id: 'certificate-1',
       personId: 'person-1',

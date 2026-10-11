@@ -374,7 +374,11 @@ export class PublicationStateWriterService {
   }
 
   private hasRequestedPublicationState(
-    target: AudiencePublicationTarget & { publicationState: PublicationState; scheduledPublishAt: Date | null; isPubliclyListed?: boolean },
+    target: AudiencePublicationTarget & {
+      publicationState: PublicationState;
+      scheduledPublishAt: Date | null;
+      isPubliclyListed?: boolean;
+    },
     state: PublicationState,
     scheduledPublishAt: Date | null,
     isPubliclyListed?: boolean,

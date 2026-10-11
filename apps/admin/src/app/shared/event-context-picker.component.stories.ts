@@ -65,9 +65,7 @@ const meta: Meta<Args> = {
           provide: AdminEventContextApiService,
           useValue: {
             listPage: (options: AdminEventContextPageOptions) =>
-              active.fail
-                ? throwError(() => new Error('Unavailable'))
-                : of(contextStoryPage(options, active)),
+              active.fail ? throwError(() => new Error('Unavailable')) : of(contextStoryPage(options, active)),
           },
         },
         {
@@ -176,9 +174,7 @@ export const RankedContextSearch: Story = {
     await userEvent.type(canvas.getByRole('searchbox'), 'Semana');
     await expect(await canvas.findByRole('button', { name: 'Selecionar Encontro da trilha' })).toBeVisible();
     await expect(canvasElement.querySelector('.node-ancestry')).toHaveTextContent('Semana da Computação');
-    await expect(
-      canvas.queryByRole('button', { name: 'Expandir Semana da Computação' }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Expandir Semana da Computação' })).not.toBeInTheDocument();
   },
 };
 

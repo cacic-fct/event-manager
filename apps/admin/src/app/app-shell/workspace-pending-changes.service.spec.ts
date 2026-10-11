@@ -14,10 +14,7 @@ describe('WorkspacePendingChangesService', () => {
       open: vi.fn(() => ({ afterClosed: () => of(afterClosedValue) })),
     };
     TestBed.configureTestingModule({
-      providers: [
-        WorkspacePendingChangesService,
-        { provide: MatDialog, useValue: dialog },
-      ],
+      providers: [WorkspacePendingChangesService, { provide: MatDialog, useValue: dialog }],
     });
     service = TestBed.inject(WorkspacePendingChangesService);
   });
@@ -56,10 +53,12 @@ describe('WorkspacePendingChangesService', () => {
     registration.set(true);
     afterClosedValue = true;
 
-    await expect(service.navigate(async () => {
-      await expect(service.canDeactivate()).resolves.toBe(true);
-      return true;
-    })).resolves.toBe(true);
+    await expect(
+      service.navigate(async () => {
+        await expect(service.canDeactivate()).resolves.toBe(true);
+        return true;
+      }),
+    ).resolves.toBe(true);
 
     registration.set(true);
     afterClosedValue = false;

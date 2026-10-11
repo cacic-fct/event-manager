@@ -109,12 +109,19 @@ export class PrizeDrawsPageComponent {
         const eventId = query.get('eventId') ?? undefined;
         const majorEventId = query.get('majorEventId') ?? undefined;
         void (async () => {
-          if (!(await this.workspace.setScopeFromRoute(eventId ? { eventId } : majorEventId ? { majorEventId } : null)))
+          if (
+            !(await this.workspace.setScopeFromRoute(eventId ? { eventId } : majorEventId ? { majorEventId } : null))
+          ) {
             return;
-          if (request !== this.routeRequest) return;
+          }
+          if (request !== this.routeRequest) {
+            return;
+          }
           const drawId = params.get('drawId');
           await this.workspace.initialize(drawId);
-          if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell) return;
+          if (request !== this.routeRequest || eventId || majorEventId || !this.inWorkspaceShell) {
+            return;
+          }
           const draw = this.workspace.selected();
           if (draw?.id === drawId && !this.workspace.unsavedChanges()) {
             await router.navigate([], {
@@ -182,7 +189,9 @@ export class PrizeDrawsPageComponent {
 
   async confirmUndo(): Promise<void> {
     const latest = this.workspace.activeSpins().at(-1);
-    if (!latest) return;
+    if (!latest) {
+      return;
+    }
     const confirmed = await firstValueFrom(
       this.dialog
         .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(ConfirmationDialogComponent, {
@@ -200,6 +209,8 @@ export class PrizeDrawsPageComponent {
         })
         .afterClosed(),
     );
-    if (confirmed) await this.workspace.undoLast();
+    if (confirmed) {
+      await this.workspace.undoLast();
+    }
   }
 }

@@ -445,8 +445,12 @@ class InMemorySportsQueueStorage {
 
   async listUploadable(userScope: string): Promise<OfflineSportsOperationQueueItem[]> {
     return (await this.listAll()).filter((item) => {
-      if (item.lastError?.startsWith(OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX)) return false;
-      if (item.nextAttemptAt && item.nextAttemptAt > Date.now()) return false;
+      if (item.lastError?.startsWith(OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX)) {
+        return false;
+      }
+      if (item.nextAttemptAt && item.nextAttemptAt > Date.now()) {
+        return false;
+      }
       return item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item);
     });
   }

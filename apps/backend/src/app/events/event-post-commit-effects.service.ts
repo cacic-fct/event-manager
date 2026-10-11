@@ -117,7 +117,9 @@ export class EventPostCommitEffectsService {
 
   async syncEvents(eventIds: readonly string[]): Promise<void> {
     const uniqueIds = [...new Set(eventIds.filter(Boolean))];
-    if (uniqueIds.length === 0) return;
+    if (uniqueIds.length === 0) {
+      return;
+    }
 
     try {
       await this.runAsSystem(async () => {
@@ -173,7 +175,9 @@ export class EventPostCommitEffectsService {
 
   async syncEventGroups(eventGroupIds: readonly string[]): Promise<void> {
     const uniqueIds = [...new Set(eventGroupIds.filter(Boolean))];
-    if (uniqueIds.length === 0) return;
+    if (uniqueIds.length === 0) {
+      return;
+    }
 
     try {
       await this.runAsSystem(async () => {

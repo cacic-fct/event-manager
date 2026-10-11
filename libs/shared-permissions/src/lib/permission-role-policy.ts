@@ -221,7 +221,9 @@ export function expandHardPermissionDependencies(permissions: Iterable<Permissio
 
   while (pending.length > 0) {
     const permission = pending.pop();
-    if (!permission) continue;
+    if (!permission) {
+      continue;
+    }
 
     for (const dependency of EVENT_MANAGER_HARD_PERMISSION_DEPENDENCIES[permission] ?? []) {
       if (!expanded.has(dependency)) {

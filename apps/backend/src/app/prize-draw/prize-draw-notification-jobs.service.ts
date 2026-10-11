@@ -102,7 +102,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
         draw: { select: { revision: true } },
       },
     });
-    if (!spin || spin.undoneAt || !spin.presentationAcknowledgedAt) return false;
+    if (!spin || spin.undoneAt || !spin.presentationAcknowledgedAt) {
+      return false;
+    }
     if (acknowledged.count === 1) {
       if (spin.notificationStatus === 'PENDING' && spin.notificationTransactionId) {
         await this.enqueueWinner(spinId, { delayMs: 0 });
@@ -114,7 +116,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
 
   async deliverWinner(spinId: string): Promise<void> {
     const reference = await this.prisma.prizeDrawSpin.findUnique({ where: { id: spinId }, select: { drawId: true } });
-    if (!reference) return;
+    if (!reference) {
+      return;
+    }
     await this.prisma.$transaction(
       async (tx) => {
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${reference.drawId}))`;
@@ -138,7 +142,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
           ...this.notificationInput(spin),
           transactionId: spin.notificationTransactionId,
         });
-        if (!delivered) throw new Error(`Novu did not acknowledge prize draw winner notification for spin ${spinId}.`);
+        if (!delivered) {
+          throw new Error(`Novu did not acknowledge prize draw winner notification for spin ${spinId}.`);
+        }
         await tx.prizeDrawSpin.update({
           where: { id: spinId },
           data: { notificationStatus: 'SENT' },
@@ -151,7 +157,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   async undoSpin(spinId: string): Promise<void> {
     await this.removePendingWinnerJob(spinId);
     const spin = await this.notificationRecord(spinId);
-    if (!spin || !spin.notificationTransactionId || !spin.winnerPerson) return;
+    if (!spin || !spin.notificationTransactionId || !spin.winnerPerson) {
+      return;
+    }
 
     const cancelled = await this.notifications.cancelTriggeredNotification(spin.notificationTransactionId);
     const deleted = await this.notifications.deleteNotificationMessages(spin.notificationTransactionId);
@@ -194,7 +202,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
       where: { id: spinId },
       select: { notificationTransactionId: true, undoNotificationTransactionId: true },
     });
-    if (!spin) return;
+    if (!spin) {
+      return;
+    }
     const transactionIds = [spin.notificationTransactionId, spin.undoNotificationTransactionId].filter(
       (value): value is string => Boolean(value),
     );
@@ -305,7 +315,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     const queue = this.queue as Queue<PrizeDrawNotificationJob> & {
       getJob?: (jobId: string) => Promise<{ remove(): Promise<void> } | undefined>;
     };
-    if (typeof queue.getJob !== 'function') return;
+    if (typeof queue.getJob !== 'function') {
+      return;
+    }
     try {
       await (await queue.getJob(this.winnerJobId(spinId)))?.remove();
     } catch {
@@ -319,7 +331,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
     results: PromiseSettledResult<unknown>[],
   ): void {
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') return;
+      if (result.status === 'fulfilled') {
+        return;
+      }
       this.logger.warn(
         `Could not enqueue ${kind} for spin ${spinIds[index] ?? 'unknown'}: ${
           result.reason instanceof Error ? result.reason.message : String(result.reason)
@@ -381,7 +395,9 @@ export class PrizeDrawNotificationJobsService implements OnModuleInit {
   ) {
     const targetId = spin.draw.eventId ?? spin.draw.majorEventId;
     const winnerPerson = spin.winnerPerson;
-    if (!targetId || !winnerPerson) throw new Error(`Incomplete notification target for prize draw spin ${spin.id}.`);
+    if (!targetId || !winnerPerson) {
+      throw new Error(`Incomplete notification target for prize draw spin ${spin.id}.`);
+    }
     const recipientPerson = winnerPerson.mergedInto ?? winnerPerson;
     return {
       drawId: spin.drawId,

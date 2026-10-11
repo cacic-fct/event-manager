@@ -1,4 +1,11 @@
-import { ConflictException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -109,7 +116,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.reconciliationTimer) clearInterval(this.reconciliationTimer);
+    if (this.reconciliationTimer) {
+      clearInterval(this.reconciliationTimer);
+    }
   }
 
   async issueForPerson(
@@ -122,12 +131,16 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   ) {
     return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const expectedKey = sourceKey ?? null;
-      if (!options.eventExpiryLockHeld) await this.lockEventExpirationAlignment(tx, eventId, 'SHARE');
+      if (!options.eventExpiryLockHeld) {
+        await this.lockEventExpirationAlignment(tx, eventId, 'SHARE');
+      }
       await this.lockHolder(tx, eventId, personId);
 
       const event = await this.requireEvent(tx, eventId);
       const config = event.ticketConfig;
-      if (!config?.enabled || event.deletedAt) throw new NotFoundException('Este evento não possui bilhetes ativos.');
+      if (!config?.enabled || event.deletedAt) {
+        throw new NotFoundException('Este evento não possui bilhetes ativos.');
+      }
 
       const expiresAt = this.resolveExpiration(event);
       const issuedAt = options.issuedAt ?? new Date();
@@ -139,11 +152,15 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         where: { id: personId, deletedAt: null, mergedIntoId: null },
         select: { id: true, userId: true },
       });
-      if (!holder) throw new NotFoundException('Pessoa não encontrada.');
+      if (!holder) {
+        throw new NotFoundException('Pessoa não encontrada.');
+      }
 
       if (expectedKey) {
         const existingFromSource = await tx.eventTicket.findUnique({ where: { sourceKey: expectedKey } });
-        if (existingFromSource) return existingFromSource;
+        if (existingFromSource) {
+          return existingFromSource;
+        }
       }
 
       const alreadyHoldsTicket = await tx.eventTicket.findFirst({
@@ -231,18 +248,21 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
 
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const expectedKey = this.subscriptionSourceKey(eventId, personId, source);
-      if (sourceKey !== expectedKey) throw new ConflictException('A origem de emissão do bilhete é inválida.');
+      if (sourceKey !== expectedKey) {
+        throw new ConflictException('A origem de emissão do bilhete é inválida.');
+      }
 
       await this.lockEventExpirationAlignment(tx, eventId, 'SHARE');
       await this.lockHolder(tx, eventId, personId);
       const event = await this.requireEvent(tx, eventId);
       const config = event.ticketConfig;
       const reconciliationCreatedAt = options.reconciliationCreatedAt;
-      if (reconciliationCreatedAt && (
-        !config?.enabled ||
-        config.createdAt > reconciliationCreatedAt ||
-        config.updatedAt > reconciliationCreatedAt
-      )) return;
+      if (
+        reconciliationCreatedAt &&
+        (!config?.enabled || config.createdAt > reconciliationCreatedAt || config.updatedAt > reconciliationCreatedAt)
+      ) {
+        return;
+      }
       const sourceEligible = await this.sourceSubscriptionIsEligible(
         tx,
         event,
@@ -252,33 +272,50 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (!sourceEligible) {
-        if (reconciliationCreatedAt) return;
-        const otherSource = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-          ? EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION
-          : EventTicketIssueSource.EVENT_SUBSCRIPTION;
-        if (await this.automaticEntitlementIsEligible(tx, event, personId, otherSource)) return;
+        if (reconciliationCreatedAt) {
+          return;
+        }
+        const otherSource =
+          source === EventTicketIssueSource.EVENT_SUBSCRIPTION
+            ? EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION
+            : EventTicketIssueSource.EVENT_SUBSCRIPTION;
+        if (await this.automaticEntitlementIsEligible(tx, event, personId, otherSource)) {
+          return;
+        }
         await this.revokeSubscriptionTicket(tx, event, personId, source, expectedKey);
         return;
       }
 
-      if (!config?.enabled) return;
-      const sourceEnabled = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-        ? config.issueOnEventSubscription
-        : config.issueOnMajorEventSubscription;
-      if (!sourceEnabled) return;
-      if (!(await this.includedPriceTierAllows(
-        tx,
-        event,
-        personId,
-        source,
-        config.includedPriceTierIds,
-        reconciliationCreatedAt,
-      ))) {
-        if (reconciliationCreatedAt) return;
-        const otherSource = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-          ? EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION
-          : EventTicketIssueSource.EVENT_SUBSCRIPTION;
-        if (await this.automaticEntitlementIsEligible(tx, event, personId, otherSource)) return;
+      if (!config?.enabled) {
+        return;
+      }
+      const sourceEnabled =
+        source === EventTicketIssueSource.EVENT_SUBSCRIPTION
+          ? config.issueOnEventSubscription
+          : config.issueOnMajorEventSubscription;
+      if (!sourceEnabled) {
+        return;
+      }
+      if (
+        !(await this.includedPriceTierAllows(
+          tx,
+          event,
+          personId,
+          source,
+          config.includedPriceTierIds,
+          reconciliationCreatedAt,
+        ))
+      ) {
+        if (reconciliationCreatedAt) {
+          return;
+        }
+        const otherSource =
+          source === EventTicketIssueSource.EVENT_SUBSCRIPTION
+            ? EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION
+            : EventTicketIssueSource.EVENT_SUBSCRIPTION;
+        if (await this.automaticEntitlementIsEligible(tx, event, personId, otherSource)) {
+          return;
+        }
         await this.revokeSubscriptionTicket(tx, event, personId, source, expectedKey);
         return;
       }
@@ -293,22 +330,26 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         },
         select: { id: true },
       });
-      if (transferredAutomaticRight) return;
+      if (transferredAutomaticRight) {
+        return;
+      }
 
       const priorAttendance = reconciliationCreatedAt
         ? await this.findHistoricalAttendance(tx, eventId, personId, reconciliationCreatedAt)
         : null;
 
       const exactSourceTicket = await tx.eventTicket.findUnique({ where: { sourceKey: expectedKey } });
-      const existingFromSource = exactSourceTicket ?? await tx.eventTicket.findFirst({
-        where: {
-          eventId,
-          originalHolderPersonId: { in: lineagePersonIds },
-          source,
-          sourceKey: { not: expectedKey },
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      });
+      const existingFromSource =
+        exactSourceTicket ??
+        (await tx.eventTicket.findFirst({
+          where: {
+            eventId,
+            originalHolderPersonId: { in: lineagePersonIds },
+            source,
+            sourceKey: { not: expectedKey },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        }));
       if (existingFromSource) {
         if (reconciliationCreatedAt && priorAttendance) {
           if (
@@ -391,12 +432,20 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       }
 
       const otherOwnedTicket = await tx.eventTicket.findFirst({
-        where: { eventId, holderPersonId: personId, status: { in: [EventTicketStatus.ACTIVE, EventTicketStatus.CONSUMED] } },
+        where: {
+          eventId,
+          holderPersonId: personId,
+          status: { in: [EventTicketStatus.ACTIVE, EventTicketStatus.CONSUMED] },
+        },
         select: { id: true, status: true, holderPersonId: true, issuedAt: true },
       });
-      if (otherOwnedTicket) return;
+      if (otherOwnedTicket) {
+        return;
+      }
       const expiresAt = this.resolveExpiration(event);
-      if (!priorAttendance && expiresAt <= new Date()) return;
+      if (!priorAttendance && expiresAt <= new Date()) {
+        return;
+      }
       const ticket = await this.issueForPerson(tx, eventId, personId, source, expectedKey, {
         eventExpiryLockHeld: true,
         ...(priorAttendance ? { issuedAt: priorAttendance.attendedAt } : {}),
@@ -414,18 +463,15 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     personId: string,
     attendedAt: Date,
   ): Promise<void> {
-    if (!Number.isFinite(attendedAt.getTime())) return;
+    if (!Number.isFinite(attendedAt.getTime())) {
+      return;
+    }
     const processedAt = new Date();
     const eligibleAt = attendedAt.getTime() < processedAt.getTime() ? attendedAt : processedAt;
     for (const source of AUTOMATIC_TICKET_SOURCES) {
-      await this.syncForPerson(
-        tx,
-        eventId,
-        personId,
-        source,
-        this.subscriptionSourceKey(eventId, personId, source),
-        { eligibleAt },
-      );
+      await this.syncForPerson(tx, eventId, personId, source, this.subscriptionSourceKey(eventId, personId, source), {
+        eligibleAt,
+      });
     }
   }
 
@@ -439,25 +485,31 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const expectedKey = this.subscriptionSourceKey(eventId, personId, source);
-      if (sourceKey !== expectedKey) throw new ConflictException('A origem de emissão do bilhete é inválida.');
+      if (sourceKey !== expectedKey) {
+        throw new ConflictException('A origem de emissão do bilhete é inválida.');
+      }
 
       await this.lockEventExpirationAlignment(tx, eventId, 'SHARE');
       await this.lockHolder(tx, eventId, personId);
       const event = await this.requireEvent(tx, eventId);
       const config = event.ticketConfig;
-      if (
-        !config?.enabled ||
-        event.deletedAt ||
-        config.createdAt > attendedAt ||
-        config.updatedAt > attendedAt
-      ) return;
+      if (!config?.enabled || event.deletedAt || config.createdAt > attendedAt || config.updatedAt > attendedAt) {
+        return;
+      }
 
-      const sourceEnabled = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-        ? config.issueOnEventSubscription
-        : config.issueOnMajorEventSubscription;
-      if (!sourceEnabled) return;
-      if (!(await this.sourceSubscriptionIsEligible(tx, event, personId, source, attendedAt))) return;
-      if (!(await this.includedPriceTierAllows(tx, event, personId, source, config.includedPriceTierIds, attendedAt))) return;
+      const sourceEnabled =
+        source === EventTicketIssueSource.EVENT_SUBSCRIPTION
+          ? config.issueOnEventSubscription
+          : config.issueOnMajorEventSubscription;
+      if (!sourceEnabled) {
+        return;
+      }
+      if (!(await this.sourceSubscriptionIsEligible(tx, event, personId, source, attendedAt))) {
+        return;
+      }
+      if (!(await this.includedPriceTierAllows(tx, event, personId, source, config.includedPriceTierIds, attendedAt))) {
+        return;
+      }
 
       const lineagePersonIds = await this.personLineageIds(tx, personId);
       const transferredAutomaticRight = await tx.eventTicket.findFirst({
@@ -469,18 +521,22 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         },
         select: { id: true },
       });
-      if (transferredAutomaticRight) return;
+      if (transferredAutomaticRight) {
+        return;
+      }
 
       const exactSourceTicket = await tx.eventTicket.findUnique({ where: { sourceKey: expectedKey } });
-      const existingFromSource = exactSourceTicket ?? await tx.eventTicket.findFirst({
-        where: {
-          eventId,
-          originalHolderPersonId: { in: lineagePersonIds },
-          source,
-          sourceKey: { not: expectedKey },
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      });
+      const existingFromSource =
+        exactSourceTicket ??
+        (await tx.eventTicket.findFirst({
+          where: {
+            eventId,
+            originalHolderPersonId: { in: lineagePersonIds },
+            source,
+            sourceKey: { not: expectedKey },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        }));
       if (existingFromSource) {
         if (
           existingFromSource.status === EventTicketStatus.ACTIVE &&
@@ -488,7 +544,14 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           existingFromSource.issuedAt > attendedAt
         ) {
           if (!(await this.hasRevocationHistory(tx, existingFromSource.id))) {
-            await this.alignTicketIssuedAtForAttendance(tx, event, personId, existingFromSource, attendedAt, 'ATTENDANCE');
+            await this.alignTicketIssuedAtForAttendance(
+              tx,
+              event,
+              personId,
+              existingFromSource,
+              attendedAt,
+              'ATTENDANCE',
+            );
           }
         }
         return;
@@ -502,7 +565,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         },
         select: { id: true },
       });
-      if (otherOwnedTicket) return;
+      if (otherOwnedTicket) {
+        return;
+      }
 
       await this.issueForPerson(tx, eventId, personId, source, expectedKey, {
         eventExpiryLockHeld: true,
@@ -521,11 +586,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       where: { personId_eventId: { personId, eventId } },
       select: { status: true, attendedAt: true, committedById: true, createdById: true },
     });
-    if (
-      !attendance ||
-      attendance.status !== 'PRESENT' ||
-      attendance.attendedAt > reconciliationCreatedAt
-    ) return null;
+    if (!attendance || attendance.status !== 'PRESENT' || attendance.attendedAt > reconciliationCreatedAt) {
+      return null;
+    }
     return {
       attendedAt: attendance.attendedAt,
       committedById: attendance.committedById,
@@ -540,23 +603,28 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     ticket: { id: string; holderPersonId: string | null; status: EventTicketStatus; issuedAt: Date; expiresAt: Date },
     attendance: HistoricalAttendanceProof,
   ): Promise<void> {
-    if (
-      ticket.status !== EventTicketStatus.ACTIVE ||
-      ticket.holderPersonId !== personId
-    ) return;
+    if (ticket.status !== EventTicketStatus.ACTIVE || ticket.holderPersonId !== personId) {
+      return;
+    }
     const transferred = await tx.eventTicketHistory.findFirst({
       where: { ticketId: ticket.id, operation: TicketHistoryOperation.TRANSFERRED },
       select: { id: true },
     });
-    if (transferred) return;
-    if (ticket.issuedAt > attendance.attendedAt && await this.hasRevocationHistory(tx, ticket.id)) return;
+    if (transferred) {
+      return;
+    }
+    if (ticket.issuedAt > attendance.attendedAt && (await this.hasRevocationHistory(tx, ticket.id))) {
+      return;
+    }
 
     await this.alignTicketIssuedAtForAttendance(tx, event, personId, ticket, attendance.attendedAt, 'BACKFILL');
     const consumed = await this.consumeForAttendance(tx, event.id, personId, {
       attendedAt: attendance.attendedAt,
       actorUserId: attendance.committedById ?? attendance.createdById ?? undefined,
     });
-    if (!consumed) throw new ConflictException('Não foi possível associar o bilhete à presença registrada.');
+    if (!consumed) {
+      throw new ConflictException('Não foi possível associar o bilhete à presença registrada.');
+    }
   }
 
   private async alignTicketIssuedAtForAttendance(
@@ -567,7 +635,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     attendedAt: Date,
     context: 'ATTENDANCE' | 'BACKFILL',
   ): Promise<void> {
-    if (ticket.issuedAt <= attendedAt) return;
+    if (ticket.issuedAt <= attendedAt) {
+      return;
+    }
     const updated = await tx.eventTicket.updateMany({
       where: {
         id: ticket.id,
@@ -577,16 +647,19 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       },
       data: { issuedAt: attendedAt },
     });
-    if (updated.count !== 1) throw new ConflictException('O bilhete mudou durante a reconciliação da presença.');
+    if (updated.count !== 1) {
+      throw new ConflictException('O bilhete mudou durante a reconciliação da presença.');
+    }
 
     await recordTicketAudit(tx, {
       entityType: AuditLogEntityType.TICKET,
       entityId: ticket.id,
       entityLabel: event.ticketConfig?.displayName ?? event.name,
       operation: AuditLogOperation.UPDATE,
-      summary: context === 'BACKFILL'
-        ? 'Emissão do bilhete alinhada à presença anterior à ativação dos bilhetes.'
-        : 'Emissão do bilhete alinhada à elegibilidade comprovada durante a presença.',
+      summary:
+        context === 'BACKFILL'
+          ? 'Emissão do bilhete alinhada à presença anterior à ativação dos bilhetes.'
+          : 'Emissão do bilhete alinhada à elegibilidade comprovada durante a presença.',
       actorName: context === 'BACKFILL' ? 'Sistema de reconciliação de bilhetes' : 'Sistema de presença',
       eventId: event.id,
       majorEventId: event.majorEventId ?? event.eventGroup?.majorEventId,
@@ -597,10 +670,12 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async hasRevocationHistory(tx: Prisma.TransactionClient, ticketId: string): Promise<boolean> {
-    return Boolean(await tx.eventTicketHistory.findFirst({
-      where: { ticketId, operation: TicketHistoryOperation.REVOKED },
-      select: { id: true },
-    }));
+    return Boolean(
+      await tx.eventTicketHistory.findFirst({
+        where: { ticketId, operation: TicketHistoryOperation.REVOKED },
+        select: { id: true },
+      }),
+    );
   }
 
   /** Expiration is advisory; redemption still requires an unused ticket owned at attendance time. */
@@ -613,10 +688,11 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       await this.lockEventExpirationAlignment(tx, eventId, 'SHARE');
       const processedAt = new Date();
-      if (options.attendedAt && !Number.isFinite(options.attendedAt.getTime())) return false;
-      const effectiveAt = options.attendedAt && options.attendedAt.getTime() < processedAt.getTime()
-        ? options.attendedAt
-        : processedAt;
+      if (options.attendedAt && !Number.isFinite(options.attendedAt.getTime())) {
+        return false;
+      }
+      const effectiveAt =
+        options.attendedAt && options.attendedAt.getTime() < processedAt.getTime() ? options.attendedAt : processedAt;
       const candidates = await tx.eventTicket.findMany({
         where: {
           eventId,
@@ -666,7 +742,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           ? firstFutureTransfer.senderPersonId === personId
           : candidate.holderPersonId === personId;
       });
-      if (!ticket) return false;
+      if (!ticket) {
+        return false;
+      }
 
       const changed = await tx.eventTicket.updateMany({
         where: {
@@ -682,7 +760,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           consumedByPersonId: personId,
         },
       });
-      if (changed.count !== 1) return false;
+      if (changed.count !== 1) {
+        return false;
+      }
 
       await tx.eventTicketHistory.create({
         data: {
@@ -755,13 +835,18 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         },
       });
       const config = event?.ticketConfig;
-      if (!event || !config) return 0;
-      if (options.scope === 'EVENT_END_ONLY' && config.expirationMode !== TicketExpirationMode.EVENT_END) return 0;
+      if (!event || !config) {
+        return 0;
+      }
+      if (options.scope === 'EVENT_END_ONLY' && config.expirationMode !== TicketExpirationMode.EVENT_END) {
+        return 0;
+      }
 
-      const effectiveExpiresAt = config.expirationMode === TicketExpirationMode.CUSTOM
-        ? config.customExpiresAt
-        : event.endDate;
-      if (!effectiveExpiresAt) throw new ConflictException('Informe a validade personalizada do bilhete.');
+      const effectiveExpiresAt =
+        config.expirationMode === TicketExpirationMode.CUSTOM ? config.customExpiresAt : event.endDate;
+      if (!effectiveExpiresAt) {
+        throw new ConflictException('Informe a validade personalizada do bilhete.');
+      }
 
       const where: Prisma.EventTicketWhereInput = {
         eventId,
@@ -785,7 +870,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       const holderUserIds: Array<string | null> = [];
 
       for (const ticket of candidates) {
-        if (ticket.status !== EventTicketStatus.ACTIVE || ticket.expiresAt.getTime() === effectiveExpiresAt.getTime()) continue;
+        if (ticket.status !== EventTicketStatus.ACTIVE || ticket.expiresAt.getTime() === effectiveExpiresAt.getTime()) {
+          continue;
+        }
         const changed = await tx.eventTicket.updateMany({
           where: {
             id: ticket.id,
@@ -799,7 +886,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           },
           data: { expiresAt: effectiveExpiresAt },
         });
-        if (changed.count !== 1) continue;
+        if (changed.count !== 1) {
+          continue;
+        }
 
         alignedTicketIds.push(ticket.id);
         holderUserIds.push(ticket.holder?.userId ?? null);
@@ -808,9 +897,10 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           entityId: ticket.id,
           entityLabel: config.displayName ?? event.name,
           operation: AuditLogOperation.UPDATE,
-          summary: options.scope === 'EVENT_END_ONLY'
-            ? 'Validade do bilhete alinhada à data final do evento.'
-            : 'Validade do bilhete alinhada à configuração do evento.',
+          summary:
+            options.scope === 'EVENT_END_ONLY'
+              ? 'Validade do bilhete alinhada à data final do evento.'
+              : 'Validade do bilhete alinhada à configuração do evento.',
           actorUserId: options.actorUserId,
           actorName: options.actorUserId ? undefined : 'Sistema de bilhetes',
           permission: options.permission,
@@ -822,7 +912,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      if (alignedTicketIds.length === 0 || options.enqueueInvalidations === false) return alignedTicketIds.length;
+      if (alignedTicketIds.length === 0 || options.enqueueInvalidations === false) {
+        return alignedTicketIds.length;
+      }
       await this.realtime.enqueueForUsers(tx, holderUserIds, { type: 'TICKETS_CHANGED', eventId });
       const pendingTransfers = await tx.ticketTransfer.findMany({
         where: { ticketId: { in: alignedTicketIds }, senderStatus: 'PENDING' },
@@ -853,7 +945,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processReconciliationJobs(): Promise<void> {
-    if (this.stopped || this.reconciling) return;
+    if (this.stopped || this.reconciling) {
+      return;
+    }
     this.reconciling = true;
     try {
       const now = new Date();
@@ -867,7 +961,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         take: 2,
       });
       for (const job of jobs) {
-        if (this.stopped) return;
+        if (this.stopped) {
+          return;
+        }
         const leaseUntil = new Date(Date.now() + 5 * 60_000);
         const claim = await this.prisma.ticketEntitlementReconciliation.updateMany({
           where: {
@@ -877,16 +973,22 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           },
           data: { leaseUntil },
         });
-        if (claim.count !== 1) continue;
+        if (claim.count !== 1) {
+          continue;
+        }
         try {
           await this.processReconciliationPage(job.id);
         } catch (error: unknown) {
           await this.deferReconciliation(job.id, job.attempts + 1);
-          this.logger.warn(`Ticket entitlement reconciliation failed (${error instanceof Error ? error.name : 'unknown'}).`);
+          this.logger.warn(
+            `Ticket entitlement reconciliation failed (${error instanceof Error ? error.name : 'unknown'}).`,
+          );
         }
       }
     } catch (error: unknown) {
-      this.logger.warn(`Ticket entitlement reconciliation polling failed (${error instanceof Error ? error.name : 'unknown'}).`);
+      this.logger.warn(
+        `Ticket entitlement reconciliation polling failed (${error instanceof Error ? error.name : 'unknown'}).`,
+      );
     } finally {
       this.reconciling = false;
     }
@@ -895,7 +997,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   private async processReconciliationPage(jobId: string): Promise<void> {
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const job = await this.prisma.ticketEntitlementReconciliation.findUnique({ where: { id: jobId } });
-      if (!job || job.completedAt) return;
+      if (!job || job.completedAt) {
+        return;
+      }
       const event = await this.prisma.event.findUnique({
         where: { id: job.eventId },
         select: {
@@ -903,7 +1007,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
           deletedAt: true,
           majorEventId: true,
           eventGroup: { select: { majorEventId: true } },
-          ticketConfig: { select: { enabled: true, issueOnEventSubscription: true, issueOnMajorEventSubscription: true } },
+          ticketConfig: {
+            select: { enabled: true, issueOnEventSubscription: true, issueOnMajorEventSubscription: true },
+          },
         },
       });
       if (!event || event.deletedAt || !event.ticketConfig?.enabled) {
@@ -948,19 +1054,25 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         for (const { personId } of page) {
           await this.reconcileSource(job.eventId, personId, EventTicketIssueSource.EVENT_SUBSCRIPTION, job.createdAt);
         }
-        const phase = page.length < MAX_RECONCILIATION_PAGE_SIZE
-          ? event.ticketConfig.issueOnMajorEventSubscription && majorEventId
-            ? TicketEntitlementReconciliationPhase.MAJOR_EVENT_SUBSCRIPTIONS
-            : TicketEntitlementReconciliationPhase.COMPLETE
-          : TicketEntitlementReconciliationPhase.EVENT_SUBSCRIPTIONS;
-        await this.advanceReconciliation(jobId, phase, phase === TicketEntitlementReconciliationPhase.EVENT_SUBSCRIPTIONS
-          ? page[page.length - 1].personId
-          : null);
+        const phase =
+          page.length < MAX_RECONCILIATION_PAGE_SIZE
+            ? event.ticketConfig.issueOnMajorEventSubscription && majorEventId
+              ? TicketEntitlementReconciliationPhase.MAJOR_EVENT_SUBSCRIPTIONS
+              : TicketEntitlementReconciliationPhase.COMPLETE
+            : TicketEntitlementReconciliationPhase.EVENT_SUBSCRIPTIONS;
+        await this.advanceReconciliation(
+          jobId,
+          phase,
+          phase === TicketEntitlementReconciliationPhase.EVENT_SUBSCRIPTIONS ? page[page.length - 1].personId : null,
+        );
         return;
       }
 
-      if (job.phase !== TicketEntitlementReconciliationPhase.MAJOR_EVENT_SUBSCRIPTIONS ||
-          !event.ticketConfig.issueOnMajorEventSubscription || !majorEventId) {
+      if (
+        job.phase !== TicketEntitlementReconciliationPhase.MAJOR_EVENT_SUBSCRIPTIONS ||
+        !event.ticketConfig.issueOnMajorEventSubscription ||
+        !majorEventId
+      ) {
         await this.completeReconciliation(jobId);
         return;
       }
@@ -983,7 +1095,12 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         return;
       }
       for (const { personId } of majorPage) {
-        await this.reconcileSource(job.eventId, personId, EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION, job.createdAt);
+        await this.reconcileSource(
+          job.eventId,
+          personId,
+          EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION,
+          job.createdAt,
+        );
       }
       if (majorPage.length < MAX_RECONCILIATION_PAGE_SIZE) {
         await this.completeReconciliation(jobId);
@@ -1074,21 +1191,27 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     source: AutomaticTicketSource,
     eligibleAt?: Date,
   ): Promise<boolean> {
-    if (event.deletedAt) return false;
+    if (event.deletedAt) {
+      return false;
+    }
     if (source === EventTicketIssueSource.EVENT_SUBSCRIPTION) {
-      return Boolean(await tx.eventSubscription.findFirst({
-        where: {
-          eventId: event.id,
-          personId,
-          deletedAt: null,
-          ...(eligibleAt ? { createdAt: { lte: eligibleAt } } : {}),
-        },
-        select: { id: true },
-      }));
+      return Boolean(
+        await tx.eventSubscription.findFirst({
+          where: {
+            eventId: event.id,
+            personId,
+            deletedAt: null,
+            ...(eligibleAt ? { createdAt: { lte: eligibleAt } } : {}),
+          },
+          select: { id: true },
+        }),
+      );
     }
 
     const majorEventId = event.majorEventId ?? event.eventGroup?.majorEventId;
-    if (!majorEventId) return false;
+    if (!majorEventId) {
+      return false;
+    }
     const subscription = await tx.majorEventSubscription.findFirst({
       where: {
         majorEventId,
@@ -1106,7 +1229,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         paymentTier: true,
       },
     });
-    if (!subscription) return false;
+    if (!subscription) {
+      return false;
+    }
     return true;
   }
 
@@ -1117,11 +1242,16 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     source: AutomaticTicketSource,
   ): Promise<boolean> {
     const config = event.ticketConfig;
-    if (!config?.enabled) return false;
-    const sourceEnabled = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-      ? config.issueOnEventSubscription
-      : config.issueOnMajorEventSubscription;
-    if (!sourceEnabled || !(await this.sourceSubscriptionIsEligible(tx, event, personId, source))) return false;
+    if (!config?.enabled) {
+      return false;
+    }
+    const sourceEnabled =
+      source === EventTicketIssueSource.EVENT_SUBSCRIPTION
+        ? config.issueOnEventSubscription
+        : config.issueOnMajorEventSubscription;
+    if (!sourceEnabled || !(await this.sourceSubscriptionIsEligible(tx, event, personId, source))) {
+      return false;
+    }
     return this.includedPriceTierAllows(tx, event, personId, source, config.includedPriceTierIds);
   }
 
@@ -1134,24 +1264,29 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     const lineagePersonIds = await this.personLineageIds(tx, personId);
     const exactTicket = await tx.eventTicket.findUnique({ where: { sourceKey } });
-    const ticket = exactTicket?.status === EventTicketStatus.ACTIVE && exactTicket.holderPersonId === personId
-      ? exactTicket
-      : await tx.eventTicket.findFirst({
-          where: {
-            eventId: event.id,
-            holderPersonId: personId,
-            originalHolderPersonId: { in: lineagePersonIds },
-            source,
-            status: EventTicketStatus.ACTIVE,
-          },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        });
-    if (!ticket || ticket.status !== EventTicketStatus.ACTIVE || ticket.holderPersonId !== personId) return;
+    const ticket =
+      exactTicket?.status === EventTicketStatus.ACTIVE && exactTicket.holderPersonId === personId
+        ? exactTicket
+        : await tx.eventTicket.findFirst({
+            where: {
+              eventId: event.id,
+              holderPersonId: personId,
+              originalHolderPersonId: { in: lineagePersonIds },
+              source,
+              status: EventTicketStatus.ACTIVE,
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          });
+    if (!ticket || ticket.status !== EventTicketStatus.ACTIVE || ticket.holderPersonId !== personId) {
+      return;
+    }
     const transferred = await tx.eventTicketHistory.findFirst({
       where: { ticketId: ticket.id, operation: TicketHistoryOperation.TRANSFERRED },
       select: { id: true },
     });
-    if (transferred) return;
+    if (transferred) {
+      return;
+    }
 
     const changed = await tx.eventTicket.updateMany({
       where: { id: ticket.id, status: EventTicketStatus.ACTIVE, holderPersonId: personId },
@@ -1161,7 +1296,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         revokedReason: 'SUBSCRIPTION_NO_LONGER_ELIGIBLE',
       },
     });
-    if (changed.count !== 1) return;
+    if (changed.count !== 1) {
+      return;
+    }
 
     await tx.eventTicketHistory.create({
       data: {
@@ -1199,9 +1336,13 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     includedPriceTierIds: readonly string[],
     eligibleAt?: Date,
   ): Promise<boolean> {
-    if (includedPriceTierIds.length === 0 || source === EventTicketIssueSource.EVENT_SUBSCRIPTION) return true;
+    if (includedPriceTierIds.length === 0 || source === EventTicketIssueSource.EVENT_SUBSCRIPTION) {
+      return true;
+    }
     const majorEventId = event.majorEventId ?? event.eventGroup?.majorEventId;
-    if (!majorEventId) return false;
+    if (!majorEventId) {
+      return false;
+    }
     const subscription = await tx.majorEventSubscription.findFirst({
       where: {
         majorEventId,
@@ -1226,8 +1367,12 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
     paymentTier: string | null,
     includedPriceTierIds: readonly string[],
   ): Promise<boolean> {
-    if (includedPriceTierIds.length === 0) return true;
-    if (!paymentTier?.trim()) return false;
+    if (includedPriceTierIds.length === 0) {
+      return true;
+    }
+    if (!paymentTier?.trim()) {
+      return false;
+    }
     const tiers = await tx.priceTier.findMany({
       where: { price: { majorEventId } },
       select: { id: true, name: true },
@@ -1270,13 +1415,17 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
         },
       },
     });
-    if (!event) throw new NotFoundException('Evento não encontrado.');
+    if (!event) {
+      throw new NotFoundException('Evento não encontrado.');
+    }
     return event;
   }
 
   private resolveExpiration(event: TicketEventEntitlementContext): Date {
     if (event.ticketConfig?.expirationMode === 'CUSTOM') {
-      if (!event.ticketConfig.customExpiresAt) throw new ConflictException('Informe a validade personalizada do bilhete.');
+      if (!event.ticketConfig.customExpiresAt) {
+        throw new ConflictException('Informe a validade personalizada do bilhete.');
+      }
       return event.ticketConfig.customExpiresAt;
     }
     return event.endDate;
@@ -1288,9 +1437,8 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   private subscriptionSourceKey(eventId: string, personId: string, source: AutomaticTicketSource): string {
-    const prefix = source === EventTicketIssueSource.EVENT_SUBSCRIPTION
-      ? 'event-subscription'
-      : 'major-event-subscription';
+    const prefix =
+      source === EventTicketIssueSource.EVENT_SUBSCRIPTION ? 'event-subscription' : 'major-event-subscription';
     return `${prefix}:${eventId}:${personId}`;
   }
 
@@ -1313,7 +1461,9 @@ export class TicketIssuanceService implements OnModuleInit, OnModuleDestroy {
       where: { ticketId, senderStatus: 'PENDING' },
       select: { authorUserId: true, senderUserId: true, recipientUserId: true },
     });
-    if (pending.length === 0) return;
+    if (pending.length === 0) {
+      return;
+    }
     await this.realtime.enqueueForUsers(
       tx,
       pending.flatMap(({ authorUserId, senderUserId, recipientUserId }) => [

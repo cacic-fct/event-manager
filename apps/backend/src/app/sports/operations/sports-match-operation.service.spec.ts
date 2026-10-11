@@ -337,10 +337,12 @@ describe('SportsMatchOperationService offline command log', () => {
       actorUserId: 'admin-1',
       permission: Permission.SportsMatch.Operate,
     });
-    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
-      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
-    expect(tx.event.update.mock.invocationCallOrder[0])
-      .toBeLessThan(ticketIssuance.alignActiveTicketExpirations.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.event.update.mock.invocationCallOrder[0],
+    );
+    expect(tx.event.update.mock.invocationCallOrder[0]).toBeLessThan(
+      ticketIssuance.alignActiveTicketExpirations.mock.invocationCallOrder[0],
+    );
   });
 
   it('approves a pending start against the canonical projection without self-invalidating', async () => {

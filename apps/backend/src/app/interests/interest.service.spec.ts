@@ -13,23 +13,27 @@ describe('EventInterestsService', () => {
       const state = await serviceFor(prisma).getCurrentUserInterestState('person-1', targetType, 'target-1');
 
       expect(state.subscribed).toBe(true);
-      expect(prisma.majorEventSubscription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          majorEventId: 'major-1',
-          personId: 'person-1',
-          deletedAt: null,
-          subscriptionStatus: { notIn: expect.arrayContaining([SubscriptionStatus.CANCELED, SubscriptionStatus.REJECTED_INVALID_RECEIPT]) },
+      expect(prisma.majorEventSubscription.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            majorEventId: 'major-1',
+            personId: 'person-1',
+            deletedAt: null,
+            subscriptionStatus: {
+              notIn: expect.arrayContaining([SubscriptionStatus.CANCELED, SubscriptionStatus.REJECTED_INVALID_RECEIPT]),
+            },
+          }),
         }),
-      }));
+      );
     });
 
     it('rejects interest writes for an automatically registered participant', async () => {
       const prisma = automaticInterestPrisma(targetType);
       prisma.$transaction.mockImplementation((operation) => operation(prisma));
 
-      await expect(serviceFor(prisma).setCurrentUserInterest(
-        'person-1', { targetType, targetId: 'target-1' }, true,
-      )).rejects.toThrow('Pessoas já inscritas não podem alterar o interesse');
+      await expect(
+        serviceFor(prisma).setCurrentUserInterest('person-1', { targetType, targetId: 'target-1' }, true),
+      ).rejects.toThrow('Pessoas já inscritas não podem alterar o interesse');
       expect(prisma.eventInterest.create).not.toHaveBeenCalled();
       expect(prisma.eventInterest.update).not.toHaveBeenCalled();
     });
@@ -39,7 +43,10 @@ describe('EventInterestsService', () => {
       const service = serviceFor(prisma);
 
       const publicRows = await service.listCurrentUserInterests('person-1');
-      const adminRows = await service.listAdminInterests({ sub: 'admin-1' } as never, { targetType, targetId: 'target-1' });
+      const adminRows = await service.listAdminInterests({ sub: 'admin-1' } as never, {
+        targetType,
+        targetId: 'target-1',
+      });
 
       expect(publicRows[0].isSubscribed).toBe(true);
       expect(adminRows[0].isSubscribed).toBe(true);
@@ -48,9 +55,9 @@ describe('EventInterestsService', () => {
     it('returns the existing registration when converting a retained automatic interest', async () => {
       const prisma = automaticInterestPrisma(targetType);
 
-      await expect(serviceFor(prisma).convertInterestToSubscription(
-        { sub: 'admin-1' } as never, { interestId: 'interest-1' },
-      )).resolves.toEqual(expect.objectContaining({ majorEventSubscriptionId: 'major-sub-1' }));
+      await expect(
+        serviceFor(prisma).convertInterestToSubscription({ sub: 'admin-1' } as never, { interestId: 'interest-1' }),
+      ).resolves.toEqual(expect.objectContaining({ majorEventSubscriptionId: 'major-sub-1' }));
       expect(prisma.eventSubscription.create).not.toHaveBeenCalled();
       expect(prisma.eventInterest.update).not.toHaveBeenCalled();
     });
@@ -100,10 +107,10 @@ describe('EventInterestsService', () => {
     prisma.eventInterest.findMany.mockResolvedValue([interestRecord({ eventId: 'event-1' })]);
     prisma.event.findUnique.mockResolvedValue({ majorEventId: null, eventGroupId: null });
     prisma.eventSubscription.findMany.mockResolvedValue([{ personId: 'person-1' }]);
-    const rows = await serviceFor(prisma).listAdminInterests(
-      { sub: 'admin-1' } as never,
-      { targetType: 'EVENT', targetId: 'event-1' },
-    );
+    const rows = await serviceFor(prisma).listAdminInterests({ sub: 'admin-1' } as never, {
+      targetType: 'EVENT',
+      targetId: 'event-1',
+    });
 
     expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
   });
@@ -122,20 +129,24 @@ describe('EventInterestsService', () => {
       { eventId: 'event-1', subscription: { personId: 'person-1' } },
     ]);
 
-    const rows = await serviceFor(prisma).listAdminInterests(
-      { sub: 'admin-1' } as never,
-      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
-    );
+    const rows = await serviceFor(prisma).listAdminInterests({ sub: 'admin-1' } as never, {
+      targetType: 'EVENT_GROUP',
+      targetId: 'group-1',
+    });
 
     expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: false }));
-    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2'] } }),
-    }));
-    expect(prisma.eventGroup.findUnique).toHaveBeenCalledWith(expect.objectContaining({
-      select: expect.objectContaining({
-        events: expect.objectContaining({ where: { deletedAt: null, sportsMatch: { is: null } } }),
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2'] } }),
       }),
-    }));
+    );
+    expect(prisma.eventGroup.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          events: expect.objectContaining({ where: { deletedAt: null, sportsMatch: { is: null } } }),
+        }),
+      }),
+    );
   });
 
   it('counts complete event-group coverage from group subscriptions, selected events, and auto-subscription', async () => {
@@ -153,19 +164,19 @@ describe('EventInterestsService', () => {
       { eventId: 'event-1', subscription: { personId: 'person-1' } },
       { eventId: 'event-2', subscription: { personId: 'person-1' } },
     ]);
-    prisma.majorEventSubscription.findMany.mockResolvedValue([
-      { personId: 'person-1', majorEventId: 'major-1' },
-    ]);
+    prisma.majorEventSubscription.findMany.mockResolvedValue([{ personId: 'person-1', majorEventId: 'major-1' }]);
 
-    const rows = await serviceFor(prisma).listAdminInterests(
-      { sub: 'admin-1' } as never,
-      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
-    );
+    const rows = await serviceFor(prisma).listAdminInterests({ sub: 'admin-1' } as never, {
+      targetType: 'EVENT_GROUP',
+      targetId: 'group-1',
+    });
 
     expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
-    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2', 'automatic-event'] } }),
-    }));
+    expect(prisma.majorEventSubscriptionEventSelection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ eventId: { in: ['event-1', 'event-2', 'automatic-event'] } }),
+      }),
+    );
   });
 
   it('counts a standalone event-group subscription as full group coverage', async () => {
@@ -177,10 +188,10 @@ describe('EventInterestsService', () => {
     });
     prisma.eventGroupSubscription.findMany.mockResolvedValue([{ personId: 'person-1' }]);
 
-    const rows = await serviceFor(prisma).listAdminInterests(
-      { sub: 'admin-1' } as never,
-      { targetType: 'EVENT_GROUP', targetId: 'group-1' },
-    );
+    const rows = await serviceFor(prisma).listAdminInterests({ sub: 'admin-1' } as never, {
+      targetType: 'EVENT_GROUP',
+      targetId: 'group-1',
+    });
 
     expect(rows[0]).toEqual(expect.objectContaining({ isSubscribed: true }));
   });
@@ -254,7 +265,9 @@ describe('EventInterestsService', () => {
     tx.event.findFirst.mockResolvedValue({ id: 'event-1' });
     tx.event.findUnique.mockResolvedValue({ majorEventId: null });
     tx.eventInterest.findFirst.mockResolvedValue(null);
-    tx.event.findFirst.mockResolvedValueOnce({ id: 'event-1' }).mockResolvedValueOnce({ id: 'event-1', endDate: new Date(fixtureNow - 86_400_000) });
+    tx.event.findFirst
+      .mockResolvedValueOnce({ id: 'event-1' })
+      .mockResolvedValueOnce({ id: 'event-1', endDate: new Date(fixtureNow - 86_400_000) });
 
     await expect(
       serviceFor(prisma).setCurrentUserInterest('person-1', { targetType: 'EVENT', targetId: 'event-1' }, true),
@@ -314,10 +327,10 @@ describe('EventInterestsService', () => {
       { assertEventGroupMutable: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
-    const result = await service.convertInterestToSubscription(
-      { sub: 'admin-1' } as never,
-      { interestId: 'interest-1', selectedEventIds: ['event-1'] },
-    );
+    const result = await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+      interestId: 'interest-1',
+      selectedEventIds: ['event-1'],
+    });
 
     expect(workspaceSubscriptions.createWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -336,33 +349,38 @@ describe('EventInterestsService', () => {
     );
   });
 
-  it.each([true, false, null, undefined])('forwards standalone conversion consent (%s) to subscription creation', async (consent) => {
-    const prisma = createPrisma();
-    const interest = interestRecord({ eventId: 'event-1' });
-    prisma.eventInterest.findFirst.mockResolvedValue(interest);
-    prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
-    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: null, eventGroupId: null });
-    prisma.eventSubscription.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
-      id: 'sub-1', eventGroupSubscriptionId: null,
-    });
-    const workspaceSubscriptions = { createWorkspaceEventSubscription: jest.fn() };
-    const service = new EventInterestsService(
-      prisma as never,
-      { assertPermissions: jest.fn() } as never,
-      {} as never,
-      workspaceSubscriptions as never,
-      {} as never,
-    );
+  it.each([true, false, null, undefined])(
+    'forwards standalone conversion consent (%s) to subscription creation',
+    async (consent) => {
+      const prisma = createPrisma();
+      const interest = interestRecord({ eventId: 'event-1' });
+      prisma.eventInterest.findFirst.mockResolvedValue(interest);
+      prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
+      prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: null, eventGroupId: null });
+      prisma.eventSubscription.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'sub-1',
+        eventGroupSubscriptionId: null,
+      });
+      const workspaceSubscriptions = { createWorkspaceEventSubscription: jest.fn() };
+      const service = new EventInterestsService(
+        prisma as never,
+        { assertPermissions: jest.fn() } as never,
+        {} as never,
+        workspaceSubscriptions as never,
+        {} as never,
+      );
 
-    await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
-      interestId: 'interest-1', imageLicenseAgreementAccepted: consent,
-    });
+      await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+        interestId: 'interest-1',
+        imageLicenseAgreementAccepted: consent,
+      });
 
-    expect(workspaceSubscriptions.createWorkspaceEventSubscription).toHaveBeenCalledWith(
-      { eventId: 'event-1', personId: 'person-1', imageLicenseAgreementAccepted: consent ?? undefined },
-      expect.any(Object),
-    );
-  });
+      expect(workspaceSubscriptions.createWorkspaceEventSubscription).toHaveBeenCalledWith(
+        { eventId: 'event-1', personId: 'person-1', imageLicenseAgreementAccepted: consent ?? undefined },
+        expect.any(Object),
+      );
+    },
+  );
 
   it('includes the interested event when creating a major registration with unrelated selections', async () => {
     const prisma = createPrisma();
@@ -384,7 +402,8 @@ describe('EventInterestsService', () => {
     );
 
     await service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
-      interestId: 'interest-1', selectedEventIds: ['event-2'],
+      interestId: 'interest-1',
+      selectedEventIds: ['event-2'],
     });
 
     expect(workspaceSubscriptions.createWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
@@ -435,40 +454,53 @@ describe('EventInterestsService', () => {
     );
   });
 
-  it.each([false, true])('merges missing group activities into an existing registration (complete=%s)', async (complete) => {
-    const prisma = createPrisma();
-    const interest = interestRecord({ eventGroupId: 'group-1' });
-    prisma.eventInterest.findFirst.mockResolvedValue(interest);
-    prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
-    prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [] });
-    prisma.eventGroup.findFirst.mockResolvedValue({ majorEventId: 'major-1' });
-    prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValue({
-      subscription: { id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED },
-    });
-    prisma.majorEventSubscription.findFirst.mockResolvedValue({
-      id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED,
-    });
-    prisma.majorEventSubscriptionEventSelection.findMany.mockResolvedValue(
-      (complete ? ['event-1', 'event-2', 'outside-group'] : ['event-1', 'outside-group']).map((eventId) => ({ eventId })),
-    );
-    const workspaceSubscriptions = { updateWorkspaceMajorEventSubscription: jest.fn() };
-    const service = new EventInterestsService(
-      prisma as never, { assertPermissions: jest.fn() } as never, {} as never,
-      workspaceSubscriptions as never, {} as never,
-    );
-
-    await expect(service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
-      interestId: 'interest-1', selectedEventIds: ['event-1', 'event-2'],
-    })).resolves.toEqual(expect.objectContaining({ majorEventSubscriptionId: 'major-sub-1' }));
-    if (complete) {
-      expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).not.toHaveBeenCalled();
-    } else {
-      expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
-        'major-sub-1', expect.objectContaining({ selectedEventIds: ['event-1', 'outside-group', 'event-2'] }),
-        expect.any(Object),
+  it.each([false, true])(
+    'merges missing group activities into an existing registration (complete=%s)',
+    async (complete) => {
+      const prisma = createPrisma();
+      const interest = interestRecord({ eventGroupId: 'group-1' });
+      prisma.eventInterest.findFirst.mockResolvedValue(interest);
+      prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
+      prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [] });
+      prisma.eventGroup.findFirst.mockResolvedValue({ majorEventId: 'major-1' });
+      prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValue({
+        subscription: { id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.CONFIRMED },
+      });
+      prisma.majorEventSubscription.findFirst.mockResolvedValue({
+        id: 'major-sub-1',
+        subscriptionStatus: SubscriptionStatus.CONFIRMED,
+      });
+      prisma.majorEventSubscriptionEventSelection.findMany.mockResolvedValue(
+        (complete ? ['event-1', 'event-2', 'outside-group'] : ['event-1', 'outside-group']).map((eventId) => ({
+          eventId,
+        })),
       );
-    }
-  });
+      const workspaceSubscriptions = { updateWorkspaceMajorEventSubscription: jest.fn() };
+      const service = new EventInterestsService(
+        prisma as never,
+        { assertPermissions: jest.fn() } as never,
+        {} as never,
+        workspaceSubscriptions as never,
+        {} as never,
+      );
+
+      await expect(
+        service.convertInterestToSubscription({ sub: 'admin-1' } as never, {
+          interestId: 'interest-1',
+          selectedEventIds: ['event-1', 'event-2'],
+        }),
+      ).resolves.toEqual(expect.objectContaining({ majorEventSubscriptionId: 'major-sub-1' }));
+      if (complete) {
+        expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).not.toHaveBeenCalled();
+      } else {
+        expect(workspaceSubscriptions.updateWorkspaceMajorEventSubscription).toHaveBeenCalledWith(
+          'major-sub-1',
+          expect.objectContaining({ selectedEventIds: ['event-1', 'outside-group', 'event-2'] }),
+          expect.any(Object),
+        );
+      }
+    },
+  );
 
   it('requires parent-scope permissions before creating a linked major registration', async () => {
     const prisma = createPrisma();
@@ -479,13 +511,11 @@ describe('EventInterestsService', () => {
     prisma.majorEventSubscriptionEventSelection.findFirst.mockResolvedValue(null);
     prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: 'major-1', eventGroupId: null });
     prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
-    const assertPermissions = jest.fn().mockImplementation(
-      async (_user: unknown, permissions: readonly string[]) => {
-        if (permissions.length === 3 && permissions.includes(Permission.MajorEvent.Read)) {
-          throw new ForbiddenException();
-        }
-      },
-    );
+    const assertPermissions = jest.fn().mockImplementation(async (_user: unknown, permissions: readonly string[]) => {
+      if (permissions.length === 3 && permissions.includes(Permission.MajorEvent.Read)) {
+        throw new ForbiddenException();
+      }
+    });
     const workspaceSubscriptions = {
       createWorkspaceMajorEventSubscription: jest.fn().mockResolvedValue({ id: 'major-sub-1' }),
     };
@@ -524,13 +554,11 @@ describe('EventInterestsService', () => {
       id: 'major-sub-1',
       subscriptionStatus: SubscriptionStatus.CONFIRMED,
     });
-    const assertPermissions = jest.fn().mockImplementation(
-      async (_user: unknown, permissions: readonly string[]) => {
-        if (permissions.includes(Permission.Subscription.Update)) {
-          throw new ForbiddenException();
-        }
-      },
-    );
+    const assertPermissions = jest.fn().mockImplementation(async (_user: unknown, permissions: readonly string[]) => {
+      if (permissions.includes(Permission.Subscription.Update)) {
+        throw new ForbiddenException();
+      }
+    });
     const workspaceSubscriptions = {
       updateWorkspaceMajorEventSubscription: jest.fn().mockResolvedValue({ id: 'major-sub-1' }),
     };
@@ -614,9 +642,7 @@ describe('EventInterestsService', () => {
     prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
     prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: null });
     prisma.eventGroup.findFirst.mockResolvedValue({ majorEventId: null });
-    prisma.eventGroupSubscription.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'group-sub-1' });
+    prisma.eventGroupSubscription.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'group-sub-1' });
     const eventSubscriptions = {
       subscribeCurrentUserEventGroup: jest.fn().mockResolvedValue(undefined),
     };
@@ -663,18 +689,26 @@ function automaticInterestPrisma(targetType: 'EVENT' | 'EVENT_GROUP') {
   const interest = interestRecord(targetType === 'EVENT' ? { eventId: 'target-1' } : { eventGroupId: 'target-1' });
   prisma.event.findFirst.mockResolvedValue({ id: 'target-1', interestEnabled: true, endDate: endDate() });
   prisma.event.findUnique.mockResolvedValue({ majorEventId: 'major-1', autoSubscribe: true });
-  prisma.event.findMany.mockResolvedValue(targetType === 'EVENT'
-    ? [{ id: 'target-1', eventGroupId: null, majorEventId: 'major-1', autoSubscribe: true }]
-    : [{ id: 'automatic-event', eventGroupId: 'target-1', majorEventId: 'major-1', autoSubscribe: true }]);
-  prisma.eventGroup.findFirst.mockResolvedValue({ id: 'target-1', interestEnabled: true, events: [{ endDate: endDate() }] });
-  prisma.eventGroup.findUnique.mockResolvedValue({ majorEventId: 'major-1', events: [
-    { id: 'automatic-event', majorEventId: 'major-1', autoSubscribe: true },
-  ] });
+  prisma.event.findMany.mockResolvedValue(
+    targetType === 'EVENT'
+      ? [{ id: 'target-1', eventGroupId: null, majorEventId: 'major-1', autoSubscribe: true }]
+      : [{ id: 'automatic-event', eventGroupId: 'target-1', majorEventId: 'major-1', autoSubscribe: true }],
+  );
+  prisma.eventGroup.findFirst.mockResolvedValue({
+    id: 'target-1',
+    interestEnabled: true,
+    events: [{ endDate: endDate() }],
+  });
+  prisma.eventGroup.findUnique.mockResolvedValue({
+    majorEventId: 'major-1',
+    events: [{ id: 'automatic-event', majorEventId: 'major-1', autoSubscribe: true }],
+  });
   prisma.eventInterest.findFirst.mockResolvedValue(interest);
   prisma.eventInterest.findUniqueOrThrow.mockResolvedValue(interest);
   prisma.eventInterest.findMany.mockResolvedValue([interest]);
   prisma.majorEventSubscription.findFirst.mockResolvedValue({
-    id: 'major-sub-1', subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+    id: 'major-sub-1',
+    subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
   });
   prisma.majorEventSubscription.findMany.mockResolvedValue([{ personId: 'person-1', majorEventId: 'major-1' }]);
   return prisma;
@@ -706,7 +740,11 @@ function createDelegate() {
   };
 }
 
-function interestRecord(overrides: { eventId?: string | null; eventGroupId?: string | null; majorEventId?: string | null }) {
+function interestRecord(overrides: {
+  eventId?: string | null;
+  eventGroupId?: string | null;
+  majorEventId?: string | null;
+}) {
   return {
     id: 'interest-1',
     personId: 'person-1',

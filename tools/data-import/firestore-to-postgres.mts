@@ -280,13 +280,17 @@ export function sortedKeys(value: JsonRecord): string[] {
 
 export function loadFirestoreExport(inputPath: string | URL): JsonRecord {
   const source: unknown = JSON.parse(readFileSync(inputPath, 'utf8'));
-  if (!isRecord(source)) throw new Error('Expected Firestore export JSON to be an object.');
+  if (!isRecord(source)) {
+    throw new Error('Expected Firestore export JSON to be an object.');
+  }
   return source;
 }
 
 function getCollections(source: JsonRecord): LegacyCollection {
   const collections = source.__collections__ ?? {};
-  if (!isRecord(collections)) throw new Error("Expected '__collections__' to be an object.");
+  if (!isRecord(collections)) {
+    throw new Error("Expected '__collections__' to be an object.");
+  }
   return collections;
 }
 
@@ -295,55 +299,95 @@ export function extractCollections(source: JsonRecord): FirestoreCollections {
   const rawMajorEvents = collections.majorEvents ?? {};
   const rawEvents = collections.events ?? {};
   const rawUsers = collections.users ?? {};
-  if (!isRecord(rawMajorEvents)) throw new Error("Expected '__collections__.majorEvents' to be an object.");
-  if (!isRecord(rawEvents)) throw new Error("Expected '__collections__.events' to be an object.");
-  if (!isRecord(rawUsers)) throw new Error("Expected '__collections__.users' to be an object.");
+  if (!isRecord(rawMajorEvents)) {
+    throw new Error("Expected '__collections__.majorEvents' to be an object.");
+  }
+  if (!isRecord(rawEvents)) {
+    throw new Error("Expected '__collections__.events' to be an object.");
+  }
+  if (!isRecord(rawUsers)) {
+    throw new Error("Expected '__collections__.users' to be an object.");
+  }
   return { rawMajorEvents, rawEvents, rawUsers };
 }
 
 export function coerceText(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) {
+    return null;
+  }
   let text;
-  if (typeof value === 'string') text = value;
-  else if (typeof value === 'boolean') text = value ? 'True' : 'False';
-  else if (typeof value === 'number' && Number.isFinite(value)) text = String(value);
-  else if (typeof value === 'bigint') text = value.toString();
-  else return null;
+  if (typeof value === 'string') {
+    text = value;
+  } else if (typeof value === 'boolean') {
+    text = value ? 'True' : 'False';
+  } else if (typeof value === 'number' && Number.isFinite(value)) {
+    text = String(value);
+  } else if (typeof value === 'bigint') {
+    text = value.toString();
+  } else {
+    return null;
+  }
   text = text.trim();
   return text || null;
 }
 
 export function parseInteger(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === 'boolean') return value ? 1 : 0;
-  if (typeof value === 'number') return Number.isFinite(value) ? Math.trunc(value) : null;
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.trunc(value) : null;
+  }
   if (typeof value === 'bigint') {
     const number = Number(value);
     return Number.isSafeInteger(number) ? number : null;
   }
-  if (typeof value !== 'string') return null;
+  if (typeof value !== 'string') {
+    return null;
+  }
   const stripped = value.trim();
-  if (!stripped) return null;
-  if (!/^[+-]?(?:\d+|(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?)$/.test(stripped)) return null;
+  if (!stripped) {
+    return null;
+  }
+  if (!/^[+-]?(?:\d+|(?:\d+\.\d*|\.\d+)(?:[eE][+-]?\d+)?)$/.test(stripped)) {
+    return null;
+  }
   const number = Number(stripped);
   return Number.isFinite(number) ? Math.trunc(number) : null;
 }
 
 export function parseFloatValue(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined) {
+    return null;
+  }
   const number =
     typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : Number(String(value).trim());
   return Number.isFinite(number) ? number : null;
 }
 
 export function coerceBoolOrDefault(value: unknown, defaultValue: boolean): boolean {
-  if (value === null || value === undefined) return defaultValue;
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return value !== 0;
-  if (typeof value !== 'string') return defaultValue;
+  if (value === null || value === undefined) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  if (typeof value !== 'string') {
+    return defaultValue;
+  }
   const lowered = value.trim().toLowerCase();
-  if (['1', 'true', 't', 'yes', 'y'].includes(lowered)) return true;
-  if (['0', 'false', 'f', 'no', 'n'].includes(lowered)) return false;
+  if (['1', 'true', 't', 'yes', 'y'].includes(lowered)) {
+    return true;
+  }
+  if (['0', 'false', 'f', 'no', 'n'].includes(lowered)) {
+    return false;
+  }
   return defaultValue;
 }
 
@@ -353,44 +397,68 @@ export function coerceBool(value: unknown): boolean {
 
 export function normalizeIdentityDocument(rawIdentityDocument: unknown): string | null {
   const raw = coerceText(rawIdentityDocument);
-  if (raw === null) return null;
+  if (raw === null) {
+    return null;
+  }
   const normalized = [...raw].filter((character) => /\p{Nd}/u.test(character)).join('');
   return normalized || null;
 }
 
 export function normalizePhone(rawPhone: unknown): string | null {
   const raw = coerceText(rawPhone);
-  if (raw === null) return null;
+  if (raw === null) {
+    return null;
+  }
   let digits = [...raw].filter((character) => /\p{Nd}/u.test(character)).join('');
-  if (!digits || [...digits].every((character) => character === '0')) return null;
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  if (digits.startsWith('55') && [12, 13].includes(digits.length)) return `+${digits}`;
-  if ([10, 11].includes(digits.length)) return `+55${digits}`;
+  if (!digits || [...digits].every((character) => character === '0')) {
+    return null;
+  }
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  }
+  if (digits.startsWith('55') && [12, 13].includes(digits.length)) {
+    return `+${digits}`;
+  }
+  if ([10, 11].includes(digits.length)) {
+    return `+55${digits}`;
+  }
   return raw.trim().startsWith('+') && digits.length >= 8 ? `+${digits}` : null;
 }
 
 export function parseFirestoreTimestamp(value: unknown): Date | null {
-  if (!isRecord(value) || value.__datatype__ !== 'timestamp' || !isRecord(value.value)) return null;
+  if (!isRecord(value) || value.__datatype__ !== 'timestamp' || !isRecord(value.value)) {
+    return null;
+  }
   const seconds = value.value._seconds;
   const nanoseconds = value.value._nanoseconds === undefined ? 0 : value.value._nanoseconds;
-  if (seconds === null || seconds === undefined || nanoseconds === null || nanoseconds === undefined) return null;
+  if (seconds === null || seconds === undefined || nanoseconds === null || nanoseconds === undefined) {
+    return null;
+  }
   const secondsNumber = Number(seconds);
   const nanosecondsNumber = Number(nanoseconds);
-  if (!Number.isFinite(secondsNumber) || !Number.isFinite(nanosecondsNumber)) return null;
+  if (!Number.isFinite(secondsNumber) || !Number.isFinite(nanosecondsNumber)) {
+    return null;
+  }
   const date = new Date(Math.round(secondsNumber * 1000 + nanosecondsNumber / 1_000_000));
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function parseEventIdFromReference(reference: unknown): string | null {
-  if (!isRecord(reference) || reference.__datatype__ !== 'documentReference') return null;
+  if (!isRecord(reference) || reference.__datatype__ !== 'documentReference') {
+    return null;
+  }
   const refValue = coerceText(reference.value);
-  if (refValue === null) return null;
+  if (refValue === null) {
+    return null;
+  }
   const parts = refValue.split('/');
   return parts.length >= 2 && parts[0] === 'events' ? (parts[1] ?? null) : null;
 }
 
 export function extractSubcollection(rawDoc: unknown, name: string): LegacyCollection {
-  if (!isRecord(rawDoc) || !isRecord(rawDoc.__collections__)) return {};
+  if (!isRecord(rawDoc) || !isRecord(rawDoc.__collections__)) {
+    return {};
+  }
   const collection = rawDoc.__collections__[name];
   return isRecord(collection) ? collection : {};
 }
@@ -400,9 +468,13 @@ export function extractEventGroupName(eventGroup: unknown): string | null {
 }
 
 export function extractEventGroupEventIds(eventGroup: unknown): string[] {
-  if (!isRecord(eventGroup)) return [];
+  if (!isRecord(eventGroup)) {
+    return [];
+  }
   const rawIds = eventGroup.groupEventIDs || eventGroup.groupEventIds;
-  if (!Array.isArray(rawIds)) return [];
+  if (!Array.isArray(rawIds)) {
+    return [];
+  }
   return rawIds.map((value) => coerceText(value)).filter((value): value is string => value !== null);
 }
 
@@ -411,7 +483,9 @@ export function extractEventGroupMainEventId(eventGroup: unknown): string | null
 }
 
 export function extractEmoji(rawDoc: unknown): string {
-  if (!isRecord(rawDoc)) return DEFAULT_UNKNOWN_EMOJI;
+  if (!isRecord(rawDoc)) {
+    return DEFAULT_UNKNOWN_EMOJI;
+  }
   return coerceText(rawDoc.emoji) || coerceText(rawDoc.icon) || DEFAULT_UNKNOWN_EMOJI;
 }
 
@@ -420,7 +494,9 @@ export function coerceTextFromDict(rawValue: unknown, key: string): string | nul
 }
 
 export function parseCreditMinutes(rawHours: unknown): number | null {
-  if (rawHours === null || rawHours === undefined) return null;
+  if (rawHours === null || rawHours === undefined) {
+    return null;
+  }
   const hours = typeof rawHours === 'number' ? rawHours : Number(String(rawHours));
   return Number.isFinite(hours) ? Math.trunc(hours * 60) : null;
 }
@@ -428,7 +504,9 @@ export function parseCreditMinutes(rawHours: unknown): number | null {
 export function mapSubscriptionStatus(rawStatus: unknown): SubscriptionStatus {
   if (typeof rawStatus === 'string') {
     const normalized = rawStatus.trim().toUpperCase();
-    if (SUBSCRIPTION_STATUSES.has(normalized)) return normalized as SubscriptionStatus;
+    if (SUBSCRIPTION_STATUSES.has(normalized)) {
+      return normalized as SubscriptionStatus;
+    }
   }
   const status = parseInteger(rawStatus);
   switch (status) {
@@ -451,8 +529,12 @@ export function mapSubscriptionStatus(rawStatus: unknown): SubscriptionStatus {
 
 export function mapEventType(rawType: unknown): EventType {
   const value = (coerceText(rawType) || '').toLowerCase();
-  if (value === 'minicurso') return 'MINICURSO';
-  if (value === 'palestra') return 'PALESTRA';
+  if (value === 'minicurso') {
+    return 'MINICURSO';
+  }
+  if (value === 'palestra') {
+    return 'PALESTRA';
+  }
   return 'OTHER';
 }
 
@@ -465,10 +547,18 @@ function pairKey(first: string, second: string): string {
 }
 
 function comparePair(left: { first: string; second: string }, right: { first: string; second: string }): number {
-  if (left.first < right.first) return -1;
-  if (left.first > right.first) return 1;
-  if (left.second < right.second) return -1;
-  if (left.second > right.second) return 1;
+  if (left.first < right.first) {
+    return -1;
+  }
+  if (left.first > right.first) {
+    return 1;
+  }
+  if (left.second < right.second) {
+    return -1;
+  }
+  if (left.second > right.second) {
+    return 1;
+  }
   return 0;
 }
 
@@ -492,7 +582,9 @@ export class StableUuidGenerator {
 
   forSeed(seed: string): string {
     const existing = this.generatedBySeed.get(seed);
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
     const generated = createUuidV5(seed);
     this.generatedBySeed.set(seed, generated);
     return generated;
@@ -508,7 +600,9 @@ export function buildPayload(
   { now = utcNow() }: BuildPayloadOptions = {},
 ): ImportPayload {
   const source = parseFirestoreSource(input);
-  if (!isRecord(source)) throw new Error('Expected Firestore export JSON to be an object.');
+  if (!isRecord(source)) {
+    throw new Error('Expected Firestore export JSON to be an object.');
+  }
   const { rawMajorEvents, rawEvents, rawUsers } = extractCollections(source);
   const fallbackNow = now instanceof Date ? new Date(now.getTime()) : new Date(now);
   const idGenerator = new StableUuidGenerator();
@@ -575,10 +669,14 @@ export function buildPeopleFromUsers(
 ): void {
   for (const userKey of sortedKeys(rawUsers)) {
     const rawUser = rawUsers[userKey];
-    if (!isRecord(rawUser)) continue;
+    if (!isRecord(rawUser)) {
+      continue;
+    }
     const canonicalLegacyId = coerceText(rawUser.uid) || userKey;
     let personId = mappings.personIds.get(canonicalLegacyId);
-    if (!personId) personId = idGenerator.forSeed(`person:${canonicalLegacyId}`);
+    if (!personId) {
+      personId = idGenerator.forSeed(`person:${canonicalLegacyId}`);
+    }
     mappings.personIds.set(canonicalLegacyId, personId);
     mappings.personIds.set(userKey, personId);
     const existing = peopleRowsById.get(personId);
@@ -600,10 +698,18 @@ export function buildPeopleFromUsers(
       });
       continue;
     }
-    if (existing.email === null) existing.email = coerceText(rawUser.email);
-    if (existing.phone === null) existing.phone = normalizePhone(rawUser.phone);
-    if (existing.identityDocument === null) existing.identityDocument = normalizeIdentityDocument(rawUser.cpf);
-    if (existing.academicId === null) existing.academicId = coerceText(rawUser.academicID);
+    if (existing.email === null) {
+      existing.email = coerceText(rawUser.email);
+    }
+    if (existing.phone === null) {
+      existing.phone = normalizePhone(rawUser.phone);
+    }
+    if (existing.identityDocument === null) {
+      existing.identityDocument = normalizeIdentityDocument(rawUser.cpf);
+    }
+    if (existing.academicId === null) {
+      existing.academicId = coerceText(rawUser.academicID);
+    }
   }
 }
 
@@ -615,7 +721,9 @@ export function resolvePersonId(
   fallbackNow: Date,
 ): string {
   const existing = mappings.personIds.get(legacyPersonId);
-  if (existing) return existing;
+  if (existing) {
+    return existing;
+  }
   const generated = idGenerator.forSeed(`person-fallback:${legacyPersonId}`);
   mappings.personIds.set(legacyPersonId, generated);
   peopleRowsById.set(generated, {
@@ -634,7 +742,9 @@ export function resolvePersonId(
 
 export function resolveEventGroupId(groupName: string, mappings: ImportMappings, idGenerator: UuidGenerator): string {
   const existing = mappings.eventGroupIds.get(groupName);
-  if (existing) return existing;
+  if (existing) {
+    return existing;
+  }
   const generated = idGenerator.forSeed(`event-group:${groupName}`);
   mappings.eventGroupIds.set(groupName, generated);
   return generated;
@@ -657,9 +767,13 @@ export function mapMajorEvents(
 
   for (const legacyMajorEventId of sortedKeys(rawMajorEvents)) {
     const rawMajorEvent = rawMajorEvents[legacyMajorEventId];
-    if (!isRecord(rawMajorEvent)) continue;
+    if (!isRecord(rawMajorEvent)) {
+      continue;
+    }
     const majorEventId = mappings.majorEventIds.get(legacyMajorEventId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const name = coerceText(rawMajorEvent.name) || `Legacy Major Event ${legacyMajorEventId}`;
     const startDate =
       parseFirestoreTimestamp(rawMajorEvent.eventStartDate) ||
@@ -699,7 +813,9 @@ export function mapMajorEvents(
     });
 
     const paymentRow = buildPaymentInfoRow(majorEventId, paymentInfo, idGenerator);
-    if (paymentRow) paymentInfos.push(paymentRow);
+    if (paymentRow) {
+      paymentInfos.push(paymentRow);
+    }
     if (majorEventPrice) {
       majorEventPrices.push(majorEventPrice);
       priceTiers.push(...eventPriceTiers);
@@ -708,10 +824,14 @@ export function mapMajorEvents(
     const rawSubscriptions = extractSubcollection(rawMajorEvent, 'subscriptions');
     for (const legacyPersonId of sortedKeys(rawSubscriptions)) {
       const rawSubscription = rawSubscriptions[legacyPersonId];
-      if (!isRecord(rawSubscription)) continue;
+      if (!isRecord(rawSubscription)) {
+        continue;
+      }
       const personId = resolvePersonId(legacyPersonId, mappings, peopleRowsById, idGenerator, fallbackNow);
       const subscriptionKey = pairKey(personId, majorEventId);
-      if (majorSubSeen.has(subscriptionKey)) continue;
+      if (majorSubSeen.has(subscriptionKey)) {
+        continue;
+      }
       majorSubSeen.add(subscriptionKey);
       const payment = isRecord(rawSubscription.payment) ? rawSubscription.payment : {};
       const createdAtSub =
@@ -736,9 +856,13 @@ export function mapMajorEvents(
       if (Array.isArray(rawSubscription.subscribedToEvents)) {
         for (const legacyEventId of rawSubscription.subscribedToEvents) {
           const eventIdText = coerceText(legacyEventId);
-          if (eventIdText === null) continue;
+          if (eventIdText === null) {
+            continue;
+          }
           const mappedEventId = mappings.eventIds.get(eventIdText);
-          if (!mappedEventId) continue;
+          if (!mappedEventId) {
+            continue;
+          }
           upsertSeed(majorSubEventSeeds, personId, mappedEventId, createdAtSub, createdByIdSub);
         }
       }
@@ -760,19 +884,25 @@ export function mergeMajorSubscriptionsFromUserRefs(
   let skippedRefs = 0;
   for (const userKey of sortedKeys(rawUsers)) {
     const rawUser = rawUsers[userKey];
-    if (!isRecord(rawUser)) continue;
+    if (!isRecord(rawUser)) {
+      continue;
+    }
     const personId = resolvePersonId(userKey, mappings, peopleRowsById, idGenerator, fallbackNow);
     const rawRefs = extractSubcollection(rawUser, 'majorEventSubscriptions');
     for (const legacyMajorEventId of sortedKeys(rawRefs)) {
       const rawRefDoc = rawRefs[legacyMajorEventId];
-      if (!isRecord(rawRefDoc)) continue;
+      if (!isRecord(rawRefDoc)) {
+        continue;
+      }
       const majorEventId = mappings.majorEventIds.get(legacyMajorEventId);
       if (!majorEventId) {
         skippedRefs += 1;
         continue;
       }
       const key = pairKey(personId, majorEventId);
-      if (seenPairs.has(key)) continue;
+      if (seenPairs.has(key)) {
+        continue;
+      }
       seenPairs.add(key);
       majorEventSubscriptions.push({
         id: idGenerator.forSeed(`major-event-subscription:${majorEventId}:${personId}`),
@@ -806,9 +936,13 @@ export function mapEvents(
 
   for (const legacyEventId of sortedKeys(rawEvents)) {
     const rawEvent = rawEvents[legacyEventId];
-    if (!isRecord(rawEvent)) continue;
+    if (!isRecord(rawEvent)) {
+      continue;
+    }
     const eventId = mappings.eventIds.get(legacyEventId);
-    if (!eventId) continue;
+    if (!eventId) {
+      continue;
+    }
     const name = coerceText(rawEvent.name) || `Legacy Event ${legacyEventId}`;
     const startDate =
       parseFirestoreTimestamp(rawEvent.eventStartDate) || parseFirestoreTimestamp(rawEvent.createdOn) || fallbackNow;
@@ -830,8 +964,11 @@ export function mapEvents(
     let majorEventId = null;
     if (legacyMajorEventRef) {
       const mapped = mappings.majorEventIds.get(legacyMajorEventRef);
-      if (mapped) majorEventId = mapped;
-      else unknownMajorEventRefs += 1;
+      if (mapped) {
+        majorEventId = mapped;
+      } else {
+        unknownMajorEventRefs += 1;
+      }
     }
 
     const eventGroupPayload = rawEvent.eventGroup;
@@ -845,13 +982,19 @@ export function mapEvents(
       groupEventIds.add(eventId);
       for (const legacyGroupEventId of eventGroupEventIdList) {
         const mappedEventId = mappings.eventIds.get(legacyGroupEventId);
-        if (mappedEventId) groupEventIds.add(mappedEventId);
+        if (mappedEventId) {
+          groupEventIds.add(mappedEventId);
+        }
       }
       if (mainEventId !== null) {
         const mappedMainEventId = mappings.eventIds.get(mainEventId);
-        if (mappedMainEventId) groupEventIds.add(mappedMainEventId);
+        if (mappedMainEventId) {
+          groupEventIds.add(mappedMainEventId);
+        }
         const mainEvent = rawEvents[mainEventId];
-        if (isRecord(mainEvent)) eventGroupEmojis.set(eventGroupId, extractEmoji(mainEvent));
+        if (isRecord(mainEvent)) {
+          eventGroupEmojis.set(eventGroupId, extractEmoji(mainEvent));
+        }
       }
       eventGroupEventIds.set(eventGroupId, groupEventIds);
     }
@@ -897,7 +1040,9 @@ export function mapEvents(
     const rawEventSubscriptions = extractSubcollection(rawEvent, 'subscriptions');
     for (const legacyPersonId of sortedKeys(rawEventSubscriptions)) {
       const rawSubscription = rawEventSubscriptions[legacyPersonId];
-      if (!isRecord(rawSubscription)) continue;
+      if (!isRecord(rawSubscription)) {
+        continue;
+      }
       const personId = resolvePersonId(legacyPersonId, mappings, peopleRowsById, idGenerator, fallbackNow);
       const seedCreatedAt = parseFirestoreTimestamp(rawSubscription.time) || createdAt || fallbackNow;
       const createdById = coerceText(rawSubscription.author);
@@ -961,12 +1106,16 @@ export function mapEventSubscriptions(
   let skippedUserEventRefs = 0;
   for (const userKey of sortedKeys(rawUsers)) {
     const rawUser = rawUsers[userKey];
-    if (!isRecord(rawUser)) continue;
+    if (!isRecord(rawUser)) {
+      continue;
+    }
     const personId = resolvePersonId(userKey, mappings, peopleRowsById, idGenerator, fallbackNow);
     const rawRefs = extractSubcollection(rawUser, 'eventSubscriptions');
     for (const eventKey of sortedKeys(rawRefs)) {
       const rawRefDoc = rawRefs[eventKey];
-      if (!isRecord(rawRefDoc)) continue;
+      if (!isRecord(rawRefDoc)) {
+        continue;
+      }
       const legacyEventId = parseEventIdFromReference(rawRefDoc.reference) || eventKey;
       const eventId = mappings.eventIds.get(legacyEventId);
       if (!eventId) {
@@ -993,7 +1142,9 @@ export function mapEventSubscriptions(
 
   for (const seed of sortedSeedValues(eventGroupSubscriptionSeeds)) {
     const subscriptionId = eventGroupSubscriptionIds.get(pairKey(seed.personId, seed.eventGroupId));
-    if (!subscriptionId) continue;
+    if (!subscriptionId) {
+      continue;
+    }
     const eventIds = [...(eventGroupEventIds.get(seed.eventGroupId) ?? new Set())].sort();
     for (const eventId of eventIds) {
       upsertEventSubscriptionSeed(
@@ -1029,14 +1180,20 @@ export function mapEventAttendances(
   const attendanceByPair = new Map<string, AttendanceSeed>();
   for (const legacyEventId of sortedKeys(rawEvents)) {
     const rawEvent = rawEvents[legacyEventId];
-    if (!isRecord(rawEvent)) continue;
+    if (!isRecord(rawEvent)) {
+      continue;
+    }
     const eventId = mappings.eventIds.get(legacyEventId);
-    if (!eventId) continue;
+    if (!eventId) {
+      continue;
+    }
     for (const collectionName of ['attendance', 'non-paying-attendance']) {
       const rawAttendance = extractSubcollection(rawEvent, collectionName);
       for (const legacyPersonId of sortedKeys(rawAttendance)) {
         const rawAttendanceDoc = rawAttendance[legacyPersonId];
-        if (!isRecord(rawAttendanceDoc)) continue;
+        if (!isRecord(rawAttendanceDoc)) {
+          continue;
+        }
         const personId = resolvePersonId(legacyPersonId, mappings, peopleRowsById, idGenerator, fallbackNow);
         const attendedAt = parseFirestoreTimestamp(rawAttendanceDoc.time) || fallbackNow;
         upsertSeed(attendanceByPair, personId, eventId, attendedAt, coerceText(rawAttendanceDoc.author));
@@ -1066,7 +1223,9 @@ function upsertSeed(
     return;
   }
   existing.createdAt = earliestDate(existing.createdAt, createdAt);
-  if (existing.createdById === null && createdById !== null) existing.createdById = createdById;
+  if (existing.createdById === null && createdById !== null) {
+    existing.createdById = createdById;
+  }
 }
 
 function upsertGroupSeed(
@@ -1083,7 +1242,9 @@ function upsertGroupSeed(
     return;
   }
   existing.createdAt = earliestDate(existing.createdAt, createdAt);
-  if (existing.createdById === null && createdById !== null) existing.createdById = createdById;
+  if (existing.createdById === null && createdById !== null) {
+    existing.createdById = createdById;
+  }
 }
 
 function upsertEventSubscriptionSeed(
@@ -1101,7 +1262,9 @@ function upsertEventSubscriptionSeed(
     return;
   }
   existing.createdAt = earliestDate(existing.createdAt, createdAt);
-  if (existing.createdById === null && createdById !== null) existing.createdById = createdById;
+  if (existing.createdById === null && createdById !== null) {
+    existing.createdById = createdById;
+  }
   if (existing.eventGroupSubscriptionId === null && eventGroupSubscriptionId !== null) {
     existing.eventGroupSubscriptionId = eventGroupSubscriptionId;
   }
@@ -1112,13 +1275,17 @@ export function buildPaymentInfoRow(
   paymentInfo: unknown,
   idGenerator: UuidGenerator,
 ): PaymentInfoRow | null {
-  if (!isRecord(paymentInfo) || Object.keys(paymentInfo).length === 0) return null;
+  if (!isRecord(paymentInfo) || Object.keys(paymentInfo).length === 0) {
+    return null;
+  }
   const bankName = coerceText(paymentInfo.bankName);
   const agency = coerceText(paymentInfo.agency);
   const account = coerceText(paymentInfo.accountNumber) || coerceText(paymentInfo.account);
   const holder = coerceText(paymentInfo.name) || coerceText(paymentInfo.holder);
   const document = coerceText(paymentInfo.document);
-  if (bankName === null || agency === null || account === null || holder === null || document === null) return null;
+  if (bankName === null || agency === null || account === null || holder === null || document === null) {
+    return null;
+  }
   return {
     id: idGenerator.forSeed(`payment-info:${majorEventId}`),
     bankName,
@@ -1143,17 +1310,25 @@ export function buildMajorEventPriceRows(
     singlePrice = parseInteger(rawPrice.single);
     if (Array.isArray(rawPrice.tiers)) {
       rawPrice.tiers.forEach((rawTier, index) => {
-        if (!isRecord(rawTier)) return;
+        if (!isRecord(rawTier)) {
+          return;
+        }
         const value = parseInteger(rawTier.price);
-        if (value === null) return;
+        if (value === null) {
+          return;
+        }
         const tierName = coerceText(rawTier.name) || coerceText(rawTier.title) || `Faixa ${index + 1}`;
         tiers.push({ name: tierName, value });
       });
     }
-    if (tiers.length > 0) priceType = 'TIERED';
+    if (tiers.length > 0) {
+      priceType = 'TIERED';
+    }
   }
   if (tiers.length === 0) {
-    if (singlePrice === null) return [null, []];
+    if (singlePrice === null) {
+      return [null, []];
+    }
     tiers.push({ name: 'Valor único', value: singlePrice });
   }
   const priceId = idGenerator.forSeed(`major-event-price:${majorEventId}`);
@@ -1168,14 +1343,21 @@ export function buildMajorEventPriceRows(
 }
 
 export function inferIsPaymentRequired(paymentInfo: unknown, price: unknown): boolean {
-  if (isRecord(paymentInfo) && Object.keys(paymentInfo).length > 0) return true;
+  if (isRecord(paymentInfo) && Object.keys(paymentInfo).length > 0) {
+    return true;
+  }
   const scalarPrice = parseInteger(price);
-  if (scalarPrice !== null) return scalarPrice > 0;
+  if (scalarPrice !== null) {
+    return scalarPrice > 0;
+  }
   if (isRecord(price)) {
     const singlePrice = parseInteger(price.single);
-    if (singlePrice !== null) return singlePrice > 0;
-    if (Array.isArray(price.tiers))
+    if (singlePrice !== null) {
+      return singlePrice > 0;
+    }
+    if (Array.isArray(price.tiers)) {
       return price.tiers.some((tier) => isRecord(tier) && (parseInteger(tier.price) || 0) > 0);
+    }
   }
   return false;
 }
@@ -1183,14 +1365,22 @@ export function inferIsPaymentRequired(paymentInfo: unknown, price: unknown): bo
 export function mapContactInfo(rawContactInfo: unknown): [string | null, ContactType | null] {
   if (isRecord(rawContactInfo)) {
     const email = coerceText(rawContactInfo.email);
-    if (email) return [email, 'EMAIL'];
+    if (email) {
+      return [email, 'EMAIL'];
+    }
     const phone = coerceText(rawContactInfo.phone);
-    if (phone) return [phone, 'PHONE'];
+    if (phone) {
+      return [phone, 'PHONE'];
+    }
     const whatsapp = coerceText(rawContactInfo.whatsapp);
-    if (whatsapp) return [whatsapp, 'WHATSAPP'];
+    if (whatsapp) {
+      return [whatsapp, 'WHATSAPP'];
+    }
     for (const value of Object.values(rawContactInfo)) {
       const text = coerceText(value);
-      if (text) return [text, 'OTHER'];
+      if (text) {
+        return [text, 'OTHER'];
+      }
     }
     return [null, null];
   }
@@ -1204,7 +1394,9 @@ async function executeMany<T>(
   rows: readonly T[],
   valuesForRow: (row: T) => readonly unknown[],
 ): Promise<void> {
-  for (const row of rows) await client.query(text, valuesForRow(row));
+  for (const row of rows) {
+    await client.query(text, valuesForRow(row));
+  }
 }
 
 export async function writePayload(databaseOrClient: string | DatabaseClient, payload: ImportPayload): Promise<void> {
@@ -1492,13 +1684,17 @@ export async function writePayload(databaseOrClient: string | DatabaseClient, pa
     }
     throw error;
   } finally {
-    if (ownsClient && client.end) await client.end();
+    if (ownsClient && client.end) {
+      await client.end();
+    }
   }
 }
 
 function parseOptionValue(argv: readonly string[], index: number, option: string): string {
   const value = argv[index + 1];
-  if (!value || value.startsWith('--')) throw new Error(`${option} requires a value.`);
+  if (!value || value.startsWith('--')) {
+    throw new Error(`${option} requires a value.`);
+  }
   return value;
 }
 
@@ -1516,7 +1712,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Fire
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === undefined) break;
+    if (argument === undefined) {
+      break;
+    }
     if (argument === '--dry-run') {
       options.dryRun = true;
       continue;
@@ -1536,9 +1734,13 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Fire
       '--db-user',
       '--db-password',
     ]);
-    if (!valueOptions.has(option)) throw new Error(`Unknown option: ${argument}`);
+    if (!valueOptions.has(option)) {
+      throw new Error(`Unknown option: ${argument}`);
+    }
     const value = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : parseOptionValue(argv, index, option);
-    if (equalsIndex < 0) index += 1;
+    if (equalsIndex < 0) {
+      index += 1;
+    }
     switch (option) {
       case '--input':
         options.input = value;
@@ -1551,7 +1753,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Fire
         break;
       case '--db-port': {
         const parsed = Number(value);
-        if (!Number.isInteger(parsed) || parsed <= 0) throw new Error('--db-port must be a positive integer.');
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          throw new Error('--db-port must be a positive integer.');
+        }
         options.dbPort = parsed;
         break;
       }

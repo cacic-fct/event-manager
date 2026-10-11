@@ -27,8 +27,10 @@ export const Playground: Story = {
     await expect(canvas.getByText('CACiC Eventos')).toBeVisible();
     await expect(canvas.getByRole('navigation', { name: 'Links institucionais' })).toBeVisible();
     await expect(
-      new URL(canvas.getByRole('link', { name: 'Validar certificado' }).getAttribute('href') ?? '', window.location.origin)
-        .pathname,
+      new URL(
+        canvas.getByRole('link', { name: 'Validar certificado' }).getAttribute('href') ?? '',
+        window.location.origin,
+      ).pathname,
     ).toBe('/validate');
   },
 };

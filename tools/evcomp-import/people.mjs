@@ -13,24 +13,31 @@ export async function resolveImportPeople(
   target,
   sourcePeople,
   explicitMappings,
-  { apply = false, sourceNamespace = 'evcomp', actorId = null,
-    suppressionSecret = process.env.LGPD_IMPORT_SUPPRESSION_SECRET } = {},
+  {
+    apply = false,
+    sourceNamespace = 'evcomp',
+    actorId = null,
+    suppressionSecret = process.env.LGPD_IMPORT_SUPPRESSION_SECRET,
+  } = {},
 ) {
   const uniqueSourcePeople = uniquePeopleBySourceId(sourcePeople);
   const normalizedNamespace = normalizeSourceNamespace(sourceNamespace);
   const suppressionKey = suppressionSecret?.trim();
-  const suppressedPeople = uniqueSourcePeople.length > 0
-    ? await loadSuppressedPeople(target, normalizedNamespace, suppressionKey)
-    : new Set();
+  const suppressedPeople =
+    uniqueSourcePeople.length > 0 ? await loadSuppressedPeople(target, normalizedNamespace, suppressionKey) : new Set();
   const explicitPersonMappings = normalizeMappings(explicitMappings);
   const provenanceBySourceId = new Map();
   const provenanceTargetIds = new Set();
 
   for (const sourcePerson of uniqueSourcePeople) {
     const sourceId = sourceIdOf(sourcePerson);
-    if (sourceId == null) continue;
+    if (sourceId == null) {
+      continue;
+    }
     const targetId = await getImportedTarget(target, normalizedNamespace, IMPORT_ENTITY_TYPE, sourceId);
-    if (targetId == null) continue;
+    if (targetId == null) {
+      continue;
+    }
     const normalizedTargetId = String(targetId);
     provenanceBySourceId.set(sourceId, normalizedTargetId);
     provenanceTargetIds.add(normalizedTargetId);
@@ -53,8 +60,11 @@ export async function resolveImportPeople(
   for (const sourcePerson of uniqueSourcePeople) {
     const sourceId = sourceIdOf(sourcePerson);
     const sourceKey = sourceId ?? String(sourcePerson.sourceId);
-    if (sourceId != null && suppressedPeople.size > 0 &&
-      suppressedPeople.has(suppressionDigest(suppressionKey, 'person', normalizedNamespace, sourceId))) {
+    if (
+      sourceId != null &&
+      suppressedPeople.size > 0 &&
+      suppressedPeople.has(suppressionDigest(suppressionKey, 'person', normalizedNamespace, sourceId))
+    ) {
       resolutions.set(sourceKey, { status: 'unmatched', reason: 'erased_person', candidates: [] });
       counters.unresolved += 1;
       continue;
@@ -104,7 +114,9 @@ export async function resolveImportPeople(
           candidatePeople.push(person);
           targetPeopleById.set(person.id, person);
           resolution = { status: 'matched', person, matchedBy: apply ? 'created' : 'planned' };
-          if (apply) counters.created += 1;
+          if (apply) {
+            counters.created += 1;
+          }
         } else {
           resolution = { ...resolution, reason: 'missing_name', canCreate: false };
         }
@@ -255,8 +267,12 @@ function uniquePeopleBySourceId(sourcePeople) {
   const seen = new Set();
   return sourcePeople.filter((person) => {
     const sourceId = sourceIdOf(person);
-    if (sourceId == null) return true;
-    if (seen.has(sourceId)) return false;
+    if (sourceId == null) {
+      return true;
+    }
+    if (seen.has(sourceId)) {
+      return false;
+    }
     seen.add(sourceId);
     return true;
   });
@@ -267,7 +283,9 @@ function sourceIdOf(sourcePerson) {
 }
 
 function normalizeMappings(explicitMappings) {
-  if (explicitMappings == null) return new Map();
+  if (explicitMappings == null) {
+    return new Map();
+  }
   const entries = explicitMappings instanceof Map ? explicitMappings.entries() : Object.entries(explicitMappings);
   return new Map([...entries].map(([sourceId, targetId]) => [String(sourceId), String(targetId)]));
 }
@@ -282,7 +300,9 @@ function hasUsableName(sourcePerson) {
 
 function normalizeSourceNamespace(sourceNamespace) {
   const normalized = String(sourceNamespace ?? '').trim();
-  if (!normalized) throw new Error('sourceNamespace must be a non-empty string.');
+  if (!normalized) {
+    throw new Error('sourceNamespace must be a non-empty string.');
+  }
   return normalized;
 }
 

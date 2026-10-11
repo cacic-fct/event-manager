@@ -14,7 +14,10 @@ import { ticketExpirationReason } from '../../../ticketing/ticket-expiration';
     <section class="ticket-holder" aria-label="Dados do portador do bilhete">
       <div class="avatar-frame">
         <img
-          [ngSrc]="googlePictureUrl(user()?.picture ?? eventTicket.holder?.avatarUrl ?? null) || '/assets/icons/avatar-placeholder.avif'"
+          [ngSrc]="
+            googlePictureUrl(user()?.picture ?? eventTicket.holder?.avatarUrl ?? null) ||
+            '/assets/icons/avatar-placeholder.avif'
+          "
           fill
           alt=""
           class="avatar"
@@ -203,21 +206,26 @@ export class WalletEventTicketCard {
   readonly displayStatus = computed(() => this.status() ?? this.ticket().status);
   readonly isExpired = computed(() => this.displayStatus() !== 'ACTIVE');
   readonly expirationReason = computed(() => ticketExpirationReason(this.displayStatus()));
-  readonly formatRole = computed(() => formatUnespRole(this.user()?.unespRole, this.user()?.enrollmentNumber?.toString()));
+  readonly formatRole = computed(() =>
+    formatUnespRole(this.user()?.unespRole, this.user()?.enrollmentNumber?.toString()),
+  );
   readonly document = computed(() => {
     const value = this.user()?.identityDocument ?? '';
     return isValidCPF(value) ? formatCPF(value) : value;
   });
 
   googlePictureUrl(url: string | null): string {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
     try {
       const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') return url;
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') {
+        return url;
+      }
       return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
     } catch {
       return url;
     }
   }
-
 }

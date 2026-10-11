@@ -21,19 +21,28 @@ export interface ShowcaseFeature {
         <p>{{ feature().description }}</p>
         <ul role="list">
           @for (detail of feature().details; track detail) {
-            <li><mat-icon aria-hidden="true">check</mat-icon><span>{{ detail }}</span></li>
+            <li>
+              <mat-icon aria-hidden="true">check</mat-icon><span>{{ detail }}</span>
+            </li>
           }
         </ul>
         @if (organizer()) {
-          <a matButton href="/admin">Acessar o painel de organização<mat-icon iconPositionEnd>arrow_forward</mat-icon></a>
+          <a matButton href="/admin"
+            >Acessar o painel de organização<mat-icon iconPositionEnd>arrow_forward</mat-icon></a
+          >
         } @else {
-          <a matButton routerLink="/calendar">Explorar a programação<mat-icon iconPositionEnd>arrow_forward</mat-icon></a>
+          <a matButton routerLink="/calendar"
+            >Explorar a programação<mat-icon iconPositionEnd>arrow_forward</mat-icon></a
+          >
         }
       </div>
       <div>
         <div class="product-window">
           <div class="window-bar">
-            <strong><mat-icon aria-hidden="true">{{ feature().icon }}</mat-icon>{{ feature().label }}</strong>
+            <strong
+              ><mat-icon aria-hidden="true">{{ feature().icon }}</mat-icon
+              >{{ feature().label }}</strong
+            >
           </div>
           <ng-content />
         </div>

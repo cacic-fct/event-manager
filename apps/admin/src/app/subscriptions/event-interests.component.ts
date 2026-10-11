@@ -160,7 +160,9 @@ export class EventInterestsComponent {
       this.closeTargetRealtime();
     }
     this.loadingTargets.set(context !== null);
-    if (!context) return;
+    if (!context) {
+      return;
+    }
 
     try {
       const entity =
@@ -169,7 +171,9 @@ export class EventInterestsComponent {
           : context.kind === 'group'
             ? await firstValueFrom(this.eventGroupApi.getEventGroup(context.id))
             : await firstValueFrom(this.majorEventApi.getMajorEvent(context.id));
-      if (request !== this.targetsRequest) return;
+      if (request !== this.targetsRequest) {
+        return;
+      }
       this.selectedTarget.set({
         targetType,
         targetId: entity.id,
@@ -185,7 +189,9 @@ export class EventInterestsComponent {
         this.feedback.error(error, 'Não foi possível abrir os interesses deste contexto.');
       }
     } finally {
-      if (request === this.targetsRequest) this.loadingTargets.set(false);
+      if (request === this.targetsRequest) {
+        this.loadingTargets.set(false);
+      }
     }
   }
 

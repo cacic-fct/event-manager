@@ -5,7 +5,17 @@ import { Router, provideRouter } from '@angular/router';
 
 @Component({
   imports: [WorkspaceRecordComponent],
-  template: `<app-workspace-record title="Evento A" [readonly]="readonly" [disabled]="disabled" [link]="link" [queryParams]="{eventId: 'evento com espaço'}" [selected]="true" (activate)="selections = selections + 1"><span recordDescription>Descrição do evento</span><button recordActions type="button" (click)="secondary = secondary + 1">Histórico</button></app-workspace-record>`,
+  template: `<app-workspace-record
+    title="Evento A"
+    [readonly]="readonly"
+    [disabled]="disabled"
+    [link]="link"
+    [queryParams]="{ eventId: 'evento com espaço' }"
+    [selected]="true"
+    (activate)="selections = selections + 1"
+    ><span recordDescription>Descrição do evento</span
+    ><button recordActions type="button" (click)="secondary = secondary + 1">Histórico</button></app-workspace-record
+  >`,
 })
 class RecordHost {
   disabled = false;

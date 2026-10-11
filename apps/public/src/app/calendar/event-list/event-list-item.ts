@@ -21,8 +21,8 @@ export class CalendarEventListItem {
 
   readonly contextLines = computed(() => {
     const event = this.event();
-    return [event.majorEvent?.name, event.eventGroup?.name, event.shortDescription].filter(
-      (line): line is string => Boolean(line),
+    return [event.majorEvent?.name, event.eventGroup?.name, event.shortDescription].filter((line): line is string =>
+      Boolean(line),
     );
   });
 

@@ -706,9 +706,7 @@ describe('KeycloakAuthService', () => {
   });
 
   it('returns the token-free browser logout URL when the session has no refresh token', async () => {
-    await expect(
-      service.logout({ postLogoutRedirectUri: 'https://app.example/' }),
-    ).resolves.toEqual({
+    await expect(service.logout({ postLogoutRedirectUri: 'https://app.example/' })).resolves.toEqual({
       globalLogoutComplete: false,
       logoutUrl:
         'https://keycloak.example/realms/cacic/protocol/openid-connect/logout?client_id=event-manager&post_logout_redirect_uri=https%3A%2F%2Fapp.example%2F',

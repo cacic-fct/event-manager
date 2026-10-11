@@ -11,12 +11,16 @@ export async function validateAttendancePriceTiers(
   input: AttendancePriceTierInput,
   existing?: AttendancePriceTierInput,
 ): Promise<void> {
-  if (input.regularAttendancePriceTierIds === undefined && input.majorEventId === undefined) return;
+  if (input.regularAttendancePriceTierIds === undefined && input.majorEventId === undefined) {
+    return;
+  }
   if (input.regularAttendancePriceTierIds === null) {
     throw new BadRequestException('Informe uma lista de faixas de preço; use uma lista vazia para aceitar todas.');
   }
   const ids = input.regularAttendancePriceTierIds ?? existing?.regularAttendancePriceTierIds ?? [];
-  if (!ids.length) return;
+  if (!ids.length) {
+    return;
+  }
   const majorEventId = input.majorEventId === undefined ? existing?.majorEventId : input.majorEventId;
   if (!majorEventId) {
     throw new BadRequestException('Vincule o evento a um grande evento para selecionar faixas de preço.');
@@ -38,8 +42,12 @@ export function attendancePriceTierPolicyChanged(
   input: AttendancePriceTierInput,
   existing: AttendancePriceTierInput,
 ): boolean {
-  if (input.majorEventId !== undefined && input.majorEventId !== existing.majorEventId) return true;
-  if (input.regularAttendancePriceTierIds === undefined) return false;
+  if (input.majorEventId !== undefined && input.majorEventId !== existing.majorEventId) {
+    return true;
+  }
+  if (input.regularAttendancePriceTierIds === undefined) {
+    return false;
+  }
   const next = [...new Set(input.regularAttendancePriceTierIds ?? [])].sort();
   const previous = [...new Set(existing.regularAttendancePriceTierIds ?? [])].sort();
   return JSON.stringify(next) !== JSON.stringify(previous);

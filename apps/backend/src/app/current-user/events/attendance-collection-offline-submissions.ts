@@ -104,9 +104,7 @@ export class OfflineAttendanceSubmissions {
             submittedById: submission.submittedById,
             createdByMethod: submission.createdByMethod,
             status: submission.status,
-            resolutionIssue: classifyOfflineAttendanceMessage(
-              submission.resolutionError ?? submission.stagedReason,
-            ),
+            resolutionIssue: classifyOfflineAttendanceMessage(submission.resolutionError ?? submission.stagedReason),
           },
           scope: {
             permission: Permission.EventAttendance.Collect,

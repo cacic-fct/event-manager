@@ -51,7 +51,10 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
-      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets && (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
+      const canUseTypesense =
+        this.typesenseSearch.isEnabled() &&
+        !accessibleTargets &&
+        (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
       if (canUseTypesense) {
         const searchResult = await this.typesenseSearch.searchEvents(normalizedQuery, {
           filterBy: 'isIssuableCertificateEvent:=true',
@@ -126,7 +129,10 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
-      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets && (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
+      const canUseTypesense =
+        this.typesenseSearch.isEnabled() &&
+        !accessibleTargets &&
+        (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
       if (canUseTypesense) {
         const searchResult = await this.typesenseSearch.searchEventGroups(normalizedQuery, (skip ?? 0) + (take ?? 50));
         if (searchResult.available) {
@@ -208,7 +214,10 @@ export class CertificateTargetsService {
     }
 
     if (normalizedQuery) {
-      const canUseTypesense = this.typesenseSearch.isEnabled() && !accessibleTargets && (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
+      const canUseTypesense =
+        this.typesenseSearch.isEnabled() &&
+        !accessibleTargets &&
+        (!audienceContext.getStore() || audienceContext.getStore()?.bypass === true);
       if (canUseTypesense) {
         const searchResult = await this.typesenseSearch.searchMajorEvents(normalizedQuery, (skip ?? 0) + (take ?? 50));
         if (searchResult.available) {
@@ -347,7 +356,9 @@ export class CertificateTargetsService {
         where: { majorEventId: targetId, shouldIssueCertificate: true, deletedAt: null },
         select: { id: true },
       });
-      if (tournament) return;
+      if (tournament) {
+        return;
+      }
     }
     if (scope === CertificateScope.EVENT_GROUP) {
       const category = await this.prisma.sportsCategory.findFirst({
@@ -361,7 +372,9 @@ export class CertificateTargetsService {
         },
         select: { id: true },
       });
-      if (category) return;
+      if (category) {
+        return;
+      }
     }
     if (scope === CertificateScope.EVENT) {
       const match = await this.prisma.sportsMatch.findFirst({
@@ -379,7 +392,9 @@ export class CertificateTargetsService {
         },
         select: { id: true },
       });
-      if (match) return;
+      if (match) {
+        return;
+      }
     }
     throw new NotFoundException(`Sports certificate target ${targetId} is disabled or unavailable.`);
   }

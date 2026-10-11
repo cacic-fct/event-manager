@@ -3,7 +3,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { createPublicEventForm, createPublicEventFormLink, createPublicEventInterest } from '@cacic-fct/event-manager-public-testing';
+import {
+  createPublicEventForm,
+  createPublicEventFormLink,
+  createPublicEventInterest,
+} from '@cacic-fct/event-manager-public-testing';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 import { InterestApiService } from '../interests/interest-api.service';
@@ -16,7 +20,10 @@ describe('interest form availability integration', () => {
     const online = signal(true);
     TestBed.configureTestingModule({
       imports: [TargetFormLinks],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: { isAuthenticated: signal(true), user: signal({ sub: 'user-1' }) } },
         { provide: NetworkStatusService, useValue: { isOnline: online } },
         { provide: PLATFORM_ID, useValue: 'browser' },
@@ -35,12 +42,19 @@ describe('interest form availability integration', () => {
       source.emitMessage({ type: 'heartbeat' });
       http.expectNone('/api/graphql');
       const now = Date.now();
-      const form = createPublicEventForm({ name: 'Prepare sua visita', resultsPublic: false, links: [
-        createPublicEventFormLink({ targetType: 'MAJOR_EVENT', majorEventId: 'major-1', eventId: null,
-          availableFrom: new Date(now + 60_000).toISOString(),
-          availableUntil: new Date(now + 120_000).toISOString(),
-        }),
-      ] });
+      const form = createPublicEventForm({
+        name: 'Prepare sua visita',
+        resultsPublic: false,
+        links: [
+          createPublicEventFormLink({
+            targetType: 'MAJOR_EVENT',
+            majorEventId: 'major-1',
+            eventId: null,
+            availableFrom: new Date(now + 60_000).toISOString(),
+            availableUntil: new Date(now + 120_000).toISOString(),
+          }),
+        ],
+      });
       vi.useFakeTimers();
       vi.advanceTimersByTime(60_000);
       http.expectNone('/api/graphql');
@@ -78,7 +92,10 @@ describe('interest form availability integration', () => {
   it('reloads the authorized forms after interest changes and removes forms when no longer eligible', async () => {
     TestBed.configureTestingModule({
       imports: [TargetFormLinks],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: AuthService, useValue: { isAuthenticated: signal(true), user: signal({ sub: 'user-1' }) } },
         { provide: NetworkStatusService, useValue: { isOnline: signal(true) } },
       ],
@@ -92,10 +109,20 @@ describe('interest form availability integration', () => {
     http.expectOne('/api/graphql').flush({ data: { currentUserEventForms: [] } });
 
     TestBed.inject(InterestApiService).set('MAJOR_EVENT', 'major-1', true).subscribe();
-    http.expectOne('/api/graphql').flush({ data: { setCurrentUserInterest: createPublicEventInterest({ majorEventId: 'major-1' }) } });
-    const form = createPublicEventForm({ name: 'Prepare sua visita', links: [
-      createPublicEventFormLink({ targetType: 'MAJOR_EVENT', majorEventId: 'major-1', eventId: null, audiences: ['INTERESTED'] }),
-    ] });
+    http
+      .expectOne('/api/graphql')
+      .flush({ data: { setCurrentUserInterest: createPublicEventInterest({ majorEventId: 'major-1' }) } });
+    const form = createPublicEventForm({
+      name: 'Prepare sua visita',
+      links: [
+        createPublicEventFormLink({
+          targetType: 'MAJOR_EVENT',
+          majorEventId: 'major-1',
+          eventId: null,
+          audiences: ['INTERESTED'],
+        }),
+      ],
+    });
     http.expectOne('/api/graphql').flush({ data: { currentUserEventForms: [form] } });
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Prepare sua visita');

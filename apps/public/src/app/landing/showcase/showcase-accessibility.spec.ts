@@ -33,7 +33,9 @@ describe('landing showcase ARIA', () => {
           values: ['aria-allowed-attr', 'aria-prohibited-attr', 'aria-valid-attr-value', 'aria-valid-attr'],
         },
       });
-      expect(results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }))).toEqual([]);
+      expect(results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }))).toEqual(
+        [],
+      );
 
       for (const control of element.querySelectorAll('[aria-labelledby], [aria-controls]')) {
         for (const attribute of ['aria-labelledby', 'aria-controls']) {

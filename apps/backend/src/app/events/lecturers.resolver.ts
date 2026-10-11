@@ -382,8 +382,12 @@ export class EventLecturersResolver {
   private buildEventLecturerUpdateData(input: EventLecturerUpdateInput): Prisma.EventLecturerUncheckedUpdateManyInput {
     const data: Prisma.EventLecturerUncheckedUpdateManyInput = {};
 
-    if (input.eventId !== undefined) data.eventId = input.eventId;
-    if (input.personId !== undefined) data.personId = input.personId;
+    if (input.eventId !== undefined) {
+      data.eventId = input.eventId;
+    }
+    if (input.personId !== undefined) {
+      data.personId = input.personId;
+    }
 
     return data;
   }

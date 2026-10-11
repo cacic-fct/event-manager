@@ -125,11 +125,15 @@ export class InMemoryRedisClient implements OnModuleDestroy {
         this.deleteIfExpired(key);
         const bucket = this.hashes.get(key) ?? new Map<string, string>();
         for (const [token, expiresAt] of bucket) {
-          if (Number(expiresAt) <= now) bucket.delete(token);
+          if (Number(expiresAt) <= now) {
+            bucket.delete(token);
+          }
         }
         return bucket;
       });
-      if (buckets.some((bucket, index) => bucket.size >= Number(values[index + 2]))) return 0;
+      if (buckets.some((bucket, index) => bucket.size >= Number(values[index + 2]))) {
+        return 0;
+      }
       buckets.forEach((bucket, index) => {
         bucket.set(String(values[0]), String(now + ttlMs));
         this.hashes.set(keys[index], bucket);

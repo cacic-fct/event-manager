@@ -261,7 +261,8 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
         existingChart.dispose();
         this.charts.delete(question.elementId);
       }
-      const chart = this.charts.get(question.elementId) ?? this.echartsFactory.init(element, undefined, { renderer: 'canvas' });
+      const chart =
+        this.charts.get(question.elementId) ?? this.echartsFactory.init(element, undefined, { renderer: 'canvas' });
       this.stopObservingTheme ??= observeEChartsTheme(element, () => this.renderCharts());
       const textColor = readEChartsThemeColor(element, '--mat-sys-on-surface', '#1b1b1f');
       const mutedColor = readEChartsThemeColor(element, '--mat-sys-on-surface-variant', '#45464f');

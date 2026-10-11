@@ -331,9 +331,7 @@ describe('FormsService integration', () => {
 
     await service.loadForms();
 
-    expect(formApi.listForms).toHaveBeenLastCalledWith(
-      expect.objectContaining({ skip: 50, take: 51 }),
-    );
+    expect(formApi.listForms).toHaveBeenLastCalledWith(expect.objectContaining({ skip: 50, take: 51 }));
     expect(service.forms()).toEqual([]);
     expect(service.selectedForm()?.id).toBe('form-1');
   });
@@ -483,7 +481,9 @@ describe('FormsService integration', () => {
 
     const removal = service.removeImage(image);
     service.form.controls.name.setValue('Nome editado durante o salvamento');
-    if (!savedInput) throw new Error('Expected the image removal to start saving the form.');
+    if (!savedInput) {
+      throw new Error('Expected the image removal to start saving the form.');
+    }
     saveResponse.next(createAdminEventFormFromInput(savedInput));
     saveResponse.complete();
     await removal;

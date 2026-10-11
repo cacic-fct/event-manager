@@ -45,7 +45,12 @@ export async function createTicketingDatabaseFixture(
     await tx.user.createMany({
       data: [
         { id: senderUserId, email: `${prefix}-sender@example.test`, name: 'Taylor Sender' },
-        { id: recipientUserId, email: `${prefix}-recipient@example.test`, name: 'Riley Recipient', identityDocument: recipientDocument },
+        {
+          id: recipientUserId,
+          email: `${prefix}-recipient@example.test`,
+          name: 'Riley Recipient',
+          identityDocument: recipientDocument,
+        },
       ],
     });
     await tx.people.createMany({
@@ -124,7 +129,10 @@ function createTicketingPassportDocument(): string {
 /** Removes only rows created by one fixture, leaving the rest of the disposable DB alone. */
 export async function clearTicketingDatabaseFixture(
   prisma: PrismaService,
-  fixture: Pick<TicketingDatabaseFixture, 'prefix' | 'eventId' | 'senderUserId' | 'senderPersonId' | 'recipientUserId' | 'recipientPersonId'>,
+  fixture: Pick<
+    TicketingDatabaseFixture,
+    'prefix' | 'eventId' | 'senderUserId' | 'senderPersonId' | 'recipientUserId' | 'recipientPersonId'
+  >,
 ): Promise<void> {
   const users = [fixture.senderUserId, fixture.recipientUserId];
   const people = [fixture.senderPersonId, fixture.recipientPersonId];

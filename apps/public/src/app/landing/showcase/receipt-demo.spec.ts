@@ -57,7 +57,9 @@ describe('ReceiptDemoComponent', () => {
 
   function chooseFile(file: File): void {
     const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) throw new Error('Receipt file input is missing');
+    if (!input) {
+      throw new Error('Receipt file input is missing');
+    }
     Object.defineProperty(input, 'files', { configurable: true, value: [file] });
     input.dispatchEvent(new Event('change', { bubbles: true }));
     fixture.detectChanges();
@@ -73,9 +75,12 @@ describe('ReceiptDemoComponent', () => {
   }
 
   function buttonNamed(label: string): HTMLButtonElement {
-    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label));
-    if (!button) throw new Error(`Receipt button not found: ${label}`);
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    );
+    if (!button) {
+      throw new Error(`Receipt button not found: ${label}`);
+    }
     return button;
   }
 

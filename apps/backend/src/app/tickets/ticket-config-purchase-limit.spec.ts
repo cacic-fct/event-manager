@@ -31,14 +31,18 @@ function setup() {
 describe('ticket purchase limit configuration', () => {
   it.each([0, -1, 1.5, 2_147_483_648, Number.NaN])('rejects invalid limit %s before writing', async (purchaseLimit) => {
     const { resolver, input, context, prisma, tx } = setup();
-    await expect(resolver.saveTicketConfig({ ...input, purchaseLimit } as never, context)).rejects.toThrow('Informe uma quantidade inteira');
+    await expect(resolver.saveTicketConfig({ ...input, purchaseLimit } as never, context)).rejects.toThrow(
+      'Informe uma quantidade inteira',
+    );
     expect(prisma.$transaction).not.toHaveBeenCalled();
     expect(tx.ticketConfig.upsert).not.toHaveBeenCalled();
   });
 
   it('prevents reducing stock below approved and pending purchases', async () => {
     const { resolver, input, context, tx } = setup();
-    await expect(resolver.saveTicketConfig({ ...input, purchaseLimit: 2 } as never, context)).rejects.toThrow('O limite não pode ser menor');
+    await expect(resolver.saveTicketConfig({ ...input, purchaseLimit: 2 } as never, context)).rejects.toThrow(
+      'O limite não pode ser menor',
+    );
     expect(tx.ticketPurchase.count).toHaveBeenCalledWith({
       where: { ticketConfigId: 'config', status: { in: ['UNDER_REVIEW', 'APPROVED'] } },
     });

@@ -31,7 +31,12 @@ describe('InterestApiService', () => {
     service.getStates('MAJOR_EVENT', ['major-1', 'major-2']).subscribe(received);
     const request = http.expectOne('/api/graphql');
     expect(request.request.body.variables).toEqual({ targetType: 'MAJOR_EVENT', id0: 'major-1', id1: 'major-2' });
-    const state = { interest: null, subscribed: false, enabled: true, endsAt: new Date(Date.now() + 60_000).toISOString() };
+    const state = {
+      interest: null,
+      subscribed: false,
+      enabled: true,
+      endsAt: new Date(Date.now() + 60_000).toISOString(),
+    };
     request.flush({ data: { state0: state, state1: { ...state, enabled: false } } });
     expect(received).toHaveBeenCalledWith({ 'major-1': state, 'major-2': { ...state, enabled: false } });
     http.verify();
@@ -46,7 +51,12 @@ describe('InterestApiService', () => {
     service.getStates('MAJOR_EVENT', ids).subscribe(received);
     const requests = http.match('/api/graphql');
     expect(requests).toHaveLength(2);
-    const state = { interest: null, subscribed: false, enabled: true, endsAt: new Date(Date.now() + 60_000).toISOString() };
+    const state = {
+      interest: null,
+      subscribed: false,
+      enabled: true,
+      endsAt: new Date(Date.now() + 60_000).toISOString(),
+    };
     for (const request of requests) {
       const aliases = Object.keys(request.request.body.variables).filter((key) => key.startsWith('id'));
       expect(aliases.length).toBeLessThanOrEqual(40);

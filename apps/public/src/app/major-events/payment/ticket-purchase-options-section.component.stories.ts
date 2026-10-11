@@ -53,7 +53,10 @@ const meta: Meta<TicketPurchaseOptionsStoryArgs> = {
   argTypes: {
     majorEventId: { control: 'text' },
     subscriptionStatus: { control: 'text' },
-    scenario: { control: 'select', options: ['available', 'empty', 'under-review', 'rejected', 'approved', 'unvalidated', 'loading', 'error'] },
+    scenario: {
+      control: 'select',
+      options: ['available', 'empty', 'under-review', 'rejected', 'approved', 'unvalidated', 'loading', 'error'],
+    },
     ticketName: { control: 'text' },
     emoji: { control: 'text' },
     description: { control: 'text' },
@@ -69,21 +72,37 @@ const meta: Meta<TicketPurchaseOptionsStoryArgs> = {
             provide: TicketPurchaseApiService,
             useValue: {
               getOptions: () => {
-                if (context.args.scenario === 'loading') return NEVER;
-                if (context.args.scenario === 'error') return throwError(() => new Error('Falha na API'));
-                if (context.args.scenario === 'empty' || context.args.scenario === 'unvalidated') return of([]);
+                if (context.args.scenario === 'loading') {
+                  return NEVER;
+                }
+                if (context.args.scenario === 'error') {
+                  return throwError(() => new Error('Falha na API'));
+                }
+                if (context.args.scenario === 'empty' || context.args.scenario === 'unvalidated') {
+                  return of([]);
+                }
                 return of([sampleOption(context.args)]);
               },
-              getPurchases: () => context.args.scenario === 'under-review' || context.args.scenario === 'rejected' || context.args.scenario === 'approved'
-                ? of([createTicketPurchase({
-                    name: context.args.ticketName,
-                    emoji: context.args.emoji,
-                    amountCents: context.args.amountCents,
-                    priceTierName: context.args.priceTierName || null,
-                    status: context.args.scenario === 'under-review' ? 'UNDER_REVIEW' : context.args.scenario === 'rejected' ? 'REJECTED' : 'APPROVED',
-                    rejectionReason: context.args.scenario === 'rejected' ? 'O comprovante está ilegível.' : null,
-                  })])
-                : of([]),
+              getPurchases: () =>
+                context.args.scenario === 'under-review' ||
+                context.args.scenario === 'rejected' ||
+                context.args.scenario === 'approved'
+                  ? of([
+                      createTicketPurchase({
+                        name: context.args.ticketName,
+                        emoji: context.args.emoji,
+                        amountCents: context.args.amountCents,
+                        priceTierName: context.args.priceTierName || null,
+                        status:
+                          context.args.scenario === 'under-review'
+                            ? 'UNDER_REVIEW'
+                            : context.args.scenario === 'rejected'
+                              ? 'REJECTED'
+                              : 'APPROVED',
+                        rejectionReason: context.args.scenario === 'rejected' ? 'O comprovante está ilegível.' : null,
+                      }),
+                    ])
+                  : of([]),
             },
           },
           { provide: TicketingApiService, useValue: { watchCurrentUser: () => EMPTY } },
@@ -142,7 +161,9 @@ export const RejectedReceipt: Story = {
 export const Loading: Story = {
   args: { scenario: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando bilhetes adicionais' })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('progressbar', { name: 'Carregando bilhetes adicionais' }),
+    ).toBeVisible();
   },
 };
 

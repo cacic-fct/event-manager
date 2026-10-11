@@ -96,9 +96,12 @@ class CertificateDialogStoryHost {
           provide: AttendancesApiService,
           useValue: {
             getCurrentUserCertificatesForTargets: () => {
-              if (args.state === 'loading') return NEVER;
-              if (args.state === 'error')
+              if (args.state === 'loading') {
+                return NEVER;
+              }
+              if (args.state === 'error') {
                 return throwError(() => new Error('Não foi possível carregar os certificados.'));
+              }
               return of(certificates);
             },
             downloadCurrentUserCertificate: () =>

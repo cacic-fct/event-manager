@@ -43,13 +43,11 @@ describe('CalendarListItem', () => {
     expect(link.textContent).toContain('Palestra');
     expect(link.textContent).toContain('Cedente: Marina');
     expect(link.textContent).toContain('Salão de eventos');
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.metadata-item'), (item: HTMLElement) => item.textContent?.trim())).toEqual([
-      'Congresso de Computação',
-      'Trilha Frontend',
-      'Palestra',
-      'Cedente: Marina',
-      'Salão de eventos',
-    ]);
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('.metadata-item'), (item: HTMLElement) =>
+        item.textContent?.trim(),
+      ),
+    ).toEqual(['Congresso de Computação', 'Trilha Frontend', 'Palestra', 'Cedente: Marina', 'Salão de eventos']);
     expect(link.getAttribute('aria-label')).toBe('Abrir Festa de encerramento');
   });
 

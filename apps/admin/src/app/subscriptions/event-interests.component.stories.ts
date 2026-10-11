@@ -80,7 +80,13 @@ const meta: Meta<EventInterestsComponent> = {
           provide: PermissionsService,
           useValue: {
             evaluateWorkspacePermissions: async () => undefined,
-            has: (permission: Permission) => [Permission.Subscription.Create, Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read].some((granted) => granted === permission),
+            has: (permission: Permission) =>
+              [
+                Permission.Subscription.Create,
+                Permission.Event.Read,
+                Permission.EventGroup.Read,
+                Permission.MajorEvent.Read,
+              ].some((granted) => granted === permission),
           },
         },
         { provide: AdminFeedbackService, useValue: { error: () => undefined } },
@@ -89,7 +95,11 @@ const meta: Meta<EventInterestsComponent> = {
           useValue: {
             open: (component: unknown) => ({
               afterClosed: () =>
-                of(component === InterestEventSelectionDialogComponent ? { selectedEventIds: [event.id] } : { imageLicenseAgreementAccepted: true }),
+                of(
+                  component === InterestEventSelectionDialogComponent
+                    ? { selectedEventIds: [event.id] }
+                    : { imageLicenseAgreementAccepted: true },
+                ),
             }),
           },
         },
@@ -100,7 +110,8 @@ const meta: Meta<EventInterestsComponent> = {
   parameters: {
     docs: {
       description: {
-        component: 'Interest list for event discovery and conversion. Use the stories to inspect available people, permissions, and conversion behavior.',
+        component:
+          'Interest list for event discovery and conversion. Use the stories to inspect available people, permissions, and conversion behavior.',
       },
     },
     layout: 'fullscreen',
@@ -130,12 +141,20 @@ export const ConversionConfirmation: Story = {
   },
 };
 
-
 export const CollectionDisabled: Story = {
-  decorators: [applicationConfig({ providers: [{
-    provide: EventApiService,
-    useValue: { listEvents: () => of([{ ...event, interestEnabled: false }]), getEvent: () => of({ ...event, interestEnabled: false }) },
-  }] })],
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: EventApiService,
+          useValue: {
+            listEvents: () => of([{ ...event, interestEnabled: false }]),
+            getEvent: () => of({ ...event, interestEnabled: false }),
+          },
+        },
+      ],
+    }),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.findByText(/novos interesses desativados/i)).resolves.toBeVisible();

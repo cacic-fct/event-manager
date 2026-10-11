@@ -100,7 +100,9 @@ describe('people merge audience invitations', () => {
       data: { personId: 'target-person' },
     });
     expect(tx.eventAudienceInvitation.update).toHaveBeenCalledTimes(1);
-    expect(tx.eventAudienceInvitation.delete).toHaveBeenCalledWith({ where: { eventId_personId: { eventId: 'event-conflict', personId: 'source-person' } } });
+    expect(tx.eventAudienceInvitation.delete).toHaveBeenCalledWith({
+      where: { eventId_personId: { eventId: 'event-conflict', personId: 'source-person' } },
+    });
     expect(tx.eventGroupAudienceInvitation.update).toHaveBeenCalledWith({
       where: { eventGroupId_personId: { eventGroupId: 'group-move', personId: 'source-person' } },
       data: { personId: 'target-person' },
@@ -111,15 +113,40 @@ describe('people merge audience invitations', () => {
     });
   });
 
-  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'] as const)('restores the coalesced %s source invitation without changing the target', async (targetType) => {
-    const tx = createTransaction();
-    const createdAt = new Date();
-    const snapshot = { targetType, targetId: 'target', personId: 'source', createdAt: createdAt.toISOString(), createdById: 'creator', notifiedAt: null, notificationAttemptedAt: null, coalesced: true };
-    await restoreAudienceInvitations(tx as never, [snapshot], 'source', 'destination');
-    const model = targetType === 'EVENT' ? tx.eventAudienceInvitation : targetType === 'EVENT_GROUP' ? tx.eventGroupAudienceInvitation : tx.majorEventAudienceInvitation;
-    expect(model.create).toHaveBeenCalledWith({ data: expect.objectContaining({ personId: 'source', createdAt, createdById: 'creator', notifiedAt: null, notificationAttemptedAt: null }) });
-    expect(model.updateMany).not.toHaveBeenCalled();
-  });
+  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'] as const)(
+    'restores the coalesced %s source invitation without changing the target',
+    async (targetType) => {
+      const tx = createTransaction();
+      const createdAt = new Date();
+      const snapshot = {
+        targetType,
+        targetId: 'target',
+        personId: 'source',
+        createdAt: createdAt.toISOString(),
+        createdById: 'creator',
+        notifiedAt: null,
+        notificationAttemptedAt: null,
+        coalesced: true,
+      };
+      await restoreAudienceInvitations(tx as never, [snapshot], 'source', 'destination');
+      const model =
+        targetType === 'EVENT'
+          ? tx.eventAudienceInvitation
+          : targetType === 'EVENT_GROUP'
+            ? tx.eventGroupAudienceInvitation
+            : tx.majorEventAudienceInvitation;
+      expect(model.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          personId: 'source',
+          createdAt,
+          createdById: 'creator',
+          notifiedAt: null,
+          notificationAttemptedAt: null,
+        }),
+      });
+      expect(model.updateMany).not.toHaveBeenCalled();
+    },
+  );
 
   it('restores only rows moved by the merge and detects changed rows', async () => {
     const tx = createTransaction();

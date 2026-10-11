@@ -104,22 +104,28 @@ export class AuthService {
 
   /** Share one restoration attempt between guards for the same unauthenticated session. */
   async ensureAuthenticated(options?: Pick<LoginOptions, 'returnTo'>): Promise<boolean> {
-    if (this.isAuthenticated()) return true;
-    if (!isPlatformBrowser(this.platformId)) return false;
+    if (this.isAuthenticated()) {
+      return true;
+    }
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
 
-    this.authenticationRecovery ??= firstValueFrom(
-      this.refreshTokenSilently().pipe(timeout({ first: 10_000 })),
-    )
+    this.authenticationRecovery ??= firstValueFrom(this.refreshTokenSilently().pipe(timeout({ first: 10_000 })))
       .then(async () => {
         await this.redirectToOnboardingIfNeeded(options?.returnTo, true);
         const authenticated = this.isAuthenticated();
         // Only failed attempts are memoized. A successful recovery must not
         // outlive the session if a later /me request clears the user.
-        if (authenticated) this.authenticationRecovery = null;
+        if (authenticated) {
+          this.authenticationRecovery = null;
+        }
         return authenticated;
       })
       .catch((error: unknown) => {
-        if (this.isExpectedUnauthenticatedError(error)) return false;
+        if (this.isExpectedUnauthenticatedError(error)) {
+          return false;
+        }
         this.authenticationRecovery = null;
         throw error;
       });
@@ -304,7 +310,9 @@ export class AuthService {
   clearSession(): void {
     // A failed refresh already clears an anonymous session. Keep its shared attempt
     // so a subsequent guard cannot repeat the same restoration request.
-    if (this.isAuthenticated()) this.authenticationRecovery = null;
+    if (this.isAuthenticated()) {
+      this.authenticationRecovery = null;
+    }
     this.clearRefreshTimer();
     this.refreshExpiresAt = null;
     this.user.set(null);

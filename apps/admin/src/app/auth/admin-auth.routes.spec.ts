@@ -15,12 +15,7 @@ describe('admin route authentication and error wiring', () => {
     const errorRoutes = appRoutes.filter((route) => route.path?.startsWith('error/'));
     const wildcardRoute = appRoutes.find((route) => route.path === '**');
 
-    expect(errorRoutes.map((route) => route.path)).toEqual([
-      'error/403',
-      'error/404',
-      'error/500',
-      'error/503',
-    ]);
+    expect(errorRoutes.map((route) => route.path)).toEqual(['error/403', 'error/404', 'error/500', 'error/503']);
     expect(errorRoutes.map((route) => route.data?.['pageError'])).toEqual([
       { status: 403, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },
       { status: 404, actionHref: '/app/', actionLabel: 'Voltar para os eventos' },

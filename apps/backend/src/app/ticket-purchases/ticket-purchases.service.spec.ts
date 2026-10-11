@@ -8,15 +8,31 @@ let png: Buffer;
 function setup() {
   const now = new Date();
   const offer = {
-    eventId: 'party', majorEventId: 'major', ticketConfigId: 'config', amountCents: 2500,
-    priceTierId: 'tier', priceTierName: 'Básico', priceOptionId: 'price', majorEventSubscriptionId: 'subscription', name: 'Festa', emoji: '🎉',
+    eventId: 'party',
+    majorEventId: 'major',
+    ticketConfigId: 'config',
+    amountCents: 2500,
+    priceTierId: 'tier',
+    priceTierName: 'Básico',
+    priceOptionId: 'price',
+    majorEventSubscriptionId: 'subscription',
+    name: 'Festa',
+    emoji: '🎉',
   };
   const purchase = {
-    id: 'purchase', ...offer, personId: 'person', status: 'UNDER_REVIEW',
-    receiptUploadedAt: now, receiptExpiresAt: new Date(now.getTime() + 86_400_000),
-    objectKey: 'stored-key', fileName: 'receipt.png', mimeType: 'image/png', sizeBytes: 100,
+    id: 'purchase',
+    ...offer,
+    personId: 'person',
+    status: 'UNDER_REVIEW',
+    receiptUploadedAt: now,
+    receiptExpiresAt: new Date(now.getTime() + 86_400_000),
+    objectKey: 'stored-key',
+    fileName: 'receipt.png',
+    mimeType: 'image/png',
+    sizeBytes: 100,
     ticketConfig: { enabled: true, expirationMode: 'EVENT_END' },
-    event: { endDate: new Date(now.getTime() + 86_400_000), deletedAt: null }, majorEvent: { deletedAt: null },
+    event: { endDate: new Date(now.getTime() + 86_400_000), deletedAt: null },
+    majorEvent: { deletedAt: null },
   };
   const tx = {
     $queryRaw: jest.fn(),
@@ -27,9 +43,15 @@ function setup() {
       findUniqueOrThrow: jest.fn().mockResolvedValue(purchase),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    majorEventSubscription: { findUnique: jest.fn().mockResolvedValue({
-      personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: now, paymentTier: 'Básico',
-    }) },
+    majorEventSubscription: {
+      findUnique: jest.fn().mockResolvedValue({
+        personId: 'person',
+        majorEventId: 'major',
+        subscriptionStatus: 'CONFIRMED',
+        receiptValidatedAt: now,
+        paymentTier: 'Básico',
+      }),
+    },
     priceTier: { findFirst: jest.fn().mockResolvedValue({ name: 'Básico' }) },
     eventTicket: { findFirst: jest.fn().mockResolvedValue(null) },
     people: { findUnique: jest.fn().mockResolvedValue({ userId: 'account' }) },
@@ -37,29 +59,52 @@ function setup() {
   const prisma = { ...tx, $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)) };
   const currentUser = { requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person' }) };
   const catalog = { requireOffer: jest.fn().mockResolvedValue(offer) };
-  const s3 = { uploadFile: jest.fn().mockResolvedValue({ key: 'stored-key', size: 100 }), deleteFile: jest.fn().mockResolvedValue(undefined) };
+  const s3 = {
+    uploadFile: jest.fn().mockResolvedValue({ key: 'stored-key', size: 100 }),
+    deleteFile: jest.fn().mockResolvedValue(undefined),
+  };
   const authorization = { assertPermissions: jest.fn() };
   const audit = { record: jest.fn() };
   const issuance = { issueForPerson: jest.fn() };
-  const eligibility = { prepareIdentitySnapshot: jest.fn().mockResolvedValue({ personId: 'person', userId: 'account', accountManagerProfile: null }), evaluatePurchaseEligibility: jest.fn().mockResolvedValue({ eligible: true, reasons: [] }) };
+  const eligibility = {
+    prepareIdentitySnapshot: jest
+      .fn()
+      .mockResolvedValue({ personId: 'person', userId: 'account', accountManagerProfile: null }),
+    evaluatePurchaseEligibility: jest.fn().mockResolvedValue({ eligible: true, reasons: [] }),
+  };
   const realtime = { enqueueForUsers: jest.fn() };
   const frozenResources = { assertMajorEventMutable: jest.fn() };
-  const service = new TicketPurchasesService(prisma as never, currentUser as never, catalog as never, s3 as never,
-    authorization as never, audit as never, issuance as never, eligibility as never, realtime as never, frozenResources as never);
+  const service = new TicketPurchasesService(
+    prisma as never,
+    currentUser as never,
+    catalog as never,
+    s3 as never,
+    authorization as never,
+    audit as never,
+    issuance as never,
+    eligibility as never,
+    realtime as never,
+    frozenResources as never,
+  );
   return { frozenResources, service, tx, prisma, catalog, s3, authorization, audit, issuance, realtime, purchase };
 }
 
-function file() { return { buffer: png, originalname: 'receipt.png', mimetype: 'image/png', size: png.length }; }
+function file() {
+  return { buffer: png, originalname: 'receipt.png', mimetype: 'image/png', size: png.length };
+}
 
 beforeAll(async () => {
-  png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#ffffff' } }).png().toBuffer();
+  png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#ffffff' } })
+    .png()
+    .toBuffer();
 });
 
 describe('ticket purchase transaction boundaries', () => {
   it.each(['approve', 'reject'] as const)('blocks frozen purchase %s before writing', async (operation) => {
     const { service, tx, frozenResources, issuance } = setup();
     frozenResources.assertMajorEventMutable.mockRejectedValue(new Error('Frozen'));
-    const review = operation === 'approve' ? service.approve('purchase', user) : service.reject('purchase', 'Motivo', user);
+    const review =
+      operation === 'approve' ? service.approve('purchase', user) : service.reject('purchase', 'Motivo', user);
     await expect(review).rejects.toThrow('Frozen');
     expect(frozenResources.assertMajorEventMutable).toHaveBeenCalledWith('major', user, 'edit');
     expect(tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
@@ -69,23 +114,32 @@ describe('ticket purchase transaction boundaries', () => {
   it('bounds pending receipt reads and uses the same eligibility predicate for counts', async () => {
     const { service, tx } = setup();
     await service.pending('major', 100);
-    expect(tx.ticketPurchase.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      take: 100, where: service.pendingWhere('major'),
-    }));
+    expect(tx.ticketPurchase.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 100,
+        where: service.pendingWhere('major'),
+      }),
+    );
   });
 
   it('does not register a purchase or send invalidation when receipt storage fails', async () => {
     const { service, tx, s3, realtime } = setup();
     s3.uploadFile.mockRejectedValue(new Error('Storage unavailable'));
-    await expect(service.upload('party', file(), { ticketConfigId: 'config', amountCents: 2500 }, user)).rejects.toThrow('Storage unavailable');
+    await expect(
+      service.upload('party', file(), { ticketConfigId: 'config', amountCents: 2500 }, user),
+    ).rejects.toThrow('Storage unavailable');
     expect(tx.ticketPurchase.create).not.toHaveBeenCalled();
     expect(realtime.enqueueForUsers).not.toHaveBeenCalled();
   });
 
   it('removes receipt and purchase if price or eligibility changes during upload', async () => {
     const { service, tx, catalog, s3 } = setup();
-    catalog.requireOffer.mockResolvedValueOnce({ ...((await catalog.requireOffer()) as object) }).mockRejectedValueOnce(new ConflictException());
-    await expect(service.upload('party', file(), { ticketConfigId: 'config', amountCents: 2500 }, user)).rejects.toThrow(ConflictException);
+    catalog.requireOffer
+      .mockResolvedValueOnce({ ...((await catalog.requireOffer()) as object) })
+      .mockRejectedValueOnce(new ConflictException());
+    await expect(
+      service.upload('party', file(), { ticketConfigId: 'config', amountCents: 2500 }, user),
+    ).rejects.toThrow(ConflictException);
     expect(tx.ticketPurchase.create).not.toHaveBeenCalled();
     expect(s3.deleteFile).toHaveBeenCalledWith('stored-key');
   });
@@ -94,10 +148,18 @@ describe('ticket purchase transaction boundaries', () => {
     const { service, tx, s3, audit, realtime } = setup();
     const result = await service.upload('party', file(), { ticketConfigId: 'config', amountCents: 2500 }, user);
     expect(result.purchaseId).toBe('purchase');
-    expect(s3.uploadFile.mock.invocationCallOrder[0]).toBeLessThan(tx.ticketPurchase.create.mock.invocationCallOrder[0]);
-    expect(tx.ticketPurchase.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ amountCents: 2500, status: 'UNDER_REVIEW' }) }));
+    expect(s3.uploadFile.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.ticketPurchase.create.mock.invocationCallOrder[0],
+    );
+    expect(tx.ticketPurchase.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ amountCents: 2500, status: 'UNDER_REVIEW' }) }),
+    );
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ operation: 'SUBMIT' }), tx);
-    expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['account'], { type: 'PURCHASES_CHANGED', eventId: 'party', purchaseId: 'purchase' });
+    expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['account'], {
+      type: 'PURCHASES_CHANGED',
+      eventId: 'party',
+      purchaseId: 'purchase',
+    });
   });
 
   it('removes the uploaded receipt if the final ticket was reserved during processing', async () => {
@@ -106,7 +168,14 @@ describe('ticket purchase transaction boundaries', () => {
     catalog.requireOffer.mockClear();
     catalog.requireOffer.mockResolvedValueOnce(offer);
     catalog.requireOffer.mockRejectedValueOnce(new ConflictException('Bilhetes esgotados.'));
-    await expect(service.upload('party', { buffer: png, mimetype: 'image/png', originalname: 'receipt.png', size: png.length } as never, { ticketConfigId: 'config', amountCents: 2500 }, user)).rejects.toThrow('Bilhetes esgotados.');
+    await expect(
+      service.upload(
+        'party',
+        { buffer: png, mimetype: 'image/png', originalname: 'receipt.png', size: png.length } as never,
+        { ticketConfigId: 'config', amountCents: 2500 },
+        user,
+      ),
+    ).rejects.toThrow('Bilhetes esgotados.');
     expect(tx.ticketPurchase.create).not.toHaveBeenCalled();
     expect(s3.deleteFile).toHaveBeenCalledWith('stored-key');
     expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
@@ -121,7 +190,13 @@ describe('ticket purchase transaction boundaries', () => {
 
   it('requires current receipt validation again at approval', async () => {
     const { service, tx, issuance } = setup();
-    tx.majorEventSubscription.findUnique.mockResolvedValue({ personId: 'person', majorEventId: 'major', subscriptionStatus: 'RECEIPT_UNDER_REVIEW', receiptValidatedAt: null, paymentTier: 'Básico' } as never);
+    tx.majorEventSubscription.findUnique.mockResolvedValue({
+      personId: 'person',
+      majorEventId: 'major',
+      subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
+      receiptValidatedAt: null,
+      paymentTier: 'Básico',
+    } as never);
     await expect(service.approve('purchase', user)).rejects.toThrow(ConflictException);
     expect(issuance.issueForPerson).not.toHaveBeenCalled();
     expect(tx.ticketPurchase.updateMany).not.toHaveBeenCalled();
@@ -143,21 +218,35 @@ describe('ticket purchase transaction boundaries', () => {
   });
 });
 
-
 describe('purchase tier identity', () => {
   it('approves the same renamed tier without changing its historical snapshot', async () => {
     const { service, tx, purchase, issuance } = setup();
     tx.priceTier.findFirst.mockResolvedValue({ name: 'Estudante' });
-    tx.majorEventSubscription.findUnique.mockResolvedValue({ personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: new Date(), paymentTier: 'Estudante' });
+    tx.majorEventSubscription.findUnique.mockResolvedValue({
+      personId: 'person',
+      majorEventId: 'major',
+      subscriptionStatus: 'CONFIRMED',
+      receiptValidatedAt: new Date(),
+      paymentTier: 'Estudante',
+    });
     await expect(service.approve('purchase', user)).resolves.toBe(true);
-    expect(tx.priceTier.findFirst).toHaveBeenCalledWith({ where: { id: 'tier', price: { majorEventId: 'major' } }, select: { name: true } });
+    expect(tx.priceTier.findFirst).toHaveBeenCalledWith({
+      where: { id: 'tier', price: { majorEventId: 'major' } },
+      select: { name: true },
+    });
     expect(purchase.priceTierName).toBe('Básico');
     expect(issuance.issueForPerson).toHaveBeenCalled();
   });
 
   it('still rejects a participant who moved to another tier', async () => {
     const { service, tx, issuance } = setup();
-    tx.majorEventSubscription.findUnique.mockResolvedValue({ personId: 'person', majorEventId: 'major', subscriptionStatus: 'CONFIRMED', receiptValidatedAt: new Date(), paymentTier: 'Professor' });
+    tx.majorEventSubscription.findUnique.mockResolvedValue({
+      personId: 'person',
+      majorEventId: 'major',
+      subscriptionStatus: 'CONFIRMED',
+      receiptValidatedAt: new Date(),
+      paymentTier: 'Professor',
+    });
     await expect(service.approve('purchase', user)).rejects.toThrow(ConflictException);
     expect(issuance.issueForPerson).not.toHaveBeenCalled();
   });

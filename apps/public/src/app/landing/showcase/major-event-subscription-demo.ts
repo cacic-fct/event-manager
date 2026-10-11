@@ -107,12 +107,17 @@ export class MajorEventSubscriptionDemoComponent {
   }
 
   toggleActivity(id: string): void {
-    if (this.step() !== 'selection' || !this.activities.some((activity) => activity.id === id)) return;
+    if (this.step() !== 'selection' || !this.activities.some((activity) => activity.id === id)) {
+      return;
+    }
     this.interacting.set(true);
     this.selectedIds.update((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -123,11 +128,15 @@ export class MajorEventSubscriptionDemoComponent {
   }
 
   review(): void {
-    if (this.selectedActivities().length) this.step.set('review');
+    if (this.selectedActivities().length) {
+      this.step.set('review');
+    }
   }
 
   confirm(): void {
-    if (this.step() === 'review' && this.selectedActivities().length) this.step.set('confirmed');
+    if (this.step() === 'review' && this.selectedActivities().length) {
+      this.step.set('confirmed');
+    }
   }
 
   resetDemo(): void {

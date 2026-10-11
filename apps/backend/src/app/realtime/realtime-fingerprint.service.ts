@@ -205,40 +205,38 @@ export class RealtimeFingerprintService {
   }
 
   async eventSubscriptions(eventId: string): Promise<EventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, interests, subscriptionGroups, lecturers, selections, rankedSubscriptions] = await Promise.all([
-      this.prisma.eventSubscription.aggregate({
-        where: { eventId },
-        _count: true,
-        _max: { createdAt: true, deletedAt: true },
-      }),
-      this.prisma.eventInterest.aggregate({
-        where: {
-          deletedAt: null,
-          OR: [
-            { eventId },
-            { eventGroup: { events: { some: { id: eventId } } } },
-          ],
-        },
-        _count: true,
-        _max: { createdAt: true, updatedAt: true, deletedAt: true },
-      }),
-      this.eventSubscriptionGroupFingerprint({ eventId }),
-      this.prisma.eventLecturer.aggregate({
-        where: { eventId },
-        _count: true,
-        _max: { createdAt: true },
-      }),
-      this.prisma.majorEventSubscriptionEventSelection.aggregate({
-        where: { eventId },
-        _count: true,
-        _max: { createdAt: true, deletedAt: true },
-      }),
-      this.prisma.majorEventSubscription.aggregate({
-        where: { selectedEvents: { some: { eventId } } },
-        _count: true,
-        _max: { updatedAt: true, deletedAt: true },
-      }),
-    ]);
+    const [subscriptions, interests, subscriptionGroups, lecturers, selections, rankedSubscriptions] =
+      await Promise.all([
+        this.prisma.eventSubscription.aggregate({
+          where: { eventId },
+          _count: true,
+          _max: { createdAt: true, deletedAt: true },
+        }),
+        this.prisma.eventInterest.aggregate({
+          where: {
+            deletedAt: null,
+            OR: [{ eventId }, { eventGroup: { events: { some: { id: eventId } } } }],
+          },
+          _count: true,
+          _max: { createdAt: true, updatedAt: true, deletedAt: true },
+        }),
+        this.eventSubscriptionGroupFingerprint({ eventId }),
+        this.prisma.eventLecturer.aggregate({
+          where: { eventId },
+          _count: true,
+          _max: { createdAt: true },
+        }),
+        this.prisma.majorEventSubscriptionEventSelection.aggregate({
+          where: { eventId },
+          _count: true,
+          _max: { createdAt: true, deletedAt: true },
+        }),
+        this.prisma.majorEventSubscription.aggregate({
+          where: { selectedEvents: { some: { eventId } } },
+          _count: true,
+          _max: { updatedAt: true, deletedAt: true },
+        }),
+      ]);
     return {
       type: 'EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions,
@@ -251,54 +249,63 @@ export class RealtimeFingerprintService {
   }
 
   async majorEventSubscriptions(majorEventId: string): Promise<MajorEventSubscriptionsRealtimeFingerprint> {
-    const [subscriptions, interests, selections, receipts, applications, participants, teams, members, registrationMembers] =
-      await Promise.all([
-        this.prisma.majorEventSubscription.aggregate({
-          where: { majorEventId },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.eventInterest.aggregate({
-          where: { majorEventId, deletedAt: null },
-          _count: true,
-          _max: { createdAt: true, updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.majorEventSubscriptionEventSelection.aggregate({
-          where: { subscription: { majorEventId } },
-          _count: true,
-          _max: { createdAt: true, deletedAt: true },
-        }),
-        this.prisma.majorEventReceipt.aggregate({
-          where: { subscription: { majorEventId } },
-          _count: true,
-          _max: { updatedAt: true },
-        }),
-        this.prisma.sportsPlayerApplication.aggregate({
-          where: { tournament: { majorEventId } },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.sportsTournamentParticipant.aggregate({
-          where: { tournament: { majorEventId } },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.sportsTeam.aggregate({
-          where: { tournament: { majorEventId } },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.sportsTeamMember.aggregate({
-          where: { participant: { tournament: { majorEventId } } },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-        this.prisma.sportsRegistrationMember.aggregate({
-          where: { registration: { category: { tournament: { majorEventId } } } },
-          _count: true,
-          _max: { updatedAt: true, deletedAt: true },
-        }),
-      ]);
+    const [
+      subscriptions,
+      interests,
+      selections,
+      receipts,
+      applications,
+      participants,
+      teams,
+      members,
+      registrationMembers,
+    ] = await Promise.all([
+      this.prisma.majorEventSubscription.aggregate({
+        where: { majorEventId },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.eventInterest.aggregate({
+        where: { majorEventId, deletedAt: null },
+        _count: true,
+        _max: { createdAt: true, updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventSubscriptionEventSelection.aggregate({
+        where: { subscription: { majorEventId } },
+        _count: true,
+        _max: { createdAt: true, deletedAt: true },
+      }),
+      this.prisma.majorEventReceipt.aggregate({
+        where: { subscription: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true },
+      }),
+      this.prisma.sportsPlayerApplication.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTournamentParticipant.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTeam.aggregate({
+        where: { tournament: { majorEventId } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsTeamMember.aggregate({
+        where: { participant: { tournament: { majorEventId } } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+      this.prisma.sportsRegistrationMember.aggregate({
+        where: { registration: { category: { tournament: { majorEventId } } } },
+        _count: true,
+        _max: { updatedAt: true, deletedAt: true },
+      }),
+    ]);
     return {
       type: 'MAJOR_EVENT_SUBSCRIPTIONS_INVALIDATED',
       subscriptions,

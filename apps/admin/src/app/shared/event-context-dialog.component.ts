@@ -18,15 +18,40 @@ export interface EventContextDialogData {
   selector: 'app-event-context-dialog',
   imports: [MatDialogModule, MatButtonModule, EventContextPickerComponent],
   template: `
-    <h2 mat-dialog-title>{{ data.parentContext ? (data.childKind === 'group' ? 'Grupos deste contexto' : 'Eventos deste contexto') : 'Escolher contexto' }}</h2>
+    <h2 mat-dialog-title>
+      {{
+        data.parentContext
+          ? data.childKind === 'group'
+            ? 'Grupos deste contexto'
+            : 'Eventos deste contexto'
+          : 'Escolher contexto'
+      }}
+    </h2>
     <mat-dialog-content>
-      <app-event-context-picker [searchOnly]="true" [context]="data.context"
-        [allowGroups]="data.allowGroups" [parentContext]="data.parentContext ?? null" [childKind]="data.childKind ?? null" (contextChange)="select($event)" />
+      <app-event-context-picker
+        [searchOnly]="true"
+        [context]="data.context"
+        [allowGroups]="data.allowGroups"
+        [parentContext]="data.parentContext ?? null"
+        [childKind]="data.childKind ?? null"
+        (contextChange)="select($event)" />
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      @if (canCreate(permissions, 'event') && (!data.parentContext || data.childKind === 'event' && data.parentContext.kind !== 'event')) { <button mat-button type="button" (click)="create('event')">Novo evento</button> }
-      @if (canCreate(permissions, 'group') && (!data.parentContext || data.childKind === 'group' && data.parentContext.kind === 'major-event')) { <button mat-button type="button" (click)="create('group')">Novo grupo</button> }
-      @if (canCreate(permissions, 'major-event') && !data.parentContext) { <button mat-button type="button" (click)="create('major-event')">Novo grande evento</button> }
+      @if (
+        canCreate(permissions, 'event') &&
+        (!data.parentContext || (data.childKind === 'event' && data.parentContext.kind !== 'event'))
+      ) {
+        <button mat-button type="button" (click)="create('event')">Novo evento</button>
+      }
+      @if (
+        canCreate(permissions, 'group') &&
+        (!data.parentContext || (data.childKind === 'group' && data.parentContext.kind === 'major-event'))
+      ) {
+        <button mat-button type="button" (click)="create('group')">Novo grupo</button>
+      }
+      @if (canCreate(permissions, 'major-event') && !data.parentContext) {
+        <button mat-button type="button" (click)="create('major-event')">Novo grande evento</button>
+      }
       <button mat-button type="button" (click)="cancel()">Cancelar</button>
     </mat-dialog-actions>
   `,
@@ -42,7 +67,9 @@ export class EventContextDialogComponent {
   }
 
   create(kind: 'event' | 'group' | 'major-event'): void {
-    if (!this.canCreate(this.permissions, kind)) return;
+    if (!this.canCreate(this.permissions, kind)) {
+      return;
+    }
     this.dialog.close({ create: kind });
   }
 

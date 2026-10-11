@@ -73,7 +73,10 @@ const meta: Meta<SportsBracketStoryArgs> = {
       options: ['all', 'mixed', 'none'],
       description: 'Choose which generated teams have a logo.',
     },
-    editingMatchId: { control: 'text', description: 'Match ID displayed in the editing state; clear for no active match.' },
+    editingMatchId: {
+      control: 'text',
+      description: 'Match ID displayed in the editing state; clear for no active match.',
+    },
     empty: { control: 'boolean', description: 'Show the unpublished tournament state.' },
   },
   render: (args) => ({

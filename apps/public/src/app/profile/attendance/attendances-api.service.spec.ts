@@ -28,7 +28,12 @@ describe('AttendancesApiService', () => {
     for (const request of requests) {
       const query = String(request.request.body.query);
       if (query.includes('query CurrentUserEventDetails')) {
-        request.flush({ data: { currentUserEventSubscription: null, currentUserEventAttendance: { eventId: 'past-event', attendedAt: event.endDate, event } } });
+        request.flush({
+          data: {
+            currentUserEventSubscription: null,
+            currentUserEventAttendance: { eventId: 'past-event', attendedAt: event.endDate, event },
+          },
+        });
       } else if (query.includes('currentUserCertificates')) {
         request.flush({ data: { currentUserCertificates: [] } });
       } else if (query.includes('currentUserOrganizerInfo')) {
@@ -37,7 +42,9 @@ describe('AttendancesApiService', () => {
         request.flush({ errors: [{ message: 'Event was not found.' }] });
       }
     }
-    await expect(result).resolves.toEqual(expect.objectContaining({ event, attendance: expect.objectContaining({ eventId: 'past-event' }) }));
+    await expect(result).resolves.toEqual(
+      expect.objectContaining({ event, attendance: expect.objectContaining({ eventId: 'past-event' }) }),
+    );
   });
 
   it('maps the mixed subscription feed into the public profile model', async () => {

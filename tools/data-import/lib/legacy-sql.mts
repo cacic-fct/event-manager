@@ -174,7 +174,9 @@ export async function parseInsertRowsByTable(
   while (true) {
     statementPattern.lastIndex = position;
     const match = statementPattern.exec(content);
-    if (!match) break;
+    if (!match) {
+      break;
+    }
 
     const statementEnd = findStatementEnd(content, statementPattern.lastIndex);
     const tableName = match[1];
@@ -186,9 +188,13 @@ export async function parseInsertRowsByTable(
       const columnNames = rawColumns.split(',').map(cleanIdentifier);
       const rows = parseValuesBlock(content.slice(statementPattern.lastIndex, statementEnd));
       for (const row of rows) {
-        if (row.length !== columnNames.length) continue;
+        if (row.length !== columnNames.length) {
+          continue;
+        }
         const tableRows = result[tableName];
-        if (tableRows === undefined) throw new Error(`Unexpected SQL table '${tableName}'.`);
+        if (tableRows === undefined) {
+          throw new Error(`Unexpected SQL table '${tableName}'.`);
+        }
         tableRows.push(Object.fromEntries(columnNames.map((column, index) => [column, row[index]])) as ParsedSqlRow);
       }
     }
@@ -209,13 +215,18 @@ export function findStatementEnd(content: string, start: number): number {
           index += 1;
           continue;
         }
-        if (isBackslashEscaped(content, index)) continue;
+        if (isBackslashEscaped(content, index)) {
+          continue;
+        }
         inString = false;
       }
       continue;
     }
-    if (character === "'") inString = true;
-    else if (character === ';') return index;
+    if (character === "'") {
+      inString = true;
+    } else if (character === ';') {
+      return index;
+    }
   }
   throw new Error('Could not find the end of SQL statement.');
 }
@@ -240,7 +251,9 @@ export function parseValuesBlock(valuesBlock: string): SqlLiteral[][] {
           index += 1;
           continue;
         }
-        if (isBackslashEscaped(valuesBlock, index)) continue;
+        if (isBackslashEscaped(valuesBlock, index)) {
+          continue;
+        }
         inString = false;
       }
       continue;
@@ -249,7 +262,9 @@ export function parseValuesBlock(valuesBlock: string): SqlLiteral[][] {
       inString = true;
       continue;
     }
-    if (character !== '(') continue;
+    if (character !== '(') {
+      continue;
+    }
     const tupleEnd = findClosingParenthesis(valuesBlock, index);
     rows.push(parseTuple(valuesBlock.slice(index + 1, tupleEnd)));
     index = tupleEnd;
@@ -269,16 +284,22 @@ export function findClosingParenthesis(content: string, start: number): number {
           index += 1;
           continue;
         }
-        if (isBackslashEscaped(content, index)) continue;
+        if (isBackslashEscaped(content, index)) {
+          continue;
+        }
         inString = false;
       }
       continue;
     }
-    if (character === "'") inString = true;
-    else if (character === '(') depth += 1;
-    else if (character === ')') {
+    if (character === "'") {
+      inString = true;
+    } else if (character === '(') {
+      depth += 1;
+    } else if (character === ')') {
       depth -= 1;
-      if (depth === 0) return index;
+      if (depth === 0) {
+        return index;
+      }
     }
   }
   throw new Error('Could not find closing parenthesis in values block.');
@@ -297,13 +318,16 @@ export function parseTuple(tupleContent: string): SqlLiteral[] {
           index += 1;
           continue;
         }
-        if (isBackslashEscaped(tupleContent, index)) continue;
+        if (isBackslashEscaped(tupleContent, index)) {
+          continue;
+        }
         inString = false;
       }
       continue;
     }
-    if (character === "'") inString = true;
-    else if (character === ',') {
+    if (character === "'") {
+      inString = true;
+    } else if (character === ',') {
       tokens.push(tupleContent.slice(tokenStart, index));
       tokenStart = index + 1;
     }
@@ -313,14 +337,20 @@ export function parseTuple(tupleContent: string): SqlLiteral[] {
 }
 
 export function parseSqlLiteral(token: string): SqlLiteral {
-  if (token.toUpperCase() === 'NULL') return null;
+  if (token.toUpperCase() === 'NULL') {
+    return null;
+  }
   if (token.startsWith("'") && token.endsWith("'")) {
     const normalized = decodeLegacySqlString(token.slice(1, -1));
-    if (normalized.trim().toLowerCase() === 'null') return null;
+    if (normalized.trim().toLowerCase() === 'null') {
+      return null;
+    }
     return normalized;
   }
   if (SQL_NUMBER_PATTERN.test(token)) {
-    if (token.includes('.')) return token;
+    if (token.includes('.')) {
+      return token;
+    }
     const number = Number(token);
     return Number.isSafeInteger(number) ? number : token;
   }
@@ -396,26 +426,36 @@ function makeUtcDate(year: number, month: number, day: number, hours = 0, minute
 
 export function parseMysqlDate(rawValue: unknown): Date | null {
   const text = coerceText(rawValue);
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   const match = MYSQL_DATE_PATTERN.exec(text);
   return match ? makeUtcDate(Number(match[1]), Number(match[2]), Number(match[3])) : null;
 }
 
 export function parseMysqlTime(rawValue: unknown): MysqlTime | null {
   const text = coerceText(rawValue);
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   const match = MYSQL_TIME_PATTERN.exec(text);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   const seconds = Number(match[3] ?? 0);
-  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  if (hours > 23 || minutes > 59 || seconds > 59) {
+    return null;
+  }
   return { hours, minutes, seconds };
 }
 
 export function parseMysqlDatetime(rawValue: unknown): Date | null {
   const text = coerceText(rawValue);
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   const match = MYSQL_DATETIME_PATTERN.exec(text);
   return match
     ? makeUtcDate(
@@ -430,7 +470,9 @@ export function parseMysqlDatetime(rawValue: unknown): Date | null {
 }
 
 export function combineDateAndTime(eventDate: Date | null, eventTime: MysqlTime | null): Date | null {
-  if (!(eventDate instanceof Date) || Number.isNaN(eventDate.getTime())) return null;
+  if (!(eventDate instanceof Date) || Number.isNaN(eventDate.getTime())) {
+    return null;
+  }
   const normalizedTime = eventTime ?? { hours: 0, minutes: 0, seconds: 0 };
   return makeUtcDate(
     eventDate.getUTCFullYear(),
@@ -447,13 +489,19 @@ export function atStartOfDay(eventDate: Date | null): Date | null {
 }
 
 export function decimalToInt(rawValue: unknown): number | null {
-  if (rawValue == null) return null;
-  if (typeof rawValue === 'boolean') return rawValue ? 1 : 0;
+  if (rawValue == null) {
+    return null;
+  }
+  if (typeof rawValue === 'boolean') {
+    return rawValue ? 1 : 0;
+  }
   if (typeof rawValue === 'number') {
     return Number.isFinite(rawValue) && Number.isSafeInteger(Math.trunc(rawValue)) ? Math.trunc(rawValue) : null;
   }
   const text = String(rawValue).trim();
-  if (!SQL_NUMBER_PATTERN.test(text)) return null;
+  if (!SQL_NUMBER_PATTERN.test(text)) {
+    return null;
+  }
   const integerText = text.split('.', 1)[0] ?? '';
   try {
     const integer = BigInt(integerText);
@@ -466,10 +514,16 @@ export function decimalToInt(rawValue: unknown): number | null {
 }
 
 export function coerceText(value: unknown, { fixMojibake = false }: { fixMojibake?: boolean } = {}): string | null {
-  if (value == null) return null;
+  if (value == null) {
+    return null;
+  }
   let text = String(value).trim();
-  if (!text || text.toLowerCase() === 'null') return null;
-  if (fixMojibake) text = repairMojibake(text);
+  if (!text || text.toLowerCase() === 'null') {
+    return null;
+  }
+  if (fixMojibake) {
+    text = repairMojibake(text);
+  }
   text = text.replace(WHITESPACE_PATTERN, ' ').trim();
   return text && text.toLowerCase() !== 'null' ? text : null;
 }
@@ -477,10 +531,16 @@ export function coerceText(value: unknown, { fixMojibake = false }: { fixMojibak
 export function repairMojibake(text: string): string {
   let current = text;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (!looksLikeMojibake(current)) break;
-    if ([...current].some((character) => (character.codePointAt(0) ?? 0) > 0xff)) break;
+    if (!looksLikeMojibake(current)) {
+      break;
+    }
+    if ([...current].some((character) => (character.codePointAt(0) ?? 0) > 0xff)) {
+      break;
+    }
     const candidate = Buffer.from(current, 'latin1').toString('utf8');
-    if (candidate.includes('\uFFFD') || mojibakeScore(candidate) >= mojibakeScore(current)) break;
+    if (candidate.includes('\uFFFD') || mojibakeScore(candidate) >= mojibakeScore(current)) {
+      break;
+    }
     current = candidate;
   }
   return current;
@@ -496,10 +556,16 @@ export function mojibakeScore(text: string): number {
 
 export function normalizeCpf(rawValue: unknown): string | null {
   const text = coerceText(rawValue);
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   let digits = [...text].filter((character) => /[0-9]/u.test(character)).join('');
-  if (!digits) return null;
-  if (digits.length > 11) digits = digits.slice(-11);
+  if (!digits) {
+    return null;
+  }
+  if (digits.length > 11) {
+    digits = digits.slice(-11);
+  }
   return digits.padStart(11, '0');
 }
 
@@ -510,7 +576,9 @@ export function normalizeEmail(rawValue: unknown): string | null {
 
 export function normalizePersonName(rawName: unknown): string | null {
   const text = coerceText(rawName, { fixMojibake: true });
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   const tokens = text.split(' ').filter(Boolean);
   return tokens.length ? tokens.map((token, index) => normalizeNameToken(token, index)).join(' ') : null;
 }
@@ -524,8 +592,12 @@ export function normalizeNameToken(token: string, tokenIndex: number): string {
         .split("'")
         .map((apostropheChunk, apostropheIndex) => {
           const lowered = apostropheChunk.toLowerCase();
-          if (tokenIndex > 0 && apostropheIndex === 0 && LOWERCASE_NAME_PARTICLES.has(lowered)) return lowered;
-          if (ROMAN_NUMERAL_PATTERN.test(apostropheChunk)) return apostropheChunk.toUpperCase();
+          if (tokenIndex > 0 && apostropheIndex === 0 && LOWERCASE_NAME_PARTICLES.has(lowered)) {
+            return lowered;
+          }
+          if (ROMAN_NUMERAL_PATTERN.test(apostropheChunk)) {
+            return apostropheChunk.toUpperCase();
+          }
           return apostropheChunk.slice(0, 1).toUpperCase() + apostropheChunk.slice(1).toLowerCase();
         })
         .join("'"),
@@ -535,7 +607,9 @@ export function normalizeNameToken(token: string, tokenIndex: number): string {
 
 export function stripHtml(rawText: unknown): string | null {
   const text = coerceText(rawText, { fixMojibake: true });
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   const stripped = text.replace(HTML_TAG_PATTERN, ' ').replace(WHITESPACE_PATTERN, ' ').trim();
   return stripped || null;
 }
@@ -730,7 +804,9 @@ export async function writeLegacySqlPayload(
     await db.query('ROLLBACK').catch(() => undefined);
     throw error;
   } finally {
-    if (ownsClient) await db.end?.();
+    if (ownsClient) {
+      await db.end?.();
+    }
   }
 }
 
@@ -740,7 +816,9 @@ async function insertRows<Row>(
   rows: readonly Row[],
   valuesForRow: (row: Row) => readonly unknown[],
 ): Promise<void> {
-  for (const row of rows) await db.query(query, valuesForRow(row));
+  for (const row of rows) {
+    await db.query(query, valuesForRow(row));
+  }
 }
 
 export async function reconcilePeopleIdsWithDatabase(
@@ -758,11 +836,15 @@ export async function reconcilePeopleIdsWithDatabase(
       'SELECT id, "externalRef" FROM people WHERE "externalRef" = ANY($1::text[])',
       [externalRefs],
     );
-    for (const row of result.rows) resolvedPersonIdByExternalRef.set(String(row.externalRef), String(row.id));
+    for (const row of result.rows) {
+      resolvedPersonIdByExternalRef.set(String(row.externalRef), String(row.id));
+    }
   }
   for (const row of peopleRows) {
     const resolvedPersonId = resolvedPersonIdByExternalRef.get(row.externalRef);
-    if (!resolvedPersonId) throw new Error(`Missing resolved personId for externalRef '${row.externalRef}'.`);
+    if (!resolvedPersonId) {
+      throw new Error(`Missing resolved personId for externalRef '${row.externalRef}'.`);
+    }
     row.id = resolvedPersonId;
   }
   return { oldPersonIdToExternalRef, resolvedPersonIdByExternalRef };
@@ -781,11 +863,17 @@ export function rebindPeopleForeignKeys(
   ];
   for (const rows of collections) {
     for (const row of rows) {
-      if (typeof row.personId !== 'string') throw new Error('Unexpected personId type while rebinding references.');
+      if (typeof row.personId !== 'string') {
+        throw new Error('Unexpected personId type while rebinding references.');
+      }
       const externalRef = oldPersonIdToExternalRef.get(row.personId);
-      if (!externalRef) throw new Error(`Missing externalRef mapping for personId '${row.personId}'.`);
+      if (!externalRef) {
+        throw new Error(`Missing externalRef mapping for personId '${row.personId}'.`);
+      }
       const resolvedPersonId = resolvedPersonIdByExternalRef.get(externalRef);
-      if (!resolvedPersonId) throw new Error(`Missing resolved personId for externalRef '${externalRef}'.`);
+      if (!resolvedPersonId) {
+        throw new Error(`Missing resolved personId for externalRef '${externalRef}'.`);
+      }
       row.personId = resolvedPersonId;
     }
   }

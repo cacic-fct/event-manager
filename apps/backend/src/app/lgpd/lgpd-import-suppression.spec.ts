@@ -23,7 +23,11 @@ describe('erased import suppression', () => {
       { sourceNamespace: 'evcomp', entityType: 'event', sourceId: '10', targetId: 'erased-person' },
     ];
     const delegate = {
-      findMany: jest.fn().mockImplementation(async () => records.filter((row) => row.entityType === 'person' && row.targetId === 'erased-person')),
+      findMany: jest
+        .fn()
+        .mockImplementation(async () =>
+          records.filter((row) => row.entityType === 'person' && row.targetId === 'erased-person'),
+        ),
       findUnique: jest.fn().mockResolvedValue(existingKey ? { targetId: existingKey } : null),
       findFirst: jest.fn().mockResolvedValue(null),
       upsert: jest.fn().mockImplementation(async ({ create }) => {
@@ -51,20 +55,31 @@ describe('erased import suppression', () => {
     await expect(suppressErasedImportPeople(tx, ['erased-person'])).resolves.toBe(1);
 
     expect(records).toContainEqual({
-      sourceNamespace: 'evcomp', entityType: 'person_suppression', sourceId: personToken, targetId: 'suppressed',
+      sourceNamespace: 'evcomp',
+      entityType: 'person_suppression',
+      sourceId: personToken,
+      targetId: 'suppressed',
     });
     expect(records).toContainEqual({
-      sourceNamespace: 'evcomp', entityType: 'person_suppression_key', sourceId: 'v1', targetId: keyFingerprint,
+      sourceNamespace: 'evcomp',
+      entityType: 'person_suppression_key',
+      sourceId: 'v1',
+      targetId: keyFingerprint,
     });
     expect(records).not.toContainEqual(expect.objectContaining({ entityType: 'person', sourceId: '10' }));
     expect(records).toContainEqual(expect.objectContaining({ entityType: 'person', targetId: 'other-person' }));
     expect(records).toContainEqual(expect.objectContaining({ entityType: 'event', sourceId: '10' }));
-    expect(delegate.createMany.mock.invocationCallOrder[0]).toBeLessThan(delegate.deleteMany.mock.invocationCallOrder[0]);
+    expect(delegate.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      delegate.deleteMany.mock.invocationCallOrder[0],
+    );
   });
 
   it.each([undefined, 'short'])('rejects erasure without a sufficiently strong secret (%s)', async (value) => {
-    if (value === undefined) delete process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
-    else process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = value;
+    if (value === undefined) {
+      delete process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
+    } else {
+      process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = value;
+    }
     const { tx, delegate } = transaction();
     await expect(suppressErasedImportPeople(tx, ['erased-person'])).rejects.toThrow('at least 32 bytes');
     expect(delegate.deleteMany).not.toHaveBeenCalled();
@@ -102,7 +117,9 @@ describe('erased import suppression', () => {
     delegate.findMany.mockResolvedValue([]);
     orphanQuery.mockResolvedValue([records[0]]);
     await expect(suppressErasedImportPeople(tx, [])).resolves.toBe(1);
-    expect(records).toContainEqual(expect.objectContaining({ entityType: 'person_suppression', sourceId: personToken }));
+    expect(records).toContainEqual(
+      expect.objectContaining({ entityType: 'person_suppression', sourceId: personToken }),
+    );
     expect(records).not.toContainEqual(expect.objectContaining({ entityType: 'person', sourceId: '10' }));
   });
 });

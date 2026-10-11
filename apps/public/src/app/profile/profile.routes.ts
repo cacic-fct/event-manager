@@ -39,8 +39,7 @@ export const routes: Route[] = [
     path: 'wallet/ticket-transfers/:transferId',
     title: 'Pedido de transferência',
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./ticketing/ticket-transfer-details-page').then((m) => m.TicketTransferDetailsPage),
+    loadComponent: () => import('./ticketing/ticket-transfer-details-page').then((m) => m.TicketTransferDetailsPage),
   },
   {
     path: 'forms/:formId',

@@ -105,12 +105,20 @@ export class PrizeDrawService {
       return [];
     }
     const filtersAnd: Prisma.PrizeDrawWhereInput[] = [];
-    if (targets) filtersAnd.push({ OR: this.scopedTargetWhere(targets) });
+    if (targets) {
+      filtersAnd.push({ OR: this.scopedTargetWhere(targets) });
+    }
     const normalizedQuery = filters.query?.trim();
-    if (normalizedQuery) filtersAnd.push({ title: { contains: normalizedQuery, mode: 'insensitive' } });
-    if (filters.eventId) filtersAnd.push({ eventId: filters.eventId });
+    if (normalizedQuery) {
+      filtersAnd.push({ title: { contains: normalizedQuery, mode: 'insensitive' } });
+    }
+    if (filters.eventId) {
+      filtersAnd.push({ eventId: filters.eventId });
+    }
     if (filters.majorEventId) {
-      filtersAnd.push({ OR: [{ majorEventId: filters.majorEventId }, { event: { majorEventId: filters.majorEventId } }] });
+      filtersAnd.push({
+        OR: [{ majorEventId: filters.majorEventId }, { event: { majorEventId: filters.majorEventId } }],
+      });
     }
     const records = await this.prisma.prizeDraw.findMany({
       where: { deletedAt: null, ...(filtersAnd.length ? { AND: filtersAnd } : {}) },
@@ -159,7 +167,9 @@ export class PrizeDrawService {
     }
     await this.assertTargetExists(input);
     await this.assertPersonInputsScoped(input);
-    if (existing) this.assertMutableConfiguration(existing, input);
+    if (existing) {
+      this.assertMutableConfiguration(existing, input);
+    }
 
     const drawId = await this.prisma.$transaction(async (tx) => {
       let before: Record<string, unknown> | null = null;
@@ -169,7 +179,9 @@ export class PrizeDrawService {
           where: { id: existing.id, deletedAt: null },
           include: DRAW_INCLUDE,
         });
-        if (!current) throw new NotFoundException('Sorteio não encontrado.');
+        if (!current) {
+          throw new NotFoundException('Sorteio não encontrado.');
+        }
         this.assertMutableConfiguration(current, input);
         before = {
           ...this.drawAuditConfiguration(current),
@@ -228,10 +240,16 @@ export class PrizeDrawService {
       async (tx) => {
         await this.lockDraw(tx, drawId);
         const draw = await tx.prizeDraw.findFirst({ where: { id: drawId, deletedAt: null } });
-        if (!draw) throw new NotFoundException('Sorteio não encontrado.');
-        if (draw.frozenAt) throw new ConflictException('A lista de participantes já está congelada.');
+        if (!draw) {
+          throw new NotFoundException('Sorteio não encontrado.');
+        }
+        if (draw.frozenAt) {
+          throw new ConflictException('A lista de participantes já está congelada.');
+        }
         const entries = await this.eligibility.resolve(draw, { client: tx });
-        if (entries.length === 0) throw new BadRequestException('Não há participantes elegíveis para congelar.');
+        if (entries.length === 0) {
+          throw new BadRequestException('Não há participantes elegíveis para congelar.');
+        }
         const frozenAt = new Date();
         await this.eligibility.freeze(draw, frozenAt, actorId, tx);
         await this.recordDrawAction(tx, draw, actor, {
@@ -256,8 +274,12 @@ export class PrizeDrawService {
       async (tx) => {
         await this.lockDraw(tx, drawId);
         const draw = await tx.prizeDraw.findFirst({ where: { id: drawId, deletedAt: null } });
-        if (!draw) throw new NotFoundException('Sorteio não encontrado.');
-        if (!draw.frozenAt) throw new ConflictException('A lista de participantes não está congelada.');
+        if (!draw) {
+          throw new NotFoundException('Sorteio não encontrado.');
+        }
+        if (!draw.frozenAt) {
+          throw new ConflictException('A lista de participantes não está congelada.');
+        }
         await tx.prizeDrawFrozenEntry.deleteMany({ where: { drawId } });
         await tx.prizeDraw.update({
           where: { id: drawId },
@@ -287,7 +309,9 @@ export class PrizeDrawService {
 
   async spin(input: SpinPrizeDrawInput, actor: AuthenticatedUser | undefined): Promise<PrizeDrawSpinResult> {
     const actorId = this.requireActorId(actor);
-    if (input.demo) return this.demoSpin(input);
+    if (input.demo) {
+      return this.demoSpin(input);
+    }
 
     const created = await this.prisma.$transaction(
       async (tx) => {
@@ -302,7 +326,9 @@ export class PrizeDrawService {
             },
           },
         });
-        if (!draw) throw new NotFoundException('Sorteio não encontrado.');
+        if (!draw) {
+          throw new NotFoundException('Sorteio não encontrado.');
+        }
 
         const activeSpins = draw.spins.filter((spin) => !spin.undoneAt);
         if (draw.spinLimit !== null && activeSpins.length >= draw.spinLimit) {
@@ -376,7 +402,13 @@ export class PrizeDrawService {
           summary: 'Giro do sorteio realizado.',
           before: { activeSpinCount: activeSpins.length },
           after: { activeSpinCount: activeSpins.length + 1 },
-          metadata: { spinId: spin.id, personId: winner.personId, sequence, entrantCount: entries.length, winnerWeight: winner.weight },
+          metadata: {
+            spinId: spin.id,
+            personId: winner.personId,
+            sequence,
+            entrantCount: entries.length,
+            winnerWeight: winner.weight,
+          },
         });
         return { draw, spin, winner, entries, animation, activeCount: activeSpins.length, revision: updated.revision };
       },
@@ -410,7 +442,9 @@ export class PrizeDrawService {
           where: { drawId, undoneAt: null },
           orderBy: [{ sequence: 'desc' }, { drawnAt: 'desc' }],
         });
-        if (!spin) throw new ConflictException('Não há giro para desfazer.');
+        if (!spin) {
+          throw new ConflictException('Não há giro para desfazer.');
+        }
         const now = new Date();
         const updatedSpin = await tx.prizeDrawSpin.update({
           where: { id: spin.id },
@@ -462,8 +496,12 @@ export class PrizeDrawService {
         },
       },
     });
-    if (!spin) throw new NotFoundException('Giro não encontrado.');
-    if (spin.undoneAt) throw new ConflictException('O contato de um resultado desfeito não pode ser exibido.');
+    if (!spin) {
+      throw new NotFoundException('Giro não encontrado.');
+    }
+    if (spin.undoneAt) {
+      throw new ConflictException('O contato de um resultado desfeito não pode ser exibido.');
+    }
     const person = spin.winnerPerson?.mergedInto ?? spin.winnerPerson;
     return {
       spinId: spin.id,
@@ -479,7 +517,9 @@ export class PrizeDrawService {
     user: AuthenticatedUser | undefined,
   ): Promise<PrizeDraw[]> {
     const targets = [input.eventId, input.majorEventId, input.eventGroupId].filter(Boolean);
-    if (targets.length !== 1) throw new BadRequestException('Informe um único evento, grupo ou grande evento.');
+    if (targets.length !== 1) {
+      throw new BadRequestException('Informe um único evento, grupo ou grande evento.');
+    }
     await this.assertPublicTarget(input);
     const audienceWhere = await this.publicAudienceWhere(user);
     const records = await this.prisma.prizeDraw.findMany({
@@ -554,7 +594,9 @@ export class PrizeDrawService {
     });
     const counts = new Map<string, number>();
     const increment = (type: string, id: string | null | undefined) => {
-      if (!id) return;
+      if (!id) {
+        return;
+      }
       const key = `${type}:${id}`;
       counts.set(key, (counts.get(key) ?? 0) + 1);
     };
@@ -638,9 +680,13 @@ export class PrizeDrawService {
   }
 
   private chooseWinner(entries: PrizeDrawEligibleRecord[]): PrizeDrawEligibleRecord {
-    if (entries.length === 0) throw new ConflictException('Não há participantes elegíveis para este giro.');
+    if (entries.length === 0) {
+      throw new ConflictException('Não há participantes elegíveis para este giro.');
+    }
     const total = this.totalWeight(entries);
-    if (total > MAX_TOTAL_WEIGHT) throw new BadRequestException('A soma dos pesos do sorteio é muito alta.');
+    if (total > MAX_TOTAL_WEIGHT) {
+      throw new BadRequestException('A soma dos pesos do sorteio é muito alta.');
+    }
     return selectWeightedEntry(entries, randomInt(total));
   }
 
@@ -664,7 +710,9 @@ export class PrizeDrawService {
       : record.majorEvent
         ? { type: PrizeDrawTargetType.MAJOR_EVENT, id: record.majorEvent.id, name: record.majorEvent.name }
         : null;
-    if (!target) throw new ConflictException(`Sorteio ${record.id} sem vínculo válido.`);
+    if (!target) {
+      throw new ConflictException(`Sorteio ${record.id} sem vínculo válido.`);
+    }
     return {
       id: record.id,
       title: record.title,
@@ -722,7 +770,9 @@ export class PrizeDrawService {
   ): Promise<Map<string, PrizeDrawWeightBreakdown[]>> {
     const drawIds = records.filter((record) => record.spins.length > 0).map((record) => record.id);
     const result = new Map<string, PrizeDrawWeightBreakdown[]>();
-    if (drawIds.length === 0) return result;
+    if (drawIds.length === 0) {
+      return result;
+    }
     const groups = await this.prisma.prizeDrawSpinEntry.groupBy({
       by: ['spinId', 'weight'],
       where: { spin: { drawId: { in: drawIds } } },
@@ -763,7 +813,9 @@ export class PrizeDrawService {
   }
 
   private validateInput(input: SavePrizeDrawInput): void {
-    if (!input.title.trim()) throw new BadRequestException('Informe um título para o sorteio.');
+    if (!input.title.trim()) {
+      throw new BadRequestException('Informe um título para o sorteio.');
+    }
     const hasEvent = Boolean(input.eventId?.trim());
     const hasMajorEvent = Boolean(input.majorEventId?.trim());
     if (
@@ -779,8 +831,9 @@ export class PrizeDrawService {
       throw new BadRequestException('A contagem regressiva deve ter 3 ou 5 segundos.');
     }
     if (input.spinLimit === null || input.spinLimit === undefined) {
-      if (input.plannedSpins.length > 0)
+      if (input.plannedSpins.length > 0) {
         throw new BadRequestException('Giros planejados exigem uma quantidade definida.');
+      }
     } else {
       if (input.plannedSpins.length !== input.spinLimit) {
         throw new BadRequestException('Configure cada giro da quantidade definida.');
@@ -804,11 +857,13 @@ export class PrizeDrawService {
       throw new BadRequestException('Pesos individuais só podem ser usados no modo ponderado.');
     }
     const personIds = input.manualEntries.map((entry) => entry.personId).filter((id): id is string => Boolean(id));
-    if (new Set(personIds).size !== personIds.length)
+    if (new Set(personIds).size !== personIds.length) {
       throw new BadRequestException('Uma pessoa manual não pode aparecer duas vezes.');
+    }
     const weightedIds = input.weightOverrides.map((entry) => entry.personId);
-    if (new Set(weightedIds).size !== weightedIds.length)
+    if (new Set(weightedIds).size !== weightedIds.length) {
       throw new BadRequestException('Cada pessoa deve ter apenas um peso.');
+    }
     if (new Set(input.excludedPersonIds).size !== input.excludedPersonIds.length) {
       throw new BadRequestException('Cada pessoa deve ser excluída apenas uma vez.');
     }
@@ -833,7 +888,9 @@ export class PrizeDrawService {
     if (input.spinLimit !== null && input.spinLimit !== undefined && input.spinLimit < activeSpinCount) {
       throw new ConflictException('A quantidade de giros não pode ser menor que os resultados existentes.');
     }
-    if (!existing.frozenAt) return;
+    if (!existing.frozenAt) {
+      return;
+    }
     const eligibilityChanged =
       targetChanged ||
       existing.includePresent !== input.includePresent ||
@@ -890,21 +947,24 @@ export class PrizeDrawService {
       metadata?: Record<string, unknown>;
     },
   ): Promise<void> {
-    return this.auditLog.record({
-      entityType: AuditLogEntityType.SYSTEM,
-      entityId: `prize-draw:${draw.id}`,
-      entityLabel: draw.title,
-      operation: options.operation,
-      actor,
-      before: options.before,
-      after: options.after,
-      summary: options.summary,
-      scope: { permission: options.permission, eventId: draw.eventId, majorEventId: draw.majorEventId },
-      metadata: { resourceType: 'PRIZE_DRAW', action: options.action, drawId: draw.id, ...options.metadata },
-      // Each entry represents one explicit operator action, including edits to participant weights.
-      force: true,
-      squashWindowMs: 0,
-    }, tx);
+    return this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: `prize-draw:${draw.id}`,
+        entityLabel: draw.title,
+        operation: options.operation,
+        actor,
+        before: options.before,
+        after: options.after,
+        summary: options.summary,
+        scope: { permission: options.permission, eventId: draw.eventId, majorEventId: draw.majorEventId },
+        metadata: { resourceType: 'PRIZE_DRAW', action: options.action, drawId: draw.id, ...options.metadata },
+        // Each entry represents one explicit operator action, including edits to participant weights.
+        force: true,
+        squashWindowMs: 0,
+      },
+      tx,
+    );
   }
 
   private drawData(input: SavePrizeDrawInput): Prisma.PrizeDrawUncheckedCreateInput {
@@ -945,7 +1005,9 @@ export class PrizeDrawService {
       };
       if (planned.id) {
         const updated = await tx.prizeDrawPlannedSpin.updateMany({ where: { id: planned.id, drawId }, data });
-        if (updated.count !== 1) throw new BadRequestException('Um giro planejado não pertence a este sorteio.');
+        if (updated.count !== 1) {
+          throw new BadRequestException('Um giro planejado não pertence a este sorteio.');
+        }
       } else {
         await tx.prizeDrawPlannedSpin.create({ data: { drawId, ...data } });
       }
@@ -986,7 +1048,9 @@ export class PrizeDrawService {
             select: { id: true, name: true },
           })
         : (exactNameMatches[0] ?? null);
-      if (manual.personId && !person) throw new BadRequestException(`Pessoa manual ${manual.personId} não encontrada.`);
+      if (manual.personId && !person) {
+        throw new BadRequestException(`Pessoa manual ${manual.personId} não encontrada.`);
+      }
       const data = {
         personId: person?.id ?? null,
         name: person?.name ?? manual.name.trim(),
@@ -994,7 +1058,9 @@ export class PrizeDrawService {
       };
       if (manual.id) {
         const updated = await tx.prizeDrawManualEntry.updateMany({ where: { id: manual.id, drawId }, data });
-        if (updated.count !== 1) throw new BadRequestException('Uma entrada manual não pertence a este sorteio.');
+        if (updated.count !== 1) {
+          throw new BadRequestException('Uma entrada manual não pertence a este sorteio.');
+        }
       } else {
         await tx.prizeDrawManualEntry.create({ data: { drawId, ...data, createdById: actorId } });
       }
@@ -1011,8 +1077,9 @@ export class PrizeDrawService {
       const people = await tx.people.count({
         where: { AND: [this.relatedPersonWhere(input)], id: { in: personIds }, mergedIntoId: null },
       });
-      if (people !== personIds.length)
+      if (people !== personIds.length) {
         throw new BadRequestException('Um ou mais pesos pertencem a pessoas indisponíveis.');
+      }
     }
     await tx.prizeDrawWeightOverride.deleteMany({
       where: { drawId, ...(personIds.length ? { personId: { notIn: personIds } } : {}) },
@@ -1066,7 +1133,9 @@ export class PrizeDrawService {
               select: { id: true },
             })
           : null;
-    if (!target) throw new NotFoundException('Evento vinculado ao sorteio não encontrado.');
+    if (!target) {
+      throw new NotFoundException('Evento vinculado ao sorteio não encontrado.');
+    }
   }
 
   private async assertPersonInputsScoped(input: SavePrizeDrawInput): Promise<void> {
@@ -1079,7 +1148,9 @@ export class PrizeDrawService {
         ].filter((id): id is string => Boolean(id)),
       ),
     ];
-    if (personIds.length === 0) return;
+    if (personIds.length === 0) {
+      return;
+    }
     const count = await this.prisma.people.count({
       where: { AND: [this.relatedPersonWhere(input)], id: { in: personIds }, mergedIntoId: null },
     });
@@ -1149,7 +1220,9 @@ export class PrizeDrawService {
             },
             select: { id: true },
           });
-    if (!visible) throw new NotFoundException('Página pública de sorteios não encontrada.');
+    if (!visible) {
+      throw new NotFoundException('Página pública de sorteios não encontrada.');
+    }
   }
 
   private scopedTargetWhere(targets: {
@@ -1178,7 +1251,9 @@ export class PrizeDrawService {
 
   private async publicAudienceWhere(user: AuthenticatedUser | undefined): Promise<Prisma.PrizeDrawWhereInput | null> {
     const adminTargets = await this.policy.accessibleEventTargets(user, Permission.PrizeDraw.Read);
-    if (adminTargets === null) return null;
+    if (adminTargets === null) {
+      return null;
+    }
 
     const clauses = this.scopedTargetWhere(adminTargets);
     const personIds = await this.publicAudiencePersonIds(user);
@@ -1197,7 +1272,9 @@ export class PrizeDrawService {
   }
 
   private async publicAudiencePersonIds(user: AuthenticatedUser | undefined): Promise<string[]> {
-    if (!user?.sub) return [];
+    if (!user?.sub) {
+      return [];
+    }
     const people = await this.prisma.people.findMany({
       where: {
         OR: [{ userId: user.sub }, { mergedInto: { userId: user.sub } }],
@@ -1216,7 +1293,9 @@ export class PrizeDrawService {
       where: { id: drawId, deletedAt: null },
       include: DRAW_INCLUDE,
     });
-    if (!draw) throw new NotFoundException('Sorteio não encontrado.');
+    if (!draw) {
+      throw new NotFoundException('Sorteio não encontrado.');
+    }
     return draw;
   }
 
@@ -1225,7 +1304,9 @@ export class PrizeDrawService {
   }
 
   private requireActorId(actor: AuthenticatedUser | undefined): string {
-    if (!actor?.sub) throw new BadRequestException('Não foi possível identificar a pessoa administradora.');
+    if (!actor?.sub) {
+      throw new BadRequestException('Não foi possível identificar a pessoa administradora.');
+    }
     return actor.sub;
   }
 }

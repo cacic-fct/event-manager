@@ -84,16 +84,22 @@ describe('PublicEventFormApiService major-event batch', () => {
   it('queries each concrete target in one request and retains both targets form links', () => {
     const service = TestBed.inject(PublicEventFormApiService);
     const http = TestBed.inject(HttpTestingController);
-    const forms = ['major-1', 'major-2'].map((majorEventId, index) => createPublicEventForm({
-      id: `form-${index}`,
-      links: [createPublicEventFormLink({ targetType: 'MAJOR_EVENT', eventId: null, majorEventId })],
-    }));
+    const forms = ['major-1', 'major-2'].map((majorEventId, index) =>
+      createPublicEventForm({
+        id: `form-${index}`,
+        links: [createPublicEventFormLink({ targetType: 'MAJOR_EVENT', eventId: null, majorEventId })],
+      }),
+    );
     const received = vi.fn();
     service.listCurrentUserFormsForMajorEvents(['major-1', 'major-2', 'major-1']).subscribe(received);
     const request = http.expectOne('/api/graphql');
     expect(request.request.body.variables).toEqual({ majorEventId0: 'major-1', majorEventId1: 'major-2' });
-    expect(request.request.body.query).toContain('target0: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId0)');
-    expect(request.request.body.query).toContain('target1: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId1)');
+    expect(request.request.body.query).toContain(
+      'target0: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId0)',
+    );
+    expect(request.request.body.query).toContain(
+      'target1: currentUserEventForms(targetType: MAJOR_EVENT, majorEventId: $majorEventId1)',
+    );
     request.flush({ data: { target0: [forms[0]], target1: [forms[1]] } });
     expect(received).toHaveBeenCalledExactlyOnceWith(forms);
     http.verify();

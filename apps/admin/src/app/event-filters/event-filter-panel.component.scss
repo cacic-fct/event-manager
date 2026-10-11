@@ -4,16 +4,26 @@
   min-width: 0;
 }
 
-mat-form-field { min-width: 0; width: 100%; }
+mat-form-field {
+  min-width: 0;
+  width: 100%;
+}
 
 .advanced-filters.mat-expansion-panel {
   box-shadow: none;
   background: transparent;
 }
 
-mat-expansion-panel-header { padding-inline: 0.75rem; }
-mat-panel-title { gap: 0.5rem; }
-mat-panel-description { flex-grow: 0; white-space: nowrap; }
+mat-expansion-panel-header {
+  padding-inline: 0.75rem;
+}
+mat-panel-title {
+  gap: 0.5rem;
+}
+mat-panel-description {
+  flex-grow: 0;
+  white-space: nowrap;
+}
 
 .filter-fields {
   display: grid;

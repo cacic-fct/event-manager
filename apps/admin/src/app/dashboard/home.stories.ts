@@ -160,7 +160,8 @@ const meta: Meta<HomeStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Workspace dashboard with deterministic event, action queue, and system health data. Use state, count, and section controls to explore populated, empty, loading, and error views.',
+        component:
+          'Workspace dashboard with deterministic event, action queue, and system health data. Use state, count, and section controls to explore populated, empty, loading, and error views.',
       },
     },
     layout: 'fullscreen',

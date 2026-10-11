@@ -17,9 +17,10 @@ export function playShowcaseSequence(
   const foreground = signal(true);
   let observer: IntersectionObserver | undefined;
   let motionQuery: MediaQueryList | undefined;
-  const updateMotion = () => reducedMotion.set(
-    Boolean(motionQuery?.matches) || document.documentElement.dataset['storybookMotion'] === 'reduced',
-  );
+  const updateMotion = () =>
+    reducedMotion.set(
+      Boolean(motionQuery?.matches) || document.documentElement.dataset['storybookMotion'] === 'reduced',
+    );
   const updateVisibility = () => foreground.set(document.visibilityState !== 'hidden');
 
   afterNextRender(() => {
@@ -41,7 +42,9 @@ export function playShowcaseSequence(
   });
 
   effect((onCleanup) => {
-    if (!isBrowser || !visible() || !foreground() || reducedMotion() || !isActive()) return;
+    if (!isBrowser || !visible() || !foreground() || reducedMotion() || !isActive()) {
+      return;
+    }
     const timers = new Set<number>();
     const schedule: ScheduleShowcaseStep = (callback, delayMs) => {
       const timer = window.setTimeout(() => {
@@ -53,7 +56,9 @@ export function playShowcaseSequence(
     const stopPlayback = untracked(() => play(schedule));
     onCleanup(() => {
       timers.forEach((timer) => window.clearTimeout(timer));
-      if (typeof stopPlayback === 'function') stopPlayback();
+      if (typeof stopPlayback === 'function') {
+        stopPlayback();
+      }
     });
   });
 

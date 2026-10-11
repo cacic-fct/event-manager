@@ -191,7 +191,9 @@ export async function reindexEventGroupSearchDocuments(input: {
   prisma: PrismaService;
   where: Prisma.EventGroupWhereInput;
 }): Promise<void> {
-  if (!input.client) return;
+  if (!input.client) {
+    return;
+  }
   const groups = await input.prisma.eventGroup.findMany({
     where: { ...input.where, deletedAt: null },
     select: {

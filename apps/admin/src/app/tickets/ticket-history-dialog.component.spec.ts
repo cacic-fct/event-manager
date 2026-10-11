@@ -21,10 +21,37 @@ describe('TicketHistoryDialogComponent', () => {
       originalHolder,
     });
     const history: TicketHistoryDialogData['history'] = [
-      createAdminTicketHistoryEntry({ ticketId: ticket.id, operation: 'ISSUED', newHolder: originalHolder, actorName: 'Sistema' }),
-      createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-transfer', operation: 'TRANSFERRED', previousHolder: originalHolder, newHolder: currentHolder, reason: 'Transferência confirmada.' }),
-      createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-consumed', operation: 'CONSUMED', previousHolder: currentHolder, newHolder: currentHolder, reason: 'Leitura validada no acesso.' }),
-      createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-revoked', operation: 'REVOKED', previousHolder: currentHolder, newHolder: null, actorName: 'Equipe de eventos', reason: 'Revogação solicitada pelo titular.' }),
+      createAdminTicketHistoryEntry({
+        ticketId: ticket.id,
+        operation: 'ISSUED',
+        newHolder: originalHolder,
+        actorName: 'Sistema',
+      }),
+      createAdminTicketHistoryEntry({
+        ticketId: ticket.id,
+        id: 'history-transfer',
+        operation: 'TRANSFERRED',
+        previousHolder: originalHolder,
+        newHolder: currentHolder,
+        reason: 'Transferência confirmada.',
+      }),
+      createAdminTicketHistoryEntry({
+        ticketId: ticket.id,
+        id: 'history-consumed',
+        operation: 'CONSUMED',
+        previousHolder: currentHolder,
+        newHolder: currentHolder,
+        reason: 'Leitura validada no acesso.',
+      }),
+      createAdminTicketHistoryEntry({
+        ticketId: ticket.id,
+        id: 'history-revoked',
+        operation: 'REVOKED',
+        previousHolder: currentHolder,
+        newHolder: null,
+        actorName: 'Equipe de eventos',
+        reason: 'Revogação solicitada pelo titular.',
+      }),
     ];
     const data: TicketHistoryDialogData = { ticket, history };
     TestBed.configureTestingModule({

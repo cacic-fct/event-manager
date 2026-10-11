@@ -11,7 +11,11 @@ test('omits erased identities and their participation identifiers from import re
   const sourceId = 'erased-source-person';
   const rows = [
     { entityType: 'person_suppression_key', sourceId: 'v1', targetId: suppressionDigest(secret, 'key', 'evcomp') },
-    { entityType: 'person_suppression', sourceId: suppressionDigest(secret, 'person', 'evcomp', sourceId), targetId: 'suppressed' },
+    {
+      entityType: 'person_suppression',
+      sourceId: suppressionDigest(secret, 'person', 'evcomp', sourceId),
+      targetId: 'suppressed',
+    },
   ];
   const writes = [];
   try {
@@ -28,9 +32,16 @@ test('omits erased identities and their participation identifiers from import re
       },
       target: {
         async query(sql) {
-          if (!sql.startsWith('SELECT')) writes.push(sql);
-          return { rows: sql.includes('to_regclass') ? [{ table_name: 'external_import_records' }]
-            : sql.includes("'person_suppression_key'") ? rows : [] };
+          if (!sql.startsWith('SELECT')) {
+            writes.push(sql);
+          }
+          return {
+            rows: sql.includes('to_regclass')
+              ? [{ table_name: 'external_import_records' }]
+              : sql.includes("'person_suppression_key'")
+                ? rows
+                : [],
+          };
         },
       },
       apply: false,
@@ -42,8 +53,11 @@ test('omits erased identities and their participation identifiers from import re
     assert.deepEqual(writes, []);
     assert.doesNotMatch(JSON.stringify(report), /erased-|Erased Person|erased@example/);
   } finally {
-    if (originalSecret === undefined) delete process.env.LGPD_IMPORT_SUPPRESSION_SECRET;
-    else process.env.LGPD_IMPORT_SUPPRESSION_SECRET = originalSecret;
+    if (originalSecret === undefined) {
+      delete process.env.LGPD_IMPORT_SUPPRESSION_SECRET;
+    } else {
+      process.env.LGPD_IMPORT_SUPPRESSION_SECRET = originalSecret;
+    }
   }
 });
 
@@ -89,7 +103,9 @@ test('an already imported natural key is skipped on the next run', async () => {
   let exists = false;
   const target = {
     async query(sql) {
-      if (sql.startsWith('SELECT 1')) return { rowCount: exists ? 1 : 0 };
+      if (sql.startsWith('SELECT 1')) {
+        return { rowCount: exists ? 1 : 0 };
+      }
       if (sql.startsWith('INSERT INTO event_subscriptions')) {
         exists = true;
         return { rowCount: 1 };
@@ -269,13 +285,17 @@ test('inserts tier details and backfills old imports once, preserving conflicts 
   let stored;
   const target = {
     async query(sql, parameters) {
-      if (sql.startsWith('SELECT')) return { rowCount: stored ? 1 : 0, rows: stored ? [stored] : [] };
+      if (sql.startsWith('SELECT')) {
+        return { rowCount: stored ? 1 : 0, rows: stored ? [stored] : [] };
+      }
       if (sql.startsWith('INSERT')) {
         assert.match(sql, /"paymentTier", "amountPaid"/);
         stored = { subscriptionStatus: 'CONFIRMED', paymentTier: parameters[5], amountPaid: parameters[6] };
       } else if (sql.startsWith('UPDATE')) {
         stored = { ...stored, paymentTier: parameters[2], amountPaid: parameters[3] };
-      } else throw new Error(`Unexpected SQL: ${sql}`);
+      } else {
+        throw new Error(`Unexpected SQL: ${sql}`);
+      }
       return { rowCount: 1 };
     },
   };
@@ -350,19 +370,34 @@ test('apply rolls back when existing payment details conflict with the source mo
   const target = {
     async query(sql) {
       calls.push(sql);
-      if (sql.includes('to_regclass')) return { rows: [{ table_name: 'external_import_records' }] };
-      if (sql.includes('FROM external_import_records')) return { rows: [] };
-      if (sql.includes('INSERT INTO external_import_records')) return { rowCount: 1 };
-      if (sql.includes('FROM people')) return { rows: [{ id: 'person-1', email: 'person@example.test' }] };
-      if (sql.includes('SELECT id FROM major_events')) return { rows: [{ id: majorId }] };
-      if (sql.includes('FROM events WHERE')) return { rows: [] };
-      if (sql.includes('FROM price_tiers tier'))
+      if (sql.includes('to_regclass')) {
+        return { rows: [{ table_name: 'external_import_records' }] };
+      }
+      if (sql.includes('FROM external_import_records')) {
+        return { rows: [] };
+      }
+      if (sql.includes('INSERT INTO external_import_records')) {
+        return { rowCount: 1 };
+      }
+      if (sql.includes('FROM people')) {
+        return { rows: [{ id: 'person-1', email: 'person@example.test' }] };
+      }
+      if (sql.includes('SELECT id FROM major_events')) {
+        return { rows: [{ id: majorId }] };
+      }
+      if (sql.includes('FROM events WHERE')) {
+        return { rows: [] };
+      }
+      if (sql.includes('FROM price_tiers tier')) {
         return { rows: [{ id: tierId, name: 'Participante', majorEventId: majorId }] };
+      }
       if (sql.includes('FROM major_event_subscriptions')) {
         assert.match(sql, /FOR UPDATE$/);
         return { rowCount: 1, rows: [{ subscriptionStatus: 'CONFIRMED', paymentTier: 'Other', amountPaid: 1000 }] };
       }
-      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql.includes('pg_advisory_xact_lock')) return { rows: [] };
+      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql.includes('pg_advisory_xact_lock')) {
+        return { rows: [] };
+      }
       throw new Error(`Unexpected SQL: ${sql}`);
     },
   };

@@ -29,8 +29,11 @@ describe('AuthSessionStoreService', () => {
   });
 
   afterEach(() => {
-    if (originalRefreshLockTtl === undefined) delete process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
-    else process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS = originalRefreshLockTtl;
+    if (originalRefreshLockTtl === undefined) {
+      delete process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS;
+    } else {
+      process.env.KEYCLOAK_AUTH_REFRESH_LOCK_TTL_MS = originalRefreshLockTtl;
+    }
     jest.clearAllTimers();
     jest.useRealTimers();
   });

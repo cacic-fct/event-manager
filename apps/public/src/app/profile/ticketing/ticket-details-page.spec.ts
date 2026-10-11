@@ -15,10 +15,13 @@ describe('TicketDetailsPage', () => {
       imports: [TicketDetailsPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: {
-          snapshot: { paramMap: convertToParamMap({ ticketId: ticket.id }) },
-          paramMap: of(convertToParamMap({ ticketId: ticket.id })),
-        } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ ticketId: ticket.id }) },
+            paramMap: of(convertToParamMap({ ticketId: ticket.id })),
+          },
+        },
         { provide: TicketingApiService, useValue: { myWalletTicket: () => of(ticket), watchCurrentUser: () => EMPTY } },
       ],
     }).compileComponents();

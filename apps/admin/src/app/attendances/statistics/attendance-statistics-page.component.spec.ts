@@ -109,7 +109,9 @@ describe('AttendanceStatisticsPageComponent flow', () => {
       this: Element,
       value: string,
     ) {
-      if (value !== '') throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+      if (value !== '') {
+        throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+      }
       htmlSetter?.call(this, value);
     });
 
@@ -154,7 +156,9 @@ describe('AttendanceStatisticsPageComponent flow', () => {
         this: Element,
         value: string,
       ) {
-        if (value !== '') throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+        if (value !== '') {
+          throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+        }
         htmlSetter?.call(this, value);
       });
 
@@ -172,7 +176,9 @@ describe('AttendanceStatisticsPageComponent flow', () => {
   it('marks a signal as reviewed, refreshes the snapshot, and releases the busy state', async () => {
     const component = TestBed.createComponent(AttendanceStatisticsPageComponent).componentInstance;
     const item = snapshot.reviewItems[0];
-    if (!item) throw new Error('The shared fixture must contain a review item.');
+    if (!item) {
+      throw new Error('The shared fixture must contain a review item.');
+    }
 
     await component.review(item, 'DISMISSED');
 
@@ -186,7 +192,9 @@ describe('AttendanceStatisticsPageComponent flow', () => {
     const fixture = TestBed.createComponent(AttendanceStatisticsPageComponent);
     fixture.detectChanges();
     const item = snapshot.reviewItems[0];
-    if (!item) throw new Error('The shared fixture must contain a review item.');
+    if (!item) {
+      throw new Error('The shared fixture must contain a review item.');
+    }
     const element = fixture.nativeElement as HTMLElement;
     const reviewButtons = Array.from(element.querySelectorAll('button')).filter((button) =>
       button.textContent?.includes('Marcar aviso como revisado'),
@@ -231,7 +239,9 @@ describe('AttendanceStatisticsPageComponent flow', () => {
   it('does not mutate review state when the item delegates to a dedicated deep link', async () => {
     const component = TestBed.createComponent(AttendanceStatisticsPageComponent).componentInstance;
     const fixtureItem = snapshot.reviewItems[0];
-    if (!fixtureItem) throw new Error('The shared fixture must contain a review item.');
+    if (!fixtureItem) {
+      throw new Error('The shared fixture must contain a review item.');
+    }
     const item = { ...fixtureItem, deepLink: '/attendances/event/review/flag' };
 
     await component.review(item, 'DISMISSED');

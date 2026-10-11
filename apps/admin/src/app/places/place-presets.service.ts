@@ -70,16 +70,24 @@ export class PlacePresetsService {
     this.loadingPlaces.set(true);
     this.placesError.set(null);
     try {
-      const items = await firstValueFrom(this.api.listPlacePresets({
-        query: query || undefined,
-        ...pageVariables(this.placePresetsPagination.pageIndex()),
-      }));
-      if (version !== this.placesRequestVersion) return;
+      const items = await firstValueFrom(
+        this.api.listPlacePresets({
+          query: query || undefined,
+          ...pageVariables(this.placePresetsPagination.pageIndex()),
+        }),
+      );
+      if (version !== this.placesRequestVersion) {
+        return;
+      }
       this.placePresets.set(applyPagedResult(items, this.placePresetsPagination));
     } catch {
-      if (version === this.placesRequestVersion) this.placesError.set('Não foi possível carregar os locais. Tente novamente.');
+      if (version === this.placesRequestVersion) {
+        this.placesError.set('Não foi possível carregar os locais. Tente novamente.');
+      }
     } finally {
-      if (version === this.placesRequestVersion) this.loadingPlaces.set(false);
+      if (version === this.placesRequestVersion) {
+        this.loadingPlaces.set(false);
+      }
     }
   }
 

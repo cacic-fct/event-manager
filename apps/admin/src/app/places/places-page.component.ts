@@ -1,12 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  OnDestroy,
-  afterNextRender,
-  inject,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, OnDestroy, afterNextRender, inject, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -117,7 +110,9 @@ export class PlacesPageComponent implements OnDestroy {
       })
       .afterClosed()
       .subscribe((result: LocationCoordinates | undefined) => {
-        if (!result) return;
+        if (!result) {
+          return;
+        }
         this.workspace.placeForm.patchValue({
           latitude: result.latitude.toString(),
           longitude: result.longitude.toString(),
@@ -207,7 +202,9 @@ export class PlacesPageComponent implements OnDestroy {
   private location(): { latitude: number; longitude: number } | null {
     const rawLatitude = this.workspace.placeForm.controls.latitude.value.trim();
     const rawLongitude = this.workspace.placeForm.controls.longitude.value.trim();
-    if (!rawLatitude || !rawLongitude) return null;
+    if (!rawLatitude || !rawLongitude) {
+      return null;
+    }
     const latitude = Number(rawLatitude);
     const longitude = Number(rawLongitude);
 

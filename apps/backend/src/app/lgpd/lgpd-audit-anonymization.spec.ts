@@ -210,24 +210,39 @@ describe('merge candidate audit anonymization', () => {
   });
 });
 
-
 describe('ticket audit subject anonymization', () => {
   it('selects ticket holder snapshots and person-derived source keys', () => {
     const where = buildAuditLogSubjectWhere({ people: [], personIds: ['person-1'], userIds: [], emails: [] });
-    expect(where.OR).toEqual(expect.arrayContaining([
-      { after: { path: ['holderPersonId'], equals: 'person-1' } },
-      { before: { path: ['recipientPersonId'], equals: 'person-1' } },
-      { after: { path: ['sourceKey'], string_ends_with: ':person-1' } },
-    ]));
+    expect(where.OR).toEqual(
+      expect.arrayContaining([
+        { after: { path: ['holderPersonId'], equals: 'person-1' } },
+        { before: { path: ['recipientPersonId'], equals: 'person-1' } },
+        { after: { path: ['sourceKey'], string_ends_with: ':person-1' } },
+      ]),
+    );
   });
 
   it('recognizes source-key-only ticket snapshots and changes as subject data', () => {
     const identities = new Set(['person-1']);
     expect(containsAuditIdentity({ sourceKey: 'event-subscription:event-1:person-1' }, identities, false)).toBe(true);
-    expect(containsAuditIdentity([{ field: 'sourceKey', before: 'event-subscription:event-1:person-1', after: null }], identities, false)).toBe(true);
+    expect(
+      containsAuditIdentity(
+        [{ field: 'sourceKey', before: 'event-subscription:event-1:person-1', after: null }],
+        identities,
+        false,
+      ),
+    ).toBe(true);
     expect(containsAuditIdentity({ sourceKey: 'event-subscription:event-1:person-10' }, identities, false)).toBe(false);
-    expect(anonymizeAuditJson({ sourceKey: 'event-subscription:event-1:person-1' }, identities, identities, 'anonymous', [], false))
-      .toEqual({ sourceKey: ANONYMIZED_AUDIT_VALUE });
+    expect(
+      anonymizeAuditJson(
+        { sourceKey: 'event-subscription:event-1:person-1' },
+        identities,
+        identities,
+        'anonymous',
+        [],
+        false,
+      ),
+    ).toEqual({ sourceKey: ANONYMIZED_AUDIT_VALUE });
   });
 
   it('scrubs ticket identities and source keys in snapshots and change arrays without matching neighboring IDs', () => {
@@ -236,7 +251,13 @@ describe('ticket audit subject anonymization', () => {
       holderPersonId: 'person-1',
       sourceKey: 'event-subscription:event-1:person-1',
       unrelatedKey: 'event-subscription:event-1:person-10',
-      changes: [{ field: 'sourceKey', before: 'event-subscription:event-1:person-1', after: 'major-event-subscription:event-1:person-1' }],
+      changes: [
+        {
+          field: 'sourceKey',
+          before: 'event-subscription:event-1:person-1',
+          after: 'major-event-subscription:event-1:person-1',
+        },
+      ],
     };
     expect(anonymizeAuditJson(value, identities, identities, 'anonymous', [], false)).toEqual({
       holderPersonId: 'anonymous',
@@ -252,10 +273,12 @@ describe('invitation audit privacy', () => {
     'selects and anonymizes compact %s references in snapshots and changes',
     (field) => {
       const where = buildAuditLogSubjectWhere({ people: [], personIds: ['person-1'], userIds: [], emails: [] });
-      expect(where.OR).toEqual(expect.arrayContaining([
-        { after: { path: [field], array_contains: ['person-1'] } },
-        { changes: { array_contains: [{ field, before: ['person-1'] }] } },
-      ]));
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          { after: { path: [field], array_contains: ['person-1'] } },
+          { changes: { array_contains: [{ field, before: ['person-1'] }] } },
+        ]),
+      );
       const identities = new Set(['person-1']);
       const snapshot = {
         [field]: ['person-1', 'person-2'],
@@ -272,11 +295,13 @@ describe('invitation audit privacy', () => {
   const dataSubject = { people: [], personIds: ['person-1'], userIds: [], emails: [] };
 
   it('selects ID lists and older embedded invitee snapshots for erasure', () => {
-    expect(buildAuditLogSubjectWhere(dataSubject).OR).toEqual(expect.arrayContaining([
-      { before: { path: ['invitationPersonIds'], array_contains: ['person-1'] } },
-      { after: { path: ['audienceInvitations'], array_contains: [{ personId: 'person-1' }] } },
-      { changes: { array_contains: [{ field: 'invitationPersonIds', before: ['person-1'] }] } },
-    ]));
+    expect(buildAuditLogSubjectWhere(dataSubject).OR).toEqual(
+      expect.arrayContaining([
+        { before: { path: ['invitationPersonIds'], array_contains: ['person-1'] } },
+        { after: { path: ['audienceInvitations'], array_contains: [{ personId: 'person-1' }] } },
+        { changes: { array_contains: [{ field: 'invitationPersonIds', before: ['person-1'] }] } },
+      ]),
+    );
   });
 
   it('recognizes and anonymizes invitation IDs in snapshots and change arrays', () => {
@@ -290,7 +315,9 @@ describe('invitation audit privacy', () => {
     expect(anonymizeAuditJson(snapshot, new Set(), identities, 'erased-person', [], false)).toEqual({
       invitationPersonIds: ['erased-person', 'person-2'],
       changes: [{ field: 'invitationPersonIds', before: ['erased-person'], after: ['person-2'] }],
-      audienceInvitations: [{ personId: 'erased-person', person: { name: ANONYMIZED_AUDIT_VALUE, email: ANONYMIZED_AUDIT_VALUE } }],
+      audienceInvitations: [
+        { personId: 'erased-person', person: { name: ANONYMIZED_AUDIT_VALUE, email: ANONYMIZED_AUDIT_VALUE } },
+      ],
     });
   });
 });

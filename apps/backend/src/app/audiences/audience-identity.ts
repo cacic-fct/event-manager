@@ -48,9 +48,7 @@ export function courseCodeFromEnrollment(value: unknown): string | null {
 }
 
 export function hasUnespEmail(values: readonly unknown[]): boolean {
-  return values.some(
-    (value) => typeof value === 'string' && value.trim().toLowerCase().endsWith('@unesp.br'),
-  );
+  return values.some((value) => typeof value === 'string' && value.trim().toLowerCase().endsWith('@unesp.br'));
 }
 
 export function isUndergraduateRole(value: unknown): boolean {
@@ -72,7 +70,9 @@ export function isExplicitlyVerified(value: unknown): boolean {
 function claimStrings(value: unknown): string[] {
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    if (!trimmed) return [];
+    if (!trimmed) {
+      return [];
+    }
     if (trimmed.startsWith('[')) {
       try {
         const parsed: unknown = JSON.parse(trimmed);
@@ -81,7 +81,10 @@ function claimStrings(value: unknown): string[] {
         return [trimmed];
       }
     }
-    return trimmed.split(',').map((item) => item.trim()).filter(Boolean);
+    return trimmed
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];

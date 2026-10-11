@@ -4,8 +4,12 @@ import { ForbiddenGraphqlError, GraphqlServiceError, NotFoundGraphqlError, RateL
 
 /** Maps a page-load failure without exposing API payloads as page copy. */
 export function routePageErrorStatus(error: unknown): PageErrorStatus {
-  if (error instanceof ForbiddenGraphqlError) return 403;
-  if (error instanceof NotFoundGraphqlError) return 404;
+  if (error instanceof ForbiddenGraphqlError) {
+    return 403;
+  }
+  if (error instanceof NotFoundGraphqlError) {
+    return 404;
+  }
   if (error instanceof GraphqlServiceError) {
     return error.status;
   }
@@ -17,8 +21,12 @@ export function routePageErrorStatus(error: unknown): PageErrorStatus {
     return 500;
   }
 
-  if (error.status === 400 || error.status === 404) return 404;
-  if (error.status === 403) return 403;
+  if (error.status === 400 || error.status === 404) {
+    return 404;
+  }
+  if (error.status === 403) {
+    return 403;
+  }
   if (error.status === 500) {
     return 500;
   }

@@ -24,12 +24,24 @@ const organizerFeatures = [
 ] as const;
 
 for (const scenario of [
-  { name: 'desktop light', viewport: { width: 1440, height: 900 }, colorScheme: 'light', reducedMotion: 'no-preference' },
-  { name: 'mobile dark reduced motion', viewport: { width: 390, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' },
+  {
+    name: 'desktop light',
+    viewport: { width: 1440, height: 900 },
+    colorScheme: 'light',
+    reducedMotion: 'no-preference',
+  },
+  {
+    name: 'mobile dark reduced motion',
+    viewport: { width: 390, height: 844 },
+    colorScheme: 'dark',
+    reducedMotion: 'reduce',
+  },
 ] as const) {
   test.describe(`landing showcase: ${scenario.name}`, () => {
     test.use({
-      viewport: scenario.viewport, colorScheme: scenario.colorScheme, reducedMotion: scenario.reducedMotion,
+      viewport: scenario.viewport,
+      colorScheme: scenario.colorScheme,
+      reducedMotion: scenario.reducedMotion,
       serviceWorkers: process.env['LANDING_STORYBOOK_URL'] ? 'allow' : 'block',
     });
 
@@ -40,17 +52,28 @@ for (const scenario of [
         localStorage.setItem('cacic.cookieBanner.enabled', 'false');
       });
       await page.route('https://unleash.cacic.com.br/**', (route) => route.fulfill({ status: 304, body: '' }));
-      await page.route('https://cdn.jsdelivr.net/**', (route) => route.fulfill({
-        contentType: 'image/svg+xml',
-        body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>',
-      }));
+      await page.route('https://cdn.jsdelivr.net/**', (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>',
+        }),
+      );
       await page.route('**/api/**', async (route) => {
         if (route.request().url().includes('/auth/me')) {
           await route.fulfill({ status: 403, json: { message: 'User is not authenticated.' } });
         } else if (route.request().url().includes('/graphql')) {
-          await route.fulfill({ json: { data: { publicPlatformStats: {
-            peopleCount: 1200, eventsCount: 120, majorEventsCount: 12, certificatesCount: 800,
-          } } } });
+          await route.fulfill({
+            json: {
+              data: {
+                publicPlatformStats: {
+                  peopleCount: 1200,
+                  eventsCount: 120,
+                  majorEventsCount: 12,
+                  certificatesCount: 800,
+                },
+              },
+            },
+          });
         } else {
           await route.fulfill({ status: 204, body: '' });
         }
@@ -60,21 +83,28 @@ for (const scenario of [
       const storybookUrl = process.env['LANDING_STORYBOOK_URL'];
       const globals = `theme:${scenario.colorScheme};motion:${scenario.reducedMotion === 'reduce' ? 'reduced' : 'full'}`;
       const landingBootstrap = storybookUrl ? Promise.resolve() : waitForPublicLandingBootstrap(page);
-      await page.goto(storybookUrl
-        ? `${storybookUrl}/iframe.html?id=public-landing-page--playground&viewMode=story&globals=${globals}`
-        : '/app/');
+      await page.goto(
+        storybookUrl
+          ? `${storybookUrl}/iframe.html?id=public-landing-page--playground&viewMode=story&globals=${globals}`
+          : '/app/',
+      );
       await landingBootstrap;
       await expect(page.getByRole('heading', { name: 'CACiC Eventos', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Ir para a próxima seção' }).press('Enter');
       const productShowcase = page.locator('app-landing-product-showcase');
       await expect(productShowcase).toBeVisible({ timeout: 15_000 });
-      await productShowcase.locator('.showcase-container').first().evaluate((container) => {
-        container.scrollIntoView({ block: 'end', behavior: 'instant' });
-      });
+      await productShowcase
+        .locator('.showcase-container')
+        .first()
+        .evaluate((container) => {
+          container.scrollIntoView({ block: 'end', behavior: 'instant' });
+        });
       await expect(page.locator('app-landing-participant-showcase')).toBeVisible({ timeout: 15_000 });
     });
 
-    test('renders every feature with real shared controls, accessible selection and responsive layout', async ({ page }) => {
+    test('renders every feature with real shared controls, accessible selection and responsive layout', async ({
+      page,
+    }) => {
       test.setTimeout(120_000);
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
@@ -103,7 +133,9 @@ for (const scenario of [
           });
         }
       }
-      const extrasPlaceholder = page.locator('.showcase-placeholder').filter({ hasText: 'Conheça os recursos para torneios' });
+      const extrasPlaceholder = page
+        .locator('.showcase-placeholder')
+        .filter({ hasText: 'Conheça os recursos para torneios' });
       const extras = page.locator('app-landing-event-extras');
       await extrasPlaceholder.or(extras).evaluate((section) => {
         section.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -123,7 +155,9 @@ for (const scenario of [
       const receipt = participant.locator('app-landing-receipt-demo');
       await expect(receipt.getByRole('button', { name: 'Enviar comprovante' })).toBeDisabled();
       await receipt.getByLabel('Arquivo do comprovante').setInputFiles({
-        name: 'comprovante.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\nDemo'),
+        name: 'comprovante.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('%PDF-1.7\nDemo'),
       });
       await receipt.getByRole('button', { name: 'Enviar comprovante' }).click();
       await expect(receipt.getByRole('status')).toContainText('Comprovante enviado.');
@@ -167,7 +201,9 @@ async function selectFeature(showcase: Locator, label: string): Promise<void> {
 async function assertAccessible(page: Page, selector: string): Promise<void> {
   await page.evaluate(axeSource);
   const violations = await page.evaluate(async (context) => {
-    const results = await (window as typeof window & { axe: AxeApi }).axe.run(context, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } });
+    const results = await (window as typeof window & { axe: AxeApi }).axe.run(context, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
+    });
     return results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }));
   }, selector);
   expect(violations).toEqual([]);

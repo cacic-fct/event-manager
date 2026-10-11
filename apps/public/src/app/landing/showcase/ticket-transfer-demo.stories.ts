@@ -9,7 +9,8 @@ const meta: Meta<TicketTransferDemoComponent> = {
   decorators: [moduleMetadata({ imports: [TicketTransferDemoComponent] })],
   render: (args) => ({
     props: { incoming: args.incoming },
-    template: '<div class="ticket-transfer-story-card"><app-landing-ticket-transfer-demo [incoming]="incoming" /></div>',
+    template:
+      '<div class="ticket-transfer-story-card"><app-landing-ticket-transfer-demo [incoming]="incoming" /></div>',
     styles: [
       '.ticket-transfer-story-card { background: #23453e; border-radius: 16px; color: #f4fff9; margin: 0 auto; max-width: 650px; padding: 24px; }',
     ],

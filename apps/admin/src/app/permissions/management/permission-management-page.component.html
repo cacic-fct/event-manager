@@ -42,23 +42,44 @@
             <mat-form-field class="role-search">
               <mat-label>Buscar cargo por nome ou descrição</mat-label>
               <mat-icon matPrefix>search</mat-icon>
-              <input #roleQuery matInput type="search" [value]="roleSearch()" (input)="roleSearch.set(roleQuery.value)" />
+              <input
+                #roleQuery
+                matInput
+                type="search"
+                [value]="roleSearch()"
+                (input)="roleSearch.set(roleQuery.value)" />
             </mat-form-field>
             <h4>Predefinidos</h4>
             <div class="entity-list">
               @for (role of predefinedRoles(); track role.id) {
-                <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
+                <app-workspace-record
+                  [title]="role.name"
+                  [selected]="store.selectedRoleId() === role.id"
+                  (activate)="store.selectRole(role)">
                   <lib-twemoji recordIcon [emoji]="role.emoji" />
-                  <span recordDescription>{{ role.description }}, {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                  <span recordDescription
+                    >{{ role.description }},
+                    {{
+                      role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas'
+                    }}</span
+                  >
                 </app-workspace-record>
               }
             </div>
             <h4>Personalizados</h4>
             <div class="entity-list">
               @for (role of customRoles(); track role.id) {
-                <app-workspace-record [title]="role.name" [selected]="store.selectedRoleId() === role.id" (activate)="store.selectRole(role)">
+                <app-workspace-record
+                  [title]="role.name"
+                  [selected]="store.selectedRoleId() === role.id"
+                  (activate)="store.selectRole(role)">
                   <lib-twemoji recordIcon [emoji]="role.emoji" />
-                  <span recordDescription>{{ role.description }}, {{ role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas' }}</span>
+                  <span recordDescription
+                    >{{ role.description }},
+                    {{
+                      role.archivedAt ? 'Arquivado' : role.directPeopleCount + role.groupPeopleCount + ' pessoas'
+                    }}</span
+                  >
                 </app-workspace-record>
               } @empty {
                 <p class="empty-note">Nenhum cargo personalizado encontrado.</p>
@@ -249,10 +270,15 @@
                     @if (store.groupAssignmentSearchActive()) {
                       <div class="group-search-results" aria-label="Grupos encontrados">
                         @for (group of store.groupAssignmentResults(); track group.id) {
-                          <app-workspace-record [title]="group.name" [label]="'Adicionar grupo ' + group.name"
-                            [disabled]="!store.canEditRole()" (activate)="store.addGroupAssignment(group.id)">
+                          <app-workspace-record
+                            [title]="group.name"
+                            [label]="'Adicionar grupo ' + group.name"
+                            [disabled]="!store.canEditRole()"
+                            (activate)="store.addGroupAssignment(group.id)">
                             <lib-twemoji recordIcon [emoji]="group.emoji" />
-                            <span recordDescription>{{ group.description || 'Sem descrição' }}, {{ group.members.length }} integrantes</span>
+                            <span recordDescription
+                              >{{ group.description || 'Sem descrição' }}, {{ group.members.length }} integrantes</span
+                            >
                           </app-workspace-record>
                         } @empty {
                           <p class="search-hint">Nenhum grupo encontrado para esta busca.</p>

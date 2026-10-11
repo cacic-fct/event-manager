@@ -20,11 +20,19 @@ const meta: Meta<AttendanceWorkspaceStoryControls> = {
   args: attendanceWorkspaceStoryDefaultControls,
   argTypes: attendanceWorkspaceStoryControlArgTypes,
   render: controller.render,
-  decorators: [applicationConfig({ providers: [controller.provider, { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ eventId: 'event-1' })) } }] })],
+  decorators: [
+    applicationConfig({
+      providers: [
+        controller.provider,
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ eventId: 'event-1' })) } },
+      ],
+    }),
+  ],
   parameters: {
     docs: {
       description: {
-        component: 'Attendance workspace entry point with shared controls for event selection, records, offline submissions, and frozen events.',
+        component:
+          'Attendance workspace entry point with shared controls for event selection, records, offline submissions, and frozen events.',
       },
     },
     layout: 'fullscreen',
@@ -41,7 +49,6 @@ export const Playground: Story = {
     await expect(canvasElement.querySelector('app-event-context-picker')).toBeVisible();
     await expect(canvas.queryByRole('tablist')).not.toBeInTheDocument();
     await expect(canvas.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
-
   },
 };
 
@@ -69,7 +76,6 @@ export const DenseWorkspace: Story = {
     await expect(await within(canvasElement).findByText('83 registros')).toBeVisible();
   },
 };
-
 
 export const FrozenSportsEvent: Story = {
   args: { frozenEvent: true, sportsEventCount: 8 },

@@ -170,9 +170,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   });
   readonly scopedMajorEventWorkspaceItems = computed(() => {
     const majorEventId = this.majorEventRouteScopeId();
-    return majorEventId
-      ? this.majorEventWorkspaceItems().filter((item) => item.majorEvent.id === majorEventId)
-      : [];
+    return majorEventId ? this.majorEventWorkspaceItems().filter((item) => item.majorEvent.id === majorEventId) : [];
   });
   readonly visibleMajorEventWorkspaceItems = computed(() => {
     const start = this.majorEventWorkspacePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE;
@@ -387,9 +385,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     if (!majorEventId || !this.router) {
       return;
     }
-    void this.router
-      .navigate(sportsWorkspaceRoute(majorEventId, area, selection))
-      .catch(() => undefined);
+    void this.router.navigate(sportsWorkspaceRoute(majorEventId, area, selection)).catch(() => undefined);
   }
 
   async navigateToMajorEventScope(replaceUrl = false): Promise<void> {
@@ -425,7 +421,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   }
 
   async loadMajorEventScope(majorEventId: string, force = false): Promise<void> {
-    if (!majorEventId) return;
+    if (!majorEventId) {
+      return;
+    }
     if (
       !force &&
       this.majorEventRouteScopeId() === majorEventId &&
@@ -446,20 +444,27 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       try {
         const tournaments = await firstValueFrom(this.api.tournaments({ majorEventId, take: 1 }));
         const sportsMajorEvent = tournaments[0]?.majorEvent;
-        const fallbackMajorEvent = !sportsMajorEvent && this.permissions.has(Permission.MajorEvent.Read)
-          ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId))
-          : null;
+        const fallbackMajorEvent =
+          !sportsMajorEvent && this.permissions.has(Permission.MajorEvent.Read)
+            ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId))
+            : null;
         const authorizedMajorEvent = sportsMajorEvent ?? fallbackMajorEvent;
-        if (request !== this.workspaceIndexRequest || this.majorEventRouteScopeId() !== majorEventId) return;
+        if (request !== this.workspaceIndexRequest || this.majorEventRouteScopeId() !== majorEventId) {
+          return;
+        }
         this.tournaments.set(tournaments);
         this.majorEvents.set(fallbackMajorEvent ? [fallbackMajorEvent] : []);
         if (authorizedMajorEvent) {
           this.majorEventRouteScopeSummary.set(authorizedMajorEvent);
         }
         const tournament = tournaments[0];
-        if (tournament) await this.loadTournament(tournament.tournament.id);
+        if (tournament) {
+          await this.loadTournament(tournament.tournament.id);
+        }
       } catch (error) {
-        if (!this.routeResourceErrors.redirectIfUnavailable(error)) throw error;
+        if (!this.routeResourceErrors.redirectIfUnavailable(error)) {
+          throw error;
+        }
       }
     });
   }
@@ -569,18 +574,24 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         ? firstValueFrom(this.majorEventsApi.listMajorEvents(majorEventFilters))
         : Promise.resolve([]),
     ]);
-    if (request !== this.workspaceIndexRequest) return;
+    if (request !== this.workspaceIndexRequest) {
+      return;
+    }
     this.tournaments.set(tournaments);
     this.majorEvents.set(majorEvents);
   }
 
   private watchWorkspaceIndex(): void {
-    if (this.workspaceIndexSubscription) return;
+    if (this.workspaceIndexSubscription) {
+      return;
+    }
     this.workspaceIndexSubscription = this.realtime.watchWorkspace().subscribe(() => void this.refreshWorkspaceIndex());
   }
 
   private async refreshWorkspaceIndex(): Promise<void> {
-    if (this.tournamentRead()) return;
+    if (this.tournamentRead()) {
+      return;
+    }
     const majorEventId = this.majorEventRouteScopeId();
     if (majorEventId) {
       await this.loadMajorEventScope(majorEventId, true);
@@ -617,14 +628,22 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       const take = 50;
       let page: EventForm[];
       do {
-        page = await firstValueFrom(this.eventFormsApi.listForms({
-          majorEventId: read.tournament.majorEventId, skip: forms.length, take,
-        }));
-        if (loadRevision !== this.tournamentLoadRevision) return;
+        page = await firstValueFrom(
+          this.eventFormsApi.listForms({
+            majorEventId: read.tournament.majorEventId,
+            skip: forms.length,
+            take,
+          }),
+        );
+        if (loadRevision !== this.tournamentLoadRevision) {
+          return;
+        }
         forms.push(...page);
       } while (page.length === take);
     }
-    if (loadRevision !== this.tournamentLoadRevision) return;
+    if (loadRevision !== this.tournamentLoadRevision) {
+      return;
+    }
     this.eventForms.set(forms);
     this.tournamentForm.patchValue({
       ...read.tournament,

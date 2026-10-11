@@ -26,10 +26,17 @@ describe('ticket data lifecycle', () => {
       eventTicketHistory: { updateMany: jest.fn() },
     };
     await anonymizeTicketingData(tx as never, ['person'], ['user']);
-    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { submittedDestinationIdentityDocumentEncrypted: null } }));
+    expect(tx.ticketTransfer.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { submittedDestinationIdentityDocumentEncrypted: null } }),
+    );
     expect(tx.ticketPurchase.deleteMany).toHaveBeenCalledWith({ where: { personId: { in: ['person'] } } });
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { holderPersonId: { in: ['person'] }, status: 'ACTIVE' } }));
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { holderPersonId: { in: ['person'] }, status: 'ACTIVE' } }),
+    );
     expect(tx.eventTicket.update).not.toHaveBeenCalled();
-    expect(tx.eventTicketHistory.updateMany).toHaveBeenCalledWith({ where: { actorUserId: { in: ['user'] } }, data: { actorUserId: null, actorName: 'Pessoa removida' } });
+    expect(tx.eventTicketHistory.updateMany).toHaveBeenCalledWith({
+      where: { actorUserId: { in: ['user'] } },
+      data: { actorUserId: null, actorName: 'Pessoa removida' },
+    });
   });
 });

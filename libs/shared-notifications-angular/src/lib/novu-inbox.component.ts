@@ -1,14 +1,5 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  PLATFORM_ID,
-  computed,
-  effect,
-  inject,
-  input,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, computed, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SecurityContext } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -63,9 +54,9 @@ export class NovuInboxComponent {
 
   readonly markReadOnOpen = input(true);
   readonly showUnreadFilter = input(false);
-  protected readonly tabs = computed<InboxTab[]>(() => this.showUnreadFilter()
-    ? ['inbox', 'unread', 'archived', 'preferences']
-    : ['inbox', 'archived', 'preferences']);
+  protected readonly tabs = computed<InboxTab[]>(() =>
+    this.showUnreadFilter() ? ['inbox', 'unread', 'archived', 'preferences'] : ['inbox', 'archived', 'preferences'],
+  );
   protected readonly saving = signal(false);
   private loadVersion = 0;
   protected readonly selectedTab = signal<InboxTab>('inbox');
@@ -96,7 +87,13 @@ export class NovuInboxComponent {
     effect(() => {
       const client = this.notifications.client();
       const accessVersion = this.accessVersion();
-      if (!this.markReadOnOpen() || !client || accessVersion === 0 || accessVersion === this.processedAccessVersion || this.markingAccessAsRead) {
+      if (
+        !this.markReadOnOpen() ||
+        !client ||
+        accessVersion === 0 ||
+        accessVersion === this.processedAccessVersion ||
+        this.markingAccessAsRead
+      ) {
         return;
       }
 
@@ -126,23 +123,33 @@ export class NovuInboxComponent {
     try {
       if (this.selectedTab() === 'preferences') {
         const preferences = await this.notifications.listPreferences();
-        if (version === this.loadVersion) this.preferences.set(preferences);
+        if (version === this.loadVersion) {
+          this.preferences.set(preferences);
+        }
         return;
       }
 
       const { notifications, hasMore } = await this.fetchCurrentTab();
-      if (version !== this.loadVersion) return;
+      if (version !== this.loadVersion) {
+        return;
+      }
       this.notificationList.set(notifications);
       this.hasMore.set(hasMore);
     } catch {
-      if (version === this.loadVersion) this.error.set('Não foi possível carregar as notificações.');
+      if (version === this.loadVersion) {
+        this.error.set('Não foi possível carregar as notificações.');
+      }
     } finally {
-      if (version === this.loadVersion) this.loading.set(false);
+      if (version === this.loadVersion) {
+        this.loading.set(false);
+      }
     }
   }
 
   protected async loadMore(): Promise<void> {
-    if (this.loading()) return;
+    if (this.loading()) {
+      return;
+    }
     const version = this.loadVersion;
     const lastNotification = this.notificationList().at(-1);
     if (!lastNotification) {
@@ -155,13 +162,19 @@ export class NovuInboxComponent {
         lastNotification.createdAt,
         this.filterForCurrentTab(),
       );
-      if (version !== this.loadVersion) return;
+      if (version !== this.loadVersion) {
+        return;
+      }
       this.notificationList.update((notifications) => [...notifications, ...result.notifications]);
       this.hasMore.set(result.hasMore);
     } catch {
-      if (version === this.loadVersion) this.error.set('Não foi possível carregar mais notificações.');
+      if (version === this.loadVersion) {
+        this.error.set('Não foi possível carregar mais notificações.');
+      }
     } finally {
-      if (version === this.loadVersion) this.loading.set(false);
+      if (version === this.loadVersion) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -208,10 +221,12 @@ export class NovuInboxComponent {
     channel: 'in_app' | 'push',
     enabled: boolean,
   ): Promise<void> {
-    await this.performMutation(() => this.notifications.updatePreferenceChannels(preference, {
-      ...preference.channels,
-      [channel]: enabled,
-    }));
+    await this.performMutation(() =>
+      this.notifications.updatePreferenceChannels(preference, {
+        ...preference.channels,
+        [channel]: enabled,
+      }),
+    );
   }
 
   protected async markAsRead(notification: Notification): Promise<void> {
@@ -246,7 +261,9 @@ export class NovuInboxComponent {
     action: () => Promise<unknown>,
     failureMessage = 'Não foi possível concluir a ação. Tente novamente.',
   ): Promise<void> {
-    if (this.saving()) return;
+    if (this.saving()) {
+      return;
+    }
     this.saving.set(true);
     this.error.set(null);
     try {

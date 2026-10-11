@@ -13,7 +13,9 @@ export async function loadSuppressedPeople(target, namespace, secret = process.e
     WHERE "sourceNamespace"=$1 AND "entityType" IN ('person_suppression', 'person_suppression_key')`,
     [namespace],
   );
-  if (rows.length === 0) return new Set();
+  if (rows.length === 0) {
+    return new Set();
+  }
 
   const normalizedSecret = secret?.trim();
   if (!normalizedSecret || Buffer.byteLength(normalizedSecret, 'utf8') < 32) {

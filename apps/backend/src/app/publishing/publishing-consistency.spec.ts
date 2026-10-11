@@ -246,7 +246,10 @@ describe('buildPublicationConsistencyWarnings', () => {
             isPubliclyListed: true,
             sportsMatch: {
               id: 'match-1',
-              category: { tournamentId: 'tournament-1', tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' } },
+              category: {
+                tournamentId: 'tournament-1',
+                tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' },
+              },
             },
           }),
         ],
@@ -302,7 +305,10 @@ describe('buildPublicationConsistencyWarnings', () => {
             isPubliclyListed: true,
             sportsMatch: {
               id: 'match-1',
-              category: { tournamentId: 'tournament-1', tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' } },
+              category: {
+                tournamentId: 'tournament-1',
+                tournament: { status: 'PUBLISHED', majorEventId: 'major-event-1' },
+              },
             },
             majorEventId: 'major-event-1',
             majorEvent: {

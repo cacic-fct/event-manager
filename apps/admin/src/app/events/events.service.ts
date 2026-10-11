@@ -88,7 +88,12 @@ type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIf
 type DraftSelectionResult = EventDraft | null | undefined;
 const AUDIENCE_PERSON_LOOKUP_BATCH_SIZE = 50;
 export class CreationParentError extends Error {}
-export interface CreationParentSummary { kind: 'group' | 'major-event'; id: string; name: string; emoji: string; }
+export interface CreationParentSummary {
+  kind: 'group' | 'major-event';
+  id: string;
+  name: string;
+  emoji: string;
+}
 
 @Service()
 export class EventsService {
@@ -322,16 +327,26 @@ export class EventsService {
 
   async selectEventById(eventId: string, options: EventSelectionOptions = {}): Promise<boolean> {
     const request = ++this.selectionRequest;
-    if (options.skipIfCurrent && this.loadedSelectionId === eventId && this.selectedEvent()?.id === eventId && !options.draftId && !options.forceOriginal) {
+    if (
+      options.skipIfCurrent &&
+      this.loadedSelectionId === eventId &&
+      this.selectedEvent()?.id === eventId &&
+      !options.draftId &&
+      !options.forceOriginal
+    ) {
       return true;
     }
 
     this.loadedSelectionId = null;
     const eventDetails = await firstValueFrom(this.api.getEvent(eventId));
-    if (request !== this.selectionRequest) return false;
+    if (request !== this.selectionRequest) {
+      return false;
+    }
     const canLoadDrafts = this.permissions.canEdit(Permission.Event.Update);
     const drafts = canLoadDrafts ? await firstValueFrom(this.api.listEventDrafts({ sourceEventId: eventId })) : [];
-    if (request !== this.selectionRequest) return false;
+    if (request !== this.selectionRequest) {
+      return false;
+    }
     this.mergeDraftsForEvent(eventId, drafts);
 
     const selectedDraft = await this.resolveDraftSelection(eventDetails, drafts, options);
@@ -344,12 +359,16 @@ export class EventsService {
       selectedDraft ? this.draftInvitationPersonIds(selectedDraft) : undefined,
       request,
     );
-    if (request !== this.selectionRequest) return false;
+    if (request !== this.selectionRequest) {
+      return false;
+    }
     this.selectedEvent.set(eventDetails);
     this.selectedEventDraft.set(selectedDraft);
     this.eventGroupSearchResults.set([]);
     await Promise.all([this.loadEventLecturers(eventId), this.loadEventAttendanceCollectors(eventId)]);
-    if (request !== this.selectionRequest) return false;
+    if (request !== this.selectionRequest) {
+      return false;
+    }
     await this.loadGroupLecturerSuggestions();
     if (request === this.selectionRequest) {
       this.loadedSelectionId = eventId;
@@ -358,7 +377,9 @@ export class EventsService {
     return request === this.selectionRequest;
   }
 
-  async discardChanges(creationParents: { majorEventId?: string | null; eventGroupId?: string | null } = {}): Promise<void> {
+  async discardChanges(
+    creationParents: { majorEventId?: string | null; eventGroupId?: string | null } = {},
+  ): Promise<void> {
     const eventId = this.selectedEvent()?.id;
     if (!eventId) {
       await this.initializeNewEvent(creationParents);
@@ -372,7 +393,9 @@ export class EventsService {
   resetEventForm(navigate = true): void {
     this.selectionRequest++;
     this.loadedSelectionId = null;
-    if (navigate) void this.router.navigate(['/event-workspace/new/event']);
+    if (navigate) {
+      void this.router.navigate(['/event-workspace/new/event']);
+    }
     this.selectedEvent.set(null);
     this.selectedEventDraft.set(null);
     this.selectedMajorEvent.set(null);
@@ -453,29 +476,37 @@ export class EventsService {
     this.captureEditorBaseline();
   }
 
-  async initializeNewEvent(parents: { majorEventId?: string | null; eventGroupId?: string | null } = {}): Promise<CreationParentSummary[]> {
+  async initializeNewEvent(
+    parents: { majorEventId?: string | null; eventGroupId?: string | null } = {},
+  ): Promise<CreationParentSummary[]> {
     this.resetEventForm(false);
     const request = this.selectionRequest;
-    const group = parents.eventGroupId ? await firstValueFrom(this.eventGroupsApi.getEventGroup(parents.eventGroupId)) : null;
+    const group = parents.eventGroupId
+      ? await firstValueFrom(this.eventGroupsApi.getEventGroup(parents.eventGroupId))
+      : null;
     if (group?.majorEventId && parents.majorEventId && group.majorEventId !== parents.majorEventId) {
       throw new CreationParentError('O grupo pertence a outro grande evento.');
     }
     const majorEventId = group?.majorEventId ?? parents.majorEventId;
     const major = majorEventId ? await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId)) : null;
-    if (request !== this.selectionRequest) return [];
+    if (request !== this.selectionRequest) {
+      return [];
+    }
     if (major && isFrozenMajorEvent(major) && !this.permissions.has(Permission.Frozen.Update)) {
-      throw new CreationParentError('Este grande evento está congelado. É necessária permissão para alterar recursos antigos.');
+      throw new CreationParentError(
+        'Este grande evento está congelado. É necessária permissão para alterar recursos antigos.',
+      );
     }
     const summary: CreationParentSummary[] = [];
     if (major) {
       this.assignMajorEventToEvent(major);
       this.majorEventSearchResults.set([major]);
-      summary.push({kind:'major-event',id:major.id,name:major.name,emoji:major.emoji});
+      summary.push({ kind: 'major-event', id: major.id, name: major.name, emoji: major.emoji });
     }
     if (group) {
       this.assignEventGroupToEvent(group);
       this.eventGroupSearchResults.set([group]);
-      summary.push({kind:'group',id:group.id,name:group.name,emoji:group.emoji});
+      summary.push({ kind: 'group', id: group.id, name: group.name, emoji: group.emoji });
     }
     this.captureEditorBaseline();
     return summary;
@@ -523,7 +554,9 @@ export class EventsService {
             input: payload,
           }),
         );
-        if (saveRequest === this.selectionRequest) this.selectedEventDraft.set(savedDraft);
+        if (saveRequest === this.selectionRequest) {
+          this.selectedEventDraft.set(savedDraft);
+        }
         this.mergeDraftsForEvent(selectedEvent.id, [
           savedDraft,
           ...this.draftsForEvent(selectedEvent.id).filter((draft) => draft.id !== savedDraft.id),
@@ -537,7 +570,10 @@ export class EventsService {
           await firstValueFrom(this.api.applyEventDraft(savedDraft.id));
           this.snackbar.open('Rascunho aplicado à publicação.', 'Fechar', { duration: 2500 });
           await this.loadEvents();
-          if (saveRequest === this.selectionRequest && await this.selectEventById(selectedEvent.id, { forceOriginal: true })) {
+          if (
+            saveRequest === this.selectionRequest &&
+            (await this.selectEventById(selectedEvent.id, { forceOriginal: true }))
+          ) {
             this.syncWorkspaceContext(this.selectedEvent());
           }
           return;
@@ -545,7 +581,9 @@ export class EventsService {
 
         this.snackbar.open('Rascunho salvo sem alterar a publicação.', 'Fechar', { duration: 3500 });
         await this.loadEvents();
-        if (saveRequest === this.selectionRequest) this.captureEditorBaseline();
+        if (saveRequest === this.selectionRequest) {
+          this.captureEditorBaseline();
+        }
         if (action === 'SCHEDULE' && saveRequest === this.selectionRequest) {
           void this.router.navigate(this.eventPublicationRoute(selectedEvent.id));
         }
@@ -564,7 +602,9 @@ export class EventsService {
         savedEventId = created.id;
       }
 
-      if (saveRequest === this.selectionRequest) this.eventForm.controls.id.setValue(savedEventId, {emitEvent:false});
+      if (saveRequest === this.selectionRequest) {
+        this.eventForm.controls.id.setValue(savedEventId, { emitEvent: false });
+      }
       if (manualPlace) {
         await this.placePresetsService.ensurePresetForManualLocation(manualPlace);
       }
@@ -594,14 +634,20 @@ export class EventsService {
       }
 
       await this.loadEvents();
-      if (saveRequest !== this.selectionRequest) return;
+      if (saveRequest !== this.selectionRequest) {
+        return;
+      }
       if (action === 'SCHEDULE') {
         this.captureEditorBaseline();
         void this.router.navigate(this.eventPublicationRoute(savedEventId));
         return;
       }
-      if (saveRequest !== this.selectionRequest) return;
-      if (!(await this.selectEventById(savedEventId, {forceOriginal:true}))) return;
+      if (saveRequest !== this.selectionRequest) {
+        return;
+      }
+      if (!(await this.selectEventById(savedEventId, { forceOriginal: true }))) {
+        return;
+      }
       this.syncWorkspaceContext(this.selectedEvent());
       void this.router.navigate(['/event-workspace', 'event', savedEventId, 'settings']);
     } catch (error) {
@@ -747,7 +793,9 @@ export class EventsService {
           take: 50,
         };
     const results = await firstValueFrom(this.majorEventsApi.listMajorEvents(filters));
-    if (request === this.selectionRequest && this.majorEventLookupForm.controls.query.value.trim() === query) this.majorEventSearchResults.set(results);
+    if (request === this.selectionRequest && this.majorEventLookupForm.controls.query.value.trim() === query) {
+      this.majorEventSearchResults.set(results);
+    }
   }
 
   assignMajorEventToEvent(majorEvent: MajorEvent): void {
@@ -981,7 +1029,9 @@ export class EventsService {
   private async loadEventLecturers(eventId: string): Promise<void> {
     const request = this.selectionRequest;
     const people = await this.eventPeople.listLecturers(eventId);
-    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) this.eventLecturers.set(people);
+    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) {
+      this.eventLecturers.set(people);
+    }
   }
 
   private async openCloneDialog(eventItem: Event): Promise<CloneAssetDialogResult | null | undefined> {
@@ -1011,7 +1061,9 @@ export class EventsService {
   private async loadEventAttendanceCollectors(eventId: string): Promise<void> {
     const request = this.selectionRequest;
     const people = await this.eventPeople.listAttendanceCollectors(eventId);
-    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) this.eventAttendanceCollectors.set(people);
+    if (request === this.selectionRequest && this.selectedEvent()?.id === eventId) {
+      this.eventAttendanceCollectors.set(people);
+    }
   }
 
   private async loadGroupLecturerSuggestions(): Promise<void> {
@@ -1028,7 +1080,11 @@ export class EventsService {
       this.eventForm.controls.id.value,
     );
 
-    if (request !== this.selectionRequest || this.eventForm.controls.id.value !== eventId || this.eventForm.controls.eventGroupId.value !== eventGroupId) {
+    if (
+      request !== this.selectionRequest ||
+      this.eventForm.controls.id.value !== eventId ||
+      this.eventForm.controls.eventGroupId.value !== eventGroupId
+    ) {
       return;
     }
 
@@ -1261,9 +1317,14 @@ export class EventsService {
   }
 
   private syncWorkspaceContext(event: Event | null): void {
-    if (!event) return;
-    this.workspaceContext.context.update((context) => context?.kind === 'event' && context.id === event.id
-      ? {...context,name:event.name,emoji:event.emoji,startDate:event.startDate,endDate:event.endDate} : context);
+    if (!event) {
+      return;
+    }
+    this.workspaceContext.context.update((context) =>
+      context?.kind === 'event' && context.id === event.id
+        ? { ...context, name: event.name, emoji: event.emoji, startDate: event.startDate, endDate: event.endDate }
+        : context,
+    );
   }
 
   private buildManualPlacePresetPayload(): PlacePresetInput | null {
@@ -1317,13 +1378,19 @@ export class EventsService {
     );
   }
 
-  private async populateEventForm(eventItem: Event, invitationPersonIds?: readonly string[], request = ++this.selectionRequest): Promise<void> {
+  private async populateEventForm(
+    eventItem: Event,
+    invitationPersonIds?: readonly string[],
+    request = ++this.selectionRequest,
+  ): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
     const selectedMajorEvent = this.resolveSelectedMajorEvent(eventItem);
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
     const selectedPlacePreset = await this.resolvePlacePresetForEvent(eventItem, request);
     const audienceInvitations = await this.resolveAudienceInvitationPeople(eventItem, invitationPersonIds);
-    if (request !== this.selectionRequest) return;
+    if (request !== this.selectionRequest) {
+      return;
+    }
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1497,7 +1564,9 @@ export class EventsService {
     }
 
     const suggestions = await this.placePresetsService.searchPlacePresets(eventItem.locationDescription, 8);
-    if (request !== this.selectionRequest) return null;
+    if (request !== this.selectionRequest) {
+      return null;
+    }
     this.placePresetSuggestions.set(suggestions);
     return this.matchPlacePreset(eventItem);
   }

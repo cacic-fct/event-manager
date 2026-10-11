@@ -830,9 +830,7 @@ export class EventSubscriptionsResolver {
             _count: { _all: true },
           })
         : [];
-    const activeCountByEventId = new Map(
-      activeSubscriptionCounts.map((item) => [item.eventId, item._count._all]),
-    );
+    const activeCountByEventId = new Map(activeSubscriptionCounts.map((item) => [item.eventId, item._count._all]));
 
     return events.map((event) => ({
       eventId: event.id,
@@ -844,8 +842,7 @@ export class EventSubscriptionsResolver {
       eventEndDate: event.endDate,
       eventLocationDescription: event.locationDescription,
       eventSlots: event.slots,
-      availableSlots:
-        event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
+      availableSlots: event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
       projectedQueuePosition: event.queueCount + 1,
       subscribed: false,
       isLecturerSubscription: false,

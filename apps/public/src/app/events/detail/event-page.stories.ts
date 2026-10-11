@@ -142,10 +142,7 @@ export const TwitchLivestream: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const iframe = await findLivestreamIframe(canvasElement, 'Transmissão do evento na Twitch');
-    await expect(iframe).toHaveAttribute(
-      'sandbox',
-      'allow-scripts allow-same-origin allow-popups-to-escape-sandbox',
-    );
+    await expect(iframe).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups-to-escape-sandbox');
     await expect(await canvas.findByRole('link', { name: /Abrir na Twitch/ })).toHaveAttribute(
       'href',
       'https://www.twitch.tv/cacic',
@@ -399,10 +396,14 @@ function eventGraphqlData(query: string, variables: Record<string, unknown>, arg
     return { setCurrentUserInterest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null };
   }
   if (query.includes('CurrentUserInterestState')) {
-    return { currentUserInterestState: {
-      interest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null,
-      subscribed: args.isSubscribed, endsAt: event.endDate, enabled: args.interestEnabled,
-    } };
+    return {
+      currentUserInterestState: {
+        interest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null,
+        subscribed: args.isSubscribed,
+        endsAt: event.endDate,
+        enabled: args.interestEnabled,
+      },
+    };
   }
   if (query.includes('CurrentUserInterest')) {
     return { currentUserInterest: args.isInterested ? createPublicEventInterest({ eventId: event.id }) : null };

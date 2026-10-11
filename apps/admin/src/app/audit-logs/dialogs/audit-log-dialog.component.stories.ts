@@ -126,7 +126,8 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Audit log detail dialog with controls for entry count, reverted changes, revert actions, and API state.',
+        component:
+          'Audit log detail dialog with controls for entry count, reverted changes, revert actions, and API state.',
       },
     },
     layout: 'fullscreen',

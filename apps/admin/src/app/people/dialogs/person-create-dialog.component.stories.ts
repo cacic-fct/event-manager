@@ -106,12 +106,18 @@ type Story = StoryObj<PersonCreateDialogStoryArgs>;
 
 async function fillForm(canvasElement: HTMLElement, args: PersonCreateDialogStoryArgs) {
   const canvas = within(canvasElement);
-  if (args.name) await userEvent.type(await canvas.findByRole('textbox', { name: 'Nome' }), args.name);
-  if (args.email) await userEvent.type(canvas.getByRole('textbox', { name: 'Email' }), args.email);
+  if (args.name) {
+    await userEvent.type(await canvas.findByRole('textbox', { name: 'Nome' }), args.name);
+  }
+  if (args.email) {
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Email' }), args.email);
+  }
   if (args.identityDocument) {
     await userEvent.type(canvas.getByRole('textbox', { name: 'Documento' }), args.identityDocument);
   }
-  if (args.academicId) await userEvent.type(canvas.getByRole('textbox', { name: 'Matrícula (RA)' }), args.academicId);
+  if (args.academicId) {
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Matrícula (RA)' }), args.academicId);
+  }
   return canvas;
 }
 

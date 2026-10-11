@@ -27,9 +27,13 @@ export function eventContentAuditSnapshot(record: object): Record<string, unknow
   for (const [relation, field] of relations) {
     const value: unknown = Reflect.get(record, relation);
     if (Array.isArray(value) && !(field in snapshot)) {
-      snapshot[field] = [...new Set(value.flatMap((item: unknown) =>
-        isPlainAuditRecord(item) && typeof item['personId'] === 'string' ? [item['personId']] : [],
-      ))].sort();
+      snapshot[field] = [
+        ...new Set(
+          value.flatMap((item: unknown) =>
+            isPlainAuditRecord(item) && typeof item['personId'] === 'string' ? [item['personId']] : [],
+          ),
+        ),
+      ].sort();
     }
   }
   return snapshot;

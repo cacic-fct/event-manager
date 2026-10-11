@@ -54,9 +54,15 @@ const meta: Meta<MenuStoryArgs> = {
           provide: DefaultRedirectApiService,
           useValue: {
             getCurrentUserSportsAutoroute: () => {
-              if (activeArgs.sportsRedirect === 'loading') return NEVER;
-              if (activeArgs.sportsRedirect === 'error') return throwError(() => new Error('Atalho indisponível.'));
-              if (activeArgs.sportsRedirect === 'none') return of(null);
+              if (activeArgs.sportsRedirect === 'loading') {
+                return NEVER;
+              }
+              if (activeArgs.sportsRedirect === 'error') {
+                return throwError(() => new Error('Atalho indisponível.'));
+              }
+              if (activeArgs.sportsRedirect === 'none') {
+                return of(null);
+              }
               return of({
                 matchId: 'match-story',
                 mode: activeArgs.sportsRedirect === 'operate' ? 'OPERATE' : 'VIEW',

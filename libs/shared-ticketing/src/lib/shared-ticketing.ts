@@ -64,8 +64,7 @@ export const TicketTransferSenderStatus = {
   Canceled: 'CANCELED',
   Expired: 'EXPIRED',
 } as const;
-export type TicketTransferSenderStatus =
-  (typeof TicketTransferSenderStatus)[keyof typeof TicketTransferSenderStatus];
+export type TicketTransferSenderStatus = (typeof TicketTransferSenderStatus)[keyof typeof TicketTransferSenderStatus];
 
 export const TicketTransferRecipientStatus = {
   Pending: 'PENDING',
@@ -82,8 +81,7 @@ export const TicketTransferIgnoreReason = {
   Ineligible: 'INELIGIBLE',
   AlreadyHeld: 'ALREADY_HELD',
 } as const;
-export type TicketTransferIgnoreReason =
-  (typeof TicketTransferIgnoreReason)[keyof typeof TicketTransferIgnoreReason];
+export type TicketTransferIgnoreReason = (typeof TicketTransferIgnoreReason)[keyof typeof TicketTransferIgnoreReason];
 
 export const TicketPurchaseStatus = {
   UnderReview: 'UNDER_REVIEW',
@@ -139,7 +137,10 @@ export type TicketConfig = {
   updatedAt: string;
 };
 
-export type TicketConfigInput = Omit<TicketConfig, 'id' | 'createdAt' | 'updatedAt' | 'priceOptions' | 'purchaseLimit'> & {
+export type TicketConfigInput = Omit<
+  TicketConfig,
+  'id' | 'createdAt' | 'updatedAt' | 'priceOptions' | 'purchaseLimit'
+> & {
   purchaseLimit?: number | null;
   priceOptions: readonly TicketPriceOptionInput[];
 };

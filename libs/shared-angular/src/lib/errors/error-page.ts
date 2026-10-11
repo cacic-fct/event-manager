@@ -9,8 +9,12 @@ import { RouteErrorService, RouteErrorOptions, PageErrorStatus } from './route-e
   imports: [ErrorStateComponent],
   host: { role: 'main' },
   template: `
-    <lib-error-state [status]="status" [title]="options.title" [description]="options.description"
-      [actionLabel]="options.actionLabel ?? 'Ir para a página inicial'" [actionUrl]="options.actionUrl ?? '/'"
+    <lib-error-state
+      [status]="status"
+      [title]="options.title"
+      [description]="options.description"
+      [actionLabel]="options.actionLabel ?? 'Ir para a página inicial'"
+      [actionUrl]="options.actionUrl ?? '/'"
       [actionHref]="options.actionHref"
       [technicalDetails]="options.technicalDetails" />
   `,
@@ -37,8 +41,11 @@ export class ErrorPage {
       heading?.focus();
     });
     inject(DestroyRef).onDestroy(() => {
-      if (this.previousRobots === undefined) this.meta.removeTag('name="robots"');
-      else this.meta.updateTag({ name: 'robots', content: this.previousRobots });
+      if (this.previousRobots === undefined) {
+        this.meta.removeTag('name="robots"');
+      } else {
+        this.meta.updateTag({ name: 'robots', content: this.previousRobots });
+      }
     });
   }
 }

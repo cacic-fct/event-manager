@@ -46,7 +46,8 @@ const meta: Meta<WorkspaceFormResultsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Form response summaries for reviewing submitted answers, privacy behavior, and empty response sets.',
+        component:
+          'Form response summaries for reviewing submitted answers, privacy behavior, and empty response sets.',
       },
     },
     layout: 'fullscreen',

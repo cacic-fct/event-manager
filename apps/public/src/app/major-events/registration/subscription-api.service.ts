@@ -144,9 +144,13 @@ export class MajorEventSubscriptionApiService {
     return this.query<PublicMajorEventSubscriptionPageQuery>(PUBLIC_MAJOR_EVENT_SUBSCRIPTION_PAGE_QUERY, {
       majorEventId,
       ...(includeInterests ? { includeInterests: true } : {}),
-    }).pipe(map((data) => includeInterests
-      ? { ...data.publicMajorEventSubscriptionPage, interests: data.currentUserInterests ?? [] }
-      : data.publicMajorEventSubscriptionPage));
+    }).pipe(
+      map((data) =>
+        includeInterests
+          ? { ...data.publicMajorEventSubscriptionPage, interests: data.currentUserInterests ?? [] }
+          : data.publicMajorEventSubscriptionPage,
+      ),
+    );
   }
 
   getCurrentUserSubscription(majorEventId: string): Observable<CurrentUserMajorEventSubscription | null> {

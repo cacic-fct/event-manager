@@ -210,14 +210,20 @@ export class PublicationService {
     const scoped = Boolean(input.focusTargetType && input.focusTargetId);
     const excludedRoot = { id: { in: [] as string[] } };
     const rootWhere = (targetType: PublicationTargetType) => {
-      if (!scoped) return null;
+      if (!scoped) {
+        return null;
+      }
       return root?.targetType === targetType ? { id: root.id } : excludedRoot;
     };
     let eventScope: Prisma.EventWhereInput | null = null;
     if (scoped) {
-      if (root?.targetType === PublicationTargetType.MAJOR_EVENT) eventScope = { majorEventId: root.id };
-      else if (root?.targetType === PublicationTargetType.EVENT_GROUP) eventScope = { eventGroupId: root.id };
-      else eventScope = root ? { id: root.id } : excludedRoot;
+      if (root?.targetType === PublicationTargetType.MAJOR_EVENT) {
+        eventScope = { majorEventId: root.id };
+      } else if (root?.targetType === PublicationTargetType.EVENT_GROUP) {
+        eventScope = { eventGroupId: root.id };
+      } else {
+        eventScope = root ? { id: root.id } : excludedRoot;
+      }
     }
     const activeEventWhere = this.andWhere<Prisma.EventWhereInput>({ deletedAt: null }, eventAccessWhere, eventScope);
     const accessibleTreeEventWhere = this.andWhere<Prisma.EventWhereInput>(
@@ -230,7 +236,8 @@ export class PublicationService {
       this.buildNameSearchWhere<Prisma.EventWhereInput>(normalizedQuery),
     );
     const majorEventBaseWhere = this.andWhere<Prisma.MajorEventWhereInput>(
-      { deletedAt: null }, majorEventAccessWhere,
+      { deletedAt: null },
+      majorEventAccessWhere,
       rootWhere(PublicationTargetType.MAJOR_EVENT),
     );
     const majorEventWhere = this.andWhere<Prisma.MajorEventWhereInput>(
@@ -598,7 +605,9 @@ export class PublicationService {
     accessibleMajorEventIds: Set<string> | null,
   ): Promise<{ targetType: PublicationTargetType; id: string } | null> {
     const id = input.focusTargetId;
-    if (!id || !input.focusTargetType) return null;
+    if (!id || !input.focusTargetType) {
+      return null;
+    }
     if (input.focusTargetType === PublicationTargetType.MAJOR_EVENT) {
       return { targetType: PublicationTargetType.MAJOR_EVENT, id };
     }
@@ -615,7 +624,9 @@ export class PublicationService {
           },
         },
       });
-      if (!group) return null;
+      if (!group) {
+        return null;
+      }
       const majorEventId = group.majorEventId ?? group.events[0]?.majorEventId;
       return majorEventId && (accessibleMajorEventIds === null || accessibleMajorEventIds.has(majorEventId))
         ? { targetType: PublicationTargetType.MAJOR_EVENT, id: majorEventId }
@@ -625,10 +636,14 @@ export class PublicationService {
       where: this.andWhere({ deletedAt: null }, eventWhere, { id }),
       select: { id: true, majorEventId: true, eventGroupId: true },
     });
-    if (!event) return null;
-    return event.majorEventId ? { targetType: PublicationTargetType.MAJOR_EVENT, id: event.majorEventId }
-      : event.eventGroupId ? { targetType: PublicationTargetType.EVENT_GROUP, id: event.eventGroupId }
-      : { targetType: PublicationTargetType.EVENT, id };
+    if (!event) {
+      return null;
+    }
+    return event.majorEventId
+      ? { targetType: PublicationTargetType.MAJOR_EVENT, id: event.majorEventId }
+      : event.eventGroupId
+        ? { targetType: PublicationTargetType.EVENT_GROUP, id: event.eventGroupId }
+        : { targetType: PublicationTargetType.EVENT, id };
   }
 
   private async findFocusedNode(

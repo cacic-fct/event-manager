@@ -1,6 +1,12 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-import { AttendanceEligibility, AttendanceImportMatchType, CertificateIssuedTo, CertificateScope, EventType } from './enums';
+import {
+  AttendanceEligibility,
+  AttendanceImportMatchType,
+  CertificateIssuedTo,
+  CertificateScope,
+  EventType,
+} from './enums';
 import { Event } from './events';
 import { EventGroup } from './event-groups';
 import { MajorEvent } from './major-events';

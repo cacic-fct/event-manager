@@ -86,7 +86,9 @@ describe('SportsWorkspaceService', () => {
     expect(workspace.eventForms().at(-1)?.elementsJson).toEqual(forms.at(-1)?.elementsJson);
     expect(eventFormApi.listForms.mock.calls.map(([filters]) => filters)).toEqual(
       Array.from({ length: Math.floor(count / 50) + 1 }, (_, index) => ({
-        majorEventId: workspace.tournamentRead()?.tournament.majorEventId, skip: index * 50, take: 50,
+        majorEventId: workspace.tournamentRead()?.tournament.majorEventId,
+        skip: index * 50,
+        take: 50,
       })),
     );
   });

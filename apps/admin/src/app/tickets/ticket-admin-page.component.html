@@ -243,7 +243,15 @@
                     @if (!configForm.controls.purchaseUnlimited.value) {
                       <mat-form-field subscriptSizing="dynamic" appearance="outline">
                         <mat-label>Limite de bilhetes à venda</mat-label>
-                        <input matInput type="number" inputmode="numeric" min="1" max="2147483647" step="1" formControlName="purchaseLimit" required />
+                        <input
+                          matInput
+                          type="number"
+                          inputmode="numeric"
+                          min="1"
+                          max="2147483647"
+                          step="1"
+                          formControlName="purchaseLimit"
+                          required />
                         <mat-hint>Compras em análise reservam bilhetes; compras recusadas liberam a reserva.</mat-hint>
                         <mat-error>Informe uma quantidade inteira entre 1 e 2.147.483.647.</mat-error>
                       </mat-form-field>
@@ -423,7 +431,9 @@
 
       <mat-tab>
         <ng-template mat-tab-label>
-          <span class="workspace-tab-label"><mat-icon aria-hidden="true">confirmation_number</mat-icon>Bilhetes emitidos</span>
+          <span class="workspace-tab-label"
+            ><mat-icon aria-hidden="true">confirmation_number</mat-icon>Bilhetes emitidos</span
+          >
         </ng-template>
         <section class="issued-panel">
           @if (operationError()) {

@@ -15,16 +15,24 @@ describe('RateLimitService', () => {
   it('checks archive status without consuming a download, using the same account bucket', async () => {
     const redis = { eval: jest.fn().mockResolvedValue([0, 3, 0, 300, 86400, 300]) };
     const service = new RateLimitService(redis as unknown as Redis, configService('production') as never);
-    const input = { policy: RATE_LIMIT_POLICIES.currentUserCertificateArchive, authenticatedUser: { sub: 'user-1' } as never };
+    const input = {
+      policy: RATE_LIMIT_POLICIES.currentUserCertificateArchive,
+      authenticatedUser: { sub: 'user-1' } as never,
+    };
     expect((await service.status(input)).retryAfterSeconds).toBe(300);
     await service.consume(input);
     const [statusCall, consumeCall] = redis.eval.mock.calls as unknown as string[][];
     expect(statusCall[2]).toEqual(consumeCall[2]);
     expect(statusCall.slice(-3)).toEqual(['1', '1', '0']);
     expect(consumeCall.slice(-3)).toEqual(['1', '1', '1']);
-    expect(input.policy).toEqual(expect.objectContaining({
-      freeAttempts: 3, baseCooldownMs: 300_000, maxCooldownMs: 7_200_000, windowMs: 86_400_000,
-    }));
+    expect(input.policy).toEqual(
+      expect.objectContaining({
+        freeAttempts: 3,
+        baseCooldownMs: 300_000,
+        maxCooldownMs: 7_200_000,
+        windowMs: 86_400_000,
+      }),
+    );
   });
 
   it('blocks production requests and sets rate limit headers', async () => {
@@ -266,7 +274,9 @@ describe('RateLimitService', () => {
       policyWithMaxAttempts.maxAttempts.toString(),
       policyWithMaxAttempts.baseCooldownMs.toString(),
       policyWithMaxAttempts.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 
@@ -378,7 +388,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 
@@ -410,7 +422,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 
@@ -440,7 +454,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 
@@ -474,7 +490,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 
@@ -503,7 +521,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
 
     await service.consume({
@@ -527,7 +547,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
 
     await service.consume({
@@ -547,7 +569,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
 
     await service.consume({
@@ -569,7 +593,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
 
     await service.consume({
@@ -585,7 +611,9 @@ describe('RateLimitService', () => {
       '0',
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
-      '0', '0', '1',
+      '0',
+      '0',
+      '1',
     );
   });
 

@@ -1,6 +1,14 @@
 import { RESPONSE_INIT, Service, inject } from '@angular/core';
 import { Location } from '@angular/common';
-import { NavigationCancel, NavigationCancellationCode, NavigationEnd, NavigationError, RedirectCommand, Router, UrlTree } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationCancellationCode,
+  NavigationEnd,
+  NavigationError,
+  RedirectCommand,
+  Router,
+  UrlTree,
+} from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 export type PageErrorStatus = 403 | 404 | 500 | 503;
@@ -35,8 +43,11 @@ export class RouteErrorService {
 
   constructor() {
     this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
-      if (event instanceof NavigationEnd || event instanceof NavigationError ||
-        (event instanceof NavigationCancel && event.code !== NavigationCancellationCode.Redirect)) {
+      if (
+        event instanceof NavigationEnd ||
+        event instanceof NavigationError ||
+        (event instanceof NavigationCancel && event.code !== NavigationCancellationCode.Redirect)
+      ) {
         this.pending = null;
       }
     });
@@ -63,7 +74,7 @@ export class RouteErrorService {
   private requestedUrl(): string {
     const navigation = this.router.currentNavigation();
     const target = navigation?.extractedUrl ?? navigation?.initialUrl;
-    return target ? this.router.serializeUrl(target) : (this.location?.path(true) || this.router.url);
+    return target ? this.router.serializeUrl(target) : this.location?.path(true) || this.router.url;
   }
 
   take(status: PageErrorStatus): RouteErrorOptions {
@@ -73,10 +84,14 @@ export class RouteErrorService {
   }
 
   setResponseStatus(status: PageErrorStatus): void {
-    if (!this.response) return;
+    if (!this.response) {
+      return;
+    }
     this.response.status = status;
     const headers = new Headers(this.response.headers);
-    for (const [name, value] of Object.entries(PAGE_ERROR_HEADERS)) headers.set(name, value);
+    for (const [name, value] of Object.entries(PAGE_ERROR_HEADERS)) {
+      headers.set(name, value);
+    }
     this.response.headers = headers;
   }
 }

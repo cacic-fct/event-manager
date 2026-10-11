@@ -15,7 +15,10 @@ describe('GroupPreviewComponent', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('masks a forbidden preview token as shared not found', async () => {
-    await configure({ previewToken: 'private-preview-token' }, throwError(() => new ForbiddenGraphqlError('forbidden')));
+    await configure(
+      { previewToken: 'private-preview-token' },
+      throwError(() => new ForbiddenGraphqlError('forbidden')),
+    );
 
     expect(routeErrors.navigate).toHaveBeenCalledWith(404);
     expect(fixture.nativeElement.textContent).not.toContain('forbidden');

@@ -2,12 +2,16 @@ import { test, expect } from './support/e2e-test';
 import axe from 'axe-core';
 
 const storybookURL = process.env['STORYBOOK_URL'];
-const story = 'iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true';
+const story =
+  'iframe.html?id=admin-event-management-event-workspace-overview--integrated-shell-hub-and-editor&viewMode=story&embed=true';
 
 test.describe('admin deep links', () => {
   test.skip(!storybookURL, 'Requires the existing admin Storybook server.');
 
-  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 390, height: 844 },
+  ]) {
     test(`restores a copied context and native child links at ${viewport.width}px`, async ({ page, context }) => {
       await page.setViewportSize(viewport);
       await page.goto(`${storybookURL}/${story}#/event-workspace/major-event/workspace-major`);
@@ -33,13 +37,19 @@ test.describe('admin deep links', () => {
       await page.addScriptTag({ content: axe.source });
       const violations = await page.evaluate(async () => {
         const root = document.getElementById('storybook-root');
-        if (!root) throw new Error('Story content is unavailable');
-        return (await window.axe.run(root, {
-          runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
-        })).violations.map((violation) => violation.id);
+        if (!root) {
+          throw new Error('Story content is unavailable');
+        }
+        return (
+          await window.axe.run(root, {
+            runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
+          })
+        ).violations.map((violation) => violation.id);
       });
       expect(violations).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+      ).toBe(true);
       await page.screenshot({ path: test.info().outputPath(`deep-link-${viewport.width}.png`), fullPage: true });
     });
   }
@@ -58,7 +68,9 @@ test.describe('admin deep links', () => {
     await expect(page).toHaveURL(bookmark);
     await expect(form).toHaveAttribute('aria-current', 'page');
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Trocar contexto: Semana da Computação', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Trocar contexto: Semana da Computação', exact: true }),
+    ).toBeVisible();
     await expect(form).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('textarea[formcontrolname="description"]')).toBeVisible();
   });
@@ -72,7 +84,9 @@ test.describe('admin deep links', () => {
     await expect(page.locator('.attendance-detail h3')).toBeVisible();
     const bookmark = page.url();
     const name = await page.locator('.attendance-detail h3').textContent();
-    if (!name) throw new Error('The bookmarked participant has no displayed name');
+    if (!name) {
+      throw new Error('The bookmarked participant has no displayed name');
+    }
     await page.goBack();
     await expect(page.locator('.attendance-detail h3')).toHaveCount(0);
     await page.goto(bookmark);

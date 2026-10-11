@@ -120,7 +120,9 @@ export class CertificateNotificationJobsService implements OnModuleInit {
     configIds: string[],
     client: Prisma.TransactionClient | PrismaService,
   ): Promise<void> {
-    if (configIds.length === 0) return;
+    if (configIds.length === 0) {
+      return;
+    }
     await client.certificateNotificationOutbox.updateMany({
       where: {
         certificate: { configId: { in: configIds } },
@@ -269,7 +271,9 @@ export class CertificateNotificationJobsService implements OnModuleInit {
     await Promise.allSettled(
       pending.map(async (item) => {
         const claim = await this.claimOutbox(item.id);
-        if (!claim) return;
+        if (!claim) {
+          return;
+        }
         const certificate: CertificateNotificationProjection = {
           ...item.certificate,
           configId: item.certificate.config.id,
@@ -290,7 +294,9 @@ export class CertificateNotificationJobsService implements OnModuleInit {
   }
 
   private async claimOutbox(id: string): Promise<{ id: string; attempts: number } | null> {
-    if (!this.prisma) return null;
+    if (!this.prisma) {
+      return null;
+    }
     const now = new Date();
     const updated = await this.prisma.certificateNotificationOutbox.updateMany({
       where: {
@@ -307,7 +313,9 @@ export class CertificateNotificationJobsService implements OnModuleInit {
         lastError: null,
       },
     });
-    if (updated.count !== 1) return null;
+    if (updated.count !== 1) {
+      return null;
+    }
     const claimed = await this.prisma.certificateNotificationOutbox.findUnique({
       where: { id },
       select: { id: true, attempts: true },
@@ -332,12 +340,16 @@ export class CertificateNotificationJobsService implements OnModuleInit {
   }
 
   private async markOutboxFailure(id: string, error: unknown): Promise<void> {
-    if (!this.prisma) return;
+    if (!this.prisma) {
+      return;
+    }
     const current = await this.prisma.certificateNotificationOutbox.findUnique({
       where: { id },
       select: { attempts: true, status: true },
     });
-    if (!current || current.status === 'SUPERSEDED' || current.status === 'DELIVERED') return;
+    if (!current || current.status === 'SUPERSEDED' || current.status === 'DELIVERED') {
+      return;
+    }
     const delay = Math.min(OUTBOX_RETRY_BASE_MS * 2 ** Math.max(current.attempts - 1, 0), 60 * 60 * 1_000);
     await this.prisma.certificateNotificationOutbox.updateMany({
       where: { id, status: 'PROCESSING' },
@@ -350,7 +362,9 @@ export class CertificateNotificationJobsService implements OnModuleInit {
   }
 
   private async supersedeOutbox(id: string): Promise<void> {
-    if (!this.prisma) return;
+    if (!this.prisma) {
+      return;
+    }
     await this.prisma.certificateNotificationOutbox.updateMany({
       where: { id, status: { in: ['PENDING', 'PROCESSING'] } },
       data: {

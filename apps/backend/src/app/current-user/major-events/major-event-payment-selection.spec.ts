@@ -44,7 +44,9 @@ describe('ambiguous historical payment tiers', () => {
       { name: 'Aluno', value: 1000 },
       { name: ' aluno ', value: 2500 },
     ];
-    if (reverse) tiers.reverse();
+    if (reverse) {
+      tiers.reverse();
+    }
     expect(() =>
       resolveMajorEventSelfServicePayment(
         {

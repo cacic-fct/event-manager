@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: {
     alias: {
-      '@cacic-fct/event-manager-public-contracts/types': fileURLToPath(new URL('../event-manager-public-contracts/src/lib/types/index.ts', import.meta.url)),
+      '@cacic-fct/event-manager-public-contracts/types': fileURLToPath(
+        new URL('../event-manager-public-contracts/src/lib/types/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

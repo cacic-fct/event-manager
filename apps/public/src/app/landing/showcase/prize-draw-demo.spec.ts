@@ -55,9 +55,7 @@ describe('PrizeDrawDemoComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [PrizeDrawDemoComponent],
-      providers: [
-        { provide: ScannerSoundsService, useValue: { tone } },
-      ],
+      providers: [{ provide: ScannerSoundsService, useValue: { tone } }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(PrizeDrawDemoComponent);
@@ -76,7 +74,8 @@ describe('PrizeDrawDemoComponent', () => {
 
   it('uses the shared reel acceleration stages and lands on the fixed winner with softened ticks', async () => {
     const element = fixture.nativeElement as HTMLElement;
-    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent)).componentInstance as PrizeDrawReelComponent;
+    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
+      .componentInstance as PrizeDrawReelComponent;
     (element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).click();
     fixture.detectChanges();
 
@@ -124,7 +123,8 @@ describe('PrizeDrawDemoComponent', () => {
   it('uses instant shared-reel mode for reduced motion without the reduced-motion pause', async () => {
     document.documentElement.dataset['storybookMotion'] = 'reduced';
     const element = fixture.nativeElement as HTMLElement;
-    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent)).componentInstance as PrizeDrawReelComponent;
+    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
+      .componentInstance as PrizeDrawReelComponent;
     (element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).click();
     await Promise.resolve();
     await Promise.resolve();
@@ -140,7 +140,8 @@ describe('PrizeDrawDemoComponent', () => {
 
   it('passes sound controls to the shared reel and honors the operating system reduced-motion preference', async () => {
     const element = fixture.nativeElement as HTMLElement;
-    const reel = fixture.debugElement.query(By.directive(PrizeDrawReelComponent)).componentInstance as PrizeDrawReelComponent;
+    const reel = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
+      .componentInstance as PrizeDrawReelComponent;
     const soundButton = element.querySelector('button.prize-draw-demo__sound') as HTMLButtonElement;
 
     expect(soundButton.getAttribute('aria-pressed')).toBe('false');
@@ -170,7 +171,8 @@ describe('PrizeDrawDemoComponent', () => {
 
   it('resets the shared reel to stop its animation when the landing panel is destroyed', () => {
     const element = fixture.nativeElement as HTMLElement;
-    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent)).componentInstance as PrizeDrawReelComponent;
+    const component = fixture.debugElement.query(By.directive(PrizeDrawReelComponent))
+      .componentInstance as PrizeDrawReelComponent;
     (element.querySelector('button.prize-draw-demo__draw') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(component.phase()).toBe('spinning');

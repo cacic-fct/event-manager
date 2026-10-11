@@ -40,8 +40,20 @@ describe('attendance collection guards', () => {
       providers: [
         provideRouter([]),
         { provide: AttendanceCollectionApiService, useValue: api },
-        { provide: AttendanceOfflineQueueService, useValue: { getCollectionEvents: vi.fn(() => Promise.resolve([])), getCollectionEvent: vi.fn(() => Promise.resolve(null)) } },
-        { provide: AttendanceCollectionAccessService, useValue: { isCollectionOpen: vi.fn(() => true), getPreciseLocation: vi.fn(() => Promise.resolve({ latitude: 0, longitude: 0, accuracyMeters: 1 })) } },
+        {
+          provide: AttendanceOfflineQueueService,
+          useValue: {
+            getCollectionEvents: vi.fn(() => Promise.resolve([])),
+            getCollectionEvent: vi.fn(() => Promise.resolve(null)),
+          },
+        },
+        {
+          provide: AttendanceCollectionAccessService,
+          useValue: {
+            isCollectionOpen: vi.fn(() => true),
+            getPreciseLocation: vi.fn(() => Promise.resolve({ latitude: 0, longitude: 0, accuracyMeters: 1 })),
+          },
+        },
         { provide: AuthService, useValue: auth },
         {
           provide: RouteErrorService,

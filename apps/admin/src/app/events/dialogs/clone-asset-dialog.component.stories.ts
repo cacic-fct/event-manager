@@ -45,8 +45,12 @@ function parts(args: CloneAssetDialogStoryArgs): CloneAssetPartOption[] {
     },
   ];
   return options.filter((part) => {
-    if (part.key === 'lecturers') return args.includeLecturers;
-    if (part.key === 'certificateConfig') return args.includeCertificate;
+    if (part.key === 'lecturers') {
+      return args.includeLecturers;
+    }
+    if (part.key === 'certificateConfig') {
+      return args.includeCertificate;
+    }
     return args.includeAttendance;
   });
 }

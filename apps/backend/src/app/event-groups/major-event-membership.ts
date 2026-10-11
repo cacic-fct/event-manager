@@ -3,11 +3,11 @@ import { Prisma } from '@prisma/client';
 export function eventGroupBelongsToMajorEventWhere(
   majorEventIds: string | readonly string[],
 ): Prisma.EventGroupWhereInput {
-  const normalizedIds = [...new Set(
-    (typeof majorEventIds === 'string' ? [majorEventIds] : majorEventIds)
-      .map((id) => id.trim())
-      .filter(Boolean),
-  )];
+  const normalizedIds = [
+    ...new Set(
+      (typeof majorEventIds === 'string' ? [majorEventIds] : majorEventIds).map((id) => id.trim()).filter(Boolean),
+    ),
+  ];
 
   if (normalizedIds.length === 0) {
     return { id: { in: [] } };
@@ -16,10 +16,7 @@ export function eventGroupBelongsToMajorEventWhere(
   if (normalizedIds.length === 1) {
     const [majorEventId] = normalizedIds;
     return {
-      OR: [
-        { majorEventId },
-        { majorEventId: null, events: { some: { majorEventId, deletedAt: null } } },
-      ],
+      OR: [{ majorEventId }, { majorEventId: null, events: { some: { majorEventId, deletedAt: null } } }],
     };
   }
 

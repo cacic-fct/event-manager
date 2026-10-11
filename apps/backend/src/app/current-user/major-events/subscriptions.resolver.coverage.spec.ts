@@ -429,7 +429,10 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     const tx = {
       majorEvent: { findFirst: jest.fn().mockResolvedValue(majorEvent) },
       majorEventSubscription: {
-        findFirst: jest.fn().mockResolvedValueOnce({ id: 'subscription-1' }).mockResolvedValueOnce(acceptedSubscription),
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'subscription-1' })
+          .mockResolvedValueOnce(acceptedSubscription),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -601,7 +604,10 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
         findFirst: jest.fn().mockResolvedValue(majorEvent),
       },
       majorEventSubscription: {
-        findFirst: jest.fn().mockResolvedValueOnce({ id: 'subscription-1' }).mockResolvedValueOnce(acceptedSubscription),
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'subscription-1' })
+          .mockResolvedValueOnce(acceptedSubscription),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };

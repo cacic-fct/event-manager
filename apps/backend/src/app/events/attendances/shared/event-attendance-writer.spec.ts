@@ -23,15 +23,18 @@ describe('event attendance writer', () => {
     'rejects a ticket from another event before writing attendance',
     async (writeAttendance) => {
       const scannerTx = { ...tx, $queryRaw: jest.fn(), eventTicket: { findFirst: jest.fn().mockResolvedValue(null) } };
-      await expect(writeAttendance({
-        tx: scannerTx as never,
-        attendanceCategories,
-        input: {
-          eventId: 'other-event', personId: 'person-1',
-          scannerCode: 'ticket:019af432-98b0-7000-8000-000000000001:holder-user',
-          createdByMethod: AttendanceCreationMethod.SCANNER,
-        },
-      })).rejects.toThrow('Este bilhete não é válido para esta presença.');
+      await expect(
+        writeAttendance({
+          tx: scannerTx as never,
+          attendanceCategories,
+          input: {
+            eventId: 'other-event',
+            personId: 'person-1',
+            scannerCode: 'ticket:019af432-98b0-7000-8000-000000000001:holder-user',
+            createdByMethod: AttendanceCreationMethod.SCANNER,
+          },
+        }),
+      ).rejects.toThrow('Este bilhete não é válido para esta presença.');
       expect(tx.eventAttendance.create).not.toHaveBeenCalled();
       expect(tx.eventAttendance.upsert).not.toHaveBeenCalled();
       expect(attendanceCategories.refreshForAttendance).not.toHaveBeenCalled();
@@ -71,7 +74,10 @@ describe('event attendance writer', () => {
         }),
       ).resolves.toEqual(refreshed);
 
-      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, { attendedAt: expect.any(Date), actorUserId: 'new-collector' });
+      expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
+        attendedAt: expect.any(Date),
+        actorUserId: 'new-collector',
+      });
       expect(attendanceCategories.refreshForAttendance.mock.invocationCallOrder[0]).toBeLessThan(
         tx.eventAttendance.findUniqueOrThrow.mock.invocationCallOrder[0],
       );

@@ -77,7 +77,8 @@ const meta: Meta<PlacesTabStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Place catalog with controls for loading state, result count, and long names. Stories cover empty results and coordinate details.',
+        component:
+          'Place catalog with controls for loading state, result count, and long names. Stories cover empty results and coordinate details.',
       },
     },
     layout: 'fullscreen',
@@ -86,8 +87,12 @@ const meta: Meta<PlacesTabStoryArgs> = {
       handlers: {
         graphql: [
           http.post('/api/graphql', async ({ request }) => {
-            if (activeArgs.apiState === 'loading') await delay('infinite');
-            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+            if (activeArgs.apiState === 'loading') {
+              await delay('infinite');
+            }
+            if (activeArgs.latencyMs > 0) {
+              await delay(activeArgs.latencyMs);
+            }
             const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
             const query = body.query ?? '';
             if (activeArgs.apiState === 'error') {
@@ -147,7 +152,6 @@ export const EmptyList: Story = {
     includeIncompletePlace: false,
   },
 };
-
 
 export const DensePlaces: Story = {
   args: { placeCount: 30, incompleteEvery: 4, includeIncompletePlace: false, latencyMs: 0 },

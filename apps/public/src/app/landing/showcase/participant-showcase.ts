@@ -58,28 +58,40 @@ export class ParticipantShowcaseComponent {
   readonly historyParticipation = signal<string | null>(null);
 
   constructor() {
-    playShowcaseSequence(() => {
-      let frame: number | undefined;
-      const startedAt = window.performance.now();
-      this.dayProgress.set(18);
-      const advance = (now: number) => {
-        const progress = Math.max(0, Math.min(1, (now - startedAt) / 1100));
-        this.dayProgress.set(18 + 54 * progress);
-        if (progress < 1) frame = window.requestAnimationFrame(advance);
-      };
-      frame = window.requestAnimationFrame(advance);
-      return () => {
-        if (frame !== undefined) window.cancelAnimationFrame(frame);
-        this.dayProgress.set(72);
-      };
-    }, () => this.feature() === 'day' && this.dayView() === 'agenda');
+    playShowcaseSequence(
+      () => {
+        let frame: number | undefined;
+        const startedAt = window.performance.now();
+        this.dayProgress.set(18);
+        const advance = (now: number) => {
+          const progress = Math.max(0, Math.min(1, (now - startedAt) / 1100));
+          this.dayProgress.set(18 + 54 * progress);
+          if (progress < 1) {
+            frame = window.requestAnimationFrame(advance);
+          }
+        };
+        frame = window.requestAnimationFrame(advance);
+        return () => {
+          if (frame !== undefined) {
+            window.cancelAnimationFrame(frame);
+          }
+          this.dayProgress.set(72);
+        };
+      },
+      () => this.feature() === 'day' && this.dayView() === 'agenda',
+    );
 
-    playShowcaseSequence((schedule) => {
-      if (this.attendanceModel().code) return;
-      for (let length = 1; length <= this.demoCode.length; length += 1) {
-        schedule(() => this.attendanceModel.set({ code: this.demoCode.slice(0, length) }), 250 + length * 220);
-      }
-    }, () => this.feature() === 'attendance' && !this.attendanceTyping() && !this.attendanceConfirmed());
+    playShowcaseSequence(
+      (schedule) => {
+        if (this.attendanceModel().code) {
+          return;
+        }
+        for (let length = 1; length <= this.demoCode.length; length += 1) {
+          schedule(() => this.attendanceModel.set({ code: this.demoCode.slice(0, length) }), 250 + length * 220);
+        }
+      },
+      () => this.feature() === 'attendance' && !this.attendanceTyping() && !this.attendanceConfirmed(),
+    );
   }
 
   selectFeature(feature: ParticipantFeature): void {
@@ -124,7 +136,9 @@ export class ParticipantShowcaseComponent {
   }
 
   confirmAttendance(): void {
-    if (this.attendanceForm().invalid()) return;
+    if (this.attendanceForm().invalid()) {
+      return;
+    }
     if (this.attendanceModel().code.toUpperCase() !== this.demoCode) {
       this.attendanceError.set(`Código não encontrado. Experimente ${this.demoCode}.`);
       return;

@@ -147,7 +147,9 @@ export class OrganizerInfoComponent {
       }),
       catchError((error: unknown) => {
         const status = privateResourceErrorStatus(error);
-        if (this.loadedOrganizerTarget === targetKey && status !== 404) return EMPTY;
+        if (this.loadedOrganizerTarget === targetKey && status !== 404) {
+          return EMPTY;
+        }
         void this.routeErrors.navigate(status);
         return of({ status: 'loading' } satisfies OrganizerInfoState);
       }),

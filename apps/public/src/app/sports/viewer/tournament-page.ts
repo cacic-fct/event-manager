@@ -93,7 +93,9 @@ export class SportsTournamentPage {
   });
   readonly selectedCategoryIndex = computed(() => {
     const tournament = this.tournament();
-    if (!tournament) return 0;
+    if (!tournament) {
+      return 0;
+    }
     const index = tournament.categories.findIndex((category) => category.id === this.selectedCategoryId());
     return index < 0 ? 0 : index;
   });

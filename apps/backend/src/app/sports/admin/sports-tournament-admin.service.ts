@@ -234,7 +234,9 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           select: { eventGroupId: true, shouldIssueCertificate: true },
         });
         for (const category of categories) {
-          if (category.shouldIssueCertificate !== null) continue;
+          if (category.shouldIssueCertificate !== null) {
+            continue;
+          }
           await tx.eventGroup.updateMany({
             where: { id: category.eventGroupId, deletedAt: null },
             data: { shouldIssueCertificate: input.shouldIssueCertificate, updatedById: actorId },

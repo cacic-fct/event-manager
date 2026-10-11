@@ -11,7 +11,9 @@
     </div>
     <mat-action-list class="result-list">
       @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
-        <button mat-list-item type="button"
+        <button
+          mat-list-item
+          type="button"
           [class.selected-list-item]="workspace.selectedTeamId() === team.id"
           [attr.aria-pressed]="workspace.selectedTeamId() === team.id"
           (click)="workspace.selectTeam(team)">

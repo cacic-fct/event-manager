@@ -55,8 +55,17 @@ describe('TicketTransferDetailsPage', () => {
       imports: [TicketTransferDetailsPage],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) }, paramMap: of(convertToParamMap({ transferId: transfer.id })) } },
-        { provide: TicketingApiService, useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) },
+            paramMap: of(convertToParamMap({ transferId: transfer.id })),
+          },
+        },
+        {
+          provide: TicketingApiService,
+          useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() },
+        },
         { provide: AuthService, useValue: { user: () => ({ sub: 'holder-user', claims: {} }) } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -70,66 +79,90 @@ describe('TicketTransferDetailsPage', () => {
     TestBed.resetTestingModule();
   });
 
-  it.each(['EXPIRED', 'CONSUMED', 'REVOKED', 'UNAVAILABLE'] as const)('allows cancellation of an unavailable sender ticket (%s)', async (status) => {
-    const transfer = createTicketStoryTransfer({ recipient: null, canCancel: true, ticket: createWalletStoryTicket({ status }) });
-    TestBed.configureTestingModule({
-      imports: [TicketTransferDetailsPage],
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) }, paramMap: of(convertToParamMap({ transferId: transfer.id })) } },
-        { provide: TicketingApiService, useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() } },
-        { provide: AuthService, useValue: { user: () => ({ sub: 'holder-user', claims: {} }) } },
-        { provide: MatDialog, useValue: { open: vi.fn() } },
-        { provide: MatSnackBar, useValue: { open: vi.fn() } },
-      ],
-    });
-    const fixture = TestBed.createComponent(TicketTransferDetailsPage);
-    fixture.detectChanges();
-    expect(fixture.componentInstance.canCancel()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Cancelar pedido');
-    fixture.destroy();
-    TestBed.resetTestingModule();
-  });
-
-  it.each([false, true])('keeps expired receipt available only for admin-initiated transfers (%s)', async (initiatedByAdmin) => {
-    vi.useFakeTimers();
-    const ticket = createWalletStoryTicket({
-      effectiveExpiresAt: new Date(Date.now() + 1000).toISOString(),
-    });
-    const transfer = createTicketStoryTransfer({ ticket, initiatedByAdmin });
-
-    await TestBed.configureTestingModule({
-      imports: [TicketTransferDetailsPage],
-      providers: [
-        provideRouter([]),
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) },
-            paramMap: of(convertToParamMap({ transferId: transfer.id })),
+  it.each(['EXPIRED', 'CONSUMED', 'REVOKED', 'UNAVAILABLE'] as const)(
+    'allows cancellation of an unavailable sender ticket (%s)',
+    async (status) => {
+      const transfer = createTicketStoryTransfer({
+        recipient: null,
+        canCancel: true,
+        ticket: createWalletStoryTicket({ status }),
+      });
+      TestBed.configureTestingModule({
+        imports: [TicketTransferDetailsPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) },
+              paramMap: of(convertToParamMap({ transferId: transfer.id })),
+            },
           },
-        },
-        { provide: TicketingApiService, useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() } },
-        { provide: AuthService, useValue: { user: () => ({ sub: 'recipient-user', claims: { name: 'João' } }) } },
-        { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(false) }) } },
-        { provide: MatSnackBar, useValue: { open: () => undefined } },
-      ],
-    }).compileComponents();
+          {
+            provide: TicketingApiService,
+            useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() },
+          },
+          { provide: AuthService, useValue: { user: () => ({ sub: 'holder-user', claims: {} }) } },
+          { provide: MatDialog, useValue: { open: vi.fn() } },
+          { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        ],
+      });
+      const fixture = TestBed.createComponent(TicketTransferDetailsPage);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.canCancel()).toBe(true);
+      expect(fixture.nativeElement.textContent).toContain('Cancelar pedido');
+      fixture.destroy();
+      TestBed.resetTestingModule();
+    },
+  );
 
-    const fixture: ComponentFixture<TicketTransferDetailsPage> = TestBed.createComponent(TicketTransferDetailsPage);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Receber bilhete');
+  it.each([false, true])(
+    'keeps expired receipt available only for admin-initiated transfers (%s)',
+    async (initiatedByAdmin) => {
+      vi.useFakeTimers();
+      const ticket = createWalletStoryTicket({
+        effectiveExpiresAt: new Date(Date.now() + 1000).toISOString(),
+      });
+      const transfer = createTicketStoryTransfer({ ticket, initiatedByAdmin });
 
-    await vi.advanceTimersByTimeAsync(1000);
-    fixture.detectChanges();
+      await TestBed.configureTestingModule({
+        imports: [TicketTransferDetailsPage],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: { paramMap: convertToParamMap({ transferId: transfer.id }) },
+              paramMap: of(convertToParamMap({ transferId: transfer.id })),
+            },
+          },
+          {
+            provide: TicketingApiService,
+            useValue: { ticketTransfer: () => of(transfer), watchCurrentUser: () => of() },
+          },
+          { provide: AuthService, useValue: { user: () => ({ sub: 'recipient-user', claims: { name: 'João' } }) } },
+          { provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(false) }) } },
+          { provide: MatSnackBar, useValue: { open: () => undefined } },
+        ],
+      }).compileComponents();
 
-    expect(fixture.componentInstance.canAccept()).toBe(initiatedByAdmin);
-    expect(fixture.nativeElement.textContent.includes('Receber bilhete')).toBe(initiatedByAdmin);
-    if (!initiatedByAdmin) {
-      expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(0);
-      expect(fixture.nativeElement.textContent).toContain('Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.');
-    }
-    fixture.destroy();
-    TestBed.resetTestingModule();
-  });
+      const fixture: ComponentFixture<TicketTransferDetailsPage> = TestBed.createComponent(TicketTransferDetailsPage);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Receber bilhete');
+
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.canAccept()).toBe(initiatedByAdmin);
+      expect(fixture.nativeElement.textContent.includes('Receber bilhete')).toBe(initiatedByAdmin);
+      if (!initiatedByAdmin) {
+        expect(fixture.nativeElement.querySelectorAll('button')).toHaveLength(0);
+        expect(fixture.nativeElement.textContent).toContain(
+          'Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.',
+        );
+      }
+      fixture.destroy();
+      TestBed.resetTestingModule();
+    },
+  );
 });

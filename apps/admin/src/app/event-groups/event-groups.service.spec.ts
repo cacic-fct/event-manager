@@ -140,34 +140,44 @@ describe('EventGroupsService', () => {
 
   it('blocks creation in a frozen major event using its exact dates', async () => {
     const past = new Date(Date.now() - 120 * 86400000).toISOString();
-    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(of(createAdminMajorEvent({id:'old-major',createdAt:past,endDate:past})));
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(
+      of(createAdminMajorEvent({ id: 'old-major', createdAt: past, endDate: past })),
+    );
     await expect(service.initializeNewEventGroup('old-major')).rejects.toThrow('congelado');
     expect(service.eventGroupForm.controls.majorEventId.value).toBe('');
     expect(api.createEventGroup).not.toHaveBeenCalled();
   });
 
   it('persists a new empty group under its explicitly selected major event', async () => {
-    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValue(of(createAdminMajorEvent({id:'major-parent',name:'Semana',emoji:'🎓'})));
-    service.selectedEventGroup.set(createAdminEventGroup({id:'old-group'}));
-    const parents=await service.initializeNewEventGroup('major-parent');
-    expect(service.selectedEventGroup()).toBeNull();expect(service.eventGroupForm.controls.id.value).toBe('');
-    expect(parents).toEqual([{kind:'major-event',id:'major-parent',name:'Semana',emoji:'🎓'}]);
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValue(
+      of(createAdminMajorEvent({ id: 'major-parent', name: 'Semana', emoji: '🎓' })),
+    );
+    service.selectedEventGroup.set(createAdminEventGroup({ id: 'old-group' }));
+    const parents = await service.initializeNewEventGroup('major-parent');
+    expect(service.selectedEventGroup()).toBeNull();
+    expect(service.eventGroupForm.controls.id.value).toBe('');
+    expect(parents).toEqual([{ kind: 'major-event', id: 'major-parent', name: 'Semana', emoji: '🎓' }]);
     expect(router.navigate).not.toHaveBeenCalled();
     service.eventGroupForm.controls.name.setValue('Novo grupo');
     await service.saveEventGroup('DRAFT');
-    expect(api.createEventGroup).toHaveBeenCalledWith(expect.objectContaining({name:'Novo grupo',majorEventId:'major-parent'}));
+    expect(api.createEventGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Novo grupo', majorEventId: 'major-parent' }),
+    );
     expect(api.updateEventGroup).not.toHaveBeenCalled();
     expect(service.selectedEventGroup()?.majorEventId).toBe('major-parent');
     expect(router.navigate).toHaveBeenCalledWith(['/event-workspace', 'group', 'event-group-1', 'settings']);
   });
 
   it('does not let late group details overwrite the current group', async () => {
-    const delayed=new Subject<ReturnType<typeof createAdminEventGroup>>();
-    api.getEventGroup.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminEventGroup({id:'b'})));
-    const first=service.pickEventGroupById('a');
+    const delayed = new Subject<ReturnType<typeof createAdminEventGroup>>();
+    api.getEventGroup.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminEventGroup({ id: 'b' })));
+    const first = service.pickEventGroupById('a');
     await service.pickEventGroupById('b');
-    delayed.next(createAdminEventGroup({id:'a'}));delayed.complete();await first;
-    expect(service.selectedEventGroup()?.id).toBe('b');expect(service.eventGroupForm.controls.id.value).toBe('b');
+    delayed.next(createAdminEventGroup({ id: 'a' }));
+    delayed.complete();
+    await first;
+    expect(service.selectedEventGroup()?.id).toBe('b');
+    expect(service.eventGroupForm.controls.id.value).toBe('b');
   });
 
   it('does not navigate to a saved group after its child list finishes for a newer selection', async () => {
@@ -175,7 +185,9 @@ describe('EventGroupsService', () => {
     eventApi.listEvents.mockReturnValueOnce(delayedEvents);
 
     const save = service.saveEventGroup('DRAFT');
-    await vi.waitFor(() => expect(eventApi.listEvents).toHaveBeenCalledWith({ eventGroupId: 'event-group-1', take: 200 }));
+    await vi.waitFor(() =>
+      expect(eventApi.listEvents).toHaveBeenCalledWith({ eventGroupId: 'event-group-1', take: 200 }),
+    );
     service.startNewEventGroup(false);
     delayedEvents.next([]);
     delayedEvents.complete();
@@ -189,7 +201,9 @@ describe('EventGroupsService', () => {
     const delayedMajor = new Subject<ReturnType<typeof createAdminMajorEvent>>();
     const majorApi = TestBed.inject(MajorEventApiService);
     vi.mocked(majorApi.getMajorEvent).mockReturnValueOnce(delayedMajor);
-    vi.mocked(api.createEventGroup).mockReturnValueOnce(of(createAdminEventGroup({ id: 'event-group-1', majorEventId: 'major-1' })));
+    vi.mocked(api.createEventGroup).mockReturnValueOnce(
+      of(createAdminEventGroup({ id: 'event-group-1', majorEventId: 'major-1' })),
+    );
     service.eventGroupForm.controls.majorEventId.setValue('major-1');
 
     const save = service.saveEventGroup('DRAFT');
@@ -249,7 +263,9 @@ describe('EventGroupsService', () => {
   it('preserves invitation IDs when the API hides invitee details', async () => {
     const group = createAdminEventGroup({ audienceInvitations: [{ personId: 'private-person', person: null }] });
     await service.pickEventGroup(group);
-    expect(service.eventGroupAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    expect(service.eventGroupAudienceInvitations()).toEqual([
+      { id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true },
+    ]);
     await service.saveEventGroup('DRAFT');
     expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
   });
@@ -294,7 +310,9 @@ describe('EventGroupsService', () => {
   });
 
   it('uses matching linked metadata when a direct parent lookup is unavailable', async () => {
-    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(throwError(() => new Error('Parent unavailable')));
+    vi.mocked(TestBed.inject(MajorEventApiService).getMajorEvent).mockReturnValueOnce(
+      throwError(() => new Error('Parent unavailable')),
+    );
     const majorEvent = createAdminMajorEvent({
       id: 'major-event-1',
       audience: 'UNESP_ONLY',
@@ -389,7 +407,10 @@ describe('EventGroupsService', () => {
 
     await service.addEventToSelectedGroup(event);
 
-    expect(feedback.error).toHaveBeenCalledWith(new Error('membership failed'), 'Não foi possível adicionar o evento ao grupo.');
+    expect(feedback.error).toHaveBeenCalledWith(
+      new Error('membership failed'),
+      'Não foi possível adicionar o evento ao grupo.',
+    );
   });
 
   it('searches event groups from the first page using the entered query', async () => {

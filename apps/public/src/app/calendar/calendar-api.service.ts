@@ -95,11 +95,9 @@ export class CalendarApiService {
 
   private query<TData>(query: string, variables?: GraphqlVariables, anonymousOnly = false): Observable<TData> {
     return this.http
-      .post<GraphqlResponse<TData>>(
-        '/api/graphql',
-        { query, variables },
-        anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {},
-      )
+      .post<
+        GraphqlResponse<TData>
+      >('/api/graphql', { query, variables }, anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {})
       .pipe(
         map((response) => {
           if (response.errors?.length) {

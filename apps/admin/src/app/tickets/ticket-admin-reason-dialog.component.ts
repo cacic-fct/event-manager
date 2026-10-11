@@ -26,18 +26,30 @@ export interface TicketAdminReasonDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
-      <button matButton="filled" type="button" [disabled]="reasonControl.invalid || !reasonControl.value.trim()" [mat-dialog-close]="reasonControl.value.trim()">
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="reasonControl.invalid || !reasonControl.value.trim()"
+        [mat-dialog-close]="reasonControl.value.trim()">
         {{ data.actionLabel }}
       </button>
     </mat-dialog-actions>
   `,
   styles: `
-    mat-dialog-content { display:grid; gap:0.75rem; }
-    mat-form-field { width:100%; }
+    mat-dialog-content {
+      display: grid;
+      gap: 0.75rem;
+    }
+    mat-form-field {
+      width: 100%;
+    }
   `,
 })
 export class TicketAdminReasonDialogComponent {
   protected readonly data = inject<TicketAdminReasonDialogData>(MAT_DIALOG_DATA);
   private readonly formBuilder = inject(FormBuilder);
-  protected readonly reasonControl = this.formBuilder.nonNullable.control('', [Validators.required, Validators.maxLength(500)]);
+  protected readonly reasonControl = this.formBuilder.nonNullable.control('', [
+    Validators.required,
+    Validators.maxLength(500),
+  ]);
 }

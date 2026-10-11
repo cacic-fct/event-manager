@@ -21,18 +21,23 @@ export class InterestApiService {
   readonly changes = this.changedSubject.asObservable();
 
   getState(targetType: InterestTargetType, targetId: string): Observable<CurrentUserInterestState> {
-    return this.query<{ currentUserInterestState: CurrentUserInterestState }>(`
+    return this.query<{ currentUserInterestState: CurrentUserInterestState }>(
+      `
       query CurrentUserInterestState($targetType: InterestTargetType!, $targetId: String!) {
         currentUserInterestState(targetType: $targetType, targetId: $targetId) {
           interest { ${INTEREST_FIELDS} }
           subscribed endsAt enabled
         }
       }
-    `, { targetType, targetId }).pipe(map((data) => data.currentUserInterestState));
+    `,
+      { targetType, targetId },
+    ).pipe(map((data) => data.currentUserInterestState));
   }
 
   getStates(targetType: InterestTargetType, targetIds: string[]): Observable<Record<string, CurrentUserInterestState>> {
-    if (!targetIds.length) return of({});
+    if (!targetIds.length) {
+      return of({});
+    }
     // Stay below the server's alias and complexity limits for large catalogs.
     if (targetIds.length > 40) {
       const batches = Array.from({ length: Math.ceil(targetIds.length / 40) }, (_, index) =>
@@ -45,55 +50,73 @@ export class InterestApiService {
       variables[`id${index}`] = id;
       return `$id${index}: String!`;
     });
-    const fields = targetIds.map((_, index) => `
+    const fields = targetIds.map(
+      (_, index) => `
       state${index}: currentUserInterestState(targetType: $targetType, targetId: $id${index}) {
         interest { ${INTEREST_FIELDS} }
         subscribed endsAt enabled
       }
-    `);
-    return this.query<Record<string, CurrentUserInterestState>>(`
+    `,
+    );
+    return this.query<Record<string, CurrentUserInterestState>>(
+      `
       query CurrentUserInterestStates($targetType: InterestTargetType!, ${declarations.join(', ')}) {
         ${fields.join('\n')}
       }
-    `, variables).pipe(map((data) => Object.fromEntries(
-      targetIds.map((id, index) => [id, data[`state${index}`]]),
-    )));
+    `,
+      variables,
+    ).pipe(map((data) => Object.fromEntries(targetIds.map((id, index) => [id, data[`state${index}`]]))));
   }
 
   list(majorEventId?: string): Observable<EventInterest[]> {
-    return this.query<{ currentUserInterests: EventInterest[] }>(`
+    return this.query<{ currentUserInterests: EventInterest[] }>(
+      `
       query CurrentUserInterests($majorEventId: String) {
         currentUserInterests(majorEventId: $majorEventId) { ${INTEREST_FIELDS} }
       }
-    `, { majorEventId }).pipe(map((data) => data.currentUserInterests ?? []));
+    `,
+      { majorEventId },
+    ).pipe(map((data) => data.currentUserInterests ?? []));
   }
 
   get(targetType: InterestTargetType, targetId: string): Observable<EventInterest | null> {
-    return this.query<{ currentUserInterest: EventInterest | null }>(`
+    return this.query<{ currentUserInterest: EventInterest | null }>(
+      `
       query CurrentUserInterest($targetType: InterestTargetType!, $targetId: String!) {
         currentUserInterest(targetType: $targetType, targetId: $targetId) { ${INTEREST_FIELDS} }
       }
-    `, { targetType, targetId }).pipe(map((data) => data.currentUserInterest));
+    `,
+      { targetType, targetId },
+    ).pipe(map((data) => data.currentUserInterest));
   }
 
   set(targetType: InterestTargetType, targetId: string, interested: boolean): Observable<EventInterest | null> {
-    return this.query<{ setCurrentUserInterest: EventInterest | null }>(`
+    return this.query<{ setCurrentUserInterest: EventInterest | null }>(
+      `
       mutation SetCurrentUserInterest($targetType: InterestTargetType!, $targetId: String!, $interested: Boolean!) {
         setCurrentUserInterest(targetType: $targetType, targetId: $targetId, interested: $interested) {
           ${INTEREST_FIELDS}
         }
       }
-    `, { targetType, targetId, interested }).pipe(
+    `,
+      { targetType, targetId, interested },
+    ).pipe(
       map((data) => data.setCurrentUserInterest),
       tap(() => this.changedSubject.next()),
     );
   }
 
   private query<T>(query: string, variables: GraphqlVariables): Observable<T> {
-    return this.http.post<GraphqlResponse<T>>('/api/graphql', { query, variables }).pipe(map((response) => {
-      if (response.errors?.length) throw graphqlError(response.errors);
-      if (!response.data) throw new Error('Não foi possível atualizar seu interesse. Tente novamente.');
-      return response.data;
-    }));
+    return this.http.post<GraphqlResponse<T>>('/api/graphql', { query, variables }).pipe(
+      map((response) => {
+        if (response.errors?.length) {
+          throw graphqlError(response.errors);
+        }
+        if (!response.data) {
+          throw new Error('Não foi possível atualizar seu interesse. Tente novamente.');
+        }
+        return response.data;
+      }),
+    );
   }
 }

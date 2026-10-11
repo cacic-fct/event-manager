@@ -1,8 +1,4 @@
-import {
-  courseCodeFromEnrollment,
-  isExplicitlyVerified,
-  resolveAudienceIdentity,
-} from './audience-identity';
+import { courseCodeFromEnrollment, isExplicitlyVerified, resolveAudienceIdentity } from './audience-identity';
 
 describe('audience identity', () => {
   it('recognizes the supported undergraduate course from a verified Keycloak claim', () => {

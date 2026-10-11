@@ -130,7 +130,8 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'People administration workspace for searching records, reviewing linked data, and managing lecturer profiles. Use the controls to explore result volume, loading, errors, and long names.',
+        component:
+          'People administration workspace for searching records, reviewing linked data, and managing lecturer profiles. Use the controls to explore result volume, loading, errors, and long names.',
       },
     },
     layout: 'fullscreen',
@@ -139,8 +140,12 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
       handlers: {
         graphql: [
           http.post('/api/graphql', async ({ request }) => {
-            if (activeArgs.apiState === 'loading') await delay('infinite');
-            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+            if (activeArgs.apiState === 'loading') {
+              await delay('infinite');
+            }
+            if (activeArgs.latencyMs > 0) {
+              await delay(activeArgs.latencyMs);
+            }
             if (activeArgs.apiState === 'error') {
               return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar as pessoas.' }] });
             }
@@ -179,7 +184,6 @@ export const Playground: Story = {
     await userEvent.click(await screen.findByText('Vínculos com eventos'));
     await expect(await screen.findByText('Ministrante')).toBeVisible();
     await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
-
   },
 };
 
@@ -462,9 +466,7 @@ function buildStoryData(args: PeoplePermissionsStoryArgs): StoryData {
     ...grantTarget('event', index),
     majorEvent: majorEvents[index % majorEvents.length],
   }));
-  const permissionGrants = people[0]
-    ? buildPermissionGrants(args, people[0], events, majorEvents, eventGroups)
-    : [];
+  const permissionGrants = people[0] ? buildPermissionGrants(args, people[0], events, majorEvents, eventGroups) : [];
 
   return {
     people,

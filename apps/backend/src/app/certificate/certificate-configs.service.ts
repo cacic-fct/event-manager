@@ -174,7 +174,9 @@ export class CertificateConfigsService {
         where: { id: normalizedFolderId, deletedAt: null },
         select: CERTIFICATE_FOLDER_SELECT,
       });
-      if (!folder) throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+      if (!folder) {
+        throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+      }
       const deletedFolder = await tx.certificateFolder.update({
         where: { id: normalizedFolderId },
         data: {
@@ -480,7 +482,9 @@ export class CertificateConfigsService {
       mergedFolderId !== existingConfig.folderId;
     const attendeeEligibility = this.normalizeAttendeeEligibility(
       input.attendeeEligibility === undefined
-        ? shouldUpdateScopeOrTargets ? null : existingConfig.attendeeEligibility
+        ? shouldUpdateScopeOrTargets
+          ? null
+          : existingConfig.attendeeEligibility
         : input.attendeeEligibility,
     );
 
@@ -550,9 +554,7 @@ export class CertificateConfigsService {
           }
         : {}),
       ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
-      ...(input.attendeeEligibility === undefined && !shouldUpdateScopeOrTargets
-        ? {}
-        : { attendeeEligibility }),
+      ...(input.attendeeEligibility === undefined && !shouldUpdateScopeOrTargets ? {} : { attendeeEligibility }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
       ...(input.shouldAutofillSecondPage === undefined
         ? changedStandaloneMode
@@ -764,7 +766,9 @@ export class CertificateConfigsService {
         where: { id: normalizedConfigId, deletedAt: null },
         select: CERTIFICATE_CONFIG_SELECT,
       });
-      if (!existing) throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
+      if (!existing) {
+        throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
+      }
       const deleted = await tx.certificateConfig.update({
         where: { id: normalizedConfigId },
         data: { deletedAt: new Date() },
@@ -853,7 +857,9 @@ export class CertificateConfigsService {
     eventId?: string | null,
   ): Promise<string[]> {
     const tiers = [...new Set(values.map((value) => value.trim()))];
-    if (tiers.length === 0) return [];
+    if (tiers.length === 0) {
+      return [];
+    }
     if (tiers.some((tier) => !tier)) {
       throw new BadRequestException('Payment tiers cannot be blank.');
     }
@@ -884,7 +890,7 @@ export class CertificateConfigsService {
   private normalizeAttendeeEligibility(
     requested: AttendanceEligibility | null | undefined,
   ): AttendanceEligibility | null {
-    return requested === AttendanceEligibility.ANYONE ? null : requested ?? null;
+    return requested === AttendanceEligibility.ANYONE ? null : (requested ?? null);
   }
 
   private async ensureTemplateExists(templateId: string): Promise<void> {

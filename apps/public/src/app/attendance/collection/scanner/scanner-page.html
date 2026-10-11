@@ -88,8 +88,8 @@
           {{ roleLabel(attendance.unespRole) }}, {{ statusLabel(attendance.subscriptionStatus) }}
         </span>
         <span matListItemLine>
-          @if (attendance.attendedAt) { {{ attendance.attendedAt | date: "'às' HH:mm" }}, } @else { Horário não informado, }
-          {{ methodLabel(attendance.createdByMethod) }}@if (attendance.collectedByFirstName) {, por {{
+          @if (attendance.attendedAt) { {{ attendance.attendedAt | date: "'às' HH:mm" }}, } @else { Horário não
+          informado, } {{ methodLabel(attendance.createdByMethod) }}@if (attendance.collectedByFirstName) {, por {{
           attendance.collectedByFirstName }}}@if (attendance.committedByFirstName) {, enviado por {{
           attendance.committedByFirstName }}}
         </span>

@@ -45,7 +45,9 @@ export class CertificateIssuanceAudit {
   }
 
   async resolveActor(actorId: string | undefined, prisma: CertificateWriteClient): Promise<AuditActor | undefined> {
-    if (!actorId) return undefined;
+    if (!actorId) {
+      return undefined;
+    }
     const user = await prisma.user.findUnique({
       where: { id: actorId },
       select: { name: true, email: true },

@@ -128,16 +128,24 @@ function eventFormResponseAuditSnapshot(response: EventFormResponseRecord): Reco
 }
 
 function eventFormImageReferenceSnapshot(value: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    return [];
+  }
   return value.flatMap((image): Record<string, unknown>[] => {
-    if (!image || typeof image !== 'object' || Array.isArray(image)) return [];
+    if (!image || typeof image !== 'object' || Array.isArray(image)) {
+      return [];
+    }
     const reference = image as Record<string, unknown>;
-    if (typeof reference['id'] !== 'string') return [];
-    return [{
-      id: reference['id'],
-      ...(typeof reference['altText'] === 'string' ? { altText: reference['altText'] } : {}),
-      ...(typeof reference['caption'] === 'string' ? { caption: reference['caption'] } : {}),
-    }];
+    if (typeof reference['id'] !== 'string') {
+      return [];
+    }
+    return [
+      {
+        id: reference['id'],
+        ...(typeof reference['altText'] === 'string' ? { altText: reference['altText'] } : {}),
+        ...(typeof reference['caption'] === 'string' ? { caption: reference['caption'] } : {}),
+      },
+    ];
   });
 }
 

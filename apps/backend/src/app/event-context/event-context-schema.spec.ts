@@ -11,7 +11,9 @@ describe('admin event context GraphQL contract', () => {
     try {
       const schema = await module.get(GraphQLSchemaFactory).create([EventContextResolver]);
       const printed = printSchema(schema);
-      expect(printed).toContain('adminEventContextPage(parentKind: AdminEventContextKind, parentId: String, childKind: AdminEventContextKind, query: String, cursor: String, take: Int, startDateFrom: DateTime, startDateUntil: DateTime, isInGroup: Boolean, isInMajorEvent: Boolean): AdminEventContextPage!');
+      expect(printed).toContain(
+        'adminEventContextPage(parentKind: AdminEventContextKind, parentId: String, childKind: AdminEventContextKind, query: String, cursor: String, take: Int, startDateFrom: DateTime, startDateUntil: DateTime, isInGroup: Boolean, isInMajorEvent: Boolean): AdminEventContextPage!',
+      );
       const kind = schema.getType('AdminEventContextKind') as GraphQLEnumType;
       expect(kind.getValues().map((value) => value.name)).toEqual(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT']);
       const page = (schema.getType('AdminEventContextPage') as GraphQLObjectType).getFields();
@@ -25,7 +27,10 @@ describe('admin event context GraphQL contract', () => {
       expect(String(fields['publicationState'].type)).toBe('String');
       expect(String(fields['ancestors'].type)).toBe('[AdminEventContextAncestor!]!');
       expect(String(fields['hasChildren'].type)).toBe('Boolean!');
-      const clientSource = readFileSync(resolve(__dirname, '../../../../admin/src/app/graphql/admin-event-context-api.service.ts'), 'utf8');
+      const clientSource = readFileSync(
+        resolve(__dirname, '../../../../admin/src/app/graphql/admin-event-context-api.service.ts'),
+        'utf8',
+      );
       const query = clientSource.match(/`(query AdminEventContextPage[\s\S]+?)`/)?.[1];
       expect(query).toBeDefined();
       expect(validate(schema, parse(query ?? ''))).toEqual([]);

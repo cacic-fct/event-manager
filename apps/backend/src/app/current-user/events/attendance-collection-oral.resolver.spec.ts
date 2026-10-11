@@ -1,9 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { EventAttendanceStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import {
-  getAttendanceOralRoster,
-} from './attendance-collection-feed';
+import { getAttendanceOralRoster } from './attendance-collection-feed';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
 import {
   notifySportsMatchAttendanceMutation,
@@ -123,7 +121,12 @@ describe('CurrentUserAttendanceCollectionResolver oral attendance operations', (
         }),
       }),
     );
-    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', expect.anything(), true);
+    expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith(
+      'person-1',
+      'event-1',
+      expect.anything(),
+      true,
+    );
     expect(notifySportsMatchAttendanceMutation).toHaveBeenCalledWith(sportsMutationEvents, attendance);
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
   });

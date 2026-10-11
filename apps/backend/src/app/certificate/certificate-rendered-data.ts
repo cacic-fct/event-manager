@@ -345,17 +345,25 @@ function formatDate(date: Date): string {
 }
 
 export function formatCargaHoraria(totalMinutes: number): string {
-  if (totalMinutes === 0) return '0 minutos';
+  if (totalMinutes === 0) {
+    return '0 minutos';
+  }
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
-  if (minutes === 0) return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+  if (hours === 0) {
+    return `${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+  }
+  if (minutes === 0) {
+    return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+  }
   return `${hours} ${hours === 1 ? 'hora' : 'horas'} e ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
 }
 
 function formatIdentityDocument(identityDocument?: string | null): string {
   const trimmedDocument = identityDocument?.trim();
-  if (!trimmedDocument) return '';
+  if (!trimmedDocument) {
+    return '';
+  }
   const digits = trimmedDocument.replace(/\D/g, '');
   return digits.length === 11 ? `•••.${digits.slice(3, 6)}.${digits.slice(6, 9)}-••` : trimmedDocument;
 }

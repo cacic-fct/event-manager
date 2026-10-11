@@ -37,7 +37,9 @@ export class CurrentUserTicketRealtimeController {
   ): Observable<MessageEvent> {
     return defer(() => authenticateHttpRequest(request, this.keycloakAuth)).pipe(
       switchMap((user) => {
-        if (!user.sub) throw new UnauthorizedException('Missing authenticated user.');
+        if (!user.sub) {
+          throw new UnauthorizedException('Missing authenticated user.');
+        }
         const changedAt = new Date().toISOString();
         const baselines: MessageEvent[] = ['TICKETS_CHANGED', 'TRANSFERS_CHANGED', 'PURCHASES_CHANGED'].map((type) => ({
           data: {
@@ -91,7 +93,9 @@ export class AdminTicketRealtimeController {
             // Try the other read grant because event-ticket and config scopes are independent.
           }
         }
-        if (!authorized) throw new ForbiddenException('Missing event ticket read permission.');
+        if (!authorized) {
+          throw new ForbiddenException('Missing event ticket read permission.');
+        }
         const baseline: MessageEvent = {
           data: {
             revision: `baseline:${Date.now()}`,

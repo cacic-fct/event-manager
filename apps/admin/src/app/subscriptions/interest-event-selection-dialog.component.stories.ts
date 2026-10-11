@@ -16,15 +16,27 @@ const meta: Meta<SelectionStoryArgs> = {
   tags: ['autodocs'],
   args: { targetName: 'Semana da Computação', eventCount: 3 },
   argTypes: { targetName: { control: 'text' }, eventCount: { control: { type: 'range', min: 0, max: 8, step: 1 } } },
-  decorators: [withScenarioControls<SelectionStoryArgs>(), (story, context) => applicationConfig({ providers: [
-    { provide: MAT_DIALOG_DATA, useValue: {
-      targetName: context.args.targetName,
-      events: Array.from({ length: context.args.eventCount }, (_, index) => createAdminEvent({
-        id: `activity-${index}`, name: `Atividade ${index + 1}`,
-      })),
-    } },
-    { provide: MatDialogRef, useValue: { close: () => undefined } },
-  ] })(story, context)],
+  decorators: [
+    withScenarioControls<SelectionStoryArgs>(),
+    (story, context) =>
+      applicationConfig({
+        providers: [
+          {
+            provide: MAT_DIALOG_DATA,
+            useValue: {
+              targetName: context.args.targetName,
+              events: Array.from({ length: context.args.eventCount }, (_, index) =>
+                createAdminEvent({
+                  id: `activity-${index}`,
+                  name: `Atividade ${index + 1}`,
+                }),
+              ),
+            },
+          },
+          { provide: MatDialogRef, useValue: { close: () => undefined } },
+        ],
+      })(story, context),
+  ],
   parameters: { layout: 'padded', a11y: { test: 'error' } },
 };
 export default meta;

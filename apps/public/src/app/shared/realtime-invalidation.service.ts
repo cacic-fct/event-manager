@@ -50,7 +50,9 @@ export class RealtimeInvalidationService {
     errorMessage: string,
     recover: () => ObservableInput<unknown> = () => Promise.resolve(),
   ): Observable<void> {
-    if (!this.isBrowser || typeof EventSource === 'undefined') return EMPTY;
+    if (!this.isBrowser || typeof EventSource === 'undefined') {
+      return EMPTY;
+    }
     return watchRecoveringReplayableEventSourcePing(url, { errorMessage, recover });
   }
 }

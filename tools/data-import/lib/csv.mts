@@ -153,7 +153,9 @@ export async function readCsvFile(filePath: string, options: ParseCsvOptions = {
 
 export function escapeCsvCell(value: unknown): string {
   const cell = value == null ? '' : String(value);
-  if (!/[",\r\n]/u.test(cell)) return cell;
+  if (!/[",\r\n]/u.test(cell)) {
+    return cell;
+  }
   return `"${cell.replaceAll('"', '""')}"`;
 }
 

@@ -161,7 +161,9 @@ describe('WeatherService', () => {
     });
     let releaseFetch!: (response: Response) => void;
     let reportFetchStarted!: () => void;
-    const fetchStarted = new Promise<void>((resolve) => { reportFetchStarted = resolve; });
+    const fetchStarted = new Promise<void>((resolve) => {
+      reportFetchStarted = resolve;
+    });
     global.fetch = jest.fn(
       () =>
         new Promise<Response>((resolve) => {
@@ -170,28 +172,25 @@ describe('WeatherService', () => {
         }),
     );
 
-    const allowed = audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true },
-      () => service.getPublicEventWeather('event-1'),
+    const allowed = audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId: 'unesp-user', isUnesp: true }, () =>
+      service.getPublicEventWeather('event-1'),
     );
     await fetchStarted;
     await expect(
       audienceContext.run(ANONYMOUS_AUDIENCE, () => service.getPublicEventWeather('event-1')),
     ).rejects.toThrow(NotFoundException);
 
-    releaseFetch(
-      {
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          hourly: {
-            time: ['2026-05-22T09:00'],
-            temperature_2m: [21.6],
-            weather_code: [61],
-            uv_index: [4.26],
-          },
-        }),
-      } as unknown as Response,
-    );
+    releaseFetch({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        hourly: {
+          time: ['2026-05-22T09:00'],
+          temperature_2m: [21.6],
+          weather_code: [61],
+          uv_index: [4.26],
+        },
+      }),
+    } as unknown as Response);
     await expect(allowed).resolves.toEqual(expect.objectContaining({ eventId: 'event-1' }));
   });
 

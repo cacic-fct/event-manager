@@ -98,7 +98,9 @@ export class PublicEventFormApiService {
 
   listCurrentUserFormsForMajorEvents(majorEventIds: readonly string[]): Observable<PublicEventForm[]> {
     const ids = [...new Set(majorEventIds)];
-    if (ids.length === 0) return of([]);
+    if (ids.length === 0) {
+      return of([]);
+    }
     const variables = Object.fromEntries(ids.map((id, index) => [`majorEventId${index}`, id]));
     const declarations = ids.map((_, index) => `$majorEventId${index}: String!`).join(', ');
     const fields = ids

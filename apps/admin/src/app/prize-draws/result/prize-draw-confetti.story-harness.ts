@@ -56,7 +56,9 @@ export class PrizeDrawConfettiStoryHarness {
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
-    if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+    if (!isPlatformBrowser(inject(PLATFORM_ID))) {
+      return;
+    }
 
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
     const updatePreference = () => this.prefersReducedMotion.set(motionPreference.matches);

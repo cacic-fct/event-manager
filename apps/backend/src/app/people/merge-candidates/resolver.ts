@@ -151,7 +151,9 @@ export class MergeCandidatesResolver {
 
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.mergeCandidate.findUnique({ where: { id } });
-      if (!existing) throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      if (!existing) {
+        throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      }
       const candidate = await tx.mergeCandidate.update({ where: { id }, data });
       await this.auditLog.record(
         {
@@ -207,14 +209,30 @@ export class MergeCandidatesResolver {
   ): Prisma.MergeCandidateUncheckedUpdateManyInput {
     const data: Prisma.MergeCandidateUncheckedUpdateManyInput = {};
 
-    if (input.personAId !== undefined) data.personAId = input.personAId;
-    if (input.personBId !== undefined) data.personBId = input.personBId;
-    if (input.pairKey !== undefined) data.pairKey = input.pairKey;
-    if (input.score !== undefined) data.score = input.score;
-    if (input.matchMethod !== undefined) data.matchMethod = input.matchMethod;
-    if (input.matchValue !== undefined) data.matchValue = input.matchValue;
-    if (input.status !== undefined) data.status = input.status;
-    if (input.resolvedById !== undefined) data.resolvedById = input.resolvedById;
+    if (input.personAId !== undefined) {
+      data.personAId = input.personAId;
+    }
+    if (input.personBId !== undefined) {
+      data.personBId = input.personBId;
+    }
+    if (input.pairKey !== undefined) {
+      data.pairKey = input.pairKey;
+    }
+    if (input.score !== undefined) {
+      data.score = input.score;
+    }
+    if (input.matchMethod !== undefined) {
+      data.matchMethod = input.matchMethod;
+    }
+    if (input.matchValue !== undefined) {
+      data.matchValue = input.matchValue;
+    }
+    if (input.status !== undefined) {
+      data.status = input.status;
+    }
+    if (input.resolvedById !== undefined) {
+      data.resolvedById = input.resolvedById;
+    }
 
     return data;
   }
@@ -249,7 +267,9 @@ export class MergeCandidatesResolver {
   async deleteMergeCandidate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({ where: { id } });
-      if (!candidate) throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      if (!candidate) {
+        throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      }
       await tx.mergeCandidate.delete({ where: { id } });
       await this.auditLog.record(
         {

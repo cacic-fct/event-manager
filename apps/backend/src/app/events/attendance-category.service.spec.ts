@@ -280,7 +280,11 @@ describe('AttendanceCategoryService', () => {
 
   it.each([
     ['REGISTERED_ONLY', AttendanceCategory.REGULAR, AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET],
-    ['APPROVED_REGISTRATIONS_ONLY', AttendanceCategory.NON_REGULAR, AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING],
+    [
+      'APPROVED_REGISTRATIONS_ONLY',
+      AttendanceCategory.NON_REGULAR,
+      AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING,
+    ],
   ])(
     'uses a pending selected event as registration evidence for %s without an EventSubscription row',
     async (attendanceEligibility, category, currentAssessment) => {
@@ -400,25 +404,34 @@ describe('AttendanceCategoryService', () => {
 
   it('inherits the fetched group policy when the caller omits the group ID', async () => {
     const tx = {
-      event: { findMany: jest.fn().mockResolvedValue([{
-        id: 'event-1',
-        majorEventId: 'major-1',
-        eventGroupId: 'group-1',
-        attendanceEligibility: null,
-        eventGroup: { attendanceEligibility: 'ANYONE', deletedAt: null },
-        majorEvent: { attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY', isPaymentRequired: true },
-        regularAttendancePriceTierIds: [],
-      }]) },
+      event: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'event-1',
+            majorEventId: 'major-1',
+            eventGroupId: 'group-1',
+            attendanceEligibility: null,
+            eventGroup: { attendanceEligibility: 'ANYONE', deletedAt: null },
+            majorEvent: { attendanceEligibility: 'APPROVED_REGISTRATIONS_ONLY', isPaymentRequired: true },
+            regularAttendancePriceTierIds: [],
+          },
+        ]),
+      },
       eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
       majorEventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
-    const assessments = await service.resolveCurrentAssessments([{
-      personId: 'person-1',
-      eventId: 'event-1',
-      category: AttendanceCategory.UNKNOWN,
-      event: { allowSubscription: true, majorEventId: 'major-1', majorEvent: { isPaymentRequired: true } },
-    }], tx as never);
+    const assessments = await service.resolveCurrentAssessments(
+      [
+        {
+          personId: 'person-1',
+          eventId: 'event-1',
+          category: AttendanceCategory.UNKNOWN,
+          event: { allowSubscription: true, majorEventId: 'major-1', majorEvent: { isPaymentRequired: true } },
+        },
+      ],
+      tx as never,
+    );
 
     expect(assessments.get('person-1:event-1')).toBe(AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET);
   });
@@ -625,9 +638,14 @@ function createTx(input: {
     regularAttendancePriceTierIds?: string[];
     allowSubscription: boolean;
     attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
-    eventGroup?: { attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null } | null;
+    eventGroup?: {
+      attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
+    } | null;
     majorEventId: string | null;
-    majorEvent: { isPaymentRequired: boolean; attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null } | null;
+    majorEvent: {
+      isPaymentRequired: boolean;
+      attendanceEligibility?: 'ANYONE' | 'REGISTERED_ONLY' | 'APPROVED_REGISTRATIONS_ONLY' | 'INVITED_ONLY' | null;
+    } | null;
   };
   paymentTier?: string;
   hasEventSubscription: boolean;

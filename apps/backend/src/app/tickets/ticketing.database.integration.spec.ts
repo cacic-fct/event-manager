@@ -13,10 +13,7 @@ import { TicketIssuanceService } from './ticket-issuance.service';
 import { TicketRealtimeService } from './ticket-realtime.service';
 import { TicketsResolver } from './tickets.resolver';
 import { SportsIdentityProtectionService } from '../sports/security/sports-identity-protection.service';
-import {
-  clearTicketingDatabaseFixture,
-  createTicketingDatabaseFixture,
-} from './testing/ticketing-database-fixtures';
+import { clearTicketingDatabaseFixture, createTicketingDatabaseFixture } from './testing/ticketing-database-fixtures';
 import type { TicketingDatabaseFixture } from './testing/ticketing-database-fixtures';
 
 const describePostgres = process.env['TICKETING_POSTGRES_INTEGRATION_TEST'] === '1' ? describe : describe.skip;
@@ -28,7 +25,9 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
 
   beforeAll(async () => {
     const databaseUrl = process.env['TICKETING_TEST_DATABASE_URL'];
-    if (!databaseUrl) throw new Error('Set TICKETING_TEST_DATABASE_URL to the disposable fct_app_ticketing_test database.');
+    if (!databaseUrl) {
+      throw new Error('Set TICKETING_TEST_DATABASE_URL to the disposable fct_app_ticketing_test database.');
+    }
     assertDedicatedTestDatabase(databaseUrl);
     previousDatabaseUrl = process.env['DATABASE_URL'];
     process.env['DATABASE_URL'] = databaseUrl;
@@ -41,14 +40,21 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
   afterEach(async () => {
     while (fixtures.length > 0) {
       const fixture = fixtures.pop();
-      if (fixture) await clearTicketingDatabaseFixture(prisma, fixture);
+      if (fixture) {
+        await clearTicketingDatabaseFixture(prisma, fixture);
+      }
     }
   });
 
   afterAll(async () => {
-    if (prisma) await prisma.$disconnect();
-    if (previousDatabaseUrl === undefined) delete process.env['DATABASE_URL'];
-    else process.env['DATABASE_URL'] = previousDatabaseUrl;
+    if (prisma) {
+      await prisma.$disconnect();
+    }
+    if (previousDatabaseUrl === undefined) {
+      delete process.env['DATABASE_URL'];
+    } else {
+      process.env['DATABASE_URL'] = previousDatabaseUrl;
+    }
   });
 
   it('resolves transfer identity asynchronously and preserves privacy through acceptance', async () => {
@@ -62,12 +68,14 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
       fixture.recipientDocument,
       authorContext,
     );
-    expect(started).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      recipient: null,
-      submittedDestinationIdentityDocument: fixture.recipientDocument,
-    }));
+    expect(started).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        recipient: null,
+        submittedDestinationIdentityDocument: fixture.recipientDocument,
+      }),
+    );
     expect(started.ticket.aztecPayload).toBeNull();
     expect(JSON.stringify(started)).not.toContain(fixture.recipientUserId);
     expect(JSON.stringify(started)).not.toContain(fixture.recipientPersonId);
@@ -76,20 +84,24 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
 
     const authorView = await runtime.resolver.ticketTransfer(started.id, authorContext);
     const recipientView = await runtime.resolver.ticketTransfer(started.id, recipientContext);
-    expect(authorView).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      recipient: null,
-      submittedDestinationIdentityDocument: fixture.recipientDocument,
-    }));
+    expect(authorView).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        recipient: null,
+        submittedDestinationIdentityDocument: fixture.recipientDocument,
+      }),
+    );
     expect(authorView?.ticket.aztecPayload).toBeNull();
-    expect(recipientView).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      sender: expect.objectContaining({ personId: fixture.senderPersonId }),
-      recipient: expect.objectContaining({ personId: fixture.recipientPersonId }),
-      submittedDestinationIdentityDocument: null,
-    }));
+    expect(recipientView).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        sender: expect.objectContaining({ personId: fixture.senderPersonId }),
+        recipient: expect.objectContaining({ personId: fixture.recipientPersonId }),
+        submittedDestinationIdentityDocument: null,
+      }),
+    );
     expect(recipientView?.ticket.aztecPayload).toBeNull();
     expect(JSON.stringify(authorView)).not.toContain(fixture.recipientUserId);
 
@@ -103,45 +115,55 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     expect(accepted).toEqual(expect.objectContaining({ senderStatus: 'ACCEPTED', recipientStatus: 'ACCEPTED' }));
     expect(savedTransfer.submittedDestinationIdentityDocumentEncrypted).toBeNull();
     expect(savedTicket.holderPersonId).toBe(fixture.recipientPersonId);
-    expect(history.map(({ operation }) => operation)).toEqual(expect.arrayContaining([
-      TicketHistoryOperation.TRANSFER_REQUESTED,
-      TicketHistoryOperation.TRANSFERRED,
-      TicketHistoryOperation.TRANSFER_ACCEPTED,
-    ]));
+    expect(history.map(({ operation }) => operation)).toEqual(
+      expect.arrayContaining([
+        TicketHistoryOperation.TRANSFER_REQUESTED,
+        TicketHistoryOperation.TRANSFERRED,
+        TicketHistoryOperation.TRANSFER_ACCEPTED,
+      ]),
+    );
 
     const issuance = new TicketIssuanceService(prisma, runtime.realtime);
-    if (!savedTransfer.acceptedAt) throw new Error('Accepted transfer must have an acceptance time.');
+    if (!savedTransfer.acceptedAt) {
+      throw new Error('Accepted transfer must have an acceptance time.');
+    }
     const attendedAtBeforeTransfer = new Date(savedTransfer.acceptedAt.getTime() - 1_000);
-    await expect(prisma.$transaction((tx) => issuance.consumeForAttendance(
-      tx,
-      fixture.eventId,
-      fixture.recipientPersonId,
-      { attendedAt: attendedAtBeforeTransfer },
-    ))).resolves.toBe(false);
-    await expect(prisma.$transaction((tx) => issuance.consumeForAttendance(
-      tx,
-      fixture.eventId,
-      fixture.senderPersonId,
-      { attendedAt: attendedAtBeforeTransfer },
-    ))).resolves.toBe(true);
+    await expect(
+      prisma.$transaction((tx) =>
+        issuance.consumeForAttendance(tx, fixture.eventId, fixture.recipientPersonId, {
+          attendedAt: attendedAtBeforeTransfer,
+        }),
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      prisma.$transaction((tx) =>
+        issuance.consumeForAttendance(tx, fixture.eventId, fixture.senderPersonId, {
+          attendedAt: attendedAtBeforeTransfer,
+        }),
+      ),
+    ).resolves.toBe(true);
     const redeemedTicket = await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } });
-    expect(redeemedTicket).toEqual(expect.objectContaining({
-      status: 'CONSUMED',
-      holderPersonId: fixture.recipientPersonId,
-      consumedByPersonId: fixture.senderPersonId,
-      consumedAt: attendedAtBeforeTransfer,
-    }));
+    expect(redeemedTicket).toEqual(
+      expect.objectContaining({
+        status: 'CONSUMED',
+        holderPersonId: fixture.recipientPersonId,
+        consumedByPersonId: fixture.senderPersonId,
+        consumedAt: attendedAtBeforeTransfer,
+      }),
+    );
     const archivedWalletTicket = await runtime.resolver.myWalletTicket(fixture.ticketId, recipientContext);
-    expect(archivedWalletTicket).toEqual(expect.objectContaining({
-      id: fixture.ticketId,
-      status: 'CONSUMED',
-      aztecPayload: `ticket:${fixture.ticketId}:${fixture.recipientUserId}`,
-    }));
-    await expect(runtime.transfers.startForUser(
-      fixture.ticketId,
-      fixture.recipientDocument,
-      { sub: fixture.recipientUserId } as never,
-    )).rejects.toBeInstanceOf(GoneException);
+    expect(archivedWalletTicket).toEqual(
+      expect.objectContaining({
+        id: fixture.ticketId,
+        status: 'CONSUMED',
+        aztecPayload: `ticket:${fixture.ticketId}:${fixture.recipientUserId}`,
+      }),
+    );
+    await expect(
+      runtime.transfers.startForUser(fixture.ticketId, fixture.recipientDocument, {
+        sub: fixture.recipientUserId,
+      } as never),
+    ).rejects.toBeInstanceOf(GoneException);
 
     await assertNotificationRetry(prisma, started.id);
     await assertRealtimeRetry(prisma, fixture.eventId, runtime.published);
@@ -164,9 +186,12 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     }
 
     const transfer = await prisma.ticketTransfer.findFirstOrThrow({ where: { ticketId: fixture.ticketId } });
-    expect(await prisma.ticketTransfer.count({ where: { ticketId: fixture.ticketId, senderStatus: 'PENDING' } })).toBe(1);
-    expect(await prisma.ticketTransferAuthorCooldown.findUniqueOrThrow({ where: { userId: fixture.senderUserId } }))
-      .toEqual(expect.objectContaining({ submissionCount: 1 }));
+    expect(await prisma.ticketTransfer.count({ where: { ticketId: fixture.ticketId, senderStatus: 'PENDING' } })).toBe(
+      1,
+    );
+    expect(
+      await prisma.ticketTransferAuthorCooldown.findUniqueOrThrow({ where: { userId: fixture.senderUserId } }),
+    ).toEqual(expect.objectContaining({ submissionCount: 1 }));
     await prisma.ticketTransfer.update({
       where: { id: transfer.id },
       data: { recipientPersonId: fixture.recipientPersonId, recipientUserId: fixture.recipientUserId },
@@ -178,11 +203,14 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     ]);
     expect(acceptances.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(acceptances.filter((result) => result.status === 'rejected')).toHaveLength(1);
-    expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } })).holderPersonId)
-      .toBe(fixture.recipientPersonId);
-    expect(await prisma.eventTicketHistory.count({
-      where: { transferId: transfer.id, operation: TicketHistoryOperation.TRANSFERRED },
-    })).toBe(1);
+    expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } })).holderPersonId).toBe(
+      fixture.recipientPersonId,
+    );
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { transferId: transfer.id, operation: TicketHistoryOperation.TRANSFERRED },
+      }),
+    ).toBe(1);
   });
 
   it('issues one deterministic entitlement and redeems an active ticket at most once', async () => {
@@ -191,20 +219,24 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     const issuance = new TicketIssuanceService(prisma, realtime);
     const sourceKey = `event-subscription:${fixture.eventId}:${fixture.recipientPersonId}`;
     const issued = await Promise.all([
-      prisma.$transaction((tx) => issuance.issueForPerson(
-        tx,
-        fixture.eventId,
-        fixture.recipientPersonId,
-        EventTicketIssueSource.EVENT_SUBSCRIPTION,
-        sourceKey,
-      )),
-      prisma.$transaction((tx) => issuance.issueForPerson(
-        tx,
-        fixture.eventId,
-        fixture.recipientPersonId,
-        EventTicketIssueSource.EVENT_SUBSCRIPTION,
-        sourceKey,
-      )),
+      prisma.$transaction((tx) =>
+        issuance.issueForPerson(
+          tx,
+          fixture.eventId,
+          fixture.recipientPersonId,
+          EventTicketIssueSource.EVENT_SUBSCRIPTION,
+          sourceKey,
+        ),
+      ),
+      prisma.$transaction((tx) =>
+        issuance.issueForPerson(
+          tx,
+          fixture.eventId,
+          fixture.recipientPersonId,
+          EventTicketIssueSource.EVENT_SUBSCRIPTION,
+          sourceKey,
+        ),
+      ),
     ]);
     expect(issued[0].id).toBe(issued[1].id);
     expect(await prisma.eventTicket.count({ where: { sourceKey } })).toBe(1);
@@ -214,12 +246,13 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
       where: { id: fixture.ticketId },
       data: { issuedAt: new Date(historicalAttendance.getTime() + 1_000) },
     });
-    await expect(prisma.$transaction((tx) => issuance.consumeForAttendance(
-      tx,
-      fixture.eventId,
-      fixture.senderPersonId,
-      { attendedAt: historicalAttendance },
-    ))).resolves.toBe(false);
+    await expect(
+      prisma.$transaction((tx) =>
+        issuance.consumeForAttendance(tx, fixture.eventId, fixture.senderPersonId, {
+          attendedAt: historicalAttendance,
+        }),
+      ),
+    ).resolves.toBe(false);
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } })).status).toBe('ACTIVE');
 
     await prisma.eventTicket.update({
@@ -232,9 +265,11 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     ]);
     expect(redemptions.filter(Boolean)).toHaveLength(1);
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } })).status).toBe('CONSUMED');
-    expect(await prisma.eventTicketHistory.count({
-      where: { ticketId: fixture.ticketId, operation: TicketHistoryOperation.CONSUMED },
-    })).toBe(1);
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { ticketId: fixture.ticketId, operation: TicketHistoryOperation.CONSUMED },
+      }),
+    ).toBe(1);
   });
 
   it('backfills pre-enablement PRESENT kit attendance at its recorded time', async () => {
@@ -251,20 +286,27 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
 
     const sourceKey = eventSubscriptionTicketKey(fixture, fixture.senderPersonId);
     const ticket = await prisma.eventTicket.findUniqueOrThrow({ where: { sourceKey } });
-    expect(ticket).toEqual(expect.objectContaining({
-      status: 'CONSUMED',
-      issuedAt: attendedAt,
-      consumedAt: attendedAt,
-      consumedByPersonId: fixture.senderPersonId,
-    }));
-    expect(await prisma.eventTicket.count({
-      where: { eventId: fixture.eventId, holderPersonId: fixture.senderPersonId, status: 'ACTIVE' },
-    })).toBe(0);
-    expect(await prisma.eventTicketHistory.findMany({ where: { ticketId: ticket.id }, select: { operation: true } }))
-      .toEqual(expect.arrayContaining([
+    expect(ticket).toEqual(
+      expect.objectContaining({
+        status: 'CONSUMED',
+        issuedAt: attendedAt,
+        consumedAt: attendedAt,
+        consumedByPersonId: fixture.senderPersonId,
+      }),
+    );
+    expect(
+      await prisma.eventTicket.count({
+        where: { eventId: fixture.eventId, holderPersonId: fixture.senderPersonId, status: 'ACTIVE' },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.eventTicketHistory.findMany({ where: { ticketId: ticket.id }, select: { operation: true } }),
+    ).toEqual(
+      expect.arrayContaining([
         expect.objectContaining({ operation: TicketHistoryOperation.ISSUED }),
         expect.objectContaining({ operation: TicketHistoryOperation.CONSUMED }),
-      ]));
+      ]),
+    );
 
     const scanAudit = await prisma.auditLogEntry.findFirstOrThrow({
       where: { entityType: 'TICKET', entityId: ticket.id, operation: 'SCAN' },
@@ -291,32 +333,34 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     await createPresentAttendance(fixture, fixture.senderPersonId, attendedAt);
     const categories = new AttendanceCategoryService(prisma, undefined, issuance);
 
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.senderPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx, true),
+    );
 
     const sourceKey = eventSubscriptionTicketKey(fixture, fixture.senderPersonId);
     const ticket = await prisma.eventTicket.findUniqueOrThrow({ where: { sourceKey } });
-    expect(ticket).toEqual(expect.objectContaining({
-      status: 'CONSUMED',
-      issuedAt: attendedAt,
-      consumedAt: attendedAt,
-    }));
+    expect(ticket).toEqual(
+      expect.objectContaining({
+        status: 'CONSUMED',
+        issuedAt: attendedAt,
+        consumedAt: attendedAt,
+      }),
+    );
     const attendance = await prisma.eventAttendance.findUniqueOrThrow({
       where: { personId_eventId: { personId: fixture.senderPersonId, eventId: fixture.eventId } },
     });
-    expect(attendance).toEqual(expect.objectContaining({
-      status: 'PRESENT',
-      category: 'REGULAR',
-      currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
-    }));
+    expect(attendance).toEqual(
+      expect.objectContaining({
+        status: 'PRESENT',
+        category: 'REGULAR',
+        currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
+      }),
+    );
 
     await drainReconciliationJob(fixture, issuance);
-    expect(await prisma.eventTicket.count({ where: { eventId: fixture.eventId, holderPersonId: fixture.senderPersonId } }))
-      .toBe(1);
+    expect(
+      await prisma.eventTicket.count({ where: { eventId: fixture.eventId, holderPersonId: fixture.senderPersonId } }),
+    ).toBe(1);
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { sourceKey } })).status).toBe('CONSUMED');
   });
 
@@ -328,29 +372,38 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     await createPresentAttendance(fixture, fixture.senderPersonId, attendedAt);
     const config = await enableEventSubscriptionIssuance(fixture);
     const issuance = createIssuance(prisma);
-    const manualTicket = await prisma.$transaction((tx) => issuance.issueForPerson(
-      tx,
-      fixture.eventId,
-      fixture.senderPersonId,
-      EventTicketIssueSource.ADMIN,
-      `admin:${fixture.eventId}:${fixture.senderPersonId}`,
-    ));
+    const manualTicket = await prisma.$transaction((tx) =>
+      issuance.issueForPerson(
+        tx,
+        fixture.eventId,
+        fixture.senderPersonId,
+        EventTicketIssueSource.ADMIN,
+        `admin:${fixture.eventId}:${fixture.senderPersonId}`,
+      ),
+    );
     await enqueueReconciliation(fixture, config.updatedAt, issuance);
 
     await drainReconciliationJob(fixture, issuance);
 
     const savedManualTicket = await prisma.eventTicket.findUniqueOrThrow({ where: { id: manualTicket.id } });
-    expect(savedManualTicket).toEqual(expect.objectContaining({
-      source: EventTicketIssueSource.ADMIN,
-      status: 'ACTIVE',
-      consumedAt: null,
-    }));
+    expect(savedManualTicket).toEqual(
+      expect.objectContaining({
+        source: EventTicketIssueSource.ADMIN,
+        status: 'ACTIVE',
+        consumedAt: null,
+      }),
+    );
     expect(savedManualTicket.issuedAt.getTime()).toBeGreaterThan(attendedAt.getTime());
-    expect(await prisma.eventTicket.findUnique({ where: { sourceKey: eventSubscriptionTicketKey(fixture, fixture.senderPersonId) } }))
-      .toBeNull();
-    expect(await prisma.eventTicketHistory.count({
-      where: { ticketId: manualTicket.id, operation: TicketHistoryOperation.CONSUMED },
-    })).toBe(0);
+    expect(
+      await prisma.eventTicket.findUnique({
+        where: { sourceKey: eventSubscriptionTicketKey(fixture, fixture.senderPersonId) },
+      }),
+    ).toBeNull();
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { ticketId: manualTicket.id, operation: TicketHistoryOperation.CONSUMED },
+      }),
+    ).toBe(0);
   });
 
   it('keeps a later-received ticket active until its holder attends', async () => {
@@ -406,55 +459,58 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
 
     const issuance = createIssuance(prisma);
     const categories = new AttendanceCategoryService(prisma, undefined, issuance);
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.recipientPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.recipientPersonId, fixture.eventId, tx, true),
+    );
 
     const historicalAttendance = await prisma.eventAttendance.findUniqueOrThrow({
       where: { personId_eventId: { personId: fixture.recipientPersonId, eventId: fixture.eventId } },
     });
-    const ticketBeforeCurrentAttendance = await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } });
-    expect(historicalAttendance).toEqual(expect.objectContaining({
-      category: 'NON_REGULAR',
-      currentAssessment: 'TICKET_REQUIRED',
-    }));
-    expect(ticketBeforeCurrentAttendance).toEqual(expect.objectContaining({
-      holderPersonId: fixture.recipientPersonId,
-      status: 'ACTIVE',
-      issuedAt,
-    }));
+    const ticketBeforeCurrentAttendance = await prisma.eventTicket.findUniqueOrThrow({
+      where: { id: fixture.ticketId },
+    });
+    expect(historicalAttendance).toEqual(
+      expect.objectContaining({
+        category: 'NON_REGULAR',
+        currentAssessment: 'TICKET_REQUIRED',
+      }),
+    );
+    expect(ticketBeforeCurrentAttendance).toEqual(
+      expect.objectContaining({
+        holderPersonId: fixture.recipientPersonId,
+        status: 'ACTIVE',
+        issuedAt,
+      }),
+    );
 
     const currentAttendedAt = new Date();
     await prisma.eventAttendance.update({
       where: { personId_eventId: { personId: fixture.recipientPersonId, eventId: fixture.eventId } },
       data: { attendedAt: currentAttendedAt },
     });
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.recipientPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.recipientPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.recipientPersonId, fixture.eventId, tx, true),
+    );
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.recipientPersonId, fixture.eventId, tx, true),
+    );
 
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: fixture.ticketId } })).status).toBe('CONSUMED');
-    expect(await prisma.eventTicketHistory.count({
-      where: { ticketId: fixture.ticketId, operation: TicketHistoryOperation.CONSUMED },
-    })).toBe(1);
-    expect(await prisma.eventAttendance.findUniqueOrThrow({
-      where: { personId_eventId: { personId: fixture.recipientPersonId, eventId: fixture.eventId } },
-    })).toEqual(expect.objectContaining({
-      category: 'REGULAR',
-      currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
-    }));
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { ticketId: fixture.ticketId, operation: TicketHistoryOperation.CONSUMED },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.eventAttendance.findUniqueOrThrow({
+        where: { personId_eventId: { personId: fixture.recipientPersonId, eventId: fixture.eventId } },
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        category: 'REGULAR',
+        currentAssessment: 'REQUIREMENTS_CURRENTLY_MET',
+      }),
+    );
   });
 
   it('does not backdate a reactivated subscription ticket across historical attendance', async () => {
@@ -478,11 +534,7 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     await createPresentAttendance(fixture, fixture.senderPersonId, attendedAt);
     const categories = new AttendanceCategoryService(prisma, undefined, issuance);
 
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.senderPersonId,
-      fixture.eventId,
-      tx,
-    ));
+    await prisma.$transaction((tx) => categories.refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx));
     await prisma.eventSubscription.update({ where: { id: subscription.id }, data: { deletedAt: new Date() } });
     await syncAutomaticEventSource(issuance, fixture, fixture.senderPersonId);
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: ticket.id } })).status).toBe('REVOKED');
@@ -495,27 +547,30 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     const reactivationAudit = await prisma.auditLogEntry.findFirstOrThrow({
       where: { entityType: 'TICKET', entityId: ticket.id, operation: 'REISSUE' },
     });
-    expect(reactivationAudit).toEqual(expect.objectContaining({
-      before: expect.objectContaining({ issuedAt: originalIssuedAt.toISOString() }),
-      after: expect.objectContaining({ issuedAt: reactivatedTicket.issuedAt.toISOString() }),
-    }));
-    expect(await prisma.eventTicketHistory.count({
-      where: { ticketId: ticket.id, operation: TicketHistoryOperation.ISSUED },
-    })).toBe(2);
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.senderPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
+    expect(reactivationAudit).toEqual(
+      expect.objectContaining({
+        before: expect.objectContaining({ issuedAt: originalIssuedAt.toISOString() }),
+        after: expect.objectContaining({ issuedAt: reactivatedTicket.issuedAt.toISOString() }),
+      }),
+    );
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { ticketId: ticket.id, operation: TicketHistoryOperation.ISSUED },
+      }),
+    ).toBe(2);
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx, true),
+    );
 
     const oldAttendance = await prisma.eventAttendance.findUniqueOrThrow({
       where: { personId_eventId: { personId: fixture.senderPersonId, eventId: fixture.eventId } },
     });
-    expect(oldAttendance).toEqual(expect.objectContaining({
-      category: 'NON_REGULAR',
-      currentAssessment: 'TICKET_REQUIRED',
-    }));
+    expect(oldAttendance).toEqual(
+      expect.objectContaining({
+        category: 'NON_REGULAR',
+        currentAssessment: 'TICKET_REQUIRED',
+      }),
+    );
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: ticket.id } })).status).toBe('ACTIVE');
 
     const currentAttendedAt = new Date();
@@ -523,22 +578,18 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
       where: { personId_eventId: { personId: fixture.senderPersonId, eventId: fixture.eventId } },
       data: { attendedAt: currentAttendedAt },
     });
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.senderPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
-    await prisma.$transaction((tx) => categories.refreshForAttendance(
-      fixture.senderPersonId,
-      fixture.eventId,
-      tx,
-      true,
-    ));
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx, true),
+    );
+    await prisma.$transaction((tx) =>
+      categories.refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx, true),
+    );
     expect((await prisma.eventTicket.findUniqueOrThrow({ where: { id: ticket.id } })).status).toBe('CONSUMED');
-    expect(await prisma.eventTicketHistory.count({
-      where: { ticketId: ticket.id, operation: TicketHistoryOperation.CONSUMED },
-    })).toBe(1);
+    expect(
+      await prisma.eventTicketHistory.count({
+        where: { ticketId: ticket.id, operation: TicketHistoryOperation.CONSUMED },
+      }),
+    ).toBe(1);
   });
 
   it('does not consume an older pass on a later subscription refresh', async () => {
@@ -560,8 +611,13 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
       where: { sourceKey: eventSubscriptionTicketKey(fixture, fixture.senderPersonId) },
     });
     await prisma.eventTicket.update({ where: { id: issuedTicket.id }, data: { issuedAt: subscription.createdAt } });
-    await prisma.$transaction((tx) => new AttendanceCategoryService(prisma, undefined, issuance)
-      .refreshForAttendance(fixture.senderPersonId, fixture.eventId, tx));
+    await prisma.$transaction((tx) =>
+      new AttendanceCategoryService(prisma, undefined, issuance).refreshForAttendance(
+        fixture.senderPersonId,
+        fixture.eventId,
+        tx,
+      ),
+    );
 
     const sourceKey = eventSubscriptionTicketKey(fixture, fixture.senderPersonId);
     const ticket = await prisma.eventTicket.findUniqueOrThrow({ where: { sourceKey } });
@@ -571,10 +627,12 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     const attendance = await prisma.eventAttendance.findUniqueOrThrow({
       where: { personId_eventId: { personId: fixture.senderPersonId, eventId: fixture.eventId } },
     });
-    expect(attendance).toEqual(expect.objectContaining({
-      category: 'NON_REGULAR',
-      currentAssessment: 'TICKET_REQUIRED',
-    }));
+    expect(attendance).toEqual(
+      expect.objectContaining({
+        category: 'NON_REGULAR',
+        currentAssessment: 'TICKET_REQUIRED',
+      }),
+    );
     expect(config.updatedAt.getTime()).toBeLessThanOrEqual(attendedAt.getTime());
   });
 
@@ -602,18 +660,24 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
         newHolderPersonId: transferredFixture.recipientPersonId,
       },
     });
-    await prisma.eventSubscription.update({ where: { id: transferred.subscription.id }, data: { deletedAt: new Date() } });
+    await prisma.eventSubscription.update({
+      where: { id: transferred.subscription.id },
+      data: { deletedAt: new Date() },
+    });
     await syncAutomaticEventSource(transferred.issuance, transferredFixture, transferredFixture.senderPersonId);
 
-    expect(await prisma.eventTicket.count({
-      where: {
-        eventId: transferredFixture.eventId,
-        holderPersonId: transferredFixture.senderPersonId,
-        status: { in: ['ACTIVE', 'CONSUMED'] },
-      },
-    })).toBe(0);
-    expect(await prisma.eventTicket.findUniqueOrThrow({ where: { id: transferred.ticket.id } }))
-      .toEqual(expect.objectContaining({ holderPersonId: transferredFixture.recipientPersonId, status: 'ACTIVE' }));
+    expect(
+      await prisma.eventTicket.count({
+        where: {
+          eventId: transferredFixture.eventId,
+          holderPersonId: transferredFixture.senderPersonId,
+          status: { in: ['ACTIVE', 'CONSUMED'] },
+        },
+      }),
+    ).toBe(0);
+    expect(await prisma.eventTicket.findUniqueOrThrow({ where: { id: transferred.ticket.id } })).toEqual(
+      expect.objectContaining({ holderPersonId: transferredFixture.recipientPersonId, status: 'ACTIVE' }),
+    );
     expect(await prisma.eventTicket.count({ where: { eventId: transferredFixture.eventId } })).toBe(1);
   });
 
@@ -665,10 +729,12 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     const retention = new TicketTransferRetentionService(prisma);
     await invokePrivate(retention, 'clearExpiredDocuments');
 
-    await expect(prisma.ticketTransfer.findUniqueOrThrow({ where: { id: terminal.id } }))
-      .resolves.toEqual(expect.objectContaining({ submittedDestinationIdentityDocumentEncrypted: null }));
-    await expect(prisma.ticketTransfer.findUniqueOrThrow({ where: { id: pending.id } }))
-      .resolves.toEqual(expect.objectContaining({ submittedDestinationIdentityDocumentEncrypted: 'pending-encrypted-document' }));
+    await expect(prisma.ticketTransfer.findUniqueOrThrow({ where: { id: terminal.id } })).resolves.toEqual(
+      expect.objectContaining({ submittedDestinationIdentityDocumentEncrypted: null }),
+    );
+    await expect(prisma.ticketTransfer.findUniqueOrThrow({ where: { id: pending.id } })).resolves.toEqual(
+      expect.objectContaining({ submittedDestinationIdentityDocumentEncrypted: 'pending-encrypted-document' }),
+    );
   });
 
   async function createFixture(options: { eventEndsAt?: Date } = {}): Promise<TicketingDatabaseFixture> {
@@ -725,7 +791,9 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     effectiveAt: Date,
     issuance: TicketIssuanceService,
   ): Promise<void> {
-    await prisma.$transaction((tx) => issuance.enqueueExistingSubscriptionReconciliation(tx, fixture.eventId, effectiveAt));
+    await prisma.$transaction((tx) =>
+      issuance.enqueueExistingSubscriptionReconciliation(tx, fixture.eventId, effectiveAt),
+    );
   }
 
   async function drainReconciliationJob(
@@ -735,16 +803,24 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     const maxSteps = 4;
     let lastState: string | null = null;
     for (let step = 0; step < maxSteps; step++) {
-      const before = await prisma.ticketEntitlementReconciliation.findFirstOrThrow({ where: { eventId: fixture.eventId } });
-      if (before.completedAt) return;
+      const before = await prisma.ticketEntitlementReconciliation.findFirstOrThrow({
+        where: { eventId: fixture.eventId },
+      });
+      if (before.completedAt) {
+        return;
+      }
       const state = `${before.phase}:${before.cursor ?? ''}`;
-      if (state === lastState) throw new Error(`Ticket reconciliation made no phase or cursor progress (${state}).`);
+      if (state === lastState) {
+        throw new Error(`Ticket reconciliation made no phase or cursor progress (${state}).`);
+      }
       lastState = state;
 
       await invokePrivate(issuance, 'processReconciliationJobs');
 
       const after = await prisma.ticketEntitlementReconciliation.findUniqueOrThrow({ where: { id: before.id } });
-      if (after.completedAt) return;
+      if (after.completedAt) {
+        return;
+      }
       if (after.attempts !== before.attempts) {
         throw new Error(`Ticket reconciliation deferred after ${after.attempts} attempt(s).`);
       }
@@ -761,15 +837,14 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
         },
         data: { nextAttemptAt: new Date() },
       });
-      if (madeDue.count !== 1) throw new Error('Ticket reconciliation changed while the test drained its next phase.');
+      if (madeDue.count !== 1) {
+        throw new Error('Ticket reconciliation changed while the test drained its next phase.');
+      }
     }
     throw new Error(`Ticket reconciliation did not complete within ${maxSteps} phase/page steps.`);
   }
 
-  async function issueAutomaticEventSubscriptionTicket(
-    fixture: TicketingDatabaseFixture,
-    personId: string,
-  ) {
+  async function issueAutomaticEventSubscriptionTicket(fixture: TicketingDatabaseFixture, personId: string) {
     await removeSeedTicketAndDisableAutoIssue(fixture);
     const subscription = await createEventSubscription(fixture, personId, new Date(Date.now() - 60_000));
     await enableEventSubscriptionIssuance(fixture);
@@ -786,26 +861,41 @@ describePostgres('ticketing with isolated PostgreSQL and real services', () => {
     fixture: TicketingDatabaseFixture,
     personId: string,
   ): Promise<void> {
-    await prisma.$transaction((tx) => issuance.syncForPerson(
-      tx,
-      fixture.eventId,
-      personId,
-      EventTicketIssueSource.EVENT_SUBSCRIPTION,
-      eventSubscriptionTicketKey(fixture, personId),
-    ));
+    await prisma.$transaction((tx) =>
+      issuance.syncForPerson(
+        tx,
+        fixture.eventId,
+        personId,
+        EventTicketIssueSource.EVENT_SUBSCRIPTION,
+        eventSubscriptionTicketKey(fixture, personId),
+      ),
+    );
   }
 });
 
 function createTransferRuntime(prisma: PrismaService) {
   const { realtime, published } = createRealtime(prisma);
   const identities = new SportsIdentityProtectionService({
-    get: jest.fn((key: string) => key === 'SPORTS_IDENTITY_SECRET' ? 'ticketing-integration-secret' : 'test'),
+    get: jest.fn((key: string) => (key === 'SPORTS_IDENTITY_SECRET' ? 'ticketing-integration-secret' : 'test')),
   } as never);
   const eligibility = new TicketEligibilityService(prisma, {} as never);
-  const transfers = new TicketTransferService(prisma, identities, eligibility, realtime, new FrozenResourceService(prisma));
+  const transfers = new TicketTransferService(
+    prisma,
+    identities,
+    eligibility,
+    realtime,
+    new FrozenResourceService(prisma),
+  );
   const resolution = new TicketTransferResolutionService(prisma, identities, eligibility, realtime);
   const issuance = new TicketIssuanceService(prisma, realtime);
-  const resolver = new TicketsResolver(prisma, {} as never, {} as never, issuance, eligibility, transfers, realtime,
+  const resolver = new TicketsResolver(
+    prisma,
+    {} as never,
+    {} as never,
+    issuance,
+    eligibility,
+    transfers,
+    realtime,
     new FrozenResourceService(prisma),
     new AttendanceCategoryService(prisma, undefined, issuance),
   );
@@ -828,22 +918,18 @@ async function assertNotificationRetry(prisma: PrismaService, transferId: string
   await invokePrivate(service, 'processPending');
   const failed = await prisma.ticketNotificationOutbox.findMany({ where: { transferId }, orderBy: { id: 'asc' } });
   expect(failed.length).toBeGreaterThan(0);
-  expect(failed.every((item) => item.attempts === 1 && item.sentAt === null && item.leaseUntil === null))
-    .toBe(true);
+  expect(failed.every((item) => item.attempts === 1 && item.sentAt === null && item.leaseUntil === null)).toBe(true);
 
   await prisma.ticketNotificationOutbox.updateMany({ where: { transferId }, data: { nextAttemptAt: new Date(0) } });
   transport.notifyTicketTransfer.mockResolvedValue(true);
   await invokePrivate(service, 'processPending');
   const delivered = await prisma.ticketNotificationOutbox.findMany({ where: { transferId } });
-  expect(delivered.every((item) => item.sentAt instanceof Date && item.leaseUntil === null && item.lastError === null))
-    .toBe(true);
+  expect(
+    delivered.every((item) => item.sentAt instanceof Date && item.leaseUntil === null && item.lastError === null),
+  ).toBe(true);
 }
 
-async function assertRealtimeRetry(
-  prisma: PrismaService,
-  eventId: string,
-  publish: jest.Mock,
-): Promise<void> {
+async function assertRealtimeRetry(prisma: PrismaService, eventId: string, publish: jest.Mock): Promise<void> {
   publish.mockRejectedValueOnce(new Error('Replay store temporarily unavailable'));
   const service = new TicketRealtimeService(prisma, {
     scope: jest.fn((channel: string, ...parts: string[]) => `${channel}:${parts.join(':')}`),
@@ -854,19 +940,22 @@ async function assertRealtimeRetry(
     where: { eventId, publishedAt: null, attempts: { gt: 0 } },
   });
   expect(failed).toHaveLength(1);
-  expect(failed[0]).toEqual(expect.objectContaining({
-    attempts: 1,
-    leaseUntil: null,
-    lastError: 'Realtime publication failed.',
-  }));
+  expect(failed[0]).toEqual(
+    expect.objectContaining({
+      attempts: 1,
+      leaseUntil: null,
+      lastError: 'Realtime publication failed.',
+    }),
+  );
 
   await prisma.ticketRealtimeOutbox.updateMany({
     where: { id: failed[0].id },
     data: { nextAttemptAt: new Date(0) },
   });
   await invokePrivate(service, 'publishPending');
-  await expect(prisma.ticketRealtimeOutbox.findUniqueOrThrow({ where: { id: failed[0].id } }))
-    .resolves.toEqual(expect.objectContaining({ publishedAt: expect.any(Date), leaseUntil: null, lastError: null }));
+  await expect(prisma.ticketRealtimeOutbox.findUniqueOrThrow({ where: { id: failed[0].id } })).resolves.toEqual(
+    expect.objectContaining({ publishedAt: expect.any(Date), leaseUntil: null, lastError: null }),
+  );
 }
 
 async function invokePrivate(

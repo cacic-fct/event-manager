@@ -16,9 +16,13 @@ for (const appName of ['public', 'admin']) {
     true,
   );
   const handlers = source.statements.flatMap((statement) => {
-    if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) return [];
+    if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) {
+      return [];
+    }
     const call = statement.expression;
-    if (!['app.get', 'app.use'].includes(call.expression.getText(source))) return [];
+    if (!['app.get', 'app.use'].includes(call.expression.getText(source))) {
+      return [];
+    }
     const handler = call.arguments.at(-1);
     return handler && ts.isArrowFunction(handler) && handler.getText(source).includes('writeResponseToNodeResponse')
       ? [{ name: call.arguments[0].getText(source), code: handler.getText(source) }]

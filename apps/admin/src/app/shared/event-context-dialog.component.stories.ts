@@ -12,7 +12,11 @@ import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
-import { EventContextDialogComponent, type EventContextDialogData, type EventContextDialogResult } from './event-context-dialog.component';
+import {
+  EventContextDialogComponent,
+  type EventContextDialogData,
+  type EventContextDialogResult,
+} from './event-context-dialog.component';
 import type { EventContextRef } from './event-context-picker.component';
 import { contextStoryPage } from './event-context-story.fixtures';
 
@@ -63,13 +67,11 @@ const groupEvent = {
 };
 
 function list<T extends { name: string }>(items: T[], query?: string) {
-  if (active.fail) return throwError(() => new Error('Busca indisponível'));
+  if (active.fail) {
+    return throwError(() => new Error('Busca indisponível'));
+  }
   const normalizedQuery = query?.toLocaleLowerCase('pt-BR') ?? '';
-  return of(
-    active.empty
-      ? []
-      : items.filter((item) => item.name.toLocaleLowerCase('pt-BR').includes(normalizedQuery)),
-  );
+  return of(active.empty ? [] : items.filter((item) => item.name.toLocaleLowerCase('pt-BR').includes(normalizedQuery)));
 }
 
 @Component({
@@ -150,9 +152,7 @@ const meta: Meta<Args> = {
           provide: AdminEventContextApiService,
           useValue: {
             listPage: (options: AdminEventContextPageOptions) =>
-              active.fail
-                ? throwError(() => new Error('Unavailable'))
-                : of(contextStoryPage(options, active)),
+              active.fail ? throwError(() => new Error('Unavailable')) : of(contextStoryPage(options, active)),
           },
         },
         {
@@ -178,7 +178,10 @@ const meta: Meta<Args> = {
           provide: EventGroupApiService,
           useValue: {
             listEventGroups: ({ query, majorEventId }: { query?: string; majorEventId?: string }) =>
-              list([group].filter((item) => !majorEventId || item.majorEventId === majorEventId), query),
+              list(
+                [group].filter((item) => !majorEventId || item.majorEventId === majorEventId),
+                query,
+              ),
           },
         },
         {
@@ -285,9 +288,7 @@ export const EventOnlyPermissions: Story = {
     const dialog = await openDialog(canvasElement);
     await userEvent.click(await dialog.findByRole('button', { name: 'Expandir Semana da Computação' }));
     await expect(await dialog.findByRole('button', { name: 'Selecionar Oficina de acessibilidade' })).toBeVisible();
-    await expect(
-      dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' }),
-    ).not.toBeInTheDocument();
+    await expect(dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' })).not.toBeInTheDocument();
   },
 };
 
@@ -296,9 +297,7 @@ export const LongNames: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement);
     await userEvent.click(await dialog.findByRole('button', { name: /Expandir Semana da Computação/ }));
-    await expect(
-      await dialog.findByRole('button', { name: /Selecionar Oficina de acessibilidade/ }),
-    ).toBeVisible();
+    await expect(await dialog.findByRole('button', { name: /Selecionar Oficina de acessibilidade/ })).toBeVisible();
   },
 };
 
@@ -316,12 +315,8 @@ export const MajorEventChildren: Story = {
     const dialog = await openDialog(canvasElement);
     await expect(dialog.getByRole('heading', { name: 'Eventos deste contexto' })).toBeVisible();
     await expect(await dialog.findByRole('button', { name: 'Selecionar Oficina de acessibilidade' })).toBeVisible();
-    await expect(
-      dialog.queryByRole('button', { name: 'Selecionar Encontro da trilha' }),
-    ).not.toBeInTheDocument();
-    await expect(
-      dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' }),
-    ).not.toBeInTheDocument();
+    await expect(dialog.queryByRole('button', { name: 'Selecionar Encontro da trilha' })).not.toBeInTheDocument();
+    await expect(dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' })).not.toBeInTheDocument();
     await expect(dialog.getByRole('button', { name: 'Novo evento' })).toBeVisible();
     await expect(dialog.queryByRole('button', { name: 'Novo grupo' })).not.toBeInTheDocument();
   },
@@ -345,12 +340,8 @@ export const MajorEventGroups: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement);
     await expect(dialog.getByRole('heading', { name: 'Grupos deste contexto' })).toBeVisible();
-    await expect(
-      await dialog.findByRole('button', { name: 'Selecionar Trilha de desenvolvimento web' }),
-    ).toBeVisible();
-    await expect(
-      dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' }),
-    ).not.toBeInTheDocument();
+    await expect(await dialog.findByRole('button', { name: 'Selecionar Trilha de desenvolvimento web' })).toBeVisible();
+    await expect(dialog.queryByRole('button', { name: 'Selecionar Semana da Computação' })).not.toBeInTheDocument();
     await expect(dialog.queryByRole('button', { name: 'Novo evento' })).not.toBeInTheDocument();
     await expect(dialog.getByRole('button', { name: 'Novo grupo' })).toBeVisible();
   },

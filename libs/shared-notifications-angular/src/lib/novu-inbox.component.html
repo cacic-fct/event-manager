@@ -3,7 +3,12 @@
   <span class="toolbar-spacer"></span>
 
   @if (notifications.isConfigured() && selectedTab() !== 'preferences') {
-    <button matIconButton type="button" [matMenuTriggerFor]="bulkMenu" aria-label="Mais ações" [disabled]="loading() || busy()">
+    <button
+      matIconButton
+      type="button"
+      [matMenuTriggerFor]="bulkMenu"
+      aria-label="Mais ações"
+      [disabled]="loading() || busy()">
       <mat-icon>more_vert</mat-icon>
     </button>
   }
@@ -59,7 +64,9 @@
       </mat-tab>
       @if (showUnreadFilter()) {
         <mat-tab>
-          <ng-template mat-tab-label><span class="tab-label"><mat-icon>mark_email_unread</mat-icon><span>Não lidas</span></span></ng-template>
+          <ng-template mat-tab-label
+            ><span class="tab-label"><mat-icon>mark_email_unread</mat-icon><span>Não lidas</span></span></ng-template
+          >
         </mat-tab>
       }
       <mat-tab>
@@ -145,7 +152,12 @@
                 <button mat-button type="button" [disabled]="busy()" (click)="openRedirect(notification)">Abrir</button>
               }
 
-              <button matIconButton type="button" [matMenuTriggerFor]="notificationMenu" aria-label="Ações" [disabled]="busy()">
+              <button
+                matIconButton
+                type="button"
+                [matMenuTriggerFor]="notificationMenu"
+                aria-label="Ações"
+                [disabled]="busy()">
                 <mat-icon>more_vert</mat-icon>
               </button>
             </div>
@@ -207,7 +219,9 @@
 
   <mat-menu #bulkMenu="matMenu">
     @if (!markReadOnOpen()) {
-      <button mat-menu-item type="button" [disabled]="busy()" (click)="markAllAsRead()"><mat-icon>done_all</mat-icon><span>Marcar todas como lidas</span></button>
+      <button mat-menu-item type="button" [disabled]="busy()" (click)="markAllAsRead()">
+        <mat-icon>done_all</mat-icon><span>Marcar todas como lidas</span>
+      </button>
     }
     <button mat-menu-item type="button" [disabled]="busy()" (click)="archiveAllRead()">
       <mat-icon>inventory_2</mat-icon>

@@ -1,6 +1,13 @@
 import { Service, computed, inject, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { CanActivateFn, CanDeactivateFn, NavigationCancel, NavigationEnd, NavigationError, Router } from '@angular/router';
+import {
+  CanActivateFn,
+  CanDeactivateFn,
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  Router,
+} from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
 import { ConfirmationDialogComponent } from './dialogs/confirmation-dialog.component';
 
@@ -28,7 +35,12 @@ export class WorkspacePendingChangesService {
     const routerEvents = this.router?.events;
     if (routerEvents) {
       routerEvents
-        .pipe(filter((event) => event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError))
+        .pipe(
+          filter(
+            (event) =>
+              event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError,
+          ),
+        )
         .subscribe(() => {
           this.routeTransitionApproved = false;
         });
@@ -76,7 +88,7 @@ export class WorkspacePendingChangesService {
       return true;
     }
 
-    const confirmed = (
+    const confirmed =
       (await firstValueFrom(
         this.dialog
           .open(ConfirmationDialogComponent, {
@@ -90,11 +102,12 @@ export class WorkspacePendingChangesService {
             width: '420px',
           })
           .afterClosed(),
-      )) === true
-    );
+      )) === true;
     if (confirmed) {
       for (const [id, editor] of this.registrations()) {
-        if (!editor.pending) continue;
+        if (!editor.pending) {
+          continue;
+        }
         await editor.discard?.();
         this.update(id, false);
       }

@@ -442,14 +442,9 @@ export class CalendarService {
       throw new NotFoundException('Calendar feed was not found.');
     }
 
-    const entries = await this.withStoredAudience(settings.userId, () =>
-      getAdminCalendarEntriesForUser(
-        this.prisma,
-        settings.userId,
-        now,
-        publicAppOrigin,
-        ADMIN_FEED_ITEM_TAKE,
-      ),
+    const entries = await this.withStoredAudience(
+      settings.userId,
+      () => getAdminCalendarEntriesForUser(this.prisma, settings.userId, now, publicAppOrigin, ADMIN_FEED_ITEM_TAKE),
       true,
     );
     if (entries.length === 0) {
@@ -491,9 +486,8 @@ export class CalendarService {
     }
 
     const now = new Date();
-    const entries = await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, bypass: true },
-      () => getSuperAdminCalendarEntries(this.prisma, publicAppOrigin, ADMIN_FEED_ITEM_TAKE),
+    const entries = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      getSuperAdminCalendarEntries(this.prisma, publicAppOrigin, ADMIN_FEED_ITEM_TAKE),
     );
     await this.sampleSuperAdminLastFetchedAt(settings.feedKeyHash, settings.lastFetchedAt, now);
 
@@ -520,7 +514,9 @@ export class CalendarService {
     }
 
     const principal = await this.audiences.principalForStoredUser(userId);
-    const grants = administrative ? await findActiveRolePermissionScopes(this.prisma, userId, [Permission.EventAudience.Bypass]) : [];
+    const grants = administrative
+      ? await findActiveRolePermissionScopes(this.prisma, userId, [Permission.EventAudience.Bypass])
+      : [];
     return audienceContext.run({ ...principal, bypass: grants.some((grant) => grant.scope === 'GLOBAL') }, operation);
   }
 

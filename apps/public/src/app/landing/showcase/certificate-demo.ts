@@ -73,12 +73,17 @@ export class CertificateDemoComponent {
   readonly eligibleCertificates = computed(() => CERTIFICATES[this.audience()]);
   readonly eligibleSummary = computed(() => {
     const count = this.eligibleCertificates().length;
-    const audienceLabel = this.audience() === 'participants'
-      ? count === 1 ? 'participante' : 'participantes'
-      : count === 1 ? 'palestrante' : 'palestrantes';
+    const audienceLabel =
+      this.audience() === 'participants'
+        ? count === 1
+          ? 'participante'
+          : 'participantes'
+        : count === 1
+          ? 'palestrante'
+          : 'palestrantes';
     return `${count} ${audienceLabel} ${count === 1 ? 'elegível' : 'elegíveis'}`;
   });
-  readonly audienceLabel = computed(() => this.audience() === 'participants' ? 'participantes' : 'palestrantes');
+  readonly audienceLabel = computed(() => (this.audience() === 'participants' ? 'participantes' : 'palestrantes'));
   readonly previewCertificate = computed(() => this.eligibleCertificates()[0]);
   readonly previewText = computed(() => {
     const certificate = this.previewCertificate();

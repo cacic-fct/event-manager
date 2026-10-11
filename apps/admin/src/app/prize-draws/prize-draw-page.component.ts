@@ -47,35 +47,48 @@ export class PrizeDrawPageComponent {
   readonly reelNames = computed(() => this.shortNames(this.entries()));
   readonly lastResult = signal<PrizeDrawSpinResult | null>(null);
   readonly reducedMotion = signal(false);
-  private readonly queryParams = toSignal(this.route.queryParamMap ?? of(this.route.snapshot.queryParamMap), { initialValue: this.route.snapshot.queryParamMap });
+  private readonly queryParams = toSignal(this.route.queryParamMap ?? of(this.route.snapshot.queryParamMap), {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
   readonly demoMode = computed(() => this.queryParams().get('demo') === 'true');
 
   constructor() {
-    if (!isPlatformBrowser(this.platformId)) return;
-    this.destroyRef.onDestroy(() => { this.requestGeneration++; this.loadGeneration++; });
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.destroyRef.onDestroy(() => {
+      this.requestGeneration++;
+      this.loadGeneration++;
+    });
     if (typeof matchMedia === 'function') {
       const query = matchMedia('(prefers-reduced-motion: reduce)');
       this.reducedMotion.set(query.matches);
       const listener = (event: MediaQueryListEvent) => {
         this.reducedMotion.set(event.matches);
-        if (event.matches) this.reel()?.requestReducedMotion();
+        if (event.matches) {
+          this.reel()?.requestReducedMotion();
+        }
       };
       query.addEventListener('change', listener);
       this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
     }
-    (this.route.paramMap ?? of(this.route.snapshot.paramMap)).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.requestGeneration++;
-      this.requesting.set(false);
-      this.draw.set(null);
-      this.entries.set([]);
-      this.lastResult.set(null);
-      void this.load();
-    });
+    (this.route.paramMap ?? of(this.route.snapshot.paramMap))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.requestGeneration++;
+        this.requesting.set(false);
+        this.draw.set(null);
+        this.entries.set([]);
+        this.lastResult.set(null);
+        void this.load();
+      });
   }
 
   async run(demo: boolean): Promise<void> {
     const draw = this.draw();
-    if (!draw || this.requesting() || !this.canDraw()) return;
+    if (!draw || this.requesting() || !this.canDraw()) {
+      return;
+    }
     const generation = ++this.requestGeneration;
     this.requesting.set(true);
     this.lastResult.set(null);
@@ -83,10 +96,14 @@ export class PrizeDrawPageComponent {
       const result = await firstValueFrom(
         this.api.spin({ drawId: draw.id, demo, reducedMotion: this.reducedMotion() }),
       );
-      if (generation !== this.requestGeneration) return;
+      if (generation !== this.requestGeneration) {
+        return;
+      }
       this.lastResult.set(result);
       await this.reel()?.play(result, this.reducedMotion());
-      if (generation !== this.requestGeneration) return;
+      if (generation !== this.requestGeneration) {
+        return;
+      }
       await firstValueFrom(
         this.dialog
           .open<PrizeDrawResultDialogComponent, PrizeDrawResultDialogData, boolean>(PrizeDrawResultDialogComponent, {
@@ -104,8 +121,11 @@ export class PrizeDrawPageComponent {
           })
           .afterClosed(),
       );
-      if (!result.demo) await this.load(false);
-      else this.reel()?.reset(this.shortNames(this.entries()));
+      if (!result.demo) {
+        await this.load(false);
+      } else {
+        this.reel()?.reset(this.shortNames(this.entries()));
+      }
     } catch (error) {
       if (generation === this.requestGeneration) {
         this.reel()?.reset(this.shortNames(this.entries()));
@@ -117,20 +137,26 @@ export class PrizeDrawPageComponent {
         );
       }
     } finally {
-      if (generation === this.requestGeneration) this.requesting.set(false);
+      if (generation === this.requestGeneration) {
+        this.requesting.set(false);
+      }
     }
   }
 
   canDraw(): boolean {
     const draw = this.draw();
-    if (!draw || draw.eligibleEntrantCount === 0) return false;
+    if (!draw || draw.eligibleEntrantCount === 0) {
+      return false;
+    }
     const active = draw.spins.filter((spin) => !spin.undoneAt).length;
     return draw.spinLimit === null || draw.spinLimit === undefined || active < draw.spinLimit;
   }
 
   nextSpinLabel(): string {
     const draw = this.draw();
-    if (!draw) return '';
+    if (!draw) {
+      return '';
+    }
     const active = draw.spins.filter((spin) => !spin.undoneAt).length;
     const planned = draw.plannedSpins.find((spin) => spin.position === active + 1);
     return planned?.description || `Giro ${active + 1}`;
@@ -143,27 +169,45 @@ export class PrizeDrawPageComponent {
       this.loading.set(false);
       return;
     }
-    if (showLoading) this.loading.set(true);
+    if (showLoading) {
+      this.loading.set(true);
+    }
     try {
       const [draw, entries] = await Promise.all([
         firstValueFrom(this.api.get(drawId)),
         firstValueFrom(this.api.eligibleEntries(drawId)),
       ]);
-      if (this.destroyRef.destroyed || generation !== this.loadGeneration) return;
-      if (this.inWorkspaceShell && !this.route.snapshot.queryParamMap.has('eventId') && !this.route.snapshot.queryParamMap.has('majorEventId')) {
-        void this.router.navigate([], { relativeTo: this.route, queryParams: this.scopeQuery(draw), queryParamsHandling: 'merge', replaceUrl: true });
+      if (this.destroyRef.destroyed || generation !== this.loadGeneration) {
+        return;
+      }
+      if (
+        this.inWorkspaceShell &&
+        !this.route.snapshot.queryParamMap.has('eventId') &&
+        !this.route.snapshot.queryParamMap.has('majorEventId')
+      ) {
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: this.scopeQuery(draw),
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
       }
       this.draw.set(draw);
       this.entries.set(entries);
       this.lastResult.set(null);
       queueMicrotask(() => this.reel()?.reset(this.shortNames(entries)));
     } catch (error) {
-      if (!this.destroyRef.destroyed && generation === this.loadGeneration &&
-        !this.routeResourceErrors.redirectIfUnavailable(error)) {
+      if (
+        !this.destroyRef.destroyed &&
+        generation === this.loadGeneration &&
+        !this.routeResourceErrors.redirectIfUnavailable(error)
+      ) {
         this.feedback.error(error, 'Não foi possível preparar o sorteio.');
       }
     } finally {
-      if (generation === this.loadGeneration) this.loading.set(false);
+      if (generation === this.loadGeneration) {
+        this.loading.set(false);
+      }
     }
   }
 

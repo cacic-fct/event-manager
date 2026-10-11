@@ -43,9 +43,15 @@ describe('PrizeDrawWorkspaceService', () => {
 
   beforeEach(() => {
     api = apiMock();
-    eventApi = { listEvents: vi.fn(() => of([{ id: 'event-1', name: 'Evento' }])), getEvent: vi.fn((id: string) => of(createAdminEvent({ id }))) };
+    eventApi = {
+      listEvents: vi.fn(() => of([{ id: 'event-1', name: 'Evento' }])),
+      getEvent: vi.fn((id: string) => of(createAdminEvent({ id }))),
+    };
     feedback = { error: vi.fn() };
-    majorEventApi = { listMajorEvents: vi.fn(() => of([{ id: 'major-1', name: 'Grande evento' }])), getMajorEvent: vi.fn((id: string) => of({ id, name: 'Grande evento selecionado', emoji: '🎓' })) };
+    majorEventApi = {
+      listMajorEvents: vi.fn(() => of([{ id: 'major-1', name: 'Grande evento' }])),
+      getMajorEvent: vi.fn((id: string) => of({ id, name: 'Grande evento selecionado', emoji: '🎓' })),
+    };
     peopleApi = { listRelatedPeople: vi.fn(() => of([])) };
     router = { navigate: vi.fn(() => Promise.resolve(true)) };
     snackbar = { open: vi.fn() };
@@ -106,7 +112,8 @@ describe('PrizeDrawWorkspaceService', () => {
     eventApi.listEvents.mockReturnValueOnce(targets);
     const oldRoute = service.initialize('draw-1');
     await service.initialize();
-    targets.next([createAdminEvent()]); targets.complete();
+    targets.next([createAdminEvent()]);
+    targets.complete();
     await oldRoute;
     expect(service.selected()).toBeNull();
     expect(api.get).not.toHaveBeenCalled();

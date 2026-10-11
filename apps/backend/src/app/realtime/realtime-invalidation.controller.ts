@@ -181,7 +181,9 @@ export class RealtimeInvalidationController {
           ORGANIZER_REFRESH_INTERVAL_MS,
           async () => {
             const info = await this.organizerInfo.currentUserOrganizerInfo(targetType, targetId, { req: request });
-            if (!info) throw new ForbiddenException('Informações restritas aos ministrantes deste evento.');
+            if (!info) {
+              throw new ForbiddenException('Informações restritas aos ministrantes deste evento.');
+            }
             return {
               type: 'ORGANIZER_INFO_INVALIDATED',
               revision: createHash('sha256').update(JSON.stringify(info)).digest('base64url'),

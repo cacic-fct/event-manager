@@ -15,10 +15,13 @@ type Story = StoryObj<MajorEventSubscriptionDemoComponent>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await waitFor(async () => {
-      await expect(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' })).toBeChecked();
-      await expect(canvas.getByRole('checkbox', { name: 'Selecionar Realidade Virtual' })).toBeChecked();
-    }, { timeout: 3000 });
+    await waitFor(
+      async () => {
+        await expect(canvas.getByRole('checkbox', { name: 'Selecionar Interfaces que incluem' })).toBeChecked();
+        await expect(canvas.getByRole('checkbox', { name: 'Selecionar Realidade Virtual' })).toBeChecked();
+      },
+      { timeout: 3000 },
+    );
     await expect(canvas.getByText('2 eventos selecionados')).toBeVisible();
   },
 };

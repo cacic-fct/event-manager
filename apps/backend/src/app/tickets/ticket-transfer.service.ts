@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  GoneException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, GoneException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -98,13 +92,17 @@ export class TicketTransferService {
 
           const ticket = await this.requireTransferableTicket(tx, ticketId, false, userId);
           const sender = ticket.holder;
-          if (!sender || sender.userId !== userId) throw new NotFoundException('Bilhete não encontrado.');
+          if (!sender || sender.userId !== userId) {
+            throw new NotFoundException('Bilhete não encontrado.');
+          }
 
           const pending = await tx.ticketTransfer.findFirst({
             where: { ticketId, senderStatus: TicketTransferSenderStatus.PENDING },
             select: { id: true },
           });
-          if (pending) throw new ConflictException('Já existe uma solicitação pendente para este bilhete.');
+          if (pending) {
+            throw new ConflictException('Já existe uma solicitação pendente para este bilhete.');
+          }
 
           await this.advanceAuthorStartCooldown(tx, userId, new Date());
           const transfer = await tx.ticketTransfer.create({
@@ -133,17 +131,19 @@ export class TicketTransferService {
           });
           await tx.ticketTransferResolutionOutbox.create({ data: { transferId: transfer.id } });
           await this.writeTransferAudit(tx, transfer, AuditLogOperation.START, 'Transferência de bilhete iniciada.');
-          await this.enqueueNotification(tx, transfer, TicketNotificationType.SENDER_STARTED, userId, this.firstName(sender.name));
-          await this.realtime.enqueueForUsers(
+          await this.enqueueNotification(
             tx,
-            [userId, sender.userId],
-            {
-              type: 'TRANSFERS_CHANGED',
-              eventId: ticket.eventId,
-              ticketId,
-              transferId: transfer.id,
-            },
+            transfer,
+            TicketNotificationType.SENDER_STARTED,
+            userId,
+            this.firstName(sender.name),
           );
+          await this.realtime.enqueueForUsers(tx, [userId, sender.userId], {
+            type: 'TRANSFERS_CHANGED',
+            eventId: ticket.eventId,
+            ticketId,
+            transferId: transfer.id,
+          });
           return transfer;
         }),
       );
@@ -166,7 +166,9 @@ export class TicketTransferService {
           where: { id: transferId },
           include: TRANSFER_DETAILS_INCLUDE,
         });
-        if (!transfer || transfer.authorUserId !== userId) throw new NotFoundException('Solicitação não encontrada.');
+        if (!transfer || transfer.authorUserId !== userId) {
+          throw new NotFoundException('Solicitação não encontrada.');
+        }
         if (transfer.initiatorType === TicketTransferInitiatorType.ADMIN) {
           await this.frozenResources.assertEventMutable(transfer.eventId, user, 'edit');
         }
@@ -187,7 +189,9 @@ export class TicketTransferService {
             submittedDestinationIdentityDocumentEncrypted: null,
           },
         });
-        if (changed.count !== 1) throw new ConflictException('Esta solicitação não está mais pendente.');
+        if (changed.count !== 1) {
+          throw new ConflictException('Esta solicitação não está mais pendente.');
+        }
 
         await tx.eventTicketHistory.create({
           data: {
@@ -207,7 +211,13 @@ export class TicketTransferService {
           { senderStatus: TicketTransferSenderStatus.CANCELED },
           userId,
         );
-        await this.enqueueNotification(tx, transfer, TicketNotificationType.SENDER_CANCELED, userId, this.firstName(transfer.sender?.name));
+        await this.enqueueNotification(
+          tx,
+          transfer,
+          TicketNotificationType.SENDER_CANCELED,
+          userId,
+          this.firstName(transfer.sender?.name),
+        );
         if (transfer.senderUserId && transfer.senderUserId !== userId) {
           await this.enqueueNotification(
             tx,
@@ -245,7 +255,9 @@ export class TicketTransferService {
       },
       data: { recipientStatus: status, ignoreReason: reason, ignoredAt: now },
     });
-    if (changed.count !== 1) throw new ConflictException('Esta solicitação não está mais disponível.');
+    if (changed.count !== 1) {
+      throw new ConflictException('Esta solicitação não está mais disponível.');
+    }
     await tx.eventTicketHistory.create({
       data: {
         ticketId: transfer.ticketId,
@@ -257,10 +269,17 @@ export class TicketTransferService {
         actorUserId: actorUserId ?? null,
       },
     });
-    await this.writeTransferAudit(tx, transfer, AuditLogOperation.UPDATE, 'Solicitação de transferência ignorada pelo sistema.', {
-      recipientStatus: status,
-      ignoreReason: reason,
-    }, actorUserId ?? null);
+    await this.writeTransferAudit(
+      tx,
+      transfer,
+      AuditLogOperation.UPDATE,
+      'Solicitação de transferência ignorada pelo sistema.',
+      {
+        recipientStatus: status,
+        ignoreReason: reason,
+      },
+      actorUserId ?? null,
+    );
     if (notifyRecipient && transfer.recipientUserId) {
       await this.enqueueNotification(
         tx,
@@ -291,7 +310,9 @@ export class TicketTransferService {
         submittedDestinationIdentityDocumentEncrypted: null,
       },
     });
-    if (changed.count !== 1) throw new ConflictException(message);
+    if (changed.count !== 1) {
+      throw new ConflictException(message);
+    }
     await this.writeTransferAudit(
       tx,
       transfer,
@@ -319,7 +340,9 @@ export class TicketTransferService {
       where: { id: ticketId },
       select: { eventId: true },
     });
-    if (!ticketScope) throw new NotFoundException('Bilhete não encontrado.');
+    if (!ticketScope) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     await lockEventTicketExpiration(tx, ticketScope.eventId, 'SHARE');
     const ticket = await tx.eventTicket.findUnique({
       where: { id: ticketId },
@@ -329,7 +352,9 @@ export class TicketTransferService {
         holder: true,
       },
     });
-    if (!ticket || !ticket.holderPersonId || !ticket.holder) throw new NotFoundException('Bilhete não encontrado.');
+    if (!ticket || !ticket.holderPersonId || !ticket.holder) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     if (!admin && ticket.holder.userId !== expectedHolderUserId) {
       throw new NotFoundException('Bilhete não encontrado.');
     }
@@ -350,7 +375,9 @@ export class TicketTransferService {
     const onlyCpfFormatting = /^[\d.\s/-]+$/.test(value);
     const digits = value.replace(/\D/g, '');
     const cpfDetected = onlyCpfFormatting && digits.length === 11;
-    if (cpfDetected && !isValidCPF(digits)) throw new BadRequestException('O CPF informado é inválido.');
+    if (cpfDetected && !isValidCPF(digits)) {
+      throw new BadRequestException('O CPF informado é inválido.');
+    }
 
     const normalizedDocument = normalizeIdentityDocumentForLookup(cpfDetected ? digits : value);
     if (normalizedDocument.length < MIN_PASSPORT_LENGTH || normalizedDocument.length > MAX_USER_DOCUMENT_LENGTH) {
@@ -452,7 +479,9 @@ export class TicketTransferService {
   }
 
   private requireUserId(user: AuthenticatedUser): string {
-    if (!user.sub) throw new NotFoundException('Usuário não encontrado.');
+    if (!user.sub) {
+      throw new NotFoundException('Usuário não encontrado.');
+    }
     return user.sub;
   }
 
@@ -465,9 +494,13 @@ export class TicketTransferService {
   }
 
   private async waitForMinimumResponse(startedAt: number): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
     const remaining = MIN_TRANSFER_RESPONSE_MS - (Date.now() - startedAt);
-    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
   }
 
   async ignoreForUser(transferId: string, user: AuthenticatedUser): Promise<TicketTransferRecord> {
@@ -478,7 +511,9 @@ export class TicketTransferService {
           where: { id: transferId },
           include: TRANSFER_DETAILS_INCLUDE,
         });
-        if (!transfer || transfer.recipientUserId !== userId) throw new NotFoundException('Solicitação não encontrada.');
+        if (!transfer || transfer.recipientUserId !== userId) {
+          throw new NotFoundException('Solicitação não encontrada.');
+        }
         await this.lockTicket(tx, transfer.ticketId);
         if (
           transfer.senderStatus !== TicketTransferSenderStatus.PENDING ||
@@ -500,7 +535,9 @@ export class TicketTransferService {
             ignoredAt: new Date(),
           },
         });
-        if (changed.count !== 1) throw new ConflictException('Esta solicitação não pode mais ser ignorada.');
+        if (changed.count !== 1) {
+          throw new ConflictException('Esta solicitação não pode mais ser ignorada.');
+        }
 
         await tx.eventTicketHistory.create({
           data: {
@@ -518,7 +555,10 @@ export class TicketTransferService {
           transfer,
           AuditLogOperation.UPDATE,
           'Destinatário ignorou a solicitação de transferência.',
-          { recipientStatus: TicketTransferRecipientStatus.IGNORED, ignoreReason: TicketTransferIgnoreReason.USER_IGNORED },
+          {
+            recipientStatus: TicketTransferRecipientStatus.IGNORED,
+            ignoreReason: TicketTransferIgnoreReason.USER_IGNORED,
+          },
           userId,
         );
         await this.realtime.enqueueForUsers(tx, [userId], {
@@ -550,7 +590,9 @@ export class TicketTransferService {
     const targetTicket = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.prisma.eventTicket.findUnique({ where: { id: ticketId }, select: { eventId: true } }),
     );
-    if (!targetTicket) throw new NotFoundException('Bilhete não encontrado.');
+    if (!targetTicket) {
+      throw new NotFoundException('Bilhete não encontrado.');
+    }
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.frozenResources.assertEventMutable(targetTicket.eventId, admin, 'edit'),
     );
@@ -566,18 +608,24 @@ export class TicketTransferService {
         await this.lockTicket(tx, ticketId);
         const ticket = await this.requireTransferableTicket(tx, ticketId, true);
         const sender = ticket.holder;
-        if (!sender) throw new ConflictException('O bilhete não possui titular ativo.');
+        if (!sender) {
+          throw new ConflictException('O bilhete não possui titular ativo.');
+        }
         const recipient = await tx.people.findFirst({
           where: { id: recipientPersonId, deletedAt: null, mergedIntoId: null, userId: { not: null } },
           select: { id: true, userId: true, name: true },
         });
-        if (!recipient?.userId) throw new NotFoundException('Usuário destinatário não encontrado.');
+        if (!recipient?.userId) {
+          throw new NotFoundException('Usuário destinatário não encontrado.');
+        }
 
         const pending = await tx.ticketTransfer.findFirst({
           where: { ticketId, senderStatus: TicketTransferSenderStatus.PENDING },
           select: { id: true },
         });
-        if (pending) throw new ConflictException('Já existe uma solicitação pendente para este bilhete.');
+        if (pending) {
+          throw new ConflictException('Já existe uma solicitação pendente para este bilhete.');
+        }
 
         await this.lockHolder(tx, ticket.eventId, recipient.id);
         const duplicate = await tx.eventTicket.findFirst({
@@ -627,9 +675,15 @@ export class TicketTransferService {
             reason: normalizedReason,
           },
         });
-        await this.writeTransferAudit(tx, transfer, AuditLogOperation.START, 'Administração iniciou uma transferência de bilhete.', {
-          reason: normalizedReason,
-        });
+        await this.writeTransferAudit(
+          tx,
+          transfer,
+          AuditLogOperation.START,
+          'Administração iniciou uma transferência de bilhete.',
+          {
+            reason: normalizedReason,
+          },
+        );
         if (classification.notifyRecipient) {
           await this.enqueueNotification(
             tx,
@@ -675,10 +729,7 @@ export class TicketTransferService {
             senderStatus: TicketTransferSenderStatus.PENDING,
             recipientStatus: TicketTransferRecipientStatus.PENDING,
             ticket: { status: EventTicketStatus.ACTIVE },
-            OR: [
-              { initiatorType: TicketTransferInitiatorType.ADMIN },
-              { ticket: { expiresAt: { gt: new Date() } } },
-            ],
+            OR: [{ initiatorType: TicketTransferInitiatorType.ADMIN }, { ticket: { expiresAt: { gt: new Date() } } }],
           },
           include: TRANSFER_DETAILS_INCLUDE,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -707,21 +758,27 @@ export class TicketTransferService {
       return {
         incomingPending: incoming,
         incomingIgnored: ignored.filter((item) => this.isWithinPostEventRetention(item, now)),
-        outgoing: outgoing.filter((item) =>
-          item.senderStatus !== TicketTransferSenderStatus.CANCELED || this.isWithinPostEventRetention(item, now),
+        outgoing: outgoing.filter(
+          (item) =>
+            item.senderStatus !== TicketTransferSenderStatus.CANCELED || this.isWithinPostEventRetention(item, now),
         ),
       };
     });
   }
 
-  async findForUser(transferId: string, user: AuthenticatedUser): Promise<{ transfer: TicketTransferRecord; view: TicketTransferView }> {
+  async findForUser(
+    transferId: string,
+    user: AuthenticatedUser,
+  ): Promise<{ transfer: TicketTransferRecord; view: TicketTransferView }> {
     const userId = this.requireUserId(user);
     return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const transfer = await this.prisma.ticketTransfer.findUnique({
         where: { id: transferId },
         include: TRANSFER_DETAILS_INCLUDE,
       });
-      if (!transfer) throw new NotFoundException('Solicitação não encontrada.');
+      if (!transfer) {
+        throw new NotFoundException('Solicitação não encontrada.');
+      }
       if (transfer.authorUserId === userId) {
         if (
           transfer.senderStatus === TicketTransferSenderStatus.CANCELED &&
@@ -756,7 +813,9 @@ export class TicketTransferService {
 
   revealSubmittedDocument(transfer: TicketTransferRecord): string | null {
     const encrypted = transfer.submittedDestinationIdentityDocumentEncrypted;
-    if (!encrypted) return null;
+    if (!encrypted) {
+      return null;
+    }
     try {
       return this.identities.reveal(SportsIdentityType.IDENTITY_DOCUMENT, encrypted);
     } catch {
@@ -785,7 +844,9 @@ export class TicketTransferService {
           where: { id: transferId },
           include: TRANSFER_DETAILS_INCLUDE,
         });
-        if (!transfer || transfer.recipientUserId !== userId) throw new NotFoundException('Solicitação não encontrada.');
+        if (!transfer || transfer.recipientUserId !== userId) {
+          throw new NotFoundException('Solicitação não encontrada.');
+        }
         if (
           transfer.senderStatus !== TicketTransferSenderStatus.PENDING ||
           transfer.recipientStatus !== TicketTransferRecipientStatus.PENDING
@@ -804,7 +865,9 @@ export class TicketTransferService {
           },
           select: { id: true, userId: true, name: true },
         });
-        if (!recipient) throw new NotFoundException('Solicitação não encontrada.');
+        if (!recipient) {
+          throw new NotFoundException('Solicitação não encontrada.');
+        }
 
         const ticket = await tx.eventTicket.findUnique({
           where: { id: transfer.ticketId },
@@ -823,7 +886,11 @@ export class TicketTransferService {
         ) {
           return this.expireTransfer(tx, transfer, 'O prazo desta solicitação terminou.');
         }
-        if (ticket.event.deletedAt || !ticket.ticketConfig.enabled || !ticket.ticketConfig.transferable && transfer.initiatorType !== TicketTransferInitiatorType.ADMIN) {
+        if (
+          ticket.event.deletedAt ||
+          !ticket.ticketConfig.enabled ||
+          (!ticket.ticketConfig.transferable && transfer.initiatorType !== TicketTransferInitiatorType.ADMIN)
+        ) {
           return this.expireTransfer(tx, transfer, 'Este bilhete não pode mais ser transferido.');
         }
 
@@ -837,7 +904,13 @@ export class TicketTransferService {
           select: { id: true },
         });
         if (duplicate) {
-          return this.systemIgnore(tx, transfer, TicketTransferRecipientStatus.SYSTEM_DUPLICATE, TicketTransferIgnoreReason.ALREADY_HELD, false);
+          return this.systemIgnore(
+            tx,
+            transfer,
+            TicketTransferRecipientStatus.SYSTEM_DUPLICATE,
+            TicketTransferIgnoreReason.ALREADY_HELD,
+            false,
+          );
         }
 
         const eligibility = await this.eligibility.evaluateRecipientEligibility(
@@ -868,7 +941,9 @@ export class TicketTransferService {
           },
           data: { holderPersonId: recipient.id },
         });
-        if (changedTicket.count !== 1) throw new ConflictException('Esta solicitação não está mais disponível.');
+        if (changedTicket.count !== 1) {
+          throw new ConflictException('Esta solicitação não está mais disponível.');
+        }
 
         const changedTransfer = await tx.ticketTransfer.updateMany({
           where: {
@@ -884,7 +959,9 @@ export class TicketTransferService {
             submittedDestinationIdentityDocumentEncrypted: null,
           },
         });
-        if (changedTransfer.count !== 1) throw new ConflictException('Esta solicitação não está mais disponível.');
+        if (changedTransfer.count !== 1) {
+          throw new ConflictException('Esta solicitação não está mais disponível.');
+        }
 
         await tx.eventTicketHistory.create({
           data: {

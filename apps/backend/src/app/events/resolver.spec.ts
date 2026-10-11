@@ -26,8 +26,16 @@ describe('EventsResolver', () => {
   });
 
   it('refreshes attendance classifications and realtime after an invitation-only edit', async () => {
-    const event = { id: 'event-1', name: 'Evento', audience: 'PUBLIC', audienceCourseCodes: [],
-      eventGroupId: null, majorEventId: null, attendanceEligibility: 'INVITED_ONLY', deletedAt: null };
+    const event = {
+      id: 'event-1',
+      name: 'Evento',
+      audience: 'PUBLIC',
+      audienceCourseCodes: [],
+      eventGroupId: null,
+      majorEventId: null,
+      attendanceEligibility: 'INVITED_ONLY',
+      deletedAt: null,
+    };
     const tx = {
       $executeRaw: jest.fn().mockResolvedValue(1),
       event: {
@@ -37,16 +45,35 @@ describe('EventsResolver', () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue(event),
       },
     };
-    const prisma = { event: { findFirst: jest.fn().mockResolvedValue(event) },
-      $transaction: jest.fn((operation) => operation(tx)) };
+    const prisma = {
+      event: { findFirst: jest.fn().mockResolvedValue(event) },
+      $transaction: jest.fn((operation) => operation(tx)),
+    };
     const attendance = { refreshForEvent: jest.fn() };
     const realtime = { notifyAllConnectedPeople: jest.fn() };
-    const invitations = { notifyInvited: jest.fn(), replaceInvitations: jest.fn().mockResolvedValue({
-      invitations: [{ personId: 'new-person' }], addedPersonIds: ['new-person'], removedPersonIds: [],
-    }) };
-    const resolver = new EventsResolver(prisma as never, { upsertEvent: jest.fn() } as never, realtime as never,
-      { assertEventUpdateMutable: jest.fn() } as never, {} as never, { record: jest.fn() } as never, attendance as never,
-      undefined, undefined, undefined, undefined, undefined, invitations as never);
+    const invitations = {
+      notifyInvited: jest.fn(),
+      replaceInvitations: jest.fn().mockResolvedValue({
+        invitations: [{ personId: 'new-person' }],
+        addedPersonIds: ['new-person'],
+        removedPersonIds: [],
+      }),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      { upsertEvent: jest.fn() } as never,
+      realtime as never,
+      { assertEventUpdateMutable: jest.fn() } as never,
+      {} as never,
+      { record: jest.fn() } as never,
+      attendance as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      invitations as never,
+    );
     await resolver.updateEvent('event-1', { invitationPersonIds: ['new-person'] } as never, {} as never);
     expect(attendance.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
     expect(realtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
@@ -67,7 +94,9 @@ describe('EventsResolver', () => {
       };
       const resolver = new EventsResolver(prisma as never, {} as never, {} as never, {} as never, {} as never);
       const eventField = schema.getQueryType()?.getFields()['event'];
-      if (!eventField) throw new Error('Event query is missing');
+      if (!eventField) {
+        throw new Error('Event query is missing');
+      }
       eventField.resolve = () => resolver.event('event-1');
 
       const result = await graphql({
@@ -415,8 +444,9 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
     expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
-    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
-      .toBeLessThan(tx.event.updateMany.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.event.updateMany.mock.invocationCallOrder[0],
+    );
     expect(ticketIssuance.alignActiveTicketExpirations).toHaveBeenCalledWith(tx, 'event-1', {
       scope: 'EVENT_END_ONLY',
       actorUserId: 'user-1',
@@ -471,7 +501,11 @@ describe('EventsResolver', () => {
       event: {
         findFirst: jest.fn().mockResolvedValue(previousAudit),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValueOnce(updatedDetail).mockResolvedValueOnce(updatedAudit).mockResolvedValueOnce(updatedDetail),
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValueOnce(updatedDetail)
+          .mockResolvedValueOnce(updatedAudit)
+          .mockResolvedValueOnce(updatedDetail),
       },
       eventGroup: {
         updateMany: jest.fn(),

@@ -255,8 +255,16 @@ test('keeps an academic ID match when a later source email differs', async () =>
 
 const suppressionSecret = 'test-import-suppression-secret-32-bytes';
 const suppressionRows = [
-  { entityType: 'person_suppression_key', sourceId: 'v1', targetId: '587a12640167a89239754a8e833c124827a58af8a30cf743c0d5497d93f533d3' },
-  { entityType: 'person_suppression', sourceId: 'd620b7c7e87884108467a7c26dc1dcea5740e8902157845b8c376e3297708f59', targetId: 'suppressed' },
+  {
+    entityType: 'person_suppression_key',
+    sourceId: 'v1',
+    targetId: '587a12640167a89239754a8e833c124827a58af8a30cf743c0d5497d93f533d3',
+  },
+  {
+    entityType: 'person_suppression',
+    sourceId: 'd620b7c7e87884108467a7c26dc1dcea5740e8902157845b8c376e3297708f59',
+    targetId: 'suppressed',
+  },
 ];
 
 test('matches the backend suppression encoding and separates namespaces and purposes', () => {
@@ -268,9 +276,12 @@ test('matches the backend suppression encoding and separates namespaces and purp
 for (const apply of [false, true]) {
   test(`never recreates or explicitly remaps an erased source person (apply=${apply})`, async () => {
     const target = targetWith([person('other-person', { name: 'Ana', email: 'ana@example.com' })], [], suppressionRows);
-    const result = await resolveImportPeople(target,
+    const result = await resolveImportPeople(
+      target,
       [{ sourceId: 10, name: 'Ana', email: 'ana@example.com', academicId: '001' }],
-      new Map([['10', 'other-person']]), { apply, suppressionSecret });
+      new Map([['10', 'other-person']]),
+      { apply, suppressionSecret },
+    );
     assert.equal(result.resolutions.get('10').reason, 'erased_person');
     assert.deepEqual(result.counters, { created: 0, reused: 0, planned: 0, unresolved: 1 });
     assert.equal(target.people.size, 1);
@@ -281,9 +292,13 @@ for (const apply of [false, true]) {
 for (const key of ['', 'short', 'a-wrong-but-sufficiently-long-key-secret']) {
   test(`fails closed when suppression key is absent or mismatched (${key.length} bytes)`, async () => {
     const target = targetWith([], [], suppressionRows);
-    await assert.rejects(resolveImportPeople(target,
-      [{ sourceId: 10, name: 'Ana', email: 'ana@example.com' }], new Map(),
-      { apply: true, suppressionSecret: key }), /LGPD/);
+    await assert.rejects(
+      resolveImportPeople(target, [{ sourceId: 10, name: 'Ana', email: 'ana@example.com' }], new Map(), {
+        apply: true,
+        suppressionSecret: key,
+      }),
+      /LGPD/,
+    );
     assert.ok(target.calls.every((call) => !call.sql.startsWith('INSERT')));
   });
 }

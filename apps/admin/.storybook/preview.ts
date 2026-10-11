@@ -86,7 +86,9 @@ function ensureStorybookGlobalStyles(): void {
       transition-duration: 0.01ms !important;
     }
   `;
-  if (!style.isConnected) document.head.append(style);
+  if (!style.isConnected) {
+    document.head.append(style);
+  }
 }
 
 const dialogRefMock = {
@@ -254,7 +256,24 @@ const preview: Preview = {
       storySort: {
         method: 'alphabetical',
         order: [
-          'Admin', ['Overview', 'Layout', 'Dashboard', 'Event Management', 'Registration', 'Attendance', 'Ticketing', 'People', 'Forms', 'Sports', 'Prize Draws', 'Notifications', 'Access', 'Settings', 'Audit'],
+          'Admin',
+          [
+            'Overview',
+            'Layout',
+            'Dashboard',
+            'Event Management',
+            'Registration',
+            'Attendance',
+            'Ticketing',
+            'People',
+            'Forms',
+            'Sports',
+            'Prize Draws',
+            'Notifications',
+            'Access',
+            'Settings',
+            'Audit',
+          ],
         ],
         includeNames: false,
       },

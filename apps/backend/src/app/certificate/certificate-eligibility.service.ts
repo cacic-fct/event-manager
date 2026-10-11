@@ -342,10 +342,19 @@ export class CertificateEligibilityService {
       },
     });
 
-    const facts = await this.resolveAttendanceFacts([event], attendances.map((attendance) => attendance.personId));
+    const facts = await this.resolveAttendanceFacts(
+      [event],
+      attendances.map((attendance) => attendance.personId),
+    );
 
     return attendances
-      .filter((attendance) => this.canIssueForConfiguredAttendance(config, event, facts.get(this.attendanceFactKey(attendance.personId, event.id))))
+      .filter((attendance) =>
+        this.canIssueForConfiguredAttendance(
+          config,
+          event,
+          facts.get(this.attendanceFactKey(attendance.personId, event.id)),
+        ),
+      )
       .map((attendance) => ({
         person: attendance.person,
         events: [event],
@@ -420,7 +429,10 @@ export class CertificateEligibilityService {
       },
     });
 
-    const facts = await this.resolveAttendanceFacts(groupEvents, attendances.map((attendance) => attendance.personId));
+    const facts = await this.resolveAttendanceFacts(
+      groupEvents,
+      attendances.map((attendance) => attendance.personId),
+    );
 
     const attendanceByPerson = new Map<string, { person: PersonRecord; eventIds: Set<string> }>();
     for (const attendance of attendances) {
@@ -578,7 +590,10 @@ export class CertificateEligibilityService {
       },
     });
 
-    const facts = await this.resolveAttendanceFacts(issuableEvents, attendancesByPerson.map((attendance) => attendance.personId));
+    const facts = await this.resolveAttendanceFacts(
+      issuableEvents,
+      attendancesByPerson.map((attendance) => attendance.personId),
+    );
 
     const peopleByPersonId = new Map(subscriptions.map((subscription) => [subscription.personId, subscription.person]));
     const attendedEventIdsByPersonId = new Map<string, Set<string>>();
@@ -693,9 +708,7 @@ export class CertificateEligibilityService {
       return new Map();
     }
 
-    const tierIds = [
-      ...new Set(events.flatMap((event) => event.regularAttendancePriceTierIds ?? [])),
-    ];
+    const tierIds = [...new Set(events.flatMap((event) => event.regularAttendancePriceTierIds ?? []))];
     const [eventSubscriptions, majorSubscriptions, priceTiers, invitationFacts] = await Promise.all([
       this.prisma.eventSubscription.findMany({
         where: {
@@ -834,7 +847,7 @@ export class CertificateEligibilityService {
       Boolean(event.majorEventId) &&
       (scope === CertificateScope.MAJOR_EVENT
         ? majorEvent?.isPaymentRequired
-        : event.majorEvent?.isPaymentRequired ?? false) &&
+        : (event.majorEvent?.isPaymentRequired ?? false)) &&
       fact.majorEventSubscriptionStatus !== SubscriptionStatus.CONFIRMED;
 
     if (isPaymentPending) {
@@ -852,10 +865,7 @@ export class CertificateEligibilityService {
     return true;
   }
 
-  private matchesCertificatePaymentTiers(
-    config: CertificateConfigRecord,
-    fact: CertificateAttendanceFact,
-  ): boolean {
+  private matchesCertificatePaymentTiers(config: CertificateConfigRecord, fact: CertificateAttendanceFact): boolean {
     const configuredTiers = (config.paymentTiers ?? [])
       .map((tier) => normalizeAttendancePriceTier(tier))
       .filter((tier): tier is string => tier !== null);

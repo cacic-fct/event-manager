@@ -11,7 +11,11 @@ const meta: Meta<ErrorStateComponent> = {
   decorators: [applicationConfig({ providers: [provideRouter([])] })],
   args: { status: 403, actionLabel: 'Ir para a página inicial', actionUrl: '/' },
   argTypes: {
-    status: { control: 'select', options: [403, 404, 500, 503], description: 'HTTP status represented by the error state.' },
+    status: {
+      control: 'select',
+      options: [403, 404, 500, 503],
+      description: 'HTTP status represented by the error state.',
+    },
     title: { control: 'text', description: 'Override the default error heading.' },
     description: { control: 'text', description: 'Override the supporting error message.' },
     actionLabel: { control: 'text', description: 'Label for the primary action.' },
@@ -52,8 +56,13 @@ export const WorkspacePermission: Story = {
 export const LongContent: Story = {
   args: {
     title: 'Não foi possível abrir esta área de gestão com as permissões atuais da sua conta.',
-    description: 'Volte para os eventos disponíveis para continuar. Caso precise acessar esta área, fale com a organização do evento.',
+    description:
+      'Volte para os eventos disponíveis para continuar. Caso precise acessar esta área, fale com a organização do evento.',
     actionLabel: 'Voltar para os eventos disponíveis',
-    technicalDetails: JSON.stringify({ statusCode: 403, code: 'workspace_access_denied', requestId: 'storybook-example-request-reference' }, null, 2),
+    technicalDetails: JSON.stringify(
+      { statusCode: 403, code: 'workspace_access_denied', requestId: 'storybook-example-request-reference' },
+      null,
+      2,
+    ),
   },
 };

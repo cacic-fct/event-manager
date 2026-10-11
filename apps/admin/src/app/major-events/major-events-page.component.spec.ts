@@ -37,14 +37,17 @@ describe('MajorEventsPageComponent', () => {
 
   it('loads the existing major event identified by workspace route metadata', async () => {
     const { pickMajorEventById } = await createFixture(
-      { targetId: 'workspace-major' }, { targetType: 'major-event', section: 'settings' },
+      { targetId: 'workspace-major' },
+      { targetType: 'major-event', section: 'settings' },
     );
     expect(pickMajorEventById).toHaveBeenCalledWith('workspace-major');
   });
 
   it('removes a linked activity without navigating or bubbling to the list', async () => {
     const fixture = (await createFixture()).fixture;
-    const remove = vi.spyOn(fixture.componentInstance.workspace, 'removeEventFromSelectedMajorEvent').mockResolvedValue(undefined);
+    const remove = vi
+      .spyOn(fixture.componentInstance.workspace, 'removeEventFromSelectedMajorEvent')
+      .mockResolvedValue(undefined);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const record = (fixture.nativeElement as HTMLElement).querySelector('app-workspace-record');
     const action = record?.querySelector<HTMLButtonElement>('button[recordActions]');
@@ -61,9 +64,9 @@ describe('MajorEventsPageComponent', () => {
 
   it('renders linked activities as Material links to their event settings', async () => {
     const fixture = (await createFixture()).fixture;
-    const links = fixture.debugElement.queryAll(By.directive(RouterLink)).filter((link) =>
-      link.injector.get(RouterLink).urlTree?.toString().includes('/event-workspace/event/'),
-    );
+    const links = fixture.debugElement
+      .queryAll(By.directive(RouterLink))
+      .filter((link) => link.injector.get(RouterLink).urlTree?.toString().includes('/event-workspace/event/'));
 
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
@@ -135,14 +138,17 @@ describe('MajorEventsPageComponent', () => {
     expect(fixture.componentInstance.workspace.priceTiers.getRawValue()).toEqual(prices);
     expect(element.querySelector('#inscricao [formcontrolname="attendanceEligibility"]')).toBeNull();
     expect(element.querySelector('#presenca [formcontrolname="attendanceEligibility"]')).not.toBeNull();
-    expect(element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonPayingAttendees"]')).not.toBeNull();
+    expect(
+      element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonPayingAttendees"]'),
+    ).not.toBeNull();
   });
 
   it('links activities directly to their event editor', async () => {
     const { fixture } = await createFixture();
     const event = fixture.componentInstance.workspace.majorEventEvents()[0];
     expect(event).toBeDefined();
-    expect((fixture.nativeElement as HTMLElement).querySelector(`a[href="/event-workspace/event/${event.id}/settings"]`)).not.toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(`a[href="/event-workspace/event/${event.id}/settings"]`),
+    ).not.toBeNull();
   });
-
 });

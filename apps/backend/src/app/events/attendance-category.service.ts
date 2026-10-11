@@ -10,10 +10,7 @@ import {
 } from './attendance-eligibility';
 import { AttendanceEligibility } from '@cacic-fct/shared-event-participation';
 import { TicketIssuanceService, type ConsumeTicketOptions } from '../tickets/ticket-issuance.service';
-import {
-  AudienceInvitationService,
-  invitationFactForAttendance,
-} from '../audiences/audience-invitation.service';
+import { AudienceInvitationService, invitationFactForAttendance } from '../audiences/audience-invitation.service';
 
 type PrismaExecutor = Prisma.TransactionClient | PrismaClient | PrismaService;
 
@@ -114,8 +111,7 @@ export class AttendanceCategoryService {
           id: attendance.eventId,
           majorEventId: policy ? policy.majorEventId : attendance.event.majorEventId,
           eventGroupId: policy ? policy.eventGroupId : attendance.event.eventGroupId,
-          attendanceEligibility:
-            policy?.attendanceEligibility ?? attendance.event.attendanceEligibility ?? null,
+          attendanceEligibility: policy?.attendanceEligibility ?? attendance.event.attendanceEligibility ?? null,
           eventGroup: policy?.eventGroup ?? attendance.event.eventGroup ?? null,
           majorEvent: policy?.majorEvent ?? attendance.event.majorEvent ?? null,
           ticketConfig: policy?.ticketConfig ?? attendance.event.ticketConfig,
@@ -360,7 +356,11 @@ export class AttendanceCategoryService {
           select: { eventId: true, holderPersonId: true },
         })
       : [];
-    const consumedTicketKeys = new Set(consumedTickets.flatMap((ticket) => ticket.holderPersonId ? [attendanceAssessmentKey(ticket.holderPersonId, ticket.eventId)] : []));
+    const consumedTicketKeys = new Set(
+      consumedTickets.flatMap((ticket) =>
+        ticket.holderPersonId ? [attendanceAssessmentKey(ticket.holderPersonId, ticket.eventId)] : [],
+      ),
+    );
     const [eventSubscriptions, majorEventSubscriptions, priceTiers] = await Promise.all([
       tx.eventSubscription.findMany({
         where: {
@@ -427,9 +427,12 @@ export class AttendanceCategoryService {
         const key = attendanceAssessmentKey(attendance.personId, attendance.eventId);
         const event = attendance.event;
         if (event.ticketConfig?.enabled) {
-          return [key, consumedTicketKeys.has(key)
-            ? AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
-            : AttendanceCurrentAssessment.TICKET_REQUIRED];
+          return [
+            key,
+            consumedTicketKeys.has(key)
+              ? AttendanceCurrentAssessment.REQUIREMENTS_CURRENTLY_MET
+              : AttendanceCurrentAssessment.TICKET_REQUIRED,
+          ];
         }
         const majorSubscription = event.majorEventId
           ? majorSubscriptionByKey.get(attendanceAssessmentKey(attendance.personId, event.majorEventId))
@@ -461,10 +464,7 @@ export class AttendanceCategoryService {
                   (selectedEvent) => selectedEvent.eventId === event.id,
                 ),
                 autoSubscribe: event.autoSubscribe,
-                invited: invitationFactForAttendance(
-                  event,
-                  invitationFacts.get(`${attendance.personId}:${event.id}`),
-                ),
+                invited: invitationFactForAttendance(event, invitationFacts.get(`${attendance.personId}:${event.id}`)),
               })
             : AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE,
         ];
@@ -481,7 +481,9 @@ export class AttendanceCategoryService {
       return true;
     }
 
-    if (!event.majorEventId) return false;
+    if (!event.majorEventId) {
+      return false;
+    }
     const [tiers, subscription] = await Promise.all([
       tx.priceTier.findMany({
         where: { id: { in: event.regularAttendancePriceTierIds ?? [] }, price: { majorEventId: event.majorEventId } },
@@ -526,7 +528,9 @@ export class AttendanceCategoryService {
       eventAttendanceEligibility(event) !== AttendanceEligibility.ANYONE
     ) {
       const eligible = await this.isPriceTierEligible(tx, personId, event);
-      if (!eligible) return AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE;
+      if (!eligible) {
+        return AttendanceCurrentAssessment.PRICE_TIER_NOT_ELIGIBLE;
+      }
     }
 
     const [eventSubscription, majorEventSubscription] = await Promise.all([
@@ -555,7 +559,7 @@ export class AttendanceCategoryService {
               },
             },
           })
-      : Promise.resolve(null),
+        : Promise.resolve(null),
     ]);
 
     const invited = this.audienceInvitations

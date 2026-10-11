@@ -62,9 +62,18 @@ describe('CurrentUserContextService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
-      ticketTransfer: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
-      ticketNotificationOutbox: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
-      ticketRealtimeOutbox: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      ticketTransfer: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      ticketNotificationOutbox: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      ticketRealtimeOutbox: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       ticketTransferAuthorCooldown: {
         findFirst: jest.fn().mockResolvedValue(null),
         findUnique: jest.fn().mockResolvedValue(null),
@@ -428,8 +437,12 @@ describe('CurrentUserContextService', () => {
     prisma.user.create.mockResolvedValue(user);
     prisma.people.findMany.mockResolvedValue([person]);
     prisma.accountUserMerge.findMany.mockImplementation(({ where }: { where: { newUserId: { in: string[] } } }) => {
-      if (where.newUserId.in.includes('new-user')) return Promise.resolve([{ oldUserId: 'middle-user' }]);
-      if (where.newUserId.in.includes('middle-user')) return Promise.resolve([{ oldUserId: 'old-user' }]);
+      if (where.newUserId.in.includes('new-user')) {
+        return Promise.resolve([{ oldUserId: 'middle-user' }]);
+      }
+      if (where.newUserId.in.includes('middle-user')) {
+        return Promise.resolve([{ oldUserId: 'old-user' }]);
+      }
       return Promise.resolve([]);
     });
     prisma.ticketTransfer.findFirst.mockResolvedValue({ id: 'pending-transfer' });

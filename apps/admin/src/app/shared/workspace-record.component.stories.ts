@@ -9,20 +9,36 @@ const meta: Meta<WorkspaceRecordComponent> = {
   component: WorkspaceRecordComponent,
   title: 'Admin/Event Management/Event Workspace/Record',
   tags: ['autodocs'],
-  decorators: [moduleMetadata({ imports: [MatButtonModule, MatIconModule] }), applicationConfig({ providers: [provideRouter([], withHashLocation(), withDisabledInitialNavigation())] })],
-  args: { title: 'Oficina de acessibilidade', selected: false, disabled: false, readonly: false, label: '', activate: fn() },
+  decorators: [
+    moduleMetadata({ imports: [MatButtonModule, MatIconModule] }),
+    applicationConfig({ providers: [provideRouter([], withHashLocation(), withDisabledInitialNavigation())] }),
+  ],
+  args: {
+    title: 'Oficina de acessibilidade',
+    selected: false,
+    disabled: false,
+    readonly: false,
+    label: '',
+    activate: fn(),
+  },
   argTypes: {
-    title: { control: 'text' }, label: { control: 'text' },
-    readonly: { control: 'boolean' }, selected: { control: 'boolean' }, disabled: { control: 'boolean' },
+    title: { control: 'text' },
+    label: { control: 'text' },
+    readonly: { control: 'boolean' },
+    selected: { control: 'boolean' },
+    disabled: { control: 'boolean' },
     activate: { action: 'activate', control: false, table: { disable: true } },
   },
-  render: (args) => ({ props: args, template: `
+  render: (args) => ({
+    props: args,
+    template: `
     <app-workspace-record [title]="title" [label]="label" [selected]="selected" [disabled]="disabled" [readonly]="readonly" [link]="link" [queryParams]="queryParams" (activate)="activate($event)">
       <mat-icon recordIcon>event</mat-icon>
       <span recordDescription>Minicurso, no Auditório da FCT, com 24 participantes</span>
       <button recordActions matIconButton type="button" aria-label="Mais ações"><mat-icon>more_vert</mat-icon></button>
     </app-workspace-record>
-  ` }),
+  `,
+  }),
   parameters: { a11y: { test: 'error' } },
 };
 export default meta;
@@ -57,7 +73,10 @@ export const Unavailable: Story = {
   },
 };
 export const LongName: Story = {
-  args: { title: 'Oficina de acessibilidade e inclusão digital para estudantes, ministrantes e organizadores da comunidade universitária' },
+  args: {
+    title:
+      'Oficina de acessibilidade e inclusão digital para estudantes, ministrantes e organizadores da comunidade universitária',
+  },
 };
 
 export const ReadOnly: Story = {

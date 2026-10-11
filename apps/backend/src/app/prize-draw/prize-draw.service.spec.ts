@@ -45,9 +45,18 @@ describe('PrizeDrawService', () => {
 
     it.each([
       [{}, { skip: 0, take: 50 }],
-      [{ skip: -1, take: 2147483647 }, { skip: 0, take: 1000 }],
-      [{ skip: 0, take: -1 }, { skip: 0, take: 0 }],
-      [{ skip: null, take: null }, { skip: 0, take: 50 }],
+      [
+        { skip: -1, take: 2147483647 },
+        { skip: 0, take: 1000 },
+      ],
+      [
+        { skip: 0, take: -1 },
+        { skip: 0, take: 0 },
+      ],
+      [
+        { skip: null, take: null },
+        { skip: 0, take: 50 },
+      ],
     ])('bounds admin pagination %j', async (filters, expected) => {
       const context = createContext();
       context.policy.accessibleEventTargets.mockResolvedValue(null);

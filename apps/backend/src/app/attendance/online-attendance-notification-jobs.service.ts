@@ -7,7 +7,12 @@ import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flag
 import { PrismaService } from '../prisma/prisma.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
-import { ANONYMOUS_AUDIENCE, audienceContext, eventAudienceWhere, type EventAudiencePrincipal } from '../audiences/audience-context';
+import {
+  ANONYMOUS_AUDIENCE,
+  audienceContext,
+  eventAudienceWhere,
+  type EventAudiencePrincipal,
+} from '../audiences/audience-context';
 import { EventAudienceService } from '../audiences/event-audience.service';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
@@ -289,8 +294,7 @@ export class OnlineAttendanceNotificationJobsService {
       return isAttendanceEligible(eligibility, {
         registered: isRegisteredAttendanceEvidence(event, evidence),
         approved: isApprovedAttendance(event, evidence),
-        invited:
-          eligibility === AttendanceEligibility.INVITED_ONLY ? invitedPersonIds.has(person.id) : undefined,
+        invited: eligibility === AttendanceEligibility.INVITED_ONLY ? invitedPersonIds.has(person.id) : undefined,
       });
     });
     const visiblePeople = await this.filterAudienceCandidates(event, attendanceEligiblePeople);
@@ -393,8 +397,6 @@ export class OnlineAttendanceNotificationJobsService {
       event.eventGroup?.audience,
       event.eventGroup?.majorEvent?.audience,
       event.majorEvent?.audience,
-    ].some(
-      (audience) => audience != null && audience !== 'PUBLIC',
-    );
+    ].some((audience) => audience != null && audience !== 'PUBLIC');
   }
 }

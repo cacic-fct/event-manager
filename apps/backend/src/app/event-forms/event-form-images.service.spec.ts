@@ -15,7 +15,10 @@ describe('EventFormImagesService references and cleanup', () => {
     prisma.eventInterest.findFirst.mockResolvedValue(interested ? { id: 'interest-1' } : null);
     prisma.eventSubscription.findFirst.mockResolvedValue(subscribed ? { id: 'subscription-1' } : null);
     prisma.eventFormImage.findUnique.mockResolvedValue({
-      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      id: 'image-1',
+      formId: 'form-1',
+      objectKey: 'image-1.avif',
+      mimeType: 'image/avif',
       form: formRecord({ resultsPublic: false, links: [linkRecord({ audiences: ['INTERESTED'] })] }),
     });
 
@@ -35,7 +38,10 @@ describe('EventFormImagesService references and cleanup', () => {
     authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
     prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
     prisma.eventFormImage.findUnique.mockResolvedValue({
-      id: 'image-1', formId: 'form-1', objectKey: 'image-1.avif', mimeType: 'image/avif',
+      id: 'image-1',
+      formId: 'form-1',
+      objectKey: 'image-1.avif',
+      mimeType: 'image/avif',
       form: formRecord({
         resultsPublic: false,
         links: [linkRecord({ audiences: ['SUBSCRIBERS'], insertInSubscriptionFlow: true })],
@@ -45,40 +51,50 @@ describe('EventFormImagesService references and cleanup', () => {
     await expect(service.downloadById('image-1', { sub: 'user-1' } as never)).resolves.toEqual(
       expect.objectContaining({ contentType: 'image/avif' }),
     );
-    expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'event-1', allowSubscription: true }),
-    }));
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'event-1', allowSubscription: true }),
+      }),
+    );
     expect(s3.downloadFile).toHaveBeenCalledWith('image-1.avif');
   });
 
-  it.each([false, true])('denies non-participants image access for a hidden target (subscription flow: %s)', async (insertInSubscriptionFlow) => {
-    const { service, prisma, authorization, s3 } = createHarness();
-    authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
-    prisma.event.findFirst.mockResolvedValue(null);
-    prisma.eventFormImage.findFirst.mockResolvedValue({
-      objectKey: 'private.avif',
-      form: formRecord({
-        resultsPublic: false,
-        links: [linkRecord({
-          eventId: 'hidden-event',
-          event: { id: 'hidden-event', name: 'Hidden', emoji: null, majorEventId: null, eventGroupId: null },
-          audiences: ['SUBSCRIBERS'],
-          insertInSubscriptionFlow,
-        })],
-      }),
-    });
+  it.each([false, true])(
+    'denies non-participants image access for a hidden target (subscription flow: %s)',
+    async (insertInSubscriptionFlow) => {
+      const { service, prisma, authorization, s3 } = createHarness();
+      authorization.assertPermissions.mockRejectedValue(new ForbiddenException());
+      prisma.event.findFirst.mockResolvedValue(null);
+      prisma.eventFormImage.findFirst.mockResolvedValue({
+        objectKey: 'private.avif',
+        form: formRecord({
+          resultsPublic: false,
+          links: [
+            linkRecord({
+              eventId: 'hidden-event',
+              event: { id: 'hidden-event', name: 'Hidden', emoji: null, majorEventId: null, eventGroupId: null },
+              audiences: ['SUBSCRIBERS'],
+              insertInSubscriptionFlow,
+            }),
+          ],
+        }),
+      });
 
-    await expect(service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser))
-      .rejects.toBeInstanceOf(ForbiddenException);
-    if (insertInSubscriptionFlow) {
-      expect(prisma.event.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
-      }));
-    } else {
-      expect(prisma.event.findFirst).not.toHaveBeenCalled();
-    }
-    expect(s3.downloadFile).not.toHaveBeenCalled();
-  });
+      await expect(
+        service.download('form-1', 'image-1', { sub: 'user-1' } as AuthenticatedUser),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      if (insertInSubscriptionFlow) {
+        expect(prisma.event.findFirst).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ id: 'hidden-event', allowSubscription: true }),
+          }),
+        );
+      } else {
+        expect(prisma.event.findFirst).not.toHaveBeenCalled();
+      }
+      expect(s3.downloadFile).not.toHaveBeenCalled();
+    },
+  );
 
   it('allows one stored asset to be referenced by the form and multiple questions', async () => {
     const { service, prisma } = createHarness();

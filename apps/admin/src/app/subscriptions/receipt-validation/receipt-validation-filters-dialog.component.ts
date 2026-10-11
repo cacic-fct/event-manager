@@ -28,8 +28,14 @@ export interface ReceiptValidationFiltersDialogData {
         <h3 id="receipt-category-heading">Categoria</h3>
         <mat-radio-group [formControl]="categoryControl" aria-label="Categoria dos comprovantes">
           <mat-radio-button value="ALL">Todas as categorias</mat-radio-button>
-          <mat-radio-button value="SUBSCRIPTION">{{ data.subscriptionCount === 1 ? 'Inscrição' : 'Inscrições' }} ({{ data.subscriptionCount }})</mat-radio-button>
-          <mat-radio-button value="TICKET">{{ data.ticketCount === 1 ? 'Bilhete' : 'Bilhetes' }} ({{ data.ticketCount }})</mat-radio-button>
+          <mat-radio-button value="SUBSCRIPTION"
+            >{{ data.subscriptionCount === 1 ? 'Inscrição' : 'Inscrições' }} ({{
+              data.subscriptionCount
+            }})</mat-radio-button
+          >
+          <mat-radio-button value="TICKET"
+            >{{ data.ticketCount === 1 ? 'Bilhete' : 'Bilhetes' }} ({{ data.ticketCount }})</mat-radio-button
+          >
         </mat-radio-group>
       </section>
 
@@ -61,11 +67,25 @@ export interface ReceiptValidationFiltersDialogData {
     </mat-dialog-actions>
   `,
   styles: `
-    mat-dialog-content { display: grid; gap: 1rem; }
-    section { display: grid; gap: 0.5rem; }
-    h3 { margin: 0; font: var(--mat-sys-title-small); }
-    mat-radio-group { display: grid; gap: 0.25rem; }
-    mat-form-field { width: 100%; }
+    mat-dialog-content {
+      display: grid;
+      gap: 1rem;
+    }
+    section {
+      display: grid;
+      gap: 0.5rem;
+    }
+    h3 {
+      margin: 0;
+      font: var(--mat-sys-title-small);
+    }
+    mat-radio-group {
+      display: grid;
+      gap: 0.25rem;
+    }
+    mat-form-field {
+      width: 100%;
+    }
   `,
 })
 export class ReceiptValidationFiltersDialogComponent {
@@ -74,7 +94,9 @@ export class ReceiptValidationFiltersDialogComponent {
     nonNullable: true,
   });
   protected readonly paymentTierControl = new FormControl<string | null>(this.data.filters.paymentTier);
-  protected readonly sortControl = new FormControl<ReceiptValidationSort>(this.data.filters.sort, { nonNullable: true });
+  protected readonly sortControl = new FormControl<ReceiptValidationSort>(this.data.filters.sort, {
+    nonNullable: true,
+  });
 
   protected result(): ReceiptValidationFilters {
     const category = this.categoryControl.value;

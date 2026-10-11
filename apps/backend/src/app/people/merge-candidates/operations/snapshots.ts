@@ -21,10 +21,7 @@ import {
   SportsTournamentParticipantSnapshot,
 } from './types';
 import type { AudienceInvitationSnapshot } from './audience-invitations';
-import type {
-  TicketHolderMergeSnapshot,
-  TicketPersonRelationsSnapshot,
-} from '../../../tickets/ticket-merge-relations';
+import type { TicketHolderMergeSnapshot, TicketPersonRelationsSnapshot } from '../../../tickets/ticket-merge-relations';
 
 export function toPersonSnapshot(person: People): PersonSnapshot {
   return {
@@ -130,8 +127,12 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
     insertedAttendanceEventIds: readStringArray(value, 'insertedAttendanceEventIds'),
     insertedLectureEventIds: readStringArray(value, 'insertedLectureEventIds'),
     movedEventSubscriptionIds: readStringArray(value, 'movedEventSubscriptionIds'),
-    ...(value.movedEventInterestIds === undefined ? {} : { movedEventInterestIds: readStringArray(value, 'movedEventInterestIds') }),
-    ...(value.retiredEventInterestIds === undefined ? {} : { retiredEventInterestIds: readStringArray(value, 'retiredEventInterestIds') }),
+    ...(value.movedEventInterestIds === undefined
+      ? {}
+      : { movedEventInterestIds: readStringArray(value, 'movedEventInterestIds') }),
+    ...(value.retiredEventInterestIds === undefined
+      ? {}
+      : { retiredEventInterestIds: readStringArray(value, 'retiredEventInterestIds') }),
     movedEventGroupSubscriptionIds:
       value.movedEventGroupSubscriptionIds === undefined
         ? []
@@ -255,10 +256,7 @@ function readTicketStatus(record: Record<string, Prisma.JsonValue>, fieldName: s
   return status as EventTicketStatus;
 }
 
-function readTicketPurchaseStatus(
-  record: Record<string, Prisma.JsonValue>,
-  fieldName: string,
-): TicketPurchaseStatus {
+function readTicketPurchaseStatus(record: Record<string, Prisma.JsonValue>, fieldName: string): TicketPurchaseStatus {
   const status = readRequiredString(record, fieldName);
   if (!Object.values(TicketPurchaseStatus).includes(status as TicketPurchaseStatus)) {
     throw new ConflictException(`Invalid ticket purchase ${fieldName} payload.`);

@@ -183,25 +183,28 @@ export class SportsReadPublicService {
     }
   }
 
-  private async generateAndCachePublicTournament(tournament: {
-    id: string;
-    majorEventId: string;
-    selfSubscriptionEnabled: boolean;
-    selfSubscriptionAllowNoTeam: boolean;
-    selfSubscriptionAllowNoCategory: boolean;
-    majorEvent: {
-      name: string;
-      emoji: string;
-      description: string | null;
-      startDate: Date;
-      endDate: Date;
-      requiresImageLicenseAgreement: boolean;
-      isPaymentRequired: boolean;
-      majorEventPrices: Array<{
-        tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
-      }>;
-    };
-  }, useSharedCache: boolean): Promise<PublicSportsTournamentDetail> {
+  private async generateAndCachePublicTournament(
+    tournament: {
+      id: string;
+      majorEventId: string;
+      selfSubscriptionEnabled: boolean;
+      selfSubscriptionAllowNoTeam: boolean;
+      selfSubscriptionAllowNoCategory: boolean;
+      majorEvent: {
+        name: string;
+        emoji: string;
+        description: string | null;
+        startDate: Date;
+        endDate: Date;
+        requiresImageLicenseAgreement: boolean;
+        isPaymentRequired: boolean;
+        majorEventPrices: Array<{
+          tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
+        }>;
+      };
+    },
+    useSharedCache: boolean,
+  ): Promise<PublicSportsTournamentDetail> {
     const cacheVersion = await this.cache.readPublicTournamentCacheVersion(tournament.id);
     const [categories, teams, stages, matches, standings, placements, scoreEntries] = await Promise.all([
       this.prisma.sportsCategory.findMany({

@@ -6,9 +6,9 @@ export function assertTicketConfigVersionUnchanged(
 ): void {
   if (
     Boolean(current) !== Boolean(expected) ||
-    (current && expected && (
-      current.id !== expected.id || current.updatedAt.getTime() !== expected.updatedAt.getTime()
-    ))
+    (current &&
+      expected &&
+      (current.id !== expected.id || current.updatedAt.getTime() !== expected.updatedAt.getTime()))
   ) {
     throw new ConflictException('A configuração foi alterada por outra operação. Atualize e tente novamente.');
   }

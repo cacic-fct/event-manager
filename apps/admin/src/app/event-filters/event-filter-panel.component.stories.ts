@@ -59,7 +59,9 @@ export default meta;
 type Story = StoryObj<EventFilterPanelStoryArgs>;
 
 const normalizeDateControlValue = (value: string | number): Date | null => {
-  if (value === '') return null;
+  if (value === '') {
+    return null;
+  }
   return new Date(typeof value === 'number' ? value : `${value}T12:00:00`);
 };
 

@@ -49,7 +49,9 @@ const withSubscriptionsProviders: Decorator<SubscriptionsPageStoryArgs> = (story
       {
         provide: ActivatedRoute,
         useValue: {
-          paramMap: of(convertToParamMap({ majorEventId: args.majorEventCount > 0 ? 'major-event-1' : undefined, subscriptionId })),
+          paramMap: of(
+            convertToParamMap({ majorEventId: args.majorEventCount > 0 ? 'major-event-1' : undefined, subscriptionId }),
+          ),
           snapshot: { url: [] },
         },
       },
@@ -143,7 +145,11 @@ export const EmptyWorkspace: Story = {
     eventSubscriptionCount: 0,
   },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.')).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText(
+        'Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.',
+      ),
+    ).toBeVisible();
   },
 };
 
@@ -165,7 +171,11 @@ export const DeepLinkedSubscriberDetail: Story = {
       'app-workspace-record a[aria-current="page"]',
     );
     await expect(selectedSubscriber).toBeVisible();
-    const selectedName = selectedSubscriber?.getAttribute('aria-label')?.replace(/^Abrir inscrição de /, '').trim() ?? '';
+    const selectedName =
+      selectedSubscriber
+        ?.getAttribute('aria-label')
+        ?.replace(/^Abrir inscrição de /, '')
+        .trim() ?? '';
     await expect(canvas.getByRole('heading', { name: selectedName })).toBeVisible();
   },
 };

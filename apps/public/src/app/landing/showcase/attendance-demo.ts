@@ -48,7 +48,9 @@ export class AttendanceDemoComponent {
   constructor() {
     afterRenderEffect({
       write: () => {
-        if (this.finished()) this.completionHeading()?.nativeElement.focus();
+        if (this.finished()) {
+          this.completionHeading()?.nativeElement.focus();
+        }
       },
     });
   }

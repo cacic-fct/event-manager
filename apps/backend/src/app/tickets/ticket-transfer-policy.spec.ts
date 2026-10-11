@@ -60,12 +60,14 @@ describe('ticket transfer privacy policies', () => {
   });
 
   it('auto ignores duplicate holders without notifying them', () => {
-    expect(classifyRecipientResolution({
-      personFound: true,
-      hasUserAccount: true,
-      alreadyHoldsTicket: true,
-      eligible: true,
-    })).toEqual({
+    expect(
+      classifyRecipientResolution({
+        personFound: true,
+        hasUserAccount: true,
+        alreadyHoldsTicket: true,
+        eligible: true,
+      }),
+    ).toEqual({
       status: TicketTransferRecipientStatus.SYSTEM_DUPLICATE,
       ignoreReason: TicketTransferIgnoreReason.ALREADY_HELD,
       notifyRecipient: false,
@@ -227,11 +229,23 @@ function transferFixture(overrides: Record<string, unknown> = {}): TicketTransfe
         recipientAllowedPriceTierIds: [],
       },
       event: { ...event, majorEventId: null },
-      holder: { id: 'sender-1', name: 'Sender Name', identityDocument: '52998224725', isCPF: true, userId: 'sender-user' },
+      holder: {
+        id: 'sender-1',
+        name: 'Sender Name',
+        identityDocument: '52998224725',
+        isCPF: true,
+        userId: 'sender-user',
+      },
       originalHolder: { id: 'sender-1', name: 'Sender Name', identityDocument: '52998224725', isCPF: true },
     },
     event,
-    sender: { id: 'sender-1', name: 'Sender Name', identityDocument: '52998224725', isCPF: true, userId: 'sender-user' },
+    sender: {
+      id: 'sender-1',
+      name: 'Sender Name',
+      identityDocument: '52998224725',
+      isCPF: true,
+      userId: 'sender-user',
+    },
     recipient: null,
     author: { id: 'sender-user', name: 'Sender User', email: 'sender@example.com' },
     initiatingAdmin: null,

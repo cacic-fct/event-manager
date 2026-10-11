@@ -75,10 +75,10 @@ type AttendanceDetail = {
             [accuracyMeters]="data.collectedAccuracyMeters"
             [markerLabel]="data.personName" />
           <p class="location-coordinates">
-            {{ data.collectedLatitude | number: '1.6-6' }},
-            {{ data.collectedLongitude | number: '1.6-6' }}@if (
-              data.collectedAccuracyMeters !== null && data.collectedAccuracyMeters !== undefined
-            ) {, precisão de {{ data.collectedAccuracyMeters | number: '1.0-1' }} m}
+            {{ data.collectedLatitude | number: '1.6-6' }}, {{ data.collectedLongitude | number: '1.6-6' }}
+            @if (data.collectedAccuracyMeters !== null && data.collectedAccuracyMeters !== undefined) {
+              , precisão de {{ data.collectedAccuracyMeters | number: '1.0-1' }} m
+            }
           </p>
         } @else {
           <div class="empty-location">
@@ -207,5 +207,4 @@ export class AttendanceInfoDialogComponent {
       timeStyle: 'short',
     }).format(new Date(value));
   }
-
 }

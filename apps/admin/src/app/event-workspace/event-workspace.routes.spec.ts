@@ -11,8 +11,9 @@ function matchingRoute(path: string): Route | undefined {
   const segments = path.split('/').filter(Boolean);
   return children.find((route) => {
     const routeSegments = route.path?.split('/').filter(Boolean);
-    return routeSegments?.length === segments.length && routeSegments.every((segment, index) =>
-      segment.startsWith(':') || segment === segments[index],
+    return (
+      routeSegments?.length === segments.length &&
+      routeSegments.every((segment, index) => segment.startsWith(':') || segment === segments[index])
     );
   });
 }
@@ -29,7 +30,9 @@ describe('canonical event workspace routes', () => {
     expect(matchingRoute(`${overview}/unknown`)).toBeUndefined();
     const operations = contextOperations({ kind, id: 'record-1' });
     expect(operations.find((operation) => operation.id === 'settings')?.path.join('/')).toBe(settings);
-    expect(operations.find((operation) => operation.id === 'overview')?.path.join('/')).toBe(kind === 'event' ? undefined : overview);
+    expect(operations.find((operation) => operation.id === 'overview')?.path.join('/')).toBe(
+      kind === 'event' ? undefined : overview,
+    );
   });
 
   it.each([
@@ -53,11 +56,15 @@ describe('canonical event workspace routes', () => {
     ['/groups/group-1', '/event-workspace/group/group-1'],
     ['/major-events/major-1', '/event-workspace/major-event/major-1'],
   ])('opens legacy bookmark %s with its URL state', async (legacy, canonical) => {
-    TestBed.configureTestingModule({ providers: [provideRouter([
-      ...children.filter((route) => route.redirectTo),
-      { path: 'event-workspace', component: RedirectDestination },
-      { path: 'event-workspace/:kind/:id', component: RedirectDestination },
-    ])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          ...children.filter((route) => route.redirectTo),
+          { path: 'event-workspace', component: RedirectDestination },
+          { path: 'event-workspace/:kind/:id', component: RedirectDestination },
+        ]),
+      ],
+    });
     await RouterTestingHarness.create(`${legacy}?source=calendar#details`);
     expect(TestBed.inject(Router).url).toBe(`${canonical}?source=calendar#details`);
   });

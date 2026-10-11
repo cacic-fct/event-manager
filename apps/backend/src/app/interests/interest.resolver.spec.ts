@@ -30,9 +30,9 @@ describe('EventInterestsResolver', () => {
     const currentUser = { requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }) };
     const resolver = new EventInterestsResolver(interests as never, currentUser as never, {} as never);
 
-    await expect(
-      resolver.currentUserInterestState('EVENT_GROUP', 'group-1', { req: {} } as never),
-    ).resolves.toBe(state);
+    await expect(resolver.currentUserInterestState('EVENT_GROUP', 'group-1', { req: {} } as never)).resolves.toBe(
+      state,
+    );
     expect(interests.getCurrentUserInterestState).toHaveBeenCalledWith('person-1', 'EVENT_GROUP', 'group-1');
   });
 });

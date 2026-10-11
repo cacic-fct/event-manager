@@ -12,7 +12,10 @@ export class TicketPurchaseRetentionService implements OnModuleInit, OnModuleDes
   private running = false;
   private stopped = false;
 
-  constructor(private readonly prisma: PrismaService, private readonly s3: S3Service) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3: S3Service,
+  ) {}
 
   onModuleInit(): void {
     this.timer = setInterval(() => void this.clearExpiredReceipts(), CLEANUP_INTERVAL_MS);
@@ -22,11 +25,15 @@ export class TicketPurchaseRetentionService implements OnModuleInit, OnModuleDes
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
   }
 
   async clearExpiredReceipts(): Promise<void> {
-    if (this.running || this.stopped) return;
+    if (this.running || this.stopped) {
+      return;
+    }
     this.running = true;
     const cutoff = new Date();
     let cursor: string | undefined;
@@ -39,9 +46,13 @@ export class TicketPurchaseRetentionService implements OnModuleInit, OnModuleDes
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           take: CLEANUP_BATCH_SIZE,
         });
-        if (!purchases.length) break;
+        if (!purchases.length) {
+          break;
+        }
         for (const purchase of purchases) {
-          if (this.stopped) break;
+          if (this.stopped) {
+            break;
+          }
           try {
             // Clear the key only after deletion succeeds. Failed deletions retry next run.
             await this.s3.deleteFile(purchase.objectKey);
@@ -50,11 +61,15 @@ export class TicketPurchaseRetentionService implements OnModuleInit, OnModuleDes
               data: { objectKey: '' },
             });
           } catch (error: unknown) {
-            this.logger.warn(`Expired ticket receipt cleanup failed (${error instanceof Error ? error.name : 'unknown'}).`);
+            this.logger.warn(
+              `Expired ticket receipt cleanup failed (${error instanceof Error ? error.name : 'unknown'}).`,
+            );
           }
         }
         cursor = purchases[purchases.length - 1].id;
-        if (purchases.length < CLEANUP_BATCH_SIZE) break;
+        if (purchases.length < CLEANUP_BATCH_SIZE) {
+          break;
+        }
       }
     } catch (error: unknown) {
       this.logger.warn(`Ticket receipt retention query failed (${error instanceof Error ? error.name : 'unknown'}).`);

@@ -53,12 +53,7 @@ describe('event participation policy options', () => {
       AttendanceEligibility.REGISTERED_ONLY,
     );
     expect(
-      displayAttendanceEligibility(
-        AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY,
-        'EVENT',
-        'GROUP',
-        true,
-      ),
+      displayAttendanceEligibility(AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY, 'EVENT', 'GROUP', true),
     ).toBe(AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY);
     expect(displayAttendanceEligibility(null, 'MAJOR_EVENT', 'NONE')).toBe(
       AttendanceEligibility.APPROVED_REGISTRATIONS_ONLY,

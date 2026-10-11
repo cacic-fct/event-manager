@@ -12,9 +12,12 @@ export async function findReceiptObjectKeys(prisma: PrismaService, personIds: re
     select: { objectKey: true },
   });
 
-  const ticketReceipts = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => prisma.ticketPurchase.findMany({
-    where: { personId: { in: [...personIds] } }, select: { objectKey: true },
-  }));
+  const ticketReceipts = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+    prisma.ticketPurchase.findMany({
+      where: { personId: { in: [...personIds] } },
+      select: { objectKey: true },
+    }),
+  );
   return [...receipts, ...ticketReceipts].map((receipt) => receipt.objectKey).filter(Boolean);
 }
 

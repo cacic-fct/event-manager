@@ -63,8 +63,8 @@ export class PrizeDrawResultDialogStoryHarness {
             drawTitle: this.drawTitle(),
             spinDescription: this.spinDescription() || null,
           },
-          reducedMotion: isPlatformBrowser(this.platformId)
-            && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+          reducedMotion:
+            isPlatformBrowser(this.platformId) && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
           publicDrawUrl: PRIZE_DRAW_STORY_PUBLIC_URL,
         },
         width: '100vw',

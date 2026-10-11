@@ -236,12 +236,16 @@ describe('EventAttendancesQueriesResolver', () => {
     expect(query.sql).toContain('LIMIT ? OFFSET ?');
     expect(query.values.slice(-2)).toEqual([1, 50]);
     expect(query.values).toContain('Ada %_');
-    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { majorEventId: 'major-1', deletedAt: null, personId: { in: ['attendee-1'] } },
-    }));
-    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { eventId: { in: ['event-1'] }, status: 'PRESENT', personId: { in: ['attendee-1'] } },
-    }));
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { majorEventId: 'major-1', deletedAt: null, personId: { in: ['attendee-1'] } },
+      }),
+    );
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { eventId: { in: ['event-1'] }, status: 'PRESENT', personId: { in: ['attendee-1'] } },
+      }),
+    );
     expect(resolveCurrentAssessments).toHaveBeenCalledWith([{ ...attendance, event }]);
 
     prisma.$queryRaw.mockResolvedValue([]);

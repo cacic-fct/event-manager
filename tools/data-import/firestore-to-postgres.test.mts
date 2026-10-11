@@ -203,7 +203,9 @@ test('commits successful writes and rolls back failed writes with an injected cl
       {
         async query(text) {
           failedQueries.push(text);
-          if (text === 'COMMIT') throw new Error('commit failed');
+          if (text === 'COMMIT') {
+            throw new Error('commit failed');
+          }
           return { rows: [] };
         },
       },

@@ -18,12 +18,7 @@ import { CurrentUserEventSubscriptionService } from '../current-user/events/subs
 import { EventSubscriptionsResolver } from '../events/subscriptions.resolver';
 import { ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES } from '../events/attendance-eligibility';
 import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
-import {
-  CurrentUserInterestState,
-  EventInterest,
-  EventInterestConversion,
-  EventInterestPerson,
-} from './models';
+import { CurrentUserInterestState, EventInterest, EventInterestConversion, EventInterestPerson } from './models';
 import { personSearchWhere } from '../people/person-search-where';
 
 type PrismaExecutor = PrismaService | PrismaClient | Prisma.TransactionClient;
@@ -142,11 +137,7 @@ export class EventInterestsService {
         deletedAt: null,
         ...(majorEventId
           ? {
-              OR: [
-                { majorEventId },
-                { event: { majorEventId } },
-                { eventGroup: { majorEventId } },
-              ],
+              OR: [{ majorEventId }, { event: { majorEventId } }, { eventGroup: { majorEventId } }],
             }
           : {}),
       },
@@ -250,9 +241,10 @@ export class EventInterestsService {
     });
 
     const personIds = interests.map(({ personId }) => personId);
-    const subscribedPersonIds = normalizedTarget.targetType === InterestTargetType.EVENT_GROUP
-      ? await this.findFullySubscribedPersonIdsForEventGroup(normalizedTarget.targetId, personIds)
-      : await this.findSubscribedPersonIdsForTarget(normalizedTarget, personIds);
+    const subscribedPersonIds =
+      normalizedTarget.targetType === InterestTargetType.EVENT_GROUP
+        ? await this.findFullySubscribedPersonIdsForEventGroup(normalizedTarget.targetId, personIds)
+        : await this.findSubscribedPersonIdsForTarget(normalizedTarget, personIds);
     return interests.map((interest) => ({
       ...this.toModel(interest),
       isSubscribed: subscribedPersonIds.has(interest.personId),
@@ -284,24 +276,24 @@ export class EventInterestsService {
       return new Set();
     }
 
-    const eventIds = [...new Set(interests.flatMap(({ eventId }) => eventId ? [eventId] : []))];
-    const eventGroupIds = [...new Set(interests.flatMap(({ eventGroupId }) => eventGroupId ? [eventGroupId] : []))];
-    const majorEventIds = [...new Set(interests.flatMap(({ majorEventId }) => majorEventId ? [majorEventId] : []))];
+    const eventIds = [...new Set(interests.flatMap(({ eventId }) => (eventId ? [eventId] : [])))];
+    const eventGroupIds = [...new Set(interests.flatMap(({ eventGroupId }) => (eventGroupId ? [eventGroupId] : [])))];
+    const majorEventIds = [...new Set(interests.flatMap(({ majorEventId }) => (majorEventId ? [majorEventId] : [])))];
     const eventFilters: Prisma.EventWhereInput[] = [
       ...(eventIds.length > 0 ? [{ id: { in: eventIds } }] : []),
       ...(eventGroupIds.length > 0 ? [{ eventGroupId: { in: eventGroupIds } }] : []),
     ];
-    const events = eventFilters.length > 0
-      ? await this.prisma.event.findMany({
-          where: { deletedAt: null, OR: eventFilters },
-          select: { id: true, eventGroupId: true, majorEventId: true, autoSubscribe: true },
-        })
-      : [];
+    const events =
+      eventFilters.length > 0
+        ? await this.prisma.event.findMany({
+            where: { deletedAt: null, OR: eventFilters },
+            select: { id: true, eventGroupId: true, majorEventId: true, autoSubscribe: true },
+          })
+        : [];
     const eventIdsToCheck = [...new Set([...eventIds, ...events.map(({ id }) => id)])];
-    const relevantMajorEventIds = [...new Set([
-      ...majorEventIds,
-      ...events.flatMap(({ majorEventId }) => majorEventId ? [majorEventId] : []),
-    ])];
+    const relevantMajorEventIds = [
+      ...new Set([...majorEventIds, ...events.flatMap(({ majorEventId }) => (majorEventId ? [majorEventId] : []))]),
+    ];
     const inactiveStatuses = this.inactiveMajorSubscriptionStatuses();
 
     const [majorSubscriptions, eventSubscriptions, eventGroupSubscriptions, selections] = await Promise.all([
@@ -382,9 +374,10 @@ export class EventInterestsService {
         const hasMajorEvent = groupEvents.some((event) => event.majorEventId !== null);
         if (
           (!hasMajorEvent && subscribedEventGroupIds.has(interest.eventGroupId)) ||
-          groupEvents.some((event) =>
-            subscribedEventIds.has(event.id) ||
-            (event.autoSubscribe && event.majorEventId && activeMajorEventIds.has(event.majorEventId)),
+          groupEvents.some(
+            (event) =>
+              subscribedEventIds.has(event.id) ||
+              (event.autoSubscribe && event.majorEventId && activeMajorEventIds.has(event.majorEventId)),
           )
         ) {
           subscribedInterestIds.add(interest.id);
@@ -395,7 +388,10 @@ export class EventInterestsService {
     return subscribedInterestIds;
   }
 
-  private async findFullySubscribedPersonIdsForEventGroup(eventGroupId: string, personIds: string[]): Promise<Set<string>> {
+  private async findFullySubscribedPersonIdsForEventGroup(
+    eventGroupId: string,
+    personIds: string[],
+  ): Promise<Set<string>> {
     const fullySubscribed = new Set<string>();
     const uniquePersonIds = [...new Set(personIds)];
     if (uniquePersonIds.length === 0) {
@@ -414,9 +410,11 @@ export class EventInterestsService {
     });
     const events = group?.events ?? [];
     const eventIds = events.map(({ id }) => id);
-    const autoSubscribeMajorEventIds = [...new Set(
-      events.flatMap(({ autoSubscribe, majorEventId }) => autoSubscribe && majorEventId ? [majorEventId] : []),
-    )];
+    const autoSubscribeMajorEventIds = [
+      ...new Set(
+        events.flatMap(({ autoSubscribe, majorEventId }) => (autoSubscribe && majorEventId ? [majorEventId] : [])),
+      ),
+    ];
 
     const [groupSubscriptions, eventSubscriptions, selections, automaticSubscriptions] = await Promise.all([
       this.prisma.eventGroupSubscription.findMany({
@@ -557,7 +555,10 @@ export class EventInterestsService {
     }
 
     if (target.targetType === InterestTargetType.EVENT) {
-      const event = await this.prisma.event.findUnique({ where: { id: target.targetId }, select: { majorEventId: true, eventGroupId: true, autoSubscribe: true } });
+      const event = await this.prisma.event.findUnique({
+        where: { id: target.targetId },
+        select: { majorEventId: true, eventGroupId: true, autoSubscribe: true },
+      });
       const rows = await this.prisma.eventSubscription.findMany({
         where: { eventId: target.targetId, personId: { in: personIds }, deletedAt: null },
         select: { personId: true },
@@ -631,7 +632,11 @@ export class EventInterestsService {
     return subscribed;
   }
 
-  private async addAutomaticSubscribers(subscribed: Set<string>, majorEventId: string, personIds: string[]): Promise<Set<string>> {
+  private async addAutomaticSubscribers(
+    subscribed: Set<string>,
+    majorEventId: string,
+    personIds: string[],
+  ): Promise<Set<string>> {
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
@@ -668,9 +673,7 @@ export class EventInterestsService {
 
     const actor = user;
     const existing = await this.findExistingSubscription(interest);
-    const shouldMergeGroupSelections = Boolean(
-      interest.eventGroupId && request.selectedEventIds?.length,
-    );
+    const shouldMergeGroupSelections = Boolean(interest.eventGroupId && request.selectedEventIds?.length);
     if (!existing || shouldMergeGroupSelections) {
       try {
         if (target.targetType === InterestTargetType.MAJOR_EVENT) {
@@ -792,9 +795,7 @@ export class EventInterestsService {
         where: { subscriptionId: existingMajorSubscription.id, deletedAt: null },
         select: { eventId: true },
       });
-      const mergedEventIds = [
-        ...new Set([...existingSelections.map(({ eventId }) => eventId), ...selectedEventIds]),
-      ];
+      const mergedEventIds = [...new Set([...existingSelections.map(({ eventId }) => eventId), ...selectedEventIds])];
       if (
         !this.inactiveMajorSubscriptionStatuses().includes(existingMajorSubscription.subscriptionStatus) &&
         selectedEventIds.every((id) => existingSelections.some(({ eventId }) => eventId === id))
@@ -805,8 +806,9 @@ export class EventInterestsService {
         return;
       }
       await this.assertMajorConversionPermissions(actor, majorEventId, Permission.Subscription.Update);
-      const nextStatus = request.subscriptionStatus
-        ?? (this.inactiveMajorSubscriptionStatuses().includes(existingMajorSubscription.subscriptionStatus)
+      const nextStatus =
+        request.subscriptionStatus ??
+        (this.inactiveMajorSubscriptionStatuses().includes(existingMajorSubscription.subscriptionStatus)
           ? await this.defaultMajorEventStatus(majorEventId, request)
           : existingMajorSubscription.subscriptionStatus);
       await this.workspaceSubscriptions.updateWorkspaceMajorEventSubscription(
@@ -847,13 +849,19 @@ export class EventInterestsService {
 
   private async getMajorEventIdForInterest(interest: EventInterestRecord): Promise<string> {
     if (interest.eventId) {
-      const event = await this.prisma.event.findUnique({ where: { id: interest.eventId }, select: { majorEventId: true } });
+      const event = await this.prisma.event.findUnique({
+        where: { id: interest.eventId },
+        select: { majorEventId: true },
+      });
       if (event?.majorEventId) {
         return event.majorEventId;
       }
     }
     if (interest.eventGroupId) {
-      const group = await this.prisma.eventGroup.findUnique({ where: { id: interest.eventGroupId }, select: { majorEventId: true } });
+      const group = await this.prisma.eventGroup.findUnique({
+        where: { id: interest.eventGroupId },
+        select: { majorEventId: true },
+      });
       if (group?.majorEventId) {
         return group.majorEventId;
       }
@@ -907,7 +915,10 @@ export class EventInterestsService {
     }
 
     if (interest.eventId) {
-      const event = await this.prisma.event.findUnique({ where: { id: interest.eventId }, select: { majorEventId: true, autoSubscribe: true } });
+      const event = await this.prisma.event.findUnique({
+        where: { id: interest.eventId },
+        select: { majorEventId: true, autoSubscribe: true },
+      });
       if (event?.majorEventId) {
         const eventSubscription = await this.prisma.eventSubscription.findFirst({
           where: { eventId: interest.eventId, personId: interest.personId, deletedAt: null },
@@ -1039,7 +1050,11 @@ export class EventInterestsService {
     permission: Permission,
   ): Promise<void> {
     const targetPermission = this.permissionForTarget(target.targetType);
-    await this.authorizationPolicy.assertPermissions(user, [permission, targetPermission], this.resourceContext(target));
+    await this.authorizationPolicy.assertPermissions(
+      user,
+      [permission, targetPermission],
+      this.resourceContext(target),
+    );
   }
 
   private async assertEventGroupConversionPermissions(
@@ -1171,14 +1186,13 @@ export class EventInterestsService {
     }
   }
 
-  private async hasActiveSubscription(
-    tx: PrismaExecutor,
-    personId: string,
-    target: InterestTarget,
-  ): Promise<boolean> {
+  private async hasActiveSubscription(tx: PrismaExecutor, personId: string, target: InterestTarget): Promise<boolean> {
     switch (target.targetType) {
       case InterestTargetType.EVENT: {
-        const event = await tx.event.findUnique({ where: { id: target.targetId }, select: { majorEventId: true, autoSubscribe: true } });
+        const event = await tx.event.findUnique({
+          where: { id: target.targetId },
+          select: { majorEventId: true, autoSubscribe: true },
+        });
         if (!event) {
           return false;
         }
@@ -1320,10 +1334,9 @@ export class EventInterestsService {
     }
   }
 
-  private targetCreateData(target: InterestTarget): Pick<
-    Prisma.EventInterestUncheckedCreateInput,
-    'eventId' | 'eventGroupId' | 'majorEventId'
-  > {
+  private targetCreateData(
+    target: InterestTarget,
+  ): Pick<Prisma.EventInterestUncheckedCreateInput, 'eventId' | 'eventGroupId' | 'majorEventId'> {
     switch (target.targetType) {
       case InterestTargetType.EVENT:
         return { eventId: target.targetId };
@@ -1371,7 +1384,11 @@ export class EventInterestsService {
     };
   }
 
-  private async lockTargetPerson(tx: Prisma.TransactionClient, personId: string, target: InterestTarget): Promise<void> {
+  private async lockTargetPerson(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    target: InterestTarget,
+  ): Promise<void> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`event-interest:${target.targetType}:${target.targetId}:${personId}`}, 0))`;
   }
 

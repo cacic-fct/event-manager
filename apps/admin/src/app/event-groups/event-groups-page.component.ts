@@ -82,20 +82,23 @@ export class EventGroupsPageComponent {
   readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
   readonly creationParents = signal<CreationParentSummary[]>([]);
   private contextRequest = 0;
-  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
+  private lastContext: { params: ParamMap; query: ParamMap | null } | null = null;
 
   constructor() {
     effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
-      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
-        this.lastContext = {params, query};
+      .pipe(takeUntilDestroyed())
+      .subscribe(([params, query]) => {
+        this.lastContext = { params, query };
         void this.initializeContext(params, query);
       });
   }
 
   retryContext(): void {
-    if (this.lastContext) void this.initializeContext(this.lastContext.params, this.lastContext.query);
+    if (this.lastContext) {
+      void this.initializeContext(this.lastContext.params, this.lastContext.query);
+    }
   }
 
   private async initializeContext(params: ParamMap, query: ParamMap | null): Promise<void> {
@@ -106,12 +109,26 @@ export class EventGroupsPageComponent {
     this.contextError.set('');
     this.creationParents.set([]);
     try {
-      if (id) { await this.workspace.pickEventGroupById(id); }
-      else { const parents = await this.workspace.initializeNewEventGroup(query?.get('majorEventId')); if (request === this.contextRequest) this.creationParents.set(parents); }
+      if (id) {
+        await this.workspace.pickEventGroupById(id);
+      } else {
+        const parents = await this.workspace.initializeNewEventGroup(query?.get('majorEventId'));
+        if (request === this.contextRequest) {
+          this.creationParents.set(parents);
+        }
+      }
     } catch (error) {
-      if (request === this.contextRequest) this.contextError.set(error instanceof CreationParentError ? error.message : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+      if (request === this.contextRequest) {
+        this.contextError.set(
+          error instanceof CreationParentError
+            ? error.message
+            : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.',
+        );
+      }
     } finally {
-      if (request === this.contextRequest) this.contextLoading.set(false);
+      if (request === this.contextRequest) {
+        this.contextLoading.set(false);
+      }
     }
   }
 

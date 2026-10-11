@@ -8,16 +8,22 @@ describe('MajorEventsResolver', () => {
     const { resolver, tx } = createResolver();
     tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-used' }]);
     tx.ticketConfig.findFirst.mockResolvedValue({ id: 'config-used' });
-    await expect(resolver['deleteMajorEventPrice'](tx as never, 'major-1')).rejects.toThrow('configurações de bilhetes');
+    await expect(resolver['deleteMajorEventPrice'](tx as never, 'major-1')).rejects.toThrow(
+      'configurações de bilhetes',
+    );
     expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
-    expect(tx.ticketConfig.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { OR: [
-        { includedPriceTierIds: { hasSome: ['tier-used'] } },
-        { recipientAllowedPriceTierIds: { hasSome: ['tier-used'] } },
-        { purchaseVisiblePriceTierIds: { hasSome: ['tier-used'] } },
-        { priceOptions: { some: { priceTierId: { in: ['tier-used'] } } } },
-      ] },
-    }));
+    expect(tx.ticketConfig.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { includedPriceTierIds: { hasSome: ['tier-used'] } },
+            { recipientAllowedPriceTierIds: { hasSome: ['tier-used'] } },
+            { purchaseVisiblePriceTierIds: { hasSome: ['tier-used'] } },
+            { priceOptions: { some: { priceTierId: { in: ['tier-used'] } } } },
+          ],
+        },
+      }),
+    );
   });
 
   it.each([false, true, undefined])('preserves explicit sports entitlement updates: %s', (value) => {
@@ -269,117 +275,120 @@ describe('MajorEventsResolver', () => {
     );
   });
 
-  it.each([false, true])('audits major event publication separately when content changes: %s', async (contentChanged) => {
-    const majorEvent = {
-      id: 'major-1',
-      name: 'SECOMPP',
-      description: 'Semana acadêmica',
-      startDate: new Date('2026-08-01T12:00:00.000Z'),
-      endDate: new Date('2026-08-05T12:00:00.000Z'),
-      isPaymentRequired: false,
-      publicationState: 'DRAFT',
-      publishedAt: null,
-    };
-    const updatedMajorEvent = {
-      ...majorEvent,
-      name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
-      publicationState: 'PUBLISHED',
-      publishedAt: new Date(),
-      publicationUpdatedBy: 'admin-1',
-    };
-    const tx = {
-      $executeRaw: jest.fn().mockResolvedValue(1),
-      majorEvent: {
-        findFirst: jest.fn().mockResolvedValue(majorEvent),
-        update: jest.fn().mockResolvedValue({ id: 'major-1' }),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(updatedMajorEvent),
-      },
-    };
-    const prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
-      majorEvent: {
-        findFirst: jest.fn().mockResolvedValue({
-          ...majorEvent,
-          publicationState: 'PUBLISHED',
-          publishedAt: new Date('2026-07-20T12:00:00.000Z'),
-        }),
-      },
-      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
-    };
-    const typesenseSearch = {
-      upsertMajorEvent: jest.fn(),
-    };
-    const frozenResources = {
-      assertMajorEventMutable: jest.fn(),
-    };
-    const auditLog = {
-      record: jest.fn(),
-    };
-    const resolver = new MajorEventsResolver(
-      prisma as never,
-      typesenseSearch as never,
-      frozenResources as never,
-      {} as never,
-      auditLog as never,
-    );
-
-    await expect(
-      resolver.updateMajorEvent(
-        'major-1',
-        {
-          name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
-          publishAfterUpdate: true,
-        },
-        { req: { user: { sub: 'admin-1' } } } as never,
-      ),
-    ).resolves.toBe(updatedMajorEvent);
-
-    expect(tx.majorEvent.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
-          publicationState: 'PUBLISHED',
-          scheduledPublishAt: null,
-          publishedAt: expect.any(Date),
-          publicationUpdatedBy: 'admin-1',
-        }),
-      }),
-    );
-    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
-    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
-      tx.majorEvent.findFirst.mock.invocationCallOrder[0],
-    );
-    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "major_events"');
-    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('"deletedAt" IS NULL');
-    expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
-    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('major-1');
-    expect(prisma.majorEvent.findFirst).not.toHaveBeenCalled();
-    expect(auditLog.record).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        before: { publicationState: 'DRAFT', publishedAt: null },
-        after: {
-          publicationState: 'PUBLISHED',
-          publishedAt: expect.any(Date),
-          publicationUpdatedBy: 'admin-1',
-        },
-        actor: { sub: 'admin-1' },
-        summary: 'Conteúdo publicado.',
-        metadata: { category: 'publication-lifecycle' },
-        squashWindowMs: 0,
-        force: true,
-      }),
-      tx,
-    );
-    expect(auditLog.record).toHaveBeenCalledTimes(2);
-    expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
-    expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
+  it.each([false, true])(
+    'audits major event publication separately when content changes: %s',
+    async (contentChanged) => {
+      const majorEvent = {
         id: 'major-1',
+        name: 'SECOMPP',
+        description: 'Semana acadêmica',
+        startDate: new Date('2026-08-01T12:00:00.000Z'),
+        endDate: new Date('2026-08-05T12:00:00.000Z'),
+        isPaymentRequired: false,
+        publicationState: 'DRAFT',
+        publishedAt: null,
+      };
+      const updatedMajorEvent = {
+        ...majorEvent,
+        name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
         publicationState: 'PUBLISHED',
-      }),
-    );
-  });
+        publishedAt: new Date(),
+        publicationUpdatedBy: 'admin-1',
+      };
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        majorEvent: {
+          findFirst: jest.fn().mockResolvedValue(majorEvent),
+          update: jest.fn().mockResolvedValue({ id: 'major-1' }),
+          findUniqueOrThrow: jest.fn().mockResolvedValue(updatedMajorEvent),
+        },
+      };
+      const prisma = {
+        $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
+        majorEvent: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...majorEvent,
+            publicationState: 'PUBLISHED',
+            publishedAt: new Date('2026-07-20T12:00:00.000Z'),
+          }),
+        },
+        $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+      };
+      const typesenseSearch = {
+        upsertMajorEvent: jest.fn(),
+      };
+      const frozenResources = {
+        assertMajorEventMutable: jest.fn(),
+      };
+      const auditLog = {
+        record: jest.fn(),
+      };
+      const resolver = new MajorEventsResolver(
+        prisma as never,
+        typesenseSearch as never,
+        frozenResources as never,
+        {} as never,
+        auditLog as never,
+      );
+
+      await expect(
+        resolver.updateMajorEvent(
+          'major-1',
+          {
+            name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
+            publishAfterUpdate: true,
+          },
+          { req: { user: { sub: 'admin-1' } } } as never,
+        ),
+      ).resolves.toBe(updatedMajorEvent);
+
+      expect(tx.majorEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: contentChanged ? 'SECOMPP 2026' : 'SECOMPP',
+            publicationState: 'PUBLISHED',
+            scheduledPublishAt: null,
+            publishedAt: expect.any(Date),
+            publicationUpdatedBy: 'admin-1',
+          }),
+        }),
+      );
+      expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+      expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        tx.majorEvent.findFirst.mock.invocationCallOrder[0],
+      );
+      expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FROM "major_events"');
+      expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('"deletedAt" IS NULL');
+      expect(tx.$executeRaw.mock.calls[0]?.[0].join('${value}')).toContain('FOR UPDATE');
+      expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('major-1');
+      expect(prisma.majorEvent.findFirst).not.toHaveBeenCalled();
+      expect(auditLog.record).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          before: { publicationState: 'DRAFT', publishedAt: null },
+          after: {
+            publicationState: 'PUBLISHED',
+            publishedAt: expect.any(Date),
+            publicationUpdatedBy: 'admin-1',
+          },
+          actor: { sub: 'admin-1' },
+          summary: 'Conteúdo publicado.',
+          metadata: { category: 'publication-lifecycle' },
+          squashWindowMs: 0,
+          force: true,
+        }),
+        tx,
+      );
+      expect(auditLog.record).toHaveBeenCalledTimes(2);
+      expect(auditLog.record.mock.calls.every(([, transaction]) => transaction === tx)).toBe(true);
+      expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'major-1',
+          publicationState: 'PUBLISHED',
+        }),
+      );
+    },
+  );
 
   it('uses the locked major-event snapshot and preserves draft publication fields on an ordinary edit', async () => {
     const stalePublishedAt = new Date('2026-07-20T12:00:00.000Z');
@@ -1061,7 +1070,9 @@ describe('MajorEventsResolver', () => {
     tx.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
     tx.majorEvent.update.mockResolvedValue(majorEventRecord());
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(majorEventRecord({ attendanceEligibility: 'INVITED_ONLY' }));
-    await expect(resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never)).rejects.toThrow('confirmar presença');
+    await expect(
+      resolver.updateMajorEvent('major-1', { publishAfterUpdate: true }, context() as never),
+    ).rejects.toThrow('confirmar presença');
     expect(auditLog.record).not.toHaveBeenCalled();
   });
 
@@ -1163,54 +1174,75 @@ describe('MajorEventsResolver', () => {
 
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
-  it.each(['policy', 'invitations'] as const)('refreshes stored attendance categories when the major-event %s changes', async (change) => {
-    const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
-    const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
-    const tx = {
-      $executeRaw: jest.fn().mockResolvedValue(1),
-      event: {
-        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
-          ? [{ id: 'event-1' }, { id: 'event-2' }]
-          : [{ id: 'event-1' }]),
-      },
-      majorEvent: {
-        findFirst: jest.fn().mockResolvedValue(previous),
-        update: jest.fn().mockResolvedValue({ id: 'major-1' }),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
-      },
-      majorEventPrice: { upsert: jest.fn(), deleteMany: jest.fn() },
-      priceTier: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn(), create: jest.fn(), update: jest.fn() },
-      ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
-      eventFormLinkPriceTier: { count: jest.fn().mockResolvedValue(0) },
-      sportsTournament: { findFirst: jest.fn() },
-    };
-    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
-    const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
-    const resolver = new MajorEventsResolver(
-      { $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]), majorEvent: { findFirst: jest.fn().mockResolvedValue(previous) }, $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)) } as never,
-      { upsertMajorEvent: jest.fn() } as never,
-      { assertMajorEventMutable: jest.fn() } as never,
-      {} as never,
-      { record: jest.fn() } as never,
-      undefined,
-      undefined,
-      { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) } as never,
-      attendanceCategories as never,
-      attendanceRealtime as never,
-      { notifyInvited: jest.fn().mockResolvedValue(undefined), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } as never,
-    );
+  it.each(['policy', 'invitations'] as const)(
+    'refreshes stored attendance categories when the major-event %s changes',
+    async (change) => {
+      const previous = majorEventRecord({ attendanceEligibility: 'REGISTERED_ONLY' });
+      const updated = majorEventRecord({ attendanceEligibility: 'ANYONE' });
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        event: {
+          findMany: jest.fn(async () =>
+            audienceContext.getStore()?.bypass ? [{ id: 'event-1' }, { id: 'event-2' }] : [{ id: 'event-1' }],
+          ),
+        },
+        majorEvent: {
+          findFirst: jest.fn().mockResolvedValue(previous),
+          update: jest.fn().mockResolvedValue({ id: 'major-1' }),
+          findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
+        },
+        majorEventPrice: { upsert: jest.fn(), deleteMany: jest.fn() },
+        priceTier: {
+          findMany: jest.fn().mockResolvedValue([]),
+          deleteMany: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+        },
+        ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
+        eventFormLinkPriceTier: { count: jest.fn().mockResolvedValue(0) },
+        sportsTournament: { findFirst: jest.fn() },
+      };
+      const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+      const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
+      const resolver = new MajorEventsResolver(
+        {
+          $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
+          majorEvent: { findFirst: jest.fn().mockResolvedValue(previous) },
+          $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+        } as never,
+        { upsertMajorEvent: jest.fn() } as never,
+        { assertMajorEventMutable: jest.fn() } as never,
+        {} as never,
+        { record: jest.fn() } as never,
+        undefined,
+        undefined,
+        { scope: jest.fn((channel: string) => channel), publish: jest.fn().mockResolvedValue({}) } as never,
+        attendanceCategories as never,
+        attendanceRealtime as never,
+        {
+          notifyInvited: jest.fn().mockResolvedValue(undefined),
+          replaceInvitations: jest.fn().mockResolvedValue({
+            invitations: [{ personId: 'person-new' }],
+            addedPersonIds: ['person-new'],
+            removedPersonIds: [],
+          }),
+        } as never,
+      );
 
-    await expect(
-      resolver.updateMajorEvent(
-        'major-1',
-        (change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }) as never,
-        { req: { user: { sub: 'admin-1' } } } as never,
-      ),
-    ).resolves.toBe(updated);
-    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
-    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
-    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
-  });
+      await expect(
+        resolver.updateMajorEvent(
+          'major-1',
+          (change === 'policy'
+            ? { attendanceEligibility: 'ANYONE' }
+            : { invitationPersonIds: ['person-new'] }) as never,
+          { req: { user: { sub: 'admin-1' } } } as never,
+        ),
+      ).resolves.toBe(updated);
+      expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+      expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
+      expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 function context(sub = 'admin-1') {

@@ -11,11 +11,7 @@ import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { MajorEventSubscriptionDemoComponent } from './major-event-subscription-demo';
 
 type OrganizerDemoEventId = 'interfaces' | 'creating-with-ai';
-type OrganizerDemoSubscriptionStatus =
-  | 'CONFIRMED'
-  | 'CANCELED'
-  | 'REJECTED_NO_SLOTS'
-  | 'REJECTED_SCHEDULE_CONFLICT';
+type OrganizerDemoSubscriptionStatus = 'CONFIRMED' | 'CANCELED' | 'REJECTED_NO_SLOTS' | 'REJECTED_SCHEDULE_CONFLICT';
 
 interface OrganizerDemoEvent {
   id: OrganizerDemoEventId;
@@ -125,25 +121,21 @@ export class RegistrationDemoComponent {
     maxLength(schema.locationDescription, 120);
   });
 
-  readonly selectedEvent = computed(
-    () => this.events().find((event) => event.id === this.selectedEventId()) ?? null,
-  );
+  readonly selectedEvent = computed(() => this.events().find((event) => event.id === this.selectedEventId()) ?? null);
   readonly filteredSubscriptions = computed(() => {
     const eventId = this.selectedEventId();
     const query = this.subscriptionSearchModel().query.trim().toLocaleLowerCase('pt-BR');
 
     return DEMO_SUBSCRIPTIONS.filter(
       (subscription) =>
-        subscription.eventId === eventId &&
-        subscription.personName.toLocaleLowerCase('pt-BR').includes(query),
+        subscription.eventId === eventId && subscription.personName.toLocaleLowerCase('pt-BR').includes(query),
     );
   });
   readonly hasUnsavedEventChanges = computed(() => {
     const event = this.selectedEvent();
     const formValue = this.eventDetailsModel();
 
-    return !!event &&
-      (formValue.name !== event.name || formValue.locationDescription !== event.locationDescription);
+    return !!event && (formValue.name !== event.name || formValue.locationDescription !== event.locationDescription);
   });
 
   selectEvent(eventId: OrganizerDemoEventId): void {
@@ -173,11 +165,7 @@ export class RegistrationDemoComponent {
     };
 
     this.events.update((events) =>
-      events.map((candidate) =>
-        candidate.id === event.id
-          ? { ...candidate, ...updated }
-          : candidate,
-      ),
+      events.map((candidate) => (candidate.id === event.id ? { ...candidate, ...updated } : candidate)),
     );
     this.eventDetailsModel.set(updated);
     this.eventSaved.set(true);
@@ -201,8 +189,7 @@ export class RegistrationDemoComponent {
 
   private confirmedSubscriptionsCount(eventId: OrganizerDemoEventId): number {
     return DEMO_SUBSCRIPTIONS.filter(
-      (subscription) =>
-        subscription.eventId === eventId && subscription.subscriptionStatus === 'CONFIRMED',
+      (subscription) => subscription.eventId === eventId && subscription.subscriptionStatus === 'CONFIRMED',
     ).length;
   }
 

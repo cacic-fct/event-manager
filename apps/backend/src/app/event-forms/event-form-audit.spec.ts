@@ -289,13 +289,10 @@ describe('event-form audit payloads', () => {
       source: 'PUBLIC_FORM',
     };
 
-    const record = eventFormResponseAuditRecord(
-      form,
-      response as never,
-      AuditLogOperation.UPDATE,
-      undefined,
-      { ...response, answers: [{ questionId: 'q1', value: 'same answer' }] } as never,
-    );
+    const record = eventFormResponseAuditRecord(form, response as never, AuditLogOperation.UPDATE, undefined, {
+      ...response,
+      answers: [{ questionId: 'q1', value: 'same answer' }],
+    } as never);
 
     expect(record.force).toBe(false);
     expect(record.metadata).toMatchObject({ answersChanged: false });

@@ -84,20 +84,23 @@ export class MajorEventsPageComponent {
   readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
   readonly creationParents = signal<CreationParentSummary[]>([]);
   private contextRequest = 0;
-  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
+  private lastContext: { params: ParamMap; query: ParamMap | null } | null = null;
 
   constructor() {
     effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
-      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
-        this.lastContext = {params, query};
+      .pipe(takeUntilDestroyed())
+      .subscribe(([params, query]) => {
+        this.lastContext = { params, query };
         void this.initializeContext(params);
       });
   }
 
   retryContext(): void {
-    if (this.lastContext) void this.initializeContext(this.lastContext.params);
+    if (this.lastContext) {
+      void this.initializeContext(this.lastContext.params);
+    }
   }
 
   private async initializeContext(params: ParamMap): Promise<void> {
@@ -108,12 +111,19 @@ export class MajorEventsPageComponent {
     this.contextError.set('');
     this.creationParents.set([]);
     try {
-      if (id) { await this.workspace.pickMajorEventById(id); }
-      else { this.workspace.resetMajorEventForm(false); }
+      if (id) {
+        await this.workspace.pickMajorEventById(id);
+      } else {
+        this.workspace.resetMajorEventForm(false);
+      }
     } catch {
-      if (request === this.contextRequest) this.contextError.set('Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+      if (request === this.contextRequest) {
+        this.contextError.set('Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+      }
     } finally {
-      if (request === this.contextRequest) this.contextLoading.set(false);
+      if (request === this.contextRequest) {
+        this.contextLoading.set(false);
+      }
     }
   }
 

@@ -374,9 +374,7 @@ describe('CertificatesService', () => {
   it('keeps only the newest target search response', async () => {
     const staleResponse = new Subject<ReturnType<typeof createAdminEvent>[]>();
     const currentResponse = new Subject<ReturnType<typeof createAdminEvent>[]>();
-    api.listCertificateIssuableEvents
-      .mockReturnValueOnce(staleResponse)
-      .mockReturnValueOnce(currentResponse);
+    api.listCertificateIssuableEvents.mockReturnValueOnce(staleResponse).mockReturnValueOnce(currentResponse);
     service.targetFiltersForm.controls.query.setValue('antigo', { emitEvent: false });
     const staleSearch = service.searchTargets();
     service.targetFiltersForm.controls.query.setValue('atual', { emitEvent: false });

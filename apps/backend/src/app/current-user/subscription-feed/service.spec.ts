@@ -11,10 +11,7 @@ describe('CurrentUserSubscriptionFeedService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       eventInterest: {
-        findMany: jest
-          .fn()
-          .mockResolvedValueOnce([])
-          .mockResolvedValueOnce([]),
+        findMany: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
       },
       eventLecturer: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -96,19 +93,24 @@ describe('CurrentUserSubscriptionFeedService', () => {
     const attendedEvent = event('attended-child', 'Atividade', 'group-1');
     const prisma = createPrisma({
       attendanceEvents: [{ event: attendedEvent }],
-      eventGroupInterests: [{
-        eventGroup: { ...eventGroup('group-1', 'Grupo'), events: [attendedEvent] },
-        createdAt: new Date(),
-      }],
+      eventGroupInterests: [
+        {
+          eventGroup: { ...eventGroup('group-1', 'Grupo'), events: [attendedEvent] },
+          createdAt: new Date(),
+        },
+      ],
     });
     const service = new CurrentUserSubscriptionFeedService(prisma as never, createMapper() as never);
 
     const feed = await service.getCurrentUserSubscriptionFeed('person-1');
 
-    expect(feed.items).toEqual([expect.objectContaining({
-      type: 'EVENT_GROUP', eventGroupId: 'group-1',
-      participation: expect.objectContaining({ isInterested: true, isSubscribed: false }),
-    })]);
+    expect(feed.items).toEqual([
+      expect.objectContaining({
+        type: 'EVENT_GROUP',
+        eventGroupId: 'group-1',
+        participation: expect.objectContaining({ isInterested: true, isSubscribed: false }),
+      }),
+    ]);
   });
 
   it('keeps a direct event interest visible when the event belongs to a standalone group', async () => {
@@ -139,10 +141,7 @@ describe('CurrentUserSubscriptionFeedService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       eventInterest: {
-        findMany: jest
-          .fn()
-          .mockResolvedValueOnce([])
-          .mockResolvedValueOnce([]),
+        findMany: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
       },
       eventLecturer: {
         findMany: jest

@@ -8,7 +8,13 @@ import {
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { audienceContext, eventAudienceWhere, groupAudienceWhere, majorEventAudienceWhere, type EventAudiencePrincipal } from '../audiences/audience-context';
+import {
+  audienceContext,
+  eventAudienceWhere,
+  groupAudienceWhere,
+  majorEventAudienceWhere,
+  type EventAudiencePrincipal,
+} from '../audiences/audience-context';
 import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -124,7 +130,9 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     context: AuthorizationResourceContext,
     principal: EventAudiencePrincipal | undefined = audienceContext.getStore(),
   ): Promise<void> {
-    if (!principal || principal.bypass) return;
+    if (!principal || principal.bypass) {
+      return;
+    }
     const eventIds = new Set<string>();
     const eventGroupIds = new Set<string>();
     const majorEventIds = new Set<string>();
@@ -135,9 +143,19 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       targets.majorEventIds.forEach((id) => majorEventIds.add(id));
     }
     const [events, groups, majors] = await Promise.all([
-      eventIds.size ? this.prisma.event.count({ where: { AND: [{ id: { in: [...eventIds] } }, eventAudienceWhere(principal)] } }) : 0,
-      eventGroupIds.size ? this.prisma.eventGroup.count({ where: { AND: [{ id: { in: [...eventGroupIds] } }, groupAudienceWhere(principal)] } }) : 0,
-      majorEventIds.size ? this.prisma.majorEvent.count({ where: { AND: [{ id: { in: [...majorEventIds] } }, majorEventAudienceWhere(principal)] } }) : 0,
+      eventIds.size
+        ? this.prisma.event.count({ where: { AND: [{ id: { in: [...eventIds] } }, eventAudienceWhere(principal)] } })
+        : 0,
+      eventGroupIds.size
+        ? this.prisma.eventGroup.count({
+            where: { AND: [{ id: { in: [...eventGroupIds] } }, groupAudienceWhere(principal)] },
+          })
+        : 0,
+      majorEventIds.size
+        ? this.prisma.majorEvent.count({
+            where: { AND: [{ id: { in: [...majorEventIds] } }, majorEventAudienceWhere(principal)] },
+          })
+        : 0,
     ]);
     if (events !== eventIds.size || groups !== eventGroupIds.size || majors !== majorEventIds.size) {
       throw new NotFoundException('Event resource was not found.');
@@ -300,10 +318,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     const descendantGroups = majorEventIds.length
       ? await this.prisma.eventGroup.findMany({
           where: {
-            AND: [
-              eventGroupBelongsToMajorEventWhere(majorEventIds),
-              { deletedAt: null },
-            ],
+            AND: [eventGroupBelongsToMajorEventWhere(majorEventIds), { deletedAt: null }],
           },
           select: { id: true },
         })
@@ -436,9 +451,14 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       context.primaryResource = [...resources][0];
     }
     this.collectResourceIds(raw, context);
-    if (requiredPermissions.length > 0 && requiredPermissions.every((permission) =>
-      [Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create].some((createPermission) => createPermission === permission),
-    )) {
+    if (
+      requiredPermissions.length > 0 &&
+      requiredPermissions.every((permission) =>
+        [Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create].some(
+          (createPermission) => createPermission === permission,
+        ),
+      )
+    ) {
       delete context.genericId;
     }
     if (context.genericId && resources.has('subscription')) {

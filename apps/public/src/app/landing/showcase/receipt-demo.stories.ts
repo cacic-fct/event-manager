@@ -31,7 +31,10 @@ export const AwaitingValidation: Story = {
 export const ImageReceiptSelection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.upload(canvas.getByLabelText('Arquivo do comprovante'), new File(['receipt'], 'recibo.png', { type: 'image/png' }));
+    await userEvent.upload(
+      canvas.getByLabelText('Arquivo do comprovante'),
+      new File(['receipt'], 'recibo.png', { type: 'image/png' }),
+    );
     await expect(canvas.getByText('recibo.png')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Enviar comprovante' })).toBeEnabled();
   },

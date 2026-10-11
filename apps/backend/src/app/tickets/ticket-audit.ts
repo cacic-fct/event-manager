@@ -24,10 +24,7 @@ export type TicketAuditInput = {
 };
 
 /** Writes an append-only central audit record through the same transaction as the ticket mutation. */
-export async function recordTicketAudit(
-  tx: Prisma.TransactionClient,
-  input: TicketAuditInput,
-): Promise<void> {
+export async function recordTicketAudit(tx: Prisma.TransactionClient, input: TicketAuditInput): Promise<void> {
   const actor = input.actorUserId
     ? await tx.user.findUnique({ where: { id: input.actorUserId }, select: { name: true, email: true } })
     : null;
@@ -81,7 +78,9 @@ function readField(value: Prisma.InputJsonValue | undefined, field: string): Pri
 }
 
 function asRecord(value: Prisma.InputJsonValue | undefined): Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
   return value as Record<string, unknown>;
 }
 
@@ -89,7 +88,9 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue | null {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }
-  if (Array.isArray(value)) return value.map((item) => toJsonValue(item));
+  if (Array.isArray(value)) {
+    return value.map((item) => toJsonValue(item));
+  }
   if (typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, toJsonValue(item)]));
   }

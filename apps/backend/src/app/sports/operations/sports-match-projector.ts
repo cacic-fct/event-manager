@@ -438,7 +438,9 @@ function requireNonNegativeInteger(value: unknown, label: string): number {
 
 function requirePositiveInteger(value: unknown, label: string): number {
   const number = requireNonNegativeInteger(value, label);
-  if (number < 1) throw new TypeError(`${label} must be positive.`);
+  if (number < 1) {
+    throw new TypeError(`${label} must be positive.`);
+  }
   return number;
 }
 

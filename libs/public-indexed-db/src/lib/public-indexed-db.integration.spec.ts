@@ -436,7 +436,9 @@ describe('offline public data access integration', () => {
     const sizes: number[] = [];
     for (;;) {
       const page = await service.listUploadable('uploader', 80, attempted);
-      if (!page.length) break;
+      if (!page.length) {
+        break;
+      }
       sizes.push(page.length);
       page.forEach((item) => attempted.add(item.clientId));
     }

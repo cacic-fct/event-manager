@@ -40,7 +40,9 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+    }
   }
 
   async enqueueForUsers(
@@ -69,7 +71,9 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
         purchaseId: input.purchaseId,
       });
     }
-    if (records.length === 0) return;
+    if (records.length === 0) {
+      return;
+    }
     await tx.ticketRealtimeOutbox.createMany({ data: records });
   }
 
@@ -90,7 +94,9 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async publishPending(): Promise<void> {
-    if (this.stopped || this.publishing) return;
+    if (this.stopped || this.publishing) {
+      return;
+    }
     this.publishing = true;
     try {
       const now = new Date();
@@ -105,7 +111,9 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
       });
 
       for (const record of pending) {
-        if (this.stopped) return;
+        if (this.stopped) {
+          return;
+        }
         const leaseUntil = new Date(Date.now() + OUTBOX_LEASE_MS);
         const claim = await this.prisma.ticketRealtimeOutbox.updateMany({
           where: {
@@ -115,7 +123,9 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
           },
           data: { leaseUntil },
         });
-        if (claim.count !== 1) continue;
+        if (claim.count !== 1) {
+          continue;
+        }
 
         const data: TicketRealtimeInvalidation = {
           revision: record.id,
@@ -127,11 +137,12 @@ export class TicketRealtimeService implements OnModuleInit, OnModuleDestroy {
           changedAt: record.createdAt.toISOString(),
         };
 
-        const scope = record.scopeType === TicketRealtimeScopeType.USER && record.recipientUserId
-          ? this.scope(record.recipientUserId)
-          : record.scopeType === TicketRealtimeScopeType.ADMIN_EVENT && record.eventId
-            ? this.adminEventScope(record.eventId)
-            : null;
+        const scope =
+          record.scopeType === TicketRealtimeScopeType.USER && record.recipientUserId
+            ? this.scope(record.recipientUserId)
+            : record.scopeType === TicketRealtimeScopeType.ADMIN_EVENT && record.eventId
+              ? this.adminEventScope(record.eventId)
+              : null;
         if (!scope) {
           await this.prisma.ticketRealtimeOutbox.updateMany({
             where: { id: record.id, publishedAt: null },

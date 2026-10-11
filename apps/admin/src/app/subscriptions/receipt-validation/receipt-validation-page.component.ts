@@ -129,7 +129,9 @@ export class ReceiptValidationPageComponent {
   );
   protected readonly activeFilterSummary = computed(() => {
     const filters = this.filters();
-    if (filters.category === 'ALL' && !filters.paymentTier) return null;
+    if (filters.category === 'ALL' && !filters.paymentTier) {
+      return null;
+    }
     const category =
       filters.category === 'SUBSCRIPTION' ? 'Inscrições' : filters.category === 'TICKET' ? 'Bilhetes' : '';
     const details = [
@@ -184,11 +186,15 @@ export class ReceiptValidationPageComponent {
   protected async approve(item: ReceiptValidationQueueItem): Promise<void> {
     if (this.isTicketPurchase(item)) {
       const purchaseId = item.purchaseId ?? item.subscriptionId;
-      if (this.saving() || !this.canApprove(item) || !item.receipt) return;
+      if (this.saving() || !this.canApprove(item) || !item.receipt) {
+        return;
+      }
       this.saving.set(true);
       try {
         const approved = await firstValueFrom(this.api.approveTicketPurchase(purchaseId));
-        if (!approved) throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        if (!approved) {
+          throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        }
         this.snackbar.open('Compra de bilhete aprovada.', 'Fechar', { duration: 3000 });
         await this.refreshQueue();
       } catch (error) {
@@ -221,13 +227,17 @@ export class ReceiptValidationPageComponent {
   protected async reject(item: ReceiptValidationQueueItem): Promise<void> {
     if (this.isTicketPurchase(item)) {
       const reason = this.rejectionForm.controls.reason.value.trim();
-      if (!reason || this.saving() || !this.canReject(item)) return;
+      if (!reason || this.saving() || !this.canReject(item)) {
+        return;
+      }
       this.saving.set(true);
       try {
         const rejected = await firstValueFrom(
           this.api.rejectTicketPurchase(item.purchaseId ?? item.subscriptionId, reason),
         );
-        if (!rejected) throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        if (!rejected) {
+          throw new Error('A compra não está mais aguardando validação. Atualize a fila.');
+        }
         this.rejectPanelOpen.set(false);
         this.snackbar.open('Compra de bilhete recusada.', 'Fechar', { duration: 3000 });
         await this.refreshQueue();
@@ -326,7 +336,9 @@ export class ReceiptValidationPageComponent {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((filters: ReceiptValidationFilters | undefined) => {
-        if (!filters) return;
+        if (!filters) {
+          return;
+        }
         const currentId = this.currentItem()?.subscriptionId;
         this.filters.set(filters);
         const retainedIndex = currentId
@@ -354,8 +366,12 @@ export class ReceiptValidationPageComponent {
   }
 
   protected canApprove(item: ReceiptValidationQueueItem): boolean {
-    if (!this.canApproveReceipt(item)) return false;
-    if (this.isTicketPurchase(item)) return true;
+    if (!this.canApproveReceipt(item)) {
+      return false;
+    }
+    if (this.isTicketPurchase(item)) {
+      return true;
+    }
     if (item.subscriptionFlow !== 'RANKED_VOTING') {
       return true;
     }

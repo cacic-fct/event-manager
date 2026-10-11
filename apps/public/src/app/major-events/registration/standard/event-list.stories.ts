@@ -73,7 +73,6 @@ export const Playground: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
-
 export const PreviouslyInterested: Story = {
   args: { selectedFirstEvent: false, interestedFirstEvent: true },
   globals: { network: 'online' },

@@ -33,10 +33,23 @@ import { findNavigationItemForUrl, globalNavigationItems, navigationItems } from
 import { isPlatformBrowser } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 import { ADMIN_SHELL_CONTEXT } from '../shared/admin-shell-context';
-import { EventContextDialogComponent, EventContextDialogData, EventContextDialogResult } from '../shared/event-context-dialog.component';
+import {
+  EventContextDialogComponent,
+  EventContextDialogData,
+  EventContextDialogResult,
+} from '../shared/event-context-dialog.component';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
-import { ContextOperation, EventWorkspaceContextService, EventWorkspaceRef, EventWorkspaceKind, EventWorkspaceContext, contextOperations, eventContextFromUrl, eventCreationTarget } from '../event-workspace/event-workspace-context.service';
+import {
+  ContextOperation,
+  EventWorkspaceContextService,
+  EventWorkspaceRef,
+  EventWorkspaceKind,
+  EventWorkspaceContext,
+  contextOperations,
+  eventContextFromUrl,
+  eventCreationTarget,
+} from '../event-workspace/event-workspace-context.service';
 import { RequestActivityService } from '../feedback/request-activity.service';
 import { canCreateEventContext } from '../shared/event-context-access';
 import { adminEventWorkspaceRoute } from '@cacic-fct/shared-utils';
@@ -88,7 +101,9 @@ export class AdminShellComponent {
   private readonly contextDialog = inject(MatDialog);
   protected readonly showGlobalNavigation = signal(false);
   protected readonly contextSelectorLabel = computed(() => {
-    if (!this.routeContext()) return 'Escolher evento';
+    if (!this.routeContext()) {
+      return 'Escolher evento';
+    }
     return `Trocar contexto: ${this.eventWorkspace.context()?.name ?? 'evento selecionado'}`;
   });
   private readonly destroyRef = inject(DestroyRef);
@@ -100,7 +115,9 @@ export class AdminShellComponent {
   readonly activeUrlOverride = input<string | null>(null);
 
   protected readonly user = this.authService.user;
-  protected readonly canChooseContext = computed(() => (['events', 'groups', 'major-events'] as const).some((tab) => this.permissions.canReadTab(tab)));
+  protected readonly canChooseContext = computed(() =>
+    (['events', 'groups', 'major-events'] as const).some((tab) => this.permissions.canReadTab(tab)),
+  );
 
   protected readonly navItems = computed(() => {
     const items = globalNavigationItems.filter((item) => this.canShowNavItem(item));
@@ -157,22 +174,56 @@ export class AdminShellComponent {
     return findNavigationItemForUrl(this.activeUrl());
   });
 
-  protected readonly showPageHeader = computed(() => this.activeUrl() !== '/' && (!this.activeUrl().includes('/event-workspace') || !!eventContextFromUrl(this.activeUrl())));
+  protected readonly showPageHeader = computed(
+    () =>
+      this.activeUrl() !== '/' &&
+      (!this.activeUrl().includes('/event-workspace') || !!eventContextFromUrl(this.activeUrl())),
+  );
   protected readonly routeContext = computed(() => eventContextFromUrl(this.activeUrl()));
   protected readonly pageTitle = computed(() => {
-    if (this.activeUrl().split(/[?#]/)[0].endsWith('/validate-receipts')) return 'Validação de comprovantes';
-    const creationKind = this.activeUrl().split(/[?#]/)[0].match(/^\/event-workspace\/new\/(event|group|major-event)$/)?.[1];
-    if (this.currentOperationId() === 'certificates' && this.routeContext()) return 'Certificados';
-    if (creationKind) return ({ event: 'Novo evento', group: 'Novo grupo de eventos', 'major-event': 'Novo grande evento' } as Record<string, string>)[creationKind];
+    if (this.activeUrl().split(/[?#]/)[0].endsWith('/validate-receipts')) {
+      return 'Validação de comprovantes';
+    }
+    const creationKind = this.activeUrl()
+      .split(/[?#]/)[0]
+      .match(/^\/event-workspace\/new\/(event|group|major-event)$/)?.[1];
+    if (this.currentOperationId() === 'certificates' && this.routeContext()) {
+      return 'Certificados';
+    }
+    if (creationKind) {
+      return (
+        { event: 'Novo evento', group: 'Novo grupo de eventos', 'major-event': 'Novo grande evento' } as Record<
+          string,
+          string
+        >
+      )[creationKind];
+    }
     const context = this.eventWorkspace.context();
-    if (this.currentOperationId() === 'overview' && context) return context.name;
-    return this.eventWorkspace.operations().find((operation) => operation.id === this.currentOperationId())?.label ?? this.activeNavItem().label;
+    if (this.currentOperationId() === 'overview' && context) {
+      return context.name;
+    }
+    return (
+      this.eventWorkspace.operations().find((operation) => operation.id === this.currentOperationId())?.label ??
+      this.activeNavItem().label
+    );
   });
 
   constructor() {
-    effect(() => { const context = this.routeContext(); this.showGlobalNavigation.set(false); untracked(() => { void this.eventWorkspace.load(context); }); });
-    this.destroyRef.onDestroy(() => { void this.eventWorkspace.load(null); });
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed(this.destroyRef))
+    effect(() => {
+      const context = this.routeContext();
+      this.showGlobalNavigation.set(false);
+      untracked(() => {
+        void this.eventWorkspace.load(context);
+      });
+    });
+    this.destroyRef.onDestroy(() => {
+      void this.eventWorkspace.load(null);
+    });
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe(() => this.focusContent());
     effect(() => {
       const initialNavMode = this.initialNavMode();
@@ -204,61 +255,128 @@ export class AdminShellComponent {
   }
 
   protected navigationPath(item: (typeof navigationItems)[number]): string {
-    return item.kind === 'link' ? item.id === 'events' ? '/event-workspace' : item.path : '';
+    return item.kind === 'link' ? (item.id === 'events' ? '/event-workspace' : item.path) : '';
   }
 
   protected currentOperationId(): ContextOperation['id'] | undefined {
     const segments = this.activeUrl().split(/[?#]/)[0].split('/').filter(Boolean);
-    if (segments[0] === 'admin') segments.shift();
+    if (segments[0] === 'admin') {
+      segments.shift();
+    }
     const path = `/${segments.join('/')}`;
     const section = segments[0];
-    if (path.startsWith('/event-workspace/new/')) return undefined;
-    if (path.endsWith('/settings')) return 'settings';
-    if (section === 'event-workspace' && this.routeContext()?.kind === 'event') return 'settings';
-    if (path.endsWith('/interests')) return 'interests';
-    return ({ 'event-workspace': 'overview', events: 'overview', groups: 'overview',
-      'major-events': 'overview', tickets: 'tickets', subscriptions: 'subscriptions', attendances: 'attendances',
-      forms: 'forms', draws: 'draws', sports: 'sports', certificates: 'certificates', publication: 'publication',
-    } as Record<string, ContextOperation['id']>)[section];
+    if (path.startsWith('/event-workspace/new/')) {
+      return undefined;
+    }
+    if (path.endsWith('/settings')) {
+      return 'settings';
+    }
+    if (section === 'event-workspace' && this.routeContext()?.kind === 'event') {
+      return 'settings';
+    }
+    if (path.endsWith('/interests')) {
+      return 'interests';
+    }
+    return (
+      {
+        'event-workspace': 'overview',
+        events: 'overview',
+        groups: 'overview',
+        'major-events': 'overview',
+        tickets: 'tickets',
+        subscriptions: 'subscriptions',
+        attendances: 'attendances',
+        forms: 'forms',
+        draws: 'draws',
+        sports: 'sports',
+        certificates: 'certificates',
+        publication: 'publication',
+      } as Record<string, ContextOperation['id']>
+    )[section];
   }
 
   protected openContextSelector(childKind?: 'event' | 'group'): void {
-    if (this.eventWorkspace.scopeSwitchBlocked()) return;
+    if (this.eventWorkspace.scopeSwitchBlocked()) {
+      return;
+    }
     const parentContext = childKind ? this.eventWorkspace.context() : null;
-    if (childKind && !parentContext) return;
-    this.contextDialog.open<EventContextDialogComponent, EventContextDialogData, EventContextDialogResult>(EventContextDialogComponent, {
-      data: { context: this.routeContext(), allowGroups: true, ...(parentContext ? { parentContext, childKind } : {}) },
-      width: '640px', maxWidth: 'calc(100vw - 2rem)', autoFocus: 'input[type="search"]',
-    }).afterClosed().subscribe((context) => {
-      if (!context) return;
-      if ('create' in context) this.createResource(context.create, parentContext ?? undefined);
-      else {
-        if (parentContext) this.eventWorkspace.rememberNavigationParent(context, parentContext);
-        this.switchContext(context);
-      }
-      const sidenav = this.sidenavRef();
-      if (sidenav) this.closeSidenavIfMobile(sidenav);
-    });
+    if (childKind && !parentContext) {
+      return;
+    }
+    this.contextDialog
+      .open<EventContextDialogComponent, EventContextDialogData, EventContextDialogResult>(
+        EventContextDialogComponent,
+        {
+          data: {
+            context: this.routeContext(),
+            allowGroups: true,
+            ...(parentContext ? { parentContext, childKind } : {}),
+          },
+          width: '640px',
+          maxWidth: 'calc(100vw - 2rem)',
+          autoFocus: 'input[type="search"]',
+        },
+      )
+      .afterClosed()
+      .subscribe((context) => {
+        if (!context) {
+          return;
+        }
+        if ('create' in context) {
+          this.createResource(context.create, parentContext ?? undefined);
+        } else {
+          if (parentContext) {
+            this.eventWorkspace.rememberNavigationParent(context, parentContext);
+          }
+          this.switchContext(context);
+        }
+        const sidenav = this.sidenavRef();
+        if (sidenav) {
+          this.closeSidenavIfMobile(sidenav);
+        }
+      });
   }
 
   protected async createResource(kind: EventWorkspaceKind, parent?: EventWorkspaceContext): Promise<void> {
-    if (this.eventWorkspace.scopeSwitchBlocked() || !this.canCreateContext(this.permissions, kind)) return;
+    if (this.eventWorkspace.scopeSwitchBlocked() || !this.canCreateContext(this.permissions, kind)) {
+      return;
+    }
     const target = eventCreationTarget(kind, parent);
-    if (!(await this.pendingChanges.navigate(() => this.router.navigate(target.commands, { queryParams: target.queryParams })))) return;
+    if (
+      !(await this.pendingChanges.navigate(() =>
+        this.router.navigate(target.commands, { queryParams: target.queryParams }),
+      ))
+    ) {
+      return;
+    }
     const sidenav = this.sidenavRef();
-    if (sidenav) this.closeSidenavIfMobile(sidenav);
+    if (sidenav) {
+      this.closeSidenavIfMobile(sidenav);
+    }
   }
 
-  protected async switchContext(ref: EventWorkspaceRef, operationId: ContextOperation['id'] = 'settings'): Promise<void> {
-    if (this.eventWorkspace.scopeSwitchBlocked()) return;
+  protected async switchContext(
+    ref: EventWorkspaceRef,
+    operationId: ContextOperation['id'] = 'settings',
+  ): Promise<void> {
+    if (this.eventWorkspace.scopeSwitchBlocked()) {
+      return;
+    }
     this.showGlobalNavigation.set(false);
     const operation = contextOperations(ref).find((candidate) => candidate.id === operationId);
-    if (!(await this.pendingChanges.navigate(() => this.router.navigate(
-      operation?.path ?? adminEventWorkspaceRoute({ ...ref, section: 'settings' }),
-      { queryParams: operation?.queryParams },
-    )))) return;
+    if (
+      !(await this.pendingChanges.navigate(() =>
+        this.router.navigate(operation?.path ?? adminEventWorkspaceRoute({ ...ref, section: 'settings' }), {
+          queryParams: operation?.queryParams,
+        }),
+      ))
+    ) {
+      return;
+    }
     const sidenav = this.sidenavRef();
-    if (sidenav) this.closeSidenavIfMobile(sidenav);
+    if (sidenav) {
+      this.closeSidenavIfMobile(sidenav);
+    }
   }
 
   protected focusContent(): void {

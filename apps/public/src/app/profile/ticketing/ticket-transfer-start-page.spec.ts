@@ -2,7 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { createTicketTransfer, createTicketTransferLists, createWalletTicket } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createTicketTransfer,
+  createTicketTransferLists,
+  createWalletTicket,
+} from '@cacic-fct/shared-ticketing/testing';
 import { EMPTY, of, throwError } from 'rxjs';
 import { TicketingApiService } from './ticketing-api.service';
 import { TicketTransferStartPage } from './ticket-transfer-start-page';
@@ -30,11 +34,13 @@ describe('TicketTransferStartPage', () => {
       startTicketTransfer: vi.fn(() =>
         options.startError
           ? throwError(() => new Error('recipient eligibility details must stay private'))
-          : of(createTicketTransfer({
-              ticket,
-              recipient: null,
-              submittedDestinationIdentityDocument: 'XK7654321',
-            })),
+          : of(
+              createTicketTransfer({
+                ticket,
+                recipient: null,
+                submittedDestinationIdentityDocument: 'XK7654321',
+              }),
+            ),
       ),
       cancelTicketTransfer: vi.fn(() => of({ ...pending, senderStatus: 'CANCELED' as const, canCancel: false })),
     };

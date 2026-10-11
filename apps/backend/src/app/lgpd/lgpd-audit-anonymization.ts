@@ -91,10 +91,12 @@ export function buildAuditLogSubjectWhere(
         : []),
       ...eventAttendanceEntityConditions,
       ...jsonIdentityConditions,
-      ...identifiers.flatMap((identifier) => ['before', 'after'].flatMap((snapshot) => [
-        { [snapshot]: { path: ['sourceKey'], string_ends_with: `:${identifier}` } },
-        { [snapshot]: { path: ['sourceKey'], string_contains: `:${identifier}:` } },
-      ])),
+      ...identifiers.flatMap((identifier) =>
+        ['before', 'after'].flatMap((snapshot) => [
+          { [snapshot]: { path: ['sourceKey'], string_ends_with: `:${identifier}` } },
+          { [snapshot]: { path: ['sourceKey'], string_contains: `:${identifier}:` } },
+        ]),
+      ),
       ...personListConditions,
       ...legacyInvitationConditions,
       ...emailConditions,
@@ -297,8 +299,10 @@ export function containsAuditIdentity(
   path: readonly string[] = [],
 ): boolean {
   if (typeof value === 'string') {
-    return (isAuditIdentityPath(path, personRoot) && identities.has(value)) ||
-      (path.at(-1) === 'sourceKey' && sourceKeyContainsIdentity(value, identities));
+    return (
+      (isAuditIdentityPath(path, personRoot) && identities.has(value)) ||
+      (path.at(-1) === 'sourceKey' && sourceKeyContainsIdentity(value, identities))
+    );
   }
   if (Array.isArray(value)) {
     return value.some((child) => containsAuditIdentity(child, identities, personRoot, path));
@@ -307,7 +311,11 @@ export function containsAuditIdentity(
     const changedField = typeof value['field'] === 'string' ? value['field'] : null;
     return Object.entries(value as Record<string, Prisma.JsonValue>).some(([key, child]) => {
       const nextPath = [...path, key];
-      if ((key === 'before' || key === 'after') && changedField && (isAuditIdentityField(changedField, personRoot) || changedField === 'sourceKey')) {
+      if (
+        (key === 'before' || key === 'after') &&
+        changedField &&
+        (isAuditIdentityField(changedField, personRoot) || changedField === 'sourceKey')
+      ) {
         return containsAuditIdentity(child, identities, personRoot, [...path, changedField]);
       }
       return containsAuditIdentity(child, identities, personRoot, nextPath);
@@ -366,8 +374,8 @@ export function anonymizeAuditJson(
     const anonymizeChangeValues = changedField != null && isAuditIdentityField(changedField, personRoot);
     return Object.fromEntries(
       Object.entries(value as Record<string, Prisma.JsonValue>).map(([key, child]) => {
-        const nextPath = anonymizeSourceKeyChange && (key === 'before' || key === 'after')
-          ? [...path, 'sourceKey'] : [...path, key];
+        const nextPath =
+          anonymizeSourceKeyChange && (key === 'before' || key === 'after') ? [...path, 'sourceKey'] : [...path, key];
         const isNestedPerson = path.includes('person') || path.includes('user');
         const redactPersonalField = PERSONAL_AUDIT_FIELDS.has(key) && (personRoot || isNestedPerson);
         if (redactPersonalField || (redactChangeValues && (key === 'before' || key === 'after'))) {

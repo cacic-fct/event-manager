@@ -1,12 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  InjectionToken,
-  PLATFORM_ID,
-  inject,
-  isDevMode,
-  signal,
-} from '@angular/core';
+import { Component, InjectionToken, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -209,8 +202,12 @@ export class LoginPageComponent {
 
   private internalReturnTo(): string | undefined {
     const returnTo = this.returnTo();
-    if (!returnTo) return undefined;
-    if (!/^\/admin(?:\/|[?#]|$)/.test(returnTo)) return returnTo;
+    if (!returnTo) {
+      return undefined;
+    }
+    if (!/^\/admin(?:\/|[?#]|$)/.test(returnTo)) {
+      return returnTo;
+    }
     const appRelativeUrl = returnTo.slice('/admin'.length);
     return appRelativeUrl.startsWith('/') ? appRelativeUrl : `/${appRelativeUrl}`;
   }

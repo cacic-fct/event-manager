@@ -68,14 +68,18 @@ export class PrizeDrawReelStoryHarness {
   constructor() {
     effect(() => {
       const reel = this.reel();
-      if (reel) reel.reset(this.rosterNames());
+      if (reel) {
+        reel.reset(this.rosterNames());
+      }
     });
   }
 
   play(): void {
-    if (this.rosterSize() < 1) return;
-    const prefersReducedMotion = isPlatformBrowser(this.platformId)
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (this.rosterSize() < 1) {
+      return;
+    }
+    const prefersReducedMotion =
+      isPlatformBrowser(this.platformId) && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     void this.reel()?.play(this.result(), prefersReducedMotion);
   }
 

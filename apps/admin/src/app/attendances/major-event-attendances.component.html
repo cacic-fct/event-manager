@@ -7,89 +7,100 @@
       </div>
     </div>
 
-
-    <button mat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">Atualizar presenças</button>
-
+    <button mat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">
+      Atualizar presenças
+    </button>
 
     <section class="panel">
-    @if (workspace.majorEventAttendanceForm.controls.majorEventId.value; as majorEventId) {
-      <p class="empty-note">
-        {{ workspace.majorEventUserAttendanceCount() }} participantes.
-        <a matButton="text" [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']">Editar política de presença</a>
-      </p>
-      <mat-form-field class="query-field">
-        <mat-label>Buscar participante</mat-label>
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput [formControl]="workspace.majorEventAttendanceSearchForm.controls.query" />
-        <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
-      </mat-form-field>
-    }
-
-    <mat-list class="subscription-list categorized-list">
-      @for (group of workspace.majorEventUserAttendanceGroups(); track group.category) {
-        <div class="category-heading" [class.category-NON_REGULAR]="group.category === 'NON_REGULAR'">
-          <h3>{{ group.label }}</h3>
-          <span>{{ group.description }}</span>
-        </div>
-
-        @for (attendance of group.attendances; track attendance.subscriptionId ?? attendance.personId) {
-          <app-workspace-record
-            [title]="attendance.person?.name ?? attendance.personId"
-            [label]="'Consultar presenças de ' + (attendance.person?.name ?? attendance.personId)"
-            [selected]="workspace.selectedMajorEventUserAttendance()?.personId === attendance.personId"
-            [link]="['/attendances', 'major-event', workspace.majorEventAttendanceForm.controls.majorEventId.value, 'person', attendance.personId]">
-            @if (attendance.person) {
-              <app-participant-summary recordDescription [person]="attendance.person" [showName]="false" />
-            }
-            <span recordDescription class="attendance-item-line">
-              {{ attendedEventCount(attendance) }}
-              {{ attendedEventCount(attendance) === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
-            </span>
-            @if (workspace.getAttendanceCategoryHistoricalExplanation(group.category); as historicalExplanation) {
-              <span recordDescription class="attendance-item-line">
-                Classificação histórica: {{ historicalExplanation }}
-              </span>
-            }
-            @if (workspace.getMajorEventCurrentAssessmentLabel(attendance); as currentAssessment) {
-              <span recordDescription class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
-            } @else if (group.category === 'UNKNOWN') {
-              <span recordDescription class="attendance-item-line">
-                Situação atual: varia entre as atividades frequentadas.
-              </span>
-            }
-          </app-workspace-record>
-        }
-      } @empty {
-        <div class="admin-list-empty">
-          <mat-icon aria-hidden="true">hide_source</mat-icon>
-          <p>Nenhuma pessoa carregada</p>
-        </div>
+      @if (workspace.majorEventAttendanceForm.controls.majorEventId.value; as majorEventId) {
+        <p class="empty-note">
+          {{ workspace.majorEventUserAttendanceCount() }} participantes.
+          <a matButton="text" [routerLink]="['/event-workspace', 'major-event', majorEventId, 'settings']"
+            >Editar política de presença</a
+          >
+        </p>
+        <mat-form-field class="query-field">
+          <mat-label>Buscar participante</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [formControl]="workspace.majorEventAttendanceSearchForm.controls.query" />
+          <mat-hint>Nome, e-mail, telefone, documento ou RA</mat-hint>
+        </mat-form-field>
       }
-    </mat-list>
 
-    <div class="list-pager" aria-label="Paginação de presenças do grande evento">
-      <span>Itens {{ workspace.majorEventUserAttendancesPagination.label() }}, {{ workspace.majorEventUserAttendanceCount() }} no total</span>
-      <div class="list-pager-actions">
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Página anterior de presenças"
-          matTooltip="Anterior"
-          [disabled]="!workspace.majorEventUserAttendancesPagination.hasPreviousPage()"
-          (click)="workspace.previousMajorEventUserAttendancesPage()">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <button
-          mat-icon-button
-          type="button"
-          aria-label="Próxima página de presenças"
-          matTooltip="Próxima"
-          [disabled]="!workspace.majorEventUserAttendancesPagination.hasNextPage()"
-          (click)="workspace.nextMajorEventUserAttendancesPage()">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
+      <mat-list class="subscription-list categorized-list">
+        @for (group of workspace.majorEventUserAttendanceGroups(); track group.category) {
+          <div class="category-heading" [class.category-NON_REGULAR]="group.category === 'NON_REGULAR'">
+            <h3>{{ group.label }}</h3>
+            <span>{{ group.description }}</span>
+          </div>
+
+          @for (attendance of group.attendances; track attendance.subscriptionId ?? attendance.personId) {
+            <app-workspace-record
+              [title]="attendance.person?.name ?? attendance.personId"
+              [label]="'Consultar presenças de ' + (attendance.person?.name ?? attendance.personId)"
+              [selected]="workspace.selectedMajorEventUserAttendance()?.personId === attendance.personId"
+              [link]="[
+                '/attendances',
+                'major-event',
+                workspace.majorEventAttendanceForm.controls.majorEventId.value,
+                'person',
+                attendance.personId,
+              ]">
+              @if (attendance.person) {
+                <app-participant-summary recordDescription [person]="attendance.person" [showName]="false" />
+              }
+              <span recordDescription class="attendance-item-line">
+                {{ attendedEventCount(attendance) }}
+                {{ attendedEventCount(attendance) === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
+              </span>
+              @if (workspace.getAttendanceCategoryHistoricalExplanation(group.category); as historicalExplanation) {
+                <span recordDescription class="attendance-item-line">
+                  Classificação histórica: {{ historicalExplanation }}
+                </span>
+              }
+              @if (workspace.getMajorEventCurrentAssessmentLabel(attendance); as currentAssessment) {
+                <span recordDescription class="attendance-item-line"> Situação atual: {{ currentAssessment }} </span>
+              } @else if (group.category === 'UNKNOWN') {
+                <span recordDescription class="attendance-item-line">
+                  Situação atual: varia entre as atividades frequentadas.
+                </span>
+              }
+            </app-workspace-record>
+          }
+        } @empty {
+          <div class="admin-list-empty">
+            <mat-icon aria-hidden="true">hide_source</mat-icon>
+            <p>Nenhuma pessoa carregada</p>
+          </div>
+        }
+      </mat-list>
+
+      <div class="list-pager" aria-label="Paginação de presenças do grande evento">
+        <span
+          >Itens {{ workspace.majorEventUserAttendancesPagination.label() }},
+          {{ workspace.majorEventUserAttendanceCount() }} no total</span
+        >
+        <div class="list-pager-actions">
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Página anterior de presenças"
+            matTooltip="Anterior"
+            [disabled]="!workspace.majorEventUserAttendancesPagination.hasPreviousPage()"
+            (click)="workspace.previousMajorEventUserAttendancesPage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Próxima página de presenças"
+            matTooltip="Próxima"
+            [disabled]="!workspace.majorEventUserAttendancesPagination.hasNextPage()"
+            (click)="workspace.nextMajorEventUserAttendancesPage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
       </div>
-    </div>
     </section>
   </aside>
 

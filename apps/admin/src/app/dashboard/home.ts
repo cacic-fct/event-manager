@@ -186,7 +186,9 @@ export class Home implements OnInit, OnDestroy {
 
   private loadDashboard() {
     const background = this.insights() !== null;
-    if (!background) this.loading.set(true);
+    if (!background) {
+      this.loading.set(true);
+    }
     this.error.set(null);
     return forkJoin({
       insights: this.dashboardApi.getWorkspaceDashboardInsights(),

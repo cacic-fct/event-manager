@@ -86,7 +86,9 @@ describe('SportsMatchPage', () => {
     expect(element.querySelectorAll('h1')).toHaveLength(1);
     expect(element.querySelectorAll('.scoreboard .team h2')).toHaveLength(2);
     expect(element.querySelector('[aria-live="polite"][aria-atomic="true"]')?.textContent).toContain('Placar:');
-    expect(element.querySelector('iframe')?.getAttribute('src')).toContain('youtube-nocookie.com/embed/storybook-sports');
+    expect(element.querySelector('iframe')?.getAttribute('src')).toContain(
+      'youtube-nocookie.com/embed/storybook-sports',
+    );
     expect(element.querySelector('.livestream-section a')?.getAttribute('href')).toBe(
       'https://www.youtube.com/watch?v=storybook-sports',
     );

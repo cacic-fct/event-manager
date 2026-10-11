@@ -199,7 +199,13 @@ describe('EventPostCommitEffectsService', () => {
       eventGroup: {
         findMany: jest.fn().mockResolvedValue([
           { id: 'group-1', name: 'Futsal', emoji: '⚽', majorEventId: 'major-1', deletedAt: null },
-          { id: 'group-2', name: 'Vôlei', emoji: '🏐', majorEventId: null, deletedAt: new Date('2026-08-12T14:00:00.000Z') },
+          {
+            id: 'group-2',
+            name: 'Vôlei',
+            emoji: '🏐',
+            majorEventId: null,
+            deletedAt: new Date('2026-08-12T14:00:00.000Z'),
+          },
         ]),
       },
     };

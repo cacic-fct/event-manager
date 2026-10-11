@@ -32,15 +32,24 @@ export class OnlineAttendanceApiService {
   private readonly http = inject(HttpClient);
 
   getWalkInEvent(eventId: string): Observable<PendingOnlineAttendanceEvent | null> {
-    return this.query<{ publicEvent: PublicEvent; currentUserEventAttendance: CurrentUserEventAttendance | null }>(`
+    return this.query<{ publicEvent: PublicEvent; currentUserEventAttendance: CurrentUserEventAttendance | null }>(
+      `
       query CurrentUserWalkInAttendanceEvent($eventId: String!) {
         publicEvent(id: $eventId) { ${PUBLIC_EVENT_PAGE_FIELDS} }
         currentUserEventAttendance(eventId: $eventId) { eventId attendedAt }
       }
-    `, { eventId }).pipe(map(({ publicEvent: event, currentUserEventAttendance }) =>
-      event && !currentUserEventAttendance && resolveAttendanceEligibility(event) === 'ANYONE'
-        && isOnlineAttendanceRegistrationOpen(event) ? { eventId, event } : null,
-    ));
+    `,
+      { eventId },
+    ).pipe(
+      map(({ publicEvent: event, currentUserEventAttendance }) =>
+        event &&
+        !currentUserEventAttendance &&
+        resolveAttendanceEligibility(event) === 'ANYONE' &&
+        isOnlineAttendanceRegistrationOpen(event)
+          ? { eventId, event }
+          : null,
+      ),
+    );
   }
 
   listPendingEvents(): Observable<PendingOnlineAttendanceEvent[]> {

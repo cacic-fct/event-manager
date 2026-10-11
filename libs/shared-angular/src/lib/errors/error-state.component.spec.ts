@@ -63,11 +63,7 @@ describe('ErrorStateComponent', () => {
   async function configure(): Promise<ComponentFixture<ErrorStateComponent>> {
     TestBed.configureTestingModule({
       imports: [ErrorStateComponent],
-      providers: [
-        provideRouter([]),
-        provideNoopAnimations(),
-        { provide: MatSnackBar, useValue: { open: vi.fn() } },
-      ],
+      providers: [provideRouter([]), provideNoopAnimations(), { provide: MatSnackBar, useValue: { open: vi.fn() } }],
     });
     await TestBed.compileComponents();
     return TestBed.createComponent(ErrorStateComponent);

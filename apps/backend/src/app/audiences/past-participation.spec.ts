@@ -1,4 +1,9 @@
-import { ANONYMOUS_AUDIENCE, eventAudienceWhere, groupAudienceWhere, majorEventAudienceWhere } from './audience-context';
+import {
+  ANONYMOUS_AUDIENCE,
+  eventAudienceWhere,
+  groupAudienceWhere,
+  majorEventAudienceWhere,
+} from './audience-context';
 import { scopeAudienceQuery } from './audience-prisma.extension';
 
 const now = new Date();
@@ -7,13 +12,16 @@ const history = { ...formerStudent, pastParticipationBefore: now };
 type RecordValue = Record<string, unknown>;
 
 describe('personal participation history after audience changes', () => {
-  it.each(['COURSE_ONLY', 'UNESP_ONLY', 'INVITATION_ONLY'])('keeps an owned past attendance for %s without changing catalog access', (audience) => {
-    const { attended, group, major } = fixtures(audience);
-    expect(matches(attended, eventAudienceWhere(formerStudent))).toBe(false);
-    expect(matches(attended, eventAudienceWhere(history))).toBe(true);
-    expect(matches(group, groupAudienceWhere(history))).toBe(true);
-    expect(matches(major, majorEventAudienceWhere(history))).toBe(true);
-  });
+  it.each(['COURSE_ONLY', 'UNESP_ONLY', 'INVITATION_ONLY'])(
+    'keeps an owned past attendance for %s without changing catalog access',
+    (audience) => {
+      const { attended, group, major } = fixtures(audience);
+      expect(matches(attended, eventAudienceWhere(formerStudent))).toBe(false);
+      expect(matches(attended, eventAudienceWhere(history))).toBe(true);
+      expect(matches(group, groupAudienceWhere(history))).toBe(true);
+      expect(matches(major, majorEventAudienceWhere(history))).toBe(true);
+    },
+  );
 
   it('does not let historical parent access reveal unrelated or future children', () => {
     const { unrelated, future, major, group } = fixtures('INVITATION_ONLY');
@@ -48,19 +56,68 @@ describe('personal participation history after audience changes', () => {
   it('removes the historical exception from writes even inside a history read scope', () => {
     const { attended } = fixtures('INVITATION_ONLY');
     const query = scopeAudienceQuery('Event', 'findFirst', { where: { id: attended.id } }, history);
-    const update = scopeAudienceQuery('Event', 'update', { where: { id: attended.id }, data: { name: 'Changed' } }, history);
+    const update = scopeAudienceQuery(
+      'Event',
+      'update',
+      { where: { id: attended.id }, data: { name: 'Changed' } },
+      history,
+    );
     expect(matches(attended, query['where'])).toBe(true);
     expect(matches(attended, update['where'])).toBe(false);
   });
 });
 
 function fixtures(audience: string) {
-  const major: RecordValue = { id: 'major', audience, endDate: new Date(now.getTime() - 86400000), audienceCourseCodes: ['12'], audienceInvitations: [], subscriptions: [], certificateConfigs: [], events: [], eventGroups: [] };
-  const group: RecordValue = { id: 'group', audience, audienceCourseCodes: ['12'], audienceInvitations: [], majorEventId: 'major', majorEvent: major, subscriptions: [], certificateConfigs: [], events: [] };
-  const base = { audience: 'PUBLIC', audienceCourseCodes: [], audienceInvitations: [], majorEventId: 'major', majorEvent: major, eventGroupId: 'group', eventGroup: group, subscriptions: [], lecturers: [], certificateConfigs: [], attendances: [], endDate: new Date(now.getTime() - 86400000) };
-  const attended = { ...base, id: 'attended', audience, audienceCourseCodes: ['12'], attendances: [{ personId: 'person-1', status: 'PRESENT' }] };
+  const major: RecordValue = {
+    id: 'major',
+    audience,
+    endDate: new Date(now.getTime() - 86400000),
+    audienceCourseCodes: ['12'],
+    audienceInvitations: [],
+    subscriptions: [],
+    certificateConfigs: [],
+    events: [],
+    eventGroups: [],
+  };
+  const group: RecordValue = {
+    id: 'group',
+    audience,
+    audienceCourseCodes: ['12'],
+    audienceInvitations: [],
+    majorEventId: 'major',
+    majorEvent: major,
+    subscriptions: [],
+    certificateConfigs: [],
+    events: [],
+  };
+  const base = {
+    audience: 'PUBLIC',
+    audienceCourseCodes: [],
+    audienceInvitations: [],
+    majorEventId: 'major',
+    majorEvent: major,
+    eventGroupId: 'group',
+    eventGroup: group,
+    subscriptions: [],
+    lecturers: [],
+    certificateConfigs: [],
+    attendances: [],
+    endDate: new Date(now.getTime() - 86400000),
+  };
+  const attended = {
+    ...base,
+    id: 'attended',
+    audience,
+    audienceCourseCodes: ['12'],
+    attendances: [{ personId: 'person-1', status: 'PRESENT' }],
+  };
   const unrelated = { ...base, id: 'unrelated' };
-  const future = { ...base, id: 'future', endDate: new Date(now.getTime() + 86400000), subscriptions: [{ personId: 'person-1', deletedAt: null }] };
+  const future = {
+    ...base,
+    id: 'future',
+    endDate: new Date(now.getTime() + 86400000),
+    subscriptions: [{ personId: 'person-1', deletedAt: null }],
+  };
   major.events = group.events = [attended, unrelated, future];
   major.eventGroups = [group];
   return { attended, unrelated, future, group, major };
@@ -69,20 +126,40 @@ function fixtures(audience: string) {
 // Interpret only Prisma's generic boolean/relation/scalar filter operators;
 // the real query compiler is exercised separately by audience-prisma.extension.spec.
 function matches(record: unknown, filter: unknown): boolean {
-  if (!record || typeof record !== 'object' || !filter || typeof filter !== 'object') return false;
+  if (!record || typeof record !== 'object' || !filter || typeof filter !== 'object') {
+    return false;
+  }
   const row = record as RecordValue;
   return Object.entries(filter).every(([key, expected]) => {
-    if (key === 'AND') return (Array.isArray(expected) ? expected : [expected]).every((part) => matches(row, part));
-    if (key === 'OR') return (Array.isArray(expected) ? expected : [expected]).some((part) => matches(row, part));
+    if (key === 'AND') {
+      return (Array.isArray(expected) ? expected : [expected]).every((part) => matches(row, part));
+    }
+    if (key === 'OR') {
+      return (Array.isArray(expected) ? expected : [expected]).some((part) => matches(row, part));
+    }
     const value = row[key];
-    if (expected === null) return value == null;
-    if (typeof expected !== 'object') return value === expected;
+    if (expected === null) {
+      return value == null;
+    }
+    if (typeof expected !== 'object') {
+      return value === expected;
+    }
     const condition = expected as RecordValue;
-    if ('is' in condition) return matches(value, condition['is']);
-    if ('some' in condition) return Array.isArray(value) && value.some((item) => matches(item, condition['some']));
-    if ('in' in condition) return Array.isArray(condition['in']) && condition['in'].includes(value);
-    if ('has' in condition) return Array.isArray(value) && value.includes(condition['has']);
-    if ('lte' in condition) return value instanceof Date && condition['lte'] instanceof Date && value <= condition['lte'];
+    if ('is' in condition) {
+      return matches(value, condition['is']);
+    }
+    if ('some' in condition) {
+      return Array.isArray(value) && value.some((item) => matches(item, condition['some']));
+    }
+    if ('in' in condition) {
+      return Array.isArray(condition['in']) && condition['in'].includes(value);
+    }
+    if ('has' in condition) {
+      return Array.isArray(value) && value.includes(condition['has']);
+    }
+    if ('lte' in condition) {
+      return value instanceof Date && condition['lte'] instanceof Date && value <= condition['lte'];
+    }
     return matches(value, expected);
   });
 }

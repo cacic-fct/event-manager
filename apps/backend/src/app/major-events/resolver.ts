@@ -45,7 +45,14 @@ import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-
 import { AttendanceCategoryService } from '../events/attendance-category.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
-import { AUDIENCE_AUDIT_SELECT, applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import {
+  AUDIENCE_AUDIT_SELECT,
+  applyAudienceSettings,
+  assertAudienceCloneAllowed,
+  withAudienceAudit,
+  withoutAudienceInput,
+  type AudienceChange,
+} from '../audiences/audience-input';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
 import { AUDIENCE_PUBLICATION_SELECT, assertAudiencePublicationReady } from '../audiences/audience-publication';
 
@@ -324,8 +331,20 @@ export class MajorEventsResolver {
         data,
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'MAJOR_EVENT', targetId: created.id }, input, undefined, this.getUser(context)?.sub);
-      if (audienceChange) created = await tx.majorEvent.findUniqueOrThrow({ where: { id: created.id }, select: this.getMajorEventSelect(paymentInfoTableExists) });
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'MAJOR_EVENT', targetId: created.id },
+        input,
+        undefined,
+        this.getUser(context)?.sub,
+      );
+      if (audienceChange) {
+        created = await tx.majorEvent.findUniqueOrThrow({
+          where: { id: created.id },
+          select: this.getMajorEventSelect(paymentInfoTableExists),
+        });
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.MAJOR_EVENT,
@@ -341,7 +360,12 @@ export class MajorEventsResolver {
       );
       return created;
     });
-    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'MAJOR_EVENT', id: majorEvent.id, name: majorEvent.name }, audienceChange.personIds);
+    if (audienceChange) {
+      await this.audienceInvitations.notifyInvited(
+        { type: 'MAJOR_EVENT', id: majorEvent.id, name: majorEvent.name },
+        audienceChange.personIds,
+      );
+    }
     await this.runPostCommitEffects(async () => {
       await this.sitemap.refresh();
       await this.typesenseSearch.upsertMajorEvent({
@@ -425,7 +449,7 @@ export class MajorEventsResolver {
 
       if (
         (majorEventInput.attendanceEligibility !== undefined &&
-        majorEventInput.attendanceEligibility !== majorEvent.attendanceEligibility) ||
+          majorEventInput.attendanceEligibility !== majorEvent.attendanceEligibility) ||
         audienceChange?.invitationsChanged
       ) {
         // Reassess every descendant, including children outside the editor's audience.
@@ -447,7 +471,10 @@ export class MajorEventsResolver {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
       if (publishAfterUpdate) {
-        const publicationTarget = await tx.majorEvent.findUniqueOrThrow({ where: { id }, select: AUDIENCE_PUBLICATION_SELECT });
+        const publicationTarget = await tx.majorEvent.findUniqueOrThrow({
+          where: { id },
+          select: AUDIENCE_PUBLICATION_SELECT,
+        });
         assertAudiencePublicationReady(publicationTarget);
       }
       await this.auditLog.record(
@@ -457,7 +484,9 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(majorEvent), audienceChange, true)),
+          before: eventContentAuditSnapshot(
+            withAudienceAudit(omitPublicationAuditFields(majorEvent), audienceChange, true),
+          ),
           after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updated), audienceChange)),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
@@ -485,7 +514,12 @@ export class MajorEventsResolver {
       }
       return updated;
     });
-    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'MAJOR_EVENT', id: updatedMajorEvent.id, name: updatedMajorEvent.name }, audienceChange.personIds);
+    if (audienceChange) {
+      await this.audienceInvitations.notifyInvited(
+        { type: 'MAJOR_EVENT', id: updatedMajorEvent.id, name: updatedMajorEvent.name },
+        audienceChange.personIds,
+      );
+    }
     await this.runPostCommitEffects(async () => {
       await this.sitemap.refresh();
       await this.typesenseSearch.upsertMajorEvent({
@@ -646,7 +680,9 @@ export class MajorEventsResolver {
         where: { id, deletedAt: null },
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
-      if (!majorEvent) throw new NotFoundException(`Major event ${id} was not found.`);
+      if (!majorEvent) {
+        throw new NotFoundException(`Major event ${id} was not found.`);
+      }
       await this.sportsBackingLifecycle.assertMajorEventDeleteAllowed(tx, id);
       await tx.majorEvent.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
@@ -724,8 +760,12 @@ export class MajorEventsResolver {
       endDate,
     };
 
-    if (input.id !== undefined) data.id = input.id;
-    if (input.description !== undefined) data.description = input.description;
+    if (input.id !== undefined) {
+      data.id = input.id;
+    }
+    if (input.description !== undefined) {
+      data.description = input.description;
+    }
     if (input.subscriptionStartDate !== undefined) {
       data.subscriptionStartDate = input.subscriptionStartDate;
     }
@@ -753,10 +793,18 @@ export class MajorEventsResolver {
     if (input.rankedSubscriptionEnabled !== undefined) {
       data.rankedSubscriptionEnabled = input.rankedSubscriptionEnabled;
     }
-    if (input.buttonText !== undefined) data.buttonText = input.buttonText;
-    if (input.buttonLink !== undefined) data.buttonLink = input.buttonLink;
-    if (input.contactInfo !== undefined) data.contactInfo = input.contactInfo;
-    if (input.contactType !== undefined) data.contactType = input.contactType;
+    if (input.buttonText !== undefined) {
+      data.buttonText = input.buttonText;
+    }
+    if (input.buttonLink !== undefined) {
+      data.buttonLink = input.buttonLink;
+    }
+    if (input.contactInfo !== undefined) {
+      data.contactInfo = input.contactInfo;
+    }
+    if (input.contactType !== undefined) {
+      data.contactType = input.contactType;
+    }
     if (input.isPaymentRequired !== undefined) {
       data.isPaymentRequired = input.isPaymentRequired;
     }
@@ -813,12 +861,24 @@ export class MajorEventsResolver {
     const data: Prisma.MajorEventUpdateInput = {};
     const effectiveIsPaymentRequired = input.isPaymentRequired ?? currentIsPaymentRequired;
 
-    if (input.id !== undefined) data.id = input.id;
-    if (input.name !== undefined) data.name = input.name;
-    if (input.emoji !== undefined) data.emoji = input.emoji.trim() || '📌';
-    if (input.startDate !== undefined) data.startDate = input.startDate;
-    if (input.endDate !== undefined) data.endDate = input.endDate;
-    if (input.description !== undefined) data.description = input.description;
+    if (input.id !== undefined) {
+      data.id = input.id;
+    }
+    if (input.name !== undefined) {
+      data.name = input.name;
+    }
+    if (input.emoji !== undefined) {
+      data.emoji = input.emoji.trim() || '📌';
+    }
+    if (input.startDate !== undefined) {
+      data.startDate = input.startDate;
+    }
+    if (input.endDate !== undefined) {
+      data.endDate = input.endDate;
+    }
+    if (input.description !== undefined) {
+      data.description = input.description;
+    }
     if (input.subscriptionStartDate !== undefined) {
       data.subscriptionStartDate = input.subscriptionStartDate;
     }
@@ -846,10 +906,18 @@ export class MajorEventsResolver {
     if (input.rankedSubscriptionEnabled !== undefined) {
       data.rankedSubscriptionEnabled = input.rankedSubscriptionEnabled;
     }
-    if (input.buttonText !== undefined) data.buttonText = input.buttonText;
-    if (input.buttonLink !== undefined) data.buttonLink = input.buttonLink;
-    if (input.contactInfo !== undefined) data.contactInfo = input.contactInfo;
-    if (input.contactType !== undefined) data.contactType = input.contactType;
+    if (input.buttonText !== undefined) {
+      data.buttonText = input.buttonText;
+    }
+    if (input.buttonLink !== undefined) {
+      data.buttonLink = input.buttonLink;
+    }
+    if (input.contactInfo !== undefined) {
+      data.contactInfo = input.contactInfo;
+    }
+    if (input.contactType !== undefined) {
+      data.contactType = input.contactType;
+    }
     if (input.isPaymentRequired !== undefined) {
       data.isPaymentRequired = input.isPaymentRequired;
     }

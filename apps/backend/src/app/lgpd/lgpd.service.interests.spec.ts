@@ -5,12 +5,16 @@ describe('interest data lifecycle', () => {
 
   it('exports explicit interest history separately from subscriptions', async () => {
     const { service, prisma } = createLgpdServiceTestContext();
-    prisma.eventInterest.findMany.mockResolvedValue([{ id: 'interest-1', eventId: 'event-1', personId: 'source-person' }]);
+    prisma.eventInterest.findMany.mockResolvedValue([
+      { id: 'interest-1', eventId: 'event-1', personId: 'source-person' },
+    ]);
     const result = await service.collectUserData({ userId: 'old-user', email: 'old@example.com' });
     expect(result.interests).toEqual({ records: [expect.objectContaining({ id: 'interest-1' })] });
-    expect(prisma.eventInterest.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { personId: { in: ['source-person', 'target-person'] } },
-    }));
+    expect(prisma.eventInterest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { personId: { in: ['source-person', 'target-person'] } },
+      }),
+    );
   });
 
   it('archives interests with the deletion request and restores only that request', async () => {

@@ -261,7 +261,12 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.reindexEventGroupsByMajorEventId(id);
   }
 
-  async upsertEventGroup(input: { id: string; name: string; emoji?: string; majorEventId?: string | null }): Promise<void> {
+  async upsertEventGroup(input: {
+    id: string;
+    name: string;
+    emoji?: string;
+    majorEventId?: string | null;
+  }): Promise<void> {
     if (!this.client) {
       return;
     }

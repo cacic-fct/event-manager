@@ -12,15 +12,22 @@
     <mat-expansion-panel-header>
       <mat-panel-title><mat-icon>tune</mat-icon>Filtros</mat-panel-title>
       @if (activeFilterCount()) {
-        <mat-panel-description>{{ activeFilterCount() }} {{ activeFilterCount() === 1 ? 'ativo' : 'ativos' }}</mat-panel-description>
+        <mat-panel-description
+          >{{ activeFilterCount() }} {{ activeFilterCount() === 1 ? 'ativo' : 'ativos' }}</mat-panel-description
+        >
       }
     </mat-expansion-panel-header>
-    @if (filterHint()) { <p>{{ filterHint() }}</p> }
+    @if (filterHint()) {
+      <p>{{ filterHint() }}</p>
+    }
     <div class="filter-fields">
       <mat-form-field>
         <mat-label>Início a partir de</mat-label>
         <input matInput [matDatepicker]="startDateFromPicker" formControlName="startDateFrom" />
-        <mat-datepicker-toggle matIconSuffix [for]="startDateFromPicker" aria-label="Abrir calendário da data inicial" />
+        <mat-datepicker-toggle
+          matIconSuffix
+          [for]="startDateFromPicker"
+          aria-label="Abrir calendário da data inicial" />
         <mat-datepicker #startDateFromPicker />
       </mat-form-field>
       <mat-form-field>

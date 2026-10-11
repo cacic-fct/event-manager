@@ -10,25 +10,36 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
 /** Read structured GraphQL metadata; error messages must never determine access. */
 export function graphqlErrorStatus(error: { extensions?: unknown }): number | null {
   const extensions = asRecord(error.extensions);
-  if (!extensions) return null;
+  if (!extensions) {
+    return null;
+  }
   const originalError = asRecord(extensions['originalError']);
   const http = asRecord(extensions['http']);
   const status = [
-    extensions['statusCode'], extensions['status'], http?.['status'],
-    originalError?.['statusCode'], originalError?.['status'],
+    extensions['statusCode'],
+    extensions['status'],
+    http?.['status'],
+    originalError?.['statusCode'],
+    originalError?.['status'],
   ].find((value) => typeof value === 'number' && Number.isInteger(value) && value >= 400 && value <= 599);
-  if (typeof status === 'number') return status;
+  if (typeof status === 'number') {
+    return status;
+  }
   const code = extensions['code'];
-  return typeof code === 'string' ? STATUS_BY_CODE[code] ?? null : null;
+  return typeof code === 'string' ? (STATUS_BY_CODE[code] ?? null) : null;
 }
 
 export class GraphqlStatusError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
     super(message);
   }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown> : null;
+    ? (value as Record<string, unknown>)
+    : null;
 }

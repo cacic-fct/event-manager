@@ -179,10 +179,7 @@ export class CertificatesResolver {
   }
 
   @Query(() => CertificateConfig, { name: 'certificateConfig' })
-  async certificateConfig(
-    @Args('id', { type: () => String }) id: string,
-    @Context() context: GraphqlContext,
-  ) {
+  async certificateConfig(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     const config = await this.configsService.getConfigById(id);
     const targetId = this.getCertificateTargetId(config.scope, {
       eventId: config.eventId,
@@ -190,11 +187,10 @@ export class CertificatesResolver {
       majorEventId: config.majorEventId,
       folderId: config.folderId,
     });
-    await this.authorizationPolicy.assertPermissions(
-      this.getUser(context),
-      [Permission.CertificateConfig.Read],
-      { scope: config.scope, targetId },
-    );
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+      scope: config.scope,
+      targetId,
+    });
     return config;
   }
 
@@ -245,7 +241,9 @@ export class CertificatesResolver {
       context.req ?? context.request,
       TURNSTILE_ACTIONS.certificateValidation,
     );
-    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.publicValidationService.validateCertificate(certificateId));
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.publicValidationService.validateCertificate(certificateId),
+    );
   }
 
   @Public()
@@ -263,7 +261,9 @@ export class CertificatesResolver {
     })
     certificateId: string,
   ) {
-    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () => this.downloadService.downloadPublicCertificate(certificateId));
+    return audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      this.downloadService.downloadPublicCertificate(certificateId),
+    );
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })

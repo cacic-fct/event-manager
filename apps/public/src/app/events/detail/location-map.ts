@@ -1,14 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  OnDestroy,
-  afterNextRender,
-  effect,
-  inject,
-  input,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, OnDestroy, afterNextRender, effect, inject, input, viewChild } from '@angular/core';
 import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-tile-cache-warmup.service';
 

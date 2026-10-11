@@ -9,9 +9,13 @@ export async function assertScannerTicket(
   input: { scannerCode?: string | null; eventId: string; personId: string; attendedAt?: Date },
 ): Promise<void> {
   const code = input.scannerCode?.trim();
-  if (!code?.startsWith('ticket:')) return;
+  if (!code?.startsWith('ticket:')) {
+    return;
+  }
   const barcode = parseTicketBarcode(code);
-  if (!barcode) throw new BadRequestException('Código de bilhete incompatível.');
+  if (!barcode) {
+    throw new BadRequestException('Código de bilhete incompatível.');
+  }
 
   const processedAt = new Date();
   const attendedAt = input.attendedAt && input.attendedAt < processedAt ? input.attendedAt : processedAt;
@@ -49,5 +53,7 @@ export async function assertScannerTicket(
       ticket.holder?.userId === barcode.holderUserId &&
       !ticket.holder.deletedAt &&
       !ticket.holder.mergedIntoId;
-  if (!ownedAtAttendance) throw new BadRequestException('Este bilhete não é válido para esta presença.');
+  if (!ownedAtAttendance) {
+    throw new BadRequestException('Este bilhete não é válido para esta presença.');
+  }
 }

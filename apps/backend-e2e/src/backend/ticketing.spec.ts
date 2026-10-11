@@ -11,10 +11,7 @@ import {
   TicketTransferResolutionService,
 } from '@cacic-fct/backend/ticketing-testing';
 import type { M2MUserIdentifierLookupMatch } from '@cacic-fct/account-manager-m2m-contracts';
-import type {
-  AuthenticatedUser,
-  TicketingDatabaseFixture,
-} from '@cacic-fct/backend/ticketing-testing';
+import type { AuthenticatedUser, TicketingDatabaseFixture } from '@cacic-fct/backend/ticketing-testing';
 import { getBackendE2eApp } from '../support/test-setup';
 
 const describeTicketingHttp = process.env['TICKETING_HTTP_E2E_TEST'] === '1' ? describe : describe.skip;
@@ -29,19 +26,25 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
     prisma = database;
     fixture = await createTicketingDatabaseFixture(database);
 
-    jest.spyOn(app.get(AccountManagerGrpcClient), 'lookupUsersByEmail').mockImplementation(async (email): Promise<M2MUserIdentifierLookupMatch[]> => {
-      const account = await database.user.findUnique({
-        where: { email: email.trim().toLowerCase() },
-        select: { id: true, name: true, email: true },
+    jest
+      .spyOn(app.get(AccountManagerGrpcClient), 'lookupUsersByEmail')
+      .mockImplementation(async (email): Promise<M2MUserIdentifierLookupMatch[]> => {
+        const account = await database.user.findUnique({
+          where: { email: email.trim().toLowerCase() },
+          select: { id: true, name: true, email: true },
+        });
+        return account
+          ? [
+              {
+                requestId: 'event-manager-audience-email',
+                userId: account.id,
+                name: account.name,
+                email: account.email,
+                secondaryEmails: [],
+              },
+            ]
+          : [];
       });
-      return account ? [{
-        requestId: 'event-manager-audience-email',
-        userId: account.id,
-        name: account.name,
-        email: account.email,
-        secondaryEmails: [],
-      }] : [];
-    });
     jest.spyOn(app.get(KeycloakAuthService), 'authenticateAccessToken').mockImplementation(async (token) => {
       const userId = token.startsWith('ticketing-e2e:') ? token.slice('ticketing-e2e:'.length) : '';
       const scenario = requireFixture();
@@ -54,7 +57,9 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
   });
 
   afterAll(async () => {
-    if (fixture && prisma) await clearTicketingDatabaseFixture(prisma, fixture);
+    if (fixture && prisma) {
+      await clearTicketingDatabaseFixture(prisma, fixture);
+    }
     jest.restoreAllMocks();
   });
 
@@ -74,13 +79,15 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
       senderToken,
     );
     const transfer = started.startTicketTransfer;
-    expect(transfer).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      submittedDestinationIdentityDocument: scenario.recipientDocument,
-      recipient: null,
-      ticket: expect.objectContaining({ id: scenario.ticketId, aztecPayload: null }),
-    }));
+    expect(transfer).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        submittedDestinationIdentityDocument: scenario.recipientDocument,
+        recipient: null,
+        ticket: expect.objectContaining({ id: scenario.ticketId, aztecPayload: null }),
+      }),
+    );
 
     await resolveTransfer(scenario, database);
 
@@ -90,12 +97,14 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
       } }`,
       senderToken,
     );
-    expect(authorView.ticketTransfer).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      submittedDestinationIdentityDocument: scenario.recipientDocument,
-      recipient: null,
-    }));
+    expect(authorView.ticketTransfer).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        submittedDestinationIdentityDocument: scenario.recipientDocument,
+        recipient: null,
+      }),
+    );
 
     const recipientView = await graphQl<{ ticketTransfer: TransferResponse | null }>(
       `query { ticketTransfer(transferId: "${transfer.id}") {
@@ -104,13 +113,15 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
       } }`,
       recipientToken,
     );
-    expect(recipientView.ticketTransfer).toEqual(expect.objectContaining({
-      senderStatus: 'PENDING',
-      recipientStatus: 'PENDING',
-      submittedDestinationIdentityDocument: null,
-      recipient: expect.objectContaining({ personId: scenario.recipientPersonId }),
-      ticket: expect.objectContaining({ id: scenario.ticketId, aztecPayload: null }),
-    }));
+    expect(recipientView.ticketTransfer).toEqual(
+      expect.objectContaining({
+        senderStatus: 'PENDING',
+        recipientStatus: 'PENDING',
+        submittedDestinationIdentityDocument: null,
+        recipient: expect.objectContaining({ personId: scenario.recipientPersonId }),
+        ticket: expect.objectContaining({ id: scenario.ticketId, aztecPayload: null }),
+      }),
+    );
 
     const accepted = await graphQl<{ acceptTicketTransfer: TransferResponse }>(
       `mutation { acceptTicketTransfer(transferId: "${transfer.id}") {
@@ -118,37 +129,47 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
       } }`,
       recipientToken,
     );
-    expect(accepted.acceptTicketTransfer).toEqual(expect.objectContaining({
-      senderStatus: 'ACCEPTED',
-      recipientStatus: 'ACCEPTED',
-      recipient: expect.objectContaining({ personId: scenario.recipientPersonId }),
-      ticket: expect.objectContaining({
-        holder: expect.objectContaining({ personId: scenario.recipientPersonId }),
-        aztecPayload: null,
+    expect(accepted.acceptTicketTransfer).toEqual(
+      expect.objectContaining({
+        senderStatus: 'ACCEPTED',
+        recipientStatus: 'ACCEPTED',
+        recipient: expect.objectContaining({ personId: scenario.recipientPersonId }),
+        ticket: expect.objectContaining({
+          holder: expect.objectContaining({ personId: scenario.recipientPersonId }),
+          aztecPayload: null,
+        }),
       }),
-    }));
+    );
 
     const persisted = await database.eventTicket.findUniqueOrThrow({ where: { id: scenario.ticketId } });
     expect(persisted.holderPersonId).toBe(scenario.recipientPersonId);
-    expect((await database.ticketTransfer.findUniqueOrThrow({ where: { id: transfer.id } }))
-      .submittedDestinationIdentityDocumentEncrypted).toBeNull();
+    expect(
+      (await database.ticketTransfer.findUniqueOrThrow({ where: { id: transfer.id } }))
+        .submittedDestinationIdentityDocumentEncrypted,
+    ).toBeNull();
 
     const issuance = getBackendE2eApp().get(TicketIssuanceService);
-    await database.$transaction((tx) => issuance.consumeForAttendance(tx, scenario.eventId, scenario.recipientPersonId));
+    await database.$transaction((tx) =>
+      issuance.consumeForAttendance(tx, scenario.eventId, scenario.recipientPersonId),
+    );
 
     const archived = await graphQl<{ myWalletTicket: WalletResponse | null }>(
       `query { myWalletTicket(ticketId: "${scenario.ticketId}") { id status aztecPayload holder { personId } } }`,
       recipientToken,
     );
-    expect(archived.myWalletTicket).toEqual(expect.objectContaining({
-      id: scenario.ticketId,
-      status: 'CONSUMED',
-      aztecPayload: `ticket:${scenario.ticketId}:${scenario.recipientUserId}`,
-      holder: expect.objectContaining({ personId: scenario.recipientPersonId }),
-    }));
-    expect(await database.eventTicketHistory.count({
-      where: { transferId: transfer.id, operation: 'TRANSFERRED' },
-    })).toBe(1);
+    expect(archived.myWalletTicket).toEqual(
+      expect.objectContaining({
+        id: scenario.ticketId,
+        status: 'CONSUMED',
+        aztecPayload: `ticket:${scenario.ticketId}:${scenario.recipientUserId}`,
+        holder: expect.objectContaining({ personId: scenario.recipientPersonId }),
+      }),
+    );
+    expect(
+      await database.eventTicketHistory.count({
+        where: { transferId: transfer.id, operation: 'TRANSFERRED' },
+      }),
+    ).toBe(1);
   });
 
   it.each([
@@ -160,12 +181,16 @@ describeTicketingHttp('ticketing HTTP journey with PostgreSQL and a controlled a
   });
 
   function requireFixture(): TicketingDatabaseFixture {
-    if (!fixture) throw new Error('Ticketing fixture was not created.');
+    if (!fixture) {
+      throw new Error('Ticketing fixture was not created.');
+    }
     return fixture;
   }
 
   function requirePrisma(): PrismaService {
-    if (!prisma) throw new Error('The backend E2E Prisma service is not available.');
+    if (!prisma) {
+      throw new Error('The backend E2E Prisma service is not available.');
+    }
     return prisma;
   }
 });
@@ -191,14 +216,20 @@ type WalletResponse = {
 };
 
 async function graphQl<T>(query: string, token: string): Promise<T> {
-  const response = await axios.post('/api/graphql', { query }, {
-    headers: { Authorization: `Bearer ${token}` },
-    validateStatus: () => true,
-  });
+  const response = await axios.post(
+    '/api/graphql',
+    { query },
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      validateStatus: () => true,
+    },
+  );
   expect(response.status).toBe(200);
   const envelope = response.data as { data?: T; errors?: Array<{ message: string }> };
   expect(envelope.errors).toBeUndefined();
-  if (!envelope.data) throw new Error('Expected the GraphQL response to include data.');
+  if (!envelope.data) {
+    throw new Error('Expected the GraphQL response to include data.');
+  }
   return envelope.data;
 }
 
@@ -210,7 +241,9 @@ async function resolveTransfer(fixture: TicketingDatabaseFixture, prisma: Prisma
       where: { ticketId: fixture.ticketId },
       select: { recipientUserId: true, recipientStatus: true },
     });
-    if (transfer?.recipientUserId === fixture.recipientUserId && transfer.recipientStatus === 'PENDING') return;
+    if (transfer?.recipientUserId === fixture.recipientUserId && transfer.recipientStatus === 'PENDING') {
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error('The ticket transfer recipient was not resolved within the HTTP E2E deadline.');

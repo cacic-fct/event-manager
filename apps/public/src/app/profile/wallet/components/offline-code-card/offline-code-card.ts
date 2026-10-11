@@ -135,7 +135,9 @@ export class WalletOfflineCodeCard {
 
   copyCode(): void {
     const code = this.code();
-    if (!code || !this.isBrowser) return;
+    if (!code || !this.isBrowser) {
+      return;
+    }
     void this.copyToClipboard(code).then(
       () => this.snackBar.open('Código copiado', 'Fechar', { duration: 2500 }),
       () => this.snackBar.open('Não foi possível copiar o código', 'Fechar', { duration: 5000 }),
@@ -160,7 +162,9 @@ export class WalletOfflineCodeCard {
     this.document.body.append(textarea);
     textarea.select();
     try {
-      if (!this.document.execCommand('copy')) throw new Error('Copy command failed.');
+      if (!this.document.execCommand('copy')) {
+        throw new Error('Copy command failed.');
+      }
     } finally {
       textarea.remove();
     }

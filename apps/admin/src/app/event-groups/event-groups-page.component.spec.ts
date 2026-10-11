@@ -42,7 +42,9 @@ describe('EventGroupsPageComponent', () => {
 
   it('removes a linked activity without navigating or bubbling to the list', async () => {
     const fixture = await createFixture();
-    const remove = vi.spyOn(fixture.componentInstance.workspace, 'removeEventFromSelectedGroup').mockResolvedValue(undefined);
+    const remove = vi
+      .spyOn(fixture.componentInstance.workspace, 'removeEventFromSelectedGroup')
+      .mockResolvedValue(undefined);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const record = (fixture.nativeElement as HTMLElement).querySelector('app-workspace-record');
     const action = record?.querySelector<HTMLButtonElement>('button[recordActions]');
@@ -59,9 +61,9 @@ describe('EventGroupsPageComponent', () => {
 
   it('renders linked activities as Material links to their event settings', async () => {
     const fixture = await createFixture();
-    const links = fixture.debugElement.queryAll(By.directive(RouterLink)).filter((link) =>
-      link.injector.get(RouterLink).urlTree?.toString().includes('/event-workspace/event/'),
-    );
+    const links = fixture.debugElement
+      .queryAll(By.directive(RouterLink))
+      .filter((link) => link.injector.get(RouterLink).urlTree?.toString().includes('/event-workspace/event/'));
 
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
@@ -96,7 +98,9 @@ describe('EventGroupsPageComponent', () => {
     const fixture = await createFixture();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('aside')).toBeNull();
-    expect([...element.querySelectorAll('button')].some((button) => button.textContent?.includes('Mais ações'))).toBe(true);
+    expect([...element.querySelectorAll('button')].some((button) => button.textContent?.includes('Mais ações'))).toBe(
+      true,
+    );
     expect(element.querySelector('#certificados')).not.toBeNull();
   });
 
@@ -109,7 +113,9 @@ describe('EventGroupsPageComponent', () => {
     });
     const workspace = fixture.componentInstance.workspace;
     const group = workspace.selectedEventGroup();
-    if (!group) throw new Error('The story fixture did not select an event group');
+    if (!group) {
+      throw new Error('The story fixture did not select an event group');
+    }
 
     const oldCreatedAt = new Date();
     oldCreatedAt.setDate(oldCreatedAt.getDate() - 150);
@@ -117,11 +123,18 @@ describe('EventGroupsPageComponent', () => {
     workspace.eventSummaries.set([]);
     const currentDate = new Date().toISOString();
     workspace.eventGroupEvents.set([
-      createAdminEvent({ eventGroupId: group.id, createdAt: currentDate, endDate: currentDate, publicationState: 'PUBLISHED' }),
+      createAdminEvent({
+        eventGroupId: group.id,
+        createdAt: currentDate,
+        endDate: currentDate,
+        publicationState: 'PUBLISHED',
+      }),
     ]);
     fixture.detectChanges();
 
-    const publicationActions = (fixture.nativeElement as HTMLElement).querySelector('.editor-action-group--publication');
+    const publicationActions = (fixture.nativeElement as HTMLElement).querySelector(
+      '.editor-action-group--publication',
+    );
     expect(publicationActions?.textContent).toContain('Voltar para rascunho');
     expect(publicationActions?.textContent).toContain('Atualizar publicação');
   });

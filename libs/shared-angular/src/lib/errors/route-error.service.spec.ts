@@ -150,11 +150,7 @@ describe('RouteErrorService', () => {
       headers: new Headers({ 'X-Request-Id': 'request-123', 'Cache-Control': 'public, max-age=60' }),
     };
     const serverInjector = createEnvironmentInjector(
-      [
-        { provide: Router, useValue: router },
-        { provide: RESPONSE_INIT, useValue: response },
-        RouteErrorService,
-      ],
+      [{ provide: Router, useValue: router }, { provide: RESPONSE_INIT, useValue: response }, RouteErrorService],
       rootEnvironmentInjector,
     );
 

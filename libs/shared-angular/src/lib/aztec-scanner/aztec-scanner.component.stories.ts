@@ -25,8 +25,14 @@ const meta: Meta<AztecScannerStoryArgs> = {
   argTypes: {
     title: { control: 'text', description: 'Instruction shown above the camera preview.' },
     acceptedPrefixes: { control: 'object', description: 'Accepted barcode payload prefixes.' },
-    pauseAfterScanMs: { control: { type: 'number', min: 0, max: 5000, step: 100 }, description: 'Pause the camera after a successful scan.' },
-    frameSize: { control: { type: 'number', min: 480, max: 1920, step: 80 }, description: 'Maximum camera preview dimension in pixels.' },
+    pauseAfterScanMs: {
+      control: { type: 'number', min: 0, max: 5000, step: 100 },
+      description: 'Pause the camera after a successful scan.',
+    },
+    frameSize: {
+      control: { type: 'number', min: 480, max: 1920, step: 80 },
+      description: 'Maximum camera preview dimension in pixels.',
+    },
     formats: { control: 'object', description: 'Barcode formats accepted by the scanner.' },
   },
   parameters: {

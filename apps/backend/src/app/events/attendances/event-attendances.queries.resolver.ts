@@ -252,8 +252,9 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     const eventIds = events.map((event) => event.id);
     const normalizedQuery = query?.trim();
     const searchPattern = normalizedQuery?.replace(/[\\%_]/g, '\\$&');
-    const participantSearchFilter = normalizedQuery && searchPattern
-      ? Prisma.sql`AND (
+    const participantSearchFilter =
+      normalizedQuery && searchPattern
+        ? Prisma.sql`AND (
           p."name" ILIKE ${`%${searchPattern}%`}
           OR p."email" ILIKE ${`%${searchPattern}%`}
           OR ${normalizedQuery} = ANY(p."secondaryEmails")
@@ -261,7 +262,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
           OR p."identityDocument" LIKE ${`%${searchPattern}%`}
           OR p."academicId" LIKE ${`%${searchPattern}%`}
         )`
-      : Prisma.empty;
+        : Prisma.empty;
 
     // Page the union before hydrating people and resolving their assessments.
     // Registrations precede attendance-only participants.
@@ -293,7 +294,9 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       LIMIT ${pagination.take} OFFSET ${pagination.skip}
     `);
     const pagePersonIds = page.map(({ personId }) => personId);
-    if (pagePersonIds.length === 0) return [];
+    if (pagePersonIds.length === 0) {
+      return [];
+    }
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,

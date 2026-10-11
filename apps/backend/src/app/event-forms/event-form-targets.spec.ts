@@ -1,10 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import {
-  EventFormResponseMode,
-  EventFormResponseSource,
-  EventFormSigilo,
-  EventFormTargetType,
-} from '@prisma/client';
+import { EventFormResponseMode, EventFormResponseSource, EventFormSigilo, EventFormTargetType } from '@prisma/client';
 import {
   assertSubscriptionFlowTargetAllowed,
   findEventLinkRecord,

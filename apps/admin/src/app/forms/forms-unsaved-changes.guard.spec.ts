@@ -52,8 +52,10 @@ describe('formsUnsavedChangesGuard', () => {
         runGuardsAndResolvers: 'paramsOrQueryParamsChange',
       },
       {
-        path: 'forms/:formId', component: FormsPageComponent,
-        canDeactivate: [formsUnsavedChangesGuard], runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+        path: 'forms/:formId',
+        component: FormsPageComponent,
+        canDeactivate: [formsUnsavedChangesGuard],
+        runGuardsAndResolvers: 'paramsOrQueryParamsChange',
       },
       { path: 'destination', component: FormsGuardTestDestinationComponent },
     ];

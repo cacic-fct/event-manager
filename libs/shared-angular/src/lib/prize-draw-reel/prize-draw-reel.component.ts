@@ -50,7 +50,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
   private resultToneTimer: number | null = null;
 
   async play(result: PrizeDrawReelResult, reducedMotion: boolean): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     const generation = ++this.generation;
     this.cancelFrame();
     this.reduceMotionRequested = reducedMotion;
@@ -62,7 +64,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
       this.phase.set('countdown');
       const seconds = Math.max(1, Math.round(result.countdownMs / 1000));
       for (let remaining = seconds; remaining > 0; remaining -= 1) {
-        if (generation !== this.generation) return;
+        if (generation !== this.generation) {
+          return;
+        }
         this.countdown.set(remaining);
         this.countdownStepTone();
         await this.wait(1000, generation);
@@ -70,7 +74,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
       this.countdown.set(null);
       this.phase.set('idle');
       await this.wait(80, generation);
-      if (generation !== this.generation) return;
+      if (generation !== this.generation) {
+        return;
+      }
       this.countdownCompleteTone();
     }
 
@@ -85,7 +91,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
     } else {
       this.setCenter(names, winnerIndex);
     }
-    if (generation !== this.generation) return;
+    if (generation !== this.generation) {
+      return;
+    }
     if (this.reduceMotionRequested && result.speed !== 'INSTANT') {
       await this.finishReduced(names, winnerIndex, concealedIndex, generation);
       return;
@@ -94,7 +102,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
     this.motionStage.set('settling');
     this.phase.set('stopped');
     await this.wait(result.preRevealPauseMs, generation);
-    if (generation !== this.generation) return;
+    if (generation !== this.generation) {
+      return;
+    }
     this.phase.set('complete');
     this.resultTone();
   }
@@ -125,10 +135,14 @@ export class PrizeDrawReelComponent implements OnDestroy {
     durationMs: number,
     generation: number,
   ): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return Promise.resolve();
+    if (!isPlatformBrowser(this.platformId)) {
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       const finish = () => {
-        if (this.activeAnimationResolve !== resolve) return;
+        if (this.activeAnimationResolve !== resolve) {
+          return;
+        }
         this.activeAnimationResolve = null;
         resolve();
       };
@@ -147,7 +161,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
       let currentIndex = preservesCurrentWindow
         ? startIndex
         : this.normalizeIndex(names.length, winnerIndex - plannedTicks);
-      if (!preservesCurrentWindow) this.setCenter(names, currentIndex);
+      if (!preservesCurrentWindow) {
+        this.setCenter(names, currentIndex);
+      }
       let nextTickAt = startedAt + (tickSchedule?.[0] ?? 0);
       const step = (now: number) => {
         if (generation !== this.generation || this.reduceMotionRequested) {
@@ -157,7 +173,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
         }
         const progress = Math.min(1, (now - startedAt) / Math.max(durationMs, 1));
         const motionStage = prizeDrawReelMotionStage(speed, progress);
-        if (motionStage !== this.motionStage()) this.motionStage.set(motionStage);
+        if (motionStage !== this.motionStage()) {
+          this.motionStage.set(motionStage);
+        }
         while (now >= nextTickAt && appliedTicks < plannedTicks) {
           const scheduledProgress = Math.min(
             1,
@@ -170,10 +188,14 @@ export class PrizeDrawReelComponent implements OnDestroy {
             ? startedAt + (tickSchedule[appliedTicks] ?? Number.POSITIVE_INFINITY)
             : nextTickAt + prizeDrawReelTickIntervalMs(speed, scheduledProgress);
           const cadence = prizeDrawReelSoundCadence(speed, scheduledProgress);
-          if (appliedTicks % cadence === 0) this.tickTone(scheduledProgress);
+          if (appliedTicks % cadence === 0) {
+            this.tickTone(scheduledProgress);
+          }
         }
         if (progress >= 1) {
-          if (this.currentCenterIndex !== winnerIndex) this.setCenter(names, winnerIndex);
+          if (this.currentCenterIndex !== winnerIndex) {
+            this.setCenter(names, winnerIndex);
+          }
           this.frameId = null;
           finish();
           return;
@@ -190,14 +212,18 @@ export class PrizeDrawReelComponent implements OnDestroy {
     concealedIndex: number,
     generation: number,
   ): Promise<void> {
-    if (generation !== this.generation) return;
+    if (generation !== this.generation) {
+      return;
+    }
     this.cancelFrame();
     this.countdown.set(null);
     this.setCenter(names, concealedIndex);
     this.motionStage.set('settling');
     this.phase.set('reduced');
     await this.wait(850, generation);
-    if (generation !== this.generation) return;
+    if (generation !== this.generation) {
+      return;
+    }
     this.setCenter(names, winnerIndex);
     this.phase.set('complete');
     this.resultTone();
@@ -224,7 +250,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
     rawCenter: number,
     animationVariant: VisibleName['animationVariant'],
   ): VisibleName[] {
-    if (names.length === 0) return [];
+    if (names.length === 0) {
+      return [];
+    }
     const center = ((rawCenter % names.length) + names.length) % names.length;
     return [-2, -1, 0, 1, 2].map((offset) => {
       const index = (center + offset + names.length) % names.length;
@@ -242,7 +270,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
     winnerIndex: number,
     minimumTicks: number,
   ): number {
-    if (namesLength <= 1) return minimumTicks;
+    if (namesLength <= 1) {
+      return minimumTicks;
+    }
     const requiredRemainder = this.normalizeIndex(namesLength, winnerIndex - startIndex);
     const minimumRemainder = minimumTicks % namesLength;
     return minimumTicks + this.normalizeIndex(namesLength, requiredRemainder - minimumRemainder);
@@ -255,7 +285,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
     firstTickDelayMs = 0,
   ): number[] {
     const firstTickDelay = Math.min(firstTickDelayMs, durationMs * 0.985);
-    if (tickCount <= 1) return [firstTickDelay];
+    if (tickCount <= 1) {
+      return [firstTickDelay];
+    }
     const rawOffsets = [0];
     let rawElapsed = 0;
     for (let tick = 1; tick < tickCount; tick += 1) {
@@ -269,7 +301,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private wait(durationMs: number, generation: number): Promise<void> {
-    if (!isPlatformBrowser(this.platformId) || durationMs <= 0) return Promise.resolve();
+    if (!isPlatformBrowser(this.platformId) || durationMs <= 0) {
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       const timeout = window.setTimeout(() => resolve(), Math.max(0, durationMs));
       if (generation !== this.generation) {
@@ -280,7 +314,9 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private normalizeIndex(namesLength: number, rawIndex: number): number {
-    if (namesLength <= 0) return 0;
+    if (namesLength <= 0) {
+      return 0;
+    }
     return ((rawIndex % namesLength) + namesLength) % namesLength;
   }
 
@@ -307,14 +343,21 @@ export class PrizeDrawReelComponent implements OnDestroy {
   }
 
   private playTone(frequency: number, duration: number, volume: number, type?: OscillatorType): void {
-    if (!this.soundEnabled()) return;
+    if (!this.soundEnabled()) {
+      return;
+    }
     const scaledVolume = volume * this.soundVolume();
-    if (type) this.sounds.tone(frequency, duration, scaledVolume, type);
-    else this.sounds.tone(frequency, duration, scaledVolume);
+    if (type) {
+      this.sounds.tone(frequency, duration, scaledVolume, type);
+    } else {
+      this.sounds.tone(frequency, duration, scaledVolume);
+    }
   }
 
   private cancelFrame(): void {
-    if (this.frameId !== null && isPlatformBrowser(this.platformId)) cancelAnimationFrame(this.frameId);
+    if (this.frameId !== null && isPlatformBrowser(this.platformId)) {
+      cancelAnimationFrame(this.frameId);
+    }
     this.frameId = null;
     if (this.resultToneTimer !== null && isPlatformBrowser(this.platformId)) {
       window.clearTimeout(this.resultToneTimer);

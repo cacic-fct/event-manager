@@ -49,13 +49,17 @@ describe('SportsTournamentPage', () => {
       ],
     });
     const firstCategory = tournament.categories[0];
-    if (!firstCategory) throw new Error('Expected a tournament category fixture.');
+    if (!firstCategory) {
+      throw new Error('Expected a tournament category fixture.');
+    }
     tournament.categories = [firstCategory, { ...firstCategory, id: 'category-second', name: 'Vôlei' }];
     getTournament.mockReturnValue(of(tournament));
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     const category = tournament.categories[0];
     const finishedMatch = tournament.matches[0];
-    if (!category || !finishedMatch) throw new Error('Expected tournament fixture details.');
+    if (!category || !finishedMatch) {
+      throw new Error('Expected tournament fixture details.');
+    }
 
     expect(getTournament).toHaveBeenCalledWith('tournament-fixture');
     expect(page.selectedCategory()?.id).toBe(tournament.categories[0]?.id);
@@ -129,7 +133,9 @@ describe('SportsTournamentPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     page.now.set(15_000);
     const liveMatch = matches[1];
-    if (!liveMatch) throw new Error('Expected a live match fixture.');
+    if (!liveMatch) {
+      throw new Error('Expected a live match fixture.');
+    }
 
     expect(page.orderedMatches().map((match) => match.id)).toEqual(matches.map((match) => match.id));
     expect(

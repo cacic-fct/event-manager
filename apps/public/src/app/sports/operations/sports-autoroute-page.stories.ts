@@ -58,7 +58,6 @@ export const Playground: Story = {
   },
 };
 
-
 export const Loading: Story = {
   args: { state: 'loading' },
 };

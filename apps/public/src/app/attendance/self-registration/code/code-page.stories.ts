@@ -1,7 +1,13 @@
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
 import { Component } from '@angular/core';
-import { ActivatedRoute, convertToParamMap, provideRouter, withDisabledInitialNavigation, withHashLocation } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  provideRouter,
+  withDisabledInitialNavigation,
+  withHashLocation,
+} from '@angular/router';
 import { of } from 'rxjs';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
@@ -33,16 +39,27 @@ const meta: Meta<OnlineAttendanceStoryControls> = {
     applicationConfig({
       providers: [
         ScannerFeedbackService,
-        provideRouter([
-          { path: 'attendance/register', component: AttendanceStoryDestination },
-          { path: 'attendance/register/:eventId', component: AttendanceStoryDestination },
-          { path: 'profile/attendances/event/:eventId', component: AttendanceStoryDestination },
-        ], withHashLocation(), withDisabledInitialNavigation()),
-        { provide: ActivatedRoute, useValue: {
-          paramMap: of(convertToParamMap({ eventId: 'event-1' })),
-          queryParamMap: of(convertToParamMap({})),
-          snapshot: { paramMap: convertToParamMap({ eventId: 'event-1' }), queryParamMap: convertToParamMap({}), data: {} },
-        } },
+        provideRouter(
+          [
+            { path: 'attendance/register', component: AttendanceStoryDestination },
+            { path: 'attendance/register/:eventId', component: AttendanceStoryDestination },
+            { path: 'profile/attendances/event/:eventId', component: AttendanceStoryDestination },
+          ],
+          withHashLocation(),
+          withDisabledInitialNavigation(),
+        ),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({ eventId: 'event-1' })),
+            queryParamMap: of(convertToParamMap({})),
+            snapshot: {
+              paramMap: convertToParamMap({ eventId: 'event-1' }),
+              queryParamMap: convertToParamMap({}),
+              data: {},
+            },
+          },
+        },
       ],
     }),
   ],

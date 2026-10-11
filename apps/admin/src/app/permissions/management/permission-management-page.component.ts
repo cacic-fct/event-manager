@@ -79,7 +79,9 @@ export class PermissionManagementPageComponent {
   protected async openNewRoleDialog(): Promise<void> {
     const reference = this.dialog.open(RoleTemplateDialogComponent, { width: 'min(44rem, calc(100vw - 2rem))' });
     const template = await firstValueFrom(reference.afterClosed());
-    if (template !== undefined) this.store.startNewRole(template);
+    if (template !== undefined) {
+      this.store.startNewRole(template);
+    }
   }
 
   protected permissionValue(resource: string, scope: string): Permission {
@@ -88,7 +90,9 @@ export class PermissionManagementPageComponent {
 
   protected inheritedFrom(permission: Permission): string {
     const draft = this.store.roleDraft();
-    if (!draft) return '';
+    if (!draft) {
+      return '';
+    }
     return this.store
       .roles()
       .filter(
@@ -101,7 +105,9 @@ export class PermissionManagementPageComponent {
   }
 
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
-    if (!this.store.pending.dirty()) return;
+    if (!this.store.pending.dirty()) {
+      return;
+    }
     event.preventDefault();
     event.returnValue = '';
   }

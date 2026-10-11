@@ -1,5 +1,10 @@
 import type { Page, Request } from '@playwright/test';
-import type { AdminEventTicket, AdminTicketConfig, AdminTicketHistoryEntry, TicketTransfer } from '@cacic-fct/shared-ticketing';
+import type {
+  AdminEventTicket,
+  AdminTicketConfig,
+  AdminTicketHistoryEntry,
+  TicketTransfer,
+} from '@cacic-fct/shared-ticketing';
 import {
   createAdminEventTicket,
   createAdminTicketConfig,
@@ -14,11 +19,7 @@ import {
   createAdminReceiptValidationQueueItem,
 } from '@cacic-fct/admin/testing';
 import { expect, test } from './support/e2e-test';
-import {
-  authenticatedAdminUserFixture,
-  mockAdminApi,
-  preventSilentSso,
-} from './support/admin-e2e-fixtures';
+import { authenticatedAdminUserFixture, mockAdminApi, preventSilentSso } from './support/admin-e2e-fixtures';
 
 const eventId = 'event-1';
 const majorEventId = 'major-event-1';
@@ -80,7 +81,10 @@ test('selects an event, reports save failures, and protects unsaved changes', as
   await expect(name).toHaveValue('Acesso ao laboratório');
 
   await page.getByRole('link', { name: 'Inscrições', exact: true }).press('Enter');
-  await page.getByRole('dialog', { name: 'Descartar alterações?' }).getByRole('button', { name: 'Descartar alterações' }).click();
+  await page
+    .getByRole('dialog', { name: 'Descartar alterações?' })
+    .getByRole('button', { name: 'Descartar alterações' })
+    .click();
   await expect(page).toHaveURL(/\/admin\/subscriptions\/event\/event-1$/);
   expect(state.mutations.some((mutation) => mutation.name === 'SaveTicketConfig')).toBe(true);
 });
@@ -134,17 +138,25 @@ test('keeps ownership until an eligible recipient confirms an admin transfer', a
   await row.getByRole('button', { name: 'Transferir para outra pessoa' }).click();
 
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('O bilhete continua com Marina da Silva até a pessoa destinatária confirmar a transferência.');
+  await expect(dialog).toContainText(
+    'O bilhete continua com Marina da Silva até a pessoa destinatária confirmar a transferência.',
+  );
   await dialog.getByRole('searchbox', { name: 'Buscar pessoa destinatária' }).fill('Ada');
   await dialog.getByRole('button', { name: 'Buscar' }).click();
   await dialog.getByRole('button', { name: 'Selecionar Ada Lovelace' }).click();
-  await expect(dialog.getByRole('status')).toContainText('A pessoa atende aos critérios configurados para este bilhete.');
+  await expect(dialog.getByRole('status')).toContainText(
+    'A pessoa atende aos critérios configurados para este bilhete.',
+  );
   await dialog.getByRole('textbox', { name: 'Motivo para auditoria' }).fill('Ajuste administrativo.');
 
   const transferRequest = waitForGraphqlRequest(page, 'mutation AdminStartTicketTransfer');
   await dialog.getByRole('button', { name: 'Enviar para confirmação' }).click();
   const input = graphqlVariables(await transferRequest)['input'] as Record<string, unknown>;
-  expect(input).toMatchObject({ ticketId: 'ticket-active', recipientPersonId: 'person-1', reason: 'Ajuste administrativo.' });
+  expect(input).toMatchObject({
+    ticketId: 'ticket-active',
+    recipientPersonId: 'person-1',
+    reason: 'Ajuste administrativo.',
+  });
   expect(state.mutations.map((mutation) => mutation.name)).toContain('AdminStartTicketTransfer');
   await expect(page.locator('.ticket-row').filter({ hasText: 'Marina da Silva' })).toBeVisible();
 });
@@ -218,7 +230,9 @@ test('filters ticket purchases and keeps ticket approval and rejection distinct'
     reason: 'Comprovante sem identificação do pagamento.',
   });
   await expect(page.getByText('Nenhum comprovante corresponde aos filtros')).toBeVisible();
-  expect(state.mutations.map((mutation) => mutation.name)).toEqual(expect.arrayContaining(['ApproveTicketPurchase', 'RejectTicketPurchase']));
+  expect(state.mutations.map((mutation) => mutation.name)).toEqual(
+    expect.arrayContaining(['ApproveTicketPurchase', 'RejectTicketPurchase']),
+  );
 });
 
 interface TicketingState {
@@ -269,10 +283,38 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
     priceOptions: [{ id: 'ticket-price-1', priceTierId: null, label: 'Preço único', amountCents: 5000 }],
   });
   const history: AdminTicketHistoryEntry[] = [
-    createAdminTicketHistoryEntry({ ticketId: activeTicket.id, id: 'history-issued', operation: 'ISSUED', newHolder: marina, actorName: 'Sistema', reason: 'Inscrição confirmada.' }),
-    createAdminTicketHistoryEntry({ ticketId: activeTicket.id, id: 'history-transfer', operation: 'TRANSFERRED', previousHolder: marina, newHolder: createTicketPersonSummary({ personId: 'person-3', fullName: 'Ada Lovelace', firstName: 'Ada' }), reason: 'Transferência confirmada.' }),
-    createAdminTicketHistoryEntry({ ticketId: activeTicket.id, id: 'history-consumed', operation: 'CONSUMED', previousHolder: marina, newHolder: marina, reason: 'Acesso validado no scanner.' }),
-    createAdminTicketHistoryEntry({ ticketId: activeTicket.id, id: 'history-revoked', operation: 'REVOKED', previousHolder: marina, newHolder: null, reason: 'Solicitação do titular.' }),
+    createAdminTicketHistoryEntry({
+      ticketId: activeTicket.id,
+      id: 'history-issued',
+      operation: 'ISSUED',
+      newHolder: marina,
+      actorName: 'Sistema',
+      reason: 'Inscrição confirmada.',
+    }),
+    createAdminTicketHistoryEntry({
+      ticketId: activeTicket.id,
+      id: 'history-transfer',
+      operation: 'TRANSFERRED',
+      previousHolder: marina,
+      newHolder: createTicketPersonSummary({ personId: 'person-3', fullName: 'Ada Lovelace', firstName: 'Ada' }),
+      reason: 'Transferência confirmada.',
+    }),
+    createAdminTicketHistoryEntry({
+      ticketId: activeTicket.id,
+      id: 'history-consumed',
+      operation: 'CONSUMED',
+      previousHolder: marina,
+      newHolder: marina,
+      reason: 'Acesso validado no scanner.',
+    }),
+    createAdminTicketHistoryEntry({
+      ticketId: activeTicket.id,
+      id: 'history-revoked',
+      operation: 'REVOKED',
+      previousHolder: marina,
+      newHolder: null,
+      reason: 'Solicitação do titular.',
+    }),
   ];
   const subscriptionReceipt = createAdminReceiptValidationQueueItem({
     category: 'SUBSCRIPTION',
@@ -307,7 +349,9 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
     config: options.configExists === false ? null : config,
     tickets: [activeTicket],
     history,
-    receiptQueue: createAdminReceiptValidationQueue({ items: [subscriptionReceipt, firstTicketReceipt, secondTicketReceipt] }),
+    receiptQueue: createAdminReceiptValidationQueue({
+      items: [subscriptionReceipt, firstTicketReceipt, secondTicketReceipt],
+    }),
     mutations: [],
     eligibilityEligible: true,
     saveShouldFail: false,
@@ -318,16 +362,37 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
     const query = body.query ?? '';
     const variables = body.variables ?? {};
     const input = isRecord(variables['input']) ? variables['input'] : {};
-    const fulfill = (data: Record<string, unknown>) => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data }),
-    });
+    const fulfill = (data: Record<string, unknown>) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data }),
+      });
 
     if (query.includes('AdminEventContextPage')) {
-      const nodes = variables['parentId'] === majorEventId
-        ? [{ kind: 'EVENT', id: eventId, name: 'Oficina de Angular', emoji: '💻', eventType: 'MINICURSO', hasChildren: false, ancestors: [{ kind: 'MAJOR_EVENT', id: majorEventId, name: 'Semana da Computação', emoji: '🎓' }] }]
-        : [{ kind: 'MAJOR_EVENT', id: majorEventId, name: 'Semana da Computação', emoji: '🎓', hasChildren: true, ancestors: [] }];
+      const nodes =
+        variables['parentId'] === majorEventId
+          ? [
+              {
+                kind: 'EVENT',
+                id: eventId,
+                name: 'Oficina de Angular',
+                emoji: '💻',
+                eventType: 'MINICURSO',
+                hasChildren: false,
+                ancestors: [{ kind: 'MAJOR_EVENT', id: majorEventId, name: 'Semana da Computação', emoji: '🎓' }],
+              },
+            ]
+          : [
+              {
+                kind: 'MAJOR_EVENT',
+                id: majorEventId,
+                name: 'Semana da Computação',
+                emoji: '🎓',
+                hasChildren: true,
+                ancestors: [],
+              },
+            ];
       await fulfill({ adminEventContextPage: { nodes, nextCursor: null } });
       return;
     }
@@ -337,7 +402,9 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
       return;
     }
     if (query.includes('AdminTicketConfigs')) {
-      const matches = state.config && (!variables['eventId'] || variables['eventId'] === state.config.eventId) &&
+      const matches =
+        state.config &&
+        (!variables['eventId'] || variables['eventId'] === state.config.eventId) &&
         (!variables['majorEventId'] || variables['majorEventId'] === state.config.majorEventId);
       await fulfill({ adminTicketConfigs: matches ? [state.config] : [] });
       return;
@@ -359,20 +426,34 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
     if (query.includes('AdminEventTickets')) {
       const status = variables['status'];
       const search = typeof variables['search'] === 'string' ? variables['search'].toLocaleLowerCase('pt-BR') : '';
-      const tickets = state.tickets.filter((ticket) => (!status || ticket.status === status) &&
-        (!search || ticket.holder?.fullName.toLocaleLowerCase('pt-BR').includes(search)));
+      const tickets = state.tickets.filter(
+        (ticket) =>
+          (!status || ticket.status === status) &&
+          (!search || ticket.holder?.fullName.toLocaleLowerCase('pt-BR').includes(search)),
+      );
       await fulfill({ adminEventTickets: { tickets, totalCount: tickets.length, nextCursor: null } });
       return;
     }
     if (query.includes('AdminTicketEligibilityWarnings')) {
-      await fulfill({ adminTicketEligibilityWarnings: state.eligibilityEligible
-        ? { eligible: true, warnings: [] }
-        : { eligible: false, warnings: [{ code: 'COURSE_REQUIRED', message: 'É necessário estar matriculado em Ciência da Computação.' }] } });
+      await fulfill({
+        adminTicketEligibilityWarnings: state.eligibilityEligible
+          ? { eligible: true, warnings: [] }
+          : {
+              eligible: false,
+              warnings: [
+                { code: 'COURSE_REQUIRED', message: 'É necessário estar matriculado em Ciência da Computação.' },
+              ],
+            },
+      });
       return;
     }
     if (query.includes('AdminIssueTicket')) {
       state.mutations.push({ name: 'AdminIssueTicket', variables });
-      const person = createTicketPersonSummary({ personId: String(input['personId']), fullName: 'Ada Lovelace', firstName: 'Ada' });
+      const person = createTicketPersonSummary({
+        personId: String(input['personId']),
+        fullName: 'Ada Lovelace',
+        firstName: 'Ada',
+      });
       const issued = createAdminEventTicket({
         id: 'ticket-issued',
         eventId,
@@ -390,16 +471,22 @@ async function installTicketingApi(page: Page, options: { configExists?: boolean
     if (query.includes('AdminRevokeTicket')) {
       state.mutations.push({ name: 'AdminRevokeTicket', variables });
       const ticketId = String(input['ticketId']);
-      state.tickets = state.tickets.map((ticket) => ticket.id === ticketId ? { ...ticket, status: 'REVOKED' } : ticket);
+      state.tickets = state.tickets.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, status: 'REVOKED' } : ticket,
+      );
       const revoked = state.tickets.find((ticket) => ticket.id === ticketId);
-      if (!revoked) throw new Error(`Ticket ${ticketId} is not available for revocation.`);
+      if (!revoked) {
+        throw new Error(`Ticket ${ticketId} is not available for revocation.`);
+      }
       await fulfill({ adminRevokeTicket: revoked });
       return;
     }
     if (query.includes('AdminStartTicketTransfer')) {
       state.mutations.push({ name: 'AdminStartTicketTransfer', variables });
       const ticket = state.tickets.find((item) => item.id === input['ticketId']);
-      if (!ticket) throw new Error(`Ticket ${String(input['ticketId'])} is not available for transfer.`);
+      if (!ticket) {
+        throw new Error(`Ticket ${String(input['ticketId'])} is not available for transfer.`);
+      }
       const transfer: TicketTransfer = createTicketTransfer({
         id: 'transfer-admin-1',
         ticket,
@@ -447,9 +534,7 @@ function removePurchase(state: TicketingState, purchaseId: string): void {
 }
 
 function waitForGraphqlRequest(page: Page, operationName: string): Promise<Request> {
-  return page.waitForRequest((request) =>
-    isGraphqlRequest(request) && graphqlQuery(request).includes(operationName),
-  );
+  return page.waitForRequest((request) => isGraphqlRequest(request) && graphqlQuery(request).includes(operationName));
 }
 
 function isGraphqlRequest(request: Request): boolean {

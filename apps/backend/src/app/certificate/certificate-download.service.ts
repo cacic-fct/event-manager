@@ -143,15 +143,17 @@ export class CertificateDownloadService {
     }
     stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
     stream.on('error', (error) => this.logger.error(error.message, error.stack));
-    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata).catch((error: unknown) => {
-      const archiveError = error instanceof Error ? error : new Error('Failed to create certificate archive.');
-      this.logger.error('Detached certificate archive generation failed.', archiveError.stack);
-      if (!stream.destroyed) {
-        stream.destroy(archiveError);
-      }
-    }).finally(() => {
-      this.activeArchives--;
-    });
+    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata)
+      .catch((error: unknown) => {
+        const archiveError = error instanceof Error ? error : new Error('Failed to create certificate archive.');
+        this.logger.error('Detached certificate archive generation failed.', archiveError.stack);
+        if (!stream.destroyed) {
+          stream.destroy(archiveError);
+        }
+      })
+      .finally(() => {
+        this.activeArchives--;
+      });
 
     return {
       fileName: `certificados-${new Date().toISOString().slice(0, 10)}-${safeName}.zip`,
@@ -170,7 +172,10 @@ export class CertificateDownloadService {
       void browser?.close().catch(() => undefined);
     };
     archive.once('close', cancel);
-    const deadline = setTimeout(() => archive.destroy(new Error('Certificate archive generation timed out.')), 30 * 60_000);
+    const deadline = setTimeout(
+      () => archive.destroy(new Error('Certificate archive generation timed out.')),
+      30 * 60_000,
+    );
     deadline.unref();
     try {
       browser = await chromium.launch({ headless: true });
@@ -184,7 +189,11 @@ export class CertificateDownloadService {
       }
 
       if (!archive.destroyed) {
-        await this.appendArchiveEntry(archive, metadata instanceof Readable ? metadata : `${JSON.stringify(metadata, null, 2)}\n`, `${safeName}_events.json`);
+        await this.appendArchiveEntry(
+          archive,
+          metadata instanceof Readable ? metadata : `${JSON.stringify(metadata, null, 2)}\n`,
+          `${safeName}_events.json`,
+        );
         await archive.finalize();
       }
     } catch (error) {
@@ -213,7 +222,11 @@ export class CertificateDownloadService {
     }
   }
 
-  private appendArchiveEntry(archive: ZipArchiveStream, content: Buffer | string | Readable, name: string): Promise<void> {
+  private appendArchiveEntry(
+    archive: ZipArchiveStream,
+    content: Buffer | string | Readable,
+    name: string,
+  ): Promise<void> {
     // Wait until Archiver has processed this entry before rendering another PDF.
     // This propagates slow-reader backpressure instead of accumulating PDF buffers.
     return new Promise((resolve, reject) => {

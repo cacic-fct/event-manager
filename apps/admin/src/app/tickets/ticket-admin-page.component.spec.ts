@@ -55,7 +55,7 @@ interface SetupOptions {
   majorScope?: boolean;
   permissions?: readonly string[];
   initialConfig?: typeof config | null;
-  tickets?: typeof activeTicket[];
+  tickets?: (typeof activeTicket)[];
   ticketError?: Error;
   saveError?: Error;
   dialogResult?: unknown;
@@ -70,7 +70,11 @@ function setup(options: SetupOptions = {}) {
     getEventTickets: vi.fn(() =>
       options.ticketError
         ? throwError(() => options.ticketError)
-        : of({ tickets: options.tickets ?? [], totalCount: options.tickets?.length ?? 0, nextCursor: null as string | null }),
+        : of({
+            tickets: options.tickets ?? [],
+            totalCount: options.tickets?.length ?? 0,
+            nextCursor: null as string | null,
+          }),
     ),
     saveConfig: vi.fn(() =>
       options.saveError ? throwError(() => options.saveError) : of(options.initialConfig ?? config),
@@ -82,11 +86,15 @@ function setup(options: SetupOptions = {}) {
     getHistory: vi.fn().mockReturnValue(of([])),
   };
   const events = {
-    getEvent: vi.fn((id: string) => of(createAdminEvent({
-      ...event,
-      id,
-      name: id === eventId ? event.name : `Evento ${id}`,
-    }))),
+    getEvent: vi.fn((id: string) =>
+      of(
+        createAdminEvent({
+          ...event,
+          id,
+          name: id === eventId ? event.name : `Evento ${id}`,
+        }),
+      ),
+    ),
   };
   const realtime = { watchEventTickets: vi.fn().mockReturnValue(changes) };
   const dialog = {
@@ -127,9 +135,11 @@ async function settle(fixture: ComponentFixture<TicketAdminPageComponent>): Prom
 }
 
 function getButton(fixture: ComponentFixture<TicketAdminPageComponent>, label: string): HTMLButtonElement | null {
-  return [...fixture.nativeElement.querySelectorAll('button')].find((button: HTMLButtonElement) =>
-    button.textContent?.replace(/\s+/g, ' ').trim().includes(label),
-  ) ?? null;
+  return (
+    [...fixture.nativeElement.querySelectorAll('button')].find((button: HTMLButtonElement) =>
+      button.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    ) ?? null
+  );
 }
 
 async function chooseMatOption(
@@ -140,8 +150,8 @@ async function chooseMatOption(
   select.click();
   fixture.detectChanges();
   await fixture.whenStable();
-  const option = [...document.body.querySelectorAll('[role="option"]')].find((candidate) =>
-    candidate.textContent?.replace(/\s+/g, ' ').trim() === optionLabel,
+  const option = [...document.body.querySelectorAll('[role="option"]')].find(
+    (candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim() === optionLabel,
   ) as HTMLElement | undefined;
   expect(option).toBeDefined();
   option?.click();
@@ -163,14 +173,18 @@ describe('TicketAdminPageComponent', () => {
     const component = fixture.componentInstance;
     const nextConfig = createAdminTicketConfig({ eventId: 'event-2', majorEventId });
     await Reflect.get(component, 'selectConfig').call(component, config);
-    api.getEventTickets.mockReturnValueOnce(of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'event-1-cursor' }));
+    api.getEventTickets.mockReturnValueOnce(
+      of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'event-1-cursor' }),
+    );
     await Reflect.get(component, 'resetTicketPage').call(component);
     Reflect.get(component, 'nextTicketPage').call(component);
     await settle(fixture);
 
     await Reflect.get(component, 'selectConfig').call(component, nextConfig);
     expect(Reflect.get(component, 'cursorHistory')()).toEqual([null]);
-    expect(api.getEventTickets).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: 'event-2', cursor: undefined }));
+    expect(api.getEventTickets).toHaveBeenLastCalledWith(
+      expect.objectContaining({ eventId: 'event-2', cursor: undefined }),
+    );
     const reads = api.getEventTickets.mock.calls.length;
     await Reflect.get(component, 'refreshLiveEvent').call(component, eventId);
     Reflect.get(component, 'previousTicketPage').call(component);
@@ -178,41 +192,49 @@ describe('TicketAdminPageComponent', () => {
     fixture.destroy();
   });
 
-  it.each(['save', 'person-action'])('resets pagination after a %s operation reloads the first page', async (operation) => {
-    const { fixture, api } = setup({ initialConfig: config, dialogResult: true });
-    await settle(fixture);
-    const component = fixture.componentInstance;
-    api.getEventTickets.mockReturnValueOnce(of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'page-2-cursor' }));
-    await Reflect.get(component, 'resetTicketPage').call(component);
-    Reflect.get(component, 'nextTicketPage').call(component);
-    await settle(fixture);
+  it.each(['save', 'person-action'])(
+    'resets pagination after a %s operation reloads the first page',
+    async (operation) => {
+      const { fixture, api } = setup({ initialConfig: config, dialogResult: true });
+      await settle(fixture);
+      const component = fixture.componentInstance;
+      api.getEventTickets.mockReturnValueOnce(
+        of({ tickets: [activeTicket], totalCount: 100, nextCursor: 'page-2-cursor' }),
+      );
+      await Reflect.get(component, 'resetTicketPage').call(component);
+      Reflect.get(component, 'nextTicketPage').call(component);
+      await settle(fixture);
 
-    if (operation === 'save') {
-      const name = fixture.nativeElement.querySelector('input[formControlName="displayName"]') as HTMLInputElement;
-      name.value = 'Novo nome';
-      name.dispatchEvent(new Event('input'));
-      await Reflect.get(component, 'saveConfig').call(component);
-      expect(api.saveConfig).toHaveBeenCalledOnce();
-    } else {
-      await Reflect.get(component, 'openManualIssue').call(component);
-    }
-    expect(Reflect.get(component, 'cursorHistory')()).toEqual([null]);
-    expect(api.getEventTickets).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: undefined }));
-    fixture.destroy();
-  });
+      if (operation === 'save') {
+        const name = fixture.nativeElement.querySelector('input[formControlName="displayName"]') as HTMLInputElement;
+        name.value = 'Novo nome';
+        name.dispatchEvent(new Event('input'));
+        await Reflect.get(component, 'saveConfig').call(component);
+        expect(api.saveConfig).toHaveBeenCalledOnce();
+      } else {
+        await Reflect.get(component, 'openManualIssue').call(component);
+      }
+      expect(Reflect.get(component, 'cursorHistory')()).toEqual([null]);
+      expect(api.getEventTickets).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: undefined }));
+      fixture.destroy();
+    },
+  );
 
   it('ignores a live config response after switching away and returning to the same event', async () => {
     const { fixture, api } = setup({ majorScope: true, initialConfig: config });
     await settle(fixture);
     const component = fixture.componentInstance;
     await Reflect.get(component, 'selectConfig').call(component, config);
-    const delayed = new Subject<typeof config[]>();
+    const delayed = new Subject<(typeof config)[]>();
     api.getConfigs.mockReturnValueOnce(delayed);
     const previousReads = api.getConfigs.mock.calls.length;
     const refresh = Reflect.get(component, 'refreshLiveEvent').call(component, eventId);
     await vi.waitFor(() => expect(api.getConfigs.mock.calls.length).toBe(previousReads + 1));
 
-    await Reflect.get(component, 'selectConfig').call(component, createAdminTicketConfig({ eventId: 'event-2', majorEventId }));
+    await Reflect.get(component, 'selectConfig').call(
+      component,
+      createAdminTicketConfig({ eventId: 'event-2', majorEventId }),
+    );
     const currentConfig = createAdminTicketConfig({ ...config, displayName: 'Configuração atualizada' });
     await Reflect.get(component, 'selectConfig').call(component, currentConfig);
     delayed.next([config]);
@@ -231,7 +253,11 @@ describe('TicketAdminPageComponent', () => {
     const fixedPrice = Reflect.get(component, 'singlePrice');
     fixedPrice.setValue(price);
     expect(fixedPrice.invalid).toBe(true);
-    const tier = Reflect.get(component, 'createPriceRow').call(component, majorEvent.majorEventPrices[0].tiers[0], null);
+    const tier = Reflect.get(component, 'createPriceRow').call(
+      component,
+      majorEvent.majorEventPrices[0].tiers[0],
+      null,
+    );
     tier.controls.amount.setValue(price);
     expect(tier.invalid).toBe(true);
   });
@@ -301,8 +327,12 @@ describe('TicketAdminPageComponent', () => {
     delayed.next(createAdminMajorEvent({ ...majorEvent, majorEventPrices: [] }));
     delayed.complete();
     await settle(fixture);
-    expect(fixture.nativeElement.querySelector('input[formControlName="displayName"]').value).toBe('Bilhete do segundo evento');
-    expect(Reflect.get(fixture.componentInstance, 'priceTiers')()).toEqual(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
+    expect(fixture.nativeElement.querySelector('input[formControlName="displayName"]').value).toBe(
+      'Bilhete do segundo evento',
+    );
+    expect(Reflect.get(fixture.componentInstance, 'priceTiers')()).toEqual(
+      majorEvent.majorEventPrices.flatMap((price) => price.tiers),
+    );
     expect(api.getEventTickets.mock.calls.length).toBe(reads);
     fixture.destroy();
   });
@@ -333,7 +363,9 @@ describe('TicketAdminPageComponent', () => {
 
   it('loads a fixed sales limit, validates integers, and can switch back to unlimited', async () => {
     const limited = createAdminTicketConfig({
-      ...config, purchaseEnabled: true, purchaseLimit: 25,
+      ...config,
+      purchaseEnabled: true,
+      purchaseLimit: 25,
       priceOptions: [{ id: 'price', priceTierId: null, label: 'Preço único', amountCents: 1000 }],
     });
     const { fixture, api } = setup({ initialConfig: limited });
@@ -356,7 +388,9 @@ describe('TicketAdminPageComponent', () => {
     await chooseMatOption(fixture, mode, 'Ilimitada');
     expect(fixture.nativeElement.querySelector('input[formControlName="purchaseLimit"]')).toBeNull();
     getButton(fixture, 'Salvar configuração')?.click();
-    await vi.waitFor(() => expect(api.saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ purchaseLimit: null })));
+    await vi.waitFor(() =>
+      expect(api.saveConfig).toHaveBeenLastCalledWith(expect.objectContaining({ purchaseLimit: null })),
+    );
   });
 
   it('shows save errors and keeps the form available for correction', async () => {
@@ -370,7 +404,9 @@ describe('TicketAdminPageComponent', () => {
     await vi.waitFor(() => expect(api.saveConfig).toHaveBeenCalledOnce());
     await settle(fixture);
 
-    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Configuração recusada pelo servidor.');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain(
+      'Configuração recusada pelo servidor.',
+    );
     expect(feedback.showErrorMessage).toHaveBeenCalledWith('Configuração recusada pelo servidor.');
     expect(getButton(fixture, 'Salvar configuração')?.disabled).toBe(false);
   });
@@ -421,7 +457,10 @@ describe('TicketAdminPageComponent', () => {
   });
 
   it('shows a holder-list error and offers retry', async () => {
-    const { fixture, api } = setup({ initialConfig: config, ticketError: new Error('Fila temporariamente indisponível.') });
+    const { fixture, api } = setup({
+      initialConfig: config,
+      ticketError: new Error('Fila temporariamente indisponível.'),
+    });
     await settle(fixture);
     const tabs = [...fixture.nativeElement.querySelectorAll('[role="tab"]')] as HTMLElement[];
     tabs.find((tab) => tab.textContent?.includes('Bilhetes emitidos'))?.click();
@@ -439,7 +478,11 @@ describe('TicketAdminPageComponent', () => {
   });
 
   it('trims the revocation reason and opens the ticket audit trail', async () => {
-    const { fixture, api, dialog } = setup({ initialConfig: config, tickets: [activeTicket], dialogResult: '  Solicitação da participante.  ' });
+    const { fixture, api, dialog } = setup({
+      initialConfig: config,
+      tickets: [activeTicket],
+      dialogResult: '  Solicitação da participante.  ',
+    });
     await settle(fixture);
     const tabs = [...fixture.nativeElement.querySelectorAll('[role="tab"]')] as HTMLElement[];
     tabs.find((tab) => tab.textContent?.includes('Bilhetes emitidos'))?.click();
@@ -447,7 +490,10 @@ describe('TicketAdminPageComponent', () => {
 
     getButton(fixture, 'Revogar')?.click();
     await vi.waitFor(() => expect(api.revokeTicket).toHaveBeenCalledOnce());
-    expect(api.revokeTicket).toHaveBeenCalledWith({ ticketId: activeTicket.id, reason: 'Solicitação da participante.' });
+    expect(api.revokeTicket).toHaveBeenCalledWith({
+      ticketId: activeTicket.id,
+      reason: 'Solicitação da participante.',
+    });
 
     getButton(fixture, 'Histórico')?.click();
     await vi.waitFor(() => expect(api.getHistory).toHaveBeenCalledWith(activeTicket.id));
@@ -455,7 +501,12 @@ describe('TicketAdminPageComponent', () => {
   });
 
   it('opens transfer with holder context only for active tickets', async () => {
-    const consumed = createAdminEventTicket({ id: 'ticket-consumed', eventId, event: eventSummary, status: 'CONSUMED' });
+    const consumed = createAdminEventTicket({
+      id: 'ticket-consumed',
+      eventId,
+      event: eventSummary,
+      status: 'CONSUMED',
+    });
     const { fixture, dialog } = setup({ initialConfig: config, tickets: [activeTicket, consumed], dialogResult: true });
     await settle(fixture);
     const tabs = [...fixture.nativeElement.querySelectorAll('[role="tab"]')] as HTMLElement[];
@@ -468,8 +519,10 @@ describe('TicketAdminPageComponent', () => {
     expect(transferButtons).toHaveLength(1);
     (transferButtons[0] as HTMLButtonElement).click();
     await vi.waitFor(() => expect(dialog.open).toHaveBeenCalled());
-    expect(dialog.open.mock.calls[0]?.[1]).toEqual(expect.objectContaining({
-      data: expect.objectContaining({ action: 'TRANSFER', ticketId: activeTicket.id, holderName: 'Marina da Silva' }),
-    }));
+    expect(dialog.open.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'TRANSFER', ticketId: activeTicket.id, holderName: 'Marina da Silva' }),
+      }),
+    );
   });
 });

@@ -1,6 +1,12 @@
 import { Component, computed, signal } from '@angular/core';
 import { of } from 'rxjs';
-import { EventWorkspaceContextService, contextOperations, contextOperationGroups, type EventWorkspaceContext, type EventWorkspaceRef } from '../event-workspace/event-workspace-context.service';
+import {
+  EventWorkspaceContextService,
+  contextOperations,
+  contextOperationGroups,
+  type EventWorkspaceContext,
+  type EventWorkspaceRef,
+} from '../event-workspace/event-workspace-context.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -31,14 +37,40 @@ class ShellStoryRoute {}
 const shellContext = signal<EventWorkspaceContext | null>(null);
 const contextService = {
   context: shellContext,
-  loading: signal(false), error: signal(''), scopeSwitchBlocked: signal(false),
-  operations: computed(() => { const context = shellContext(); return context ? contextOperations(context) : []; }),
-  operationGroups: computed(() => { const context = shellContext(); return context ? contextOperationGroups(contextOperations(context)) : []; }),
+  loading: signal(false),
+  error: signal(''),
+  scopeSwitchBlocked: signal(false),
+  operations: computed(() => {
+    const context = shellContext();
+    return context ? contextOperations(context) : [];
+  }),
+  operationGroups: computed(() => {
+    const context = shellContext();
+    return context ? contextOperationGroups(contextOperations(context)) : [];
+  }),
   load: async (ref: EventWorkspaceRef | null) => {
-    shellContext.set(ref ? { ...ref, name: ref.kind === 'event' ? 'Oficina de acessibilidade' : 'Semana da Computação', emoji: ref.kind === 'event' ? '♿' : '🎓' } : null);
+    shellContext.set(
+      ref
+        ? {
+            ...ref,
+            name: ref.kind === 'event' ? 'Oficina de acessibilidade' : 'Semana da Computação',
+            emoji: ref.kind === 'event' ? '♿' : '🎓',
+          }
+        : null,
+    );
   },
   canReadActivities: () => true,
-} satisfies Pick<EventWorkspaceContextService, 'context' | 'loading' | 'error' | 'operations' | 'operationGroups' | 'load' | 'canReadActivities' | 'scopeSwitchBlocked'>;
+} satisfies Pick<
+  EventWorkspaceContextService,
+  | 'context'
+  | 'loading'
+  | 'error'
+  | 'operations'
+  | 'operationGroups'
+  | 'load'
+  | 'canReadActivities'
+  | 'scopeSwitchBlocked'
+>;
 
 const storyUser = signal({
   sub: 'storybook-admin',
@@ -71,11 +103,33 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
     withScenarioControls<WorkspaceLayoutStoryArgs>(),
     applicationConfig({
       providers: [
-        provideRouter([{ path: '**', component: ShellStoryRoute }], withHashLocation(), withDisabledInitialNavigation()),
+        provideRouter(
+          [{ path: '**', component: ShellStoryRoute }],
+          withHashLocation(),
+          withDisabledInitialNavigation(),
+        ),
         { provide: EventWorkspaceContextService, useValue: contextService },
-        { provide: EventApiService, useValue: { listEvents: () => of([createAdminEvent({name:'Oficina de acessibilidade',emoji:'♿'})]), getEvent: () => of(createAdminEvent({name:'Oficina de acessibilidade',emoji:'♿'})) } },
-        { provide: MajorEventApiService, useValue: { listMajorEvents: () => of([createAdminMajorEvent({name:'Semana da Computação',emoji:'🎓'})]), getMajorEvent: () => of(createAdminMajorEvent({name:'Semana da Computação',emoji:'🎓'})) } },
-        { provide: EventGroupApiService, useValue: { listEventGroups: () => of([createAdminEventGroup()]), getEventGroup: () => of(createAdminEventGroup()) } },
+        {
+          provide: EventApiService,
+          useValue: {
+            listEvents: () => of([createAdminEvent({ name: 'Oficina de acessibilidade', emoji: '♿' })]),
+            getEvent: () => of(createAdminEvent({ name: 'Oficina de acessibilidade', emoji: '♿' })),
+          },
+        },
+        {
+          provide: MajorEventApiService,
+          useValue: {
+            listMajorEvents: () => of([createAdminMajorEvent({ name: 'Semana da Computação', emoji: '🎓' })]),
+            getMajorEvent: () => of(createAdminMajorEvent({ name: 'Semana da Computação', emoji: '🎓' })),
+          },
+        },
+        {
+          provide: EventGroupApiService,
+          useValue: {
+            listEventGroups: () => of([createAdminEventGroup()]),
+            getEventGroup: () => of(createAdminEventGroup()),
+          },
+        },
         {
           provide: AuthService,
           useValue: {
@@ -120,7 +174,13 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
     },
     activeUrl: {
       control: 'select',
-      options: ['/', '/event-workspace', '/subscriptions/event/event-1', '/attendances/major-event/major-event-1', '/global-operations'],
+      options: [
+        '/',
+        '/event-workspace',
+        '/subscriptions/event/event-1',
+        '/attendances/major-event/major-event-1',
+        '/global-operations',
+      ],
     },
     loading: { control: 'boolean' },
     showMissingPermissions: { control: 'boolean' },
@@ -235,7 +295,7 @@ export const FullModeWithPermissionWarnings: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('link', {name:'Locais'})).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: 'Locais' })).toBeVisible();
     await expect(await canvas.findByText('Permissões ausentes nesta seção')).toBeVisible();
   },
 };
@@ -263,22 +323,25 @@ export const KeyboardWayfinding: Story = {
 
 export const ScopedEventOperations: Story = {
   args: { activeUrl: '/subscriptions/event/event-1', navMode: 'full' },
-  play: async ({canvasElement}) => {
-    const canvas=within(canvasElement);
-    const operations=within(await canvas.findByRole('navigation',{name:'Operações do evento'}));
-    await expect(operations.getByRole('link',{name:'Inscrições'})).toHaveAttribute('aria-current','page');
-    await expect(operations.getByRole('link',{name:'Presenças'})).toHaveAttribute('href','#/attendances/event/event-1');
-    await expect(operations.queryByRole('link',{name:'Visão geral'})).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('tablist',{name:'Operações do evento'})).not.toBeInTheDocument();
-    await userEvent.click(operations.getByRole('button',{name:'Menu global'}));
-    const global=within(await canvas.findByRole('navigation',{name:'Navegação interna'}));
-    await expect(global.getByRole('link',{name:'Eventos'})).toHaveAttribute('href','#/event-workspace');
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const operations = within(await canvas.findByRole('navigation', { name: 'Operações do evento' }));
+    await expect(operations.getByRole('link', { name: 'Inscrições' })).toHaveAttribute('aria-current', 'page');
+    await expect(operations.getByRole('link', { name: 'Presenças' })).toHaveAttribute(
+      'href',
+      '#/attendances/event/event-1',
+    );
+    await expect(operations.queryByRole('link', { name: 'Visão geral' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('tablist', { name: 'Operações do evento' })).not.toBeInTheDocument();
+    await userEvent.click(operations.getByRole('button', { name: 'Menu global' }));
+    const global = within(await canvas.findByRole('navigation', { name: 'Navegação interna' }));
+    await expect(global.getByRole('link', { name: 'Eventos' })).toHaveAttribute('href', '#/event-workspace');
     await expect(global.getByRole('link', { name: 'Eventos' })).toBeVisible();
     for (const label of ['Inscrições', 'Presenças', 'Formulários', 'Sorteios', 'Publicação', 'Esportes']) {
       await expect(global.queryByRole('link', { name: label })).not.toBeInTheDocument();
     }
-    await userEvent.click(global.getByRole('button',{name:'Menu do contexto'}));
-    await expect(await canvas.findByRole('navigation',{name:'Operações do evento'})).toBeVisible();
+    await userEvent.click(global.getByRole('button', { name: 'Menu do contexto' }));
+    await expect(await canvas.findByRole('navigation', { name: 'Operações do evento' })).toBeVisible();
   },
 };
 

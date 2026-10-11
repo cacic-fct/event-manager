@@ -32,7 +32,9 @@ test('renders access failures as a stable error state instead of stale or empty 
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ errors: [{ message: 'Você não participou deste sorteio.', extensions: { code: 'FORBIDDEN' } }] }),
+        body: JSON.stringify({
+          errors: [{ message: 'Você não participou deste sorteio.', extensions: { code: 'FORBIDDEN' } }],
+        }),
       });
       return;
     }

@@ -23,8 +23,14 @@ if (
 const result = spawnSync(
   process.platform === 'win32' ? 'bunx.cmd' : 'bunx',
   [
-    'nx', 'test', 'backend', '--runInBand', '--skipNxCache', '--coverage=false',
-    '--passWithNoTests=false', '--runTestsByPath',
+    'nx',
+    'test',
+    'backend',
+    '--runInBand',
+    '--skipNxCache',
+    '--coverage=false',
+    '--passWithNoTests=false',
+    '--runTestsByPath',
     fileURLToPath(new URL('../apps/backend/src/app/tickets/ticketing.database.integration.spec.ts', import.meta.url)),
     ...process.argv.slice(2),
   ],

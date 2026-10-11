@@ -136,7 +136,13 @@ export function createAttendancesStoryFeed(controls: AttendancesStoryControls): 
 
 function participation(controls: AttendancesStoryControls, index: number) {
   if (controls.interestedOnly) {
-    return { isSubscribed: false, isInterested: true, isLecturer: false, hasIssuedCertificate: false, isSportsManager: false };
+    return {
+      isSubscribed: false,
+      isInterested: true,
+      isLecturer: false,
+      hasIssuedCertificate: false,
+      isSportsManager: false,
+    };
   }
   return {
     isSubscribed: index % 4 !== 1,

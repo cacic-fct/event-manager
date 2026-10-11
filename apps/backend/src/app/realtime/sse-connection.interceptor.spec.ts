@@ -7,8 +7,10 @@ import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 import { SseConnectionInterceptor } from './sse-connection.interceptor';
 
 const LIMIT_NAMES = [
-  'SSE_MAX_CONNECTIONS_PER_SUBJECT', 'SSE_MAX_PUBLIC_CONNECTIONS_PER_IP',
-  'SSE_MAX_PUBLIC_CONNECTIONS', 'SSE_MAX_AUTHENTICATED_CONNECTIONS',
+  'SSE_MAX_CONNECTIONS_PER_SUBJECT',
+  'SSE_MAX_PUBLIC_CONNECTIONS_PER_IP',
+  'SSE_MAX_PUBLIC_CONNECTIONS',
+  'SSE_MAX_AUTHENTICATED_CONNECTIONS',
 ];
 
 class TestResponse extends EventEmitter {
@@ -28,8 +30,11 @@ describe('SseConnectionInterceptor', () => {
 
   afterEach(() => {
     LIMIT_NAMES.forEach((name, index) => {
-      if (originalLimits[index] === undefined) delete process.env[name];
-      else process.env[name] = originalLimits[index];
+      if (originalLimits[index] === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = originalLimits[index];
+      }
     });
     jest.restoreAllMocks();
     jest.useRealTimers();
@@ -51,9 +56,11 @@ describe('SseConnectionInterceptor', () => {
     const { interceptor, redis } = setup();
     const other = setup(redis).interceptor;
     const attempts = await Promise.allSettled([
-      open(interceptor, 'same-user'), open(other, 'same-user'), open(other, 'same-user'),
+      open(interceptor, 'same-user'),
+      open(other, 'same-user'),
+      open(other, 'same-user'),
     ]);
-    const accepted = attempts.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+    const accepted = attempts.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
     expect(accepted).toHaveLength(2);
     expect(attempts.filter((result) => result.status === 'rejected')).toHaveLength(1);
     accepted[0].response.emit('close');
@@ -118,7 +125,9 @@ describe('SseConnectionInterceptor', () => {
     const { interceptor, redis } = setup();
     const evalSpy = jest.spyOn(redis, 'eval');
     const first = context('user');
-    const failed = await interceptor.intercept(first.execution, { handle: () => throwError(() => new Error('denied')) });
+    const failed = await interceptor.intercept(first.execution, {
+      handle: () => throwError(() => new Error('denied')),
+    });
     failed.subscribe({ error: () => undefined });
     const completed = await interceptor.intercept(context('user').execution, { handle: () => of('done') });
     completed.subscribe();
@@ -135,7 +144,9 @@ describe('SseConnectionInterceptor', () => {
     const { interceptor, redis, reflector } = setup();
     jest.spyOn(redis, 'eval').mockRejectedValue(new Error('unavailable'));
     const handler: CallHandler = { handle: jest.fn(() => NEVER) };
-    await expect(interceptor.intercept(context('user').execution, handler)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(interceptor.intercept(context('user').execution, handler)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
     expect(handler.handle).not.toHaveBeenCalled();
     reflector.get.mockReturnValue(false);
     await expect(interceptor.intercept(context('user').execution, handler)).resolves.toBe(NEVER);

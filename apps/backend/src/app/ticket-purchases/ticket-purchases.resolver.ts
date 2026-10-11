@@ -45,7 +45,9 @@ export class TicketPurchasesResolver {
 
   private user(context: TicketPurchaseContext): AuthenticatedUser {
     const user = context.req?.user ?? context.request?.user;
-    if (!user?.sub) throw new UnauthorizedException();
+    if (!user?.sub) {
+      throw new UnauthorizedException();
+    }
     return user;
   }
 }

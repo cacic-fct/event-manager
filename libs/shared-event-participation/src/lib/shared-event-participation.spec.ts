@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { AttendanceEligibility, EventAudience, interestedEventIds, isAttendanceEligible, matchesEventFormAudience, resolveAttendanceEligibility } from './shared-event-participation';
+import {
+  AttendanceEligibility,
+  EventAudience,
+  interestedEventIds,
+  isAttendanceEligible,
+  matchesEventFormAudience,
+  resolveAttendanceEligibility,
+} from './shared-event-participation';
 
 describe('event audience', () => {
   it('exports the four cumulative access restrictions', () => {
@@ -19,8 +26,9 @@ describe('attendance eligibility', () => {
     expect(resolveAttendanceEligibility({ majorEvent })).toBe('ANYONE');
     const eventGroup = { attendanceEligibility: AttendanceEligibility.REGISTERED_ONLY };
     expect(resolveAttendanceEligibility({ eventGroup, majorEvent })).toBe('REGISTERED_ONLY');
-    expect(resolveAttendanceEligibility({ attendanceEligibility: 'INVITED_ONLY', eventGroup, majorEvent }))
-      .toBe('INVITED_ONLY');
+    expect(resolveAttendanceEligibility({ attendanceEligibility: 'INVITED_ONLY', eventGroup, majorEvent })).toBe(
+      'INVITED_ONLY',
+    );
   });
 
   it.each([

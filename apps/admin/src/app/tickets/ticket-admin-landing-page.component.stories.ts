@@ -45,15 +45,24 @@ const meta: Meta<TicketLandingStoryArgs> = {
           {
             provide: AdminEventContextApiService,
             useValue: {
-              listPage: (options: AdminEventContextPageOptions) => activeArgs.pageState === 'error'
-                ? throwError(() => new Error('Não foi possível carregar os contextos.'))
-                : of(contextStoryPage(options, { empty: activeArgs.pageState === 'empty', longNames: activeArgs.longNames })),
+              listPage: (options: AdminEventContextPageOptions) =>
+                activeArgs.pageState === 'error'
+                  ? throwError(() => new Error('Não foi possível carregar os contextos.'))
+                  : of(
+                      contextStoryPage(options, {
+                        empty: activeArgs.pageState === 'empty',
+                        longNames: activeArgs.longNames,
+                      }),
+                    ),
             },
           },
           { provide: EventApiService, useValue: { getEvent: () => of(contextStoryEvent) } },
           { provide: EventGroupApiService, useValue: { getEventGroup: () => of(contextStoryGroup) } },
           { provide: MajorEventApiService, useValue: { getMajorEvent: () => of(contextStoryMajor) } },
-          { provide: PermissionsService, useValue: { has: () => true, evaluateWorkspacePermissions: async () => undefined } },
+          {
+            provide: PermissionsService,
+            useValue: { has: () => true, evaluateWorkspacePermissions: async () => undefined },
+          },
           provideAppInitializer(() => {
             const router = inject(Router);
             router.navigate = async (commands) => {
@@ -79,7 +88,7 @@ const meta: Meta<TicketLandingStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketLandingStoryArgs>;
 
-export const Playground: Story = {  };
+export const Playground: Story = {};
 
 export const ChooseEvent: Story = {
   play: async ({ canvasElement }) => {
@@ -94,7 +103,9 @@ export const ChooseEvent: Story = {
 export const NoEventsFound: Story = {
   args: { pageState: 'empty' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Nenhum contexto encontrado. Revise a busca ou volte à página anterior.')).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText('Nenhum contexto encontrado. Revise a busca ou volte à página anterior.'),
+    ).toBeVisible();
   },
 };
 

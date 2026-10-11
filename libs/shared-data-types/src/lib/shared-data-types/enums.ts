@@ -1,5 +1,15 @@
-import { AttendanceEligibility, EventAudience, EventFormAudience, InterestTargetType } from '@cacic-fct/shared-event-participation';
-export { AttendanceEligibility, EventAudience, EventFormAudience, InterestTargetType } from '@cacic-fct/shared-event-participation';
+import {
+  AttendanceEligibility,
+  EventAudience,
+  EventFormAudience,
+  InterestTargetType,
+} from '@cacic-fct/shared-event-participation';
+export {
+  AttendanceEligibility,
+  EventAudience,
+  EventFormAudience,
+  InterestTargetType,
+} from '@cacic-fct/shared-event-participation';
 import { registerEnumType } from '@nestjs/graphql';
 
 export const UserRole = {

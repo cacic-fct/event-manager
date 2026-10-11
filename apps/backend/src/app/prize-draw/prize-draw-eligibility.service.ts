@@ -88,7 +88,9 @@ export class PrizeDrawEligibilityService {
       const identityKey = `person:${person.id}`;
       const existing = byIdentity.get(identityKey);
       if (existing) {
-        if (!existing.sources.includes(source)) existing.sources.push(source);
+        if (!existing.sources.includes(source)) {
+          existing.sources.push(source);
+        }
         return existing;
       }
       const created: PrizeDrawEligibleRecord = {
@@ -112,7 +114,9 @@ export class PrizeDrawEligibilityService {
         select: { person: { select: { id: true, name: true } } },
         distinct: ['personId'],
       });
-      for (const attendance of attendances) addPerson(attendance.person, 'ATTENDANCE');
+      for (const attendance of attendances) {
+        addPerson(attendance.person, 'ATTENDANCE');
+      }
     }
 
     if (draw.includeSubscribers) {
@@ -131,7 +135,9 @@ export class PrizeDrawEligibilityService {
             select: { majorEventId: true, autoSubscribe: true, eventGroup: { select: { majorEventId: true } } },
           }),
         ]);
-        for (const subscription of subscriptions) addPerson(subscription.person, 'SUBSCRIPTION');
+        for (const subscription of subscriptions) {
+          addPerson(subscription.person, 'SUBSCRIPTION');
+        }
         const majorEventId = event?.majorEventId ?? event?.eventGroup?.majorEventId;
         if (majorEventId) {
           const majorSubscriptions = await client.majorEventSubscription.findMany({
@@ -144,7 +150,9 @@ export class PrizeDrawEligibilityService {
             },
             select: { person: { select: { id: true, name: true } } },
           });
-          for (const subscription of majorSubscriptions) addPerson(subscription.person, 'SUBSCRIPTION');
+          for (const subscription of majorSubscriptions) {
+            addPerson(subscription.person, 'SUBSCRIPTION');
+          }
         }
       }
       if (draw.targetType === PrizeDrawTargetType.MAJOR_EVENT && draw.majorEventId) {
@@ -157,7 +165,9 @@ export class PrizeDrawEligibilityService {
           },
           select: { person: { select: { id: true, name: true } } },
         });
-        for (const subscription of subscriptions) addPerson(subscription.person, 'SUBSCRIPTION');
+        for (const subscription of subscriptions) {
+          addPerson(subscription.person, 'SUBSCRIPTION');
+        }
       }
     }
 
@@ -185,12 +195,18 @@ export class PrizeDrawEligibilityService {
         const canonicalPerson = manual.person?.mergedInto ?? manual.person;
         if (canonicalPerson && !canonicalPerson.deletedAt && !canonicalPerson.mergedIntoId) {
           const entry = addPerson(canonicalPerson, 'MANUAL');
-          if (draw.chanceMode === PrizeDrawChanceMode.WEIGHTED) entry.weight = manual.weight;
+          if (draw.chanceMode === PrizeDrawChanceMode.WEIGHTED) {
+            entry.weight = manual.weight;
+          }
           continue;
         }
-        if (manual.personId) continue;
+        if (manual.personId) {
+          continue;
+        }
         const name = manual.name.trim();
-        if (!name) continue;
+        if (!name) {
+          continue;
+        }
         byIdentity.set(`manual:${manual.id}`, {
           identityKey: `manual:${manual.id}`,
           personId: null,
@@ -208,10 +224,14 @@ export class PrizeDrawEligibilityService {
       });
       for (const override of overrides) {
         const entry = byIdentity.get(`person:${override.person.mergedIntoId ?? override.personId}`);
-        if (entry) entry.weight = override.weight;
+        if (entry) {
+          entry.weight = override.weight;
+        }
       }
     } else {
-      for (const entry of byIdentity.values()) entry.weight = 1;
+      for (const entry of byIdentity.values()) {
+        entry.weight = 1;
+      }
     }
 
     const excludedPeople = await client.prizeDrawExcludedPerson.findMany({
@@ -255,7 +275,9 @@ export class PrizeDrawEligibilityService {
     const canonicalEntries = new Map<string, PrizeDrawEligibleRecord>();
     for (const entry of entries) {
       const canonicalPerson = entry.person?.mergedInto ?? entry.person;
-      if (entry.personId && (!canonicalPerson || canonicalPerson.deletedAt || canonicalPerson.mergedIntoId)) continue;
+      if (entry.personId && (!canonicalPerson || canonicalPerson.deletedAt || canonicalPerson.mergedIntoId)) {
+        continue;
+      }
       const identityKey = canonicalPerson ? `person:${canonicalPerson.id}` : entry.identityKey;
       const sources = entry.sources.filter(isPrizeDrawEntrySource);
       const existing = canonicalEntries.get(identityKey);

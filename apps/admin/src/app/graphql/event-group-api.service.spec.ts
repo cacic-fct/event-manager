@@ -38,10 +38,17 @@ describe('EventGroupApiService', () => {
   });
 
   it('passes major-event scope and a creation parent through the GraphQL contract', async () => {
-    await firstValueFrom(service.listEventGroups({majorEventId:'major-1',query:'Trilha',skip:0,take:13}));
-    expect(graphqlHttp.request).toHaveBeenLastCalledWith(expect.stringContaining('majorEventId: $majorEventId'),{majorEventId:'major-1',query:'Trilha',skip:0,take:13});
-    await firstValueFrom(service.createEventGroup({name:'Trilha',majorEventId:'major-1'}));
-    expect(graphqlHttp.request).toHaveBeenLastCalledWith(expect.any(String),{input:{name:'Trilha',majorEventId:'major-1'}});
+    await firstValueFrom(service.listEventGroups({ majorEventId: 'major-1', query: 'Trilha', skip: 0, take: 13 }));
+    expect(graphqlHttp.request).toHaveBeenLastCalledWith(expect.stringContaining('majorEventId: $majorEventId'), {
+      majorEventId: 'major-1',
+      query: 'Trilha',
+      skip: 0,
+      take: 13,
+    });
+    await firstValueFrom(service.createEventGroup({ name: 'Trilha', majorEventId: 'major-1' }));
+    expect(graphqlHttp.request).toHaveBeenLastCalledWith(expect.any(String), {
+      input: { name: 'Trilha', majorEventId: 'major-1' },
+    });
   });
 
   it('maps every event-group operation and preserves its variables', async () => {

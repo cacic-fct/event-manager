@@ -88,7 +88,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === undefined) continue;
+    if (argument === undefined) {
+      continue;
+    }
     if (argument === '--help' || argument === '-h') {
       options.help = true;
       continue;
@@ -105,7 +107,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
     const name = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const inlineValue = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
+    if (!value || value.startsWith('--')) {
+      throw new Error(`Missing value for ${name}.`);
+    }
     switch (name) {
       case '--input':
         options.input = value;
@@ -132,8 +136,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
         throw new Error(`Unknown option: ${name}`);
     }
   }
-  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535)
+  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535) {
     throw new Error('--db-port must be a valid TCP port.');
+  }
   return options;
 }
 
@@ -268,7 +273,9 @@ export function buildUserDetailMap(rows: readonly ParsedSqlRow[]): Map<number, n
   for (const row of rows) {
     const userId = decimalToInt(row.idUser);
     const detailId = decimalToInt(row.idDetailFK);
-    if (userId != null && detailId != null) result.set(userId, detailId);
+    if (userId != null && detailId != null) {
+      result.set(userId, detailId);
+    }
   }
   return result;
 }
@@ -278,7 +285,9 @@ export function buildActivityEventMap(rows: readonly ParsedSqlRow[], activityIdC
   for (const row of rows) {
     const activityId = decimalToInt(row[activityIdColumn]);
     const eventId = decimalToInt(row.idEventFK);
-    if (activityId != null && eventId != null) result.set(activityId, eventId);
+    if (activityId != null && eventId != null) {
+      result.set(activityId, eventId);
+    }
   }
   return result;
 }
@@ -286,14 +295,21 @@ export function buildActivityEventMap(rows: readonly ParsedSqlRow[], activityIdC
 export function buildStatusPairs(rows: readonly ParsedSqlRow[], extraIdColumn: string | null = null): Set<string> {
   const result = new Set<string>();
   for (const row of rows) {
-    if ((coerceText(row.status) ?? '').toUpperCase() !== 'S') continue;
+    if ((coerceText(row.status) ?? '').toUpperCase() !== 'S') {
+      continue;
+    }
     const userId = decimalToInt(row.idUserFK);
     const eventId = decimalToInt(row.idEventFK);
-    if (userId == null || eventId == null) continue;
-    if (!extraIdColumn) result.add(`${userId}\u0000${eventId}`);
-    else {
+    if (userId == null || eventId == null) {
+      continue;
+    }
+    if (!extraIdColumn) {
+      result.add(`${userId}\u0000${eventId}`);
+    } else {
       const extraId = decimalToInt(row[extraIdColumn]);
-      if (extraId != null) result.add(`${userId}\u0000${eventId}\u0000${extraId}`);
+      if (extraId != null) {
+        result.add(`${userId}\u0000${eventId}\u0000${extraId}`);
+      }
     }
   }
   return result;
@@ -304,7 +320,9 @@ export function buildPaymentRequiredEventIds(rows: readonly ParsedSqlRow[]): Set
   for (const row of rows) {
     const eventId = decimalToInt(row.idEventFK);
     const amount = decimalToInt(row.amount);
-    if (eventId != null && amount != null && amount > 0) result.add(eventId);
+    if (eventId != null && amount != null && amount > 0) {
+      result.add(eventId);
+    }
   }
   return result;
 }
@@ -328,9 +346,12 @@ export function resolveShortcourseCategory(
   paidMajorPairs: ReadonlySet<string>,
   confirmedShortcoursePairs: ReadonlySet<string>,
 ): AttendanceCategory {
-  if (paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`))
+  if (paymentRequiredEventIds.has(legacyEventId) && !paidMajorPairs.has(`${userId}\u0000${legacyEventId}`)) {
     return 'NON_PAYING';
-  if (!confirmedShortcoursePairs.has(`${userId}\u0000${legacyEventId}\u0000${shortcourseId}`)) return 'NON_SUBSCRIBED';
+  }
+  if (!confirmedShortcoursePairs.has(`${userId}\u0000${legacyEventId}\u0000${shortcourseId}`)) {
+    return 'NON_SUBSCRIBED';
+  }
   return 'REGULAR';
 }
 
@@ -421,9 +442,12 @@ export async function selectChangedAttendances(
     if (
       currentCategory?.category === desired.category &&
       currentCategory.currentAssessment === desired.currentAssessment
-    )
+    ) {
       return false;
-    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) return false;
+    }
+    if (currentCategory?.category !== 'UNKNOWN' && !includeNonUnknown) {
+      return false;
+    }
     return true;
   });
 }
@@ -439,16 +463,23 @@ export async function applyUpdates(db: LegacyPostgresClient, updates: readonly M
 }
 
 export function printUnmatchedPeople(unmatchedPeople: ReadonlySet<number>): void {
-  if (!unmatchedPeople.size) return;
+  if (!unmatchedPeople.size) {
+    return;
+  }
   console.log('Unmatched people externalRefs:');
-  for (const detailId of [...unmatchedPeople].sort((left, right) => left - right))
+  for (const detailId of [...unmatchedPeople].sort((left, right) => left - right)) {
     console.log(`- ${buildPrefixedId(PREFIX, 'legacy-detail', detailId)}`);
+  }
 }
 
 export function printUnmatchedEvents(unmatchedEvents: ReadonlySet<string>): void {
-  if (!unmatchedEvents.size) return;
+  if (!unmatchedEvents.size) {
+    return;
+  }
   console.log('Unmatched imported events:');
-  for (const eventId of [...unmatchedEvents].sort()) console.log(`- ${eventId}`);
+  for (const eventId of [...unmatchedEvents].sort()) {
+    console.log(`- ${eventId}`);
+  }
 }
 
 export function printCategoryByKind(rows: readonly LegacyAttendance[]): void {
@@ -460,13 +491,17 @@ export function printCategoryByKind(rows: readonly LegacyAttendance[]): void {
 
 function counterFor(values: readonly string[]): Map<string, number> {
   const counter = new Map<string, number>();
-  for (const value of values) counter.set(value, (counter.get(value) ?? 0) + 1);
+  for (const value of values) {
+    counter.set(value, (counter.get(value) ?? 0) + 1);
+  }
   return counter;
 }
 
 function tableRows(parsed: ParsedSqlTables, table: string): ParsedSqlRow[] {
   const rows = parsed[table];
-  if (rows === undefined) throw new Error(`Expected parsed table '${table}'.`);
+  if (rows === undefined) {
+    throw new Error(`Expected parsed table '${table}'.`);
+  }
   return rows;
 }
 

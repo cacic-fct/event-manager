@@ -35,17 +35,23 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     const connection = this.redis as Redis & { duplicate?: () => Redis };
-    if (typeof connection.duplicate !== 'function') return;
+    if (typeof connection.duplicate !== 'function') {
+      return;
+    }
     this.subscriber = connection.duplicate();
     this.subscriber.on('message', (_channel, payload) => {
       const envelope = this.parseEnvelope(payload);
-      if (envelope) this.channels.get(envelope.scope)?.subject.next(envelope.event);
+      if (envelope) {
+        this.channels.get(envelope.scope)?.subject.next(envelope.event);
+      }
     });
     await this.subscriber.subscribe(PRIZE_DRAW_REDIS_CHANNEL);
   }
 
   async onModuleDestroy(): Promise<void> {
-    for (const channel of this.channels.values()) channel.subject.complete();
+    for (const channel of this.channels.values()) {
+      channel.subject.complete();
+    }
     this.channels.clear();
     if (this.subscriber) {
       await this.subscriber.unsubscribe(PRIZE_DRAW_REDIS_CHANNEL).catch(() => undefined);
@@ -80,7 +86,9 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
         event: { select: { eventGroupId: true, majorEventId: true, eventGroup: { select: { majorEventId: true } } } },
       },
     });
-    if (!draw) return;
+    if (!draw) {
+      return;
+    }
     const payload = {
       type,
       drawId,
@@ -89,11 +97,19 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
       occurredAt: new Date().toISOString(),
     };
     const scopes = [this.scope('draw', drawId)];
-    if (draw.eventId) scopes.push(this.scope('event', draw.eventId));
-    if (draw.event?.eventGroupId) scopes.push(this.scope('event-group', draw.event.eventGroupId));
+    if (draw.eventId) {
+      scopes.push(this.scope('event', draw.eventId));
+    }
+    if (draw.event?.eventGroupId) {
+      scopes.push(this.scope('event-group', draw.event.eventGroupId));
+    }
     const parentMajorEventId = draw.event?.majorEventId ?? draw.event?.eventGroup?.majorEventId;
-    if (parentMajorEventId) scopes.push(this.scope('major-event', parentMajorEventId));
-    if (draw.majorEventId) scopes.push(this.scope('major-event', draw.majorEventId));
+    if (parentMajorEventId) {
+      scopes.push(this.scope('major-event', parentMajorEventId));
+    }
+    if (draw.majorEventId) {
+      scopes.push(this.scope('major-event', draw.majorEventId));
+    }
     const results = await Promise.allSettled([
       ...scopes.map((scope) => this.publish(scope, payload)),
       this.invalidations.publish(this.invalidations.scope('admin-workspace'), {
@@ -150,7 +166,9 @@ export class PrizeDrawRealtimeService implements OnModuleInit, OnModuleDestroy {
 
   private release(scope: string, channel: RealtimeChannel): void {
     channel.subscribers -= 1;
-    if (channel.subscribers > 0 || this.channels.get(scope) !== channel) return;
+    if (channel.subscribers > 0 || this.channels.get(scope) !== channel) {
+      return;
+    }
     this.channels.delete(scope);
     channel.subject.complete();
   }

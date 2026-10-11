@@ -40,9 +40,7 @@ describe('MajorEventSubscriptionDemoComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.step()).toBe('confirmed');
-    expect(fixture.nativeElement.querySelector('[role="status"]')?.textContent).toContain(
-      'Seu lugar está reservado.',
-    );
+    expect(fixture.nativeElement.querySelector('[role="status"]')?.textContent).toContain('Seu lugar está reservado.');
     expect(activityList('.subscription-success ul')).toEqual(['Interfaces que incluem', 'Realidade Virtual']);
 
     buttonNamed('Recomeçar demonstração').click();
@@ -72,20 +70,26 @@ describe('MajorEventSubscriptionDemoComponent', () => {
       (candidate) => candidate.textContent?.includes(activityName),
     );
     const input = row?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
-    if (!input) throw new Error(`Activity checkbox not found: ${activityName}`);
+    if (!input) {
+      throw new Error(`Activity checkbox not found: ${activityName}`);
+    }
     return input;
   }
 
   function buttonNamed(label: string): HTMLButtonElement {
-    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
-      .find((candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label));
-    if (!button) throw new Error(`Subscription demo button not found: ${label}`);
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (candidate) => candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    );
+    if (!button) {
+      throw new Error(`Subscription demo button not found: ${label}`);
+    }
     return button;
   }
 
   function activityList(selector: string): string[] {
-    return Array.from(fixture.nativeElement.querySelectorAll(`${selector} li`) as NodeListOf<HTMLLIElement>, (item) =>
-      item.querySelector('strong')?.textContent?.trim() ?? '',
+    return Array.from(
+      fixture.nativeElement.querySelectorAll(`${selector} li`) as NodeListOf<HTMLLIElement>,
+      (item) => item.querySelector('strong')?.textContent?.trim() ?? '',
     );
   }
 });

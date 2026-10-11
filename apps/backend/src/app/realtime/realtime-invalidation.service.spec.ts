@@ -180,8 +180,12 @@ describe('RealtimeInvalidationService', () => {
     let readyHandler: (() => void) | undefined;
     let confirmResubscription!: (count: number) => void;
     const subscriber = createSubscriber((event, handler) => {
-      if (event === 'error') errorHandler = handler as (error: Error) => void;
-      if (event === 'ready') readyHandler = handler as () => void;
+      if (event === 'error') {
+        errorHandler = handler as (error: Error) => void;
+      }
+      if (event === 'ready') {
+        readyHandler = handler as () => void;
+      }
     });
     subscriber.subscribe
       .mockResolvedValueOnce(1)
@@ -220,7 +224,9 @@ describe('RealtimeInvalidationService', () => {
   it('falls back locally when the subscriber disconnects while Redis publication is pending', async () => {
     let errorHandler: ((error: Error) => void) | undefined;
     const subscriber = createSubscriber((event, handler) => {
-      if (event === 'error') errorHandler = handler as (error: Error) => void;
+      if (event === 'error') {
+        errorHandler = handler as (error: Error) => void;
+      }
     });
     const stored: MessageEvent = { id: 'cursor-pending', data: { type: 'EVENT_UPDATED' }, retry: 3_000 };
     const redis = {

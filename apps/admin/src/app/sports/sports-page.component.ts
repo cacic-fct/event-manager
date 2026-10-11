@@ -175,7 +175,9 @@ export class SportsPageComponent {
 
     if (route.majorEventId) {
       await this.workspace.loadMajorEventScope(route.majorEventId);
-      if (revision !== this.routeRevision) return;
+      if (revision !== this.routeRevision) {
+        return;
+      }
     } else {
       this.workspace.useMajorEventRouteScope(null);
       this.workspace.resetWorkspaceRoute();
@@ -254,8 +256,11 @@ export class SportsPageComponent {
             await this.workspace.selectMatch(match, { navigate: false });
           }
         } else {
-          if (route.matchId) this.redirectToNotFound();
-          else this.workspace.newMatch(false);
+          if (route.matchId) {
+            this.redirectToNotFound();
+          } else {
+            this.workspace.newMatch(false);
+          }
         }
         return;
       }

@@ -19,7 +19,7 @@ import { WalletCardUser } from './wallet-card.types';
       </div>
       <div class="holder-details">
         <h1>{{ user()?.name || 'Desconhecido' }}</h1>
-          <h2>{{ formatRole() || 'Participante' }}</h2>
+        <h2>{{ formatRole() || 'Participante' }}</h2>
       </div>
     </section>
     <section class="ticket-credential" aria-label="Código de identificação">
@@ -204,10 +204,14 @@ export class WalletEventCard {
   );
 
   googlePictureUrl(url: string | null | undefined): string {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
     try {
       const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') return url;
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') {
+        return url;
+      }
       return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
     } catch {
       return url;

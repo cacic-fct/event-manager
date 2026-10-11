@@ -107,7 +107,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.scheduleChartRender();
         },
         error: (error: unknown) => {
-          if (this.routeResourceErrors.redirectIfUnavailable(error)) return;
+          if (this.routeResourceErrors.redirectIfUnavailable(error)) {
+            return;
+          }
           if (!this.snapshot()) {
             void this.reload();
             return;
@@ -129,13 +131,21 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   ngOnDestroy(): void {
     this.streamSubscription?.unsubscribe();
     this.stopObservingTheme?.();
-    for (const chart of this.charts.values()) chart.dispose();
-    for (const { observer } of this.observers.values()) observer.disconnect();
-    if (this.chartRenderFrame !== undefined) cancelAnimationFrame(this.chartRenderFrame);
+    for (const chart of this.charts.values()) {
+      chart.dispose();
+    }
+    for (const { observer } of this.observers.values()) {
+      observer.disconnect();
+    }
+    if (this.chartRenderFrame !== undefined) {
+      cancelAnimationFrame(this.chartRenderFrame);
+    }
   }
 
   resetTimeWindow(): void {
-    if (this.selectedTimeWindow() === null) return;
+    if (this.selectedTimeWindow() === null) {
+      return;
+    }
     this.selectedTimeWindow.set(null);
   }
 
@@ -160,7 +170,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   async review(item: AttendanceReviewItem, status: 'RESOLVED' | 'DISMISSED'): Promise<void> {
-    if (item.deepLink || !this.permissions.has(Permission.EventAttendance.Update)) return;
+    if (item.deepLink || !this.permissions.has(Permission.EventAttendance.Update)) {
+      return;
+    }
     this.reviewingFlagId.set(item.id);
     this.actionError.set(null);
     try {
@@ -186,15 +198,25 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   reviewIcon(item: AttendanceReviewItem): string {
-    if (item.kind === 'DISTANT_LOCATION') return 'distance';
-    if (item.kind === 'ATTENDANCE_REMOVAL') return 'person_remove';
-    if (item.kind === 'OFFLINE_BACKLOG') return 'cloud_off';
-    if (item.kind === 'IMPROBABLE_MATCH_OPERATION') return 'sports_score';
+    if (item.kind === 'DISTANT_LOCATION') {
+      return 'distance';
+    }
+    if (item.kind === 'ATTENDANCE_REMOVAL') {
+      return 'person_remove';
+    }
+    if (item.kind === 'OFFLINE_BACKLOG') {
+      return 'cloud_off';
+    }
+    if (item.kind === 'IMPROBABLE_MATCH_OPERATION') {
+      return 'sports_score';
+    }
     return item.severity === 'CRITICAL' ? 'report' : 'flag';
   }
 
   private renderCharts(): void {
-    if (!this.isBrowser || !this.snapshot()) return;
+    if (!this.isBrowser || !this.snapshot()) {
+      return;
+    }
     if (!this.throughputSelectionInProgress) {
       this.setChart('throughput', this.throughputChart, this.throughputOption());
     }
@@ -210,7 +232,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       return;
     }
     this.observeChartElement(name, element);
-    if (element.clientWidth === 0 || element.clientHeight === 0) return;
+    if (element.clientWidth === 0 || element.clientHeight === 0) {
+      return;
+    }
     const existing = this.charts.get(name);
     if (existing && existing.getDom() !== element) {
       this.disposeChart(name);
@@ -218,12 +242,16 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     const chart = this.charts.get(name) ?? echarts.init(element, undefined, { renderer: 'canvas' });
     this.charts.set(name, chart);
     chart.setOption(option, true);
-    if (name === 'throughput') this.configureThroughputSelection(chart);
+    if (name === 'throughput') {
+      this.configureThroughputSelection(chart);
+    }
     this.stopObservingTheme ??= observeEChartsTheme(element, () => this.renderCharts());
   }
 
   private scheduleChartRender(): void {
-    if (!this.isBrowser || this.chartRenderFrame !== undefined) return;
+    if (!this.isBrowser || this.chartRenderFrame !== undefined) {
+      return;
+    }
 
     this.chartRenderFrame = requestAnimationFrame(() => {
       this.chartRenderFrame = undefined;
@@ -232,9 +260,13 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   private observeChartElement(name: ChartName, element: HTMLElement): void {
-    if (!('ResizeObserver' in globalThis)) return;
+    if (!('ResizeObserver' in globalThis)) {
+      return;
+    }
     const existing = this.observers.get(name);
-    if (existing?.element === element) return;
+    if (existing?.element === element) {
+      return;
+    }
 
     existing?.observer.disconnect();
     const observer = new ResizeObserver(() => {
@@ -395,9 +427,13 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
         const selectedWindow = timeWindowFromBrushEvent(event);
         chart.dispatchAction({ type: 'brush', areas: [] });
         this.throughputSelectionInProgress = false;
-        if (!selectedWindow) return;
+        if (!selectedWindow) {
+          return;
+        }
         const currentWindow = this.selectedTimeWindow();
-        if (currentWindow?.start === selectedWindow.start && currentWindow.end === selectedWindow.end) return;
+        if (currentWindow?.start === selectedWindow.start && currentWindow.end === selectedWindow.end) {
+          return;
+        }
         this.selectedTimeWindow.set(selectedWindow);
       });
     }
@@ -450,7 +486,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   private formatTimeWindow(window: AttendanceAnalyticsTimeWindow | null): string {
-    if (!window) return 'Todo o período';
+    if (!window) {
+      return 'Todo o período';
+    }
     const formatter = new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -463,7 +501,9 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
 
 export function timeWindowFromBrushEvent(event: unknown): AttendanceAnalyticsTimeWindow | null {
   const range = (event as BrushEndEvent | null)?.areas?.[0]?.coordRange;
-  if (!Array.isArray(range) || range.length !== 2) return null;
+  if (!Array.isArray(range) || range.length !== 2) {
+    return null;
+  }
   const values = range.map((value) => (value instanceof Date ? value.getTime() : Number(value)));
   const first = values[0];
   const second = values[1];

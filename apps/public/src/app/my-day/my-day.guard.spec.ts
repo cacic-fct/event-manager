@@ -62,8 +62,6 @@ describe('myDayFeatureGuard', () => {
   });
 
   function runGuard(url: string): Promise<unknown> {
-    return TestBed.runInInjectionContext(() =>
-      myDayFeatureGuard({} as never, { url } as never),
-    ) as Promise<unknown>;
+    return TestBed.runInInjectionContext(() => myDayFeatureGuard({} as never, { url } as never)) as Promise<unknown>;
   }
 });

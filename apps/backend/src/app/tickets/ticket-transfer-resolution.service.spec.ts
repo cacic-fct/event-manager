@@ -20,7 +20,8 @@ describe('ticket transfer resolution worker', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       ticketTransfer: { findUnique: jest.fn().mockResolvedValue(transfer) },
-      $queryRaw: jest.fn()
+      $queryRaw: jest
+        .fn()
         .mockResolvedValueOnce([{ id: 'recipient-person', mergedIntoId: null }])
         .mockResolvedValueOnce([{ id: 'recipient-person' }]),
       $transaction: undefined,
@@ -42,15 +43,17 @@ describe('ticket transfer resolution worker', () => {
 
     expect(eligibility.prepareIdentitySnapshot).toHaveBeenCalledWith('event-1', 'recipient-person', 'recipient');
     expect(prisma.ticketTransferResolutionOutbox.updateMany).toHaveBeenCalledTimes(2);
-    expect(prisma.ticketTransferResolutionOutbox.updateMany.mock.calls[1][0]).toEqual(expect.objectContaining({
-      where: { id: job.id, completedAt: null },
-      data: expect.objectContaining({
-        attempts: 1,
-        leaseUntil: null,
-        lastError: 'Destination resolution failed.',
-        nextAttemptAt: expect.any(Date),
+    expect(prisma.ticketTransferResolutionOutbox.updateMany.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        where: { id: job.id, completedAt: null },
+        data: expect.objectContaining({
+          attempts: 1,
+          leaseUntil: null,
+          lastError: 'Destination resolution failed.',
+          nextAttemptAt: expect.any(Date),
+        }),
       }),
-    }));
+    );
     expect(prisma.$transaction).toBeUndefined();
   });
 
@@ -78,28 +81,33 @@ describe('ticket transfer resolution worker', () => {
       },
     };
     const prisma = {
-      $queryRaw: jest.fn()
+      $queryRaw: jest
+        .fn()
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ id: 'recipient-user' }]),
       $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     const service = new TicketTransferResolutionService(prisma as never, {} as never, {} as never, {} as never);
-    const resolveRecipient = (service as unknown as {
-      resolveRecipient: (document: string) => Promise<{ personId: string; userId: string | null } | null>;
-    }).resolveRecipient.bind(service);
+    const resolveRecipient = (
+      service as unknown as {
+        resolveRecipient: (document: string) => Promise<{ personId: string; userId: string | null } | null>;
+      }
+    ).resolveRecipient.bind(service);
 
     await expect(resolveRecipient('PASS12345')).resolves.toEqual({
       personId: 'recipient-person',
       userId: 'recipient-user',
     });
-    expect(tx.people.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { externalRef: 'kc:recipient-user' },
-      create: expect.objectContaining({
-        userId: 'recipient-user',
-        externalRef: 'kc:recipient-user',
-        identityDocument: 'PASS-12345',
+    expect(tx.people.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { externalRef: 'kc:recipient-user' },
+        create: expect.objectContaining({
+          userId: 'recipient-user',
+          externalRef: 'kc:recipient-user',
+          identityDocument: 'PASS-12345',
+        }),
       }),
-    }));
+    );
     expect(tx.$executeRaw.mock.calls[0][0].values).toContain('ticket-recipient-document:PASS12345');
     expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.user.findUnique.mock.invocationCallOrder[0]);
     expect(tx.user.findUnique.mock.invocationCallOrder[0]).toBeLessThan(tx.$queryRaw.mock.invocationCallOrder[0]);
@@ -107,15 +115,18 @@ describe('ticket transfer resolution worker', () => {
 
   it('fails closed when multiple local accounts share a destination document', async () => {
     const prisma = {
-      $queryRaw: jest.fn()
+      $queryRaw: jest
+        .fn()
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ id: 'user-a' }, { id: 'user-b' }]),
       $transaction: jest.fn(),
     };
     const service = new TicketTransferResolutionService(prisma as never, {} as never, {} as never, {} as never);
-    const resolveRecipient = (service as unknown as {
-      resolveRecipient: (document: string) => Promise<{ personId: string; userId: string | null } | null>;
-    }).resolveRecipient.bind(service);
+    const resolveRecipient = (
+      service as unknown as {
+        resolveRecipient: (document: string) => Promise<{ personId: string; userId: string | null } | null>;
+      }
+    ).resolveRecipient.bind(service);
 
     await expect(resolveRecipient('PASS12345')).resolves.toBeNull();
     expect(prisma.$transaction).not.toHaveBeenCalled();

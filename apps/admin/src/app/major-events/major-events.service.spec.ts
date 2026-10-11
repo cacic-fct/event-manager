@@ -9,7 +9,11 @@ import { EventApiService } from '../graphql/event-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../graphql/publishing-api.service';
-import { createAdminEvent, createAdminMajorEventFromInput, createAdminMajorEvent } from '../testing/admin-entity-fixtures';
+import {
+  createAdminEvent,
+  createAdminMajorEventFromInput,
+  createAdminMajorEvent,
+} from '../testing/admin-entity-fixtures';
 import { MajorEventsService } from './major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
@@ -118,19 +122,27 @@ describe('MajorEventsService', () => {
   });
 
   it('keeps the newest selected major event when an earlier lookup completes later', async () => {
-    const delayed=new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
-    api.getMajorEvent.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminMajorEventFromInput({id:'b'})));
-    const first=service.pickMajorEventById('a');await service.pickMajorEventById('b');
-    delayed.next(createAdminMajorEventFromInput({id:'a'}));delayed.complete();await first;
-    expect(service.selectedMajorEvent()?.id).toBe('b');expect(service.majorEventForm.controls.id.value).toBe('b');
+    const delayed = new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
+    api.getMajorEvent.mockReturnValueOnce(delayed).mockReturnValueOnce(of(createAdminMajorEventFromInput({ id: 'b' })));
+    const first = service.pickMajorEventById('a');
+    await service.pickMajorEventById('b');
+    delayed.next(createAdminMajorEventFromInput({ id: 'a' }));
+    delayed.complete();
+    await first;
+    expect(service.selectedMajorEvent()?.id).toBe('b');
+    expect(service.majorEventForm.controls.id.value).toBe('b');
   });
 
   it('cancels pending selection when initializing a fresh major event without navigation', async () => {
-    const delayed=new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
+    const delayed = new Subject<ReturnType<typeof createAdminMajorEventFromInput>>();
     api.getMajorEvent.mockReturnValueOnce(delayed);
-    const first=service.pickMajorEventById('a');service.resetMajorEventForm(false);
-    delayed.next(createAdminMajorEventFromInput({id:'a'}));delayed.complete();await first;
-    expect(service.selectedMajorEvent()).toBeNull();expect(service.majorEventForm.controls.id.value).toBe('');
+    const first = service.pickMajorEventById('a');
+    service.resetMajorEventForm(false);
+    delayed.next(createAdminMajorEventFromInput({ id: 'a' }));
+    delayed.complete();
+    await first;
+    expect(service.selectedMajorEvent()).toBeNull();
+    expect(service.majorEventForm.controls.id.value).toBe('');
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
@@ -139,7 +151,9 @@ describe('MajorEventsService', () => {
     eventApi.listEvents.mockReturnValueOnce(delayedEvents);
 
     const save = service.saveMajorEvent('DRAFT');
-    await vi.waitFor(() => expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: 'major-event-1', take: 200 }));
+    await vi.waitFor(() =>
+      expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId: 'major-event-1', take: 200 }),
+    );
     service.resetMajorEventForm(false);
     delayedEvents.next([]);
     delayedEvents.complete();
@@ -214,7 +228,9 @@ describe('MajorEventsService', () => {
     const majorEvent = createAdminMajorEvent({ audienceInvitations: [{ personId: 'private-person', person: null }] });
     api.getMajorEvent.mockReturnValueOnce(of(majorEvent));
     await service.pickMajorEventById(majorEvent.id);
-    expect(service.majorEventAudienceInvitations()).toEqual([{ id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }]);
+    expect(service.majorEventAudienceInvitations()).toEqual([
+      { id: 'private-person', name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true },
+    ]);
     await service.saveMajorEvent('DRAFT');
     expect(lastPayload).toMatchObject({ invitationPersonIds: ['private-person'] });
   });

@@ -12,9 +12,11 @@
   padding: 1.5rem;
   box-sizing: border-box;
 
-  @include mat.button-overrides((
-    text-label-text-color: #f0fff7
-  ));
+  @include mat.button-overrides(
+    (
+      text-label-text-color: #f0fff7,
+    )
+  );
 }
 
 .sports-toolbar {

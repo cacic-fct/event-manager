@@ -34,9 +34,7 @@ export const ReducedMotionWinner: Story = {
     await expect(
       await canvas.findByText('Resultado: Beatriz Lima ganhou Kit criatividade.', {}, { timeout: 4500 }),
     ).toBeInTheDocument();
-    await expect(
-      await canvas.findByRole('button', { name: 'Sortear novamente' }, { timeout: 3000 }),
-    ).toBeEnabled();
+    await expect(await canvas.findByRole('button', { name: 'Sortear novamente' }, { timeout: 3000 })).toBeEnabled();
   },
 };
 

@@ -54,7 +54,9 @@ describe('Attendances', () => {
 
   it('shows actionable pendencies as short text and warning icons with matching accessible labels', async () => {
     const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
-    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    if (!majorEvent) {
+      throw new Error('Expected a major-event fixture.');
+    }
     const pendingReceipt = { ...majorEvent, id: 'receipt-item', subscriptionStatus: 'WAITING_RECEIPT_UPLOAD' };
     const scheduleConflict = {
       ...majorEvent,
@@ -90,7 +92,9 @@ describe('Attendances', () => {
 
   it('uses the generic warning icon and copy for an unknown actionable subscription status', async () => {
     const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
-    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    if (!majorEvent) {
+      throw new Error('Expected a major-event fixture.');
+    }
     const { fixture } = await createFixture({
       onlineFeed: {
         ...subscriptionsFeedFixture,
@@ -122,7 +126,9 @@ describe('Attendances', () => {
 
   it('keeps mixed major-event participation on the regular detail when regular events are selected', async () => {
     const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
-    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    if (!majorEvent) {
+      throw new Error('Expected a major-event fixture.');
+    }
     const { component } = await createFixture({
       onlineFeed: {
         ...subscriptionsFeedFixture,
@@ -151,7 +157,9 @@ describe('Attendances', () => {
     const tournamentOnlyItem = component
       .visibleParticipations()
       .find((item) => item.title === 'Torneio com gestão esportiva');
-    if (!tournamentOnlyItem) throw new Error('Expected a tournament fixture.');
+    if (!tournamentOnlyItem) {
+      throw new Error('Expected a tournament fixture.');
+    }
 
     expect(tournamentOnlyItem.route).toEqual(['/profile/attendances', 'major-event', 'sports-major']);
   });
@@ -450,7 +458,9 @@ describe('Attendances', () => {
     component.downloadCertificatesArchive();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Baixar certificados em 15:00');
+    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain(
+      'Baixar certificados em 15:00',
+    );
     expect(snackBar.open).toHaveBeenCalledWith('Aguarde antes de solicitar outro arquivo de certificados.', 'Fechar', {
       duration: 5000,
     });

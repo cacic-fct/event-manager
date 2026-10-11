@@ -6,15 +6,19 @@ describe('current-user participation detail events', () => {
     const prisma = { event: { findMany: jest.fn().mockResolvedValue([{ id: 'attended-event' }]) } };
     const users = { requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }) };
     const resolver = new CurrentUserParticipationEventsResolver(prisma as never, users as never);
-    await expect(audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId: 'user-1', personIds: ['person-1'] }, async () =>
-      resolver.currentUserParticipationEvents({} as never, 'major-1'),
-    )).resolves.toEqual([{ id: 'attended-event' }]);
+    await expect(
+      audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId: 'user-1', personIds: ['person-1'] }, async () =>
+        resolver.currentUserParticipationEvents({} as never, 'major-1'),
+      ),
+    ).resolves.toEqual([{ id: 'attended-event' }]);
     const query = prisma.event.findMany.mock.calls[0][0];
     expect(query.where).toEqual(expect.objectContaining({ majorEventId: 'major-1', deletedAt: null }));
-    expect(query.where.OR[1]).toEqual(expect.objectContaining({
-      endDate: { lte: expect.any(Date) },
-      OR: expect.arrayContaining([{ attendances: { some: { personId: { in: ['person-1'] }, status: 'PRESENT' } } }]),
-    }));
+    expect(query.where.OR[1]).toEqual(
+      expect.objectContaining({
+        endDate: { lte: expect.any(Date) },
+        OR: expect.arrayContaining([{ attendances: { some: { personId: { in: ['person-1'] }, status: 'PRESENT' } } }]),
+      }),
+    );
     expect(query.take).toBe(1000);
     expect(audienceContext.getStore()).toBeUndefined();
   });

@@ -479,7 +479,9 @@ export class CertificateSportsEligibility {
     }
 
     for (const [recipientId, recipient] of recipientsByPerson) {
-      if (recipient.eventsById.size === 0) recipientsByPerson.delete(recipientId);
+      if (recipient.eventsById.size === 0) {
+        recipientsByPerson.delete(recipientId);
+      }
     }
 
     return this.toRecipients(recipientsByPerson);

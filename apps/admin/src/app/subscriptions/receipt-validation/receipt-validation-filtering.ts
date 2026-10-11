@@ -26,15 +26,20 @@ export function filterAndSortReceiptValidationItems(
 ): ReceiptValidationQueueItem[] {
   const selected = items.filter((item) => {
     const category = receiptValidationCategory(item);
-    if (filters.category !== 'ALL' && filters.category !== category) return false;
-    if (filters.paymentTier && (category !== 'SUBSCRIPTION' || item.paymentTier !== filters.paymentTier)) return false;
+    if (filters.category !== 'ALL' && filters.category !== category) {
+      return false;
+    }
+    if (filters.paymentTier && (category !== 'SUBSCRIPTION' || item.paymentTier !== filters.paymentTier)) {
+      return false;
+    }
     return true;
   });
 
   const direction = filters.sort.endsWith('ASC') ? 1 : -1;
   const useCreatedAt = filters.sort.startsWith('CREATED');
   return [...selected].sort((left, right) => {
-    const difference = (useCreatedAt ? createdAt(left) : updatedAt(left)) - (useCreatedAt ? createdAt(right) : updatedAt(right));
+    const difference =
+      (useCreatedAt ? createdAt(left) : updatedAt(left)) - (useCreatedAt ? createdAt(right) : updatedAt(right));
     return difference === 0 ? left.subscriptionId.localeCompare(right.subscriptionId) : difference * direction;
   });
 }

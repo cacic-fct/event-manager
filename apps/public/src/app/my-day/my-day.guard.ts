@@ -8,7 +8,9 @@ export const myDayFeatureGuard: CanActivateFn = async (route, state) => {
   const flags = inject(PublicFeatureFlagService);
   const errors = inject(RouteErrorService);
   const authResult = await authGuard(route, state);
-  if (authResult !== true) return authResult;
+  if (authResult !== true) {
+    return authResult;
+  }
 
   return flags.booleanValue('myDayTabEnabled') ? true : errors.guardRedirect(404);
 };

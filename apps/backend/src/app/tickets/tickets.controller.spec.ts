@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  MessageEvent,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, MessageEvent, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom, NEVER, Observable, take, toArray } from 'rxjs';
 import { AdminTicketRealtimeController, CurrentUserTicketRealtimeController } from './tickets.controller';
@@ -39,20 +35,24 @@ describe('ticket realtime controllers', () => {
     const auth = { authenticateAccessToken: jest.fn().mockResolvedValue({ sub: 'manager-1' }) };
     const authorization = {
       assertPermissions: jest.fn(async (_user, permissions: string[]) => {
-        if (permissions[0] === Permission.Ticket.Read) throw error;
+        if (permissions[0] === Permission.Ticket.Read) {
+          throw error;
+        }
       }),
     };
-    const controller = new AdminTicketRealtimeController(source as never, replay as never, auth as never, authorization as never);
+    const controller = new AdminTicketRealtimeController(
+      source as never,
+      replay as never,
+      auth as never,
+      authorization as never,
+    );
     const request = { headers: { authorization: 'Bearer token' } } as never;
 
     const event = await firstValueFrom(controller.stream('event-1', request, undefined).pipe(take(1)));
 
-    expect(authorization.assertPermissions).toHaveBeenNthCalledWith(
-      1,
-      { sub: 'manager-1' },
-      [Permission.Ticket.Read],
-      { eventId: 'event-1' },
-    );
+    expect(authorization.assertPermissions).toHaveBeenNthCalledWith(1, { sub: 'manager-1' }, [Permission.Ticket.Read], {
+      eventId: 'event-1',
+    });
     expect(authorization.assertPermissions).toHaveBeenNthCalledWith(
       2,
       { sub: 'manager-1' },
@@ -71,7 +71,12 @@ describe('ticket realtime controllers', () => {
     const auth = { authenticateAccessToken: jest.fn().mockResolvedValue({ sub: 'manager-1' }) };
     const failure = new Error('Permission store unavailable.');
     const authorization = { assertPermissions: jest.fn().mockRejectedValue(failure) };
-    const controller = new AdminTicketRealtimeController(source as never, replay as never, auth as never, authorization as never);
+    const controller = new AdminTicketRealtimeController(
+      source as never,
+      replay as never,
+      auth as never,
+      authorization as never,
+    );
     const request = { headers: { authorization: 'Bearer token' } } as never;
 
     await expect(firstValueFrom(controller.stream('event-1', request, undefined).pipe(take(1)))).rejects.toBe(failure);

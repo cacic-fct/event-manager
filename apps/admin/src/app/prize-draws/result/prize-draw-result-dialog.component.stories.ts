@@ -33,7 +33,8 @@ const meta: Meta<StoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Prize draw winner result dialog with a public link and full-screen presentation. Use the global motion control to inspect reduced-motion behavior.',
+        component:
+          'Prize draw winner result dialog with a public link and full-screen presentation. Use the global motion control to inspect reduced-motion behavior.',
       },
     },
     layout: 'fullscreen',

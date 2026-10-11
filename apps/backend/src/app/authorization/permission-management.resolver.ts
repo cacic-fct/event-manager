@@ -72,7 +72,9 @@ export class PermissionManagementResolver {
 
   private requireActor(context: GraphqlContext): AuthenticatedUser {
     const actor = context.req?.user ?? context.request?.user;
-    if (!actor) throw new Error('Authenticated actor is required.');
+    if (!actor) {
+      throw new Error('Authenticated actor is required.');
+    }
     return actor;
   }
 }

@@ -35,56 +35,75 @@ describe('ticket transfer mutations', () => {
     f.ticket.expiresAt = new Date(Date.now() - 60_000);
     f.tx.people.findFirst.mockResolvedValue({ id: 'recipient-person', userId: 'recipient-user', name: 'Recipient' });
 
-    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never))
-      .rejects.toThrow('Este bilhete não está mais disponível para transferência.');
-    await expect(f.service.startForAdmin('ticket-1', 'recipient-person', 'Correção administrativa', { sub: 'admin-user' } as never))
-      .resolves.toEqual(expect.objectContaining({ initiatorType: 'ADMIN', senderStatus: 'PENDING' }));
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow(
+      'Este bilhete não está mais disponível para transferência.',
+    );
+    await expect(
+      f.service.startForAdmin('ticket-1', 'recipient-person', 'Correção administrativa', {
+        sub: 'admin-user',
+      } as never),
+    ).resolves.toEqual(expect.objectContaining({ initiatorType: 'ADMIN', senderStatus: 'PENDING' }));
   });
 
-  it.each(['ADMIN', 'HOLDER'])('applies expiration to acceptance only for %s initiated transfers', async (initiatorType) => {
-    const f = createTicketTransferServiceFixture();
-    f.ticket.expiresAt = new Date(Date.now() - 60_000);
-    const incoming = {
-      ...f.transfer,
-      initiatorType,
-      recipientPersonId: 'recipient-person',
-      recipientUserId: 'recipient-user',
-      recipient: { id: 'recipient-person', name: 'Recipient', userId: 'recipient-user' },
-      ticket: { ...(f.transfer.ticket as Record<string, unknown>), expiresAt: f.ticket.expiresAt },
-    };
-    f.tx.ticketTransfer.findUnique.mockResolvedValue(incoming);
-    f.tx.ticketTransfer.findUniqueOrThrow.mockResolvedValue(incoming);
-    f.tx.people.findFirst.mockResolvedValue(incoming.recipient);
-    const updateTicket = jest.fn().mockResolvedValue({ count: 1 });
-    Object.assign(f.tx.eventTicket, { updateMany: updateTicket });
+  it.each(['ADMIN', 'HOLDER'])(
+    'applies expiration to acceptance only for %s initiated transfers',
+    async (initiatorType) => {
+      const f = createTicketTransferServiceFixture();
+      f.ticket.expiresAt = new Date(Date.now() - 60_000);
+      const incoming = {
+        ...f.transfer,
+        initiatorType,
+        recipientPersonId: 'recipient-person',
+        recipientUserId: 'recipient-user',
+        recipient: { id: 'recipient-person', name: 'Recipient', userId: 'recipient-user' },
+        ticket: { ...(f.transfer.ticket as Record<string, unknown>), expiresAt: f.ticket.expiresAt },
+      };
+      f.tx.ticketTransfer.findUnique.mockResolvedValue(incoming);
+      f.tx.ticketTransfer.findUniqueOrThrow.mockResolvedValue(incoming);
+      f.tx.people.findFirst.mockResolvedValue(incoming.recipient);
+      const updateTicket = jest.fn().mockResolvedValue({ count: 1 });
+      Object.assign(f.tx.eventTicket, { updateMany: updateTicket });
 
-    expect(mapTicketTransfer(incoming as never, 'RECIPIENT', f.service, new Date()).canAccept)
-      .toBe(initiatorType === 'ADMIN');
-    await f.service.acceptForUser('transfer-1', { sub: 'recipient-user' } as never);
+      expect(mapTicketTransfer(incoming as never, 'RECIPIENT', f.service, new Date()).canAccept).toBe(
+        initiatorType === 'ADMIN',
+      );
+      await f.service.acceptForUser('transfer-1', { sub: 'recipient-user' } as never);
 
-    if (initiatorType === 'ADMIN') {
-      expect(updateTicket).toHaveBeenCalledWith(expect.objectContaining({
-        data: { holderPersonId: 'recipient-person' },
-        where: expect.objectContaining({ status: 'ACTIVE', holderPersonId: 'sender-person' }),
-      }));
-      expect(updateTicket.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
-    } else {
-      expect(updateTicket).not.toHaveBeenCalled();
-      expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({ senderStatus: 'EXPIRED' }),
-      }));
-    }
-  });
+      if (initiatorType === 'ADMIN') {
+        expect(updateTicket).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: { holderPersonId: 'recipient-person' },
+            where: expect.objectContaining({ status: 'ACTIVE', holderPersonId: 'sender-person' }),
+          }),
+        );
+        expect(updateTicket.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
+      } else {
+        expect(updateTicket).not.toHaveBeenCalled();
+        expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ senderStatus: 'EXPIRED' }),
+          }),
+        );
+      }
+    },
+  );
 
   it('allows immediate cancellation even while the author must wait to submit again', async () => {
     const f = createTicketTransferServiceFixture();
-    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date() } as never);
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({
+      submissionCount: 4,
+      lastSubmittedAt: new Date(),
+    } as never);
     await f.service.cancelForUser('transfer-1', { sub: 'sender-user' } as never);
-    expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ senderStatus: TicketTransferSenderStatus.CANCELED }),
-    }));
+    expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ senderStatus: TicketTransferSenderStatus.CANCELED }),
+      }),
+    );
     expect(f.tx.ticketTransferAuthorCooldown.update).not.toHaveBeenCalled();
-    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow('Você poderá iniciar outra transferência');
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow(
+      'Você poderá iniciar outra transferência',
+    );
     expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
     expect(f.tx.ticketTransferAuthorCooldown.update).not.toHaveBeenCalled();
   });
@@ -92,32 +111,49 @@ describe('ticket transfer mutations', () => {
   it('enforces the submission cooldown for administrative starts too', async () => {
     const f = createTicketTransferServiceFixture();
     f.tx.people.findFirst.mockResolvedValue({ id: 'recipient-person', userId: 'recipient-user', name: 'Recipient' });
-    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date() } as never);
-    await expect(f.service.startForAdmin('ticket-1', 'recipient-person', 'Authorized correction', { sub: 'admin-user' } as never)).rejects.toThrow('Você poderá iniciar outra transferência');
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({
+      submissionCount: 4,
+      lastSubmittedAt: new Date(),
+    } as never);
+    await expect(
+      f.service.startForAdmin('ticket-1', 'recipient-person', 'Authorized correction', { sub: 'admin-user' } as never),
+    ).rejects.toThrow('Você poderá iniciar outra transferência');
     expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
   });
 
   it('allows a new request once the author submission cooldown ends', async () => {
     const f = createTicketTransferServiceFixture();
-    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 4, lastSubmittedAt: new Date(Date.now() - 21_000) } as never);
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({
+      submissionCount: 4,
+      lastSubmittedAt: new Date(Date.now() - 21_000),
+    } as never);
     await f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never);
     expect(f.tx.ticketTransfer.create).toHaveBeenCalled();
-    expect(f.tx.ticketTransferAuthorCooldown.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: { submissionCount: { increment: 1 }, lastSubmittedAt: expect.any(Date) },
-    }));
+    expect(f.tx.ticketTransferAuthorCooldown.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { submissionCount: { increment: 1 }, lastSubmittedAt: expect.any(Date) },
+      }),
+    );
   });
 
   it('applies the five-second cooldown before the third submission', async () => {
     const f = createTicketTransferServiceFixture();
-    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({ submissionCount: 2, lastSubmittedAt: new Date() } as never);
-    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow('Você poderá iniciar outra transferência');
+    f.tx.ticketTransferAuthorCooldown.upsert.mockResolvedValue({
+      submissionCount: 2,
+      lastSubmittedAt: new Date(),
+    } as never);
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow(
+      'Você poderá iniciar outra transferência',
+    );
     expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
   });
 
   it('rejects user transfers for deleted events', async () => {
     const f = createTicketTransferServiceFixture();
     f.ticket.event.deletedAt = new Date();
-    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow('Este bilhete não pode ser transferido');
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'sender-user' } as never)).rejects.toThrow(
+      'Este bilhete não pode ser transferido',
+    );
     expect(f.tx.ticketTransfer.create).not.toHaveBeenCalled();
   });
 
@@ -125,17 +161,21 @@ describe('ticket transfer mutations', () => {
     const f = createTicketTransferServiceFixture();
     f.tx.ticketTransfer.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(
-      f.service.cancelForUser('transfer-1', { sub: 'sender-user' } as never),
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(f.service.cancelForUser('transfer-1', { sub: 'sender-user' } as never)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
 
     const lockQueries = f.tx.$executeRaw.mock.calls.map(([query]) => query);
     expect(lockQueries.map((query) => query.values?.[0])).toEqual([
       'ticket-transfer-author:sender-user',
       'ticket-transfer:ticket-1',
     ]);
-    expect(f.tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(f.tx.ticketTransfer.findUnique.mock.invocationCallOrder[0]);
-    expect(f.tx.ticketTransfer.findUnique.mock.invocationCallOrder[0]).toBeLessThan(f.tx.$executeRaw.mock.invocationCallOrder[1]);
+    expect(f.tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      f.tx.ticketTransfer.findUnique.mock.invocationCallOrder[0],
+    );
+    expect(f.tx.ticketTransfer.findUnique.mock.invocationCallOrder[0]).toBeLessThan(
+      f.tx.$executeRaw.mock.invocationCallOrder[1],
+    );
     expect(f.tx.ticketTransfer.updateMany).toHaveBeenCalledWith({
       where: {
         id: 'transfer-1',
@@ -156,8 +196,9 @@ describe('ticket transfer mutations', () => {
       holder: { ...f.ticket.holder, userId: 'other-user' },
     });
 
-    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'attacker' } as never))
-      .rejects.toBeInstanceOf(NotFoundException);
+    await expect(f.service.startForUser('ticket-1', 'PASS-12345', { sub: 'attacker' } as never)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('sends accurate, deduplicated cancellation notices separately to admin and holder', async () => {
@@ -174,10 +215,12 @@ describe('ticket transfer mutations', () => {
     await f.service.cancelForUser('transfer-1', { sub: 'admin-user' } as never);
 
     const notifications = f.tx.ticketNotificationOutbox.create.mock.calls.map(([call]) => call.data);
-    expect(notifications).toEqual(expect.arrayContaining([
-      expect.objectContaining({ notificationType: 'SENDER_CANCELED', recipientUserId: 'admin-user' }),
-      expect.objectContaining({ notificationType: 'SENDER_ADMIN_CANCELED', recipientUserId: 'sender-user' }),
-    ]));
+    expect(notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ notificationType: 'SENDER_CANCELED', recipientUserId: 'admin-user' }),
+        expect.objectContaining({ notificationType: 'SENDER_ADMIN_CANCELED', recipientUserId: 'sender-user' }),
+      ]),
+    );
     const audit = f.tx.auditLogEntry.create.mock.calls.at(-1)?.[0].data;
     expect(audit?.actorId).toBe('admin-user');
     expect(audit?.after).toEqual(expect.objectContaining({ senderStatus: TicketTransferSenderStatus.CANCELED }));
@@ -198,19 +241,22 @@ describe('ticket transfer mutations', () => {
 
     const audit = f.tx.auditLogEntry.create.mock.calls.at(-1)?.[0].data;
     expect(audit?.actorId).toBe('recipient-user');
-    expect(audit?.after).toEqual(expect.objectContaining({
-      recipientStatus: TicketTransferRecipientStatus.IGNORED,
-      ignoreReason: 'USER_IGNORED',
-    }));
+    expect(audit?.after).toEqual(
+      expect.objectContaining({
+        recipientStatus: TicketTransferRecipientStatus.IGNORED,
+        ignoreReason: 'USER_IGNORED',
+      }),
+    );
   });
 });
-
 
 describe('administrative transfer frozen protection', () => {
   it('blocks starting an administrative transfer before resolving recipient or writing', async () => {
     const { service, tx, frozenResources, eligibility } = createTicketTransferServiceFixture();
     frozenResources.assertEventMutable.mockRejectedValue(new Error('Frozen'));
-    await expect(service.startForAdmin('ticket-1', 'recipient', 'Correção', { sub: 'admin' } as never)).rejects.toThrow('Frozen');
+    await expect(service.startForAdmin('ticket-1', 'recipient', 'Correção', { sub: 'admin' } as never)).rejects.toThrow(
+      'Frozen',
+    );
     expect(eligibility.prepareIdentitySnapshot).not.toHaveBeenCalled();
     expect(tx.ticketTransfer.create).not.toHaveBeenCalled();
   });

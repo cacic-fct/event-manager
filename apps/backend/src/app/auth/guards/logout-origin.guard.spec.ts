@@ -18,7 +18,7 @@ describe('LogoutOriginGuard', () => {
     expect(guard.canActivate(contextWithOrigin('https://events.example.com'))).toBe(true);
   });
 
-  it.each([undefined, 'null', 'https://events.example.com.evil.test', 'https://evil.example']) (
+  it.each([undefined, 'null', 'https://events.example.com.evil.test', 'https://evil.example'])(
     'rejects missing or untrusted origin %s',
     (origin) => {
       expect(() => guard.canActivate(contextWithOrigin(origin))).toThrow(ForbiddenException);

@@ -32,7 +32,9 @@ describe('CalendarEventListItem', () => {
     fixture.componentRef.setInput('event', event);
     fixture.detectChanges();
 
-    expect(Array.from(fixture.nativeElement.querySelectorAll('.metadata-item'), (item: Element) => item.textContent?.trim())).toEqual([
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('.metadata-item'), (item: Element) => item.textContent?.trim()),
+    ).toEqual([
       'Congresso de tecnologia',
       'Trilha de acessibilidade',
       'Atividade prática com leitores de tela.',

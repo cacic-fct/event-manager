@@ -24,7 +24,9 @@ export type AdminPrizeDrawStoryState = {
 export function createAdminPrizeDrawStoryHandlers(readState: () => AdminPrizeDrawStoryState) {
   const respond = async <T extends Record<string, unknown>>(data: T) => {
     const wait = readState().requestDelay;
-    if (wait > 0) await delay(wait);
+    if (wait > 0) {
+      await delay(wait);
+    }
     return HttpResponse.json<{ data: T }>({ data });
   };
   const draw = () => {

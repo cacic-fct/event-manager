@@ -91,7 +91,9 @@ export class AuthErrorPage {
       if (this.response) {
         this.response.status = reason === 'server-error' ? 500 : 400;
         const headers = new Headers(this.response.headers);
-        for (const [name, value] of Object.entries(PAGE_ERROR_HEADERS)) headers.set(name, value);
+        for (const [name, value] of Object.entries(PAGE_ERROR_HEADERS)) {
+          headers.set(name, value);
+        }
         this.response.headers = headers;
       }
 

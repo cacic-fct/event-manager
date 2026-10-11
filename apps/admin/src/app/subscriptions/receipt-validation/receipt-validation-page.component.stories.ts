@@ -63,7 +63,8 @@ const meta: Meta<ReceiptValidationStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Receipt review queue with controls for loading state, match quality, permissions, and content length. Stories cover review and filtering behavior.',
+        component:
+          'Receipt review queue with controls for loading state, match quality, permissions, and content length. Stories cover review and filtering behavior.',
       },
     },
     layout: 'fullscreen',
@@ -80,7 +81,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const enabledButton = canvas
     .queryAllByRole('button')
     .find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
-  if (enabledButton) await userEvent.hover(enabledButton);
+  if (enabledButton) {
+    await userEvent.hover(enabledButton);
+  }
 };
 
 export const Playground: Story = {
@@ -115,7 +118,9 @@ export const Loading: Story = {
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível atualizar a fila', { exact: true })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText('Não foi possível atualizar a fila', { exact: true }),
+    ).toBeVisible();
   },
 };
 
@@ -170,13 +175,18 @@ export const SubscriptionTierFilter: Story = {
 function createReceiptValidationStoryProviders(queue: ReceiptValidationQueue, args: ReceiptValidationStoryArgs) {
   const api = {
     watchQueue: () => {
-      if (args.apiState === 'loading') return NEVER;
-      if (args.apiState === 'error') return throwError(() => new Error('Não foi possível carregar os comprovantes.'));
+      if (args.apiState === 'loading') {
+        return NEVER;
+      }
+      if (args.apiState === 'error') {
+        return throwError(() => new Error('Não foi possível carregar os comprovantes.'));
+      }
       return of(queue).pipe(delay(args.latencyMs));
     },
-    getQueue: () => args.apiState === 'error'
-      ? throwError(() => new Error('Não foi possível carregar os comprovantes.'))
-      : of(queue).pipe(delay(args.latencyMs)),
+    getQueue: () =>
+      args.apiState === 'error'
+        ? throwError(() => new Error('Não foi possível carregar os comprovantes.'))
+        : of(queue).pipe(delay(args.latencyMs)),
     approve: () => of({ actionId: 'action-approve', item: queue.items[0] }),
     reject: () => of({ actionId: 'action-reject', item: queue.items[0] }),
     approveTicketPurchase: () => of(true),
@@ -255,9 +265,7 @@ function buildQueue(args: ReceiptValidationStoryArgs): ReceiptValidationQueue {
       events: [
         {
           id: `event-angular-${index + 1}`,
-          name: args.longContent
-            ? 'Arquitetura Angular com Signals e acessibilidade em escala'
-            : 'Arquitetura Angular',
+          name: args.longContent ? 'Arquitetura Angular com Signals e acessibilidade em escala' : 'Arquitetura Angular',
           emoji: '💻',
           type: 'MINICURSO',
           startDate: adminFixtureDateFromNow(2),

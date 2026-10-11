@@ -157,7 +157,8 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Feed and preference settings with controls for profile, feed state, API response, and optional links.',
+        component:
+          'Feed and preference settings with controls for profile, feed state, API response, and optional links.',
       },
     },
     layout: 'fullscreen',

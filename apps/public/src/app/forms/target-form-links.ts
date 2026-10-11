@@ -20,7 +20,9 @@ import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from './event
     @if (links().length) {
       <nav aria-label="Formulários disponíveis" class="form-links">
         @for (link of links(); track link.linkId) {
-          <a mat-button [routerLink]="['/profile/forms', link.formId]"
+          <a
+            mat-button
+            [routerLink]="['/profile/forms', link.formId]"
             [queryParams]="{ targetType: targetType(), targetId: targetId(), linkId: link.linkId }">
             <mat-icon aria-hidden="true">{{ link.results ? 'bar_chart' : 'list_alt' }}</mat-icon>
             {{ link.results ? 'Resultados: ' + link.name : link.name }}
@@ -29,7 +31,14 @@ import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from './event
       </nav>
     }
   `,
-  styles: `.form-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block-start: 1rem; }`,
+  styles: `
+    .form-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-block-start: 1rem;
+    }
+  `,
 })
 export class TargetFormLinks {
   readonly targetType = input.required<EventFormTargetType>();
@@ -42,30 +51,52 @@ export class TargetFormLinks {
   private readonly authenticated = inject(AuthService).isAuthenticated;
   private readonly online = inject(NetworkStatusService).isOnline;
 
-  readonly links = toSignal(combineLatest([
-    toObservable(this.targetType), toObservable(this.targetId), toObservable(this.authenticated),
-    toObservable(this.online), toObservable(this.prefetchedForms),
-  ]).pipe(switchMap(([targetType, targetId, authenticated, online, prefetchedForms]) => {
-    if (!this.isBrowser || !authenticated || !online) return of([]);
-    if (prefetchedForms !== undefined) return of(this.formLinks(prefetchedForms, targetType, targetId));
-    return merge(this.interests.changes, this.realtime.watchCatalog()).pipe(
-      startWith(0),
-      switchMap(() => this.api.listCurrentUserForms({
-        targetType,
-        eventId: targetType === 'EVENT' ? targetId : null,
-        majorEventId: targetType === 'MAJOR_EVENT' ? targetId : null,
-      }).pipe(
-        map((forms) => this.formLinks(forms, targetType, targetId)),
-        catchError(() => of([])),
-      )),
-    );
-  })), { initialValue: [] });
+  readonly links = toSignal(
+    combineLatest([
+      toObservable(this.targetType),
+      toObservable(this.targetId),
+      toObservable(this.authenticated),
+      toObservable(this.online),
+      toObservable(this.prefetchedForms),
+    ]).pipe(
+      switchMap(([targetType, targetId, authenticated, online, prefetchedForms]) => {
+        if (!this.isBrowser || !authenticated || !online) {
+          return of([]);
+        }
+        if (prefetchedForms !== undefined) {
+          return of(this.formLinks(prefetchedForms, targetType, targetId));
+        }
+        return merge(this.interests.changes, this.realtime.watchCatalog()).pipe(
+          startWith(0),
+          switchMap(() =>
+            this.api
+              .listCurrentUserForms({
+                targetType,
+                eventId: targetType === 'EVENT' ? targetId : null,
+                majorEventId: targetType === 'MAJOR_EVENT' ? targetId : null,
+              })
+              .pipe(
+                map((forms) => this.formLinks(forms, targetType, targetId)),
+                catchError(() => of([])),
+              ),
+          ),
+        );
+      }),
+    ),
+    { initialValue: [] },
+  );
   private formLinks(forms: PublicEventForm[], targetType: EventFormTargetType, targetId: string) {
-    return forms.flatMap((form) => form.links.flatMap((link) => {
-      if (link.targetType !== targetType || (link.eventId ?? link.majorEventId) !== targetId) return [];
-      const available = isPublicFormLinkAvailable(link);
-      if (!available && !arePublicFormResultsReleased(form, link)) return [];
-      return [{ formId: form.id, linkId: link.id, name: form.name, results: !available }];
-    }));
+    return forms.flatMap((form) =>
+      form.links.flatMap((link) => {
+        if (link.targetType !== targetType || (link.eventId ?? link.majorEventId) !== targetId) {
+          return [];
+        }
+        const available = isPublicFormLinkAvailable(link);
+        if (!available && !arePublicFormResultsReleased(form, link)) {
+          return [];
+        }
+        return [{ formId: form.id, linkId: link.id, name: form.name, results: !available }];
+      }),
+    );
   }
 }

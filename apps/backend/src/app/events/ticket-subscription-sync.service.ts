@@ -9,11 +9,19 @@ export class TicketSubscriptionSyncService {
   constructor(private readonly tickets: TicketIssuanceService) {}
 
   async forEvent(tx: Prisma.TransactionClient, eventId: string, personId: string): Promise<void> {
-    await this.tickets.syncForPerson(tx, eventId, personId, 'EVENT_SUBSCRIPTION', `event-subscription:${eventId}:${personId}`);
+    await this.tickets.syncForPerson(
+      tx,
+      eventId,
+      personId,
+      'EVENT_SUBSCRIPTION',
+      `event-subscription:${eventId}:${personId}`,
+    );
   }
 
   async forEvents(tx: Prisma.TransactionClient, eventIds: readonly string[], personId: string): Promise<void> {
-    for (const eventId of [...new Set(eventIds)].sort()) await this.forEvent(tx, eventId, personId);
+    for (const eventId of [...new Set(eventIds)].sort()) {
+      await this.forEvent(tx, eventId, personId);
+    }
   }
 
   async forMajorEvent(tx: Prisma.TransactionClient, majorEventId: string, personId: string): Promise<void> {
@@ -22,11 +30,18 @@ export class TicketSubscriptionSyncService {
     await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
       const configs = await tx.ticketConfig.findMany({
         where: { event: { OR: [{ majorEventId }, { majorEventId: null, eventGroup: { majorEventId } }] } },
-        select: { eventId: true }, orderBy: { eventId: 'asc' },
+        select: { eventId: true },
+        orderBy: { eventId: 'asc' },
       });
       for (const config of configs) {
         await this.forEvent(tx, config.eventId, personId);
-        await this.tickets.syncForPerson(tx, config.eventId, personId, 'MAJOR_EVENT_SUBSCRIPTION', `major-event-subscription:${config.eventId}:${personId}`);
+        await this.tickets.syncForPerson(
+          tx,
+          config.eventId,
+          personId,
+          'MAJOR_EVENT_SUBSCRIPTION',
+          `major-event-subscription:${config.eventId}:${personId}`,
+        );
       }
     });
   }

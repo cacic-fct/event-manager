@@ -80,11 +80,9 @@ export class PublicMapApiService {
 
   private query<TData>(query: string, variables?: GraphqlVariables, anonymousOnly = false): Observable<TData> {
     return this.http
-      .post<GraphqlResponse<TData>>(
-        '/api/graphql',
-        variables === undefined ? { query } : { query, variables },
-        anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {},
-      )
+      .post<
+        GraphqlResponse<TData>
+      >('/api/graphql', variables === undefined ? { query } : { query, variables }, anonymousOnly ? { headers: { 'X-Event-Audience': 'public' } } : {})
       .pipe(
         map((response) => {
           if (response.errors?.length) {

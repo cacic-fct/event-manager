@@ -403,9 +403,15 @@ function permissionForEntry(entityType: AuditLogEntityType, operation: AuditLogO
     return null;
   }
 
-  if (entityType === 'TICKET_TRANSFER') return 'ticket-transfer#manage';
-  if (entityType === 'TICKET_PURCHASE') return operation === 'REJECT' ? 'receipt#reject' : 'receipt#approve';
-  if (entityType === 'TICKET_CONFIG') return `ticket-config#${operation.toLocaleLowerCase('en-US')}`;
+  if (entityType === 'TICKET_TRANSFER') {
+    return 'ticket-transfer#manage';
+  }
+  if (entityType === 'TICKET_PURCHASE') {
+    return operation === 'REJECT' ? 'receipt#reject' : 'receipt#approve';
+  }
+  if (entityType === 'TICKET_CONFIG') {
+    return `ticket-config#${operation.toLocaleLowerCase('en-US')}`;
+  }
 
   return `${entityType.toLocaleLowerCase('en-US').replace(/_/g, '-')}#${operation.toLocaleLowerCase('en-US')}`;
 }

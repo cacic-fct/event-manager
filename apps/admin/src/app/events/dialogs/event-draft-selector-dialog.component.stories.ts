@@ -191,7 +191,6 @@ export const SingleDraft: Story = {
   },
 };
 
-
 export const Empty: Story = {
   args: { draftCount: 0 },
 };

@@ -90,8 +90,12 @@ const meta: Meta<PermissionManagementPageComponent> = {
           http.post('/api/graphql', async ({ request }) => {
             const body = (await request.json()) as { query?: string };
             const query = body.query ?? '';
-            if (query.includes('PermissionRoles')) return HttpResponse.json({ data: { permissionRoles: [role] } });
-            if (query.includes('PermissionGroups')) return HttpResponse.json({ data: { permissionGroups: [group] } });
+            if (query.includes('PermissionRoles')) {
+              return HttpResponse.json({ data: { permissionRoles: [role] } });
+            }
+            if (query.includes('PermissionGroups')) {
+              return HttpResponse.json({ data: { permissionGroups: [group] } });
+            }
             if (query.includes('PermissionScopeTargets')) {
               return HttpResponse.json({
                 data: {
@@ -132,7 +136,6 @@ export const UnsavedChanges: Story = {
     await expect(canvas.getByText('Alterações não salvas')).toBeVisible();
   },
 };
-
 
 export const RoleSearch: Story = {
   play: async ({ canvasElement }) => {

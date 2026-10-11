@@ -97,7 +97,9 @@ export class SubscriptionsPageComponent implements OnDestroy {
         this.closeReceiptQueueStream();
         return;
       }
-      if (!context) return;
+      if (!context) {
+        return;
+      }
       if (context.kind === 'event') {
         this.closeReceiptQueueStream();
         this.selectedMajorEventPendingReceiptsCount.set(0);
@@ -116,7 +118,9 @@ export class SubscriptionsPageComponent implements OnDestroy {
           }
         })
         .finally(() => {
-          if (request === this.majorEventRouteRequest) this.contextLoading.set(false);
+          if (request === this.majorEventRouteRequest) {
+            this.contextLoading.set(false);
+          }
         });
     });
   }

@@ -73,9 +73,12 @@ export const AutomaticCodeEntry: Story = {
     region.scrollIntoView();
     const canvas = within(region);
     await userEvent.click(await canvas.findByRole('button', { name: 'Autorregistro' }));
-    await waitFor(async () => {
-      await expect(canvas.getByRole('textbox', { name: 'Código de presença' })).toHaveValue('KC1C');
-    }, { timeout: 3000 });
+    await waitFor(
+      async () => {
+        await expect(canvas.getByRole('textbox', { name: 'Código de presença' })).toHaveValue('KC1C');
+      },
+      { timeout: 3000 },
+    );
     await expect(canvas.queryByRole('heading', { name: 'Presença confirmada.' })).not.toBeInTheDocument();
   },
 };

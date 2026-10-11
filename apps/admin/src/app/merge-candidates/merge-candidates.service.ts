@@ -38,11 +38,13 @@ export class MergeCandidatesService {
     const status = this.mergeFilterForm.controls.status.value as MergeCandidateStatus;
     const query = this.mergeFilterForm.controls.query.value.trim() || undefined;
     const [items, count] = await Promise.all([
-      firstValueFrom(this.api.listMergeCandidates({
-        status,
-        ...(query ? { query } : {}),
-        ...pageVariables(this.mergeCandidatesPagination.pageIndex()),
-      })),
+      firstValueFrom(
+        this.api.listMergeCandidates({
+          status,
+          ...(query ? { query } : {}),
+          ...pageVariables(this.mergeCandidatesPagination.pageIndex()),
+        }),
+      ),
       firstValueFrom(this.api.countMergeCandidates(status, query)),
     ]);
     this.mergeCandidates.set(applyPagedResult(items, this.mergeCandidatesPagination));

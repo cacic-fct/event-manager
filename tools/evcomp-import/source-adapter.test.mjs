@@ -258,7 +258,9 @@ test('reads current modality columns from the live adapter query', async () => {
   const connection = {
     async query(sql) {
       calls.push(sql);
-      if (sql.includes('information_schema.COLUMNS')) return [availableRows];
+      if (sql.includes('information_schema.COLUMNS')) {
+        return [availableRows];
+      }
       if (sql.includes('FROM `evento`')) {
         return [
           [
@@ -316,10 +318,15 @@ test('reads current modality columns from the live adapter query', async () => {
           ],
         ];
       }
-      if (sql.includes('FROM `presença`')) return [[]];
-      if (sql.includes('FROM `ministrante_atividade`')) return [[]];
-      if (sql.includes('FROM `usuário`'))
+      if (sql.includes('FROM `presença`')) {
+        return [[]];
+      }
+      if (sql.includes('FROM `ministrante_atividade`')) {
+        return [[]];
+      }
+      if (sql.includes('FROM `usuário`')) {
         return [[{ sourceId: 1, name: 'Ana', email: 'ana@example.com', academicId: '123' }]];
+      }
       throw new Error(`Unexpected SQL: ${sql}`);
     },
   };

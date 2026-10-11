@@ -46,7 +46,9 @@ export class AppRouteReuseStrategy implements RouteReuseStrategy, OnDestroy {
   }
 
   store(route: ActivatedRouteSnapshot, handle: DetachedRouteHandle | null): void {
-    if (!handle) return;
+    if (!handle) {
+      return;
+    }
 
     const key = this.key(route);
     const previousHandle = this.handles.get(key)?.handle;

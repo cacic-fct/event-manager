@@ -77,15 +77,25 @@
 
   @if (!data.preview && !isEventFinished() && !data.currentUserSubscription) {
   <section class="interest-actions" aria-label="Interesse no evento">
-    <app-interest-toggle targetType="EVENT" [targetId]="event.id" [targetName]="event.name"
-      [interestEnabled]="!!event.interestEnabled" [subscribed]="!!data.currentUserSubscription" [endsAt]="event.endDate"
+    <app-interest-toggle
+      targetType="EVENT"
+      [targetId]="event.id"
+      [targetName]="event.name"
+      [interestEnabled]="!!event.interestEnabled"
+      [subscribed]="!!data.currentUserSubscription"
+      [endsAt]="event.endDate"
       (changed)="refreshInterestForms()" />
   </section>
-  } @if (!data.preview && event.eventGroup && event.eventGroupId && !data.currentUserSubscription?.eventGroupSubscriptionId) {
+  } @if (!data.preview && event.eventGroup && event.eventGroupId &&
+  !data.currentUserSubscription?.eventGroupSubscriptionId) {
   <section class="interest-actions" aria-label="Interesse no grupo de eventos" [hidden]="!groupInterest.visible()">
     <p>{{ event.eventGroup.name }}</p>
-    <app-interest-toggle #groupInterest targetType="EVENT_GROUP" [targetId]="event.eventGroupId"
-      [targetName]="event.eventGroup.name" [interestEnabled]="!!event.eventGroup.interestEnabled"
+    <app-interest-toggle
+      #groupInterest
+      targetType="EVENT_GROUP"
+      [targetId]="event.eventGroupId"
+      [targetName]="event.eventGroup.name"
+      [interestEnabled]="!!event.eventGroup.interestEnabled"
       [subscribed]="!!data.currentUserSubscription?.eventGroupSubscriptionId"
       (changed)="refreshInterestForms()" />
   </section>
@@ -97,7 +107,8 @@
       <mat-icon>open_in_new</mat-icon>
       {{ event.buttonText || 'Acompanhar evento' }}
     </a>
-    } @if (!isEventFinished()) { @if (hasStandaloneSubscription(event) && !isAuthenticated() && !data.currentUserSubscription) {
+    } @if (!isEventFinished()) { @if (hasStandaloneSubscription(event) && !isAuthenticated() &&
+    !data.currentUserSubscription) {
     <button mat-flat-button type="button" [disabled]="!isOnline()" (click)="login()">
       <mat-icon>login</mat-icon>
       Entrar para inscrever-se
@@ -268,15 +279,9 @@
   <section class="detail-section">
     <h2>Transmissão</h2>
     @if (event.twitchChannel) {
-    <lib-livestream-embed
-      provider="TWITCH"
-      [value]="event.twitchChannel"
-      title="Transmissão do evento na Twitch" />
+    <lib-livestream-embed provider="TWITCH" [value]="event.twitchChannel" title="Transmissão do evento na Twitch" />
     } @if (event.youtubeCode) {
-    <lib-livestream-embed
-      provider="YOUTUBE"
-      [value]="event.youtubeCode"
-      title="Transmissão do evento no YouTube" />
+    <lib-livestream-embed provider="YOUTUBE" [value]="event.youtubeCode" title="Transmissão do evento no YouTube" />
     }
   </section>
   } @if (event.locationDescription || (event.latitude !== null && event.longitude !== null)) {

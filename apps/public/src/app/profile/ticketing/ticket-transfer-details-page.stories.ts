@@ -81,32 +81,36 @@ const meta: Meta<TicketTransferDetailsStoryArgs> = {
         description: context.args.description || null,
         transferEligibilityDescription: context.args.eligibilityDescription || null,
         event: { ...baseTicket.event, name: context.args.ticketName, emoji: context.args.ticketEmoji },
-        ...((context.args.mode === 'expired' || context.args.mode === 'admin-expired' || context.args.mode === 'sender-expired')
+        ...(context.args.mode === 'expired' ||
+        context.args.mode === 'admin-expired' ||
+        context.args.mode === 'sender-expired'
           ? { status: 'EXPIRED' as const, effectiveExpiresAt: new Date(Date.now() - 1000).toISOString() }
           : {}),
       };
       const ignored = ['ignored', 'user-ignored', 'system-ineligible', 'system-duplicate'].includes(context.args.mode);
-      const ignoreReason = context.args.mode === 'user-ignored'
-        ? 'USER_IGNORED'
-        : context.args.mode === 'system-duplicate'
-          ? 'ALREADY_HELD'
-          : 'INELIGIBLE';
+      const ignoreReason =
+        context.args.mode === 'user-ignored'
+          ? 'USER_IGNORED'
+          : context.args.mode === 'system-duplicate'
+            ? 'ALREADY_HELD'
+            : 'INELIGIBLE';
       const transfer = createTicketStoryTransfer({
         ticket,
         recipient: context.args.mode.startsWith('sender') ? null : createTicketStoryTransfer().recipient,
         submittedDestinationIdentityDocument: context.args.mode.startsWith('sender') ? 'XK1234567' : null,
-        initiatedByAdmin: (context.args.mode === 'admin' || context.args.mode === 'admin-expired'),
+        initiatedByAdmin: context.args.mode === 'admin' || context.args.mode === 'admin-expired',
         initiatingAdmin:
-          (context.args.mode === 'admin' || context.args.mode === 'admin-expired')
+          context.args.mode === 'admin' || context.args.mode === 'admin-expired'
             ? { personId: 'admin-1', firstName: 'Alex', avatarUrl: null }
             : null,
-        senderStatus: context.args.mode === 'accepted'
-          ? 'ACCEPTED'
-          : context.args.mode === 'canceled'
-            ? 'CANCELED'
-            : context.args.mode === 'transfer-expired'
-              ? 'EXPIRED'
-              : 'PENDING',
+        senderStatus:
+          context.args.mode === 'accepted'
+            ? 'ACCEPTED'
+            : context.args.mode === 'canceled'
+              ? 'CANCELED'
+              : context.args.mode === 'transfer-expired'
+                ? 'EXPIRED'
+                : 'PENDING',
         recipientStatus: ignored
           ? context.args.mode === 'user-ignored' || context.args.mode === 'ignored'
             ? 'IGNORED'
@@ -117,13 +121,16 @@ const meta: Meta<TicketTransferDetailsStoryArgs> = {
             ? 'ACCEPTED'
             : 'PENDING',
         ignoreReason: ignored ? ignoreReason : null,
-        canAccept: !ignored && context.args.mode !== 'sender' && context.args.mode !== 'expired' &&
-          context.args.mode !== 'accepted' && context.args.mode !== 'canceled' && context.args.mode !== 'transfer-expired',
+        canAccept:
+          !ignored &&
+          context.args.mode !== 'sender' &&
+          context.args.mode !== 'expired' &&
+          context.args.mode !== 'accepted' &&
+          context.args.mode !== 'canceled' &&
+          context.args.mode !== 'transfer-expired',
         canCancel: true,
       });
-      const transferResponse = context.args.apiState === 'loading'
-        ? NEVER
-        : of(transfer);
+      const transferResponse = context.args.apiState === 'loading' ? NEVER : of(transfer);
       return applicationConfig({
         providers: [
           provideRouter([]),
@@ -253,7 +260,9 @@ export const ExpiredBeforeAcceptance: Story = {
   args: { mode: 'expired' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText('Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.')).toBeVisible();
+    await expect(
+      await canvas.findByText('Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.'),
+    ).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Receber bilhete' })).toBeNull();
   },
 };

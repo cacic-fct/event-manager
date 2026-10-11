@@ -90,7 +90,9 @@ export async function readEvcompSnapshot(connection, override = {}, timezoneOffs
       ? (await rows(connection, modalitiesSql(effectiveSchema))).map((row) => normalizeModalityRow(row))
       : [];
   const registrations = await rows(connection, registrationsSql(effectiveSchema));
-  if (modalityMode === 'current') validateRegistrationModalities(registrations);
+  if (modalityMode === 'current') {
+    validateRegistrationModalities(registrations);
+  }
   const attendances = await rows(connection, attendancesSql(effectiveSchema));
   const lecturers = await rows(connection, lecturersSql(effectiveSchema));
   const referencedPersonIds = new Set(
@@ -106,7 +108,9 @@ export async function validateSourceSchema(connection, schema) {
   const required = [];
   for (const [sectionName, section] of Object.entries(schema)) {
     for (const [fieldName, column] of Object.entries(section)) {
-      if (fieldName === 'table' || fieldName === 'includedTypes') continue;
+      if (fieldName === 'table' || fieldName === 'includedTypes') {
+        continue;
+      }
       required.push({ sectionName, table: section.table, column });
     }
   }
@@ -297,7 +301,9 @@ function modalityRequirementsFor(schema) {
   const requirements = [];
   const registrations = schema.registrations;
   const modalities = schema.modalities;
-  if (!registrations || !modalities) return requirements;
+  if (!registrations || !modalities) {
+    return requirements;
+  }
   requirements.push(
     { sectionName: 'registrations', table: registrations.table, column: registrations.modalityId },
     { sectionName: 'registrations', table: registrations.table, column: registrations.appliedAmount },
@@ -312,7 +318,9 @@ function modalityRequirementsFor(schema) {
 export function catalogRequirementsFor(schema) {
   return ['events', 'activities'].flatMap((sectionName) => {
     const section = schema[sectionName];
-    if (!section) return [];
+    if (!section) {
+      return [];
+    }
     return Object.entries(section)
       .filter(([fieldName]) => fieldName !== 'table')
       .map(([fieldName, column]) => ({ sectionName, fieldName, table: section.table, column }));
@@ -328,7 +336,9 @@ export function schemaForModes(schema, { catalogMode, modalityMode }) {
       ),
     );
   }
-  if (modalityMode === 'current') return effectiveSchema;
+  if (modalityMode === 'current') {
+    return effectiveSchema;
+  }
   const withoutModalities = Object.fromEntries(
     Object.entries(effectiveSchema).filter(([sectionName]) => sectionName !== 'modalities'),
   );
@@ -345,30 +355,44 @@ function valuesEqual(left, right) {
 }
 
 function parseSourceDate(value, timezoneOffset, endOfDay = false) {
-  if (value == null) return null;
-  if (value instanceof Date) return new Date(value.getTime());
+  if (value == null) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return new Date(value.getTime());
+  }
   const normalized = String(value).trim().replace(' ', 'T');
   const dateTime = /^\d{4}-\d{2}-\d{2}$/u.test(normalized)
     ? `${normalized}T${endOfDay ? '23:59:59.999' : '00:00:00'}`
     : normalized;
   const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/iu.test(dateTime);
   const parsed = new Date(hasTimezone ? dateTime : `${dateTime}${timezoneOffset}`);
-  if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid EvComp catalog date: ${String(value)}`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid EvComp catalog date: ${String(value)}`);
+  }
   return parsed;
 }
 
 function combineSourceDateTime(dateValue, timeValue, timezoneOffset) {
-  if (dateValue == null || timeValue == null) return null;
+  if (dateValue == null || timeValue == null) {
+    return null;
+  }
   const date = dateValue instanceof Date ? dateValue.toISOString().slice(0, 10) : String(dateValue).trim().slice(0, 10);
   let time = timeValue instanceof Date ? timeValue.toISOString().slice(11, 19) : String(timeValue).trim();
-  if (/^\d{2}:\d{2}$/u.test(time)) time += ':00';
+  if (/^\d{2}:\d{2}$/u.test(time)) {
+    time += ':00';
+  }
   return parseSourceDate(`${date}T${time}`, timezoneOffset);
 }
 
 function toSourceInteger(value, fieldName) {
-  if (value == null) return null;
+  if (value == null) {
+    return null;
+  }
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid EvComp ${fieldName}: ${String(value)}`);
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`Invalid EvComp ${fieldName}: ${String(value)}`);
+  }
   return parsed;
 }
 

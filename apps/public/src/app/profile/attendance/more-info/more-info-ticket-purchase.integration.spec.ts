@@ -62,10 +62,16 @@ describe('MoreInfo ticket purchase placement integration', () => {
         { provide: NetworkStatusService, useValue: { isOnline: () => true } },
         {
           provide: PublicDataAccessService,
-          useValue: { replaceAttendanceDetail: () => Promise.resolve(), getAttendanceDetail: () => Promise.resolve(null) },
+          useValue: {
+            replaceAttendanceDetail: () => Promise.resolve(),
+            getAttendanceDetail: () => Promise.resolve(null),
+          },
         },
         { provide: MatDialog, useValue: { open: vi.fn() } },
-        { provide: AttendancesApiService, useValue: { getMajorEventDetails: () => of({ subscription, attendances: [] }) } },
+        {
+          provide: AttendancesApiService,
+          useValue: { getMajorEventDetails: () => of({ subscription, attendances: [] }) },
+        },
         { provide: PublicEventFormApiService, useValue: { listCurrentUserForms: () => of([]) } },
         { provide: PublicPrizeDrawApiService, useValue: { availability: () => of([]), watch: () => of() } },
         { provide: TicketingApiService, useValue: { watchCurrentUser: () => of() } },
@@ -79,15 +85,25 @@ describe('MoreInfo ticket purchase placement integration', () => {
   it('places confirmed ticket offers after participation actions and before event details', async () => {
     const fixture = await setup('CONFIRMED');
     fixture.detectChanges();
-    const optionsRequest = http.expectOne((request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchaseOptions'));
-    optionsRequest.flush({ data: { myTicketPurchaseOptions: [createTicketPurchaseOption({
-      eventId: 'party-event',
-      majorEventId: 'major-1',
-      ticketConfigId: 'party-config',
-      name: 'Festa de encerramento',
-      event: { id: 'party-event', name: 'Festa de encerramento' },
-    })] } });
-    const purchasesRequest = http.expectOne((request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchases'));
+    const optionsRequest = http.expectOne(
+      (request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchaseOptions'),
+    );
+    optionsRequest.flush({
+      data: {
+        myTicketPurchaseOptions: [
+          createTicketPurchaseOption({
+            eventId: 'party-event',
+            majorEventId: 'major-1',
+            ticketConfigId: 'party-config',
+            name: 'Festa de encerramento',
+            event: { id: 'party-event', name: 'Festa de encerramento' },
+          }),
+        ],
+      },
+    });
+    const purchasesRequest = http.expectOne(
+      (request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchases'),
+    );
     purchasesRequest.flush({ data: { myTicketPurchases: [] } });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -95,13 +111,17 @@ describe('MoreInfo ticket purchase placement integration', () => {
     const host = fixture.nativeElement as HTMLElement;
     const actions = host.querySelector('.actions');
     const offers = host.querySelector('.ticket-purchase-section');
-    const about = Array.from(host.querySelectorAll('.detail-section')).find((section) => section.querySelector('h2')?.textContent?.trim() === 'Sobre');
+    const about = Array.from(host.querySelectorAll('.detail-section')).find(
+      (section) => section.querySelector('h2')?.textContent?.trim() === 'Sobre',
+    );
     expect(actions).not.toBeNull();
     expect(offers).not.toBeNull();
     expect(about).not.toBeUndefined();
     expect(host.textContent).toContain('Bilhetes adicionais');
     expect(host.textContent).toContain('Festa de encerramento');
-    if (!actions || !offers || !about) throw new Error('The offer section and surrounding detail sections must render.');
+    if (!actions || !offers || !about) {
+      throw new Error('The offer section and surrounding detail sections must render.');
+    }
     expect(actions.compareDocumentPosition(offers) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(offers.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fixture.destroy();
@@ -114,7 +134,9 @@ describe('MoreInfo ticket purchase placement integration', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Bilhetes adicionais');
-    expect(http.match((request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchaseOptions'))).toHaveLength(0);
+    expect(
+      http.match((request) => request.url === '/api/graphql' && request.body.query.includes('myTicketPurchaseOptions')),
+    ).toHaveLength(0);
     fixture.destroy();
   });
 });

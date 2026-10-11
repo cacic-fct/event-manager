@@ -22,9 +22,13 @@ export async function findActiveRolePermissionScopes(
   permissions?: readonly Permission[],
   now = new Date(),
 ): Promise<EffectiveRoleScope[]> {
-  if (!userId) return [];
+  if (!userId) {
+    return [];
+  }
   const people = await prisma.people.findMany({ where: { userId, deletedAt: null }, select: { id: true }, take: 2 });
-  if (people.length !== 1) return [];
+  if (people.length !== 1) {
+    return [];
+  }
   const activeWindow = {
     archivedAt: null,
     AND: [
@@ -97,10 +101,16 @@ async function resolveEffectiveRolePermissions(prisma: PrismaService): Promise<M
   const resolved = new Map<string, Set<Permission>>();
   const visit = (roleId: string, visiting = new Set<string>()): Set<Permission> => {
     const cached = resolved.get(roleId);
-    if (cached) return cached;
-    if (visiting.has(roleId)) return new Set();
+    if (cached) {
+      return cached;
+    }
+    if (visiting.has(roleId)) {
+      return new Set();
+    }
     const role = byId.get(roleId);
-    if (!role) return new Set();
+    if (!role) {
+      return new Set();
+    }
     const definition = role.systemKey
       ? EVENT_MANAGER_SYSTEM_ROLE_BY_KEY.get(role.systemKey as EventManagerSystemRoleKey)
       : null;

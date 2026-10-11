@@ -2,7 +2,13 @@ import { TicketTransferService } from '../ticket-transfer.service';
 
 export function createTicketTransferServiceFixture() {
   const now = new Date();
-  const holder = { id: 'sender-person', name: 'Sender Name', identityDocument: '52998224725', isCPF: true, userId: 'sender-user' };
+  const holder = {
+    id: 'sender-person',
+    name: 'Sender Name',
+    identityDocument: '52998224725',
+    isCPF: true,
+    userId: 'sender-user',
+  };
   const event = {
     id: 'event-1',
     deletedAt: null as Date | null,
@@ -116,9 +122,18 @@ export function createTicketTransferServiceFixture() {
     protect: jest.fn().mockReturnValue({ encryptedValue: 'encrypted-document' }),
     reveal: jest.fn().mockReturnValue('PASS-12345'),
   };
-  const eligibility = { prepareIdentitySnapshot: jest.fn(), evaluateRecipientEligibility: jest.fn().mockResolvedValue({ eligible: true }) };
+  const eligibility = {
+    prepareIdentitySnapshot: jest.fn(),
+    evaluateRecipientEligibility: jest.fn().mockResolvedValue({ eligible: true }),
+  };
   const realtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
   const frozenResources = { assertEventMutable: jest.fn() };
-  const service = new TicketTransferService(prisma as never, identities as never, eligibility as never, realtime as never, frozenResources as never);
+  const service = new TicketTransferService(
+    prisma as never,
+    identities as never,
+    eligibility as never,
+    realtime as never,
+    frozenResources as never,
+  );
   return { service, tx, eligibility, transfer, ticket, frozenResources };
 }

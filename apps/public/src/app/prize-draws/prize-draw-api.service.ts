@@ -124,8 +124,12 @@ export class PublicPrizeDrawApiService {
   private query<TData>(query: string, variables?: Record<string, unknown>): Observable<TData> {
     return this.http.post<GraphqlResponse<TData>>('/api/graphql', { query, variables }).pipe(
       map((response) => {
-        if (response.errors?.length) throw graphqlError(response.errors);
-        if (!response.data) throw new Error('Resposta GraphQL sem dados.');
+        if (response.errors?.length) {
+          throw graphqlError(response.errors);
+        }
+        if (!response.data) {
+          throw new Error('Resposta GraphQL sem dados.');
+        }
         return response.data;
       }),
     );

@@ -10,11 +10,13 @@ describe('ticket eligibility', () => {
     const result = await f.service.evaluateRecipientEligibility(f.tx as never, 'event-1', 'person-1');
 
     expect(result.eligible).toBe(true);
-    expect(f.tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
+    expect(f.tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
+        }),
       }),
-    }));
+    );
     expect(f.accountManager.lookupUsersByEmail).not.toHaveBeenCalled();
   });
 
@@ -25,11 +27,13 @@ describe('ticket eligibility', () => {
 
     expect(result.eligible).toBe(false);
     expect(result.reasons).toContain('SUBSCRIPTION_REQUIRED');
-    expect(f.tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
+    expect(f.tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          subscriptionStatus: { in: [...ACTIVE_MAJOR_EVENT_REGISTRATION_STATUSES] },
+        }),
       }),
-    }));
+    );
   });
 
   it('requires a validated receipt for purchase even when registration permits transfer', async () => {
@@ -47,8 +51,9 @@ describe('ticket eligibility', () => {
     const f = eligibilityFixture({ subscription: null, requiresVerification: true });
     f.accountManager.lookupUsersByEmail.mockRejectedValue(new Error('Account Manager unavailable'));
 
-    await expect(f.service.prepareIdentitySnapshot('event-1', 'person-1', 'recipient'))
-      .rejects.toThrow('Account Manager unavailable');
+    await expect(f.service.prepareIdentitySnapshot('event-1', 'person-1', 'recipient')).rejects.toThrow(
+      'Account Manager unavailable',
+    );
   });
 });
 

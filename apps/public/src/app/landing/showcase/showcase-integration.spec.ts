@@ -47,7 +47,9 @@ describe('landing showcase integration', () => {
 
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('app-landing-dashboard-demo')).not.toBeNull();
-    expect(element.querySelector('app-landing-showcase-stage h3')?.textContent).toContain('Veja o que precisa de atenção.');
+    expect(element.querySelector('app-landing-showcase-stage h3')?.textContent).toContain(
+      'Veja o que precisa de atenção.',
+    );
     expect(selectedFeature(element, 'Painel inteligente')).toBe(true);
 
     clickButtonContaining(element, 'Interfaces que incluem');
@@ -75,6 +77,7 @@ function clickButtonContaining(element: HTMLElement, label: string): void {
 
 function selectedFeature(element: HTMLElement, label: string): boolean {
   return [...element.querySelectorAll<HTMLButtonElement>('.feature-picker button')].some(
-    (button) => button.textContent?.replace(/\s+/g, ' ').includes(label) && button.getAttribute('aria-pressed') === 'true',
+    (button) =>
+      button.textContent?.replace(/\s+/g, ' ').includes(label) && button.getAttribute('aria-pressed') === 'true',
   );
 }

@@ -22,12 +22,7 @@ export interface AdminSportsWorkspaceRouteTarget {
  * command segment. Use the corresponding path helper for server-generated URLs.
  */
 export function adminEventWorkspaceRoute(target: AdminEventWorkspaceRouteTarget): string[] {
-  return [
-    '/event-workspace',
-    target.kind,
-    target.id,
-    ...(target.section ? [target.section] : []),
-  ];
+  return ['/event-workspace', target.kind, target.id, ...(target.section ? [target.section] : [])];
 }
 
 /** Builds the URI-encoded path for a server-generated admin event workspace link. */
@@ -48,16 +43,26 @@ export function adminEventWorkspaceCreationPath(kind: AdminEventWorkspaceKind): 
 /** Builds the raw router commands used by the admin sports workspace. */
 export function adminSportsWorkspaceRoute(target: AdminSportsWorkspaceRouteTarget): string[] {
   const route = ['/sports', 'major-event', target.majorEventId];
-  if (!target.area || target.area === 'overview') return route;
+  if (!target.area || target.area === 'overview') {
+    return route;
+  }
 
   route.push(target.area);
-  if (target.area === 'categories' && target.categoryId) route.push(target.categoryId);
-  if (target.area === 'teams' && target.teamId) route.push(target.teamId);
+  if (target.area === 'categories' && target.categoryId) {
+    route.push(target.categoryId);
+  }
+  if (target.area === 'teams' && target.teamId) {
+    route.push(target.teamId);
+  }
   if (target.area === 'matches' && target.categoryId) {
     route.push(target.categoryId);
-    if (target.matchId) route.push(target.matchId);
+    if (target.matchId) {
+      route.push(target.matchId);
+    }
   }
-  if (target.area === 'reviews' && target.teamId) route.push(target.teamId);
+  if (target.area === 'reviews' && target.teamId) {
+    route.push(target.teamId);
+  }
   return route;
 }
 

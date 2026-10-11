@@ -1,4 +1,9 @@
-import { AUDIT_LOG_ENTITY_TYPE_OPTIONS, auditLogActorTypeLabel, auditLogEntityTypeLabel, auditLogOperationLabel } from './audit-log.utils';
+import {
+  AUDIT_LOG_ENTITY_TYPE_OPTIONS,
+  auditLogActorTypeLabel,
+  auditLogEntityTypeLabel,
+  auditLogOperationLabel,
+} from './audit-log.utils';
 
 describe('audit log ticket entity labels', () => {
   it('makes ticket lifecycle entities available as readable audit filters', () => {

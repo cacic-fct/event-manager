@@ -19,7 +19,8 @@ const meta: Meta<StoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Confetti reveal effect with controls for particle count and duration. Use the global motion control to inspect reduced-motion behavior.',
+        component:
+          'Confetti reveal effect with controls for particle count and duration. Use the global motion control to inspect reduced-motion behavior.',
       },
     },
     layout: 'fullscreen',

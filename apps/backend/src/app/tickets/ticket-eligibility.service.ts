@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TicketSubscriptionRequirement } from '@prisma/client';
 import type { AdminTicketEligibility, TicketEligibilityWarning } from '@cacic-fct/shared-ticketing';
-import { courseCodeFromEnrollment, hasUnespEmail, isExplicitlyVerified, resolveAudienceIdentity } from '../audiences/audience-identity';
+import {
+  courseCodeFromEnrollment,
+  hasUnespEmail,
+  isExplicitlyVerified,
+  resolveAudienceIdentity,
+} from '../audiences/audience-identity';
 import { audienceContext, ANONYMOUS_AUDIENCE } from '../audiences/audience-context';
 import { AccountManagerGrpcClient } from '../grpc/account-manager-grpc.client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -74,12 +79,14 @@ export class TicketEligibilityService {
         }),
       ]);
       const userId = person?.user?.id ?? person?.userId ?? null;
-      const requiresVerification = purpose === 'purchase'
-        ? event?.ticketConfig?.purchaseRequiresAccountManagerVerification ?? false
-        : event?.ticketConfig?.recipientRequiresAccountManagerVerification ?? false;
-      const profile = requiresVerification && person
-        ? await this.lookupAccountManagerProfile(userId, person.user?.email ?? person.email ?? undefined)
-        : null;
+      const requiresVerification =
+        purpose === 'purchase'
+          ? (event?.ticketConfig?.purchaseRequiresAccountManagerVerification ?? false)
+          : (event?.ticketConfig?.recipientRequiresAccountManagerVerification ?? false);
+      const profile =
+        requiresVerification && person
+          ? await this.lookupAccountManagerProfile(userId, person.user?.email ?? person.email ?? undefined)
+          : null;
       return {
         personId,
         userId,
@@ -154,27 +161,32 @@ export class TicketEligibilityService {
         return this.result([{ code: 'TICKET_DISABLED' }]);
       }
 
-      const rule: EligibilityRule = purpose === 'recipient'
-        ? {
-            subscriptionRequirement: event.ticketConfig.recipientSubscriptionRequirement,
-            requiresUnesp: event.ticketConfig.recipientRequiresUnesp,
-            requiredAcademicIdPrefixes: event.ticketConfig.recipientAcademicIdPrefixes,
-            requiredCourseCodes: event.ticketConfig.recipientCourseCodes,
-            requiresAccountManagerVerification: event.ticketConfig.recipientRequiresAccountManagerVerification,
-            allowedPriceTierIds: event.ticketConfig.recipientAllowedPriceTierIds,
-          }
-        : {
-            subscriptionRequirement: TicketSubscriptionRequirement.REQUIRED,
-            requiresUnesp: event.ticketConfig.purchaseRequiresUnesp,
-            requiredAcademicIdPrefixes: event.ticketConfig.purchaseAcademicIdPrefixes,
-            requiredCourseCodes: event.ticketConfig.purchaseCourseCodes,
-            requiresAccountManagerVerification: event.ticketConfig.purchaseRequiresAccountManagerVerification,
-            allowedPriceTierIds: event.ticketConfig.purchaseVisiblePriceTierIds,
-          };
+      const rule: EligibilityRule =
+        purpose === 'recipient'
+          ? {
+              subscriptionRequirement: event.ticketConfig.recipientSubscriptionRequirement,
+              requiresUnesp: event.ticketConfig.recipientRequiresUnesp,
+              requiredAcademicIdPrefixes: event.ticketConfig.recipientAcademicIdPrefixes,
+              requiredCourseCodes: event.ticketConfig.recipientCourseCodes,
+              requiresAccountManagerVerification: event.ticketConfig.recipientRequiresAccountManagerVerification,
+              allowedPriceTierIds: event.ticketConfig.recipientAllowedPriceTierIds,
+            }
+          : {
+              subscriptionRequirement: TicketSubscriptionRequirement.REQUIRED,
+              requiresUnesp: event.ticketConfig.purchaseRequiresUnesp,
+              requiredAcademicIdPrefixes: event.ticketConfig.purchaseAcademicIdPrefixes,
+              requiredCourseCodes: event.ticketConfig.purchaseCourseCodes,
+              requiresAccountManagerVerification: event.ticketConfig.purchaseRequiresAccountManagerVerification,
+              allowedPriceTierIds: event.ticketConfig.purchaseVisiblePriceTierIds,
+            };
 
       const result: EligibilityReason[] = [];
-      if (!event.ticketConfig.enabled && !allowDisabledConfig) result.push({ code: 'TICKET_DISABLED' });
-      if (purpose === 'purchase' && !event.ticketConfig.purchaseEnabled) result.push({ code: 'PURCHASE_DISABLED' });
+      if (!event.ticketConfig.enabled && !allowDisabledConfig) {
+        result.push({ code: 'TICKET_DISABLED' });
+      }
+      if (purpose === 'purchase' && !event.ticketConfig.purchaseEnabled) {
+        result.push({ code: 'PURCHASE_DISABLED' });
+      }
 
       const majorEventId = event.majorEventId ?? event.eventGroup?.majorEventId ?? null;
       const subscription = await this.findSubscription(tx, eventId, majorEventId, personId);
@@ -203,14 +215,16 @@ export class TicketEligibilityService {
           user: { select: { id: true, email: true, academicId: true } },
         },
       });
-      if (!person) return this.result([...result, { code: 'VERIFICATION_REQUIRED' }]);
+      if (!person) {
+        return this.result([...result, { code: 'VERIFICATION_REQUIRED' }]);
+      }
 
-      const matchingIdentitySnapshot = identitySnapshot?.personId === person.id &&
-        identitySnapshot.userId === (person.user?.id ?? person.userId)
-        ? identitySnapshot
-        : undefined;
+      const matchingIdentitySnapshot =
+        identitySnapshot?.personId === person.id && identitySnapshot.userId === (person.user?.id ?? person.userId)
+          ? identitySnapshot
+          : undefined;
       const accountProfile = rule.requiresAccountManagerVerification
-        ? matchingIdentitySnapshot?.accountManagerProfile ?? null
+        ? (matchingIdentitySnapshot?.accountManagerProfile ?? null)
         : null;
       const directEmailValues = [person.email, person.user?.email, ...person.secondaryEmails];
       const directIsUnesp = hasUnespEmail(directEmailValues);
@@ -229,9 +243,7 @@ export class TicketEligibilityService {
             false,
           )
         : { isUnesp: false, verifiedCourseCode: null };
-      const accountVerified = Boolean(
-        accountProfile && isExplicitlyVerified(accountProfile.unespRoleVerified),
-      );
+      const accountVerified = Boolean(accountProfile && isExplicitlyVerified(accountProfile.unespRoleVerified));
 
       if (rule.requiresAccountManagerVerification && !accountVerified) {
         result.push({ code: 'VERIFICATION_REQUIRED' });
@@ -243,12 +255,14 @@ export class TicketEligibilityService {
       if (rule.requiredAcademicIdPrefixes.length > 0) {
         const enrollment = rule.requiresAccountManagerVerification
           ? accountProfile?.enrollmentNumber
-          : person.academicId ?? person.user?.academicId;
+          : (person.academicId ?? person.user?.academicId);
         const normalizedEnrollment = enrollment?.trim().normalize('NFKC').toLocaleUpperCase('pt-BR') ?? '';
         const matchesPrefix = rule.requiredAcademicIdPrefixes.some((prefix) =>
           normalizedEnrollment.startsWith(prefix.trim().normalize('NFKC').toLocaleUpperCase('pt-BR')),
         );
-        if (!matchesPrefix) result.push({ code: 'ACADEMIC_ID_REQUIRED' });
+        if (!matchesPrefix) {
+          result.push({ code: 'ACADEMIC_ID_REQUIRED' });
+        }
       }
 
       if (rule.requiredCourseCodes.length > 0) {
@@ -262,9 +276,8 @@ export class TicketEligibilityService {
 
       if (rule.allowedPriceTierIds.length > 0) {
         const paymentTier = subscription.majorEvent?.paymentTier;
-        const selectedTier = paymentTier && majorEventId
-          ? await this.findPriceTier(tx, majorEventId, paymentTier)
-          : null;
+        const selectedTier =
+          paymentTier && majorEventId ? await this.findPriceTier(tx, majorEventId, paymentTier) : null;
         if (!selectedTier || !rule.allowedPriceTierIds.includes(selectedTier.id)) {
           result.push({ code: 'PRICE_TIER_REQUIRED' });
         }
@@ -316,7 +329,9 @@ export class TicketEligibilityService {
   }
 
   private async lookupAccountManagerProfile(userId: string | null | undefined, email: string | null | undefined) {
-    if (!userId || !email) return null;
+    if (!userId || !email) {
+      return null;
+    }
     const users = await this.accountManager.lookupUsersByEmail(email);
     return users.find((user) => user.userId === userId) ?? null;
   }
@@ -325,7 +340,9 @@ export class TicketEligibilityService {
     const seen = new Set<TicketEligibilityWarning['code']>();
     const warnings = reasons
       .filter(({ code }) => {
-        if (seen.has(code)) return false;
+        if (seen.has(code)) {
+          return false;
+        }
         seen.add(code);
         return true;
       })

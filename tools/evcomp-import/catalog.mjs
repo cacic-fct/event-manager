@@ -311,13 +311,17 @@ async function preparePriceTier(target, sourceModality, price, sourceNamespace, 
 
 async function requireActiveMajorEvent(target, targetId, sourceId) {
   const rows = await queryRows(target, `SELECT id, "deletedAt" FROM major_events WHERE id=$1`, [targetId]);
-  if (!rows[0] || rows[0].deletedAt != null) throw provenanceTargetError('major event', sourceId, targetId);
+  if (!rows[0] || rows[0].deletedAt != null) {
+    throw provenanceTargetError('major event', sourceId, targetId);
+  }
 }
 
 async function requireActiveActivity(target, targetId, sourceId, expectedMajorEventId) {
   const rows = await queryRows(target, `SELECT id, "majorEventId", "deletedAt" FROM events WHERE id=$1`, [targetId]);
   const row = rows[0];
-  if (!row || row.deletedAt != null) throw provenanceTargetError('activity', sourceId, targetId);
+  if (!row || row.deletedAt != null) {
+    throw provenanceTargetError('activity', sourceId, targetId);
+  }
   if (String(row.majorEventId) !== String(expectedMajorEventId)) {
     throw new Error(
       `Imported activity ${sourceId} belongs to major event ${row.majorEventId}, expected ${expectedMajorEventId}.`,
@@ -335,7 +339,9 @@ async function requireActivePrice(target, targetId, sourceId, expectedMajorEvent
     [targetId],
   );
   const row = rows[0];
-  if (!row || row.majorEventDeletedAt != null) throw provenanceTargetError('price', sourceId, targetId);
+  if (!row || row.majorEventDeletedAt != null) {
+    throw provenanceTargetError('price', sourceId, targetId);
+  }
   if (String(row.majorEventId) !== String(expectedMajorEventId)) {
     throw new Error(
       `Imported price ${sourceId} belongs to major event ${row.majorEventId}, expected ${expectedMajorEventId}.`,
@@ -344,9 +350,13 @@ async function requireActivePrice(target, targetId, sourceId, expectedMajorEvent
 }
 
 function validateSnapshot(snapshot) {
-  if (!snapshot || typeof snapshot !== 'object') throw new Error('EvComp catalog snapshot must be an object.');
+  if (!snapshot || typeof snapshot !== 'object') {
+    throw new Error('EvComp catalog snapshot must be an object.');
+  }
   for (const name of ['events', 'activities', 'modalities']) {
-    if (!Array.isArray(snapshot[name])) throw new Error(`EvComp catalog snapshot must contain a ${name} array.`);
+    if (!Array.isArray(snapshot[name])) {
+      throw new Error(`EvComp catalog snapshot must contain a ${name} array.`);
+    }
   }
   return snapshot;
 }
@@ -354,9 +364,13 @@ function validateSnapshot(snapshot) {
 function uniqueRows(rows, label) {
   const seen = new Set();
   return rows.map((row, index) => {
-    if (!row || typeof row !== 'object') throw new Error(`EvComp ${label}[${index}] must be an object.`);
+    if (!row || typeof row !== 'object') {
+      throw new Error(`EvComp ${label}[${index}] must be an object.`);
+    }
     const id = sourceKey(row.sourceId, `${label}[${index}].sourceId`);
-    if (seen.has(id)) throw new Error(`Duplicate EvComp ${label} source ID: ${id}`);
+    if (seen.has(id)) {
+      throw new Error(`Duplicate EvComp ${label} source ID: ${id}`);
+    }
     seen.add(id);
     return row;
   });
@@ -367,7 +381,9 @@ function validateActivityParents(activities, events) {
   for (const activity of activities) {
     const id = sourceKey(activity.sourceId, 'activity');
     const parent = sourceKey(activity.sourceEventId, `activity ${id} sourceEventId`);
-    if (!eventIds.has(parent)) throw new Error(`EvComp activity ${id} references unknown event ${parent}.`);
+    if (!eventIds.has(parent)) {
+      throw new Error(`EvComp activity ${id} references unknown event ${parent}.`);
+    }
   }
 }
 
@@ -376,7 +392,9 @@ function validateModalityParents(modalities, events) {
   for (const modality of modalities) {
     const id = sourceKey(modality.sourceId, 'modality');
     const parent = sourceKey(modality.sourceEventId, `modality ${id} sourceEventId`);
-    if (!eventIds.has(parent)) throw new Error(`EvComp modality ${id} references unknown event ${parent}.`);
+    if (!eventIds.has(parent)) {
+      throw new Error(`EvComp modality ${id} references unknown event ${parent}.`);
+    }
     requiredText(modality.name, `EvComp modality ${id} name`);
     toAmountInCents(modality.amount);
   }
@@ -415,27 +433,39 @@ function requiredText(value, label) {
 }
 
 function optionalText(value) {
-  if (value === undefined || value === null || String(value).trim() === '') return null;
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
   return String(value);
 }
 
 function requiredDate(value, label) {
   const result = optionalDate(value, label);
-  if (!result) throw new Error(`Missing ${label}.`);
+  if (!result) {
+    throw new Error(`Missing ${label}.`);
+  }
   return result;
 }
 
 function optionalDate(value, label) {
-  if (value === undefined || value === null || String(value).trim() === '') return null;
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
   const result = value instanceof Date ? new Date(value.getTime()) : new Date(String(value).trim().replace(' ', 'T'));
-  if (Number.isNaN(result.getTime())) throw new Error(`Invalid ${label}: ${String(value)}`);
+  if (Number.isNaN(result.getTime())) {
+    throw new Error(`Invalid ${label}: ${String(value)}`);
+  }
   return result;
 }
 
 function optionalInteger(value, label) {
-  if (value === undefined || value === null || String(value).trim() === '') return null;
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return null;
+  }
   const result = Number(value);
-  if (!Number.isSafeInteger(result) || result < 0) throw new Error(`Invalid ${label}: ${String(value)}`);
+  if (!Number.isSafeInteger(result) || result < 0) {
+    throw new Error(`Invalid ${label}: ${String(value)}`);
+  }
   return result;
 }
 

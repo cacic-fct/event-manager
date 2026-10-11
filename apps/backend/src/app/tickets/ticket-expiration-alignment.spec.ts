@@ -14,21 +14,27 @@ describe('ticket expiration alignment', () => {
       pendingTransfers: [{ authorUserId: 'author-a', senderUserId: 'holder-a', recipientUserId: 'recipient-a' }],
     });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'ALL_ACTIVE',
-      actorUserId: 'admin-1',
-      permission: 'TicketConfig.Update',
-    })).resolves.toBe(2);
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'ALL_ACTIVE',
+        actorUserId: 'admin-1',
+        permission: 'TicketConfig.Update',
+      }),
+    ).resolves.toBe(2);
 
     expect(f.tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(f.tx.event.findFirst.mock.invocationCallOrder[0]);
-    expect(f.tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ eventId: 'event-1', status: EventTicketStatus.ACTIVE }),
-    }));
+    expect(f.tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ eventId: 'event-1', status: EventTicketStatus.ACTIVE }),
+      }),
+    );
     expect(f.tx.eventTicket.updateMany).toHaveBeenCalledTimes(2);
-    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'expired-active', status: EventTicketStatus.ACTIVE }),
-      data: { expiresAt: target },
-    }));
+    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'expired-active', status: EventTicketStatus.ACTIVE }),
+        data: { expiresAt: target },
+      }),
+    );
     expect(f.tx.auditLogEntry.create).toHaveBeenCalledTimes(2);
     expect(f.realtime.enqueueForUsers).toHaveBeenCalledWith(f.tx, ['holder-a', 'holder-b'], {
       type: 'TICKETS_CHANGED',
@@ -51,9 +57,11 @@ describe('ticket expiration alignment', () => {
       ],
     });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'ALL_ACTIVE',
-    })).resolves.toBe(0);
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'ALL_ACTIVE',
+      }),
+    ).resolves.toBe(0);
 
     expect(f.tx.eventTicket.updateMany).not.toHaveBeenCalled();
     expect(f.tx.auditLogEntry.create).not.toHaveBeenCalled();
@@ -68,9 +76,11 @@ describe('ticket expiration alignment', () => {
       candidates: [ticketRow('custom-ticket', new Date(), EventTicketStatus.ACTIVE, 'holder-a')],
     });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'EVENT_END_ONLY',
-    })).resolves.toBe(0);
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'EVENT_END_ONLY',
+      }),
+    ).resolves.toBe(0);
 
     expect(f.tx.eventTicket.findMany).not.toHaveBeenCalled();
     expect(f.tx.eventTicket.updateMany).not.toHaveBeenCalled();
@@ -84,22 +94,28 @@ describe('ticket expiration alignment', () => {
       candidates: [ticketRow('event-end-ticket', new Date(), EventTicketStatus.ACTIVE, 'holder-a')],
     });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'EVENT_END_ONLY',
-    })).resolves.toBe(1);
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'EVENT_END_ONLY',
+      }),
+    ).resolves.toBe(1);
 
-    expect(f.tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        status: EventTicketStatus.ACTIVE,
-        ticketConfig: { is: { expirationMode: TicketExpirationMode.EVENT_END } },
+    expect(f.tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: EventTicketStatus.ACTIVE,
+          ticketConfig: { is: { expirationMode: TicketExpirationMode.EVENT_END } },
+        }),
       }),
-    }));
-    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        ticketConfig: { is: { expirationMode: TicketExpirationMode.EVENT_END } },
+    );
+    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          ticketConfig: { is: { expirationMode: TicketExpirationMode.EVENT_END } },
+        }),
+        data: { expiresAt: endDate },
       }),
-      data: { expiresAt: endDate },
-    }));
+    );
   });
 
   it('uses the new custom expiry for every active ticket after a config edit', async () => {
@@ -111,13 +127,17 @@ describe('ticket expiration alignment', () => {
       candidates: [ticketRow('custom-ticket', new Date(), EventTicketStatus.ACTIVE, 'holder-a')],
     });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'ALL_ACTIVE',
-    })).resolves.toBe(1);
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'ALL_ACTIVE',
+      }),
+    ).resolves.toBe(1);
 
-    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      data: { expiresAt: customExpiresAt },
-    }));
+    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { expiresAt: customExpiresAt },
+      }),
+    );
   });
 
   it('skips audit and publish when consumption or revocation wins the race', async () => {
@@ -128,17 +148,21 @@ describe('ticket expiration alignment', () => {
     });
     f.tx.eventTicket.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
-      scope: 'EVENT_END_ONLY',
-    })).resolves.toBe(0);
-
-    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id: 'raced-ticket',
-        status: EventTicketStatus.ACTIVE,
-        expiresAt: expect.any(Date),
+    await expect(
+      f.service.alignActiveTicketExpirations(f.tx as never, 'event-1', {
+        scope: 'EVENT_END_ONLY',
       }),
-    }));
+    ).resolves.toBe(0);
+
+    expect(f.tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'raced-ticket',
+          status: EventTicketStatus.ACTIVE,
+          expiresAt: expect.any(Date),
+        }),
+      }),
+    );
     expect(f.tx.auditLogEntry.create).not.toHaveBeenCalled();
     expect(f.realtime.enqueueForUsers).not.toHaveBeenCalled();
   });

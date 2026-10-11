@@ -118,12 +118,14 @@ describe('SportsReadPublicService', () => {
         reviewStatus: SportsReviewStatus.APPROVED,
       },
       ...(paused
-        ? [{
-            type: SportsMatchActionType.PAUSE,
-            payload: {},
-            authoredAt: sportsTestDate(-30_000),
-            reviewStatus: SportsReviewStatus.APPROVED,
-          }]
+        ? [
+            {
+              type: SportsMatchActionType.PAUSE,
+              payload: {},
+              authoredAt: sportsTestDate(-30_000),
+              reviewStatus: SportsReviewStatus.APPROVED,
+            },
+          ]
         : []),
     ];
     prisma.sportsMatch.findFirst.mockResolvedValue(sportsPublicMatchRecord({ actions }));
@@ -384,17 +386,13 @@ describe('SportsReadPublicService', () => {
   it('does not reuse a shared tournament projection for an audience-scoped principal', async () => {
     prisma.sportsTournament.findFirst.mockResolvedValue(sportsPublicTournamentRecord());
     const redis = {
-      mget: jest.fn().mockResolvedValue([
-        JSON.stringify({ version: '2', tournament: { id: 'tournament-1' } }),
-        '2',
-      ]),
+      mget: jest.fn().mockResolvedValue([JSON.stringify({ version: '2', tournament: { id: 'tournament-1' } }), '2']),
       get: jest.fn().mockResolvedValue('2'),
       eval: jest.fn().mockResolvedValue(1),
     };
 
-    const result = await audienceContext.run(
-      { ...ANONYMOUS_AUDIENCE, userId: 'audience-user', isUnesp: true },
-      () => new SportsReadPublicService(prisma as never, redis as never).publicTournament({ tournamentId: 'tournament-1' }),
+    const result = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, userId: 'audience-user', isUnesp: true }, () =>
+      new SportsReadPublicService(prisma as never, redis as never).publicTournament({ tournamentId: 'tournament-1' }),
     );
 
     expect(result.id).toBe('tournament-1');

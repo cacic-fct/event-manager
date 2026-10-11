@@ -116,12 +116,27 @@ const meta: Meta<StoryArgs> = {
   },
   argTypes: {
     title: { control: 'text', description: 'Event name shown during attendance.' },
-    peopleCount: { control: { type: 'range', min: 0, max: 80, step: 1 }, description: 'Number of generated attendees.' },
-    decidedCount: { control: { type: 'range', min: 0, max: 80, step: 1 }, description: 'Number of attendees with an initial decision.' },
+    peopleCount: {
+      control: { type: 'range', min: 0, max: 80, step: 1 },
+      description: 'Number of generated attendees.',
+    },
+    decidedCount: {
+      control: { type: 'range', min: 0, max: 80, step: 1 },
+      description: 'Number of attendees with an initial decision.',
+    },
     syncLabel: { control: 'text', description: 'Synchronization status shown in the toolbar.' },
-    presentEvery: { control: { type: 'range', min: 0, max: 10, step: 1 }, description: 'Mark every Nth initial decision as present; 0 marks everyone absent.' },
-    missingDocumentEvery: { control: { type: 'range', min: 0, max: 10, step: 1 }, description: 'Omit the identity document for every Nth attendee; 0 keeps all documents.' },
-    missingRoleEvery: { control: { type: 'range', min: 0, max: 10, step: 1 }, description: 'Omit the role for every Nth attendee; 0 keeps all roles.' },
+    presentEvery: {
+      control: { type: 'range', min: 0, max: 10, step: 1 },
+      description: 'Mark every Nth initial decision as present; 0 marks everyone absent.',
+    },
+    missingDocumentEvery: {
+      control: { type: 'range', min: 0, max: 10, step: 1 },
+      description: 'Omit the identity document for every Nth attendee; 0 keeps all documents.',
+    },
+    missingRoleEvery: {
+      control: { type: 'range', min: 0, max: 10, step: 1 },
+      description: 'Omit the role for every Nth attendee; 0 keeps all roles.',
+    },
     longNames: { control: 'boolean', description: 'Append a longer generated phrase to attendee names.' },
     decisionChanged: { action: 'decisionChanged', control: false, table: { disable: true } },
     manualSubmitted: { action: 'manualSubmitted', control: false, table: { disable: true } },

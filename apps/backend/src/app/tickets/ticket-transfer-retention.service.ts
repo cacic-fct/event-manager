@@ -22,11 +22,15 @@ export class TicketTransferRetentionService implements OnModuleInit, OnModuleDes
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
   }
 
   private async clearExpiredDocuments(): Promise<void> {
-    if (this.stopped || this.running) return;
+    if (this.stopped || this.running) {
+      return;
+    }
     this.running = true;
     try {
       const cutoff = new Date(Date.now() - RETENTION_DAYS_AFTER_EVENT_END * 24 * 60 * 60 * 1_000);
@@ -40,7 +44,9 @@ export class TicketTransferRetentionService implements OnModuleInit, OnModuleDes
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: CLEANUP_BATCH_SIZE,
         });
-        if (candidates.length === 0) break;
+        if (candidates.length === 0) {
+          break;
+        }
         await this.prisma.ticketTransfer.updateMany({
           where: { id: { in: candidates.map(({ id }) => id) }, senderStatus: 'PENDING', recipientStatus: 'PENDING' },
           data: { senderStatus: 'EXPIRED' },
@@ -49,10 +55,14 @@ export class TicketTransferRetentionService implements OnModuleInit, OnModuleDes
           where: { id: { in: candidates.map(({ id }) => id) } },
           data: { submittedDestinationIdentityDocumentEncrypted: null },
         });
-        if (candidates.length < CLEANUP_BATCH_SIZE) break;
+        if (candidates.length < CLEANUP_BATCH_SIZE) {
+          break;
+        }
       }
     } catch (error: unknown) {
-      this.logger.warn(`Expired ticket transfer document cleanup failed (${error instanceof Error ? error.name : 'unknown'}).`);
+      this.logger.warn(
+        `Expired ticket transfer document cleanup failed (${error instanceof Error ? error.name : 'unknown'}).`,
+      );
     } finally {
       this.running = false;
     }

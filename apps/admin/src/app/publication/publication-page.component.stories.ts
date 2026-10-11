@@ -41,7 +41,8 @@ const meta: Meta<PublicationStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Publication controls for event and group visibility. Use the state control to inspect loaded, empty, loading, and error responses.',
+        component:
+          'Publication controls for event and group visibility. Use the state control to inspect loaded, empty, loading, and error responses.',
       },
     },
     layout: 'fullscreen',

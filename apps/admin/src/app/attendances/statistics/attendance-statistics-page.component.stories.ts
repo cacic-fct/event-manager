@@ -67,7 +67,8 @@ const meta: Meta<AttendanceStatisticsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Attendance analytics dashboard with controls for request state, time range, and review permissions.',
+        component:
+          'Attendance analytics dashboard with controls for request state, time range, and review permissions.',
       },
     },
     layout: 'fullscreen',
@@ -118,7 +119,9 @@ export const ReviewFailure: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const [button] = await canvas.findAllByRole('button', { name: 'Marcar aviso como revisado' });
-    if (!button) throw new Error('Expected at least one review action.');
+    if (!button) {
+      throw new Error('Expected at least one review action.');
+    }
     await userEvent.click(button);
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Não foi possível marcar o aviso como revisado.');
   },
@@ -161,9 +164,12 @@ function createStoryProviders(args: AttendanceStatisticsStoryArgs) {
       provide: AttendanceApiService,
       useValue: {
         watchEventAttendanceAnalytics: () => {
-          if (args.requestState === 'loading') return NEVER;
-          if (args.requestState === 'error')
+          if (args.requestState === 'loading') {
+            return NEVER;
+          }
+          if (args.requestState === 'error') {
             return throwError(() => new Error('A conexão com a central foi interrompida.'));
+          }
           return response(snapshot);
         },
         getEventAttendanceAnalytics: () => response(snapshot),

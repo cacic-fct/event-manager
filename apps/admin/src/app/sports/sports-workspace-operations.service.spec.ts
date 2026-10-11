@@ -141,13 +141,7 @@ describe('SportsWorkspaceService operations', () => {
 
       workspace.navigateToArea('reviews', { teamId: 'team-1' });
 
-      expect(router.navigate).toHaveBeenCalledWith([
-        '/sports',
-        'major-event',
-        'major-event-1',
-        'reviews',
-        'team-1',
-      ]);
+      expect(router.navigate).toHaveBeenCalledWith(['/sports', 'major-event', 'major-event-1', 'reviews', 'team-1']);
     });
 
     it('merges configured and unconfigured major events into one list', () => {
@@ -257,7 +251,9 @@ describe('SportsWorkspaceService operations', () => {
       workspace.error.set('Sports tournament tournament-1 was not found.');
       workspace.majorEventRouteScopeId.set('major-event-1');
       const currentTournament = workspace.tournamentRead();
-      if (!currentTournament) throw new Error('Expected a selected tournament fixture.');
+      if (!currentTournament) {
+        throw new Error('Expected a selected tournament fixture.');
+      }
       workspace.tournaments.set([
         {
           tournament: currentTournament.tournament,

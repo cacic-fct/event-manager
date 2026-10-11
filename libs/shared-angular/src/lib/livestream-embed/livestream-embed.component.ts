@@ -1,11 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, REQUEST, computed, inject, input } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import {
-  livestreamExternalUrl,
-  normalizeLivestreamValue,
-  type LivestreamProvider,
-} from '@cacic-fct/shared-livestream';
+import { livestreamExternalUrl, normalizeLivestreamValue, type LivestreamProvider } from '@cacic-fct/shared-livestream';
 
 @Component({
   selector: 'lib-livestream-embed',

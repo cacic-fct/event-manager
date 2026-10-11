@@ -52,7 +52,9 @@ describe('sports GraphQL schema', () => {
     expect(printed).toContain('publicSportsTournamentDetail');
     expect(printed).toContain('currentUserSportsTeamWorkspace');
     expect(printed).toContain('adminSportsMatchActionReviewQueue');
-    expect(queryType).toMatch(/adminSportsTournamentList\([^)]*majorEventId: String[^)]*\): \[AdminSportsTournamentListItem!\]!/);
+    expect(queryType).toMatch(
+      /adminSportsTournamentList\([^)]*majorEventId: String[^)]*\): \[AdminSportsTournamentListItem!\]!/,
+    );
     expect(printed).toContain('commitSportsMatchActions');
     expect(printed).toContain('createSportsOfflineCollectorCredential');
     expect(printed).toContain('collectorPersonId: String');

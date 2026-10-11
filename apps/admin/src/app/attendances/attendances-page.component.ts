@@ -13,7 +13,14 @@ import { AdminRouteResourceErrorService } from '../shared/admin-route-resource-e
 
 @Component({
   selector: 'app-workspace-attendances-tab',
-  imports: [EventContextPickerComponent, MatButtonModule, MatProgressBarModule, MatIconModule, EventAttendancesComponent, MajorEventAttendancesComponent],
+  imports: [
+    EventContextPickerComponent,
+    MatButtonModule,
+    MatProgressBarModule,
+    MatIconModule,
+    EventAttendancesComponent,
+    MajorEventAttendancesComponent,
+  ],
   templateUrl: './attendances-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -43,35 +50,53 @@ export class AttendancesPageComponent implements OnDestroy {
       const request = ++this.contextRequest;
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
-      const context: EventContextRef | null = eventId ? { kind: 'event', id: eventId }
-        : majorEventId ? { kind: 'major-event', id: majorEventId } : null;
+      const context: EventContextRef | null = eventId
+        ? { kind: 'event', id: eventId }
+        : majorEventId
+          ? { kind: 'major-event', id: majorEventId }
+          : null;
       this.context.set(context);
       this.contextError.set('');
       this.contextLoading.set(Boolean(context));
-      this.contextLoad = this.contextLoad.catch(() => undefined).then(async () => {
-        if (request !== this.contextRequest) return;
-        this.workspace.closeAttendanceLiveStream();
-        if (!context) return;
-        try {
-          if (context.kind === 'event') await this.workspace.selectAttendanceEventById(context.id);
-          else {
-            await this.workspace.selectMajorEventAttendancesById(context.id, false);
-            if (request !== this.contextRequest) return;
-            const personId = params.get('personId');
-            if (personId) await this.workspace.selectMajorEventUserAttendanceById(context.id, personId);
+      this.contextLoad = this.contextLoad
+        .catch(() => undefined)
+        .then(async () => {
+          if (request !== this.contextRequest) {
+            return;
           }
-        } catch (error) {
-          if (request === this.contextRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
-            if (error instanceof Error && error.message === 'Participante não encontrado neste grande evento.') {
-              this.routeResourceErrors.redirectNotFound();
+          this.workspace.closeAttendanceLiveStream();
+          if (!context) {
+            return;
+          }
+          try {
+            if (context.kind === 'event') {
+              await this.workspace.selectAttendanceEventById(context.id);
             } else {
-              this.contextError.set('Não foi possível abrir as presenças deste contexto. Escolha outro ou tente novamente.');
+              await this.workspace.selectMajorEventAttendancesById(context.id, false);
+              if (request !== this.contextRequest) {
+                return;
+              }
+              const personId = params.get('personId');
+              if (personId) {
+                await this.workspace.selectMajorEventUserAttendanceById(context.id, personId);
+              }
+            }
+          } catch (error) {
+            if (request === this.contextRequest && !this.routeResourceErrors.redirectIfUnavailable(error)) {
+              if (error instanceof Error && error.message === 'Participante não encontrado neste grande evento.') {
+                this.routeResourceErrors.redirectNotFound();
+              } else {
+                this.contextError.set(
+                  'Não foi possível abrir as presenças deste contexto. Escolha outro ou tente novamente.',
+                );
+              }
+            }
+          } finally {
+            if (request === this.contextRequest) {
+              this.contextLoading.set(false);
             }
           }
-        } finally {
-          if (request === this.contextRequest) this.contextLoading.set(false);
-        }
-      });
+        });
     });
   }
 

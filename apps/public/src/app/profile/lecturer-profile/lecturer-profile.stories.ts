@@ -77,10 +77,7 @@ const meta: Meta<LecturerProfileStoryArgs> = {
     },
     ...publicLecturerProfileStoryControlArgTypes,
   },
-  decorators: [
-    withScenarioControls<LecturerProfileStoryArgs>(),
-    withLecturerProfileProviders,
-  ],
+  decorators: [withScenarioControls<LecturerProfileStoryArgs>(), withLecturerProfileProviders],
   beforeEach: () => {
     navigateRouteError.mockClear();
   },

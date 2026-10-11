@@ -14,7 +14,9 @@ export function createPublicPrizeDrawStoryHandlers(readState: () => PublicPrizeD
   return [
     graphql.query('PublicPrizeDraws', async () => {
       const state = readState();
-      if (state.requestDelay > 0) await delay(state.requestDelay);
+      if (state.requestDelay > 0) {
+        await delay(state.requestDelay);
+      }
       return HttpResponse.json({
         data: {
           publicPrizeDraws: Array.from({ length: state.drawCount }, (_, index) =>

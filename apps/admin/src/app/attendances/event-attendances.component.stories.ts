@@ -24,7 +24,8 @@ const meta: Meta<AttendanceWorkspaceStoryControls> = {
     a11y: { test: 'error' },
     docs: {
       description: {
-        component: 'Interactive attendance workbench with deterministic events, category mixtures, absences, sports flags, and offline reconciliation.',
+        component:
+          'Interactive attendance workbench with deterministic events, category mixtures, absences, sports flags, and offline reconciliation.',
       },
     },
   },

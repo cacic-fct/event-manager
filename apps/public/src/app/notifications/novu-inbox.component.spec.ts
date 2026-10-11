@@ -15,8 +15,16 @@ describe('NovuInboxComponent', () => {
     const { component, notifications } = await createFixture();
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const notification = createNotification({
-      primaryAction: { label: 'Abrir', isCompleted: false, redirect: { url: 'https://example.com/primary', target: '_blank' } },
-      secondaryAction: { label: 'Consultar', isCompleted: false, redirect: { url: 'https://example.com/secondary', target: '_blank' } },
+      primaryAction: {
+        label: 'Abrir',
+        isCompleted: false,
+        redirect: { url: 'https://example.com/primary', target: '_blank' },
+      },
+      secondaryAction: {
+        label: 'Consultar',
+        isCompleted: false,
+        redirect: { url: 'https://example.com/secondary', target: '_blank' },
+      },
     });
     await inboxMethods(component).runPrimaryAction(notification);
     await inboxMethods(component).runSecondaryAction(notification);
@@ -118,9 +126,10 @@ describe('NovuInboxComponent', () => {
     const { component, notifications, router } = await createFixture();
     let resolveCompletion: (() => void) | undefined;
     notifications.completePrimary.mockImplementationOnce(
-      () => new Promise<void>((resolve) => {
-        resolveCompletion = resolve;
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCompletion = resolve;
+        }),
     );
     const firstNotification = createNotification({
       id: 'notification-1',

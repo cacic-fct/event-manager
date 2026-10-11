@@ -105,9 +105,8 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
                   } @else {
                     Horário não informado,
                   }
-                  método: {{ methodLabel(attendance.createdByMethod) }}{{
-                    attendance.collectedByFirstName ? ', coletado por ' + attendance.collectedByFirstName : ''
-                  }}
+                  método: {{ methodLabel(attendance.createdByMethod)
+                  }}{{ attendance.collectedByFirstName ? ', coletado por ' + attendance.collectedByFirstName : '' }}
                 </span>
               </mat-list-item>
             } @empty {

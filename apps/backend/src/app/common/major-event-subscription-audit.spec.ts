@@ -1,8 +1,4 @@
-import {
-  MajorEventSubscriptionFlow,
-  SubscriptionCreationMethod,
-  SubscriptionStatus,
-} from '@prisma/client';
+import { MajorEventSubscriptionFlow, SubscriptionCreationMethod, SubscriptionStatus } from '@prisma/client';
 import { diffAuditRecords } from '../audit-log/audit-log.snapshots';
 import { buildMajorEventSubscriptionAuditSnapshot } from './major-event-subscription-audit';
 

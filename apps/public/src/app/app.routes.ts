@@ -11,7 +11,9 @@ import { myDayFeatureGuard } from './my-day/my-day.guard';
 
 const developmentToolsAvailabilityGuard: CanActivateFn = (route, state) => {
   const errors = inject(RouteErrorService);
-  if (!isDevMode()) return errors.guardRedirect(404);
+  if (!isDevMode()) {
+    return errors.guardRedirect(404);
+  }
   return authGuard(route, state);
 };
 

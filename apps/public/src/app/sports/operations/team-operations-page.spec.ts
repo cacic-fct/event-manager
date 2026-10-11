@@ -86,7 +86,9 @@ describe('SportsTeamOperationsPage', () => {
   it('keeps a started match lineup read-only while loading its selected registration', () => {
     const workspace = createRepresentativeTeamWorkspace();
     const match = workspace.matches[0];
-    if (!match) throw new Error('Expected a team match fixture.');
+    if (!match) {
+      throw new Error('Expected a team match fixture.');
+    }
     pageWithStartedMatch(workspace, match.id);
 
     const page = createPage();
@@ -139,7 +141,9 @@ describe('SportsTeamOperationsPage', () => {
     const page = createPage();
     page.ngOnInit();
     const firstStream = realtimeStreams[0];
-    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    if (!firstStream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
     firstStream.error(new Error('closed'));
 
     expect(representativeWorkspace).toHaveBeenCalledTimes(2);
@@ -160,7 +164,9 @@ describe('SportsTeamOperationsPage', () => {
     const page = createPage();
     page.ngOnInit();
     const firstStream = realtimeStreams[0];
-    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    if (!firstStream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
 
     firstStream.error(new Error('closed'));
     page.load({ preserveDrafts: true });

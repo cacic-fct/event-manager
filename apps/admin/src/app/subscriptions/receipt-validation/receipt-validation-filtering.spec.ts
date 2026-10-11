@@ -12,11 +12,9 @@ describe('receipt validation queue filters', () => {
   ];
 
   it('keeps both categories and sorts oldest last edit first by default', () => {
-    expect(filterAndSortReceiptValidationItems(items, DEFAULT_RECEIPT_VALIDATION_FILTERS).map((row) => row.subscriptionId)).toEqual([
-      'subscription-new',
-      'purchase-new',
-      'subscription-old',
-    ]);
+    expect(
+      filterAndSortReceiptValidationItems(items, DEFAULT_RECEIPT_VALIDATION_FILTERS).map((row) => row.subscriptionId),
+    ).toEqual(['subscription-new', 'purchase-new', 'subscription-old']);
   });
 
   it('filters subscriptions by tier and sorts creation newest first', () => {

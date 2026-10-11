@@ -9,7 +9,16 @@ const SUPPRESSION_VERSION = 'v1';
 // Keep this versioned encoding in sync with tools/evcomp-import/suppression.mjs.
 function digest(secret: string, purpose: string, namespace: string, sourceId?: string): string {
   return createHmac('sha256', secret)
-    .update(JSON.stringify(['event-manager', 'import-suppression', SUPPRESSION_VERSION, purpose, namespace, sourceId ?? null]))
+    .update(
+      JSON.stringify([
+        'event-manager',
+        'import-suppression',
+        SUPPRESSION_VERSION,
+        purpose,
+        namespace,
+        sourceId ?? null,
+      ]),
+    )
     .digest('hex');
 }
 
@@ -33,7 +42,9 @@ export async function suppressErasedImportPeople(tx: Prisma.TransactionClient, p
 
   const secret = process.env['LGPD_IMPORT_SUPPRESSION_SECRET']?.trim();
   if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
-    throw new ServiceUnavailableException('LGPD_IMPORT_SUPPRESSION_SECRET must contain at least 32 bytes to erase imported people.');
+    throw new ServiceUnavailableException(
+      'LGPD_IMPORT_SUPPRESSION_SECRET must contain at least 32 bytes to erase imported people.',
+    );
   }
 
   for (const sourceNamespace of new Set(records.map((record) => record.sourceNamespace))) {

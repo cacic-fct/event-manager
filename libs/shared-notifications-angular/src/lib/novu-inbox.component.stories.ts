@@ -414,9 +414,18 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
       description: 'Simulated browser push permission state.',
     },
     pushPromptDismissed: { control: 'boolean', description: 'Hide the push permission prompt.' },
-    notificationCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, description: 'Number of active notifications to generate.' },
-    unreadCount: { control: { type: 'range', min: 0, max: 20, step: 1 }, description: 'Number of active notifications that start unread.' },
-    archivedCount: { control: { type: 'range', min: 0, max: 10, step: 1 }, description: 'Number of archived notifications to generate.' },
+    notificationCount: {
+      control: { type: 'range', min: 0, max: 20, step: 1 },
+      description: 'Number of active notifications to generate.',
+    },
+    unreadCount: {
+      control: { type: 'range', min: 0, max: 20, step: 1 },
+      description: 'Number of active notifications that start unread.',
+    },
+    archivedCount: {
+      control: { type: 'range', min: 0, max: 10, step: 1 },
+      description: 'Number of archived notifications to generate.',
+    },
     hasMore: { control: 'boolean', description: 'Show a next page with additional notifications.' },
     showImages: { control: 'boolean', description: 'Include generated avatar images.' },
     richBodies: { control: 'boolean', description: 'Include formatted HTML in notification bodies.' },

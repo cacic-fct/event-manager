@@ -49,11 +49,7 @@ export interface InterestEventSelectionDialogResult {
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close>Cancelar</button>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="selectedEventIds().size === 0"
-        (click)="confirm()">
+      <button mat-flat-button type="button" [disabled]="selectedEventIds().size === 0" (click)="confirm()">
         Continuar
       </button>
     </div>
@@ -78,7 +74,9 @@ export interface InterestEventSelectionDialogResult {
 export class InterestEventSelectionDialogComponent {
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly data = inject<InterestEventSelectionDialogData>(MAT_DIALOG_DATA);
-  private readonly dialogRef = inject(MatDialogRef<InterestEventSelectionDialogComponent, InterestEventSelectionDialogResult>);
+  private readonly dialogRef = inject(
+    MatDialogRef<InterestEventSelectionDialogComponent, InterestEventSelectionDialogResult>,
+  );
 
   setSelected(eventId: string, selected: boolean): void {
     this.selectedEventIds.update((ids) => {

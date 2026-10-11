@@ -2,7 +2,11 @@ import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { createTicketPurchase, createTicketPurchaseOption, createTicketPurchaseReceipt } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createTicketPurchase,
+  createTicketPurchaseOption,
+  createTicketPurchaseReceipt,
+} from '@cacic-fct/shared-ticketing/testing';
 import type { TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { EMPTY, of, throwError } from 'rxjs';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
@@ -121,16 +125,23 @@ const meta: Meta<TicketPurchasePaymentStoryArgs> = {
               },
             },
           },
-          { provide: MajorEventSubscriptionApiService, useValue: { getCurrentUserSubscription: () => of(parentSubscription) } },
-          { provide: PaymentReceiptApiService, useValue: { getCurrentReceipt: () => of(null), uploadReceipt: () => of() } },
+          {
+            provide: MajorEventSubscriptionApiService,
+            useValue: { getCurrentUserSubscription: () => of(parentSubscription) },
+          },
+          {
+            provide: PaymentReceiptApiService,
+            useValue: { getCurrentReceipt: () => of(null), uploadReceipt: () => of() },
+          },
           {
             provide: TicketPurchaseApiService,
             useValue: {
               getOptions: () => of(options),
               getPurchases: () => of(purchase ? [purchase] : []),
-              uploadReceipt: () => args.mode === 'upload-error'
-                ? throwError(() => new Error('Serviço temporariamente indisponível.'))
-                : of({ type: 'progress' as const, progress: 100 }, { type: 'done' as const, result: receiptResult }),
+              uploadReceipt: () =>
+                args.mode === 'upload-error'
+                  ? throwError(() => new Error('Serviço temporariamente indisponível.'))
+                  : of({ type: 'progress' as const, progress: 100 }, { type: 'done' as const, result: receiptResult }),
             },
           },
           { provide: TicketingApiService, useValue: { watchCurrentUser: () => EMPTY } },
@@ -151,7 +162,9 @@ const meta: Meta<TicketPurchasePaymentStoryArgs> = {
 export default meta;
 
 function storyPurchase(mode: TicketPurchasePaymentStoryArgs['mode'], option: TicketPurchaseOption) {
-  if (mode !== 'under-review' && mode !== 'rejected') return null;
+  if (mode !== 'under-review' && mode !== 'rejected') {
+    return null;
+  }
   return createTicketPurchase({
     id: 'story-purchase',
     eventId: option.eventId,
@@ -201,7 +214,9 @@ export const UploadSuccess: Story = {
     // which would give Material the wrong focus-restoration target.
     const selectedFiles = new DataTransfer();
     selectedFiles.items.add(file);
-    await fireEvent.change(canvas.getByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), { target: { files: selectedFiles.files } });
+    await fireEvent.change(canvas.getByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), {
+      target: { files: selectedFiles.files },
+    });
     const dialog = within(canvasElement.ownerDocument.body);
     const confirmation = await dialog.findByRole('dialog', { name: 'Confirmar comprovante' });
     await expect(confirmation).toBeVisible();
@@ -255,7 +270,9 @@ export const UploadFailure: Story = {
     await userEvent.click(uploadButton);
     const selectedFiles = new DataTransfer();
     selectedFiles.items.add(file);
-    await fireEvent.change(await canvas.findByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), { target: { files: selectedFiles.files } });
+    await fireEvent.change(await canvas.findByLabelText('Enviar imagem ou PDF do comprovante de pagamento'), {
+      target: { files: selectedFiles.files },
+    });
     const dialog = within(canvasElement.ownerDocument.body);
     const confirmation = await dialog.findByRole('dialog', { name: 'Confirmar comprovante' });
     await expect(confirmation).toBeVisible();

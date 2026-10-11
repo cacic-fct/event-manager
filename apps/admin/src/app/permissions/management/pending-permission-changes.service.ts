@@ -24,7 +24,9 @@ export class PendingPermissionChangesService {
   }
 
   blockNavigation(): boolean {
-    if (!this.dirty()) return false;
+    if (!this.dirty()) {
+      return false;
+    }
     this.blockedNavigation.set(true);
     globalThis.setTimeout(() => this.blockedNavigation.set(false), 1200);
     return true;
@@ -35,7 +37,9 @@ export class PendingPermissionChangesService {
   }
 
   async save(): Promise<void> {
-    if (this.saving()) return;
+    if (this.saving()) {
+      return;
+    }
     this.saving.set(true);
     try {
       await this.saveCallback?.();

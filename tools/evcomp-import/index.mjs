@@ -26,9 +26,13 @@ export async function runImport({
   const snapshot = providedSnapshot ?? (await readEvcompSnapshot(source, config.sourceSchema, sourceTimezone));
   const sourceNamespace = config.sourceNamespace ?? 'evcomp';
   await assertProvenanceSchema(target);
-  if (apply) await target.query('BEGIN');
+  if (apply) {
+    await target.query('BEGIN');
+  }
   try {
-    if (apply) await target.query("SELECT pg_advisory_xact_lock(hashtext('evcomp-import'))");
+    if (apply) {
+      await target.query("SELECT pg_advisory_xact_lock(hashtext('evcomp-import'))");
+    }
     const explicitPersonMappings = new Map(
       (config.personMappings ?? []).map((item) => [String(item.sourcePersonId), item.targetPersonId]),
     );
@@ -46,10 +50,11 @@ export async function runImport({
     const unmatchedPeople = snapshot.people.flatMap((person) => {
       const resolution = resolutions.get(String(person.sourceId));
       return resolution.status === 'matched' || resolution.reason === 'erased_person'
-        ? [] : [toUnmatchedPerson(person, resolution, snapshot)];
+        ? []
+        : [toUnmatchedPerson(person, resolution, snapshot)];
     });
-    const suppressedPeople = snapshot.people.filter((person) =>
-      resolutions.get(String(person.sourceId))?.reason === 'erased_person',
+    const suppressedPeople = snapshot.people.filter(
+      (person) => resolutions.get(String(person.sourceId))?.reason === 'erased_person',
     ).length;
     const operations = buildOperations(
       snapshot,
@@ -61,11 +66,15 @@ export async function runImport({
     validateOperationRelationships(operations, catalog.targetEventParents);
     const counters = emptyCounters();
     if (apply) {
-      for (const operation of operations) await applyOperation(target, operation, config.actorId ?? null, counters);
+      for (const operation of operations) {
+        await applyOperation(target, operation, config.actorId ?? null, counters);
+      }
       await refreshDerivedData(target, operations);
       await target.query('COMMIT');
     } else {
-      for (const operation of operations) counters[operation.kind].pending += 1;
+      for (const operation of operations) {
+        counters[operation.kind].pending += 1;
+      }
     }
     return {
       mode: apply ? 'apply' : 'dry-run',
@@ -84,7 +93,9 @@ export async function runImport({
       unmatchedPeople,
     };
   } catch (error) {
-    if (apply) await target.query('ROLLBACK');
+    if (apply) {
+      await target.query('ROLLBACK');
+    }
     throw error;
   }
 }
@@ -122,13 +133,17 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
   for (const row of snapshot.registrations) {
     const key = String(row.sourceId);
     const registration = registrations.get(key) ?? { ...row, activityIds: [] };
-    if (row.sourceActivityId != null) registration.activityIds.push(String(row.sourceActivityId));
+    if (row.sourceActivityId != null) {
+      registration.activityIds.push(String(row.sourceActivityId));
+    }
     registrations.set(key, registration);
   }
 
   for (const registration of registrations.values()) {
     const resolution = resolutions.get(String(registration.sourcePersonId));
-    if (resolution?.reason === 'erased_person') continue;
+    if (resolution?.reason === 'erased_person') {
+      continue;
+    }
     if (!toSourceBoolean(registration.active)) {
       skippedSourceRows.push({
         kind: 'registration',
@@ -197,7 +212,9 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
 
   for (const attendance of snapshot.attendances) {
     const resolution = resolutions.get(String(attendance.sourcePersonId));
-    if (resolution?.reason === 'erased_person') continue;
+    if (resolution?.reason === 'erased_person') {
+      continue;
+    }
     const eventId = activityMappings.get(String(attendance.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
       skippedSourceRows.push({
@@ -218,7 +235,9 @@ export function buildOperations(snapshot, resolutions, eventMappings, activityMa
 
   for (const lecturer of snapshot.lecturers) {
     const resolution = resolutions.get(String(lecturer.sourcePersonId));
-    if (resolution?.reason === 'erased_person') continue;
+    if (resolution?.reason === 'erased_person') {
+      continue;
+    }
     const eventId = activityMappings.get(String(lecturer.sourceActivityId));
     if (resolution?.status !== 'matched' || !eventId) {
       skippedSourceRows.push({
@@ -374,7 +393,9 @@ async function validateTargetMappings(target, eventMappings, activityMappings) {
 }
 
 async function resolveModalityMappings(target, mappings) {
-  if (!mappings.length) return new Map();
+  if (!mappings.length) {
+    return new Map();
+  }
   const ids = [...new Set(mappings.map((mapping) => mapping.targetPriceTierId))];
   const { rows } = await target.query(
     `SELECT tier.id, tier.name, price."majorEventId"
@@ -409,7 +430,9 @@ function validateOperationRelationships(operations, targetEventParents) {
 function assertAllTargetsExist(label, expected, actual) {
   const actualSet = new Set(actual);
   const missing = expected.filter((id) => !actualSet.has(id));
-  if (missing.length) throw new Error(`Mapped target ${label} IDs do not exist or are deleted: ${missing.join(', ')}`);
+  if (missing.length) {
+    throw new Error(`Mapped target ${label} IDs do not exist or are deleted: ${missing.join(', ')}`);
+  }
 }
 
 function toUnmatchedPerson(sourcePerson, resolution, snapshot) {
@@ -438,9 +461,15 @@ function toUnmatchedPerson(sourcePerson, resolution, snapshot) {
 }
 
 function reason(resolution, mapping) {
-  if (!mapping) return 'unmapped_source_record';
-  if (resolution?.status === 'ambiguous') return 'ambiguous_person';
-  if (resolution?.status === 'conflict') return 'conflicting_person_identifiers';
+  if (!mapping) {
+    return 'unmapped_source_record';
+  }
+  if (resolution?.status === 'ambiguous') {
+    return 'ambiguous_person';
+  }
+  if (resolution?.status === 'conflict') {
+    return 'conflicting_person_identifiers';
+  }
   return resolution?.reason ?? 'unmatched_person';
 }
 
@@ -463,7 +492,9 @@ export async function refreshDerivedData(target, operations) {
         .filter(Boolean),
     ),
   ];
-  if (!eventIds.length && !majorSubscriptions.length) return;
+  if (!eventIds.length && !majorSubscriptions.length) {
+    return;
+  }
   await target.query(
     `UPDATE events event SET
       "queueCount"=(SELECT COUNT(*)::integer FROM major_event_subscription_event_selections selection
@@ -525,19 +556,25 @@ async function main() {
     return;
   }
   for (const flag of ['--config', '--source-sql', '--source-namespace', '--report']) {
-    if (args.has(flag) && !valueAfter(flag)) throw new Error(`${flag} requires a value.`);
+    if (args.has(flag) && !valueAfter(flag)) {
+      throw new Error(`${flag} requires a value.`);
+    }
   }
   const sourceSqlPath = valueAfter('--source-sql');
   if (!sourceSqlPath && !process.env.EVCOMP_DATABASE_URL) {
     throw new Error('EVCOMP_DATABASE_URL or --source-sql is required.');
   }
   const targetUrl = process.env.TARGET_DATABASE_URL ?? process.env.DATABASE_URL;
-  if (!targetUrl) throw new Error('TARGET_DATABASE_URL or DATABASE_URL is required.');
+  if (!targetUrl) {
+    throw new Error('TARGET_DATABASE_URL or DATABASE_URL is required.');
+  }
 
   const reportPath = resolve(valueAfter('--report') ?? 'evcomp-import-report.json');
   const configPath = valueAfter('--config');
   const config = configPath ? JSON.parse(await readFile(resolve(configPath), 'utf8')) : {};
-  if (valueAfter('--source-namespace')) config.sourceNamespace = valueAfter('--source-namespace');
+  if (valueAfter('--source-namespace')) {
+    config.sourceNamespace = valueAfter('--source-namespace');
+  }
   const sourceTimezone = process.env.EVCOMP_TIMEZONE_OFFSET ?? '-03:00';
   if (!/^[+-](?:0\d|1\d|2[0-3]):[0-5]\d$/.test(sourceTimezone)) {
     throw new Error('EVCOMP_TIMEZONE_OFFSET must use an offset such as -03:00.');

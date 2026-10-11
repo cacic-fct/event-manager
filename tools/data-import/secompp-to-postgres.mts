@@ -126,7 +126,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === undefined) continue;
+    if (argument === undefined) {
+      continue;
+    }
     if (argument === '--help' || argument === '-h') {
       options.help = true;
       continue;
@@ -139,7 +141,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
     const name = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const inlineValue = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
+    if (!value || value.startsWith('--')) {
+      throw new Error(`Missing value for ${name}.`);
+    }
     switch (name) {
       case '--input':
         options.input = value;
@@ -213,7 +217,9 @@ export async function buildPayload(sqlPath: string): Promise<LegacyImportPayload
     majorEventStartByLegacy,
   );
   for (const row of majorEvents) {
-    if (paidByMajorEvent.get(row.id) === true) row.isPaymentRequired = true;
+    if (paidByMajorEvent.get(row.id) === true) {
+      row.isPaymentRequired = true;
+    }
   }
   const { eventSubscriptions, skippedEventSubscriptions } = mapEventSubscriptions(
     tableRows(parsed, 'users_registered_shortcourses'),
@@ -260,16 +266,24 @@ export function mapMajorEvents(legacyRows: readonly ParsedSqlRow[], fallbackNow:
   const majorEventStartByLegacy = new Map<number, Date>();
   for (const legacyRow of legacyRows) {
     const legacyId = decimalToInt(legacyRow.idEvent);
-    if (legacyId == null) continue;
+    if (legacyId == null) {
+      continue;
+    }
     const startDate = atStartOfDay(parseMysqlDate(legacyRow.start)) ?? fallbackNow;
     let endDate = atStartOfDay(parseMysqlDate(legacyRow.end)) ?? startDate;
-    if (endDate < startDate) endDate = startDate;
+    if (endDate < startDate) {
+      endDate = startDate;
+    }
     const location = coerceText(legacyRow.location, { fixMojibake: true });
     const link = coerceText(legacyRow.link, { fixMojibake: true });
     const description = coerceText(legacyRow.description, { fixMojibake: true });
     const descriptionParts = [description].filter(Boolean);
-    if (location) descriptionParts.push(`Local: ${location}`);
-    if (link) descriptionParts.push(`Link legado: ${link}`);
+    if (location) {
+      descriptionParts.push(`Local: ${location}`);
+    }
+    if (link) {
+      descriptionParts.push(`Link legado: ${link}`);
+    }
     const id = buildPrefixedId(PREFIX, 'major-event', legacyId);
     majorEventIdByLegacy.set(legacyId, id);
     majorEventStartByLegacy.set(legacyId, startDate);
@@ -299,9 +313,13 @@ export function mapEventSeeds(
   for (const row of lectureRows) {
     const legacyLectureId = decimalToInt(row.idLecture);
     const legacyEventId = decimalToInt(row.idEventFK);
-    if (legacyLectureId == null || legacyEventId == null) continue;
+    if (legacyLectureId == null || legacyEventId == null) {
+      continue;
+    }
     const majorEventId = majorEventIdByLegacy.get(legacyEventId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const startDate = majorEventStartByLegacy.get(legacyEventId) ?? fallbackNow;
     lectureSeeds.set(legacyLectureId, {
       id: buildPrefixedId(PREFIX, 'event', 'lecture', legacyLectureId),
@@ -322,9 +340,13 @@ export function mapEventSeeds(
   for (const row of shortcourseRows) {
     const legacyShortcourseId = decimalToInt(row.idShortcourse);
     const legacyEventId = decimalToInt(row.idEventFK);
-    if (legacyShortcourseId == null || legacyEventId == null) continue;
+    if (legacyShortcourseId == null || legacyEventId == null) {
+      continue;
+    }
     const majorEventId = majorEventIdByLegacy.get(legacyEventId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const startDate = majorEventStartByLegacy.get(legacyEventId) ?? fallbackNow;
     const workloadHours = decimalToInt(row.workload);
     shortcourseSeeds.set(legacyShortcourseId, {
@@ -376,7 +398,9 @@ export function mapPeople(
   const userIdToPersonId = new Map<number, string>();
   for (const detailRow of detailRows) {
     const detailId = decimalToInt(detailRow.idDetail);
-    if (detailId == null) continue;
+    if (detailId == null) {
+      continue;
+    }
     const cpf = normalizeCpf(detailRow.cpf);
     const personKey = cpf ? `cpf:${cpf}` : `detail:${detailId}`;
     let person = personByKey.get(personKey);
@@ -401,7 +425,9 @@ export function mapPeople(
   for (const userRow of userRows) {
     const userId = decimalToInt(userRow.idUser);
     const detailId = decimalToInt(userRow.idDetailFK);
-    if (userId == null) continue;
+    if (userId == null) {
+      continue;
+    }
     let personId = detailIdToPersonId.get(detailId ?? -1);
     let personKey;
     if (!personId) {
@@ -424,7 +450,9 @@ export function mapPeople(
     }
     const email = normalizeEmail(userRow.email);
     const person = personKey ? personByKey.get(personKey) : undefined;
-    if (person && email && person.email == null) person.email = email;
+    if (person && email && person.email == null) {
+      person.email = email;
+    }
     userIdToPersonId.set(userId, personId);
   }
   return { people: [...personByKey.values()].sort((left, right) => left.id.localeCompare(right.id)), userIdToPersonId };
@@ -453,7 +481,9 @@ export function mapMajorEventSubscriptions(
       continue;
     }
     const amountPaid = decimalToInt(row.amount);
-    if (amountPaid != null && amountPaid > 0) paidByMajorEvent.set(majorEventId, true);
+    if (amountPaid != null && amountPaid > 0) {
+      paidByMajorEvent.set(majorEventId, true);
+    }
     const statusRaw = (coerceText(row.status) ?? '').toUpperCase();
     const subscriptionStatus = statusRaw === 'S' ? 'CONFIRMED' : 'WAITING_RECEIPT_UPLOAD';
     const id = deterministicPrefixedId(PREFIX, `legacy1-major-sub:${userId}:${legacyEventId}`);
@@ -635,7 +665,9 @@ function printPayloadSummary(payload: LegacyImportPayload): void {
 
 function tableRows(parsed: ParsedSqlTables, table: string): ParsedSqlRow[] {
   const rows = parsed[table];
-  if (rows === undefined) throw new Error(`Expected parsed table '${table}'.`);
+  if (rows === undefined) {
+    throw new Error(`Expected parsed table '${table}'.`);
+  }
   return rows;
 }
 

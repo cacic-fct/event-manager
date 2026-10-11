@@ -143,21 +143,24 @@ describe('MergeCandidateOperationsService', () => {
     ).resolves.toBe(updatedCandidate);
 
     expect(auditLog.record).toHaveBeenCalledTimes(1);
-    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
-      entityType: AuditLogEntityType.MERGE_CANDIDATE,
-      entityId: 'candidate-1',
-      operation: AuditLogOperation.MERGE,
-      actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
-      before: { status: 'PENDING' },
-      after: { status: 'MERGED' },
-      metadata: {
-        mergeOperationId: 'merge-operation-1',
-        sourcePersonId: source.id,
-        targetPersonId: target.id,
-        migratedFields: ['NAME', 'EMAIL'],
-      },
-      scope: { permission: Permission.MergeCandidate.Merge },
-    }), tx);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.MERGE_CANDIDATE,
+        entityId: 'candidate-1',
+        operation: AuditLogOperation.MERGE,
+        actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
+        before: { status: 'PENDING' },
+        after: { status: 'MERGED' },
+        metadata: {
+          mergeOperationId: 'merge-operation-1',
+          sourcePersonId: source.id,
+          targetPersonId: target.id,
+          migratedFields: ['NAME', 'EMAIL'],
+        },
+        scope: { permission: Permission.MergeCandidate.Merge },
+      }),
+      tx,
+    );
 
     expect(tx.people.update).toHaveBeenCalledWith({
       where: { id: source.id },
@@ -226,14 +229,23 @@ describe('MergeCandidateOperationsService', () => {
   it('fails the merge transaction when its audit entry cannot be persisted', async () => {
     const tx = createTransaction();
     tx.mergeCandidate.findUnique.mockResolvedValue(candidate({ status: 'PENDING' }));
-    tx.people.findUnique.mockResolvedValueOnce(person({ id: 'person-a' })).mockResolvedValueOnce(person({ id: 'person-b' }));
+    tx.people.findUnique
+      .mockResolvedValueOnce(person({ id: 'person-a' }))
+      .mockResolvedValueOnce(person({ id: 'person-b' }));
     tx.mergeCandidate.update.mockResolvedValue(candidate({ status: 'MERGED' }));
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
     auditLog.record.mockRejectedValue(new Error('Audit unavailable'));
 
-    await expect(service.mergeCandidatePeople({
-      candidateId: 'candidate-1', targetPersonId: 'person-a', migrateFields: [],
-    }, null)).rejects.toThrow('Audit unavailable');
+    await expect(
+      service.mergeCandidatePeople(
+        {
+          candidateId: 'candidate-1',
+          targetPersonId: 'person-a',
+          migrateFields: [],
+        },
+        null,
+      ),
+    ).rejects.toThrow('Audit unavailable');
     expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ actor: undefined }), tx);
     expect(certificates.refreshIssuedCertificatesAfterPeopleMerge).not.toHaveBeenCalled();
   });
@@ -441,22 +453,24 @@ describe('MergeCandidateOperationsService', () => {
       data: { deletedAt: null },
     });
 
-
     expect(auditLog.record).toHaveBeenCalledTimes(1);
-    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
-      entityType: AuditLogEntityType.MERGE_CANDIDATE,
-      entityId: 'candidate-1',
-      operation: AuditLogOperation.UNDO,
-      actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
-      before: { status: 'MERGED' },
-      after: { status: 'PENDING' },
-      metadata: {
-        mergeOperationId: operation.id,
-        sourcePersonId: source.id,
-        targetPersonId: target.id,
-      },
-      scope: { permission: Permission.MergeCandidate.Undo },
-    }), tx);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.MERGE_CANDIDATE,
+        entityId: 'candidate-1',
+        operation: AuditLogOperation.UNDO,
+        actor: { id: 'actor-1', name: 'Operator', email: 'operator@example.com', type: AuditLogActorType.USER },
+        before: { status: 'MERGED' },
+        after: { status: 'PENDING' },
+        metadata: {
+          mergeOperationId: operation.id,
+          sourcePersonId: source.id,
+          targetPersonId: target.id,
+        },
+        scope: { permission: Permission.MergeCandidate.Undo },
+      }),
+      tx,
+    );
 
     expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
       where: {

@@ -190,22 +190,25 @@ export class ReceiptUploadService {
         }
         await refreshSportsParticipantForSubscription(tx, subscription.id);
         await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
-        await this.auditLog.record({
-          entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
-          entityId: subscription.id,
-          entityLabel: 'Comprovante de pagamento',
-          operation: AuditLogOperation.SUBMIT,
-          actor: authenticatedUser,
-          after: {
-            receiptId: createdReceipt.id,
-            personId: person.id,
-            majorEventId,
-            uploadedAt,
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION,
+            entityId: subscription.id,
+            entityLabel: 'Comprovante de pagamento',
+            operation: AuditLogOperation.SUBMIT,
+            actor: authenticatedUser,
+            after: {
+              receiptId: createdReceipt.id,
+              personId: person.id,
+              majorEventId,
+              uploadedAt,
+            },
+            summary: 'Comprovante de pagamento enviado para análise.',
+            scope: { permission: Permission.Subscription.Update, majorEventId },
+            metadata: { action: 'receipt-upload' },
           },
-          summary: 'Comprovante de pagamento enviado para análise.',
-          scope: { permission: Permission.Subscription.Update, majorEventId },
-          metadata: { action: 'receipt-upload' },
-        }, tx);
+          tx,
+        );
 
         return createdReceipt;
       });

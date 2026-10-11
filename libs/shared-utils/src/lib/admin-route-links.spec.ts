@@ -37,11 +37,7 @@ describe('admin route links', () => {
   });
 
   it('builds canonical creation commands and paths', () => {
-    expect(adminEventWorkspaceCreationRoute('major-event')).toEqual([
-      '/event-workspace',
-      'new',
-      'major-event',
-    ]);
+    expect(adminEventWorkspaceCreationRoute('major-event')).toEqual(['/event-workspace', 'new', 'major-event']);
     expect(adminEventWorkspaceCreationPath('major-event')).toBe('/event-workspace/new/major-event');
   });
 

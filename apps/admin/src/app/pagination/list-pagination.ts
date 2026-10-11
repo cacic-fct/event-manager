@@ -21,7 +21,9 @@ export function createWorkspaceListPagination(pageSize = WORKSPACE_LIST_PAGE_SIZ
     hasNextPage,
     hasPreviousPage: computed(() => pageIndex() > 0),
     label: computed(() => {
-      if (itemCount() === 0) return '0';
+      if (itemCount() === 0) {
+        return '0';
+      }
       const firstItem = pageIndex() * pageSize + 1;
       const lastItem = firstItem + itemCount() - 1;
       return `${firstItem}-${lastItem}`;

@@ -93,7 +93,9 @@ export class NovuNotificationTransport {
         headers: { Authorization: `ApiKey ${secretKey}` },
         signal: controller.signal,
       });
-      if (response.ok || response.status === 404) return true;
+      if (response.ok || response.status === 404) {
+        return true;
+      }
       this.logger.warn(`Novu delete request failed with HTTP ${response.status}.`);
       return false;
     } catch (error) {
@@ -106,19 +108,29 @@ export class NovuNotificationTransport {
 
   private assignOptionalSessionConfiguration(session: NovuSubscriberSession): void {
     const apiUrl = this.optionalConfig('NOVU_CLIENT_API_URL') ?? this.optionalConfig('NOVU_API_URL');
-    if (apiUrl) session.apiUrl = apiUrl.replace(/\/$/, '');
+    if (apiUrl) {
+      session.apiUrl = apiUrl.replace(/\/$/, '');
+    }
 
     const socketUrl = this.optionalConfig('NOVU_CLIENT_SOCKET_URL');
-    if (socketUrl) session.socketUrl = socketUrl.replace(/\/$/, '');
+    if (socketUrl) {
+      session.socketUrl = socketUrl.replace(/\/$/, '');
+    }
 
     const socketPath = this.optionalConfig('NOVU_CLIENT_SOCKET_PATH');
-    if (socketPath) session.socketPath = socketPath;
+    if (socketPath) {
+      session.socketPath = socketPath;
+    }
 
     const pushIntegrationIdentifier = this.optionalConfig('NOVU_PUSH_INTEGRATION_IDENTIFIER');
-    if (pushIntegrationIdentifier) session.pushIntegrationIdentifier = pushIntegrationIdentifier;
+    if (pushIntegrationIdentifier) {
+      session.pushIntegrationIdentifier = pushIntegrationIdentifier;
+    }
 
     const vapidPublicKey = this.optionalConfig('NOVU_VAPID_PUBLIC_KEY');
-    if (vapidPublicKey) session.vapidPublicKey = vapidPublicKey;
+    if (vapidPublicKey) {
+      session.vapidPublicKey = vapidPublicKey;
+    }
   }
 
   private apiUrl(): string {

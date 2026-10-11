@@ -116,7 +116,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === undefined) continue;
+    if (argument === undefined) {
+      continue;
+    }
     if (argument === '--help' || argument === '-h') {
       options.help = true;
       continue;
@@ -129,7 +131,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
     const name = equalsIndex >= 0 ? argument.slice(0, equalsIndex) : argument;
     const inlineValue = equalsIndex >= 0 ? argument.slice(equalsIndex + 1) : undefined;
     const value = inlineValue ?? argv[++index];
-    if (!value || value.startsWith('--')) throw new Error(`Missing value for ${name}.`);
+    if (!value || value.startsWith('--')) {
+      throw new Error(`Missing value for ${name}.`);
+    }
     switch (name) {
       case '--input':
         options.input = value;
@@ -156,8 +160,9 @@ export function parseArgs(argv: readonly string[] = process.argv.slice(2)): Seco
         throw new Error(`Unknown option: ${name}`);
     }
   }
-  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535)
+  if (!Number.isInteger(options.dbPort) || options.dbPort < 1 || options.dbPort > 65535) {
     throw new Error('--db-port must be a valid TCP port.');
+  }
   return options;
 }
 
@@ -243,7 +248,9 @@ export function mapMajorEventIds(anoRows: readonly ParsedSqlRow[]): Map<number, 
   const mapping = new Map<number, string>();
   for (const row of anoRows) {
     const yearRefId = decimalToInt(row.idAno_Referencia);
-    if (yearRefId != null) mapping.set(yearRefId, buildPrefixedId(PREFIX, 'major-event', 'ano', yearRefId));
+    if (yearRefId != null) {
+      mapping.set(yearRefId, buildPrefixedId(PREFIX, 'major-event', 'ano', yearRefId));
+    }
   }
   return mapping;
 }
@@ -257,15 +264,21 @@ export function mapMinicursos(
   for (const row of legacyRows) {
     const minicursoId = decimalToInt(row.idMinicurso);
     const yearRefId = decimalToInt(row.idAno_ReferenciaFK);
-    if (minicursoId == null || yearRefId == null) continue;
+    if (minicursoId == null || yearRefId == null) {
+      continue;
+    }
     const majorEventId = majorEventIdByYearRef.get(yearRefId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const eventDate = parseMysqlDate(row.data);
     const startTime = parseMysqlTime(row.hora_inicio);
     const endTime = parseMysqlTime(row.hora_termino);
     const startDate = combineDateAndTime(eventDate, startTime) ?? atStartOfDay(eventDate) ?? fallbackNow;
     let endDate = combineDateAndTime(eventDate, endTime) ?? startDate;
-    if (endDate < startDate) endDate = startDate;
+    if (endDate < startDate) {
+      endDate = startDate;
+    }
     const workloadHours = decimalToInt(row.cargahoraria);
     rows.set(minicursoId, {
       id: buildPrefixedId(PREFIX, 'event', 'minicurso', minicursoId),
@@ -296,15 +309,21 @@ export function mapPalestras(
   for (const row of legacyRows) {
     const palestraId = decimalToInt(row.idPalestra);
     const yearRefId = decimalToInt(row.idAno_ReferenciaFK);
-    if (palestraId == null || yearRefId == null) continue;
+    if (palestraId == null || yearRefId == null) {
+      continue;
+    }
     const majorEventId = majorEventIdByYearRef.get(yearRefId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const eventDate = parseMysqlDate(row.data);
     const startTime = parseMysqlTime(row.hora_inicio);
     const endTime = parseMysqlTime(row.hora_termino);
     const startDate = combineDateAndTime(eventDate, startTime) ?? atStartOfDay(eventDate) ?? fallbackNow;
     let endDate = combineDateAndTime(eventDate, endTime) ?? startDate;
-    if (endDate < startDate) endDate = startDate;
+    if (endDate < startDate) {
+      endDate = startDate;
+    }
     rows.set(palestraId, {
       id: buildPrefixedId(PREFIX, 'event', 'palestra', palestraId),
       name: coerceText(row.nome, { fixMojibake: true }) ?? `Palestra ${palestraId}`,
@@ -332,14 +351,20 @@ export function collectReferencedCpfs(
   const cpfs = new Set<string>();
   const add = (row: ParsedSqlRow, column: string): void => {
     const cpf = normalizeCpf(row[column]);
-    if (cpf) cpfs.add(cpf);
+    if (cpf) {
+      cpfs.add(cpf);
+    }
   };
   tableRows(parsed, 'dados').forEach((row) => add(row, 'CPF'));
   tableRows(parsed, 'inscricao').forEach((row) => add(row, 'CPFdadosFK'));
   tableRows(parsed, 'participacao_minicurso').forEach((row) => add(row, 'CPFusuarioFK'));
   tableRows(parsed, 'participacao_palestra').forEach((row) => add(row, 'CPFusuarioFK'));
   tableRows(parsed, 'ministrante_minicurso').forEach((row) => add(row, 'CPFusuarioFK'));
-  for (const seed of palestraSeeds.values()) if (seed.speakerCpf) cpfs.add(seed.speakerCpf);
+  for (const seed of palestraSeeds.values()) {
+    if (seed.speakerCpf) {
+      cpfs.add(seed.speakerCpf);
+    }
+  }
   return cpfs;
 }
 
@@ -351,7 +376,9 @@ export function mapPeople(
   const peopleByCpf = new Map<string, LegacyPerson>();
   for (const row of legacyRows) {
     const cpf = normalizeCpf(row.CPF);
-    if (!cpf) continue;
+    if (!cpf) {
+      continue;
+    }
     const createdAt = parseMysqlDatetime(row.create_time) ?? fallbackNow;
     peopleByCpf.set(cpf, {
       id: createUuidV7(),
@@ -365,7 +392,9 @@ export function mapPeople(
     });
   }
   for (const cpf of [...requiredCpfs].sort()) {
-    if (peopleByCpf.has(cpf)) continue;
+    if (peopleByCpf.has(cpf)) {
+      continue;
+    }
     peopleByCpf.set(cpf, {
       id: createUuidV7(),
       name: `Pessoa ${cpf}`,
@@ -407,7 +436,9 @@ export function mapMajorEventSubscriptions(
       continue;
     }
     const amountPaid = decimalToInt(row.total);
-    if (amountPaid != null && amountPaid > 0) paidByMajorEvent.set(majorEventId, true);
+    if (amountPaid != null && amountPaid > 0) {
+      paidByMajorEvent.set(majorEventId, true);
+    }
     const status = decimalToInt(row.status) || 0;
     const createdAt = parseMysqlDatetime(row.create_time) ?? fallbackNow;
     const id = deterministicPrefixedId(PREFIX, `legacy2-major-sub:${inscriptionId}:${cpf}:${yearRefId}`);
@@ -479,7 +510,9 @@ export function mapEventAttendances(
   const rowsByPair = new Map<string, LegacyEventAttendance>();
   let skipped = 0;
   for (const row of legacyRows) {
-    if (decimalToInt(row.presenca) !== 1) continue;
+    if (decimalToInt(row.presenca) !== 1) {
+      continue;
+    }
     const cpf = normalizeCpf(row.CPFusuarioFK);
     const minicursoId = decimalToInt(row.idMinicursoFK);
     if (!cpf || minicursoId == null) {
@@ -535,7 +568,9 @@ export function mapEventLecturers(
     rowsByPair.set(`${seed.id}\u0000${personId}`, { eventId: seed.id, personId, createdAt, createdById: null });
   }
   for (const seed of palestraSeeds.values()) {
-    if (!seed.speakerCpf) continue;
+    if (!seed.speakerCpf) {
+      continue;
+    }
     const personId = cpfToPersonId.get(seed.speakerCpf);
     if (!personId) {
       skipped += 1;
@@ -627,29 +662,39 @@ export function buildMajorEventRows(
 ): LegacyMajorEvent[] {
   const dateRanges = new Map<string, [Date, Date]>();
   for (const event of eventRows) {
-    if (!event.majorEventId || !event.startDate || !event.endDate) continue;
+    if (!event.majorEventId || !event.startDate || !event.endDate) {
+      continue;
+    }
     const existing = dateRanges.get(event.majorEventId);
-    if (!existing) dateRanges.set(event.majorEventId, [event.startDate, event.endDate]);
-    else
+    if (!existing) {
+      dateRanges.set(event.majorEventId, [event.startDate, event.endDate]);
+    } else {
       dateRanges.set(event.majorEventId, [
         existing[0] < event.startDate ? existing[0] : event.startDate,
         existing[1] > event.endDate ? existing[1] : event.endDate,
       ]);
+    }
   }
   const rows: LegacyMajorEvent[] = [];
   for (const row of anoRows) {
     const yearRefId = decimalToInt(row.idAno_Referencia);
     const year = decimalToInt(row.ano);
-    if (yearRefId == null) continue;
+    if (yearRefId == null) {
+      continue;
+    }
     const majorEventId = majorEventIdByYearRef.get(yearRefId);
-    if (!majorEventId) continue;
+    if (!majorEventId) {
+      continue;
+    }
     const range = dateRanges.get(majorEventId);
     const fallbackYear = year || 2000;
     const defaultStart = atStartOfDay(new Date(Date.UTC(fallbackYear, 0, 1)));
     const defaultEnd = atStartOfDay(new Date(Date.UTC(fallbackYear, 11, 31)));
     const startDate = range?.[0] ?? defaultStart ?? fallbackNow;
     let endDate = range?.[1] ?? defaultEnd ?? startDate;
-    if (endDate < startDate) endDate = startDate;
+    if (endDate < startDate) {
+      endDate = startDate;
+    }
     rows.push({
       id: majorEventId,
       name: year ? `SECOMPP ${year}` : `SECOMPP ano ${yearRefId}`,
@@ -672,7 +717,9 @@ function printPayloadSummary(payload: LegacyImportPayload): void {
 
 function tableRows(parsed: ParsedSqlTables, table: string): ParsedSqlRow[] {
   const rows = parsed[table];
-  if (rows === undefined) throw new Error(`Expected parsed table '${table}'.`);
+  if (rows === undefined) {
+    throw new Error(`Expected parsed table '${table}'.`);
+  }
   return rows;
 }
 

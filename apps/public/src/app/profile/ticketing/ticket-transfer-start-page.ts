@@ -148,7 +148,9 @@ export class TicketTransferStartPage {
     }
 
     const current = this.state();
-    if (current.status !== 'ready' || current.pendingTransfer) return;
+    if (current.status !== 'ready' || current.pendingTransfer) {
+      return;
+    }
     if (!this.canStartTransfer()) {
       this.formError.set('Este bilhete não pode ser transferido.');
       return;
@@ -180,7 +182,9 @@ export class TicketTransferStartPage {
 
   cancelTransfer(): void {
     const transfer = this.pendingTransfer();
-    if (!transfer || !this.canCancel() || this.isCanceling()) return;
+    if (!transfer || !this.canCancel() || this.isCanceling()) {
+      return;
+    }
 
     this.isCanceling.set(true);
     this.api
@@ -214,8 +218,12 @@ export class TicketTransferStartPage {
 
   documentErrorMessage(): string {
     const documentControl = this.destinationForm.controls.identityDocument;
-    if (documentControl.hasError('required')) return 'Informe o CPF ou passaporte de quem receberá o bilhete.';
-    if (documentControl.hasError('invalidCpf')) return 'Digite um CPF válido ou informe o passaporte.';
+    if (documentControl.hasError('required')) {
+      return 'Informe o CPF ou passaporte de quem receberá o bilhete.';
+    }
+    if (documentControl.hasError('invalidCpf')) {
+      return 'Digite um CPF válido ou informe o passaporte.';
+    }
     return '';
   }
 
@@ -235,7 +243,9 @@ export class TicketTransferStartPage {
   }
 
   private load(): void {
-    if (!this.ticketId) return;
+    if (!this.ticketId) {
+      return;
+    }
     const requestId = ++this.requestId;
     this.state.set({ status: 'loading' });
     forkJoin({
@@ -245,7 +255,9 @@ export class TicketTransferStartPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ ticket, transfers }) => {
-          if (requestId !== this.requestId) return;
+          if (requestId !== this.requestId) {
+            return;
+          }
           if (!ticket) {
             this.navigateToError(404);
             return;
@@ -272,7 +284,9 @@ export class TicketTransferStartPage {
 
   private scheduleExpiryRefresh(ticket: WalletTicket): void {
     this.clearExpiryTimer();
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
 
     const now = Date.now();
     this.now.set(now);
@@ -287,7 +301,9 @@ export class TicketTransferStartPage {
     this.lastExpiryRefreshKey = '';
 
     const delay = nextDeadlineDelay([ticket.effectiveExpiresAt], now);
-    if (delay === null) return;
+    if (delay === null) {
+      return;
+    }
 
     this.expiryTimer = window.setTimeout(() => {
       this.expiryTimer = null;
@@ -295,12 +311,16 @@ export class TicketTransferStartPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.load();
-      } else this.scheduleExpiryRefresh(ticket);
+      } else {
+        this.scheduleExpiryRefresh(ticket);
+      }
     }, delay);
   }
 
   private clearExpiryTimer(): void {
-    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) window.clearTimeout(this.expiryTimer);
+    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) {
+      window.clearTimeout(this.expiryTimer);
+    }
     this.expiryTimer = null;
   }
 

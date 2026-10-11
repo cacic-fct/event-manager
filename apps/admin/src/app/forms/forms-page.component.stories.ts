@@ -126,7 +126,8 @@ const meta: Meta<FormsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Event form management with controls for form state, target, privacy, and response policy. Stories cover populated, empty, loading, and public result views.',
+        component:
+          'Event form management with controls for form state, target, privacy, and response policy. Stories cover populated, empty, loading, and public result views.',
       },
     },
     layout: 'fullscreen',
@@ -204,7 +205,9 @@ export const DenseEventInventory: Story = {
     await expect(canvas.getByRole('heading', { name: 'Vínculos' })).toBeVisible();
     const ownerPicker = canvas.getAllByRole('button', { name: 'Trocar' })[0];
     const ownerPickerHost = ownerPicker.closest('app-event-target-picker');
-    if (!ownerPickerHost) throw new Error('Expected the owner target picker host.');
+    if (!ownerPickerHost) {
+      throw new Error('Expected the owner target picker host.');
+    }
     const ownerCanvas = within(ownerPickerHost as HTMLElement);
     await userEvent.click(ownerPicker);
     await waitFor(() => expect(ownerCanvas.getByRole('button', { name: 'Próxima página' })).toBeEnabled());
@@ -277,9 +280,10 @@ function createFormsStoryProviders(args: FormsStoryArgs) {
     filters?: { query?: string; skip?: number; take?: number; endDateFrom?: string },
   ): T[] => {
     const query = filters?.query?.trim().toLocaleLowerCase('pt-BR');
-    const filtered = items.filter((item) =>
-      (!query || item.name.toLocaleLowerCase('pt-BR').includes(query)) &&
-      (!filters?.endDateFrom || !item.endDate || item.endDate >= filters.endDateFrom),
+    const filtered = items.filter(
+      (item) =>
+        (!query || item.name.toLocaleLowerCase('pt-BR').includes(query)) &&
+        (!filters?.endDateFrom || !item.endDate || item.endDate >= filters.endDateFrom),
     );
     const skip = filters?.skip ?? 0;
     return filtered.slice(skip, skip + (filters?.take ?? filtered.length));
@@ -289,9 +293,14 @@ function createFormsStoryProviders(args: FormsStoryArgs) {
     {
       provide: ActivatedRoute,
       useValue: {
-        paramMap: of(convertToParamMap({ ...routeParams(args.target),
-          ...(args.mode !== 'empty' && args.itemCount > 0 ? { formId: `form-${selectedIndex(args.selectedIndex, args.itemCount) + 1}` } : {}),
-        })),
+        paramMap: of(
+          convertToParamMap({
+            ...routeParams(args.target),
+            ...(args.mode !== 'empty' && args.itemCount > 0
+              ? { formId: `form-${selectedIndex(args.selectedIndex, args.itemCount) + 1}` }
+              : {}),
+          }),
+        ),
       },
     },
     {
@@ -321,7 +330,9 @@ function createFormsStoryProviders(args: FormsStoryArgs) {
       useValue: { openHistory: () => undefined },
     },
   ];
-  if (args.target !== 'all') providers.push({ provide: ADMIN_SHELL_CONTEXT, useValue: true });
+  if (args.target !== 'all') {
+    providers.push({ provide: ADMIN_SHELL_CONTEXT, useValue: true });
+  }
   return providers;
 }
 
@@ -365,8 +376,11 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
 
   form.controls.resultsPublic.valueChanges.subscribe((resultsPublic) => {
     const control = form.controls.resultsLive;
-    if (resultsPublic) control.enable({ emitEvent: false });
-    else control.disable({ emitEvent: false });
+    if (resultsPublic) {
+      control.enable({ emitEvent: false });
+    } else {
+      control.disable({ emitEvent: false });
+    }
   });
 
   patchForm(form, selectedForm);
@@ -441,40 +455,64 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       const value = form.getRawValue();
       const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
       return value.ownerType === 'EVENT'
-        ? events.find((event) => event.id === id)?.name ?? 'Evento selecionado'
-        : majorEvents.find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado';
+        ? (events.find((event) => event.id === id)?.name ?? 'Evento selecionado')
+        : (majorEvents.find((majorEvent) => majorEvent.id === id)?.name ?? 'Grande evento selecionado');
     },
     ownerTargetEmoji: () => {
       const value = form.getRawValue();
       const id = value.ownerType === 'EVENT' ? value.ownerEventId : value.ownerMajorEventId;
       return value.ownerType === 'EVENT'
-        ? events.find((event) => event.id === id)?.emoji ?? null
-        : majorEvents.find((majorEvent) => majorEvent.id === id)?.emoji ?? null;
+        ? (events.find((event) => event.id === id)?.emoji ?? null)
+        : (majorEvents.find((majorEvent) => majorEvent.id === id)?.emoji ?? null);
     },
     setOwnerTarget: (selection: { id: string; name: string; emoji?: string | null }) => {
       const ownerType = form.controls.ownerType.value;
-      form.patchValue(ownerType === 'EVENT'
-        ? { ownerEventId: selection.id, ownerMajorEventId: '' }
-        : { ownerEventId: '', ownerMajorEventId: selection.id });
+      form.patchValue(
+        ownerType === 'EVENT'
+          ? { ownerEventId: selection.id, ownerMajorEventId: '' }
+          : { ownerEventId: '', ownerMajorEventId: selection.id },
+      );
     },
     linkTargetName: (link: EventFormLinkDraft) =>
-      link.targetName ?? (link.targetType === 'EVENT'
+      link.targetName ??
+      (link.targetType === 'EVENT'
         ? (events.find((event) => event.id === link.eventId)?.name ?? 'Evento selecionado')
         : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento selecionado')),
     linkTargetEmoji: (link: EventFormLinkDraft) =>
-      link.targetEmoji ?? (link.targetType === 'EVENT'
+      link.targetEmoji ??
+      (link.targetType === 'EVENT'
         ? (events.find((event) => event.id === link.eventId)?.emoji ?? null)
         : (majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.emoji ?? null)),
     setLinkTarget: (localId: string, selection: { id: string; name: string; emoji?: string | null }) => {
-      links.update((current) => current.map((link) => link.localId === localId
-        ? link.targetType === 'EVENT'
-          ? { ...link, eventId: selection.id, majorEventId: null, targetName: selection.name, targetEmoji: selection.emoji }
-          : { ...link, eventId: null, majorEventId: selection.id, targetName: selection.name, targetEmoji: selection.emoji }
-        : link));
+      links.update((current) =>
+        current.map((link) =>
+          link.localId === localId
+            ? link.targetType === 'EVENT'
+              ? {
+                  ...link,
+                  eventId: selection.id,
+                  majorEventId: null,
+                  targetName: selection.name,
+                  targetEmoji: selection.emoji,
+                }
+              : {
+                  ...link,
+                  eventId: null,
+                  majorEventId: selection.id,
+                  targetName: selection.name,
+                  targetEmoji: selection.emoji,
+                }
+            : link,
+        ),
+      );
     },
     setTargetFilter,
-    selectAllForms: async (): Promise<void> => { await setTargetFilter(null); },
-    selectEventScope: async (event: Event): Promise<void> => { await setTargetFilter({ eventId: event.id }); },
+    selectAllForms: async (): Promise<void> => {
+      await setTargetFilter(null);
+    },
+    selectEventScope: async (event: Event): Promise<void> => {
+      await setTargetFilter({ eventId: event.id });
+    },
     selectMajorEventScope: async (majorEvent: MajorEvent): Promise<void> => {
       await setTargetFilter({ majorEventId: majorEvent.id });
     },
@@ -516,7 +554,9 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
       const expectedValue = image[key] ?? '';
       const cached = imageTextControls.get(cacheKey);
       if (cached) {
-        if (cached.value !== expectedValue) cached.setValue(expectedValue, { emitEvent: false });
+        if (cached.value !== expectedValue) {
+          cached.setValue(expectedValue, { emitEvent: false });
+        }
         return cached;
       }
       const control = new FormControl(expectedValue, { nonNullable: true });
@@ -623,7 +663,14 @@ function buildMajorEvents(count = 2): MajorEvent[] {
     createAdminMajorEvent({ ...dates, id: 'major-event-2', name: 'Jornada de Extensão', emoji: 'rocket_launch' }),
   ];
   for (let index = majorEvents.length; index < count; index++) {
-    majorEvents.push(createAdminMajorEvent({ ...dates, id: `major-event-${index + 1}`, name: `Grande evento ${index + 1}`, emoji: 'event' }));
+    majorEvents.push(
+      createAdminMajorEvent({
+        ...dates,
+        id: `major-event-${index + 1}`,
+        name: `Grande evento ${index + 1}`,
+        emoji: 'event',
+      }),
+    );
   }
   return majorEvents;
 }

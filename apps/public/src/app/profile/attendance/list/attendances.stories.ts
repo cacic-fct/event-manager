@@ -67,10 +67,7 @@ const meta: Meta<AttendancesStoryControls> = {
   tags: ['autodocs'],
   args: attendancesStoryDefaultControls,
   argTypes: attendancesStoryControlArgTypes,
-  decorators: [
-    withScenarioControls<AttendancesStoryControls>(),
-    withStoryData,
-  ],
+  decorators: [withScenarioControls<AttendancesStoryControls>(), withStoryData],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'error' },
@@ -94,7 +91,6 @@ export const Playground: Story = {
     await expect((await canvas.findAllByRole('link')).length).toBeGreaterThan(10);
   },
 };
-
 
 export const InterestedEvents: Story = {
   args: { interestedOnly: true, attendanceEvery: 0, majorEventCount: 0, eventCount: 2, certificateFolderCount: 0 },
@@ -160,7 +156,10 @@ export const CertificateDownloadCooldown: Story = {
   args: { certificateArchiveCooldownSeconds: 15 * 60 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('button', { name: /Baixar certificados em/ })).toHaveAttribute('aria-disabled', 'true');
+    await expect(await canvas.findByRole('button', { name: /Baixar certificados em/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   },
 };
 

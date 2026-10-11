@@ -32,9 +32,11 @@ export class ReceiptAdminQueueService {
       },
     });
 
-    const ticketCount = this.ticketPurchases ? await this.prisma.ticketPurchase.count({
-      where: this.ticketPurchases.pendingWhere(),
-    }) : 0;
+    const ticketCount = this.ticketPurchases
+      ? await this.prisma.ticketPurchase.count({
+          where: this.ticketPurchases.pendingWhere(),
+        })
+      : 0;
     return { pendingCount: pendingCount + ticketCount };
   }
 
@@ -72,11 +74,20 @@ export class ReceiptAdminQueueService {
           this.prisma.ticketPurchase.count({ where: this.ticketPurchases.pendingWhere(majorEventId) }),
         ])
       : [[], 0];
-    const availablePaymentTiers = majorEventId && this.ticketPurchases
-      ? await this.prisma.priceTier.findMany({ where: { price: { majorEventId } }, select: { id: true, name: true }, orderBy: { value: 'asc' } })
-      : [];
+    const availablePaymentTiers =
+      majorEventId && this.ticketPurchases
+        ? await this.prisma.priceTier.findMany({
+            where: { price: { majorEventId } },
+            select: { id: true, name: true },
+            orderBy: { value: 'asc' },
+          })
+        : [];
     const items = [...subscriptions.map((subscription) => this.mapper.mapAdminQueueItem(subscription)), ...ticketItems]
-      .sort((a, b) => a.subscriptionUpdatedAt.getTime() - b.subscriptionUpdatedAt.getTime() || a.subscriptionId.localeCompare(b.subscriptionId))
+      .sort(
+        (a, b) =>
+          a.subscriptionUpdatedAt.getTime() - b.subscriptionUpdatedAt.getTime() ||
+          a.subscriptionId.localeCompare(b.subscriptionId),
+      )
       .slice(0, QUEUE_LIMIT);
     return {
       pendingCount: pendingCount + ticketCount,

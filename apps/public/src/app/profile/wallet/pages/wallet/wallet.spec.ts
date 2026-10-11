@@ -138,7 +138,9 @@ describe('Wallet', () => {
 
     expect(Date.parse(ticket.effectiveExpiresAt)).toBeLessThan(now.getTime());
     expect(barcode).not.toBeNull();
-    if (!barcode) throw new Error('Fixture tickets retain their holder barcode when archived.');
+    if (!barcode) {
+      throw new Error('Fixture tickets retain their holder barcode when archived.');
+    }
     expect(parseTicketBarcode(barcode)).toEqual({
       ticketId: ticket.id,
       holderUserId: TICKET_FIXTURE_HOLDER_USER_ID,
@@ -186,13 +188,19 @@ describe('Wallet', () => {
     expect(component.walletView()).toBe('detail');
     expect(component.selectedCard()).toBe(`ticket:${usedTicket.id}`);
     expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).toContain('Expirado');
-    expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).not.toContain(usedTicket.name);
-    expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).toContain('Bilhete já utilizado');
+    expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).not.toContain(
+      usedTicket.name,
+    );
+    expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).toContain(
+      'Bilhete já utilizado',
+    );
     const archivedBarcode = fixture.nativeElement.querySelector('.expired-barcode .barcode-content') as HTMLElement;
     expect(archivedBarcode.getAttribute('aria-hidden')).toBe('true');
     expect(fixture.nativeElement.querySelector('.expired-barcode')).not.toBeNull();
 
-    (fixture.nativeElement.querySelector('.wallet-card-detail app-wallet-card-header button') as HTMLButtonElement).click();
+    (
+      fixture.nativeElement.querySelector('.wallet-card-detail app-wallet-card-header button') as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
 
     expect(component.walletView()).toBe('list');
@@ -271,7 +279,9 @@ describe('Wallet', () => {
     expect(fixture.nativeElement.querySelector('.ticket-expiration-notice')?.textContent).toContain(
       'Prazo de validade encerrado',
     );
-    expect(fixture.nativeElement.querySelector('.expired-barcode .barcode-content')?.getAttribute('aria-hidden')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.expired-barcode .barcode-content')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
   });
 
   it('returns to the wallet when a transfer removes the selected pass', async () => {
@@ -397,8 +407,12 @@ describe('Wallet', () => {
     const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
       this: HTMLElement,
     ) {
-      if (this.classList.contains('wallet-card-detail')) return DOMRect.fromRect({ y: 84 });
-      if (this.matches('.wallet-card-list app-wallet-card')) return DOMRect.fromRect({ y: 540 });
+      if (this.classList.contains('wallet-card-detail')) {
+        return DOMRect.fromRect({ y: 84 });
+      }
+      if (this.matches('.wallet-card-list app-wallet-card')) {
+        return DOMRect.fromRect({ y: 540 });
+      }
       return DOMRect.fromRect();
     });
 

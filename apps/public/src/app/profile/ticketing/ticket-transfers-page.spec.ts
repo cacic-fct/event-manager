@@ -75,11 +75,15 @@ describe('TicketTransfersPage', () => {
       canCancel: false,
       canAccept: false,
     });
-    api.myTicketTransfers.mockReturnValue(of(createTicketTransferLists({
-      incomingPending: [incomingPending],
-      incomingIgnored: [incomingIgnored],
-      outgoing: [outgoingPending, outgoingAutomaticallyIgnored, outgoingAccepted],
-    })));
+    api.myTicketTransfers.mockReturnValue(
+      of(
+        createTicketTransferLists({
+          incomingPending: [incomingPending],
+          incomingIgnored: [incomingIgnored],
+          outgoing: [outgoingPending, outgoingAutomaticallyIgnored, outgoingAccepted],
+        }),
+      ),
+    );
 
     fixture.componentInstance.retry();
     fixture.detectChanges();
@@ -90,15 +94,19 @@ describe('TicketTransfersPage', () => {
     expect(host.querySelector('#outgoing-heading')?.textContent).toContain('Pedidos enviados');
     const rows = host.querySelectorAll('app-calendar-list-item');
     expect(rows).toHaveLength(5);
-    const incomingMetadata = Array.from(rows[0]?.querySelectorAll('.metadata-item') ?? [], (item) => item.textContent?.trim());
+    const incomingMetadata = Array.from(rows[0]?.querySelectorAll('.metadata-item') ?? [], (item) =>
+      item.textContent?.trim(),
+    );
     expect(incomingMetadata).toContain('Cedente: Ana');
     expect(incomingMetadata).toContain('Transferência iniciada por: Alex');
     expect(rows[1]?.textContent).toContain('Este bilhete já estava na sua carteira');
     expect(host.textContent).not.toContain('XK7654321');
     expect(host.textContent).not.toContain('52998224725');
-    expect(Array.from(host.querySelectorAll('.metadata-item'), (item) => item.textContent?.trim()).filter(
-      (line) => line === 'Aguardando resposta',
-    )).toHaveLength(2);
+    expect(
+      Array.from(host.querySelectorAll('.metadata-item'), (item) => item.textContent?.trim()).filter(
+        (line) => line === 'Aguardando resposta',
+      ),
+    ).toHaveLength(2);
     expect(host.textContent).not.toContain('Pedido enviado');
     expect(rows[3]?.textContent).toContain('Aguardando resposta');
     expect(rows[3]?.textContent).not.toContain('não era elegível');
@@ -109,24 +117,29 @@ describe('TicketTransfersPage', () => {
   it('ignores older responses and errors after a newer SSE snapshot', () => {
     const older = new Subject<TicketTransferLists>();
     const newer = new Subject<TicketTransferLists>();
-    api.myTicketTransfers
-      .mockReset()
-      .mockReturnValueOnce(older)
-      .mockReturnValueOnce(newer);
+    api.myTicketTransfers.mockReset().mockReturnValueOnce(older).mockReturnValueOnce(newer);
 
     fixture.componentInstance.retry();
     invalidations.next({ revision: '2', type: 'TRANSFERS_CHANGED', changedAt: new Date().toISOString() });
     const latestLists = createTicketTransferLists({
-      incomingPending: [createTicketTransfer({
-        id: 'latest-transfer',
-        ticket: createWalletTicket({ name: 'Newest request' }),
-      })],
+      incomingPending: [
+        createTicketTransfer({
+          id: 'latest-transfer',
+          ticket: createWalletTicket({ name: 'Newest request' }),
+        }),
+      ],
     });
     newer.next(latestLists);
-    older.next(createTicketTransferLists({ outgoing: [createTicketTransfer({
-      id: 'stale-transfer',
-      ticket: createWalletTicket({ name: 'Stale request' }),
-    })] }));
+    older.next(
+      createTicketTransferLists({
+        outgoing: [
+          createTicketTransfer({
+            id: 'stale-transfer',
+            ticket: createWalletTicket({ name: 'Stale request' }),
+          }),
+        ],
+      }),
+    );
     older.error(new Error('stale request failure'));
     fixture.detectChanges();
 

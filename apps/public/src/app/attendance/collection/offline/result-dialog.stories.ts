@@ -80,8 +80,7 @@ const meta: Meta<OfflineResultStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Offline sync summary showing accepted records, items sent for review, and final failures.',
+        component: 'Offline sync summary showing accepted records, items sent for review, and final failures.',
       },
     },
   },

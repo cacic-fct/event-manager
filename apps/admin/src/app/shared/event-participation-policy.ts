@@ -1,7 +1,4 @@
-import {
-  AttendanceEligibility,
-  ATTENDANCE_ELIGIBILITY_LABELS,
-} from '@cacic-fct/shared-event-participation';
+import { AttendanceEligibility, ATTENDANCE_ELIGIBILITY_LABELS } from '@cacic-fct/shared-event-participation';
 
 export type AttendanceEligibilityTarget = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'CERTIFICATE';
 export type AttendanceEligibilityParent = 'NONE' | 'GROUP' | 'MAJOR';

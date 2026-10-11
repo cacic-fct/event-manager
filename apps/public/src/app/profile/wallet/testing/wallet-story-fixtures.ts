@@ -32,12 +32,12 @@ export function createWalletStoryTicket(overrides: Partial<WalletTicket> = {}): 
   const ticket = createWalletTicket({ ...overrides, event });
   return {
     ...ticket,
-    holder: overrides.holder === undefined
-      ? createTicketPersonSummary({ personId: 'person-wallet-story' })
-      : overrides.holder,
-    aztecPayload: overrides.aztecPayload === undefined
-      ? `ticket:${ticket.id}:${walletStoryUser.userId}`
-      : overrides.aztecPayload,
+    holder:
+      overrides.holder === undefined
+        ? createTicketPersonSummary({ personId: 'person-wallet-story' })
+        : overrides.holder,
+    aztecPayload:
+      overrides.aztecPayload === undefined ? `ticket:${ticket.id}:${walletStoryUser.userId}` : overrides.aztecPayload,
   };
 }
 

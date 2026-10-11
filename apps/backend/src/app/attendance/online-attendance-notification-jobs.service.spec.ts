@@ -166,7 +166,16 @@ describe('OnlineAttendanceNotificationJobsService', () => {
           majorEvent: expect.objectContaining({
             select: expect.objectContaining({
               subscriptions: expect.objectContaining({
-                where: { deletedAt: null, subscriptionStatus: { in: [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, SubscriptionStatus.RECEIPT_UNDER_REVIEW, SubscriptionStatus.CONFIRMED] } },
+                where: {
+                  deletedAt: null,
+                  subscriptionStatus: {
+                    in: [
+                      SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+                      SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+                      SubscriptionStatus.CONFIRMED,
+                    ],
+                  },
+                },
               }),
             }),
           }),
@@ -265,8 +274,10 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     const { notifications, prisma, service } = createService();
     prisma.event.findFirst.mockResolvedValue({
       ...onlineAttendanceEvent(),
-      name: 'Evento reservado', attendanceEligibility: 'INVITED_ONLY',
-      subscriptions: [{ person: person('person-1', 'user-1') }], majorEvent: null,
+      name: 'Evento reservado',
+      attendanceEligibility: 'INVITED_ONLY',
+      subscriptions: [{ person: person('person-1', 'user-1') }],
+      majorEvent: null,
     });
     await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
     expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
@@ -296,7 +307,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       eventGroup: null,
     };
     prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
-      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      if (prisma.event.findFirst.mock.calls.length === 1) {
+        return event;
+      }
       return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
     });
     notifications.mapPersonToRecipient.mockImplementation((value) => ({
@@ -334,7 +347,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       eventGroup: null,
     };
     prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
-      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      if (prisma.event.findFirst.mock.calls.length === 1) {
+        return event;
+      }
       return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
     });
     notifications.mapPersonToRecipient.mockImplementation((value) => ({
@@ -390,9 +405,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       })),
     };
     const audienceInvitations = {
-      listInvitedPeopleForAttendance: jest.fn().mockResolvedValue([
-        { personId: 'person-1', person: person('person-1', 'user-1') },
-      ]),
+      listInvitedPeopleForAttendance: jest
+        .fn()
+        .mockResolvedValue([{ personId: 'person-1', person: person('person-1', 'user-1') }]),
     };
     const { notifications, prisma, service } = createService({ audiences, audienceInvitations });
     const event = {
@@ -407,7 +422,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       eventGroup: { audience: 'UNESP_ONLY', attendanceEligibility: null, deletedAt: null },
     };
     prisma.event.findFirst.mockImplementation(async (args: { where?: unknown }) => {
-      if (prisma.event.findFirst.mock.calls.length === 1) return event;
+      if (prisma.event.findFirst.mock.calls.length === 1) {
+        return event;
+      }
       return JSON.stringify(args.where).includes('UNESP_ONLY') ? { id: 'event-1' } : null;
     });
 
@@ -437,19 +454,37 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     expect(prisma.eventInterest.findMany).not.toHaveBeenCalled();
   });
 
-  it.each(['REGISTERED_ONLY', 'APPROVED_REGISTRATIONS_ONLY'] as const)('filters pending registration notifications using %s', async (attendanceEligibility) => {
-    const { notifications, prisma, service } = createService();
-    prisma.event.findFirst.mockResolvedValue({
-      ...onlineAttendanceEvent(), name: 'Atividade selecionada', majorEventId: 'major-1', attendanceEligibility,
-      autoSubscribe: false, subscriptions: [],
-      majorEvent: { subscriptions: [{
-        person: person('person-1', 'user-1'), subscriptionStatus: 'WAITING_RECEIPT_UPLOAD', selectedEvents: [{ eventId: 'event-1' }],
-      }] },
-    });
-    notifications.mapPersonToRecipient.mockImplementation((value) => ({ subscriberId: value.userId, email: value.email }));
-    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
-    expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledTimes(attendanceEligibility === 'REGISTERED_ONLY' ? 1 : 0);
-  });
+  it.each(['REGISTERED_ONLY', 'APPROVED_REGISTRATIONS_ONLY'] as const)(
+    'filters pending registration notifications using %s',
+    async (attendanceEligibility) => {
+      const { notifications, prisma, service } = createService();
+      prisma.event.findFirst.mockResolvedValue({
+        ...onlineAttendanceEvent(),
+        name: 'Atividade selecionada',
+        majorEventId: 'major-1',
+        attendanceEligibility,
+        autoSubscribe: false,
+        subscriptions: [],
+        majorEvent: {
+          subscriptions: [
+            {
+              person: person('person-1', 'user-1'),
+              subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+              selectedEvents: [{ eventId: 'event-1' }],
+            },
+          ],
+        },
+      });
+      notifications.mapPersonToRecipient.mockImplementation((value) => ({
+        subscriberId: value.userId,
+        email: value.email,
+      }));
+      await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+      expect(notifications.notifyOnlineAttendanceAvailable).toHaveBeenCalledTimes(
+        attendanceEligibility === 'REGISTERED_ONLY' ? 1 : 0,
+      );
+    },
+  );
 });
 
 function createService(overrides: { audienceInvitations?: unknown; audiences?: unknown } = {}) {

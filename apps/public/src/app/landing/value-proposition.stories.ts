@@ -29,10 +29,19 @@ const meta: Meta<ValuePropositionStoryArgs> = {
       options: ['loading', 'ready', 'unavailable'],
       description: 'Statistics state displayed by the component.',
     },
-    peopleCount: { control: { type: 'range', min: 0, max: 1_000_000, step: 100 }, description: 'Displayed attendee count.' },
+    peopleCount: {
+      control: { type: 'range', min: 0, max: 1_000_000, step: 100 },
+      description: 'Displayed attendee count.',
+    },
     eventsCount: { control: { type: 'range', min: 0, max: 100_000, step: 10 }, description: 'Displayed event count.' },
-    majorEventsCount: { control: { type: 'range', min: 0, max: 10_000, step: 1 }, description: 'Displayed major event count.' },
-    certificatesCount: { control: { type: 'range', min: 0, max: 2_000_000, step: 100 }, description: 'Displayed issued certificate count.' },
+    majorEventsCount: {
+      control: { type: 'range', min: 0, max: 10_000, step: 1 },
+      description: 'Displayed major event count.',
+    },
+    certificatesCount: {
+      control: { type: 'range', min: 0, max: 2_000_000, step: 100 },
+      description: 'Displayed issued certificate count.',
+    },
   },
   render: (args) => ({
     props: {
@@ -79,9 +88,7 @@ export const CuratedLargePlatform: Story = {
 export const Loading: Story = {
   args: { statsState: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByRole('status'),
-    ).toBeInTheDocument();
+    await expect(await within(canvasElement).findByRole('status')).toBeInTheDocument();
     await expect(canvasElement.querySelector('.value-proposition-stats-loading')).toHaveAttribute(
       'aria-hidden',
       'true',

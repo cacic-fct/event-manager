@@ -44,11 +44,17 @@ describe('InterestApiService', () => {
       firstValueFrom(service.listInterests(InterestTargetType.EVENT, 'event-1', { query: 'Ana', skip: 0, take: 51 })),
     ).resolves.toEqual([interestFixture()]);
 
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query AdminEventInterests'), {
+      targetType: 'EVENT',
+      targetId: 'event-1',
+      query: 'Ana',
+      skip: 0,
+      take: 51,
+    });
     expect(graphqlHttp.request).toHaveBeenCalledWith(
-      expect.stringContaining('query AdminEventInterests'),
-      { targetType: 'EVENT', targetId: 'event-1', query: 'Ana', skip: 0, take: 51 },
+      expect.stringContaining('person { id name email }'),
+      expect.anything(),
     );
-    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('person { id name email }'), expect.anything());
     await expect(firstValueFrom(service.countInterests(InterestTargetType.EVENT, 'event-1', 'Ana'))).resolves.toBe(12);
   });
 

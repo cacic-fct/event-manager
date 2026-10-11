@@ -16,9 +16,13 @@ export const canCreateContextGuard = (async (route: Route) => {
   const platformId = inject(PLATFORM_ID);
   const routeErrors = inject(RouteErrorService);
   const router = inject(Router);
-  if (!isPlatformBrowser(platformId)) return true;
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
   const authenticated = await ensureAdminAuthentication(auth, router, routeErrors, platformId);
-  if (authenticated !== true) return authenticated;
+  if (authenticated !== true) {
+    return authenticated;
+  }
   try {
     await permissions.evaluateWorkspacePermissions();
     const kind = route.path?.split('/').at(-1);
@@ -48,7 +52,9 @@ export const canReadFeatureGuard: CanMatchFn = async (route: Route) => {
   }
 
   const authenticated = await ensureAdminAuthentication(auth, router, routeErrors, platformId);
-  if (authenticated !== true) return authenticated;
+  if (authenticated !== true) {
+    return authenticated;
+  }
 
   try {
     await permissions.evaluateWorkspacePermissions();
@@ -70,7 +76,9 @@ export const canValidateReceiptsGuard: CanMatchFn = async () => {
   }
 
   const authenticated = await ensureAdminAuthentication(auth, router, routeErrors, platformId);
-  if (authenticated !== true) return authenticated;
+  if (authenticated !== true) {
+    return authenticated;
+  }
 
   try {
     await permissions.evaluateWorkspacePermissions();
@@ -105,7 +113,9 @@ export const superAdminGuard: CanMatchFn = () => {
   }
 
   return ensureAdminAuthentication(auth, router, routeErrors, platformId).then((authenticated) => {
-    if (authenticated !== true) return authenticated;
+    if (authenticated !== true) {
+      return authenticated;
+    }
     return auth.roles().includes(EventManagerKeycloakRole.SuperAdmin) ? true : routeErrors.guardRedirect(403);
   });
 };

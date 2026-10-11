@@ -115,7 +115,9 @@ export class TicketDetailsPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (ticket) => {
-          if (requestId !== this.requestId) return;
+          if (requestId !== this.requestId) {
+            return;
+          }
           if (!ticket) {
             this.navigateToError(404);
             return;
@@ -135,7 +137,9 @@ export class TicketDetailsPage {
 
   private scheduleExpiryRefresh(ticket: WalletTicket): void {
     this.clearExpiryTimer();
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
 
     const now = Date.now();
     this.now.set(now);
@@ -150,7 +154,9 @@ export class TicketDetailsPage {
     this.lastExpiryRefreshKey = '';
 
     const delay = nextDeadlineDelay([ticket.effectiveExpiresAt], now);
-    if (delay === null) return;
+    if (delay === null) {
+      return;
+    }
 
     this.expiryTimer = window.setTimeout(() => {
       this.expiryTimer = null;
@@ -158,12 +164,16 @@ export class TicketDetailsPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.loadTicket(ticket.id);
-      } else this.scheduleExpiryRefresh(ticket);
+      } else {
+        this.scheduleExpiryRefresh(ticket);
+      }
     }, delay);
   }
 
   private clearExpiryTimer(): void {
-    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) window.clearTimeout(this.expiryTimer);
+    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) {
+      window.clearTimeout(this.expiryTimer);
+    }
     this.expiryTimer = null;
   }
 

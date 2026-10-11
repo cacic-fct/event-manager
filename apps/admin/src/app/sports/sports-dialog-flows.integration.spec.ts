@@ -42,7 +42,9 @@ describe('sports correction dialog integration', () => {
     dialogRef.componentInstance.save();
 
     const result = await closed;
-    if (!result) throw new Error('The correction dialog must return a result when saved.');
+    if (!result) {
+      throw new Error('The correction dialog must return a result when saved.');
+    }
     expect(document.body.textContent).not.toContain('Corrigir ocorrência registrada');
     expect(JSON.parse(result.payloadJson)).toEqual({
       actionId: 'action-1',

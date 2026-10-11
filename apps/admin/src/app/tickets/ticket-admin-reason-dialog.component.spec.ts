@@ -1,6 +1,9 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { TicketAdminReasonDialogComponent, type TicketAdminReasonDialogData } from './ticket-admin-reason-dialog.component';
+import {
+  TicketAdminReasonDialogComponent,
+  type TicketAdminReasonDialogData,
+} from './ticket-admin-reason-dialog.component';
 
 describe('TicketAdminReasonDialogComponent', () => {
   let fixture: ComponentFixture<TicketAdminReasonDialogComponent>;

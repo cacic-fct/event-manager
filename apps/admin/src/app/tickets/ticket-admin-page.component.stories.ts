@@ -120,10 +120,37 @@ const ticket = createAdminEventTicket({
   sourceReference: 'Inscrição subscription-1. Lote: Estudante.',
 });
 const historyEntries = [
-  createAdminTicketHistoryEntry({ ticketId: ticket.id, operation: 'ISSUED', newHolder: holder, actorName: 'Equipe de eventos', reason: 'Incluso no lote Estudante.' }),
-  createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-transfer', operation: 'TRANSFERRED', previousHolder: holder, newHolder: createTicketPersonSummary({ personId: 'person-2', fullName: 'Grace Hopper' }), reason: 'Transferência confirmada.' }),
-  createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-consumed', operation: 'CONSUMED', previousHolder: holder, newHolder: holder, reason: 'Leitura confirmada no acesso.' }),
-  createAdminTicketHistoryEntry({ ticketId: ticket.id, id: 'history-revoked', operation: 'REVOKED', previousHolder: holder, newHolder: null, reason: 'Solicitação do titular.' }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    operation: 'ISSUED',
+    newHolder: holder,
+    actorName: 'Equipe de eventos',
+    reason: 'Incluso no lote Estudante.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    id: 'history-transfer',
+    operation: 'TRANSFERRED',
+    previousHolder: holder,
+    newHolder: createTicketPersonSummary({ personId: 'person-2', fullName: 'Grace Hopper' }),
+    reason: 'Transferência confirmada.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    id: 'history-consumed',
+    operation: 'CONSUMED',
+    previousHolder: holder,
+    newHolder: holder,
+    reason: 'Leitura confirmada no acesso.',
+  }),
+  createAdminTicketHistoryEntry({
+    ticketId: ticket.id,
+    id: 'history-revoked',
+    operation: 'REVOKED',
+    previousHolder: holder,
+    newHolder: null,
+    reason: 'Solicitação do titular.',
+  }),
 ];
 const transfer = createTicketTransfer({
   id: 'transfer-1',
@@ -168,13 +195,13 @@ const meta: Meta<TicketAdminStoryArgs> = {
   },
   decorators: [
     withScenarioControls<TicketAdminStoryArgs>(),
-    (story, context) =>
-      applicationConfig({ providers: createProviders(context.args) })(story, context),
+    (story, context) => applicationConfig({ providers: createProviders(context.args) })(story, context),
   ],
   parameters: {
     docs: {
       description: {
-        component: 'Ticket configuration and holder management with controls for scope, sales state, eligibility, pricing, and expiration.',
+        component:
+          'Ticket configuration and holder management with controls for scope, sales state, eligibility, pricing, and expiration.',
       },
     },
     layout: 'fullscreen',
@@ -185,8 +212,7 @@ const meta: Meta<TicketAdminStoryArgs> = {
 export default meta;
 type Story = StoryObj<TicketAdminStoryArgs>;
 
-export const Playground: Story = {  };
-
+export const Playground: Story = {};
 
 export const LimitedSales: Story = {
   args: { purchaseEnabled: true, purchaseLimit: 100 },
@@ -209,7 +235,9 @@ export const AdvancedCriteriaAndTierPrices: Story = {
     const canvas = within(canvasElement);
     const prefixFields = await canvas.findAllByRole('textbox', { name: 'Prefixos adicionais de RA' });
     await expect(prefixFields).toHaveLength(2);
-    for (const field of prefixFields) await expect(field).toHaveValue('2024\n2025');
+    for (const field of prefixFields) {
+      await expect(field).toHaveValue('2024\n2025');
+    }
     await expect(canvas.getByRole('combobox', { name: 'Expirar' })).toHaveTextContent('Em uma data personalizada');
     await expect(canvas.getAllByRole('spinbutton', { name: 'Preço (R$)' })).toHaveLength(2);
     await expect(canvas.getByText('Lotes que incluem este bilhete')).toBeVisible();
@@ -219,7 +247,9 @@ export const AdvancedCriteriaAndTierPrices: Story = {
 export const FirstConfiguration: Story = {
   args: { configExists: false, ticketsCount: 0 },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('textbox', { name: 'Nome do bilhete' })).toHaveValue(event.name);
+    await expect(await within(canvasElement).findByRole('textbox', { name: 'Nome do bilhete' })).toHaveValue(
+      event.name,
+    );
   },
 };
 
@@ -243,7 +273,9 @@ export const DisabledConfiguration: Story = {
   args: { enabled: false, purchaseEnabled: true, ticketsCount: 2 },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Desativado')).toBeVisible();
-    await expect(within(canvasElement).getByText('Ative a emissão de bilhetes para disponibilizar esta compra adicional.')).toBeVisible();
+    await expect(
+      within(canvasElement).getByText('Ative a emissão de bilhetes para disponibilizar esta compra adicional.'),
+    ).toBeVisible();
     await userEvent.click(within(canvasElement).getByRole('tab', { name: 'Bilhetes emitidos' }));
     await expect(within(canvasElement).getByRole('button', { name: 'Emitir bilhete' })).toBeDisabled();
   },
@@ -252,7 +284,9 @@ export const DisabledConfiguration: Story = {
 export const StandaloneEvent: Story = {
   args: { scope: 'standalone', purchaseEnabled: false },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('heading', { name: 'Transferência de titularidade' })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('heading', { name: 'Transferência de titularidade' }),
+    ).toBeVisible();
     await expect(within(canvasElement).queryByText('Compra de bilhetes adicionais')).toBeNull();
   },
 };
@@ -260,7 +294,9 @@ export const StandaloneEvent: Story = {
 export const EventInsideGroup: Story = {
   args: { scope: 'group-event', purchaseEnabled: false },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('textbox', { name: 'Nome do bilhete' })).toHaveValue('Jantar de integração');
+    await expect(await within(canvasElement).findByRole('textbox', { name: 'Nome do bilhete' })).toHaveValue(
+      'Jantar de integração',
+    );
   },
 };
 
@@ -290,7 +326,9 @@ export const NoIssuedTickets: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Bilhetes emitidos' }));
-    await expect(await canvas.findByText('Nenhum bilhete corresponde à busca e à situação selecionadas.')).toBeVisible();
+    await expect(
+      await canvas.findByText('Nenhum bilhete corresponde à busca e à situação selecionadas.'),
+    ).toBeVisible();
   },
 };
 
@@ -309,7 +347,9 @@ export const Loading: Story = { args: { apiState: 'loading' } };
 export const LoadError: Story = {
   args: { apiState: 'load-error' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Não foi possível carregar os bilhetes', { exact: true })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText('Não foi possível carregar os bilhetes', { exact: true }),
+    ).toBeVisible();
   },
 };
 
@@ -321,14 +361,15 @@ export const SaveFailure: Story = {
     await userEvent.clear(name);
     await userEvent.type(name, 'Acesso à cerimônia');
     await userEvent.click(canvas.getByRole('button', { name: 'Salvar configuração' }));
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Não foi possível salvar a configuração dos bilhetes.');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a configuração dos bilhetes.',
+    );
   },
 };
 
 export const ReadOnly: Story = {
   args: { readOnly: true, ticketsCount: 2 },
 };
-
 
 function createProviders(args: TicketAdminStoryArgs) {
   const hasMajorEvent = args.scope === 'major-event' || args.scope === 'major-overview';
@@ -343,24 +384,26 @@ function createProviders(args: TicketAdminStoryArgs) {
     startsAt: eventForRoute.startDate,
     endsAt: eventForRoute.endDate,
   });
-  const recipientPolicy = args.eligibilityProfile === 'open'
-    ? config.recipientPolicy
-    : {
-        ...config.recipientPolicy,
-        subscriptionRequirement: 'REQUIRED' as const,
-        requiresUnesp: args.eligibilityProfile === 'unesp-student',
-        requiredAcademicIdPrefixes: args.eligibilityProfile === 'ra-prefix' ? ['2024', '2025'] : [],
-        requiredCourseCodes: args.eligibilityProfile === 'unesp-student' ? ['12'] : [],
-        allowedPriceTierIds: hasMajorEvent ? ['tier-student'] : [],
-      };
-  const priceOptions = !hasMajorEvent || !args.purchaseEnabled
-    ? []
-    : args.priceModel === 'PER_TIER'
-      ? [
-          { id: 'price-student', priceTierId: 'tier-student', label: 'Estudante', amountCents: 8_000 },
-          { id: 'price-guest', priceTierId: 'tier-guest', label: 'Visitante', amountCents: 16_000 },
-        ]
-      : [{ id: 'price-single', priceTierId: null, label: 'Preço único', amountCents: 8_000 }];
+  const recipientPolicy =
+    args.eligibilityProfile === 'open'
+      ? config.recipientPolicy
+      : {
+          ...config.recipientPolicy,
+          subscriptionRequirement: 'REQUIRED' as const,
+          requiresUnesp: args.eligibilityProfile === 'unesp-student',
+          requiredAcademicIdPrefixes: args.eligibilityProfile === 'ra-prefix' ? ['2024', '2025'] : [],
+          requiredCourseCodes: args.eligibilityProfile === 'unesp-student' ? ['12'] : [],
+          allowedPriceTierIds: hasMajorEvent ? ['tier-student'] : [],
+        };
+  const priceOptions =
+    !hasMajorEvent || !args.purchaseEnabled
+      ? []
+      : args.priceModel === 'PER_TIER'
+        ? [
+            { id: 'price-student', priceTierId: 'tier-student', label: 'Estudante', amountCents: 8_000 },
+            { id: 'price-guest', priceTierId: 'tier-guest', label: 'Visitante', amountCents: 16_000 },
+          ]
+        : [{ id: 'price-single', priceTierId: null, label: 'Preço único', amountCents: 8_000 }];
   const storyConfig = createAdminTicketConfig({
     ...config,
     event: scopedEventSummary,
@@ -386,29 +429,40 @@ function createProviders(args: TicketAdminStoryArgs) {
     ...ticket,
     eventId: event.id,
     event: scopedEventSummary,
-    effectiveExpiresAt: args.expirationMode === 'CUSTOM' ? storyConfig.customExpiresAt ?? event.endDate : event.endDate,
+    effectiveExpiresAt:
+      args.expirationMode === 'CUSTOM' ? (storyConfig.customExpiresAt ?? event.endDate) : event.endDate,
   });
   const statuses = ['ACTIVE', 'CONSUMED', 'REVOKED', 'EXPIRED'] as const;
-  const tickets = Array.from({ length: args.ticketsCount }, (_, index) => createAdminEventTicket({
-    ...ticketFixture,
-    id: `018f47a1-3d5b-7abc-8def-${String(index + 1).padStart(12, '0')}`,
-    holder: createTicketPersonSummary({ personId: `person-${index + 1}`, fullName: index === 0 ? 'Ada Lovelace' : `Participante ${index + 1}` }),
-    status: statuses[index % statuses.length],
-  }));
+  const tickets = Array.from({ length: args.ticketsCount }, (_, index) =>
+    createAdminEventTicket({
+      ...ticketFixture,
+      id: `018f47a1-3d5b-7abc-8def-${String(index + 1).padStart(12, '0')}`,
+      holder: createTicketPersonSummary({
+        personId: `person-${index + 1}`,
+        fullName: index === 0 ? 'Ada Lovelace' : `Participante ${index + 1}`,
+      }),
+      status: statuses[index % statuses.length],
+    }),
+  );
   const routeParams = args.scope === 'major-overview' ? { majorEventId: majorEvent.id } : { eventId: event.id };
   const apiState = args.apiState;
   const configForStory = args.configExists ? storyConfig : null;
   const api = {
-    getConfigs: () => apiState === 'loading' ? NEVER : apiState === 'load-error'
-      ? throwError(() => new Error('Não foi possível carregar os bilhetes deste contexto.'))
-      : of(configForStory ? [configForStory] : []),
-    saveConfig: () => apiState === 'save-error'
-      ? throwError(() => new Error('Não foi possível salvar a configuração dos bilhetes.'))
-      : of(storyConfig),
+    getConfigs: () =>
+      apiState === 'loading'
+        ? NEVER
+        : apiState === 'load-error'
+          ? throwError(() => new Error('Não foi possível carregar os bilhetes deste contexto.'))
+          : of(configForStory ? [configForStory] : []),
+    saveConfig: () =>
+      apiState === 'save-error'
+        ? throwError(() => new Error('Não foi possível salvar a configuração dos bilhetes.'))
+        : of(storyConfig),
     getEligibilityWarnings: () => of({ eligible: true, warnings: [] }),
-    getEventTickets: () => apiState === 'holders-error'
-      ? throwError(() => new Error('Não foi possível carregar os bilhetes.'))
-      : of({ tickets, nextCursor: null, totalCount: tickets.length }),
+    getEventTickets: () =>
+      apiState === 'holders-error'
+        ? throwError(() => new Error('Não foi possível carregar os bilhetes.'))
+        : of({ tickets, nextCursor: null, totalCount: tickets.length }),
     issueTicket: () => of(ticketFixture),
     revokeTicket: () => of({ ...ticketFixture, status: 'REVOKED' as const }),
     startTransfer: () => of(transfer),
@@ -428,12 +482,24 @@ function createProviders(args: TicketAdminStoryArgs) {
   ]);
   return [
     provideRouter([]),
-    { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(routeParams) }, paramMap: of(convertToParamMap(routeParams)) } },
+    {
+      provide: ActivatedRoute,
+      useValue: {
+        snapshot: { paramMap: convertToParamMap(routeParams) },
+        paramMap: of(convertToParamMap(routeParams)),
+      },
+    },
     { provide: EventApiService, useValue: { getEvent: () => of(eventForRoute) } },
     { provide: MajorEventApiService, useValue: { getMajorEvent: () => of(majorEvent) } },
     { provide: TicketAdminApiService, useValue: api },
     { provide: RealtimeApiService, useValue: { watchEventTickets: () => EMPTY } },
-    { provide: PermissionsService, useValue: { has: (permission: string) => !args.readOnly && permissions.has(permission), hasAny: (requested: string[]) => !args.readOnly && requested.some((permission) => permissions.has(permission)) } },
+    {
+      provide: PermissionsService,
+      useValue: {
+        has: (permission: string) => !args.readOnly && permissions.has(permission),
+        hasAny: (requested: string[]) => !args.readOnly && requested.some((permission) => permissions.has(permission)),
+      },
+    },
     { provide: AdminFeedbackService, useValue: { showErrorMessage: () => undefined } },
     { provide: MatSnackBar, useValue: { open: () => ({ onAction: () => of(undefined) }) } },
     { provide: MatDialog, useValue: dialog },

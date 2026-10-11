@@ -59,19 +59,30 @@ describe('CurrentUserCertificatesDownloadController', () => {
     const file = await controller.downloadArchive(request as never);
 
     expect(currentUserContext.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
-    const [, ids, manifest] = downloadService.createCertificatesArchive.mock.calls[0] as unknown as
-      [string, AsyncIterable<string>, Readable];
+    const [, ids, manifest] = downloadService.createCertificatesArchive.mock.calls[0] as unknown as [
+      string,
+      AsyncIterable<string>,
+      Readable,
+    ];
     const certificateIds: string[] = [];
-    for await (const id of ids) { certificateIds.push(id); }
+    for await (const id of ids) {
+      certificateIds.push(id);
+    }
     expect(certificateIds).toEqual(['certificate-1']);
     let manifestJson = '';
-    for await (const chunk of manifest) { manifestJson += chunk; }
+    for await (const chunk of manifest) {
+      manifestJson += chunk;
+    }
     expect(JSON.parse(manifestJson).certificates).toEqual([
       expect.objectContaining({ certificateId: 'certificate-1', eventIds: ['event-1'], targetId: 'event-1' }),
     ]);
-    expect(prisma.certificate.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      take: 50, orderBy: { id: 'asc' }, where: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
-    }));
+    expect(prisma.certificate.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 50,
+        orderBy: { id: 'asc' },
+        where: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
+      }),
+    );
     expect(file.getStream()).toBe(archiveStream);
     expect(file.getHeaders()).toEqual({
       type: 'application/zip',

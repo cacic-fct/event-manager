@@ -114,12 +114,16 @@ export class PaymentInfo {
   });
   readonly amountToPay = computed(() => {
     const currentState = this.state();
-    if (currentState.status !== 'ready') return null;
+    if (currentState.status !== 'ready') {
+      return null;
+    }
     return currentState.ticketOption?.amountCents ?? currentState.ticketPurchase?.amountCents ?? this.applicablePrice();
   });
   readonly visibleReceipt = computed(() => {
     const currentState = this.state();
-    if (currentState.status !== 'ready') return null;
+    if (currentState.status !== 'ready') {
+      return null;
+    }
     return currentState.uploadedTicketPurchaseReceipt ?? currentState.ticketPurchase?.receipt ?? currentState.receipt;
   });
   readonly ticketAmountChanged = computed(() => {
@@ -152,10 +156,18 @@ export class PaymentInfo {
   constructor() {
     effect((onCleanup) => {
       const currentState = this.state();
-      if (!this.isBrowser || !this.ticketPurchaseMode || currentState.status !== 'ready' || !currentState.ticketOption)
+      if (
+        !this.isBrowser ||
+        !this.ticketPurchaseMode ||
+        currentState.status !== 'ready' ||
+        !currentState.ticketOption
+      ) {
         return;
+      }
       const delay = nextDeadlineDelay([currentState.ticketOption.expiresAt], this.paymentNow());
-      if (delay === null) return;
+      if (delay === null) {
+        return;
+      }
       const timer = window.setTimeout(() => this.paymentNow.set(Date.now()), delay);
       onCleanup(() => window.clearTimeout(timer));
     });
@@ -233,7 +245,9 @@ export class PaymentInfo {
 
   copyPixKey(): void {
     this.paymentNow.set(Date.now());
-    if (this.ticketOfferExpired()) return;
+    if (this.ticketOfferExpired()) {
+      return;
+    }
     const paymentInfo = this.readySubscription()?.majorEvent.paymentInfo;
     if (paymentInfo?.pixKey) {
       const subscription = this.readySubscription();
@@ -256,7 +270,9 @@ export class PaymentInfo {
   }
 
   ticketPageTitle(currentState: Extract<PaymentState, { status: 'ready' }>): string {
-    if (!this.ticketPurchaseMode) return currentState.subscription.majorEvent.name;
+    if (!this.ticketPurchaseMode) {
+      return currentState.subscription.majorEvent.name;
+    }
     return currentState.ticketOption?.name ?? currentState.ticketPurchase?.name ?? 'Pagamento do bilhete';
   }
 
@@ -294,13 +310,17 @@ export class PaymentInfo {
       ) {
         return false;
       }
-      if (currentState.uploadedTicketPurchaseReceipt) return false;
+      if (currentState.uploadedTicketPurchaseReceipt) {
+        return false;
+      }
       return (
         currentState.ticketPurchase?.status !== 'UNDER_REVIEW' && currentState.ticketPurchase?.status !== 'APPROVED'
       );
     }
 
-    if (!subscription.majorEvent.isPaymentRequired) return false;
+    if (!subscription.majorEvent.isPaymentRequired) {
+      return false;
+    }
 
     if (subscription.subscriptionStatus === 'CONFIRMED' || subscription.subscriptionStatus === 'CANCELED') {
       return false;
@@ -316,13 +336,17 @@ export class PaymentInfo {
     }
 
     const requestId = ++this.pageRequestId;
-    if (!background) this.state.set({ status: 'loading' });
+    if (!background) {
+      this.state.set({ status: 'loading' });
+    }
     this.receiptUploadCooldown.clear();
     this.pageRequest()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ subscription, receipt, ticketOption, ticketPurchase, uploadedTicketPurchaseReceipt }) => {
-          if (requestId !== this.pageRequestId) return;
+          if (requestId !== this.pageRequestId) {
+            return;
+          }
           if (!subscription) {
             void this.routeErrors.navigate(404);
             return;
@@ -352,10 +376,14 @@ export class PaymentInfo {
           }
         },
         error: (error: unknown) => {
-          if (requestId !== this.pageRequestId) return;
+          if (requestId !== this.pageRequestId) {
+            return;
+          }
           const status = privateResourceErrorStatus(error);
           if (background && this.state().status === 'ready') {
-            if (status === 404) void this.routeErrors.navigate(status);
+            if (status === 404) {
+              void this.routeErrors.navigate(status);
+            }
             return;
           }
           void this.routeErrors.navigate(status);
@@ -554,7 +582,9 @@ export class PaymentInfo {
         },
         error: (error: unknown) => {
           this.uploadProgress.set(null);
-          if (error instanceof RateLimitError) this.receiptUploadCooldown.start(error.retryAfterSeconds);
+          if (error instanceof RateLimitError) {
+            this.receiptUploadCooldown.start(error.retryAfterSeconds);
+          }
           this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', { duration: 5000 });
         },
       });
@@ -666,7 +696,9 @@ export class PaymentInfo {
   }
 
   private parseExpectedAmount(value: string | null): number | null {
-    if (!value || !/^\d+$/.test(value)) return null;
+    if (!value || !/^\d+$/.test(value)) {
+      return null;
+    }
     const amount = Number(value);
     return Number.isSafeInteger(amount) ? amount : null;
   }

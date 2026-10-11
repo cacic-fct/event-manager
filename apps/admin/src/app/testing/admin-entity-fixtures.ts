@@ -130,7 +130,8 @@ export function createAdminReceiptValidationQueueItem(
     sizeBytes: 184_320,
     uploadedAt: dateFromNow(-1, 14),
     expiresAt: dateFromNow(6, 14),
-    imageUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960"><rect width="720" height="960" fill="white"/><text x="80" y="160" font-size="36">Comprovante CACiC</text></svg>',
+    imageUrl:
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960"><rect width="720" height="960" fill="white"/><text x="80" y="160" font-size="36">Comprovante CACiC</text></svg>',
     processingStatus: 'PROCESSED',
     ocrText: 'Comprovante Marina da Silva R$ 120,00',
     amountMatched: true,

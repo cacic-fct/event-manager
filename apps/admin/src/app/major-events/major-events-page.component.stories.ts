@@ -114,11 +114,16 @@ export const OptionalPaymentWithPrices: Story = {
     const canvas = within(canvasElement);
     const prices = canvas.getAllByRole('spinbutton', { name: 'Valor' });
     const originalValues = prices.map((price) => (price as HTMLInputElement).value);
-    await expect(canvas.getByRole('button', { name: 'Instruções e dados para pagamento' })).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByRole('button', { name: 'Instruções e dados para pagamento' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Exigir pagamento' }));
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Exigir pagamento' }));
     await expect(prices.map((price) => (price as HTMLInputElement).value)).toEqual(originalValues);
-    for (const price of prices) await expect(price).toBeVisible();
+    for (const price of prices) {
+      await expect(price).toBeVisible();
+    }
   },
 };
 

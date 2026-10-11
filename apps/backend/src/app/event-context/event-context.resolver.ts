@@ -24,6 +24,17 @@ export class EventContextResolver {
     @Args('isInGroup', { type: () => Boolean, nullable: true }) isInGroup?: boolean,
     @Args('isInMajorEvent', { type: () => Boolean, nullable: true }) isInMajorEvent?: boolean,
   ): Promise<AdminEventContextPage> {
-    return this.eventContext.getPage(context, { parentKind, parentId, childKind, query, cursor, take, startDateFrom, startDateUntil, isInGroup, isInMajorEvent });
+    return this.eventContext.getPage(context, {
+      parentKind,
+      parentId,
+      childKind,
+      query,
+      cursor,
+      take,
+      startDateFrom,
+      startDateUntil,
+      isInGroup,
+      isInMajorEvent,
+    });
   }
 }

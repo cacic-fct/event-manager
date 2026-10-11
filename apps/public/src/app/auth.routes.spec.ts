@@ -83,9 +83,9 @@ describe('public auth route wiring', () => {
 
   it('uses shared error routes for page failures and server-rendered 404 status for unknown paths', () => {
     const errorRoutes = appRoutes.filter((route) => route.path?.startsWith('error/'));
-    expect(
-      errorRoutes.map((route) => (route.data?.['pageError'] as { status?: number } | undefined)?.status),
-    ).toEqual([403, 404, 500, 503]);
+    expect(errorRoutes.map((route) => (route.data?.['pageError'] as { status?: number } | undefined)?.status)).toEqual([
+      403, 404, 500, 503,
+    ]);
     for (const path of ['error/403', 'error/404', 'error/500', 'error/503']) {
       expect(serverRoutes.find((route) => route.path === path)?.renderMode).toBe(RenderMode.Server);
     }
@@ -93,10 +93,25 @@ describe('public auth route wiring', () => {
   });
 
   it('retains prerendering for static public pages and client rendering for private preferences', () => {
-    for (const path of ['', 'menu', 'calendar', 'notifications', 'about', 'about/legal', 'humans.txt', 'help', 'validate', 'validar', 'legal', 'licenses']) {
+    for (const path of [
+      '',
+      'menu',
+      'calendar',
+      'notifications',
+      'about',
+      'about/legal',
+      'humans.txt',
+      'help',
+      'validate',
+      'validar',
+      'legal',
+      'licenses',
+    ]) {
       expect(serverRoutes.find((route) => route.path === path)?.renderMode).toBe(RenderMode.Prerender);
     }
-    expect(serverRoutes.find((route) => route.path === 'preferences/service-worker')?.renderMode).toBe(RenderMode.Client);
+    expect(serverRoutes.find((route) => route.path === 'preferences/service-worker')?.renderMode).toBe(
+      RenderMode.Client,
+    );
   });
 });
 

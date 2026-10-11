@@ -569,7 +569,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     try {
       await this.prisma.$transaction(async (tx) => {
         await assertScannerTicket(tx, {
-          eventId: submission.eventId, personId, attendedAt: submission.collectedAt,
+          eventId: submission.eventId,
+          personId,
+          attendedAt: submission.collectedAt,
           scannerCode: submission.createdByMethod === AttendanceCreationMethod.SCANNER ? submission.scannerCode : null,
         });
         const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
@@ -885,7 +887,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         where: { personId_eventId: { personId, eventId } },
         select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
-      if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      if (!previousAttendance) {
+        throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      }
       await tx.eventAttendance.update({
         where: { personId_eventId: { personId, eventId } },
         data: this.buildEventAttendanceUpdateData(input),
@@ -933,7 +937,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ): Prisma.EventAttendanceUncheckedUpdateManyInput {
     const data: Prisma.EventAttendanceUncheckedUpdateManyInput = {};
 
-    if (input.attendedAt !== undefined) data.attendedAt = input.attendedAt;
+    if (input.attendedAt !== undefined) {
+      data.attendedAt = input.attendedAt;
+    }
 
     return data;
   }
@@ -951,7 +957,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         where: { personId_eventId: { personId, eventId } },
         select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
-      if (!previousAttendance) throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      if (!previousAttendance) {
+        throw new NotFoundException(`Attendance ${personId}/${eventId} was not found.`);
+      }
       await tx.eventAttendance.delete({ where: { personId_eventId: { personId, eventId } } });
       await this.auditLog.record(
         {
@@ -1106,7 +1114,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
     return storedScannerCode?.trim().startsWith('ticket:')
       ? scannerUserIdForStorage(storedScannerCode)
-      : storedScannerCode ? parseStoredScannerUserId(storedScannerCode) : null;
+      : storedScannerCode
+        ? parseStoredScannerUserId(storedScannerCode)
+        : null;
   }
 
   private async resolveMergedPersonId(personId: string): Promise<string> {

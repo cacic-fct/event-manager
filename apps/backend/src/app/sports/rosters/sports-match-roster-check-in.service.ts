@@ -556,7 +556,9 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         category: { select: { eventGroupId: true, tournament: { select: { majorEventId: true } } } },
       },
     });
-    if (!context) throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    if (!context) {
+      throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    }
     if (
       !(
         [
@@ -573,7 +575,9 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
       where: { userId, deletedAt: null, mergedIntoId: null },
       select: { id: true },
     });
-    if (!person) throw new NotFoundException('A pessoa do código lido não foi encontrada.');
+    if (!person) {
+      throw new NotFoundException('A pessoa do código lido não foi encontrada.');
+    }
     const athlete = await this.prisma.sportsMatchRosterEntry.findFirst({
       where: {
         deletedAt: null,

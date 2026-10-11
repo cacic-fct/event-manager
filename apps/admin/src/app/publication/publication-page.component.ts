@@ -1,13 +1,5 @@
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  PLATFORM_ID,
-  ViewEncapsulation,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, PLATFORM_ID, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -141,9 +133,7 @@ export class PublicationPageComponent {
       const requestedNode = this.parseRequestedNode(targetType, targetId);
       const previousNode = this.requestedNode();
       this.requestedNode.set(requestedNode);
-      if (
-        (previousNode?.targetType !== requestedNode?.targetType || previousNode?.id !== requestedNode?.id)
-      ) {
+      if (previousNode?.targetType !== requestedNode?.targetType || previousNode?.id !== requestedNode?.id) {
         this.pageIndex.set(0);
         this.workspace.set(null);
         this.selectedNode.set(null);
@@ -162,7 +152,9 @@ export class PublicationPageComponent {
     this.loading.set(true);
     try {
       const workspace = await firstValueFrom(this.api.getWorkspace(this.workspaceFilters()));
-      if (requestId !== this.refreshRequestId) return;
+      if (requestId !== this.refreshRequestId) {
+        return;
+      }
       this.workspace.set(workspace);
       this.expandPathsToRelevantNodes(workspace.tree ?? workspace.items);
       const currentSelection = this.selectedNode();
@@ -178,8 +170,12 @@ export class PublicationPageComponent {
         null;
       this.selectedNode.set(nextSelection ?? this.workspaceItems()[0] ?? null);
     } catch (error) {
-      if (requestId !== this.refreshRequestId) return;
-      if (this.requestedNode() && this.routeResourceErrors.redirectIfUnavailable(error)) return;
+      if (requestId !== this.refreshRequestId) {
+        return;
+      }
+      if (this.requestedNode() && this.routeResourceErrors.redirectIfUnavailable(error)) {
+        return;
+      }
       this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       if (requestId === this.refreshRequestId) {

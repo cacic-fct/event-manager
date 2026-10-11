@@ -413,7 +413,10 @@ export class AttendancesApiService {
           ? details.currentUserEventSubscription
           : null;
         const organizerEvent = organizerInfo?.events[0]?.event ?? null;
-        const fallbackEvent = this.resolveStandaloneEvent(publicEvent ?? details.currentUserEventAttendance?.event ?? null, organizerEvent);
+        const fallbackEvent = this.resolveStandaloneEvent(
+          publicEvent ?? details.currentUserEventAttendance?.event ?? null,
+          organizerEvent,
+        );
         const detailEvent = subscription?.event ?? fallbackEvent;
 
         return {

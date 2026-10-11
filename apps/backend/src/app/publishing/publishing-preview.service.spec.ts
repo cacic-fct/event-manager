@@ -52,13 +52,15 @@ describe('PublicationPreviewService', () => {
     expect(firstUpsert.create.previewTokenHash).not.toEqual(secondUpsert.update.previewTokenHash);
     expect(firstUpsert.create.redisKey).not.toEqual(secondUpsert.update.redisKey);
     expect(redis.set.mock.calls[0][0]).not.toEqual(redis.set.mock.calls[1][0]);
-    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({
-      entityId: 'event-1',
-      metadata: {
-        previewId: 'preview-1',
-        expiresAt: expect.any(String),
-        previewAt: expect.any(String),
-      },
-    }));
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-1',
+        metadata: {
+          previewId: 'preview-1',
+          expiresAt: expect.any(String),
+          previewAt: expect.any(String),
+        },
+      }),
+    );
   });
 });

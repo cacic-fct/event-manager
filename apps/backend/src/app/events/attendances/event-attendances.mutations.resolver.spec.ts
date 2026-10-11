@@ -325,10 +325,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
 
     await expect(
-      resolver.createEventAttendanceFromScannerCode(
-        { eventId: 'event-1', code: 'user:user-1' },
-        { req: { user: { sub: 'collector-1' } } } as never,
-      ),
+      resolver.createEventAttendanceFromScannerCode({ eventId: 'event-1', code: 'user:user-1' }, {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).resolves.toBe(attendance);
     expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx, true, {
       attendedAt: expect.any(Date),

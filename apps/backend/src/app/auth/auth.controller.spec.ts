@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA, HTTP_CODE_METADATA } from '@nestjs/common/constants';
 import { AuthController } from './auth.controller';
 import { AUTH_SESSION_COOKIE_NAME, AUTH_STATE_COOKIE_NAME, IS_PUBLIC_KEY } from './auth.constants';

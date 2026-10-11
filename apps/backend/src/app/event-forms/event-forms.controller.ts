@@ -129,7 +129,9 @@ export class EventFormsController {
   ): Promise<void> {
     const image = await this.images.downloadById(imageId, request.user);
     response.setHeader('Content-Type', image.contentType);
-    if (image.contentLength !== undefined) response.setHeader('Content-Length', String(image.contentLength));
+    if (image.contentLength !== undefined) {
+      response.setHeader('Content-Length', String(image.contentLength));
+    }
     await pipeline(image.stream, response);
   }
 
@@ -209,7 +211,9 @@ export class EventFormsController {
   ): Promise<void> {
     const image = await this.images.download(formId, imageId, request.user);
     response.setHeader('Content-Type', image.contentType);
-    if (image.contentLength !== undefined) response.setHeader('Content-Length', String(image.contentLength));
+    if (image.contentLength !== undefined) {
+      response.setHeader('Content-Length', String(image.contentLength));
+    }
     await pipeline(image.stream, response);
   }
 

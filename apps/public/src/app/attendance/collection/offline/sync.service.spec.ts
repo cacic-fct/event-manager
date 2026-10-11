@@ -241,18 +241,23 @@ describe('AttendanceOfflineSyncService', () => {
       markSyncing: vi.fn().mockResolvedValue(undefined),
       applyCommitResults: vi.fn(async (_owner: string, results: { clientId: string; status: string }[]) => {
         for (const result of results) {
-          if (result.status === 'CREATED')
+          if (result.status === 'CREATED') {
             pending.splice(
               pending.findIndex((item) => item.clientId === result.clientId),
               1,
             );
+          }
         }
       }),
       recordSyncFailure: vi.fn().mockResolvedValue(undefined),
     };
     const commitOfflineAttendances = vi.fn((items: { clientId: string }[]) => {
-      if (mode === 'offline') online = false;
-      if (mode === 'handoff') activeUserId = 'user-2';
+      if (mode === 'offline') {
+        online = false;
+      }
+      if (mode === 'handoff') {
+        activeUserId = 'user-2';
+      }
       return of(
         items
           .filter((item) => mode !== 'missing' || Number(item.clientId.split('-')[1]) >= 80)

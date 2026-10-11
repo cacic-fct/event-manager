@@ -187,11 +187,15 @@ export class MajorEventsService {
   async loadMajorEvents(): Promise<void> {
     const request = ++this.majorEventListRequest;
     const query = this.majorEventsSearchForm.controls.query.value.trim();
-    const items = await firstValueFrom(this.api.listMajorEvents({
-      ...(query ? { query } : {}),
-      ...pageVariables(this.majorEventsPagination.pageIndex()),
-    }));
-    if (request !== this.majorEventListRequest) return;
+    const items = await firstValueFrom(
+      this.api.listMajorEvents({
+        ...(query ? { query } : {}),
+        ...pageVariables(this.majorEventsPagination.pageIndex()),
+      }),
+    );
+    if (request !== this.majorEventListRequest) {
+      return;
+    }
     this.majorEvents.set(applyPagedResult(items, this.majorEventsPagination));
     const selectedMajorEvent = this.selectedMajorEvent();
     if (selectedMajorEvent) {
@@ -275,19 +279,34 @@ export class MajorEventsService {
       }
 
       await this.loadMajorEvents();
-      if (saveRequest !== this.selectionRequest) return;
+      if (saveRequest !== this.selectionRequest) {
+        return;
+      }
       if (action === 'SCHEDULE') {
         this.captureEditorBaseline();
         void this.router.navigate(this.majorEventPublicationRoute(savedMajorEvent.id));
         return;
       }
 
-      if (saveRequest !== this.selectionRequest) return;
+      if (saveRequest !== this.selectionRequest) {
+        return;
+      }
       this.populateMajorEventSelection(savedMajorEvent);
-      this.workspaceContext.context.update((context) => context?.kind === 'major-event' && context.id === savedMajorEvent.id
-        ? {...context,name:savedMajorEvent.name,emoji:savedMajorEvent.emoji,startDate:savedMajorEvent.startDate,endDate:savedMajorEvent.endDate} : context);
+      this.workspaceContext.context.update((context) =>
+        context?.kind === 'major-event' && context.id === savedMajorEvent.id
+          ? {
+              ...context,
+              name: savedMajorEvent.name,
+              emoji: savedMajorEvent.emoji,
+              startDate: savedMajorEvent.startDate,
+              endDate: savedMajorEvent.endDate,
+            }
+          : context,
+      );
       await this.loadEventsForMajorEvent(savedMajorEvent.id, saveRequest);
-      if (saveRequest !== this.selectionRequest) return;
+      if (saveRequest !== this.selectionRequest) {
+        return;
+      }
       this.loadedSelectionId = savedMajorEvent.id;
       void this.router.navigate(['/event-workspace', 'major-event', savedMajorEvent.id, 'settings']);
     } catch (error) {
@@ -332,7 +351,9 @@ export class MajorEventsService {
   resetMajorEventForm(navigate = true): void {
     this.selectionRequest++;
     this.loadedSelectionId = null;
-    if (navigate) void this.router.navigate(['/event-workspace/new/major-event']);
+    if (navigate) {
+      void this.router.navigate(['/event-workspace/new/major-event']);
+    }
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
     this.majorEventEventSearchResults.set([]);
@@ -394,10 +415,14 @@ export class MajorEventsService {
     }
 
     const majorEvent = await firstValueFrom(this.api.getMajorEvent(majorEventId));
-    if (request !== this.selectionRequest) return;
+    if (request !== this.selectionRequest) {
+      return;
+    }
     this.populateMajorEventSelection(majorEvent);
     await this.loadEventsForMajorEvent(majorEventId, request);
-    if (request === this.selectionRequest) this.loadedSelectionId = majorEventId;
+    if (request === this.selectionRequest) {
+      this.loadedSelectionId = majorEventId;
+    }
   }
 
   private populateMajorEventSelection(majorEvent: MajorEvent): void {
@@ -450,7 +475,15 @@ export class MajorEventsService {
       priceType,
     });
     this.majorEventAudienceInvitations.set(
-      (majorEvent.audienceInvitations ?? []).map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }),
+      (majorEvent.audienceInvitations ?? []).map(
+        (invitation) =>
+          invitation.person ?? {
+            id: invitation.personId,
+            name: 'Pessoa convidada (dados indisponíveis)',
+            email: null,
+            unresolved: true,
+          },
+      ),
     );
     this.resetPriceTiers(
       price?.tiers.length
@@ -687,7 +720,9 @@ export class MajorEventsService {
       }),
     );
 
-    if (request !== this.selectionRequest || this.selectedMajorEvent()?.id !== majorEventId) return;
+    if (request !== this.selectionRequest || this.selectedMajorEvent()?.id !== majorEventId) {
+      return;
+    }
     this.majorEventEvents.set([...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)));
   }
 
@@ -696,12 +731,16 @@ export class MajorEventsService {
   }
 
   private toOptionalIsoDateTime(rawValue: string | null | undefined): string | null {
-    if (!rawValue || typeof rawValue !== 'string') return null;
+    if (!rawValue || typeof rawValue !== 'string') {
+      return null;
+    }
     return rawValue.trim() ? this.toIsoDateTime(rawValue) : null;
   }
 
   private toOptionalNumber(rawValue: string | null | undefined): number | null {
-    if (!rawValue || typeof rawValue !== 'string') return null;
+    if (!rawValue || typeof rawValue !== 'string') {
+      return null;
+    }
     return rawValue.trim() ? Number(rawValue) : null;
   }
 

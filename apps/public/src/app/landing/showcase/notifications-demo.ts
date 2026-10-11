@@ -3,7 +3,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 
-export type ShowcaseNotificationDestination = 'receipt' | 'event-info' | 'ticket-transfer' | 'certificates' | 'attendance';
+export type ShowcaseNotificationDestination =
+  | 'receipt'
+  | 'event-info'
+  | 'ticket-transfer'
+  | 'certificates'
+  | 'attendance';
 
 interface ShowcaseNotification {
   id: string;
@@ -74,10 +79,14 @@ export class NotificationsDemoComponent {
   readonly notifications = signal<readonly ShowcaseNotification[]>(NOTIFICATIONS);
   readonly unreadOnly = signal(false);
   readonly unreadCount = computed(() => this.notifications().filter((item) => !item.read).length);
-  readonly visibleNotifications = computed(() => this.notifications().filter((item) => !this.unreadOnly() || !item.read));
+  readonly visibleNotifications = computed(() =>
+    this.notifications().filter((item) => !this.unreadOnly() || !item.read),
+  );
 
   openNotification(notification: ShowcaseNotification): void {
-    this.notifications.update((items) => items.map((item) => item.id === notification.id ? { ...item, read: true } : item));
+    this.notifications.update((items) =>
+      items.map((item) => (item.id === notification.id ? { ...item, read: true } : item)),
+    );
     this.openDestination.emit(notification.destination);
   }
 

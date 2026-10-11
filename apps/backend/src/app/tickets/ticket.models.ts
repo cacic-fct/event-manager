@@ -1,5 +1,10 @@
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
-import { TicketExpirationMode, TicketIssueSource, TicketLifecycleState, TicketSubscriptionRequirement } from '@cacic-fct/shared-ticketing';
+import {
+  TicketExpirationMode,
+  TicketIssueSource,
+  TicketLifecycleState,
+  TicketSubscriptionRequirement,
+} from '@cacic-fct/shared-ticketing';
 
 @ObjectType()
 export class TicketEventSummaryModel {
@@ -172,7 +177,8 @@ export class TicketTransferModel {
   @Field(() => String) recipientStatus!: string;
   @Field(() => String, { nullable: true }) ignoreReason!: string | null;
   @Field(() => Boolean) initiatedByAdmin!: boolean;
-  @Field(() => TicketTransferAdminIdentityModel, { nullable: true }) initiatingAdmin!: TicketTransferAdminIdentityModel | null;
+  @Field(() => TicketTransferAdminIdentityModel, { nullable: true })
+  initiatingAdmin!: TicketTransferAdminIdentityModel | null;
   @Field(() => Date) createdAt!: Date;
   @Field(() => Date) updatedAt!: Date;
   @Field(() => Date, { nullable: true }) expiresFromListAt!: Date | null;

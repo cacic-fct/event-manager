@@ -410,7 +410,11 @@ describe('EventGroupsResolver authorization', () => {
       frozenResources as never,
       {} as never,
       auditLog as never,
-      undefined, undefined, undefined, attendanceCategories as never, attendanceRealtime as never,
+      undefined,
+      undefined,
+      undefined,
+      attendanceCategories as never,
+      attendanceRealtime as never,
     );
 
     await expect(resolver.deleteEventGroup('group-1', { req: { user: { sub: 'admin-1' } } } as never)).resolves.toEqual(
@@ -440,55 +444,69 @@ describe('EventGroupsResolver authorization', () => {
     expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
     expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
     expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
-    expect(attendanceCategories.refreshForEvent.mock.invocationCallOrder[0]).toBeGreaterThan(tx.eventGroup.update.mock.invocationCallOrder[0]);
+    expect(attendanceCategories.refreshForEvent.mock.invocationCallOrder[0]).toBeGreaterThan(
+      tx.eventGroup.update.mock.invocationCallOrder[0],
+    );
     expect(typesenseSearch.deleteEventGroup).toHaveBeenCalledWith('group-1');
   });
 
-  it.each(['policy', 'invitations'] as const)('refreshes stored attendance categories when the group %s changes', async (change) => {
-    const previous = {
-      id: 'group-1',
-      name: 'Grupo',
-      attendanceEligibility: 'REGISTERED_ONLY',
-      deletedAt: null,
-    };
-    const updated = { ...previous, attendanceEligibility: 'ANYONE' };
-    const tx = {
-      eventGroup: {
-        update: jest.fn().mockResolvedValue({ id: 'target' }),
-        findFirst: jest.fn().mockResolvedValue(previous),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
-      },
-      event: {
-        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
-          ? [{ id: 'event-1' }, { id: 'event-2' }]
-          : [{ id: 'event-1' }]),
-      },
-    };
-    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
-    const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
-    const resolver = new EventGroupsResolver(
-      { $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)) } as never,
-      { upsertEventGroup: jest.fn() } as never,
-      { assertEventGroupMutable: jest.fn() } as never,
-      {} as never,
-      { record: jest.fn() } as never,
-      undefined,
-      undefined,
-      undefined,
-      attendanceCategories as never,
-      attendanceRealtime as never,
-      { notifyInvited: jest.fn().mockResolvedValue(undefined), replaceInvitations: jest.fn().mockResolvedValue({ invitations: [{ personId: 'person-new' }], addedPersonIds: ['person-new'], removedPersonIds: [] }) } as never,
-    );
+  it.each(['policy', 'invitations'] as const)(
+    'refreshes stored attendance categories when the group %s changes',
+    async (change) => {
+      const previous = {
+        id: 'group-1',
+        name: 'Grupo',
+        attendanceEligibility: 'REGISTERED_ONLY',
+        deletedAt: null,
+      };
+      const updated = { ...previous, attendanceEligibility: 'ANYONE' };
+      const tx = {
+        eventGroup: {
+          update: jest.fn().mockResolvedValue({ id: 'target' }),
+          findFirst: jest.fn().mockResolvedValue(previous),
+          findUniqueOrThrow: jest.fn().mockResolvedValue(updated),
+        },
+        event: {
+          findMany: jest.fn(async () =>
+            audienceContext.getStore()?.bypass ? [{ id: 'event-1' }, { id: 'event-2' }] : [{ id: 'event-1' }],
+          ),
+        },
+      };
+      const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+      const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
+      const resolver = new EventGroupsResolver(
+        { $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)) } as never,
+        { upsertEventGroup: jest.fn() } as never,
+        { assertEventGroupMutable: jest.fn() } as never,
+        {} as never,
+        { record: jest.fn() } as never,
+        undefined,
+        undefined,
+        undefined,
+        attendanceCategories as never,
+        attendanceRealtime as never,
+        {
+          notifyInvited: jest.fn().mockResolvedValue(undefined),
+          replaceInvitations: jest.fn().mockResolvedValue({
+            invitations: [{ personId: 'person-new' }],
+            addedPersonIds: ['person-new'],
+            removedPersonIds: [],
+          }),
+        } as never,
+      );
 
-    await expect(
-      resolver.updateEventGroup(
-        'group-1',
-        (change === 'policy' ? { attendanceEligibility: 'ANYONE' } : { invitationPersonIds: ['person-new'] }) as never,
-        { req: { user: { sub: 'admin-1' } } } as never,
-      ),
-    ).resolves.toBe(updated);
-    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
-    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
-    expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
-  });
+      await expect(
+        resolver.updateEventGroup(
+          'group-1',
+          (change === 'policy'
+            ? { attendanceEligibility: 'ANYONE' }
+            : { invitationPersonIds: ['person-new'] }) as never,
+          { req: { user: { sub: 'admin-1' } } } as never,
+        ),
+      ).resolves.toBe(updated);
+      expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+      expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'event-2', tx);
+      expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+    },
+  );
 });

@@ -1,5 +1,13 @@
 import { Component, inject, provideAppInitializer } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, convertToParamMap, provideRouter, withDisabledInitialNavigation, withHashLocation } from '@angular/router';
+import {
+  ActivatedRoute,
+  NavigationEnd,
+  Router,
+  convertToParamMap,
+  provideRouter,
+  withDisabledInitialNavigation,
+  withHashLocation,
+} from '@angular/router';
 import { applicationConfig } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import type { CertificateFolder, CertificateTemplate } from '@cacic-fct/event-manager-admin-contracts';
@@ -20,14 +28,20 @@ class CertificateStoryRouteComponent {}
 
 function standaloneCertificateRoute() {
   const router = inject(Router);
-  return { paramMap: router.events.pipe(
-    filter((event) => event instanceof NavigationEnd),
-    map(() => {
-      const segments = router.parseUrl(router.url).root.children['primary']?.segments ?? [];
-      return convertToParamMap({ targetType: segments[1]?.path, targetId: segments[2]?.path, configId: segments[3]?.path });
-    }),
-    startWith(convertToParamMap({})),
-  ) };
+  return {
+    paramMap: router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => {
+        const segments = router.parseUrl(router.url).root.children['primary']?.segments ?? [];
+        return convertToParamMap({
+          targetType: segments[1]?.path,
+          targetId: segments[2]?.path,
+          configId: segments[3]?.path,
+        });
+      }),
+      startWith(convertToParamMap({})),
+    ),
+  };
 }
 
 function initializeStandaloneFolderStory(): Promise<void> {
@@ -130,7 +144,8 @@ const meta: Meta<CertificatesPageStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Certificate template and folder management with controls for loading, latency, and eligibility scenarios.',
+        component:
+          'Certificate template and folder management with controls for loading, latency, and eligibility scenarios.',
       },
     },
     layout: 'fullscreen',
@@ -164,8 +179,6 @@ export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-
-
 
 export const NoRegisteredTemplates: Story = {
   ...Playground,
@@ -252,7 +265,11 @@ export const StandaloneCertificateFolder: Story = {
   decorators: [
     applicationConfig({
       providers: [
-        provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        provideRouter(
+          [{ path: '**', component: CertificateStoryRouteComponent }],
+          withHashLocation(),
+          withDisabledInitialNavigation(),
+        ),
         { provide: CertificateApiService, useValue: standaloneFolderCertificateApi },
         {
           provide: ActivatedRoute,
@@ -276,7 +293,9 @@ export const StandaloneCertificateFolder: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Certificados avulsos', level: 1 })).toBeVisible();
     await expect(canvas.queryByRole('combobox', { name: 'Escopo' })).not.toBeInTheDocument();
     const folderPicker = await canvas.findByRole('button', { name: /Escolher pasta/ });
-    if (folderPicker.getAttribute('aria-expanded') === 'false') await userEvent.click(folderPicker);
+    if (folderPicker.getAttribute('aria-expanded') === 'false') {
+      await userEvent.click(folderPicker);
+    }
     await expect(await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' })).toBeVisible();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Nova pasta' }));
@@ -299,7 +318,11 @@ export const StandaloneCertificateFoldersReadOnly: Story = {
   decorators: [
     applicationConfig({
       providers: [
-        provideRouter([{ path: '**', component: CertificateStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        provideRouter(
+          [{ path: '**', component: CertificateStoryRouteComponent }],
+          withHashLocation(),
+          withDisabledInitialNavigation(),
+        ),
         { provide: CertificateApiService, useValue: standaloneFolderCertificateApi },
         { provide: ActivatedRoute, useFactory: standaloneCertificateRoute },
         {
@@ -318,7 +341,9 @@ export const StandaloneCertificateFoldersReadOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const folderPicker = await canvas.findByRole('button', { name: /Escolher pasta/ });
-    if (folderPicker.getAttribute('aria-expanded') === 'false') await userEvent.click(folderPicker);
+    if (folderPicker.getAttribute('aria-expanded') === 'false') {
+      await userEvent.click(folderPicker);
+    }
     const folder = await canvas.findByRole('link', { name: 'Abrir pasta Atividades complementares' });
     await expect(folder).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Nova pasta' })).not.toBeInTheDocument();
@@ -333,9 +358,7 @@ export const AttendeeCertificateEligibility: Story = {
   name: 'Attendee certificate eligibility',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByRole('combobox', { name: 'Critério adicional de inscrição' }),
-    ).toBeVisible();
+    await expect(await canvas.findByRole('combobox', { name: 'Critério adicional de inscrição' })).toBeVisible();
     await expect(await canvas.findByText('Usar regras dos eventos')).toBeVisible();
     await expect(
       await canvas.findByText(

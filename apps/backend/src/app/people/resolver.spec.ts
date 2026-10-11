@@ -559,7 +559,11 @@ describe('PeopleResolver', () => {
       prisma,
     );
     expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('person-1');
-    for (const invitations of [prisma.eventAudienceInvitation, prisma.eventGroupAudienceInvitation, prisma.majorEventAudienceInvitation]) {
+    for (const invitations of [
+      prisma.eventAudienceInvitation,
+      prisma.eventGroupAudienceInvitation,
+      prisma.majorEventAudienceInvitation,
+    ]) {
       expect(invitations.deleteMany).toHaveBeenCalledWith({ where: { personId: 'person-1' } });
     }
   });

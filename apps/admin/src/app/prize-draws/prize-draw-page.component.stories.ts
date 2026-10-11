@@ -59,7 +59,8 @@ const meta: Meta<StoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Prize draw execution screen with controls for winner, draw speed, roster size, and countdown duration. Use the global motion control for reduced-motion behavior.',
+        component:
+          'Prize draw execution screen with controls for winner, draw speed, roster size, and countdown duration. Use the global motion control for reduced-motion behavior.',
       },
     },
     layout: 'fullscreen',

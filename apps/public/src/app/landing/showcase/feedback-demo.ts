@@ -14,7 +14,9 @@ export class FeedbackDemoComponent {
   readonly ratings = [1, 2, 3, 4, 5];
 
   submitResponse(): void {
-    if (this.rating() !== null) this.responseSent.set(true);
+    if (this.rating() !== null) {
+      this.responseSent.set(true);
+    }
   }
 
   resetResponse(): void {

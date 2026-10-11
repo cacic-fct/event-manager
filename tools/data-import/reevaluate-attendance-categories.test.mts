@@ -50,9 +50,12 @@ test('matches accented names and millisecond-normalized timestamps', async () =>
   ];
   const db: DatabaseClient = {
     async query(sql: string) {
-      if (sql.includes('FROM events'))
+      if (sql.includes('FROM events')) {
         return { rows: [{ id: 'event-1', name: 'Joao Cafe', startDate: new Date(1_700_000_000_123) }] };
-      if (sql.includes('FROM people')) return { rows: [{ id: 'person-1', externalRef: 'legacy-person' }] };
+      }
+      if (sql.includes('FROM people')) {
+        return { rows: [{ id: 'person-1', externalRef: 'legacy-person' }] };
+      }
       throw new Error(`Unexpected SQL: ${sql}`);
     },
   };

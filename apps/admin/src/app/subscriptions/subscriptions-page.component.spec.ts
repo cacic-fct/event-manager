@@ -71,10 +71,20 @@ async function createHeadingFixture(inWorkspaceShell: boolean) {
   })
     .overrideComponent(SubscriptionsPageComponent, {
       remove: {
-        imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent],
+        imports: [
+          EventContextPickerComponent,
+          EventSubscriptionsComponent,
+          MajorEventSubscriptionsComponent,
+          EventInterestsComponent,
+        ],
       },
       add: {
-        imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub],
+        imports: [
+          EventContextPickerStub,
+          EventSubscriptionsTabStub,
+          MajorEventSubscriptionsTabStub,
+          EventInterestsTabStub,
+        ],
       },
     })
     .compileComponents();
@@ -110,17 +120,39 @@ describe('SubscriptionsPageComponent lazy interest loading', () => {
         provideRouter([]),
         { provide: Router, useValue: { navigate: vi.fn(async () => true) } },
         { provide: ActivatedRoute, useValue: route },
-        { provide: SubscriptionsService, useValue: {
-          majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
-          closeLiveUpdates: vi.fn(),
-        } },
-        { provide: PermissionsService, useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false } },
+        {
+          provide: SubscriptionsService,
+          useValue: {
+            majorEventForm: new FormGroup({ majorEventId: new FormControl('', { nonNullable: true }) }),
+            closeLiveUpdates: vi.fn(),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: { evaluateWorkspacePermissions: vi.fn(async () => undefined), has: () => false },
+        },
         { provide: ReceiptValidationApiService, useValue: {} },
       ],
-    }).overrideComponent(SubscriptionsPageComponent, {
-      remove: { imports: [EventContextPickerComponent, EventSubscriptionsComponent, MajorEventSubscriptionsComponent, EventInterestsComponent] },
-      add: { imports: [EventContextPickerStub, EventSubscriptionsTabStub, MajorEventSubscriptionsTabStub, EventInterestsTabStub] },
-    }).compileComponents();
+    })
+      .overrideComponent(SubscriptionsPageComponent, {
+        remove: {
+          imports: [
+            EventContextPickerComponent,
+            EventSubscriptionsComponent,
+            MajorEventSubscriptionsComponent,
+            EventInterestsComponent,
+          ],
+        },
+        add: {
+          imports: [
+            EventContextPickerStub,
+            EventSubscriptionsTabStub,
+            MajorEventSubscriptionsTabStub,
+            EventInterestsTabStub,
+          ],
+        },
+      })
+      .compileComponents();
     const fixture = TestBed.createComponent(SubscriptionsPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -213,8 +245,9 @@ describe('SubscriptionsPageComponent receipt queue live updates', () => {
     const fixture = TestBed.createComponent(SubscriptionsPageComponent);
     fixture.componentInstance.context.set({ kind, id: 'selected-1' });
     expect(fixture.componentInstance.interestsLink()).toEqual(['/subscriptions', kind, 'selected-1', 'interests']);
-    expect(fixture.componentInstance.subscriptionsLink()).toEqual(kind === 'group'
-      ? ['/subscriptions'] : ['/subscriptions', kind, 'selected-1']);
+    expect(fixture.componentInstance.subscriptionsLink()).toEqual(
+      kind === 'group' ? ['/subscriptions'] : ['/subscriptions', kind, 'selected-1'],
+    );
   });
 
   it('opens one stream for the selected major event and updates the badge to zero', async () => {

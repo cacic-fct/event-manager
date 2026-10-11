@@ -16,9 +16,12 @@ export class SportsDemoComponent {
   readonly matchState = signal<'PAUSED' | 'LIVE' | 'ENDED'>('LIVE');
   readonly matchStatus = computed(() => {
     switch (this.matchState()) {
-      case 'LIVE': return 'Partida em andamento';
-      case 'ENDED': return 'Partida encerrada';
-      default: return 'Partida pausada';
+      case 'LIVE':
+        return 'Partida em andamento';
+      case 'ENDED':
+        return 'Partida encerrada';
+      default:
+        return 'Partida pausada';
     }
   });
   readonly teams = [

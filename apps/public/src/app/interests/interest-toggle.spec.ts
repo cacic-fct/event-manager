@@ -46,7 +46,11 @@ describe('InterestToggle', () => {
     expect(fixture.nativeElement.querySelector('button')).toBe(button);
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(document.activeElement).toBe(button);
-    expect(snackBar.open).toHaveBeenCalledWith('Seu interesse foi registrado! A inscrição, quando necessária, é feita separadamente.', 'Fechar', { duration: 12_000 });
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Seu interesse foi registrado! A inscrição, quando necessária, é feita separadamente.',
+      'Fechar',
+      { duration: 12_000 },
+    );
 
     api.set.mockReturnValue(of(null));
     button.click();
@@ -55,24 +59,27 @@ describe('InterestToggle', () => {
     expect(button.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'])('allows clearing disabled %s interests but prevents adding them again', async (targetType) => {
-    const { fixture, api } = await setup();
-    fixture.componentRef.setInput('targetType', targetType);
-    fixture.componentRef.setInput('interestEnabled', false);
-    api.getState.mockReturnValue(of({ ...interestState(createPublicEventInterest()), enabled: false }));
-    fixture.componentInstance.retry();
-    await fixture.whenStable();
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
-    expect(button.disabled).toBe(false);
-    expect(button.getAttribute('aria-pressed')).toBe('true');
-    api.set.mockReturnValue(of(null));
-    button.click();
-    await fixture.whenStable();
-    expect(api.set).toHaveBeenCalledWith(targetType, 'event-1', false);
-    expect(fixture.nativeElement.hidden).toBe(true);
-    fixture.componentInstance.toggle();
-    expect(api.set).toHaveBeenCalledTimes(1);
-  });
+  it.each(['EVENT', 'EVENT_GROUP', 'MAJOR_EVENT'])(
+    'allows clearing disabled %s interests but prevents adding them again',
+    async (targetType) => {
+      const { fixture, api } = await setup();
+      fixture.componentRef.setInput('targetType', targetType);
+      fixture.componentRef.setInput('interestEnabled', false);
+      api.getState.mockReturnValue(of({ ...interestState(createPublicEventInterest()), enabled: false }));
+      fixture.componentInstance.retry();
+      await fixture.whenStable();
+      const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
+      expect(button.disabled).toBe(false);
+      expect(button.getAttribute('aria-pressed')).toBe('true');
+      api.set.mockReturnValue(of(null));
+      button.click();
+      await fixture.whenStable();
+      expect(api.set).toHaveBeenCalledWith(targetType, 'event-1', false);
+      expect(fixture.nativeElement.hidden).toBe(true);
+      fixture.componentInstance.toggle();
+      expect(api.set).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('prevents duplicate writes while a request is pending and keeps state on failure', async () => {
     const { fixture, api } = await setup();

@@ -92,7 +92,8 @@ const meta: Meta<StoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Prize draw administration with controls for target selection, participant eligibility, and draw configuration.',
+        component:
+          'Prize draw administration with controls for target selection, participant eligibility, and draw configuration.',
       },
     },
     layout: 'fullscreen',
@@ -107,7 +108,11 @@ const meta: Meta<StoryArgs> = {
     withScenarioControls<StoryArgs>(),
     applicationConfig({
       providers: [
-        provideRouter([{ path: '**', component: PrizeDrawStoryRouteComponent }], withHashLocation(), withDisabledInitialNavigation()),
+        provideRouter(
+          [{ path: '**', component: PrizeDrawStoryRouteComponent }],
+          withHashLocation(),
+          withDisabledInitialNavigation(),
+        ),
         {
           provide: ActivatedRoute,
           useFactory: prizeDrawActivatedRoute,
@@ -136,46 +141,85 @@ export const Playground: Story = {
 };
 
 const historicalDate = new Date(Date.now() - 7 * 86400000).toISOString();
-const targetEvents = Array.from({ length: 50 }, (_, index) => createAdminEvent({
-  id: `target-event-${index + 1}`, name: `Evento ${index + 1}`, startDate: historicalDate, endDate: historicalDate,
-}));
-const targetMajors = Array.from({ length: 50 }, (_, index) => createAdminMajorEvent({
-  id: `target-major-${index + 1}`, name: `Grande evento ${index + 1}`, startDate: historicalDate, endDate: historicalDate,
-}));
+const targetEvents = Array.from({ length: 50 }, (_, index) =>
+  createAdminEvent({
+    id: `target-event-${index + 1}`,
+    name: `Evento ${index + 1}`,
+    startDate: historicalDate,
+    endDate: historicalDate,
+  }),
+);
+const targetMajors = Array.from({ length: 50 }, (_, index) =>
+  createAdminMajorEvent({
+    id: `target-major-${index + 1}`,
+    name: `Grande evento ${index + 1}`,
+    startDate: historicalDate,
+    endDate: historicalDate,
+  }),
+);
 
 export const SearchableHistoricalTargets: Story = {
   args: { empty: true },
-  decorators: [applicationConfig({ providers: [
-    { provide: ADMIN_SHELL_CONTEXT, useValue: true },
-    { provide: EventWorkspaceContextService, useValue: { scopeSwitchBlocked: signal(false) } },
-    { provide: ActivatedRoute, useValue: {
-      paramMap: of(convertToParamMap({})),
-      queryParamMap: of(convertToParamMap({ eventId: 'target-event-49' })),
-      snapshot: { paramMap: convertToParamMap({}) },
-    } },
-  ] })],
+  decorators: [
+    applicationConfig({
+      providers: [
+        { provide: ADMIN_SHELL_CONTEXT, useValue: true },
+        { provide: EventWorkspaceContextService, useValue: { scopeSwitchBlocked: signal(false) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({})),
+            queryParamMap: of(convertToParamMap({ eventId: 'target-event-49' })),
+            snapshot: { paramMap: convertToParamMap({}) },
+          },
+        },
+      ],
+    }),
+  ],
   parameters: {
-      msw: { handlers: { graphql: [
-    graphql.query('ListEvents', ({ variables }) => {
-      const skip = Number(variables['skip'] ?? 0);
-      const take = Number(variables['take'] ?? 20);
-      const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
-      return HttpResponse.json({ data: { events: targetEvents.filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query)).slice(skip, skip + take) } });
-    }),
-    graphql.query('ListMajorEvents', ({ variables }) => {
-      const skip = Number(variables['skip'] ?? 0);
-      const take = Number(variables['take'] ?? 20);
-      const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
-      return HttpResponse.json({ data: { majorEvents: targetMajors.filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query)).slice(skip, skip + take) } });
-    }),
-    graphql.query('GetEvent', ({ variables }) => HttpResponse.json({ data: { event: targetEvents.find((event) => event.id === variables['id']) } })),
-    ...createAdminPrizeDrawStoryHandlers(() => activeArgs),
-  ] } }
+    msw: {
+      handlers: {
+        graphql: [
+          graphql.query('ListEvents', ({ variables }) => {
+            const skip = Number(variables['skip'] ?? 0);
+            const take = Number(variables['take'] ?? 20);
+            const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
+            return HttpResponse.json({
+              data: {
+                events: targetEvents
+                  .filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query))
+                  .slice(skip, skip + take),
+              },
+            });
+          }),
+          graphql.query('ListMajorEvents', ({ variables }) => {
+            const skip = Number(variables['skip'] ?? 0);
+            const take = Number(variables['take'] ?? 20);
+            const query = String(variables['query'] ?? '').toLocaleLowerCase('pt-BR');
+            return HttpResponse.json({
+              data: {
+                majorEvents: targetMajors
+                  .filter((event) => event.name.toLocaleLowerCase('pt-BR').includes(query))
+                  .slice(skip, skip + take),
+              },
+            });
+          }),
+          graphql.query('GetEvent', ({ variables }) =>
+            HttpResponse.json({ data: { event: targetEvents.find((event) => event.id === variables['id']) } }),
+          ),
+          ...createAdminPrizeDrawStoryHandlers(() => activeArgs),
+        ],
+      },
     },
+  },
   play: async ({ canvasElement }) => {
-    if (new URL(canvasElement.ownerDocument.URL).searchParams.get('embed') === 'true') return;
+    if (new URL(canvasElement.ownerDocument.URL).searchParams.get('embed') === 'true') {
+      return;
+    }
     const picker = canvasElement.querySelector('app-event-target-picker');
-    if (!picker) throw new Error('Expected a searchable draw target picker.');
+    if (!picker) {
+      throw new Error('Expected a searchable draw target picker.');
+    }
     const targets = within(picker as HTMLElement);
     await expect(await targets.findByText('Evento 49')).toBeVisible();
     await userEvent.click(targets.getByRole('button', { name: 'Trocar' }));

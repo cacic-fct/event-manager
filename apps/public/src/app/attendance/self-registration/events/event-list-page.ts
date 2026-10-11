@@ -87,7 +87,9 @@ export class OnlineAttendanceListComponent {
           }
         },
         error: (error: unknown) => {
-          if (requestId !== this.requestId) return;
+          if (requestId !== this.requestId) {
+            return;
+          }
           if (initial || this.state().status !== 'ready') {
             this.state.set({
               status: 'error',

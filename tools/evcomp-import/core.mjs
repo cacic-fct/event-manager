@@ -32,14 +32,20 @@ export function normalizeName(value) {
 }
 
 export function toSourceBoolean(value) {
-  if (value === true || value === 1 || value === '1') return true;
-  if (value === false || value === 0 || value === '0') return false;
+  if (value === true || value === 1 || value === '1') {
+    return true;
+  }
+  if (value === false || value === 0 || value === '0') {
+    return false;
+  }
   throw new Error(`Unexpected EvComp boolean value: ${String(value)}`);
 }
 
 export function toAmountInCents(value) {
   const match = String(value ?? '').match(/^(\d+)(?:\.(\d{1,2}))?$/);
-  if (!match) throw new Error(`Invalid EvComp applied amount: ${String(value)}`);
+  if (!match) {
+    throw new Error(`Invalid EvComp applied amount: ${String(value)}`);
+  }
   const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
   if (!Number.isSafeInteger(cents) || cents > 2147483647) {
     throw new Error('EvComp applied amount exceeds the target integer range.');
@@ -89,10 +95,13 @@ export function resolvePerson(sourcePerson, targetPeople) {
 }
 
 export function assertConfig(config) {
-  if (!config || typeof config !== 'object' || Array.isArray(config))
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error('Configuration must be a JSON object.');
+  }
   for (const field of ['eventMappings', 'activityMappings', 'personMappings', 'modalityMappings']) {
-    if (config[field] !== undefined && !Array.isArray(config[field])) throw new Error(`${field} must be an array.`);
+    if (config[field] !== undefined && !Array.isArray(config[field])) {
+      throw new Error(`${field} must be an array.`);
+    }
   }
   if (
     config.sourceNamespace !== undefined &&
@@ -108,7 +117,9 @@ export function assertConfig(config) {
     requireValue(mapping.sourceEventId, 'eventMappings[].sourceEventId');
     requireUuid(mapping.targetMajorEventId, 'eventMappings[].targetMajorEventId');
     const key = String(mapping.sourceEventId);
-    if (sourceEventIds.has(key)) throw new Error(`Duplicate source event mapping: ${key}`);
+    if (sourceEventIds.has(key)) {
+      throw new Error(`Duplicate source event mapping: ${key}`);
+    }
     sourceEventIds.add(key);
   }
 
@@ -117,7 +128,9 @@ export function assertConfig(config) {
     requireValue(mapping.sourceActivityId, 'activityMappings[].sourceActivityId');
     requireUuid(mapping.targetEventId, 'activityMappings[].targetEventId');
     const key = String(mapping.sourceActivityId);
-    if (sourceActivityIds.has(key)) throw new Error(`Duplicate source activity mapping: ${key}`);
+    if (sourceActivityIds.has(key)) {
+      throw new Error(`Duplicate source activity mapping: ${key}`);
+    }
     sourceActivityIds.add(key);
   }
 
@@ -126,7 +139,9 @@ export function assertConfig(config) {
     requireValue(mapping.sourcePersonId, 'personMappings[].sourcePersonId');
     requireUuid(mapping.targetPersonId, 'personMappings[].targetPersonId');
     const key = String(mapping.sourcePersonId);
-    if (sourcePersonIds.has(key)) throw new Error(`Duplicate source person mapping: ${key}`);
+    if (sourcePersonIds.has(key)) {
+      throw new Error(`Duplicate source person mapping: ${key}`);
+    }
     sourcePersonIds.add(key);
   }
 
@@ -138,7 +153,9 @@ export function assertConfig(config) {
     requireValue(mapping.sourceModalityId, 'modalityMappings[].sourceModalityId');
     requireUuid(mapping.targetPriceTierId, 'modalityMappings[].targetPriceTierId');
     const key = String(mapping.sourceModalityId);
-    if (sourceModalityIds.has(key)) throw new Error(`Duplicate source modality mapping: ${key}`);
+    if (sourceModalityIds.has(key)) {
+      throw new Error(`Duplicate source modality mapping: ${key}`);
+    }
     sourceModalityIds.add(key);
   }
 }

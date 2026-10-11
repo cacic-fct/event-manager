@@ -282,7 +282,9 @@ export class PeopleResolver {
       where: { ...this.buildRelatedPersonWhere(target), id },
       select: PERSON_AUDIT_SELECT,
     });
-    if (!existing) throw new NotFoundException('Pessoa não encontrada entre os vínculos deste escopo.');
+    if (!existing) {
+      throw new NotFoundException('Pessoa não encontrada entre os vínculos deste escopo.');
+    }
     this.ensureExternallyManagedFieldsAreUnchanged(input, existing);
     await this.ensureNoDuplicateIdentity(input, id);
     const data: Prisma.PeopleUpdateInput = {
@@ -519,7 +521,9 @@ export class PeopleResolver {
         where: { id, deletedAt: null },
         select: PERSON_AUDIT_SELECT,
       });
-      if (!existingPerson) throw new NotFoundException(`Person ${id} was not found.`);
+      if (!existingPerson) {
+        throw new NotFoundException(`Person ${id} was not found.`);
+      }
       if (await personHasLinkedData(tx, existingPerson)) {
         throw new ConflictException(
           `Person ${id} has linked app data and cannot be deleted. Review linked resources before deleting.`,
@@ -702,7 +706,9 @@ export class PeopleResolver {
   }
 
   private maskIdentityDocument(value: string | null): string | null {
-    if (!value) return null;
+    if (!value) {
+      return null;
+    }
     const visible = value.replace(/\D/g, '').slice(-4);
     return visible ? `••••${visible}` : '••••';
   }
@@ -777,14 +783,30 @@ export class PeopleResolver {
   private buildPersonUpdateData(input: PersonUpdateInput): Prisma.PeopleUncheckedUpdateManyInput {
     const data: Prisma.PeopleUncheckedUpdateManyInput = {};
 
-    if (input.id !== undefined) data.id = input.id;
-    if (input.name !== undefined) data.name = input.name;
-    if (input.email !== undefined) data.email = input.email;
-    if (input.secondaryEmails !== undefined) data.secondaryEmails = input.secondaryEmails;
-    if (input.phone !== undefined) data.phone = input.phone;
-    if (input.identityDocument !== undefined) data.identityDocument = input.identityDocument;
-    if (input.academicId !== undefined) data.academicId = input.academicId;
-    if (input.userId !== undefined) data.userId = input.userId;
+    if (input.id !== undefined) {
+      data.id = input.id;
+    }
+    if (input.name !== undefined) {
+      data.name = input.name;
+    }
+    if (input.email !== undefined) {
+      data.email = input.email;
+    }
+    if (input.secondaryEmails !== undefined) {
+      data.secondaryEmails = input.secondaryEmails;
+    }
+    if (input.phone !== undefined) {
+      data.phone = input.phone;
+    }
+    if (input.identityDocument !== undefined) {
+      data.identityDocument = input.identityDocument;
+    }
+    if (input.academicId !== undefined) {
+      data.academicId = input.academicId;
+    }
+    if (input.userId !== undefined) {
+      data.userId = input.userId;
+    }
 
     return data;
   }

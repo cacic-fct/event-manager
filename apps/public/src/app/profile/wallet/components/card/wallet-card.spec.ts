@@ -73,7 +73,8 @@ describe('WalletCard', () => {
     expect(card.querySelector('app-wallet-card-header')?.textContent).toContain(ticket.name);
     expect(card.querySelector('.holder-details')?.textContent).toContain('Aluno de Ciência da Computação');
     expect(card.querySelector('.identity-document')?.textContent).toBe('529.982.247-25');
-    const barcode = fixture.debugElement.query(By.directive(WalletBarcodeComponent)).componentInstance as WalletBarcodeComponent;
+    const barcode = fixture.debugElement.query(By.directive(WalletBarcodeComponent))
+      .componentInstance as WalletBarcodeComponent;
     expect(barcode.value()).toBe(ticket.aztecPayload);
     expect(barcode.payloadPrefix()).toBe('');
   });
@@ -81,8 +82,11 @@ describe('WalletCard', () => {
   it('shows the holder passport in full on a ticket', () => {
     fixture.componentRef.setInput('ticket', createWalletStoryTicket());
     fixture.componentRef.setInput('user', {
-      userId: 'user-123', name: 'Alex Morgan', picture: null,
-      unespRole: 'participant', identityDocument: 'XK1234567',
+      userId: 'user-123',
+      name: 'Alex Morgan',
+      picture: null,
+      unespRole: 'participant',
+      identityDocument: 'XK1234567',
     } satisfies WalletCardUser);
     fixture.detectChanges();
 

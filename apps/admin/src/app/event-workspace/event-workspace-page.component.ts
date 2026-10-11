@@ -26,7 +26,12 @@ import { EventContextPickerComponent } from '../shared/event-context-picker.comp
 import { WorkspaceRecordComponent } from '../shared/workspace-record.component';
 import { PermissionsService } from '../permissions/permissions.service';
 import { EventApiService } from '../graphql/event-api.service';
-import { EventWorkspaceContextService, EventWorkspaceRef, eventCreationTarget, EventWorkspaceKind } from './event-workspace-context.service';
+import {
+  EventWorkspaceContextService,
+  EventWorkspaceRef,
+  eventCreationTarget,
+  EventWorkspaceKind,
+} from './event-workspace-context.service';
 import { adminEventWorkspaceRoute } from '@cacic-fct/shared-utils';
 import { canCreateEventContext } from '../shared/event-context-access';
 import { EventsService } from '../events/events.service';
@@ -36,11 +41,31 @@ import { WorkspacePendingChangesService } from '../app-shell/workspace-pending-c
 
 @Component({
   selector: 'app-event-workspace-page',
-  imports: [ MatFormFieldModule, MatInputModule, ReactiveFormsModule, EventsPageComponent, EventGroupsPageComponent, MajorEventsPageComponent, DatePipe, RouterLink, MatButtonModule, MatDialogModule, MatIconModule, MatListModule, MatProgressBarModule,
-    TwemojiComponent, EventContextPickerComponent, WorkspaceRecordComponent],
+  imports: [
+    MatFormFieldModule,
+    MatInputModule,
+    ReactiveFormsModule,
+    EventsPageComponent,
+    EventGroupsPageComponent,
+    MajorEventsPageComponent,
+    DatePipe,
+    RouterLink,
+    MatButtonModule,
+    MatDialogModule,
+    MatIconModule,
+    MatListModule,
+    MatProgressBarModule,
+    TwemojiComponent,
+    EventContextPickerComponent,
+    WorkspaceRecordComponent,
+  ],
   templateUrl: './event-workspace-page.component.html',
-  styleUrls: ['../app-shell/layout/page-layout.shared.scss', '../app-shell/layout/lists-layout.shared.scss',
-    '../app-shell/layout/forms-feedback.shared.scss', './event-workspace-page.component.scss'],
+  styleUrls: [
+    '../app-shell/layout/page-layout.shared.scss',
+    '../app-shell/layout/lists-layout.shared.scss',
+    '../app-shell/layout/forms-feedback.shared.scss',
+    './event-workspace-page.component.scss',
+  ],
 })
 export class EventWorkspacePageComponent {
   protected contextRoute(ref: EventWorkspaceRef): string[] {
@@ -62,7 +87,11 @@ export class EventWorkspacePageComponent {
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
   private readonly pendingRegistration = this.pendingChanges.register();
   protected readonly inShell = inject(ADMIN_SHELL_CONTEXT, { optional: true }) ?? false;
-  protected readonly summary = signal<{ subscribers: number | null; attended: number | null; interested: number | null } | null>(null);
+  protected readonly summary = signal<{
+    subscribers: number | null;
+    attended: number | null;
+    interested: number | null;
+  } | null>(null);
   private summaryRequest = 0;
   private readonly destroyRef = inject(DestroyRef);
   protected readonly selectedRef = signal<EventWorkspaceRef | null>(null);
@@ -78,25 +107,31 @@ export class EventWorkspacePageComponent {
   constructor() {
     effect(() => {
       const ref = this.selectedRef();
-      const pending = this.settingsPage() && ref
-        ? ref.kind === 'event'
-          ? this.eventsEditor.unsavedChanges()
-          : ref.kind === 'group'
-            ? this.groupsEditor.unsavedChanges()
-            : this.majorEventsEditor.unsavedChanges()
-        : false;
+      const pending =
+        this.settingsPage() && ref
+          ? ref.kind === 'event'
+            ? this.eventsEditor.unsavedChanges()
+            : ref.kind === 'group'
+              ? this.groupsEditor.unsavedChanges()
+              : this.majorEventsEditor.unsavedChanges()
+          : false;
       this.pendingRegistration.set(pending);
     });
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const kind = params.get('targetType') ?? this.route.snapshot.data['targetType'];
       const id = params.get('targetId');
-      const ref: EventWorkspaceRef | null = id && (kind === 'event' || kind === 'group' || kind === 'major-event') ? { kind, id } : null;
+      const ref: EventWorkspaceRef | null =
+        id && (kind === 'event' || kind === 'group' || kind === 'major-event') ? { kind, id } : null;
       this.selectedRef.set(ref);
-      this.settingsPage.set(kind === 'event' || params.get('section') === 'settings' || this.route.snapshot.data['section'] === 'settings');
+      this.settingsPage.set(
+        kind === 'event' || params.get('section') === 'settings' || this.route.snapshot.data['section'] === 'settings',
+      );
       this.query.setValue('');
       this.appliedQuery.set('');
-      if (!this.inShell) void this.workspace.load(ref);
+      if (!this.inShell) {
+        void this.workspace.load(ref);
+      }
       void this.loadActivities();
       void this.loadSummary(ref);
     });
@@ -105,16 +140,28 @@ export class EventWorkspacePageComponent {
   private async loadSummary(ref: EventWorkspaceRef | null): Promise<void> {
     const request = ++this.summaryRequest;
     this.summary.set(null);
-    if (!ref || ref.kind !== 'event') return;
+    if (!ref || ref.kind !== 'event') {
+      return;
+    }
     const [subscribers, attended, interested] = await Promise.allSettled([
-      this.permissions.has(Permission.Subscription.Read) ? firstValueFrom(this.subscriptions.countEventSubscriptions(ref.id)) : Promise.resolve(null),
-      this.permissions.has(Permission.EventAttendance.Read) ? firstValueFrom(this.attendance.getEventAttendanceCount(ref.id, 'PRESENT')) : Promise.resolve(null),
-      this.permissions.has(Permission.Subscription.Read) ? firstValueFrom(this.interests.countInterests('EVENT', ref.id)) : Promise.resolve(null),
+      this.permissions.has(Permission.Subscription.Read)
+        ? firstValueFrom(this.subscriptions.countEventSubscriptions(ref.id))
+        : Promise.resolve(null),
+      this.permissions.has(Permission.EventAttendance.Read)
+        ? firstValueFrom(this.attendance.getEventAttendanceCount(ref.id, 'PRESENT'))
+        : Promise.resolve(null),
+      this.permissions.has(Permission.Subscription.Read)
+        ? firstValueFrom(this.interests.countInterests('EVENT', ref.id))
+        : Promise.resolve(null),
     ]);
-    if (request !== this.summaryRequest) return;
-    this.summary.set({ subscribers: subscribers.status === 'fulfilled' ? subscribers.value : null,
+    if (request !== this.summaryRequest) {
+      return;
+    }
+    this.summary.set({
+      subscribers: subscribers.status === 'fulfilled' ? subscribers.value : null,
       attended: attended.status === 'fulfilled' ? attended.value : null,
-      interested: interested.status === 'fulfilled' ? interested.value : null });
+      interested: interested.status === 'fulfilled' ? interested.value : null,
+    });
   }
 
   protected canCreate(kind: EventWorkspaceKind): boolean {
@@ -122,7 +169,9 @@ export class EventWorkspacePageComponent {
   }
 
   protected create(kind: EventWorkspaceKind): void {
-    if (!canCreateEventContext(this.permissions, kind)) return;
+    if (!canCreateEventContext(this.permissions, kind)) {
+      return;
+    }
     const target = eventCreationTarget(kind);
     void this.router.navigate(target.commands, { queryParams: target.queryParams });
   }
@@ -134,7 +183,9 @@ export class EventWorkspacePageComponent {
 
   protected selectChildContext(ref: EventWorkspaceRef): void {
     const parent = this.workspace.context();
-    if (parent) this.workspace.rememberNavigationParent(ref, parent);
+    if (parent) {
+      this.workspace.rememberNavigationParent(ref, parent);
+    }
     this.selectContext(ref);
   }
 
@@ -148,26 +199,49 @@ export class EventWorkspacePageComponent {
     this.activities.set([]);
     this.groups.set([]);
     this.activitiesError.set('');
-    if (!ref || ref.kind === 'event' || this.settingsPage()) { this.activitiesLoading.set(false); return; }
+    if (!ref || ref.kind === 'event' || this.settingsPage()) {
+      this.activitiesLoading.set(false);
+      return;
+    }
     this.activitiesLoading.set(true);
     try {
       const query = this.appliedQuery();
       const [values, groups] = await Promise.all([
-        this.workspace.canReadActivities() ? this.loadAllChildren(request, (skip, take) => firstValueFrom(this.events.listEvents({
-          ...(ref.kind === 'group' ? { eventGroupId: ref.id } : { majorEventId: ref.id, ...(!query ? { isInGroup: false } : {}) }),
-          ...(query ? { query } : {}), skip, take,
-        }))) : Promise.resolve([]),
+        this.workspace.canReadActivities()
+          ? this.loadAllChildren(request, (skip, take) =>
+              firstValueFrom(
+                this.events.listEvents({
+                  ...(ref.kind === 'group'
+                    ? { eventGroupId: ref.id }
+                    : { majorEventId: ref.id, ...(!query ? { isInGroup: false } : {}) }),
+                  ...(query ? { query } : {}),
+                  skip,
+                  take,
+                }),
+              ),
+            )
+          : Promise.resolve([]),
         ref.kind === 'major-event' && this.permissions.has(Permission.EventGroup.Read)
-          ? this.loadAllChildren(request, (skip, take) => firstValueFrom(this.groupsApi.listEventGroups({ majorEventId: ref.id, ...(query ? { query } : {}), skip, take })))
+          ? this.loadAllChildren(request, (skip, take) =>
+              firstValueFrom(
+                this.groupsApi.listEventGroups({ majorEventId: ref.id, ...(query ? { query } : {}), skip, take }),
+              ),
+            )
           : Promise.resolve([]),
       ]);
-      if (request !== this.request) return;
+      if (request !== this.request) {
+        return;
+      }
       this.groups.set(groups);
       this.activities.set(values);
     } catch {
-      if (request === this.request) this.activitiesError.set('Não foi possível carregar as atividades. Tente novamente.');
+      if (request === this.request) {
+        this.activitiesError.set('Não foi possível carregar as atividades. Tente novamente.');
+      }
     } finally {
-      if (request === this.request) this.activitiesLoading.set(false);
+      if (request === this.request) {
+        this.activitiesLoading.set(false);
+      }
     }
   }
 
@@ -176,9 +250,13 @@ export class EventWorkspacePageComponent {
     const take = 50;
     for (let skip = 0; ; skip += take) {
       const page = await load(skip, take);
-      if (request !== this.request) return [];
+      if (request !== this.request) {
+        return [];
+      }
       children.push(...page);
-      if (page.length < take) return children;
+      if (page.length < take) {
+        return children;
+      }
     }
   }
 }

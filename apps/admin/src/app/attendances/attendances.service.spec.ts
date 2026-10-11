@@ -566,10 +566,17 @@ describe('AttendancesService', () => {
   it('loads bookmarked people outside the current page and preserves them when the list changes', async () => {
     await service.selectMajorEventAttendancesById(majorEvent.id, false);
     const otherPerson = createAdminPerson({ id: 'off-page-person' });
-    const detail = createAdminMajorEventUserAttendance({ personId: otherPerson.id, majorEventId: majorEvent.id }, otherPerson, majorEvent);
+    const detail = createAdminMajorEventUserAttendance(
+      { personId: otherPerson.id, majorEventId: majorEvent.id },
+      otherPerson,
+      majorEvent,
+    );
     api.listMajorEventUserAttendances.mockReturnValueOnce(of([detail]));
     await service.selectMajorEventUserAttendanceById(majorEvent.id, otherPerson.id);
-    expect(api.listMajorEventUserAttendances).toHaveBeenLastCalledWith(majorEvent.id, { personId: otherPerson.id, take: 1 });
+    expect(api.listMajorEventUserAttendances).toHaveBeenLastCalledWith(majorEvent.id, {
+      personId: otherPerson.id,
+      take: 1,
+    });
     await service.loadMajorEventUserAttendances();
     expect(service.selectedMajorEventUserAttendance()).toEqual(detail);
     expect(router.navigate).not.toHaveBeenCalled();
@@ -578,7 +585,9 @@ describe('AttendancesService', () => {
   it('does not substitute a different participant for a missing bookmark', async () => {
     await service.selectMajorEventAttendancesById(majorEvent.id, false);
     api.listMajorEventUserAttendances.mockReturnValueOnce(of([]));
-    await expect(service.selectMajorEventUserAttendanceById(majorEvent.id, 'missing')).rejects.toThrow('Participante não encontrado');
+    await expect(service.selectMajorEventUserAttendanceById(majorEvent.id, 'missing')).rejects.toThrow(
+      'Participante não encontrado',
+    );
     expect(service.selectedMajorEventUserAttendance()).toBeNull();
   });
 

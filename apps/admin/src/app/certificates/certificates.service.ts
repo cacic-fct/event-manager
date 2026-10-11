@@ -137,7 +137,9 @@ export class CertificatesService {
   });
   readonly selectedTargetScopeLabel = computed(() => {
     const target = this.selectedTarget();
-    if (!target) return 'Selecionar contexto do certificado';
+    if (!target) {
+      return 'Selecionar contexto do certificado';
+    }
     const scope = this.targetFiltersForm.controls.scope.value;
     const prefix =
       scope === 'OTHER'
@@ -300,12 +302,16 @@ export class CertificatesService {
         certificateTemplateId: this.certificateTemplates()[0].id,
       });
       this.syncCertificateFieldsForm(this.certificateFieldValuesJson, this.certificateTemplates()[0].id);
-      if (!hadUnsavedChanges) this.captureEditorBaseline();
+      if (!hadUnsavedChanges) {
+        this.captureEditorBaseline();
+      }
       return;
     }
 
     this.syncCertificateFieldsForm(this.certificateFieldValuesJson, selectedTemplateId);
-    if (!hadUnsavedChanges) this.captureEditorBaseline();
+    if (!hadUnsavedChanges) {
+      this.captureEditorBaseline();
+    }
   }
 
   isCertificateTemplateAvailable(templateId: string): boolean {
@@ -351,7 +357,9 @@ export class CertificatesService {
         this.feedback.error(error, 'Não foi possível buscar os contextos de certificado.');
       }
     } finally {
-      if (requestGeneration === this.targetSearchRequestGeneration) this.targetSearchLoading.set(false);
+      if (requestGeneration === this.targetSearchRequestGeneration) {
+        this.targetSearchLoading.set(false);
+      }
     }
   }
 
@@ -369,8 +377,12 @@ export class CertificatesService {
   }
 
   async onScopeChanged(scope: WorkspaceCertificateScope): Promise<void> {
-    if (this.unsavedChanges()) return;
-    if (!(await this.router.navigate(['/certificates']))) return;
+    if (this.unsavedChanges()) {
+      return;
+    }
+    if (!(await this.router.navigate(['/certificates']))) {
+      return;
+    }
     this.targetFiltersForm.controls.scope.setValue(scope);
     this.selectedTarget.set(null);
     this.selectedCertificateTarget.set(null);
@@ -417,20 +429,27 @@ export class CertificatesService {
 
     this.targetFiltersForm.controls.scope.setValue(scope);
     await this.searchTargets();
-    if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+    if (routeSelectionGeneration !== this.routeSelectionGeneration) {
+      return;
+    }
 
     let target: IssuableTarget;
     try {
       target = await this.getTargetByRoute(scope, targetId);
-      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) {
+        return;
+      }
       await this.applyTargetSelection(target);
-      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) {
+        return;
+      }
     } catch (error) {
       if (
         routeSelectionGeneration !== this.routeSelectionGeneration ||
         this.routeResourceErrors.redirectIfUnavailable(error)
-      )
+      ) {
         return;
+      }
       this.feedback.error(error, 'Não foi possível abrir este contexto de certificado.');
       return;
     }
@@ -441,7 +460,9 @@ export class CertificatesService {
 
     try {
       const config = await firstValueFrom(this.api.getCertificateConfig(configId));
-      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) {
+        return;
+      }
       const configTarget = this.getCertificateConfigTarget(config);
       if (config.scope !== scope || configTarget?.id !== target.id) {
         void this.routeErrors.navigate(404).catch(() => undefined);
@@ -449,8 +470,12 @@ export class CertificatesService {
       }
       this.applyCertificateConfigSelection(config);
     } catch (error) {
-      if (routeSelectionGeneration !== this.routeSelectionGeneration) return;
-      if (this.routeResourceErrors.redirectIfUnavailable(error)) return;
+      if (routeSelectionGeneration !== this.routeSelectionGeneration) {
+        return;
+      }
+      if (this.routeResourceErrors.redirectIfUnavailable(error)) {
+        return;
+      }
       this.feedback.error(error, 'Não foi possível abrir a configuração de certificado.');
       void this.router.navigate(['/certificates', this.scopeToTargetType(scope), target.id]);
     }
@@ -494,7 +519,9 @@ export class CertificatesService {
     targetId: string,
     scope: WorkspaceCertificateScope,
   ): Promise<void> {
-    if (!majorEventId) return;
+    if (!majorEventId) {
+      return;
+    }
     try {
       const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
       if (this.selectedTarget()?.id === targetId && this.targetFiltersForm.controls.scope.value === scope) {
@@ -555,7 +582,9 @@ export class CertificatesService {
     this.syncCertificateFieldsForm(config.certificateFieldsJson, config.certificateTemplateId);
     this.captureEditorBaseline();
     resetPagination(this.certificatesPagination);
-    if (loadCertificates) void this.loadCertificates();
+    if (loadCertificates) {
+      void this.loadCertificates();
+    }
   }
 
   startNewCertificateConfig(): void {

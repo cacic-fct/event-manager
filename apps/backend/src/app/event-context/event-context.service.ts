@@ -7,7 +7,12 @@ import {
 } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma } from '@prisma/client';
-import { audienceContext, eventAudienceWhere, groupAudienceWhere, majorEventAudienceWhere } from '../audiences/audience-context';
+import {
+  audienceContext,
+  eventAudienceWhere,
+  groupAudienceWhere,
+  majorEventAudienceWhere,
+} from '../audiences/audience-context';
 import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { GraphqlContext } from '../current-user/selects';
@@ -168,11 +173,15 @@ export class EventContextService {
 
     const source = typesenseStreams ? 'typesense' : 'sql';
     const ranked = Boolean(query) && source === 'typesense';
-    const merged = streams.flatMap((stream) => stream.nodes).sort((left, right) => this.compareNodes(left, right, ranked));
+    const merged = streams
+      .flatMap((stream) => stream.nodes)
+      .sort((left, right) => this.compareNodes(left, right, ranked));
     const selected = merged.slice(0, take);
     const offsets = { ...cursor.offsets };
     for (const stream of streams) {
-      if (stream.nodes.length === 0 && stream.scanned > 0) offsets[stream.kind] += stream.scanned;
+      if (stream.nodes.length === 0 && stream.scanned > 0) {
+        offsets[stream.kind] += stream.scanned;
+      }
     }
     for (const node of selected) {
       offsets[node.kind] = node.sourceAdvance
@@ -191,11 +200,19 @@ export class EventContextService {
 
   private async resolveAccess(user: AuthenticatedUser | undefined): Promise<Access> {
     const granted = new Set(await this.authorization.evaluatePermissions(user, READ_PERMISSIONS));
-    if (granted.size === 0) throw new ForbiddenException('No readable event contexts are available.');
+    if (granted.size === 0) {
+      throw new ForbiddenException('No readable event contexts are available.');
+    }
     const allowed = new Set<AdminEventContextKind>();
-    if (granted.has(Permission.Event.Read)) allowed.add(AdminEventContextKind.EVENT);
-    if (granted.has(Permission.EventGroup.Read)) allowed.add(AdminEventContextKind.EVENT_GROUP);
-    if (granted.has(Permission.MajorEvent.Read)) allowed.add(AdminEventContextKind.MAJOR_EVENT);
+    if (granted.has(Permission.Event.Read)) {
+      allowed.add(AdminEventContextKind.EVENT);
+    }
+    if (granted.has(Permission.EventGroup.Read)) {
+      allowed.add(AdminEventContextKind.EVENT_GROUP);
+    }
+    if (granted.has(Permission.MajorEvent.Read)) {
+      allowed.add(AdminEventContextKind.MAJOR_EVENT);
+    }
     const [events, groups, majors] = await Promise.all([
       allowed.has(AdminEventContextKind.EVENT)
         ? this.authorization.accessibleEventTargets(user, Permission.Event.Read)
@@ -213,15 +230,21 @@ export class EventContextService {
   private requestedKinds(input: PageInput, access: Access): AdminEventContextKind[] {
     const allowed = [...access.allowed];
     if (this.hasEventFilters(input)) {
-      return (!input.childKind || input.childKind === AdminEventContextKind.EVENT) && access.allowed.has(AdminEventContextKind.EVENT)
-        ? [AdminEventContextKind.EVENT] : [];
+      return (!input.childKind || input.childKind === AdminEventContextKind.EVENT) &&
+        access.allowed.has(AdminEventContextKind.EVENT)
+        ? [AdminEventContextKind.EVENT]
+        : [];
     }
-    if (input.childKind) return allowed.includes(input.childKind) ? [input.childKind] : [];
+    if (input.childKind) {
+      return allowed.includes(input.childKind) ? [input.childKind] : [];
+    }
     if (input.parentKind === AdminEventContextKind.EVENT_GROUP) {
       return allowed.filter((kind) => kind === AdminEventContextKind.EVENT);
     }
     if (input.parentKind === AdminEventContextKind.MAJOR_EVENT) {
-      return allowed.filter((kind) => kind === AdminEventContextKind.EVENT || kind === AdminEventContextKind.EVENT_GROUP);
+      return allowed.filter(
+        (kind) => kind === AdminEventContextKind.EVENT || kind === AdminEventContextKind.EVENT_GROUP,
+      );
     }
     return allowed;
   }
@@ -249,7 +272,9 @@ export class EventContextService {
     offsets: Record<AdminEventContextKind, number>,
     take: number,
   ): Promise<StreamPage[] | null> {
-    const pages = await Promise.all(kinds.map((kind) => this.searchTypesenseKind(query, kind, access, offsets[kind], take)));
+    const pages = await Promise.all(
+      kinds.map((kind) => this.searchTypesenseKind(query, kind, access, offsets[kind], take)),
+    );
     return pages.some((page) => page === null) ? null : pages.filter((page): page is StreamPage => page !== null);
   }
 
@@ -267,14 +292,22 @@ export class EventContextService {
     while (nodes.length < take + 1 && scanned < maximumScanned) {
       const options = { offset: offset + scanned, limit: Math.min(take + 1, maximumScanned - scanned) };
       const result = await this.rankedSearch(kind, query, options);
-      if (!result.available) return null;
-      if (result.found >= TYPESENSE_RESULT_WINDOW) return null;
+      if (!result.available) {
+        return null;
+      }
+      if (result.found >= TYPESENSE_RESULT_WINDOW) {
+        return null;
+      }
       found = result.found;
-      if (result.hits.length === 0) break;
+      if (result.hits.length === 0) {
+        break;
+      }
       const hydrated = await this.hydrateRanked(kind, result.hits, access);
       nodes.push(...hydrated.map((node) => ({ ...node, sourceAdvance: (node.sourceAdvance ?? 0) + scanned })));
       scanned += result.hits.length;
-      if (offset + scanned >= found) break;
+      if (offset + scanned >= found) {
+        break;
+      }
     }
     return { kind, nodes: nodes.slice(0, take), hasMore: offset + scanned < found || nodes.length > take, scanned };
   }
@@ -284,8 +317,12 @@ export class EventContextService {
     query: string,
     options: { offset: number; limit: number },
   ): Promise<TypesenseRankedSearchResult> {
-    if (kind === AdminEventContextKind.EVENT) return this.typesense.searchEventsRanked(query, options);
-    if (kind === AdminEventContextKind.EVENT_GROUP) return this.typesense.searchEventGroupsRanked(query, options);
+    if (kind === AdminEventContextKind.EVENT) {
+      return this.typesense.searchEventsRanked(query, options);
+    }
+    if (kind === AdminEventContextKind.EVENT_GROUP) {
+      return this.typesense.searchEventGroupsRanked(query, options);
+    }
     return this.typesense.searchMajorEventsRanked(query, options);
   }
 
@@ -294,7 +331,9 @@ export class EventContextService {
     hits: TypesenseRankedSearchHit[],
     access: Access,
   ): Promise<InternalNode[]> {
-    if (hits.length === 0) return [];
+    if (hits.length === 0) {
+      return [];
+    }
     const ids = hits.map((hit) => hit.id);
     const score = new Map(hits.map((hit) => [hit.id, hit.score]));
     const sourceAdvance = new Map(hits.map((hit, index) => [hit.id, index + 1]));
@@ -314,8 +353,12 @@ export class EventContextService {
     skip: number,
     take: number,
   ): Promise<InternalNode[]> {
-    if (kind === AdminEventContextKind.EVENT) return this.listEvents(input, query, access, skip, take);
-    if (kind === AdminEventContextKind.EVENT_GROUP) return this.listGroups(input, query, access, skip, take);
+    if (kind === AdminEventContextKind.EVENT) {
+      return this.listEvents(input, query, access, skip, take);
+    }
+    if (kind === AdminEventContextKind.EVENT_GROUP) {
+      return this.listGroups(input, query, access, skip, take);
+    }
     return this.listMajorEvents(input, query, access, skip, take);
   }
 
@@ -367,18 +410,20 @@ export class EventContextService {
     );
     // Prisma cannot order groups by a relation's minimum date. Page the event
     // aggregates first, then hydrate only the selected groups using the same access filters.
-    const datedGroups = query ? [] : await this.prisma.event.groupBy({
-      by: ['eventGroupId'],
-      where: this.andEventWhere(readableEvents, {
-        eventGroupId: { not: null },
-        eventGroup: { is: where },
-      }),
-      _min: { startDate: true },
-      orderBy: [{ _min: { startDate: 'desc' } }, { eventGroupId: 'asc' }],
-      skip,
-      take,
-    });
-    const datedIds = datedGroups.flatMap((group) => group.eventGroupId ? [group.eventGroupId] : []);
+    const datedGroups = query
+      ? []
+      : await this.prisma.event.groupBy({
+          by: ['eventGroupId'],
+          where: this.andEventWhere(readableEvents, {
+            eventGroupId: { not: null },
+            eventGroup: { is: where },
+          }),
+          _min: { startDate: true },
+          orderBy: [{ _min: { startDate: 'desc' } }, { eventGroupId: 'asc' }],
+          skip,
+          take,
+        });
+    const datedIds = datedGroups.flatMap((group) => (group.eventGroupId ? [group.eventGroupId] : []));
     let records: Prisma.EventGroupGetPayload<{ select: typeof GROUP_SELECT }>[] = [];
     if (query) {
       records = await this.prisma.eventGroup.findMany({
@@ -397,11 +442,12 @@ export class EventContextService {
     }
     const dates = new Map(datedGroups.map((group) => [group.eventGroupId, group._min.startDate]));
     if (!query && datedGroups.length < take) {
-      const datedCount = skip > 0
-        ? await this.prisma.eventGroup.count({
-            where: this.andGroupWhere(where, { events: { some: readableEvents } }),
-          })
-        : 0;
+      const datedCount =
+        skip > 0
+          ? await this.prisma.eventGroup.count({
+              where: this.andGroupWhere(where, { events: { some: readableEvents } }),
+            })
+          : 0;
       const undated = await this.prisma.eventGroup.findMany({
         where: this.andGroupWhere(where, { events: { none: readableEvents } }),
         select: GROUP_SELECT,
@@ -416,20 +462,22 @@ export class EventContextService {
       id: group.id,
       name: group.name,
       emoji: group.emoji,
-      startDate: query ? null : dates.get(group.id) ?? null,
+      startDate: query ? null : (dates.get(group.id) ?? null),
       endDate: null,
       eventType: null,
       locationDescription: null,
       publicationState: null,
       majorEventId: group.majorEventId,
       eventGroupId: null,
-      sortDate: query ? group.updatedAt : dates.get(group.id) ?? null,
+      sortDate: query ? group.updatedAt : (dates.get(group.id) ?? null),
     }));
     return query ? nodes : nodes.sort((left, right) => this.compareNodes(left, right, false));
   }
 
   private async listMajorEvents(input: PageInput, query: string, access: Access, skip: number, take: number) {
-    if (input.parentKind) return [];
+    if (input.parentKind) {
+      return [];
+    }
     const where = this.andMajorWhere(
       { deletedAt: null },
       this.idAccessWhere<Prisma.MajorEventWhereInput>(access.majors),
@@ -459,11 +507,7 @@ export class EventContextService {
     }));
   }
 
-  private async listKindByIds(
-    kind: AdminEventContextKind,
-    ids: string[],
-    access: Access,
-  ): Promise<InternalNode[]> {
+  private async listKindByIds(kind: AdminEventContextKind, ids: string[], access: Access): Promise<InternalNode[]> {
     if (kind === AdminEventContextKind.EVENT) {
       const records = await this.prisma.event.findMany({
         where: this.andEventWhere(
@@ -473,10 +517,20 @@ export class EventContextService {
         ),
         select: EVENT_SELECT,
       });
-      return records.map((event) => ({ kind, id: event.id, name: event.name, emoji: event.emoji,
-        startDate: event.startDate, endDate: event.endDate, eventType: event.type,
-        locationDescription: event.locationDescription, publicationState: event.publicationState,
-        majorEventId: event.majorEventId, eventGroupId: event.eventGroupId, sortDate: event.startDate }));
+      return records.map((event) => ({
+        kind,
+        id: event.id,
+        name: event.name,
+        emoji: event.emoji,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        eventType: event.type,
+        locationDescription: event.locationDescription,
+        publicationState: event.publicationState,
+        majorEventId: event.majorEventId,
+        eventGroupId: event.eventGroupId,
+        sortDate: event.startDate,
+      }));
     }
     if (kind === AdminEventContextKind.EVENT_GROUP) {
       const records = await this.prisma.eventGroup.findMany({
@@ -487,9 +541,20 @@ export class EventContextService {
         ),
         select: GROUP_SELECT,
       });
-      return records.map((group) => ({ kind, id: group.id, name: group.name, emoji: group.emoji,
-        startDate: null, endDate: null, eventType: null, locationDescription: null, publicationState: null,
-        majorEventId: group.majorEventId, eventGroupId: null, sortDate: group.updatedAt }));
+      return records.map((group) => ({
+        kind,
+        id: group.id,
+        name: group.name,
+        emoji: group.emoji,
+        startDate: null,
+        endDate: null,
+        eventType: null,
+        locationDescription: null,
+        publicationState: null,
+        majorEventId: group.majorEventId,
+        eventGroupId: null,
+        sortDate: group.updatedAt,
+      }));
     }
     const records = await this.prisma.majorEvent.findMany({
       where: this.andMajorWhere(
@@ -499,19 +564,38 @@ export class EventContextService {
       ),
       select: MAJOR_SELECT,
     });
-    return records.map((major) => ({ kind, id: major.id, name: major.name, emoji: major.emoji,
-      startDate: major.startDate, endDate: major.endDate, eventType: null, locationDescription: null,
-      publicationState: major.publicationState, majorEventId: null, eventGroupId: null,
-      sortDate: major.startDate }));
+    return records.map((major) => ({
+      kind,
+      id: major.id,
+      name: major.name,
+      emoji: major.emoji,
+      startDate: major.startDate,
+      endDate: major.endDate,
+      eventType: null,
+      locationDescription: null,
+      publicationState: major.publicationState,
+      majorEventId: null,
+      eventGroupId: null,
+      sortDate: major.startDate,
+    }));
   }
 
   private eventHierarchyWhere(input: PageInput, access: Access): Prisma.EventWhereInput | null {
-    if (input.parentKind === AdminEventContextKind.EVENT_GROUP && input.parentId) return { eventGroupId: input.parentId };
-    if (input.parentKind === AdminEventContextKind.MAJOR_EVENT && input.parentId) {
-      return { majorEventId: input.parentId, ...(!input.query?.trim() && !this.hasEventFilters(input) ? { eventGroupId: null } : {}) };
+    if (input.parentKind === AdminEventContextKind.EVENT_GROUP && input.parentId) {
+      return { eventGroupId: input.parentId };
     }
-    if (input.parentKind) return { id: { in: [] } };
-    if (input.query?.trim() || this.hasEventFilters(input)) return null;
+    if (input.parentKind === AdminEventContextKind.MAJOR_EVENT && input.parentId) {
+      return {
+        majorEventId: input.parentId,
+        ...(!input.query?.trim() && !this.hasEventFilters(input) ? { eventGroupId: null } : {}),
+      };
+    }
+    if (input.parentKind) {
+      return { id: { in: [] } };
+    }
+    if (input.query?.trim() || this.hasEventFilters(input)) {
+      return null;
+    }
     return {
       OR: [
         { majorEventId: null, eventGroupId: null },
@@ -525,21 +609,29 @@ export class EventContextService {
     if (input.parentKind === AdminEventContextKind.MAJOR_EVENT && input.parentId) {
       return eventGroupBelongsToMajorEventWhere(input.parentId);
     }
-    if (input.parentKind) return { id: { in: [] } };
-    if (input.query?.trim()) return null;
+    if (input.parentKind) {
+      return { id: { in: [] } };
+    }
+    if (input.query?.trim()) {
+      return null;
+    }
     return {
       OR: [
         {
           majorEventId: null,
-          events: { none: {
-            deletedAt: null,
-            majorEventId: { not: null },
-            majorEvent: { is: this.andMajorWhere(
-              { deletedAt: null },
-              this.idAccessWhere(access.majors),
-              this.majorAudienceFilter(),
-            ) },
-          } },
+          events: {
+            none: {
+              deletedAt: null,
+              majorEventId: { not: null },
+              majorEvent: {
+                is: this.andMajorWhere(
+                  { deletedAt: null },
+                  this.idAccessWhere(access.majors),
+                  this.majorAudienceFilter(),
+                ),
+              },
+            },
+          },
         },
         { majorEventId: { not: null }, majorEvent: { is: this.inaccessibleMajorWhere(access) } },
       ],
@@ -547,56 +639,106 @@ export class EventContextService {
   }
 
   private hasEventFilters(input: PageInput): boolean {
-    return Boolean(input.startDateFrom || input.startDateUntil) ||
-      typeof input.isInGroup === 'boolean' || typeof input.isInMajorEvent === 'boolean';
+    return (
+      Boolean(input.startDateFrom || input.startDateUntil) ||
+      typeof input.isInGroup === 'boolean' ||
+      typeof input.isInMajorEvent === 'boolean'
+    );
   }
 
   private eventFilterWhere(input: PageInput): Prisma.EventWhereInput | null {
-    if (!this.hasEventFilters(input)) return null;
+    if (!this.hasEventFilters(input)) {
+      return null;
+    }
     return {
-      ...(input.startDateFrom || input.startDateUntil ? { startDate: {
-        ...(input.startDateFrom ? { gte: input.startDateFrom } : {}),
-        ...(input.startDateUntil ? { lte: input.startDateUntil } : {}),
-      } } : {}),
+      ...(input.startDateFrom || input.startDateUntil
+        ? {
+            startDate: {
+              ...(input.startDateFrom ? { gte: input.startDateFrom } : {}),
+              ...(input.startDateUntil ? { lte: input.startDateUntil } : {}),
+            },
+          }
+        : {}),
       ...(typeof input.isInGroup === 'boolean' ? { eventGroupId: input.isInGroup ? { not: null } : null } : {}),
-      ...(typeof input.isInMajorEvent === 'boolean' ? { majorEventId: input.isInMajorEvent ? { not: null } : null } : {}),
+      ...(typeof input.isInMajorEvent === 'boolean'
+        ? { majorEventId: input.isInMajorEvent ? { not: null } : null }
+        : {}),
     };
   }
 
   private eventSearchWhere(query: string, access: Access): Prisma.EventWhereInput | null {
     const terms = this.queryTerms(query);
-    if (terms.length === 0) return null;
+    if (terms.length === 0) {
+      return null;
+    }
     return {
       AND: terms.map((term): Prisma.EventWhereInput => {
         const eventType = this.eventTypeTerm(term);
-        return { OR: [
-          { name: { contains: term, mode: 'insensitive' } },
-          { description: { contains: term, mode: 'insensitive' } },
-          { shortDescription: { contains: term, mode: 'insensitive' } },
-          { locationDescription: { contains: term, mode: 'insensitive' } },
-          { emoji: { contains: term, mode: 'insensitive' } },
-          ...(eventType ? [{ type: eventType }] : []),
-          ...(access.majors === null || access.majors.size > 0
-            ? [{ majorEvent: { is: this.andMajorWhere({ deletedAt: null }, this.idAccessWhere(access.majors), this.majorAudienceFilter(), { name: { contains: term, mode: 'insensitive' } }) } }]
-            : []),
-          ...(access.groups === null || access.groups.size > 0
-            ? [{ eventGroup: { is: this.andGroupWhere({ deletedAt: null }, this.idAccessWhere(access.groups), this.groupAudienceFilter(), { name: { contains: term, mode: 'insensitive' } }) } }]
-            : []),
-        ] };
+        return {
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } },
+            { shortDescription: { contains: term, mode: 'insensitive' } },
+            { locationDescription: { contains: term, mode: 'insensitive' } },
+            { emoji: { contains: term, mode: 'insensitive' } },
+            ...(eventType ? [{ type: eventType }] : []),
+            ...(access.majors === null || access.majors.size > 0
+              ? [
+                  {
+                    majorEvent: {
+                      is: this.andMajorWhere(
+                        { deletedAt: null },
+                        this.idAccessWhere(access.majors),
+                        this.majorAudienceFilter(),
+                        { name: { contains: term, mode: 'insensitive' } },
+                      ),
+                    },
+                  },
+                ]
+              : []),
+            ...(access.groups === null || access.groups.size > 0
+              ? [
+                  {
+                    eventGroup: {
+                      is: this.andGroupWhere(
+                        { deletedAt: null },
+                        this.idAccessWhere(access.groups),
+                        this.groupAudienceFilter(),
+                        { name: { contains: term, mode: 'insensitive' } },
+                      ),
+                    },
+                  },
+                ]
+              : []),
+          ],
+        };
       }),
     };
   }
 
   private groupSearchWhere(query: string, access: Access): Prisma.EventGroupWhereInput | null {
     const terms = this.queryTerms(query);
-    if (terms.length === 0) return null;
+    if (terms.length === 0) {
+      return null;
+    }
     return {
       AND: terms.map((term) => ({
         OR: [
           { name: { contains: term, mode: 'insensitive' } },
           { emoji: { contains: term, mode: 'insensitive' } },
           ...(access.majors === null || access.majors.size > 0
-            ? [{ majorEvent: { is: this.andMajorWhere({ deletedAt: null }, this.idAccessWhere(access.majors), this.majorAudienceFilter(), { name: { contains: term, mode: 'insensitive' } }) } }]
+            ? [
+                {
+                  majorEvent: {
+                    is: this.andMajorWhere(
+                      { deletedAt: null },
+                      this.idAccessWhere(access.majors),
+                      this.majorAudienceFilter(),
+                      { name: { contains: term, mode: 'insensitive' } },
+                    ),
+                  },
+                },
+              ]
             : []),
         ],
       })),
@@ -606,52 +748,53 @@ export class EventContextService {
   private majorSearchWhere(query: string): Prisma.MajorEventWhereInput | null {
     const terms = this.queryTerms(query);
     return terms.length
-      ? { AND: terms.map((term) => ({ OR: [
-          { name: { contains: term, mode: 'insensitive' } },
-          { description: { contains: term, mode: 'insensitive' } },
-        ] })) }
+      ? {
+          AND: terms.map((term) => ({
+            OR: [
+              { name: { contains: term, mode: 'insensitive' } },
+              { description: { contains: term, mode: 'insensitive' } },
+            ],
+          })),
+        }
       : null;
   }
 
   private async toOutputNodes(nodes: InternalNode[], access: Access): Promise<AdminEventContextNode[]> {
-    const ancestorGroupIds = [...new Set(
-      nodes
-        .map((node) => node.eventGroupId)
-        .filter((id): id is string => id !== null && this.canAccessId(access.groups, id)),
-    )];
-    const ancestorGroups = ancestorGroupIds.length > 0
-      ? await this.prisma.eventGroup.findMany({
-          where: this.andGroupWhere(
-            { id: { in: ancestorGroupIds }, deletedAt: null },
-            this.groupAudienceFilter(),
-          ),
-          select: { id: true, name: true, emoji: true, majorEventId: true },
-        })
-      : [];
+    const ancestorGroupIds = [
+      ...new Set(
+        nodes
+          .map((node) => node.eventGroupId)
+          .filter((id): id is string => id !== null && this.canAccessId(access.groups, id)),
+      ),
+    ];
+    const ancestorGroups =
+      ancestorGroupIds.length > 0
+        ? await this.prisma.eventGroup.findMany({
+            where: this.andGroupWhere({ id: { in: ancestorGroupIds }, deletedAt: null }, this.groupAudienceFilter()),
+            select: { id: true, name: true, emoji: true, majorEventId: true },
+          })
+        : [];
     const ancestorGroupsById = new Map(ancestorGroups.map((group) => [group.id, group]));
-    const ancestorMajorIds = [...new Set(
-      nodes
-        .map((node) => {
-          const group = node.eventGroupId ? ancestorGroupsById.get(node.eventGroupId) : null;
-          return group?.majorEventId ?? (node.eventGroupId ? null : node.majorEventId);
-        })
-        .filter((id): id is string => id !== null && this.canAccessId(access.majors, id)),
-    )];
+    const ancestorMajorIds = [
+      ...new Set(
+        nodes
+          .map((node) => {
+            const group = node.eventGroupId ? ancestorGroupsById.get(node.eventGroupId) : null;
+            return group?.majorEventId ?? (node.eventGroupId ? null : node.majorEventId);
+          })
+          .filter((id): id is string => id !== null && this.canAccessId(access.majors, id)),
+      ),
+    ];
 
     const groupNodeIds = access.allowed.has(AdminEventContextKind.EVENT)
       ? nodes.filter((node) => node.kind === AdminEventContextKind.EVENT_GROUP).map((node) => node.id)
       : [];
-    const majorNodeIds = nodes
-      .filter((node) => node.kind === AdminEventContextKind.MAJOR_EVENT)
-      .map((node) => node.id);
+    const majorNodeIds = nodes.filter((node) => node.kind === AdminEventContextKind.MAJOR_EVENT).map((node) => node.id);
 
     const [ancestorMajors, groupChildEvents, majorChildGroups, majorChildEvents] = await Promise.all([
       ancestorMajorIds.length > 0
         ? this.prisma.majorEvent.findMany({
-            where: this.andMajorWhere(
-              { id: { in: ancestorMajorIds }, deletedAt: null },
-              this.majorAudienceFilter(),
-            ),
+            where: this.andMajorWhere({ id: { in: ancestorMajorIds }, deletedAt: null }, this.majorAudienceFilter()),
             select: { id: true, name: true, emoji: true },
           })
         : [],
@@ -709,7 +852,9 @@ export class EventContextService {
         majorsWithChildren.add(group.majorEventId);
       } else {
         for (const event of group.events) {
-          if (event.majorEventId) majorsWithChildren.add(event.majorEventId);
+          if (event.majorEventId) {
+            majorsWithChildren.add(event.majorEventId);
+          }
         }
       }
     }
@@ -719,7 +864,9 @@ export class EventContextService {
       const group = node.eventGroupId ? ancestorGroupsById.get(node.eventGroupId) : null;
       const canonicalMajorEventId = group?.majorEventId ?? (node.eventGroupId ? null : node.majorEventId);
       const major = canonicalMajorEventId ? ancestorMajorsById.get(canonicalMajorEventId) : null;
-      if (major) ancestors.push({ kind: AdminEventContextKind.MAJOR_EVENT, ...major });
+      if (major) {
+        ancestors.push({ kind: AdminEventContextKind.MAJOR_EVENT, ...major });
+      }
       if (group) {
         ancestors.push({
           kind: AdminEventContextKind.EVENT_GROUP,
@@ -750,13 +897,39 @@ export class EventContextService {
   }
 
   private async assertReadableParent(kind: AdminEventContextKind, id: string, access: Access): Promise<void> {
-    if (!access.allowed.has(kind)) throw new NotFoundException('Event context was not found.');
-    const found = kind === AdminEventContextKind.EVENT
-      ? await this.prisma.event.findFirst({ where: this.andEventWhere({ id, deletedAt: null }, this.eventAccessWhere(access.events), this.eventAudienceFilter()), select: { id: true } })
-      : kind === AdminEventContextKind.EVENT_GROUP
-        ? await this.prisma.eventGroup.findFirst({ where: this.andGroupWhere({ id, deletedAt: null }, this.idAccessWhere(access.groups), this.groupAudienceFilter()), select: { id: true } })
-        : await this.prisma.majorEvent.findFirst({ where: this.andMajorWhere({ id, deletedAt: null }, this.idAccessWhere(access.majors), this.majorAudienceFilter()), select: { id: true } });
-    if (!found) throw new NotFoundException('Event context was not found.');
+    if (!access.allowed.has(kind)) {
+      throw new NotFoundException('Event context was not found.');
+    }
+    const found =
+      kind === AdminEventContextKind.EVENT
+        ? await this.prisma.event.findFirst({
+            where: this.andEventWhere(
+              { id, deletedAt: null },
+              this.eventAccessWhere(access.events),
+              this.eventAudienceFilter(),
+            ),
+            select: { id: true },
+          })
+        : kind === AdminEventContextKind.EVENT_GROUP
+          ? await this.prisma.eventGroup.findFirst({
+              where: this.andGroupWhere(
+                { id, deletedAt: null },
+                this.idAccessWhere(access.groups),
+                this.groupAudienceFilter(),
+              ),
+              select: { id: true },
+            })
+          : await this.prisma.majorEvent.findFirst({
+              where: this.andMajorWhere(
+                { id, deletedAt: null },
+                this.idAccessWhere(access.majors),
+                this.majorAudienceFilter(),
+              ),
+              select: { id: true },
+            });
+    if (!found) {
+      throw new NotFoundException('Event context was not found.');
+    }
   }
 
   private validateInput(input: PageInput): void {
@@ -769,16 +942,25 @@ export class EventContextService {
     if (input.parentKind === AdminEventContextKind.EVENT) {
       throw new BadRequestException('Events cannot contain child contexts.');
     }
-    if (input.parentKind === AdminEventContextKind.EVENT_GROUP && input.childKind && input.childKind !== AdminEventContextKind.EVENT) {
+    if (
+      input.parentKind === AdminEventContextKind.EVENT_GROUP &&
+      input.childKind &&
+      input.childKind !== AdminEventContextKind.EVENT
+    ) {
       throw new BadRequestException('Event groups can contain only events.');
     }
-    if (input.parentKind === AdminEventContextKind.MAJOR_EVENT && input.childKind === AdminEventContextKind.MAJOR_EVENT) {
+    if (
+      input.parentKind === AdminEventContextKind.MAJOR_EVENT &&
+      input.childKind === AdminEventContextKind.MAJOR_EVENT
+    ) {
       throw new BadRequestException('Major events cannot contain major events.');
     }
   }
 
   private decodeCursor(value: string | undefined, signature: string): CursorState {
-    if (!value) return { v: 1, signature, source: null, offsets: this.emptyOffsets() };
+    if (!value) {
+      return { v: 1, signature, source: null, offsets: this.emptyOffsets() };
+    }
     try {
       const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<CursorState>;
       if (
@@ -786,11 +968,15 @@ export class EventContextService {
         parsed.signature !== signature ||
         !parsed.offsets ||
         (parsed.source !== 'sql' && parsed.source !== 'typesense')
-      ) throw new Error('invalid');
+      ) {
+        throw new Error('invalid');
+      }
       const offsets = this.emptyOffsets();
       for (const kind of Object.values(AdminEventContextKind)) {
         const offset = parsed.offsets[kind];
-        if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('invalid');
+        if (!Number.isSafeInteger(offset) || offset < 0) {
+          throw new Error('invalid');
+        }
         offsets[kind] = offset;
       }
       return { v: 1, signature, source: parsed.source, offsets };
@@ -806,24 +992,42 @@ export class EventContextService {
   private compareNodes(left: InternalNode, right: InternalNode, ranked: boolean): number {
     if (ranked) {
       const scoreDifference = this.score(right.score) - this.score(left.score);
-      if (scoreDifference !== 0n) return scoreDifference > 0n ? 1 : -1;
+      if (scoreDifference !== 0n) {
+        return scoreDifference > 0n ? 1 : -1;
+      }
       const kindDifference = KIND_ORDER[left.kind] - KIND_ORDER[right.kind];
-      return kindDifference || (left.sourceAdvance ?? 0) - (right.sourceAdvance ?? 0) || left.id.localeCompare(right.id);
+      return (
+        kindDifference || (left.sourceAdvance ?? 0) - (right.sourceAdvance ?? 0) || left.id.localeCompare(right.id)
+      );
     }
-    if (left.sortDate === null && right.sortDate !== null) return 1;
-    if (right.sortDate === null && left.sortDate !== null) return -1;
+    if (left.sortDate === null && right.sortDate !== null) {
+      return 1;
+    }
+    if (right.sortDate === null && left.sortDate !== null) {
+      return -1;
+    }
     const dateDifference = (right.sortDate?.getTime() ?? 0) - (left.sortDate?.getTime() ?? 0);
-    if (dateDifference !== 0) return dateDifference;
+    if (dateDifference !== 0) {
+      return dateDifference;
+    }
     const kindDifference = KIND_ORDER[left.kind] - KIND_ORDER[right.kind];
     return kindDifference || left.id.localeCompare(right.id);
   }
 
   private score(value?: string): bigint {
-    try { return BigInt(value ?? '0'); } catch { return 0n; }
+    try {
+      return BigInt(value ?? '0');
+    } catch {
+      return 0n;
+    }
   }
 
   private queryTerms(query: string): string[] {
-    return query.split(/\s+/u).map((term) => term.trim()).filter(Boolean).slice(0, MAX_QUERY_TERMS);
+    return query
+      .split(/\s+/u)
+      .map((term) => term.trim())
+      .filter(Boolean)
+      .slice(0, MAX_QUERY_TERMS);
   }
 
   private eventTypeTerm(term: string): 'MINICURSO' | 'PALESTRA' | 'OTHER' | null {
@@ -832,11 +1036,19 @@ export class EventContextService {
   }
 
   private eventAccessWhere(targets: AccessibleEventGrantTargets | null): Prisma.EventWhereInput | null {
-    if (targets === null) return null;
+    if (targets === null) {
+      return null;
+    }
     const OR: Prisma.EventWhereInput[] = [];
-    if (targets.eventIds.size) OR.push({ id: { in: [...targets.eventIds] } });
-    if (targets.eventGroupIds.size) OR.push({ eventGroupId: { in: [...targets.eventGroupIds] } });
-    if (targets.majorEventIds.size) OR.push({ majorEventId: { in: [...targets.majorEventIds] } });
+    if (targets.eventIds.size) {
+      OR.push({ id: { in: [...targets.eventIds] } });
+    }
+    if (targets.eventGroupIds.size) {
+      OR.push({ eventGroupId: { in: [...targets.eventGroupIds] } });
+    }
+    if (targets.majorEventIds.size) {
+      OR.push({ majorEventId: { in: [...targets.majorEventIds] } });
+    }
     return OR.length ? { OR } : { id: { in: [] } };
   }
 
@@ -845,19 +1057,15 @@ export class EventContextService {
   }
 
   private inaccessibleMajorWhere(access: Access): Prisma.MajorEventWhereInput {
-    return { NOT: this.andMajorWhere(
-      { deletedAt: null },
-      this.idAccessWhere(access.majors),
-      this.majorAudienceFilter(),
-    ) };
+    return {
+      NOT: this.andMajorWhere({ deletedAt: null }, this.idAccessWhere(access.majors), this.majorAudienceFilter()),
+    };
   }
 
   private inaccessibleGroupWhere(access: Access): Prisma.EventGroupWhereInput {
-    return { NOT: this.andGroupWhere(
-      { deletedAt: null },
-      this.idAccessWhere(access.groups),
-      this.groupAudienceFilter(),
-    ) };
+    return {
+      NOT: this.andGroupWhere({ deletedAt: null }, this.idAccessWhere(access.groups), this.groupAudienceFilter()),
+    };
   }
 
   private canAccessId(ids: Set<string> | null, id: string): boolean {
@@ -893,7 +1101,9 @@ export class EventContextService {
 
   private andWhere<T>(parts: (T | null | undefined)[]): T {
     const filtered = parts.filter((part): part is T => Boolean(part));
-    if (filtered.length === 1) return filtered[0];
+    if (filtered.length === 1) {
+      return filtered[0];
+    }
     return { AND: filtered } as T;
   }
 

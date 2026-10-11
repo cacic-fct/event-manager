@@ -4,10 +4,18 @@ import type { TicketTransferNotification } from './novu-notification.types';
 
 describe('ticket transfer notifications', () => {
   it('uses truthful copy when an administrator cancels a holder transfer', () => {
-    const service = new NovuNotificationsService({ get: (_key: string, defaultValue: string) => defaultValue } as ConfigService);
-    const copy = (service as unknown as {
-      ticketTransferCopy: (input: TicketTransferNotification) => { title: string; body: string; recipientWorkflow: boolean };
-    }).ticketTransferCopy({
+    const service = new NovuNotificationsService({
+      get: (_key: string, defaultValue: string) => defaultValue,
+    } as ConfigService);
+    const copy = (
+      service as unknown as {
+        ticketTransferCopy: (input: TicketTransferNotification) => {
+          title: string;
+          body: string;
+          recipientWorkflow: boolean;
+        };
+      }
+    ).ticketTransferCopy({
       notificationType: 'SENDER_ADMIN_CANCELED',
       transferId: 'transfer-1',
       recipientUserId: 'holder-user',

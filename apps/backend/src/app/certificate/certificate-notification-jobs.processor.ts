@@ -31,7 +31,9 @@ export class CertificateNotificationJobsProcessor extends WorkerHost {
 }
 
 function isCertificateNotificationJob(value: unknown): value is CertificateAvailableNotificationJob {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
   const candidate = value as Record<string, unknown>;
   const hasText = (field: unknown): field is string => typeof field === 'string' && field.trim().length > 0;
   return (

@@ -187,7 +187,10 @@ export function buildAdminEventGroupUrl(publicAppOrigin: string, eventGroupId: s
 }
 
 export function buildAdminMajorEventUrl(publicAppOrigin: string, majorEventId: string): string {
-  return new URL(`/admin${adminEventWorkspacePath({ kind: 'major-event', id: majorEventId })}`, publicAppOrigin).toString();
+  return new URL(
+    `/admin${adminEventWorkspacePath({ kind: 'major-event', id: majorEventId })}`,
+    publicAppOrigin,
+  ).toString();
 }
 
 export function slugifyFileName(value: string): string {

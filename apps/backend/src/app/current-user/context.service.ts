@@ -224,7 +224,9 @@ export class CurrentUserContextService {
       });
       const nextFrontier: string[] = [];
       for (const mapping of mappings) {
-        if (visitedUserIds.has(mapping.oldUserId)) continue;
+        if (visitedUserIds.has(mapping.oldUserId)) {
+          continue;
+        }
         visitedUserIds.add(mapping.oldUserId);
         sourceUserIds.push(mapping.oldUserId);
         nextFrontier.push(mapping.oldUserId);
@@ -232,28 +234,38 @@ export class CurrentUserContextService {
       frontier = nextFrontier;
     }
 
-    if (sourceUserIds.length === 0) return;
+    if (sourceUserIds.length === 0) {
+      return;
+    }
 
     const [transfer, notification, realtime, cooldown] = await Promise.all([
       this.prisma.ticketTransfer.findFirst({
-        where: { senderStatus: 'PENDING', OR: [
-          { authorUserId: { in: sourceUserIds } },
-          { senderUserId: { in: sourceUserIds } },
-          { recipientUserId: { in: sourceUserIds } },
-        ] },
+        where: {
+          senderStatus: 'PENDING',
+          OR: [
+            { authorUserId: { in: sourceUserIds } },
+            { senderUserId: { in: sourceUserIds } },
+            { recipientUserId: { in: sourceUserIds } },
+          ],
+        },
         select: { id: true },
       }),
       this.prisma.ticketNotificationOutbox.findFirst({
-        where: { recipientUserId: { in: sourceUserIds }, sentAt: null }, select: { id: true },
+        where: { recipientUserId: { in: sourceUserIds }, sentAt: null },
+        select: { id: true },
       }),
       this.prisma.ticketRealtimeOutbox.findFirst({
-        where: { recipientUserId: { in: sourceUserIds }, publishedAt: null }, select: { id: true },
+        where: { recipientUserId: { in: sourceUserIds }, publishedAt: null },
+        select: { id: true },
       }),
       this.prisma.ticketTransferAuthorCooldown.findFirst({
-        where: { userId: { in: sourceUserIds } }, select: { userId: true },
+        where: { userId: { in: sourceUserIds } },
+        select: { userId: true },
       }),
     ]);
-    if (!transfer && !notification && !realtime && !cooldown) return;
+    if (!transfer && !notification && !realtime && !cooldown) {
+      return;
+    }
 
     await this.prisma.$transaction(async (tx) => {
       for (const sourceUserId of sourceUserIds) {

@@ -57,19 +57,26 @@ const meta: Meta<MoreInfoStoryArgs> = {
   tags: ['autodocs'],
   decorators: [
     withScenarioControls<MoreInfoStoryArgs>(),
-    (story, context) => applicationConfig({ providers: [
-      { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
-      { provide: PublicDataAccessService, useValue: {
-        replaceAttendanceDetail: async () => undefined,
-        getAttendanceDetail: async () => context.globals['network'] === 'offline'
-          ? cachedDetail(context.args)
-          : null,
-        getLatestUserSnapshot: async () => ({ userId: 'storybook-user' }),
-        purgeUserData: async () => undefined,
-      } },
-    ] })(story, context),
+    (story, context) =>
+      applicationConfig({
+        providers: [
+          { provide: RouteErrorService, useValue: { navigate: navigateRouteError } },
+          {
+            provide: PublicDataAccessService,
+            useValue: {
+              replaceAttendanceDetail: async () => undefined,
+              getAttendanceDetail: async () =>
+                context.globals['network'] === 'offline' ? cachedDetail(context.args) : null,
+              getLatestUserSnapshot: async () => ({ userId: 'storybook-user' }),
+              purgeUserData: async () => undefined,
+            },
+          },
+        ],
+      })(story, context),
   ],
-  beforeEach: () => { navigateRouteError.mockClear(); },
+  beforeEach: () => {
+    navigateRouteError.mockClear();
+  },
   args: defaultArgs,
   argTypes: {
     ...publicEventStoryControlArgTypes,
@@ -169,8 +176,12 @@ export const Loading: Story = {
 export const LoadError: Story = {
   args: { apiState: 'error', latencyMs: 0 },
   globals: { network: 'online' },
-  parameters: { docs: { description: { story: 'A failed request with no saved detail redirects to the not-found route.' } } },
-  play: async () => { await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404)); },
+  parameters: {
+    docs: { description: { story: 'A failed request with no saved detail redirects to the not-found route.' } },
+  },
+  play: async () => {
+    await waitFor(() => expect(navigateRouteError).toHaveBeenCalledWith(404));
+  },
 };
 
 export const LongContent: Story = {
@@ -315,10 +326,14 @@ function cachedDetail(args: MoreInfoStoryArgs): OfflineAttendanceDetail {
   return {
     eventType: 'event',
     details: {
-      subscription: args.isSubscribed ? {
-        eventId: event.id, eventGroupSubscriptionId: null,
-        createdAt: event.subscriptionStartDate ?? event.startDate, event,
-      } : null,
+      subscription: args.isSubscribed
+        ? {
+            eventId: event.id,
+            eventGroupSubscriptionId: null,
+            createdAt: event.subscriptionStartDate ?? event.startDate,
+            event,
+          }
+        : null,
       event: args.isSubscribed ? null : event,
       attendance: args.hasAttendance ? currentUserEventAttendance(event) : null,
       hasIssuedCertificate: args.hasIssuedCertificate,

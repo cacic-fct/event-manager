@@ -45,7 +45,13 @@ import { EventPostCommitEffectsService } from './event-post-commit-effects.servi
 import { attendancePriceTierPolicyChanged, validateAttendancePriceTiers } from './attendance-price-tier-policy';
 import { syncEventGroupMajorEvent } from './event-group-major-event';
 import { AudienceInvitationService } from '../audiences/audience-invitation.service';
-import { applyAudienceSettings, assertAudienceCloneAllowed, withAudienceAudit, withoutAudienceInput, type AudienceChange } from '../audiences/audience-input';
+import {
+  applyAudienceSettings,
+  assertAudienceCloneAllowed,
+  withAudienceAudit,
+  withoutAudienceInput,
+  type AudienceChange,
+} from '../audiences/audience-input';
 import { audienceContext } from '../audiences/audience-context';
 import { assertAudiencePublicationReady } from '../audiences/audience-publication';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
@@ -500,8 +506,20 @@ export class EventsResolver {
         },
         select: EVENT_DETAIL_SELECT,
       });
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: createdEvent.id }, input, undefined, actorId);
-      if (audienceChange) createdEvent = await tx.event.findUniqueOrThrow({ where: { id: createdEvent.id }, select: EVENT_DETAIL_SELECT });
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'EVENT', targetId: createdEvent.id },
+        input,
+        undefined,
+        actorId,
+      );
+      if (audienceChange) {
+        createdEvent = await tx.event.findUniqueOrThrow({
+          where: { id: createdEvent.id },
+          select: EVENT_DETAIL_SELECT,
+        });
+      }
       await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
@@ -524,7 +542,12 @@ export class EventsResolver {
       return createdEvent;
     });
     await this.postCommitEffects.upsertEvent(event);
-    if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
+    if (audienceChange) {
+      await this.audienceInvitations.notifyInvited(
+        { type: 'EVENT', id: event.id, name: event.name },
+        audienceChange.personIds,
+      );
+    }
     return event;
   }
 
@@ -556,13 +579,22 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
+      if (!previousEvent) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
       await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, {
         ...normalizedInput,
         publishAfterUpdate,
       });
       await validateAttendancePriceTiers(tx, normalizedInput, previousEvent);
-      audienceChange = await applyAudienceSettings(tx, this.audienceInvitations, { targetType: 'EVENT', targetId: id }, input, previousEvent, user?.sub);
+      audienceChange = await applyAudienceSettings(
+        tx,
+        this.audienceInvitations,
+        { targetType: 'EVENT', targetId: id },
+        input,
+        previousEvent,
+        user?.sub,
+      );
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {
@@ -615,7 +647,9 @@ export class EventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true)),
+          before: eventContentAuditSnapshot(
+            withAudienceAudit(omitPublicationAuditFields(previousEvent), audienceChange, true),
+          ),
           after: eventContentAuditSnapshot(withAudienceAudit(omitPublicationAuditFields(updatedAudit), audienceChange)),
           scope: {
             permission: Permission.Event.Update,
@@ -654,7 +688,12 @@ export class EventsResolver {
       return updated;
     });
     if (event) {
-      if (audienceChange) await this.audienceInvitations.notifyInvited({ type: 'EVENT', id: event.id, name: event.name }, audienceChange.personIds);
+      if (audienceChange) {
+        await this.audienceInvitations.notifyInvited(
+          { type: 'EVENT', id: event.id, name: event.name },
+          audienceChange.personIds,
+        );
+      }
       await this.postCommitEffects.upsertEvent(event);
       await this.sportsMutationEvents.publishForBackingEvent(event.id);
       if (this.didChangeOnlineAttendanceWindow(input) || audienceChange?.invitationsChanged) {
@@ -886,7 +925,9 @@ export class EventsResolver {
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
       const event = await tx.event.findFirst({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
-      if (!event) throw new NotFoundException(`Event ${id} was not found.`);
+      if (!event) {
+        throw new NotFoundException(`Event ${id} was not found.`);
+      }
       await this.sportsBackingLifecycle.assertEventDeleteAllowed(tx, id);
       const deleted = await tx.event.updateMany({ where: { id, deletedAt: null }, data: { deletedAt } });
       if (deleted.count !== 1) {

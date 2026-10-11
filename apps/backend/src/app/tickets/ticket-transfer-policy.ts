@@ -53,7 +53,9 @@ export function classifyRecipientResolution(facts: RecipientResolutionFacts): Re
 /** Delay is based on the author's previous submissions, across every ticket. */
 export function transferStartDelayMs(previousSubmissionCount: number): number {
   const count = Math.max(0, Math.trunc(previousSubmissionCount));
-  if (count < INITIAL_IMMEDIATE_START_ATTEMPTS) return 0;
+  if (count < INITIAL_IMMEDIATE_START_ATTEMPTS) {
+    return 0;
+  }
   return Math.min(
     MAX_START_DELAY_MS,
     INITIAL_START_DELAY_MS * 2 ** Math.min(count - INITIAL_IMMEDIATE_START_ATTEMPTS, 15),

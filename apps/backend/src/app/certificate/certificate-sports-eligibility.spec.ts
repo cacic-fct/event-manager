@@ -363,14 +363,18 @@ describe('CertificateSportsEligibility', () => {
 
   it('keeps sports organizers on the manual recipient path without bulk enumeration', async () => {
     const peopleFindFirst = jest.fn().mockResolvedValue(person);
-    const service = new CertificateEligibilityService({
-      people: {
-        findFirst: peopleFindFirst,
-      },
-      event: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-    } as never, { resolve: jest.fn() } as never, { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never);
+    const service = new CertificateEligibilityService(
+      {
+        people: {
+          findFirst: peopleFindFirst,
+        },
+        event: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      } as never,
+      { resolve: jest.fn() } as never,
+      { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never,
+    );
     const config = {
       scope: CertificateScope.MAJOR_EVENT,
       majorEventId: 'major-event-1',

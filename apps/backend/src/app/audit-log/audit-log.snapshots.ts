@@ -61,7 +61,8 @@ export function compactAuditSnapshots(
 ): { before: Record<string, unknown>; after: Record<string, unknown> } {
   const fields = new Set(changes.map((change) => change.field.split('.')[0]));
   for (const field of [...Object.keys(before), ...Object.keys(after)]) {
-    const hasScalarReference = AUDIT_SUBJECT_REFERENCE_FIELDS.has(field) &&
+    const hasScalarReference =
+      AUDIT_SUBJECT_REFERENCE_FIELDS.has(field) &&
       [before[field], after[field]].some((value) => typeof value === 'string');
     if (hasScalarReference || field === 'sourceKey') {
       fields.add(field);

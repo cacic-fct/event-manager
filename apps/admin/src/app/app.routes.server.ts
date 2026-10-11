@@ -9,16 +9,26 @@ const errorStatuses = [403, 404, 500, 503] as const satisfies readonly PageError
 
 function routePath(route: Route, parentPath: string): string {
   const path = route.path ?? '';
-  if (!path) return parentPath;
+  if (!path) {
+    return parentPath;
+  }
   return parentPath ? `${parentPath}/${path}` : path;
 }
 
 function lazyChildren(route: Route): Route[] | undefined {
-  if (route.children) return route.children;
-  if (!route.loadChildren) return undefined;
+  if (route.children) {
+    return route.children;
+  }
+  if (!route.loadChildren) {
+    return undefined;
+  }
 
-  if (route.path === '') return dashboardRoutes;
-  if (route.path === 'permissions') return permissionRoutes;
+  if (route.path === '') {
+    return dashboardRoutes;
+  }
+  if (route.path === 'permissions') {
+    return permissionRoutes;
+  }
   throw new Error(`Admin SSR route map is missing lazy children for ${route.path ?? '(matcher)'}.`);
 }
 
@@ -26,12 +36,16 @@ function collectAdminClientPaths(routes: readonly Route[], parentPath = ''): str
   const paths: string[] = [];
 
   for (const route of routes) {
-    if (route.matcher) continue;
+    if (route.matcher) {
+      continue;
+    }
 
     const path = routePath(route, parentPath);
     paths.push(path);
     const children = lazyChildren(route);
-    if (children) paths.push(...collectAdminClientPaths(children, path));
+    if (children) {
+      paths.push(...collectAdminClientPaths(children, path));
+    }
   }
 
   return paths;

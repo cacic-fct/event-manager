@@ -55,14 +55,15 @@ const meta: Meta<TicketTransfersStoryArgs> = {
       });
       const transfers = createTicketStoryTransferLists({
         incomingPending: context.args.mode === 'all' ? [pending] : context.args.mode === 'admin' ? [adminPending] : [],
-        incomingIgnored: context.args.mode === 'all' || context.args.mode === 'system-ineligible' || context.args.mode === 'system-duplicate'
-          ? [ignored]
-          : [],
+        incomingIgnored:
+          context.args.mode === 'all' ||
+          context.args.mode === 'system-ineligible' ||
+          context.args.mode === 'system-duplicate'
+            ? [ignored]
+            : [],
         outgoing: context.args.mode === 'all' ? [outgoing, outgoingEligibilityHidden] : [],
       });
-      const apiResult = context.args.mode === 'loading'
-        ? NEVER
-        : of(transfers);
+      const apiResult = context.args.mode === 'loading' ? NEVER : of(transfers);
 
       return applicationConfig({
         providers: [
@@ -108,7 +109,9 @@ export const AllAttemptGroups: Story = {
 export const Empty: Story = {
   args: { mode: 'empty' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Você ainda não tem pedidos de transferência de bilhetes.')).toBeVisible();
+    await expect(
+      await within(canvasElement).findByText('Você ainda não tem pedidos de transferência de bilhetes.'),
+    ).toBeVisible();
   },
 };
 
@@ -139,6 +142,8 @@ export const InitiatedByAdmin: Story = {
 export const Loading: Story = {
   args: { mode: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando transferências' })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('progressbar', { name: 'Carregando transferências' }),
+    ).toBeVisible();
   },
 };

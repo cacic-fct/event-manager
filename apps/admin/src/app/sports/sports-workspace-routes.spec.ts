@@ -1,11 +1,7 @@
 import { convertToParamMap } from '@angular/router';
 import { canReadFeatureGuard } from '../app-shell/access.guard';
 import { routes } from '../app-shell/admin-shell.routes';
-import {
-  parseSportsWorkspaceRoute,
-  sportsWorkspaceRoutePaths,
-  sportsWorkspaceRoute,
-} from './sports-workspace-routes';
+import { parseSportsWorkspaceRoute, sportsWorkspaceRoutePaths, sportsWorkspaceRoute } from './sports-workspace-routes';
 
 describe('sports workspace routes', () => {
   it('keeps sports routes behind the sports read permission guard', () => {
@@ -55,21 +51,14 @@ describe('sports workspace routes', () => {
       matchId: 'match-1',
     });
     expect(
-      parseSportsWorkspaceRoute(
-        convertToParamMap({ majorEventId: 'major-1', area: 'reviews', entityId: 'team-1' }),
-      ),
+      parseSportsWorkspaceRoute(convertToParamMap({ majorEventId: 'major-1', area: 'reviews', entityId: 'team-1' })),
     ).toMatchObject({ area: 'reviews', teamId: 'team-1' });
   });
 
   it('builds stable list, entity, and match URLs', () => {
     expect(sportsWorkspaceRoute(null, 'overview')).toEqual(['/sports']);
     expect(sportsWorkspaceRoute('major-1', 'overview')).toEqual(['/sports', 'major-event', 'major-1']);
-    expect(sportsWorkspaceRoute('major-1', 'categories')).toEqual([
-      '/sports',
-      'major-event',
-      'major-1',
-      'categories',
-    ]);
+    expect(sportsWorkspaceRoute('major-1', 'categories')).toEqual(['/sports', 'major-event', 'major-1', 'categories']);
     expect(sportsWorkspaceRoute('major-1', 'teams', { teamId: 'team-1' })).toEqual([
       '/sports',
       'major-event',

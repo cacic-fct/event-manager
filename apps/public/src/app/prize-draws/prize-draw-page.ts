@@ -77,9 +77,15 @@ export class PublicPrizeDrawPage {
 
   eligibilityLabel(draw: PublicPrizeDraw): string {
     const sources: string[] = [];
-    if (draw.includePresent) sources.push('pessoas presentes');
-    if (draw.includeSubscribers) sources.push('pessoas inscritas');
-    if (draw.includeManualEntries) sources.push('entradas manuais');
+    if (draw.includePresent) {
+      sources.push('pessoas presentes');
+    }
+    if (draw.includeSubscribers) {
+      sources.push('pessoas inscritas');
+    }
+    if (draw.includeManualEntries) {
+      sources.push('entradas manuais');
+    }
     return sources.join(', ');
   }
 
@@ -110,7 +116,9 @@ export class PublicPrizeDrawPage {
       this.navigateToError(404);
       return;
     }
-    if (!background) this.state.set({ status: 'loading' });
+    if (!background) {
+      this.state.set({ status: 'loading' });
+    }
     try {
       const draws = await firstValueFrom(this.api.list({ targetType: this.targetType, targetId: this.targetId }));
       this.state.set({ status: 'ready', draws });
@@ -150,13 +158,19 @@ export class PublicPrizeDrawPage {
   }
 
   private scrollToDeepLinkedDraw(): void {
-    if (!isPlatformBrowser(this.platformId) || this.deepLinkScrolled) return;
+    if (!isPlatformBrowser(this.platformId) || this.deepLinkScrolled) {
+      return;
+    }
     const view = this.document.defaultView;
     const anchorId = view?.location.hash.slice(1) ?? '';
-    if (!anchorId.startsWith('draw-')) return;
+    if (!anchorId.startsWith('draw-')) {
+      return;
+    }
     view?.requestAnimationFrame(() => {
       const target = this.document.getElementById(anchorId);
-      if (!target) return;
+      if (!target) {
+        return;
+      }
       target.scrollIntoView({ block: 'start' });
       this.deepLinkScrolled = true;
     });

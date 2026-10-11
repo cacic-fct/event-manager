@@ -6,7 +6,9 @@ export async function notifyCertificateAvailable(
   notifications: NovuNotificationsService | undefined,
   certificate: CertificateRecord,
 ): Promise<void> {
-  if (!notifications) return;
+  if (!notifications) {
+    return;
+  }
 
   await notifications.notifyCertificateAvailable({
     certificateId: certificate.id,

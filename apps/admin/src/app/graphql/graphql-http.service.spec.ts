@@ -71,7 +71,10 @@ describe('GraphqlHttpService', () => {
       errors: [{ message: 'Resource unavailable', extensions }],
     });
 
-    const error = await responsePromise.then(() => null, (reason: unknown) => reason);
+    const error = await responsePromise.then(
+      () => null,
+      (reason: unknown) => reason,
+    );
 
     expect(error).toBeInstanceOf(GraphqlStatusError);
     expect(error).toMatchObject({

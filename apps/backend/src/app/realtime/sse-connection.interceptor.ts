@@ -117,10 +117,7 @@ export class SseConnectionInterceptor implements NestInterceptor {
     // Jitter spreads normal EventSource reconnections; the lease outlives the maximum stream lifetime.
     const lifetimeMs = MIN_STREAM_LIFETIME_MS + Math.floor(Math.random() * STREAM_LIFETIME_JITTER_MS);
     try {
-      return next.handle().pipe(
-        takeUntil(merge(timer(lifetimeMs), fromEvent(response, 'close'))),
-        finalize(release),
-      );
+      return next.handle().pipe(takeUntil(merge(timer(lifetimeMs), fromEvent(response, 'close'))), finalize(release));
     } catch (error: unknown) {
       release();
       throw error;

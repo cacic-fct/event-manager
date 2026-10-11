@@ -13,10 +13,7 @@ import {
 } from '../../testing/admin-entity-fixtures';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { PermissionsService } from '../../permissions/permissions.service';
-import {
-  ReceiptValidationApiService,
-  type ReceiptValidationQueue,
-} from '../../graphql/receipt-validation-api.service';
+import { ReceiptValidationApiService, type ReceiptValidationQueue } from '../../graphql/receipt-validation-api.service';
 import { ReceiptValidationPageComponent } from './receipt-validation-page.component';
 
 const subscriptionItem = createAdminReceiptValidationQueueItem({
@@ -60,12 +57,19 @@ function setup(options: SetupOptions = {}) {
     imports: [NoopAnimationsModule, ReceiptValidationPageComponent],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ majorEventId: 'major-event-1' }) } } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap({ majorEventId: 'major-event-1' }) } },
+      },
       { provide: ReceiptValidationApiService, useValue: api },
-      { provide: PermissionsService, useValue: {
-        has: (permission: string) => options.permissions?.includes(permission) ?? true,
-        hasAny: (permissions: string[]) => options.permissions ? permissions.some((permission) => options.permissions?.includes(permission)) : true,
-      } },
+      {
+        provide: PermissionsService,
+        useValue: {
+          has: (permission: string) => options.permissions?.includes(permission) ?? true,
+          hasAny: (permissions: string[]) =>
+            options.permissions ? permissions.some((permission) => options.permissions?.includes(permission)) : true,
+        },
+      },
       { provide: AdminFeedbackService, useValue: feedback },
       { provide: MatSnackBar, useValue: { open: vi.fn(() => ({ onAction: () => of(undefined) })) } },
     ],
@@ -83,9 +87,13 @@ async function settle(fixture: ComponentFixture<ReceiptValidationPageComponent>)
 }
 
 function button(fixture: ComponentFixture<ReceiptValidationPageComponent>, label: string): HTMLButtonElement | null {
-  return [...fixture.nativeElement.querySelectorAll('button')].find((candidate: HTMLButtonElement) =>
-    candidate.getAttribute('aria-label') === label || candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
-  ) ?? null;
+  return (
+    [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) =>
+        candidate.getAttribute('aria-label') === label ||
+        candidate.textContent?.replace(/\s+/g, ' ').trim().includes(label),
+    ) ?? null
+  );
 }
 
 async function applyTicketFilter(fixture: ComponentFixture<ReceiptValidationPageComponent>): Promise<void> {
@@ -107,13 +115,19 @@ async function applyTicketFilter(fixture: ComponentFixture<ReceiptValidationPage
 }
 
 describe('ReceiptValidationPageComponent queue review', () => {
-  it.each([Permission.Receipt.Approve, Permission.Receipt.Reject])('shows only the authorized ticket action for %s', async (permission) => {
-    const { fixture } = setup({ queue: createAdminReceiptValidationQueue({ items: [ticketItem] }), permissions: [permission, Permission.Frozen.Update] });
-    await settle(fixture);
-    expect(Boolean(button(fixture, 'Aprovar comprovante'))).toBe(permission === Permission.Receipt.Approve);
-    expect(Boolean(button(fixture, 'Recusar comprovante'))).toBe(permission === Permission.Receipt.Reject);
-    fixture.destroy();
-  });
+  it.each([Permission.Receipt.Approve, Permission.Receipt.Reject])(
+    'shows only the authorized ticket action for %s',
+    async (permission) => {
+      const { fixture } = setup({
+        queue: createAdminReceiptValidationQueue({ items: [ticketItem] }),
+        permissions: [permission, Permission.Frozen.Update],
+      });
+      await settle(fixture);
+      expect(Boolean(button(fixture, 'Aprovar comprovante'))).toBe(permission === Permission.Receipt.Approve);
+      expect(Boolean(button(fixture, 'Recusar comprovante'))).toBe(permission === Permission.Receipt.Reject);
+      fixture.destroy();
+    },
+  );
 
   it('starts with the oldest edit and combines both receipt types with protected previews', async () => {
     const { fixture, api } = setup();
@@ -122,14 +136,18 @@ describe('ReceiptValidationPageComponent queue review', () => {
     expect(api.watchQueue).toHaveBeenCalledWith('major-event-1');
     expect(fixture.nativeElement.querySelector('mat-card-title')?.textContent).toContain('Marina da Silva');
     expect(fixture.nativeElement.textContent).toContain('1 de 2');
-    expect(fixture.nativeElement.querySelector('.receipt-image-shell img')?.getAttribute('alt')).toBe('Comprovante enviado');
+    expect(fixture.nativeElement.querySelector('.receipt-image-shell img')?.getAttribute('alt')).toBe(
+      'Comprovante enviado',
+    );
 
     await applyTicketFilter(fixture);
     expect(fixture.nativeElement.querySelector('mat-card-title')?.textContent).toContain('João Pedro Oliveira');
     expect(fixture.nativeElement.textContent).toContain('Acesso à festa de boas-vindas');
     expect(fixture.nativeElement.textContent).toContain('Comprovante de bilhete');
     expect(fixture.nativeElement.textContent).toContain('1 de 1');
-    expect(fixture.nativeElement.querySelector('.receipt-image-shell img')?.getAttribute('alt')).toBe('Comprovante enviado');
+    expect(fixture.nativeElement.querySelector('.receipt-image-shell img')?.getAttribute('alt')).toBe(
+      'Comprovante enviado',
+    );
   });
 
   it('keeps the reviewed item selected when sorting moves it to a new position', async () => {
@@ -186,7 +204,9 @@ describe('ReceiptValidationPageComponent queue review', () => {
     await vi.waitFor(() => expect(api.approveTicketPurchase).toHaveBeenCalledWith('purchase-1'));
     await settle(fixture);
     expect(api.approve).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('A compra não está mais aguardando validação. Atualize a fila.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'A compra não está mais aguardando validação. Atualize a fila.',
+    );
   });
 
   it('requires a ticket rejection reason and sends it to the purchase-review operation', async () => {
@@ -204,7 +224,12 @@ describe('ReceiptValidationPageComponent queue review', () => {
     await settle(fixture);
     expect(reject?.disabled).toBe(false);
     reject?.click();
-    await vi.waitFor(() => expect(api.rejectTicketPurchase).toHaveBeenCalledWith('purchase-1', 'Comprovante sem identificação do pagamento.'));
+    await vi.waitFor(() =>
+      expect(api.rejectTicketPurchase).toHaveBeenCalledWith(
+        'purchase-1',
+        'Comprovante sem identificação do pagamento.',
+      ),
+    );
     expect(api.reject).not.toHaveBeenCalled();
   });
 

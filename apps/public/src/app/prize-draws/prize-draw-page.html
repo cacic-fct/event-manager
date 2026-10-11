@@ -122,9 +122,7 @@
         </section>
       </mat-expansion-panel>
 
-      <section
-        class="results"
-        [attr.aria-labelledby]="'draw-title-' + draw.id + ' results-title-' + draw.id">
+      <section class="results" [attr.aria-labelledby]="'draw-title-' + draw.id + ' results-title-' + draw.id">
         <h3 [id]="'results-title-' + draw.id">Resultados</h3>
         <mat-list aria-label="Resultados em ordem cronológica">
           @for (spin of draw.spins; track spin.id) {
@@ -132,8 +130,8 @@
             <mat-icon matListItemIcon>emoji_events</mat-icon>
             <div matListItemTitle>{{ spin.winnerDisplayName }}</div>
             <div matListItemLine>
-              Giro {{ spin.sequence }}@if (spin.description) {: {{ spin.description }}, } sorteado em {{ spin.drawnAt | date:
-              "dd/MM/yyyy 'às' HH:mm:ss" }}
+              Giro {{ spin.sequence }}@if (spin.description) {: {{ spin.description }}, } sorteado em {{ spin.drawnAt |
+              date: "dd/MM/yyyy 'às' HH:mm:ss" }}
             </div>
             <div matListItemLine class="audit-id">ID do giro: {{ spin.id }}</div>
           </mat-list-item>

@@ -12,15 +12,21 @@ export async function ensureAdminAuthentication(
   routeErrors: RouteErrorService,
   platformId: object,
 ): Promise<boolean | UrlTree | RedirectCommand> {
-  if (!isPlatformBrowser(platformId)) return true;
+  if (!isPlatformBrowser(platformId)) {
+    return true;
+  }
 
   const navigation = router.currentNavigation();
   const target = navigation?.extractedUrl ?? navigation?.initialUrl;
   const returnTo = target ? router.serializeUrl(target) : router.url;
 
   try {
-    if (await auth.ensureAuthenticated({ returnTo })) return true;
-    if (auth.consumePostLogoutRedirect()) return router.parseUrl('/login');
+    if (await auth.ensureAuthenticated({ returnTo })) {
+      return true;
+    }
+    if (auth.consumePostLogoutRedirect()) {
+      return router.parseUrl('/login');
+    }
 
     await auth.login({ returnTo });
     return false;

@@ -144,8 +144,7 @@ export class SportsRealtimeController {
       // Reduce every payload after replay so all publisher paths use the same boundary.
       map((event) => {
         const data = event.data;
-        const isHeartbeat =
-          typeof data === 'object' && data !== null && 'type' in data && data.type === 'heartbeat';
+        const isHeartbeat = typeof data === 'object' && data !== null && 'type' in data && data.type === 'heartbeat';
 
         return {
           ...event,

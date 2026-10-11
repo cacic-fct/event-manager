@@ -112,7 +112,9 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
       ? activities.map((item) => ({ ...base, sourceActivityId: item[schema.registrationActivities.activityId] }))
       : [{ ...base, sourceActivityId: null }];
   });
-  if (modalityMode === 'current') validateRegistrationModalities(registrations);
+  if (modalityMode === 'current') {
+    validateRegistrationModalities(registrations);
+  }
   const attendances = rowsFor(tables, effectiveSchema.attendances.table).map((item) => ({
     sourceId: item[schema.attendances.id],
     sourcePersonId: item[schema.attendances.userId],
@@ -144,11 +146,15 @@ export function parseEvcompSqlDump(sql, override = {}, timezoneOffset = '-03:00'
 }
 
 function parseDumpDate(value, timezoneOffset) {
-  if (value instanceof Date || value == null) return value;
+  if (value instanceof Date || value == null) {
+    return value;
+  }
   const normalized = String(value).trim().replace(' ', 'T');
   const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
   const parsed = new Date(hasTimezone ? normalized : `${normalized}${timezoneOffset}`);
-  if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid EvComp SQL dump date: ${String(value)}`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid EvComp SQL dump date: ${String(value)}`);
+  }
   return parsed;
 }
 
@@ -162,7 +168,9 @@ export function parseMysqlDump(sql, includedTables = null) {
       const name = unquoteIdentifier(create[1]);
       const columns = splitTopLevel(create[2]).flatMap((definition) => {
         const match = definition.trim().match(/^(`(?:``|[^`])+`|[\p{L}\p{N}_]+)/u);
-        if (!match || /^(PRIMARY|UNIQUE|KEY|CONSTRAINT|FULLTEXT|SPATIAL|CHECK|FOREIGN)$/i.test(match[1])) return [];
+        if (!match || /^(PRIMARY|UNIQUE|KEY|CONSTRAINT|FULLTEXT|SPATIAL|CHECK|FOREIGN)$/i.test(match[1])) {
+          return [];
+        }
         return [unquoteIdentifier(match[1])];
       });
       tables.set(name, { columns, rows: tables.get(name)?.rows ?? [] });
@@ -172,9 +180,13 @@ export function parseMysqlDump(sql, includedTables = null) {
     const insert = statement.match(
       /^INSERT(?:\s+IGNORE)?\s+INTO\s+(`(?:``|[^`])+`|[\p{L}\p{N}_]+)\s*(?:\(([^)]*)\))?\s+VALUES\s+([\s\S]+)$/iu,
     );
-    if (!insert) continue;
+    if (!insert) {
+      continue;
+    }
     const name = unquoteIdentifier(insert[1]);
-    if (includedTables && !includedTables.has(name)) continue;
+    if (includedTables && !includedTables.has(name)) {
+      continue;
+    }
     const knownTable = tables.get(name) ?? { columns: [], rows: [] };
     const columns = insert[2]
       ? splitTopLevel(insert[2]).map((item) => unquoteIdentifier(item.trim()))
@@ -203,8 +215,12 @@ function validateDumpSchema(tables, schema) {
       continue;
     }
     for (const [fieldName, column] of Object.entries(section)) {
-      if (fieldName === 'table' || fieldName === 'includedTypes') continue;
-      if (!table.columns.includes(column)) missing.push(`${sectionName}.${column} (${section.table})`);
+      if (fieldName === 'table' || fieldName === 'includedTypes') {
+        continue;
+      }
+      if (!table.columns.includes(column)) {
+        missing.push(`${sectionName}.${column} (${section.table})`);
+      }
     }
   }
   if (missing.length) {
@@ -223,12 +239,18 @@ function detectDumpModes(tables, schema) {
 }
 
 function detectDumpFeatureMode(tables, requirements, featureTables) {
-  if (!requirements.length) return 'legacy';
+  if (!requirements.length) {
+    return 'legacy';
+  }
   const present = requirements.filter((item) => tables.get(item.table)?.columns.includes(item.column));
   const featurePresent =
     present.length > 0 || featureTables.some((tableName) => tableName != null && tables.has(tableName));
-  if (!featurePresent) return 'legacy';
-  if (present.length === requirements.length) return 'current';
+  if (!featurePresent) {
+    return 'legacy';
+  }
+  if (present.length === requirements.length) {
+    return 'current';
+  }
   const missing = requirements
     .filter((item) => !tables.get(item.table)?.columns.includes(item.column))
     .map((item) => `${item.sectionName}.${item.column} (${item.table})`);
@@ -239,7 +261,9 @@ function modalityRequirementsFor(schema) {
   const requirements = [];
   const registrations = schema.registrations;
   const modalities = schema.modalities;
-  if (!registrations || !modalities) return requirements;
+  if (!registrations || !modalities) {
+    return requirements;
+  }
   requirements.push(
     { sectionName: 'registrations', table: registrations.table, column: registrations.modalityId },
     { sectionName: 'registrations', table: registrations.table, column: registrations.appliedAmount },
@@ -272,7 +296,9 @@ function splitSqlStatements(sql) {
       continue;
     }
     if (lineComment) {
-      if (char === '\n' || char === '\r') lineComment = false;
+      if (char === '\n' || char === '\r') {
+        lineComment = false;
+      }
       continue;
     }
     if (!quote && char === '/' && next === '*') {
@@ -282,7 +308,9 @@ function splitSqlStatements(sql) {
     }
     if (!quote && (char === '#' || (char === '-' && next === '-' && /\s/.test(sql[index + 2] ?? '')))) {
       lineComment = true;
-      if (char === '-') index += 1;
+      if (char === '-') {
+        index += 1;
+      }
       continue;
     }
     if (quote) {
@@ -304,14 +332,20 @@ function splitSqlStatements(sql) {
       quote = char;
       current += char;
     } else if (char === ';') {
-      if (current.trim()) statements.push(current.trim());
+      if (current.trim()) {
+        statements.push(current.trim());
+      }
       current = '';
     } else {
       current += char;
     }
   }
-  if (quote || blockComment) throw new Error('SQL dump ends inside a quote or comment.');
-  if (current.trim()) statements.push(current.trim());
+  if (quote || blockComment) {
+    throw new Error('SQL dump ends inside a quote or comment.');
+  }
+  if (current.trim()) {
+    statements.push(current.trim());
+  }
   return statements;
 }
 
@@ -319,9 +353,12 @@ function parseValueTuples(valueSql) {
   const tuples = [];
   let index = 0;
   while (index < valueSql.length) {
-    while (/[\s,]/.test(valueSql[index] ?? '')) index += 1;
-    if (valueSql[index] !== '(')
+    while (/[\s,]/.test(valueSql[index] ?? '')) {
+      index += 1;
+    }
+    if (valueSql[index] !== '(') {
       throw new Error(`Unsupported SQL dump VALUES syntax near: ${valueSql.slice(index, index + 30)}`);
+    }
     const end = findClosingParenthesis(valueSql, index);
     tuples.push(splitTopLevel(valueSql.slice(index + 1, end)).map(parseMysqlValue));
     index = end + 1;
@@ -335,13 +372,20 @@ function findClosingParenthesis(value, start) {
   for (let index = start; index < value.length; index += 1) {
     const char = value[index];
     if (quote) {
-      if (char === '\\') index += 1;
-      else if (char === quote) quote = null;
+      if (char === '\\') {
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
       continue;
     }
-    if (char === "'" || char === '"') quote = char;
-    else if (char === '(') depth += 1;
-    else if (char === ')' && --depth === 0) return index;
+    if (char === "'" || char === '"') {
+      quote = char;
+    } else if (char === '(') {
+      depth += 1;
+    } else if (char === ')' && --depth === 0) {
+      return index;
+    }
   }
   throw new Error('SQL dump has an unclosed VALUES tuple.');
 }
@@ -362,7 +406,9 @@ function splitTopLevel(value) {
         if (value[index + 1] === quote) {
           current += quote;
           index += 1;
-        } else quote = null;
+        } else {
+          quote = null;
+        }
       }
     } else if (char === "'" || char === '"' || char === '`') {
       quote = char;
@@ -376,7 +422,9 @@ function splitTopLevel(value) {
     } else if (char === ',' && depth === 0) {
       parts.push(current.trim());
       current = '';
-    } else current += char;
+    } else {
+      current += char;
+    }
   }
   parts.push(current.trim());
   return parts;
@@ -384,8 +432,12 @@ function splitTopLevel(value) {
 
 function parseMysqlValue(token) {
   const trimmed = token.trim();
-  if (/^NULL$/i.test(trimmed)) return null;
-  if (/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(trimmed)) return Number(trimmed);
+  if (/^NULL$/i.test(trimmed)) {
+    return null;
+  }
+  if (/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(trimmed)) {
+    return Number(trimmed);
+  }
   if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
     return decodeMysqlString(trimmed.slice(1, -1), trimmed[0]);
   }
@@ -403,7 +455,9 @@ function decodeMysqlString(value, quote) {
     } else if (char === quote && value[index + 1] === quote) {
       result += quote;
       index += 1;
-    } else result += char;
+    } else {
+      result += char;
+    }
   }
   return result;
 }

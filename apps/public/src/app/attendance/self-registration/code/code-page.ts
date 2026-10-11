@@ -232,7 +232,7 @@ export class OnlineAttendanceCodeComponent {
             if (!eventId || this.openedFromNotification() || items.some((item) => item.eventId === eventId)) {
               return of(items);
             }
-            return this.api.getWalkInEvent(eventId).pipe(map((walkIn) => walkIn ? [...items, walkIn] : items));
+            return this.api.getWalkInEvent(eventId).pipe(map((walkIn) => (walkIn ? [...items, walkIn] : items)));
           }),
           map(
             (items): AttendanceCodeStateEmission => ({

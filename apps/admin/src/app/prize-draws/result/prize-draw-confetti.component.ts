@@ -77,7 +77,9 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
       this.reducedMotion();
       this.particleCount();
       this.durationMs();
-      if (this.viewReady) queueMicrotask(() => this.restart());
+      if (this.viewReady) {
+        queueMicrotask(() => this.restart());
+      }
     });
   }
 
@@ -87,14 +89,20 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+    if (this.frameId !== null) {
+      cancelAnimationFrame(this.frameId);
+    }
   }
 
   restart(): void {
-    if (this.frameId !== null) cancelAnimationFrame(this.frameId);
+    if (this.frameId !== null) {
+      cancelAnimationFrame(this.frameId);
+    }
     this.frameId = null;
     const prepared = this.prepareCanvas();
-    if (!prepared) return;
+    if (!prepared) {
+      return;
+    }
     const density = resolvePrizeDrawConfettiDensity(this.particleCount());
     if (this.reducedMotion()) {
       this.drawStaticPattern(prepared, Math.min(density.particleCount, 96));
@@ -106,7 +114,9 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
   private prepareCanvas(): PreparedCanvas | null {
     const canvas = this.canvas().nativeElement;
     const context = canvas.getContext('2d');
-    if (!context) return null;
+    if (!context) {
+      return null;
+    }
     const bounds = canvas.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.max(1, Math.round(bounds.width * ratio));
@@ -155,8 +165,11 @@ export class PrizeDrawConfettiComponent implements AfterViewInit, OnDestroy {
         context.fillRect(-particle.width / 2, -particle.height / 2, particle.width, particle.height);
         context.restore();
       }
-      if (elapsed < duration) this.frameId = requestAnimationFrame(draw);
-      else this.frameId = null;
+      if (elapsed < duration) {
+        this.frameId = requestAnimationFrame(draw);
+      } else {
+        this.frameId = null;
+      }
     };
     this.frameId = requestAnimationFrame(draw);
   }

@@ -94,13 +94,15 @@ describe('TicketPurchaseOptionsSectionComponent', () => {
   });
 
   it('renders purchase history states and rejection reasons beside still available offers', async () => {
-    optionsApi.getPurchases.mockReturnValue(of([
-      createTicketPurchase({
-        name: 'Ingresso com comprovante rejeitado',
-        status: 'REJECTED',
-        rejectionReason: 'O comprovante está ilegível.',
-      }),
-    ]));
+    optionsApi.getPurchases.mockReturnValue(
+      of([
+        createTicketPurchase({
+          name: 'Ingresso com comprovante rejeitado',
+          status: 'REJECTED',
+          rejectionReason: 'O comprovante está ilegível.',
+        }),
+      ]),
+    );
     const history = TestBed.createComponent(TicketPurchaseOptionsSectionComponent);
     history.componentRef.setInput('majorEventId', 'major-event-1');
     history.componentRef.setInput('subscriptionStatus', 'CONFIRMED');

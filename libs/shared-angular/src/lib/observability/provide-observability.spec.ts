@@ -5,10 +5,7 @@ import { createApplication } from '@angular/platform-browser';
 import { AuthService } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CacicTrustedTypesService } from '../security/trusted-types';
-import {
-  provideCacicObservability,
-  type CacicObservabilityConfig,
-} from './provide-observability';
+import { provideCacicObservability, type CacicObservabilityConfig } from './provide-observability';
 import { CACIC_OBSERVABILITY_REPLAY_IS_DEVELOPMENT } from './replay-development-mode.token';
 
 describe('provideCacicObservability replay script loader', () => {

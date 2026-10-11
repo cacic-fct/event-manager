@@ -124,12 +124,13 @@ export async function moveTicketPersonRelations(
     // The surviving person's consumed ticket is canonical. Otherwise a consumed
     // source ticket wins; when both have the same status, keep the survivor's row.
     const sourceWins =
-      sourceTicket.status === EventTicketStatus.CONSUMED &&
-      chosenTargetTicket.status !== EventTicketStatus.CONSUMED;
+      sourceTicket.status === EventTicketStatus.CONSUMED && chosenTargetTicket.status !== EventTicketStatus.CONSUMED;
     const canonicalTicket = sourceWins ? sourceTicket : chosenTargetTicket;
     const duplicateTicket = sourceWins ? chosenTargetTicket : sourceTicket;
 
-    holderSnapshots.push(await archiveDuplicateTicket(tx, duplicateTicket, sourcePersonId, targetPersonId, actorUserId));
+    holderSnapshots.push(
+      await archiveDuplicateTicket(tx, duplicateTicket, sourcePersonId, targetPersonId, actorUserId),
+    );
     if (sourceWins) {
       holderSnapshots.push(await moveTicketHolder(tx, canonicalTicket, targetPersonId, actorUserId));
     }
@@ -216,7 +217,9 @@ export async function restoreTicketPersonRelations(
   }
 
   for (const ticket of snapshot.holderSnapshots.filter((entry) => entry.action === 'ARCHIVED')) {
-    if (!ticket.archiveHistoryId) continue;
+    if (!ticket.archiveHistoryId) {
+      continue;
+    }
     await tx.eventTicketHistory.deleteMany({
       where: { id: ticket.archiveHistoryId, ticketId: ticket.id, operation: TicketHistoryOperation.REVOKED },
     });
@@ -269,9 +272,13 @@ export async function reassignTicketUserRelations(
   oldUserId: string,
   newUserId: string,
 ): Promise<void> {
-  if (oldUserId === newUserId) return;
+  if (oldUserId === newUserId) {
+    return;
+  }
   const survivingUser = await tx.user.findUnique({ where: { id: newUserId }, select: { id: true } });
-  if (!survivingUser) return;
+  if (!survivingUser) {
+    return;
+  }
 
   await tx.ticketTransfer.updateMany({
     where: { senderStatus: TicketTransferSenderStatus.PENDING, authorUserId: oldUserId },
@@ -306,7 +313,9 @@ export async function reassignTicketUserRelations(
     tx.ticketTransferAuthorCooldown.findUnique({ where: { userId: oldUserId } }),
     tx.ticketTransferAuthorCooldown.findUnique({ where: { userId: newUserId } }),
   ]);
-  if (!sourceCooldown) return;
+  if (!sourceCooldown) {
+    return;
+  }
 
   if (targetCooldown) {
     await tx.ticketTransferAuthorCooldown.update({
@@ -348,11 +357,15 @@ async function moveTicketPurchaseRelations(
     where: { personId: sourcePersonId },
     select: purchaseSelect,
   });
-  if (sourcePurchases.length === 0) return [];
+  if (sourcePurchases.length === 0) {
+    return [];
+  }
 
   const activeSourceConfigIdsSeen = new Set<string>();
   for (const purchase of sourcePurchases) {
-    if (!isActivePurchaseStatus(purchase.status)) continue;
+    if (!isActivePurchaseStatus(purchase.status)) {
+      continue;
+    }
     if (activeSourceConfigIdsSeen.has(purchase.ticketConfigId)) {
       throw new ConflictException(
         'Não é possível unificar as pessoas: há mais de uma compra de bilhete ativa para a mesma modalidade. Revise as compras antes da unificação.',
@@ -361,32 +374,37 @@ async function moveTicketPurchaseRelations(
     activeSourceConfigIdsSeen.add(purchase.ticketConfigId);
   }
 
-  const activeSourceConfigIds = [...new Set(
-    sourcePurchases
-      .filter((purchase) => isActivePurchaseStatus(purchase.status))
-      .map((purchase) => purchase.ticketConfigId),
-  )];
-  const targetPurchases = activeSourceConfigIds.length > 0
-    ? await tx.ticketPurchase.findMany({
-        where: {
-          personId: targetPersonId,
-          ticketConfigId: { in: activeSourceConfigIds },
-          status: { in: ACTIVE_PURCHASE_STATUSES },
-        },
-        select: { ticketConfigId: true },
-      })
-    : [];
+  const activeSourceConfigIds = [
+    ...new Set(
+      sourcePurchases
+        .filter((purchase) => isActivePurchaseStatus(purchase.status))
+        .map((purchase) => purchase.ticketConfigId),
+    ),
+  ];
+  const targetPurchases =
+    activeSourceConfigIds.length > 0
+      ? await tx.ticketPurchase.findMany({
+          where: {
+            personId: targetPersonId,
+            ticketConfigId: { in: activeSourceConfigIds },
+            status: { in: ACTIVE_PURCHASE_STATUSES },
+          },
+          select: { ticketConfigId: true },
+        })
+      : [];
   if (targetPurchases.length > 0) {
     throw new ConflictException(
       'Não é possível unificar as pessoas: ambas têm compras de bilhete ativas para a mesma modalidade. Revise ou conclua as compras antes da unificação.',
     );
   }
 
-  const sourceSubscriptionIds = [...new Set(
-    sourcePurchases
-      .map((purchase) => purchase.majorEventSubscriptionId)
-      .filter((subscriptionId): subscriptionId is string => subscriptionId !== null),
-  )];
+  const sourceSubscriptionIds = [
+    ...new Set(
+      sourcePurchases
+        .map((purchase) => purchase.majorEventSubscriptionId)
+        .filter((subscriptionId): subscriptionId is string => subscriptionId !== null),
+    ),
+  ];
   const subscriptionIdRemap = new Map<string, string>();
   if (sourceSubscriptionIds.length > 0) {
     const sourceSubscriptions = await tx.majorEventSubscription.findMany({
@@ -394,12 +412,13 @@ async function moveTicketPurchaseRelations(
       select: { id: true, majorEventId: true },
     });
     const majorEventIds = [...new Set(sourceSubscriptions.map((subscription) => subscription.majorEventId))];
-    const targetSubscriptions = majorEventIds.length > 0
-      ? await tx.majorEventSubscription.findMany({
-          where: { personId: targetPersonId, majorEventId: { in: majorEventIds }, deletedAt: null },
-          select: { id: true, majorEventId: true },
-        })
-      : [];
+    const targetSubscriptions =
+      majorEventIds.length > 0
+        ? await tx.majorEventSubscription.findMany({
+            where: { personId: targetPersonId, majorEventId: { in: majorEventIds }, deletedAt: null },
+            select: { id: true, majorEventId: true },
+          })
+        : [];
     const targetSubscriptionByMajorEvent = new Map<string, string>();
     for (const subscription of targetSubscriptions) {
       if (targetSubscriptionByMajorEvent.has(subscription.majorEventId)) {
@@ -411,17 +430,21 @@ async function moveTicketPurchaseRelations(
     }
     for (const subscription of sourceSubscriptions) {
       const targetSubscriptionId = targetSubscriptionByMajorEvent.get(subscription.majorEventId);
-      if (targetSubscriptionId) subscriptionIdRemap.set(subscription.id, targetSubscriptionId);
+      if (targetSubscriptionId) {
+        subscriptionIdRemap.set(subscription.id, targetSubscriptionId);
+      }
     }
   }
 
   const snapshots: TicketPurchaseMergeSnapshot[] = [];
   for (const purchase of sourcePurchases) {
     if (!purchase.personId) {
-      throw new ConflictException(`A compra de bilhete ${purchase.id} não possui pessoa vinculada e não pode ser movida.`);
+      throw new ConflictException(
+        `A compra de bilhete ${purchase.id} não possui pessoa vinculada e não pode ser movida.`,
+      );
     }
     const expectedMajorEventSubscriptionId = purchase.majorEventSubscriptionId
-      ? subscriptionIdRemap.get(purchase.majorEventSubscriptionId) ?? purchase.majorEventSubscriptionId
+      ? (subscriptionIdRemap.get(purchase.majorEventSubscriptionId) ?? purchase.majorEventSubscriptionId)
       : null;
     const moved = await tx.ticketPurchase.updateMany({
       where: {
@@ -617,8 +640,12 @@ function ticketSnapshotFields(ticket: TicketMergeRow) {
 }
 
 function latestDate(left: Date | null, right: Date | null): Date | null {
-  if (!left) return right;
-  if (!right) return left;
+  if (!left) {
+    return right;
+  }
+  if (!right) {
+    return left;
+  }
   return left >= right ? left : right;
 }
 

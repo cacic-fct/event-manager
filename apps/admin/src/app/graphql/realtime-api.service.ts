@@ -36,7 +36,9 @@ export class RealtimeApiService {
   }
 
   private watch(url: string, errorMessage: string): Observable<void> {
-    if (!this.isBrowser || typeof EventSource === 'undefined') return EMPTY;
+    if (!this.isBrowser || typeof EventSource === 'undefined') {
+      return EMPTY;
+    }
     return watchRecoveringReplayableEventSourcePing(url, {
       errorMessage,
       recover: () => this.auth.refreshMe(),

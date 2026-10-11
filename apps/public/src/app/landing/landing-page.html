@@ -33,18 +33,21 @@
 
   <section #nextSection>
     @defer (on viewport) {
-      <app-landing-product-showcase />
+    <app-landing-product-showcase />
     } @placeholder {
-      <div class="showcase-placeholder"><p>Explore as demonstrações ao continuar pela página.</p></div>
+    <div class="showcase-placeholder"><p>Explore as demonstrações ao continuar pela página.</p></div>
     } @error {
-      <p role="status">Não foi possível carregar as demonstrações. Recarregue a página para tentar novamente.</p>
-    }
-    @defer (on viewport) {
-      <app-landing-event-extras />
+    <p role="status">Não foi possível carregar as demonstrações. Recarregue a página para tentar novamente.</p>
+    } @defer (on viewport) {
+    <app-landing-event-extras />
     } @placeholder {
-      <div class="showcase-placeholder"><p>Conheça os recursos para torneios e avaliações ao continuar pela página.</p></div>
+    <div class="showcase-placeholder">
+      <p>Conheça os recursos para torneios e avaliações ao continuar pela página.</p>
+    </div>
     } @error {
-      <p role="status">Não foi possível carregar as demonstrações de torneios e avaliações. Recarregue a página para tentar novamente.</p>
+    <p role="status">
+      Não foi possível carregar as demonstrações de torneios e avaliações. Recarregue a página para tentar novamente.
+    </p>
     }
     <app-value-proposition [stats]="platformStats().stats" [statsState]="platformStats().state" />
   </section>

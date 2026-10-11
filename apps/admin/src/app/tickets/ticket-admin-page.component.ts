@@ -219,7 +219,9 @@ export class TicketAdminPageComponent {
       .subscribe(() => this.pendingRegistration.set(this.hasUnsavedChanges()));
     effect((onCleanup) => {
       const eventId = this.eventId();
-      if (!eventId) return;
+      if (!eventId) {
+        return;
+      }
       const subscription = this.realtime
         .watchEventTickets(eventId)
         .pipe(debounceTime(150))
@@ -233,13 +235,19 @@ export class TicketAdminPageComponent {
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         const controls = this.configForm.controls;
-        if (controls.purchaseUnlimited.value || !controls.purchaseEnabled.value) controls.purchaseLimit.disable();
-        else controls.purchaseLimit.enable();
+        if (controls.purchaseUnlimited.value || !controls.purchaseEnabled.value) {
+          controls.purchaseLimit.disable();
+        } else {
+          controls.purchaseLimit.enable();
+        }
       });
     this.configForm.controls.expirationMode.valueChanges.pipe(takeUntilDestroyed()).subscribe((mode) => {
       const expiry = this.configForm.controls.customExpiresAt;
-      if (mode === TicketExpirationMode.Custom) expiry.addValidators(Validators.required);
-      else expiry.removeValidators(Validators.required);
+      if (mode === TicketExpirationMode.Custom) {
+        expiry.addValidators(Validators.required);
+      } else {
+        expiry.removeValidators(Validators.required);
+      }
       expiry.updateValueAndValidity({ emitEvent: false });
     });
     this.ticketSearch.valueChanges
@@ -248,7 +256,9 @@ export class TicketAdminPageComponent {
     this.ticketStatus.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.resetTicketPage());
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const next = { eventId: params.get('eventId'), majorEventId: params.get('majorEventId') };
-      if (next.eventId === this.routeEventId && next.majorEventId === this.routeMajorEventId) return;
+      if (next.eventId === this.routeEventId && next.majorEventId === this.routeMajorEventId) {
+        return;
+      }
       this.routeScope.set(next);
       this.selectedConfig.set(null);
       this.eventSummary.set(null);
@@ -287,19 +297,29 @@ export class TicketAdminPageComponent {
       this.saving() ||
       this.configForm.invalid ||
       !this.configForm.controls.displayName.value.trim()
-    )
+    ) {
       return false;
-    if (this.selectedConfig() && !this.hasUnsavedChanges()) return false;
-    if (this.isCustomExpiry() && !this.configForm.controls.customExpiresAt.value) return false;
-    if (!this.isPurchaseEnabled()) return true;
-    if (this.priceMode.value === 'SINGLE')
+    }
+    if (this.selectedConfig() && !this.hasUnsavedChanges()) {
+      return false;
+    }
+    if (this.isCustomExpiry() && !this.configForm.controls.customExpiresAt.value) {
+      return false;
+    }
+    if (!this.isPurchaseEnabled()) {
+      return true;
+    }
+    if (this.priceMode.value === 'SINGLE') {
       return this.singlePrice.valid && this.priceInCents(this.singlePrice.value) !== null;
+    }
     const rowsValid =
       this.priceRows.length > 0 &&
       this.priceRows.controls.every(
         (row) => Boolean(row.controls.priceTierId.value) && this.priceInCents(row.controls.amount.value) !== null,
       );
-    if (!rowsValid) return false;
+    if (!rowsValid) {
+      return false;
+    }
     const visibleTierIds = this.configForm.controls.purchaseVisibility.controls.allowedPriceTierIds.value;
     const coveredTierIds = new Set(this.priceRows.controls.map((row) => row.controls.priceTierId.value));
     const requiredTierIds = visibleTierIds.length ? visibleTierIds : this.priceTiers().map((tier) => tier.id);
@@ -321,7 +341,9 @@ export class TicketAdminPageComponent {
   }
 
   protected async selectConfig(config: AdminTicketConfig): Promise<void> {
-    if (this.saving()) return;
+    if (this.saving()) {
+      return;
+    }
     await this.pendingChanges.navigate(async () => {
       this.liveRequest += 1;
       this.selectedConfig.set(config);
@@ -342,7 +364,9 @@ export class TicketAdminPageComponent {
 
   protected async saveConfig(): Promise<void> {
     const eventId = this.eventId();
-    if (!eventId || !this.canSaveConfig()) return;
+    if (!eventId || !this.canSaveConfig()) {
+      return;
+    }
 
     this.saving.set(true);
     this.configError.set(null);
@@ -366,7 +390,9 @@ export class TicketAdminPageComponent {
   protected addPriceOption(): void {
     const used = new Set(this.priceRows.controls.map((row) => row.controls.priceTierId.value));
     const nextTier = this.priceTiers().find((tier) => !used.has(tier.id));
-    if (!nextTier) return;
+    if (!nextTier) {
+      return;
+    }
     this.priceRows.push(this.createPriceRow(nextTier, null));
     this.priceRows.markAsDirty();
   }
@@ -379,7 +405,9 @@ export class TicketAdminPageComponent {
   protected async openManualIssue(): Promise<void> {
     const eventId = this.eventId();
     const config = this.selectedConfig();
-    if (!eventId || !config?.enabled || !this.canIssueTickets()) return;
+    if (!eventId || !config?.enabled || !this.canIssueTickets()) {
+      return;
+    }
     await this.openPersonActionDialog({
       action: 'ISSUE',
       eventId,
@@ -389,7 +417,9 @@ export class TicketAdminPageComponent {
   }
 
   protected async openAdminTransfer(ticket: AdminEventTicket): Promise<void> {
-    if (!this.canManageTransfers()) return;
+    if (!this.canManageTransfers()) {
+      return;
+    }
     await this.openPersonActionDialog({
       action: 'TRANSFER',
       eventId: ticket.eventId,
@@ -401,7 +431,9 @@ export class TicketAdminPageComponent {
   }
 
   protected async revoke(ticket: AdminEventTicket): Promise<void> {
-    if (!this.canRevokeTickets()) return;
+    if (!this.canRevokeTickets()) {
+      return;
+    }
     this.operationError.set(null);
     const reference = this.dialog.open(TicketAdminReasonDialogComponent, {
       width: 'min(28rem, calc(100vw - 2rem))',
@@ -413,7 +445,9 @@ export class TicketAdminPageComponent {
       },
     });
     const reason = await firstValueFrom(reference.afterClosed());
-    if (typeof reason !== 'string' || !reason.trim()) return;
+    if (typeof reason !== 'string' || !reason.trim()) {
+      return;
+    }
 
     this.saving.set(true);
     try {
@@ -428,7 +462,9 @@ export class TicketAdminPageComponent {
   }
 
   protected async showHistory(ticket: AdminEventTicket): Promise<void> {
-    if (!this.canReadHistory()) return;
+    if (!this.canReadHistory()) {
+      return;
+    }
     this.operationError.set(null);
     try {
       const history = await firstValueFrom(this.api.getHistory(ticket.id));
@@ -454,7 +490,9 @@ export class TicketAdminPageComponent {
 
   protected nextTicketPage(): void {
     const cursor = this.ticketPage().nextCursor;
-    if (!cursor) return;
+    if (!cursor) {
+      return;
+    }
     this.cursorHistory.update((history) => [...history, cursor]);
     void this.loadTickets(cursor);
   }
@@ -464,21 +502,28 @@ export class TicketAdminPageComponent {
   }
 
   protected previousTicketPage(): void {
-    if (this.cursorHistory().length <= 1) return;
+    if (this.cursorHistory().length <= 1) {
+      return;
+    }
     const nextHistory = this.cursorHistory().slice(0, -1);
     this.cursorHistory.set(nextHistory);
     void this.loadTickets(nextHistory.at(-1) ?? null);
   }
 
   private async refreshLiveEvent(eventId: string): Promise<void> {
-    if (eventId !== this.eventId()) return;
+    if (eventId !== this.eventId()) {
+      return;
+    }
     const request = ++this.liveRequest;
     await this.loadTickets(this.cursorHistory().at(-1) ?? null);
-    if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) return;
+    if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) {
+      return;
+    }
     try {
       const configs = await firstValueFrom(this.api.getConfigs({ eventId }));
-      if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving())
+      if (request !== this.liveRequest || eventId !== this.eventId() || this.hasUnsavedChanges() || this.saving()) {
         return;
+      }
       const current = configs.find((config) => config.eventId === eventId) ?? null;
       this.selectedConfig.set(current);
       this.configs.update((previous) => [...previous.filter((config) => config.eventId !== eventId), ...configs]);
@@ -498,13 +543,17 @@ export class TicketAdminPageComponent {
           firstValueFrom(this.api.getConfigs({ eventId: this.routeEventId })),
           firstValueFrom(this.eventsApi.getEvent(this.routeEventId)),
         ]);
-        if (request !== this.configRequest) return;
+        if (request !== this.configRequest) {
+          return;
+        }
         this.eventSummary.set(this.eventSummaryFrom(event));
         this.configs.set(configs);
         const config = configs.find((candidate) => candidate.eventId === this.routeEventId) ?? null;
         this.selectedConfig.set(config);
         await this.loadPriceTiers(event.majorEventId ?? null, request);
-        if (request !== this.configRequest) return;
+        if (request !== this.configRequest) {
+          return;
+        }
         this.populateForm(config);
         await this.resetTicketPage();
       } else if (this.routeMajorEventId) {
@@ -512,7 +561,9 @@ export class TicketAdminPageComponent {
           firstValueFrom(this.api.getConfigs({ majorEventId: this.routeMajorEventId })),
           firstValueFrom(this.majorEventsApi.getMajorEvent(this.routeMajorEventId)),
         ]);
-        if (request !== this.configRequest) return;
+        if (request !== this.configRequest) {
+          return;
+        }
         this.configs.set(configs);
         this.majorEventName.set(majorEvent.name);
         this.priceTiers.set(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
@@ -523,7 +574,9 @@ export class TicketAdminPageComponent {
         this.feedback.showErrorMessage(this.error() ?? 'Não foi possível carregar os bilhetes deste contexto.');
       }
     } finally {
-      if (request === this.configRequest) this.loading.set(false);
+      if (request === this.configRequest) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -534,10 +587,13 @@ export class TicketAdminPageComponent {
     }
     try {
       const majorEvent = await firstValueFrom(this.majorEventsApi.getMajorEvent(majorEventId));
-      if (request === this.configRequest)
+      if (request === this.configRequest) {
         this.priceTiers.set(majorEvent.majorEventPrices.flatMap((price) => price.tiers));
+      }
     } catch {
-      if (request === this.configRequest) this.priceTiers.set([]);
+      if (request === this.configRequest) {
+        this.priceTiers.set([]);
+      }
     }
   }
 
@@ -561,12 +617,17 @@ export class TicketAdminPageComponent {
           cursor: cursor ?? undefined,
         }),
       );
-      if (request === this.listRequest) this.ticketPage.set(page);
+      if (request === this.listRequest) {
+        this.ticketPage.set(page);
+      }
     } catch (error) {
-      if (request === this.listRequest)
+      if (request === this.listRequest) {
         this.ticketsError.set(getErrorMessage(error, 'Não foi possível carregar os bilhetes.'));
+      }
     } finally {
-      if (request === this.listRequest) this.ticketsLoading.set(false);
+      if (request === this.listRequest) {
+        this.ticketsLoading.set(false);
+      }
     }
   }
 
@@ -637,7 +698,9 @@ export class TicketAdminPageComponent {
     this.priceRows.clear();
     for (const option of tierOptions) {
       const tier = this.priceTiers().find((candidate) => candidate.id === option.priceTierId);
-      if (tier) this.priceRows.push(this.createPriceRow(tier, option));
+      if (tier) {
+        this.priceRows.push(this.createPriceRow(tier, option));
+      }
     }
     this.configForm.markAsPristine();
     this.priceMode.markAsPristine();
@@ -706,7 +769,9 @@ export class TicketAdminPageComponent {
   }
 
   private priceInCents(value: string): number | null {
-    if (!value.trim()) return null;
+    if (!value.trim()) {
+      return null;
+    }
     const amount = Number(value.replace(',', '.'));
     const amountCents = Math.round(amount * 100);
     return Number.isSafeInteger(amountCents) && amountCents > 0 ? amountCents : null;
@@ -787,7 +852,9 @@ export class TicketAdminPageComponent {
       data,
     });
     const result = await firstValueFrom(reference.afterClosed());
-    if (!result) return;
+    if (!result) {
+      return;
+    }
     this.operationError.set(null);
     this.snackbar.open(
       data.action === 'ISSUE' ? 'Bilhete emitido.' : 'Transferência enviada para confirmação.',

@@ -49,11 +49,15 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
   }
 
   private async processPending(): Promise<void> {
-    if (this.stopped || this.running) return;
+    if (this.stopped || this.running) {
+      return;
+    }
     this.running = true;
     try {
       const now = new Date();
@@ -67,7 +71,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
         take: RESOLUTION_BATCH_SIZE,
       });
       for (const job of jobs) {
-        if (this.stopped) return;
+        if (this.stopped) {
+          return;
+        }
         const leaseUntil = new Date(Date.now() + RESOLUTION_LEASE_MS);
         const claim = await this.prisma.ticketTransferResolutionOutbox.updateMany({
           where: {
@@ -77,7 +83,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           },
           data: { leaseUntil },
         });
-        if (claim.count !== 1) continue;
+        if (claim.count !== 1) {
+          continue;
+        }
         try {
           await this.resolve(job.transferId, job.id);
         } catch (error: unknown) {
@@ -86,7 +94,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
         }
       }
     } catch (error: unknown) {
-      this.logger.warn(`Ticket transfer resolution polling failed (${error instanceof Error ? error.name : 'unknown'}).`);
+      this.logger.warn(
+        `Ticket transfer resolution polling failed (${error instanceof Error ? error.name : 'unknown'}).`,
+      );
     } finally {
       this.running = false;
     }
@@ -116,9 +126,7 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
 
     const rawDocument = this.revealDestination(transfer.submittedDestinationIdentityDocumentEncrypted);
     const normalizedDocument = rawDocument ? normalizeIdentityDocumentForLookup(rawDocument) : '';
-    const recipient = normalizedDocument
-      ? await this.resolveRecipient(normalizedDocument)
-      : null;
+    const recipient = normalizedDocument ? await this.resolveRecipient(normalizedDocument) : null;
     const identitySnapshot = recipient?.userId
       ? await this.eligibility.prepareIdentitySnapshot(transfer.eventId, recipient.personId, 'recipient')
       : undefined;
@@ -203,13 +211,16 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
               },
             })
           : null;
-        const currentRecipient = resolvedRecipient && [
-          resolvedRecipient.identityDocument,
-          resolvedRecipient.user?.identityDocument,
-        ].some((document) => normalizeIdentityDocumentForLookup(document ?? '') === normalizedDocument)
-          ? resolvedRecipient
-          : null;
-        if (currentRecipient) await this.lockHolder(tx, current.eventId, currentRecipient.id);
+        const currentRecipient =
+          resolvedRecipient &&
+          [resolvedRecipient.identityDocument, resolvedRecipient.user?.identityDocument].some(
+            (document) => normalizeIdentityDocumentForLookup(document ?? '') === normalizedDocument,
+          )
+            ? resolvedRecipient
+            : null;
+        if (currentRecipient) {
+          await this.lockHolder(tx, current.eventId, currentRecipient.id);
+        }
         const hasUser = Boolean(currentRecipient?.userId && identitySnapshot?.userId === currentRecipient.userId);
         const duplicate = currentRecipient
           ? await tx.eventTicket.findFirst({
@@ -221,14 +232,15 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
               select: { id: true },
             })
           : null;
-        const eligibility = hasUser && currentRecipient
-          ? await this.eligibility.evaluateRecipientEligibility(
-              tx,
-              current.eventId,
-              currentRecipient.id,
-              identitySnapshot,
-            )
-          : null;
+        const eligibility =
+          hasUser && currentRecipient
+            ? await this.eligibility.evaluateRecipientEligibility(
+                tx,
+                current.eventId,
+                currentRecipient.id,
+                identitySnapshot,
+              )
+            : null;
 
         const classification = classifyRecipientResolution({
           personFound: Boolean(currentRecipient),
@@ -246,7 +258,7 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           },
           data: {
             recipientPersonId: currentRecipient?.id ?? null,
-            recipientUserId: hasUser ? currentRecipient?.userId ?? null : null,
+            recipientUserId: hasUser ? (currentRecipient?.userId ?? null) : null,
             recipientStatus,
             ignoreReason,
             ignoredAt: recipientStatus === TicketTransferRecipientStatus.PENDING ? null : now,
@@ -285,9 +297,10 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           after: { recipientStatus, ignoreReason },
         });
         if (classification.notifyRecipient && hasUser && currentRecipient?.userId) {
-          const notificationType = recipientStatus === TicketTransferRecipientStatus.PENDING
-            ? TicketNotificationType.RECIPIENT_REQUESTED
-            : TicketNotificationType.RECIPIENT_INELIGIBLE;
+          const notificationType =
+            recipientStatus === TicketTransferRecipientStatus.PENDING
+              ? TicketNotificationType.RECIPIENT_REQUESTED
+              : TicketNotificationType.RECIPIENT_INELIGIBLE;
           await tx.ticketNotificationOutbox.create({
             data: {
               transferId: current.id,
@@ -321,7 +334,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
     }
   }
 
-  private async resolveRecipient(normalizedDocument: string): Promise<{ personId: string; userId: string | null } | null> {
+  private async resolveRecipient(
+    normalizedDocument: string,
+  ): Promise<{ personId: string; userId: string | null } | null> {
     const personMatches = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
       this.findPeopleByDocument(this.prisma, normalizedDocument),
     );
@@ -332,8 +347,10 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
       });
     }
 
-    const userMatches = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
-      this.prisma.$queryRaw<Array<{ id: string }>>`
+    const userMatches = await audienceContext.run(
+      { ...ANONYMOUS_AUDIENCE, bypass: true },
+      () =>
+        this.prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM users
         WHERE "identityDocument" IS NOT NULL
@@ -342,7 +359,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
         LIMIT 2
       `,
     );
-    if (userMatches.length !== 1) return null;
+    if (userMatches.length !== 1) {
+      return null;
+    }
     const person = await this.ensureLocalUserPerson(userMatches[0].id, normalizedDocument);
     return person?.userId ? { personId: person.id, userId: person.userId } : null;
   }
@@ -380,7 +399,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
       FROM person_chain
       WHERE "mergedIntoId" IS NULL
     `);
-    if (canonicalIds.length !== 1) return null;
+    if (canonicalIds.length !== 1) {
+      return null;
+    }
     return tx.people.findFirst({
       where: { id: canonicalIds[0].id, deletedAt: null, mergedIntoId: null },
       select: { id: true, userId: true },
@@ -401,7 +422,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           where: { id: userId },
           select: { id: true, name: true, email: true, identityDocument: true, academicId: true },
         });
-        if (!user || normalizeIdentityDocumentForLookup(user.identityDocument ?? '') !== normalizedDocument) return null;
+        if (!user || normalizeIdentityDocumentForLookup(user.identityDocument ?? '') !== normalizedDocument) {
+          return null;
+        }
 
         const existingMatches = await this.findPeopleByDocument(tx, normalizedDocument);
         if (existingMatches.length > 0) {
@@ -412,7 +435,17 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
         const externalRef = `kc:${user.id}`;
         const linkedPerson = await tx.people.findUnique({
           where: { externalRef },
-          select: { id: true, name: true, email: true, identityDocument: true, isCPF: true, academicId: true, userId: true, deletedAt: true, mergedIntoId: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            identityDocument: true,
+            isCPF: true,
+            academicId: true,
+            userId: true,
+            deletedAt: true,
+            mergedIntoId: true,
+          },
         });
         if (linkedPerson) {
           if (
@@ -452,7 +485,9 @@ export class TicketTransferResolutionService implements OnModuleInit, OnModuleDe
           update: { userId: user.id },
           select: { id: true, userId: true, deletedAt: true, mergedIntoId: true },
         });
-        if (person.deletedAt || person.mergedIntoId) return null;
+        if (person.deletedAt || person.mergedIntoId) {
+          return null;
+        }
         return { id: person.id, userId: person.userId };
       }),
     );

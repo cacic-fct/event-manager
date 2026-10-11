@@ -151,7 +151,9 @@ export class PermissionManagementService {
   async listScopeTargets(scope: EventManagerPermissionScope, skip = 0, take = 100): Promise<PermissionScopeTarget[]> {
     const resolvedSkip = Math.max(Math.trunc(skip), 0);
     const resolvedTake = Math.min(Math.max(Math.trunc(take), 1), 200);
-    if (scope === EventManagerPermissionScope.GLOBAL) return [];
+    if (scope === EventManagerPermissionScope.GLOBAL) {
+      return [];
+    }
     if (scope === EventManagerPermissionScope.MAJOR_EVENT) {
       return this.prisma.majorEvent
         .findMany({
@@ -214,7 +216,9 @@ export class PermissionManagementService {
     const existing = input.id
       ? await this.prisma.eventManagerRole.findFirst({ where: { id: input.id, archivedAt: null }, select: roleSelect })
       : null;
-    if (input.id && !existing) throw new NotFoundException('Cargo não encontrado.');
+    if (input.id && !existing) {
+      throw new NotFoundException('Cargo não encontrado.');
+    }
     await this.authorization.assertPermissions(actor, [
       existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create,
     ]);
@@ -225,7 +229,9 @@ export class PermissionManagementService {
     const systemDefinition = existing?.systemKey
       ? EVENT_MANAGER_SYSTEM_ROLE_BY_KEY.get(existing.systemKey as EventManagerSystemRoleKey)
       : null;
-    if (systemDefinition?.external) throw new ForbiddenException('O cargo de superadministrador é externo.');
+    if (systemDefinition?.external) {
+      throw new ForbiddenException('O cargo de superadministrador é externo.');
+    }
     if (systemDefinition) {
       normalized.name = systemDefinition.name;
       normalized.description = systemDefinition.description;
@@ -243,7 +249,9 @@ export class PermissionManagementService {
     this.assertContextDependencies(effectivePermissions);
     await this.assertAssignments(normalized.assignments, effectivePermissions);
     await this.assertDelegation(actor, effectivePermissions, normalized.assignments);
-    if (existing) await this.assertDescendantDelegation(actor, roleId, effectivePermissions);
+    if (existing) {
+      await this.assertDescendantDelegation(actor, roleId, effectivePermissions);
+    }
 
     const actorId = actor.sub;
     const savedId = await this.runPermissionGraphTransaction(async (tx) => {
@@ -366,7 +374,9 @@ export class PermissionManagementService {
 
     const roles = await this.listRoles();
     const savedRole = roles.find((role) => role.id === savedId);
-    if (!savedRole) throw new NotFoundException('Cargo salvo não foi encontrado.');
+    if (!savedRole) {
+      throw new NotFoundException('Cargo salvo não foi encontrado.');
+    }
     return savedRole;
   }
 
@@ -374,7 +384,9 @@ export class PermissionManagementService {
     const name = input.name.trim();
     const description = input.description.trim();
     const emoji = input.emoji.trim() || '👥';
-    if (!name) throw new BadRequestException('Informe o nome do grupo.');
+    if (!name) {
+      throw new BadRequestException('Informe o nome do grupo.');
+    }
     const members = this.normalizeMembers(input.members);
     const existing = input.id
       ? await this.prisma.eventManagerPermissionGroup.findFirst({
@@ -382,7 +394,9 @@ export class PermissionManagementService {
           select: groupSelect,
         })
       : null;
-    if (input.id && !existing) throw new NotFoundException('Grupo não encontrado.');
+    if (input.id && !existing) {
+      throw new NotFoundException('Grupo não encontrado.');
+    }
     await this.authorization.assertPermissions(actor, [
       existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create,
     ]);
@@ -391,7 +405,9 @@ export class PermissionManagementService {
     }
 
     await this.assertGroupMembers(members);
-    if (existing) await this.assertGroupDelegation(actor, existing);
+    if (existing) {
+      await this.assertGroupDelegation(actor, existing);
+    }
 
     const groupId = existing?.id ?? crypto.randomUUID();
     const actorId = actor.sub;
@@ -453,14 +469,20 @@ export class PermissionManagementService {
     });
 
     const group = (await this.listGroups()).find((item) => item.id === groupId);
-    if (!group) throw new NotFoundException('Grupo salvo não foi encontrado.');
+    if (!group) {
+      throw new NotFoundException('Grupo salvo não foi encontrado.');
+    }
     return group;
   }
 
   async archiveRole(id: string, actor: AuthenticatedUser): Promise<boolean> {
     const role = await this.prisma.eventManagerRole.findFirst({ where: { id, archivedAt: null }, select: roleSelect });
-    if (!role) throw new NotFoundException('Cargo não encontrado.');
-    if (role.isSystem) throw new ForbiddenException('Cargos predefinidos não podem ser arquivados.');
+    if (!role) {
+      throw new NotFoundException('Cargo não encontrado.');
+    }
+    if (role.isSystem) {
+      throw new ForbiddenException('Cargos predefinidos não podem ser arquivados.');
+    }
     const now = new Date();
     await this.runPermissionGraphTransaction(async (tx) => {
       await tx.eventManagerRole.update({ where: { id }, data: { archivedAt: now, updatedById: actor.sub } });
@@ -501,7 +523,9 @@ export class PermissionManagementService {
       where: { id, archivedAt: null },
       select: groupSelect,
     });
-    if (!group) throw new NotFoundException('Grupo não encontrado.');
+    if (!group) {
+      throw new NotFoundException('Grupo não encontrado.');
+    }
     const now = new Date();
     await this.runPermissionGraphTransaction(async (tx) => {
       await tx.eventManagerPermissionGroup.update({ where: { id }, data: { archivedAt: now, updatedById: actor.sub } });
@@ -571,7 +595,9 @@ export class PermissionManagementService {
     const name = input.name.trim();
     const description = input.description.trim();
     const emoji = input.emoji.trim() || '🔐';
-    if (!name) throw new BadRequestException('Informe o nome do cargo.');
+    if (!name) {
+      throw new BadRequestException('Informe o nome do cargo.');
+    }
     const selected = new Set<Permission>();
     for (const rawPermission of input.permissions) {
       const permission = rawPermission.trim();
@@ -595,11 +621,14 @@ export class PermissionManagementService {
         throw new BadRequestException('Cada atribuição deve indicar uma pessoa ou um grupo.');
       }
       const subjectKey = personId ? `person:${personId}` : `group:${groupId}`;
-      if (subjects.has(subjectKey)) throw new BadRequestException('A mesma pessoa ou grupo foi atribuído duas vezes.');
+      if (subjects.has(subjectKey)) {
+        throw new BadRequestException('A mesma pessoa ou grupo foi atribuído duas vezes.');
+      }
       subjects.add(subjectKey);
       const validity = this.normalizeValidity(assignment.validFrom, assignment.validUntil, assignment.unlimited);
-      if (assignment.scopes.length === 0)
+      if (assignment.scopes.length === 0) {
         throw new BadRequestException('Cada atribuição precisa de ao menos um escopo.');
+      }
       const scopes = assignment.scopes.map((scope) => ({
         ...this.normalizeScopeTarget(scope.scope, scope.eventId, scope.majorEventId, scope.eventGroupId),
         ...this.normalizeValidity(scope.validFrom, scope.validUntil, scope.unlimited),
@@ -612,8 +641,12 @@ export class PermissionManagementService {
     const personIds = new Set<string>();
     return members.map((member) => {
       const personId = member.personId.trim();
-      if (!personId) throw new BadRequestException('Selecione a pessoa do grupo.');
-      if (personIds.has(personId)) throw new BadRequestException('A mesma pessoa aparece duas vezes no grupo.');
+      if (!personId) {
+        throw new BadRequestException('Selecione a pessoa do grupo.');
+      }
+      if (personIds.has(personId)) {
+        throw new BadRequestException('A mesma pessoa aparece duas vezes no grupo.');
+      }
       personIds.add(personId);
       return { personId, ...this.normalizeValidity(member.validFrom, member.validUntil, member.unlimited) };
     });
@@ -632,7 +665,9 @@ export class PermissionManagementService {
   }
 
   private async assertGroupDelegation(actor: AuthenticatedUser, group: GroupRecord): Promise<void> {
-    if (this.authorization.isSuperAdmin(actor) || group.assignments.length === 0) return;
+    if (this.authorization.isSuperAdmin(actor) || group.assignments.length === 0) {
+      return;
+    }
     const roles = await this.prisma.eventManagerRole.findMany({
       where: { id: { in: group.assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
       select: roleSelect,
@@ -641,8 +676,9 @@ export class PermissionManagementService {
     for (const role of this.mapRoles(roles, false)) {
       const permissions = [...new Set([...role.permissions, ...role.inheritedPermissions])] as Permission[];
       const outsideCeiling = permissions.filter((permission) => !actorPermissions.has(permission));
-      if (outsideCeiling.length)
+      if (outsideCeiling.length) {
         throw new ForbiddenException(`Você não pode delegar permissões que não possui: ${outsideCeiling.join(', ')}.`);
+      }
       for (const assignment of role.assignments.filter((item) => item.groupId === group.id)) {
         for (const scope of assignment.scopes) {
           await this.authorization.assertPermissions(actor, permissions, {
@@ -662,10 +698,18 @@ export class PermissionManagementService {
   ) {
     const from = validFrom ? new Date(validFrom) : null;
     const until = validUntil ? new Date(validUntil) : null;
-    if (!unlimited && !until) throw new BadRequestException('Informe a expiração ou marque Sem limite de tempo.');
-    if (unlimited && until) throw new BadRequestException('Acesso sem limite de tempo não pode ter expiração.');
-    if (until && until <= new Date()) throw new BadRequestException('A expiração deve estar no futuro.');
-    if (from && until && from >= until) throw new BadRequestException('A expiração deve ser posterior ao início.');
+    if (!unlimited && !until) {
+      throw new BadRequestException('Informe a expiração ou marque Sem limite de tempo.');
+    }
+    if (unlimited && until) {
+      throw new BadRequestException('Acesso sem limite de tempo não pode ter expiração.');
+    }
+    if (until && until <= new Date()) {
+      throw new BadRequestException('A expiração deve estar no futuro.');
+    }
+    if (from && until && from >= until) {
+      throw new BadRequestException('A expiração deve ser posterior ao início.');
+    }
     return { validFrom: from, validUntil: unlimited ? null : until, unlimited };
   }
 
@@ -688,12 +732,15 @@ export class PermissionManagementService {
     if (scope === EventManagerPermissionScope.GLOBAL ? targetCount !== 0 : targetCount !== 1) {
       throw new BadRequestException('O alvo informado não corresponde ao tipo de escopo.');
     }
-    if (scope === EventManagerPermissionScope.EVENT && !normalized.eventId)
+    if (scope === EventManagerPermissionScope.EVENT && !normalized.eventId) {
       throw new BadRequestException('Selecione o evento.');
-    if (scope === EventManagerPermissionScope.MAJOR_EVENT && !normalized.majorEventId)
+    }
+    if (scope === EventManagerPermissionScope.MAJOR_EVENT && !normalized.majorEventId) {
       throw new BadRequestException('Selecione o grande evento.');
-    if (scope === EventManagerPermissionScope.EVENT_GROUP && !normalized.eventGroupId)
+    }
+    if (scope === EventManagerPermissionScope.EVENT_GROUP && !normalized.eventGroupId) {
       throw new BadRequestException('Selecione o grupo de eventos.');
+    }
     return normalized;
   }
 
@@ -714,9 +761,13 @@ export class PermissionManagementService {
     const byId = new Map(roles.map((role) => [role.id, role] as const));
     const result = new Set(direct);
     const visit = (id: string, visiting = new Set<string>()) => {
-      if (visiting.has(id)) return;
+      if (visiting.has(id)) {
+        return;
+      }
       const role = byId.get(id);
-      if (!role) throw new BadRequestException('Cargo pai não encontrado.');
+      if (!role) {
+        throw new BadRequestException('Cargo pai não encontrado.');
+      }
       const definition = role.systemKey
         ? EVENT_MANAGER_SYSTEM_ROLE_BY_KEY.get(role.systemKey as EventManagerSystemRoleKey)
         : null;
@@ -743,20 +794,29 @@ export class PermissionManagementService {
     parents: string[],
     prisma: PrismaService = this.prisma,
   ): Promise<void> {
-    if (parents.includes(roleId)) throw new BadRequestException('Um cargo não pode herdar de si mesmo.');
+    if (parents.includes(roleId)) {
+      throw new BadRequestException('Um cargo não pode herdar de si mesmo.');
+    }
     const links = await prisma.eventManagerRoleInheritance.findMany({
       where: { archivedAt: null, childRoleId: { not: roleId } },
       select: { childRoleId: true, parentRoleId: true },
     });
     const parentsByChild = new Map<string, string[]>();
-    for (const link of links)
+    for (const link of links) {
       parentsByChild.set(link.childRoleId, [...(parentsByChild.get(link.childRoleId) ?? []), link.parentRoleId]);
+    }
     parentsByChild.set(roleId, parents);
     const visit = (id: string, visiting: Set<string>, visited: Set<string>) => {
-      if (visiting.has(id)) throw new BadRequestException('A herança de cargos formaria um ciclo.');
-      if (visited.has(id)) return;
+      if (visiting.has(id)) {
+        throw new BadRequestException('A herança de cargos formaria um ciclo.');
+      }
+      if (visited.has(id)) {
+        return;
+      }
       const next = new Set(visiting).add(id);
-      for (const parent of parentsByChild.get(id) ?? []) visit(parent, next, visited);
+      for (const parent of parentsByChild.get(id) ?? []) {
+        visit(parent, next, visited);
+      }
       visited.add(id);
     };
     visit(roleId, new Set(), new Set());
@@ -775,8 +835,9 @@ export class PermissionManagementService {
         ? prisma.eventManagerPermissionGroup.count({ where: { id: { in: groupIds }, archivedAt: null } })
         : 0,
     ]);
-    if (peopleCount !== personIds.length || groupCount !== groupIds.length)
+    if (peopleCount !== personIds.length || groupCount !== groupIds.length) {
       throw new BadRequestException('Uma pessoa ou grupo atribuído não existe mais.');
+    }
 
     const eventIds = [
       ...new Set(
@@ -817,8 +878,9 @@ export class PermissionManagementService {
         const incompatible = permissions.filter(
           (permission) => !isPermissionGrantScopeCompatible(permission, scope.scope),
         );
-        if (incompatible.length)
+        if (incompatible.length) {
           throw new BadRequestException(`O escopo ${scope.scope} não é compatível com: ${incompatible.join(', ')}.`);
+        }
       }
       await this.assertNoRedundantScopes(assignment, prisma);
     }
@@ -846,7 +908,9 @@ export class PermissionManagementService {
       for (let rightIndex = leftIndex + 1; rightIndex < scopes.length; rightIndex += 1) {
         const left = scopes[leftIndex];
         const right = scopes[rightIndex];
-        if (!this.validityOverlaps(assignment, left, right)) continue;
+        if (!this.validityOverlaps(assignment, left, right)) {
+          continue;
+        }
         if (left.scope === EventManagerPermissionScope.GLOBAL || right.scope === EventManagerPermissionScope.GLOBAL) {
           throw new BadRequestException('O escopo global torna os demais escopos redundantes.');
         }
@@ -858,8 +922,9 @@ export class PermissionManagementService {
             : child.eventGroupId
               ? groupById.get(child.eventGroupId)?.majorEventId
               : null;
-          if (childMajor === major)
+          if (childMajor === major) {
             throw new BadRequestException('Um grande evento já cobre este grupo ou evento filho no mesmo período.');
+          }
         }
         const group = left.eventGroupId ?? right.eventGroupId;
         const eventScope = left.eventGroupId ? right : right.eventGroupId ? left : null;
@@ -887,11 +952,14 @@ export class PermissionManagementService {
     permissions: Permission[],
     assignments: ReturnType<PermissionManagementService['normalizeAssignments']>,
   ) {
-    if (this.authorization.isSuperAdmin(actor)) return;
+    if (this.authorization.isSuperAdmin(actor)) {
+      return;
+    }
     const actorPermissions = await this.authorization.grantedPermissionSet(actor);
     const outsideCeiling = permissions.filter((permission) => !actorPermissions.has(permission));
-    if (outsideCeiling.length)
+    if (outsideCeiling.length) {
       throw new ForbiddenException(`Você não pode delegar permissões que não possui: ${outsideCeiling.join(', ')}.`);
+    }
     for (const assignment of assignments) {
       for (const scope of assignment.scopes) {
         const context = {
@@ -909,7 +977,9 @@ export class PermissionManagementService {
     roleId: string,
     permissions: Permission[],
   ): Promise<void> {
-    if (this.authorization.isSuperAdmin(actor)) return;
+    if (this.authorization.isSuperAdmin(actor)) {
+      return;
+    }
     const links = await this.prisma.eventManagerRoleInheritance.findMany({
       where: { archivedAt: null },
       select: { parentRoleId: true, childRoleId: true },
@@ -922,15 +992,20 @@ export class PermissionManagementService {
     const pending = [...(childrenByParent.get(roleId) ?? [])];
     while (pending.length) {
       const childId = pending.pop();
-      if (!childId || descendants.has(childId)) continue;
+      if (!childId || descendants.has(childId)) {
+        continue;
+      }
       descendants.add(childId);
       pending.push(...(childrenByParent.get(childId) ?? []));
     }
-    if (descendants.size === 0) return;
+    if (descendants.size === 0) {
+      return;
+    }
     const actorPermissions = await this.authorization.grantedPermissionSet(actor);
     const outsideCeiling = permissions.filter((permission) => !actorPermissions.has(permission));
-    if (outsideCeiling.length)
+    if (outsideCeiling.length) {
       throw new ForbiddenException(`Você não pode delegar permissões que não possui: ${outsideCeiling.join(', ')}.`);
+    }
     const assignments = await this.prisma.eventManagerRoleAssignment.findMany({
       where: { roleId: { in: [...descendants] }, archivedAt: null },
       select: {
@@ -1022,12 +1097,16 @@ export class PermissionManagementService {
   private mapRoles(records: RoleRecord[], includeArchived: boolean): PermissionRole[] {
     const byId = new Map(records.map((role) => [role.id, role] as const));
     const inherited = (role: RoleRecord, visiting = new Set<string>()): Set<string> => {
-      if (visiting.has(role.id)) return new Set();
+      if (visiting.has(role.id)) {
+        return new Set();
+      }
       const result = new Set<string>();
       const next = new Set(visiting).add(role.id);
       for (const link of role.parentLinks) {
         const parent = byId.get(link.parentRoleId);
-        if (!parent) continue;
+        if (!parent) {
+          continue;
+        }
         const definition = parent.systemKey
           ? EVENT_MANAGER_SYSTEM_ROLE_BY_KEY.get(parent.systemKey as EventManagerSystemRoleKey)
           : null;
@@ -1159,7 +1238,9 @@ export class PermissionManagementService {
 }
 
 export function toPermissionRoleAuditSnapshot(role: RoleRecord | null): Record<string, unknown> | null {
-  if (!role) return null;
+  if (!role) {
+    return null;
+  }
   return {
     id: role.id,
     systemKey: role.systemKey,
@@ -1198,7 +1279,9 @@ export function toPermissionRoleAuditSnapshot(role: RoleRecord | null): Record<s
 }
 
 export function toPermissionGroupAuditSnapshot(group: GroupRecord | null): Record<string, unknown> | null {
-  if (!group) return null;
+  if (!group) {
+    return null;
+  }
   return {
     id: group.id,
     name: group.name,

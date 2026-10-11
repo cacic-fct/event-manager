@@ -270,7 +270,11 @@ describe('AttendanceScanner operations', () => {
 
     await handleScan(component, `ticket:018f47a1-3d5b-7abc-8def-0123456789ab:${TICKET_FIXTURE_HOLDER_USER_ID}`);
 
-    expect(deps.api.registerScannerCode).toHaveBeenCalledWith('event-1', `user:${TICKET_FIXTURE_HOLDER_USER_ID}`, location);
+    expect(deps.api.registerScannerCode).toHaveBeenCalledWith(
+      'event-1',
+      `user:${TICKET_FIXTURE_HOLDER_USER_ID}`,
+      location,
+    );
   });
 
   it('queues the normalized ticket code with its original collector for upload', async () => {

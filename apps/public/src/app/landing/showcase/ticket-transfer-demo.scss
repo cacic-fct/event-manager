@@ -10,13 +10,15 @@
   display: grid;
   min-width: 0;
 
-  @include mat.button-overrides((
-    filled-container-color: #d1f2de,
-    filled-label-text-color: #10362e,
-    outlined-label-text-color: #f4fff9,
-    outlined-outline-color: #b7d7cb,
-    text-label-text-color: #f4fff9,
-  ));
+  @include mat.button-overrides(
+    (
+      filled-container-color: #d1f2de,
+      filled-label-text-color: #10362e,
+      outlined-label-text-color: #f4fff9,
+      outlined-outline-color: #b7d7cb,
+      text-label-text-color: #f4fff9,
+    )
+  );
 }
 
 .ticket-transfer-demo__stage {

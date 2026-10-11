@@ -41,16 +41,20 @@ describe('LgpdService hard delete', () => {
         tx.people.deleteMany.mock.invocationCallOrder[0],
       );
     } finally {
-      if (originalSecret === undefined) delete process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
-      else process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = originalSecret;
+      if (originalSecret === undefined) {
+        delete process.env['LGPD_IMPORT_SUPPRESSION_SECRET'];
+      } else {
+        process.env['LGPD_IMPORT_SUPPRESSION_SECRET'] = originalSecret;
+      }
     }
   });
 
   it('does not erase people when suppression storage fails', async () => {
     const { tx, service } = context;
     tx.externalImportRecord.findMany.mockRejectedValue(new Error('suppression storage unavailable'));
-    await expect(service.hardDelete({ userId: 'new-user', requestId: 'import-erasure' }))
-      .rejects.toThrow('suppression storage unavailable');
+    await expect(service.hardDelete({ userId: 'new-user', requestId: 'import-erasure' })).rejects.toThrow(
+      'suppression storage unavailable',
+    );
     expect(tx.people.deleteMany).not.toHaveBeenCalled();
     expect(tx.user.deleteMany).not.toHaveBeenCalled();
   });
@@ -65,18 +69,32 @@ describe('LgpdService hard delete', () => {
       }
       return { count: 2 };
     });
-    tx.auditLogEntry.findMany.mockResolvedValue([{
-      id: 'profile-audit', entityType: 'LECTURER_PROFILE', entityId: 'profile-1',
-      actorId: 'admin-user', actorName: 'Admin', actorEmail: 'admin@example.com', entityLabel: 'Lecturer',
-      before: { personId: 'source-person', linkedin: 'historical-linkedin', biography: 'Old biography' },
-      after: { personId: 'source-person', linkedin: 'current-linkedin', displayName: 'Lecturer',
-        googleUserPicture: 'https://example.com/picture', whatsapp: '18999990000', email: 'lecturer@example.com' },
-      changes: [{ field: 'linkedin', before: 'historical-linkedin', after: 'current-linkedin' }],
-      metadata: { contact: 'current-linkedin' },
-    }]);
+    tx.auditLogEntry.findMany.mockResolvedValue([
+      {
+        id: 'profile-audit',
+        entityType: 'LECTURER_PROFILE',
+        entityId: 'profile-1',
+        actorId: 'admin-user',
+        actorName: 'Admin',
+        actorEmail: 'admin@example.com',
+        entityLabel: 'Lecturer',
+        before: { personId: 'source-person', linkedin: 'historical-linkedin', biography: 'Old biography' },
+        after: {
+          personId: 'source-person',
+          linkedin: 'current-linkedin',
+          displayName: 'Lecturer',
+          googleUserPicture: 'https://example.com/picture',
+          whatsapp: '18999990000',
+          email: 'lecturer@example.com',
+        },
+        changes: [{ field: 'linkedin', before: 'historical-linkedin', after: 'current-linkedin' }],
+        metadata: { contact: 'current-linkedin' },
+      },
+    ]);
 
-    await expect(service.hardDelete({ userId: 'new-user', requestId: 'profile-erasure' }))
-      .resolves.toEqual(expect.objectContaining({ success: true, peopleDeleted: 2 }));
+    await expect(service.hardDelete({ userId: 'new-user', requestId: 'profile-erasure' })).resolves.toEqual(
+      expect.objectContaining({ success: true, peopleDeleted: 2 }),
+    );
 
     expect(tx.lecturerProfile.deleteMany).toHaveBeenCalledWith({
       where: { personId: { in: ['source-person', 'target-person'] } },
@@ -85,8 +103,13 @@ describe('LgpdService hard delete', () => {
       where: { id: 'profile-audit' },
       data: expect.objectContaining({
         before: { personId: 'anonymized:profile-erasure', linkedin: '[ANONIMIZADO]', biography: '[ANONIMIZADO]' },
-        after: expect.objectContaining({ linkedin: '[ANONIMIZADO]', displayName: '[ANONIMIZADO]',
-          googleUserPicture: '[ANONIMIZADO]', whatsapp: '[ANONIMIZADO]', email: '[ANONIMIZADO]' }),
+        after: expect.objectContaining({
+          linkedin: '[ANONIMIZADO]',
+          displayName: '[ANONIMIZADO]',
+          googleUserPicture: '[ANONIMIZADO]',
+          whatsapp: '[ANONIMIZADO]',
+          email: '[ANONIMIZADO]',
+        }),
         changes: [{ field: 'linkedin', before: '[ANONIMIZADO]', after: '[ANONIMIZADO]' }],
         metadata: { contact: '[ANONIMIZADO]' },
       }),

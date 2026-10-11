@@ -8,12 +8,14 @@ import { SportsPageComponent } from './sports-page.component';
 
 describe('SportsPageComponent routes', () => {
   it('loads a major-event-scoped match URL without redirecting', async () => {
-    const params = new BehaviorSubject(convertToParamMap({
-      majorEventId: 'major-1',
-      area: 'matches',
-      entityId: 'category-1',
-      matchId: 'match-1',
-    }));
+    const params = new BehaviorSubject(
+      convertToParamMap({
+        majorEventId: 'major-1',
+        area: 'matches',
+        entityId: 'category-1',
+        matchId: 'match-1',
+      }),
+    );
     const { router, workspace } = await createComponent(params);
 
     await vi.waitFor(() => expect(workspace.selectMatch).toHaveBeenCalledWith({ id: 'match-1' }, { navigate: false }));
@@ -25,12 +27,14 @@ describe('SportsPageComponent routes', () => {
   });
 
   it('does not apply a selection after the major-event load finishes for an older route', async () => {
-    const params = new BehaviorSubject(convertToParamMap({
-      majorEventId: 'major-1',
-      area: 'matches',
-      entityId: 'category-1',
-      matchId: 'match-1',
-    }));
+    const params = new BehaviorSubject(
+      convertToParamMap({
+        majorEventId: 'major-1',
+        area: 'matches',
+        entityId: 'category-1',
+        matchId: 'match-1',
+      }),
+    );
     let finishScopeLoad!: () => void;
     const scopeLoad = new Promise<void>((resolve) => {
       finishScopeLoad = resolve;

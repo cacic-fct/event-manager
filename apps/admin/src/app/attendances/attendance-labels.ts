@@ -58,6 +58,8 @@ export function attendanceImportMatchTypeLabel(matchType: string): string {
 }
 
 export function attendanceCurrentAssessmentLabel(assessment: string | null | undefined): string | null {
-  if (!assessment) return null;
+  if (!assessment) {
+    return null;
+  }
   return ATTENDANCE_CURRENT_ASSESSMENT_LABELS[assessment] ?? 'Situação de elegibilidade não identificada';
 }

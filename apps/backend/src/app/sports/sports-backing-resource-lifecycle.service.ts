@@ -7,7 +7,9 @@ type TransactionClient = Prisma.TransactionClient;
 @Injectable()
 export class SportsBackingResourceLifecycleService {
   async assertEventCreateAllowed(tx: TransactionClient, eventGroupId: string | null | undefined): Promise<void> {
-    if (!eventGroupId) return;
+    if (!eventGroupId) {
+      return;
+    }
     const category = await tx.sportsCategory.findFirst({
       where: { eventGroupId, deletedAt: null },
       select: { id: true },
@@ -137,7 +139,9 @@ export class SportsBackingResourceLifecycleService {
         },
       },
     });
-    if (!category) return;
+    if (!category) {
+      return;
+    }
 
     if (input.id !== undefined && input.id !== eventGroupId) {
       throw new ConflictException(
@@ -179,7 +183,9 @@ export class SportsBackingResourceLifecycleService {
     majorEventId: string,
     input: MajorEventUpdateInput,
   ): Promise<void> {
-    if (input.id === undefined || input.id === majorEventId) return;
+    if (input.id === undefined || input.id === majorEventId) {
+      return;
+    }
     const tournament = await tx.sportsTournament.findFirst({
       where: { majorEventId, deletedAt: null },
       select: { id: true },
@@ -204,7 +210,9 @@ export class SportsBackingResourceLifecycleService {
   }
 
   private changed<T>(submitted: T | undefined, persisted: T | null): boolean {
-    if (submitted === undefined) return false;
+    if (submitted === undefined) {
+      return false;
+    }
     if (submitted instanceof Date || persisted instanceof Date) {
       const submittedTime = submitted instanceof Date ? submitted.getTime() : Number.NaN;
       const persistedTime = persisted instanceof Date ? persisted.getTime() : Number.NaN;

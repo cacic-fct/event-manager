@@ -15,7 +15,9 @@ let nextWorkspaceRecordId = 0;
       @if (readonly()) {
         <div class="record-main"><ng-container [ngTemplateOutlet]="content" /></div>
       } @else if (link(); as destination) {
-        <a mat-button class="record-main"
+        <a
+          mat-button
+          class="record-main"
           [routerLink]="disabled() ? null : destination"
           [queryParams]="queryParams()"
           [disabled]="disabled()"
@@ -26,14 +28,14 @@ let nextWorkspaceRecordId = 0;
         </a>
       } @else {
         <button
-        mat-button
-        class="record-main"
-        type="button"
-        [disabled]="disabled()"
-        [attr.aria-label]="label() || title()"
-        [attr.aria-describedby]="descriptionId"
-        [attr.aria-pressed]="selected()"
-        (click)="activate.emit()">
+          mat-button
+          class="record-main"
+          type="button"
+          [disabled]="disabled()"
+          [attr.aria-label]="label() || title()"
+          [attr.aria-describedby]="descriptionId"
+          [attr.aria-pressed]="selected()"
+          (click)="activate.emit()">
           <ng-container [ngTemplateOutlet]="content" />
         </button>
       }
@@ -47,25 +49,78 @@ let nextWorkspaceRecordId = 0;
     </div>
   `,
   styles: `
-    :host { display: block; min-width: 0; }
-    .record { display: flex; align-items: center; min-width: 0; border-radius: 8px; }
-    .record.selected { background: var(--mat-sys-secondary-container); }
-    .record-main { flex: 1; min-width: 0; height: auto; min-height: 64px; padding: 0.75rem;
-      justify-content: flex-start; text-align: start; white-space: normal; border-radius: 8px;
-      color: var(--mat-sys-on-surface); }
-    .record.selected .record-main { color: var(--mat-sys-on-secondary-container); }
-    .record-content { display: grid; gap: 0.25rem; min-width: 0; }
-    .record-main:not(:disabled) .record-content { color: var(--mat-sys-on-surface); }
-    .record.selected .record-main:not(:disabled) .record-content { color: var(--mat-sys-on-secondary-container); }
-    .record-title { display: flex; align-items: baseline; gap: 0.5rem; font: var(--mat-sys-title-small);
-      overflow-wrap: anywhere; }
-    .record-description { display: block; font: var(--mat-sys-body-small); overflow-wrap: anywhere; }
-    .record-description:empty, .record-actions:empty { display: none; }
-    .record-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; padding-inline-end: 0.25rem; }
+    :host {
+      display: block;
+      min-width: 0;
+    }
+    .record {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      border-radius: 8px;
+    }
+    .record.selected {
+      background: var(--mat-sys-secondary-container);
+    }
+    .record-main {
+      flex: 1;
+      min-width: 0;
+      height: auto;
+      min-height: 64px;
+      padding: 0.75rem;
+      justify-content: flex-start;
+      text-align: start;
+      white-space: normal;
+      border-radius: 8px;
+      color: var(--mat-sys-on-surface);
+    }
+    .record.selected .record-main {
+      color: var(--mat-sys-on-secondary-container);
+    }
+    .record-content {
+      display: grid;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+    .record-main:not(:disabled) .record-content {
+      color: var(--mat-sys-on-surface);
+    }
+    .record.selected .record-main:not(:disabled) .record-content {
+      color: var(--mat-sys-on-secondary-container);
+    }
+    .record-title {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font: var(--mat-sys-title-small);
+      overflow-wrap: anywhere;
+    }
+    .record-description {
+      display: block;
+      font: var(--mat-sys-body-small);
+      overflow-wrap: anywhere;
+    }
+    .record-description:empty,
+    .record-actions:empty {
+      display: none;
+    }
+    .record-actions {
+      flex: 0 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-inline-end: 0.25rem;
+    }
     @media (max-width: 480px) {
-      .record { flex-wrap: wrap; }
-      .record-main { flex-basis: 100%; }
-      .record-actions { padding: 0 0.5rem 0.5rem; }
+      .record {
+        flex-wrap: wrap;
+      }
+      .record-main {
+        flex-basis: 100%;
+      }
+      .record-actions {
+        padding: 0 0.5rem 0.5rem;
+      }
     }
   `,
 })

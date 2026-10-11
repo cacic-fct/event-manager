@@ -4,7 +4,9 @@
       <mat-icon>edit_note</mat-icon>
       <div class="unsaved-changes-copy">
         <strong>Alterações não salvas</strong>
-        <span>Salve o formulário como rascunho ou descarte perguntas, imagens e vínculos antes de trocar o contexto.</span>
+        <span
+          >Salve o formulário como rascunho ou descarte perguntas, imagens e vínculos antes de trocar o contexto.</span
+        >
       </div>
       <div class="unsaved-changes-actions">
         <button
@@ -23,67 +25,68 @@
   }
 
   @if (!inWorkspaceShell || !workspace.targetFilterId()) {
-<app-workspace-scope [emoji]="scopeEmoji()"
-    [scopeId]="workspace.targetFilterId()"
-    [title]="workspace.targetFilterLabel()"
-    description="Escolha um evento para trabalhar com uma lista menor ou mantenha a visão global.">
-    <div class="scope-picker">
-      <app-workspace-record
-        title="Todos os formulários"
-        label="Mostrar formulários de todos os contextos"
-        [selected]="workspace.targetFilterId() === null"
-        [link]="['/forms']">
-        <mat-icon recordIcon>language</mat-icon>
-        <span recordDescription>Inclui formulários de eventos e grandes eventos acessíveis.</span>
-      </app-workspace-record>
+    <app-workspace-scope
+      [emoji]="scopeEmoji()"
+      [scopeId]="workspace.targetFilterId()"
+      [title]="workspace.targetFilterLabel()"
+      description="Escolha um evento para trabalhar com uma lista menor ou mantenha a visão global.">
+      <div class="scope-picker">
+        <app-workspace-record
+          title="Todos os formulários"
+          label="Mostrar formulários de todos os contextos"
+          [selected]="workspace.targetFilterId() === null"
+          [link]="['/forms']">
+          <mat-icon recordIcon>language</mat-icon>
+          <span recordDescription>Inclui formulários de eventos e grandes eventos acessíveis.</span>
+        </app-workspace-record>
 
-      <form [formGroup]="workspace.targetSearchForm" class="filter-form" (submit)="$event.preventDefault()">
-        <mat-form-field>
-          <mat-label>Buscar evento ou grande evento</mat-label>
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput type="search" formControlName="query" />
-        </mat-form-field>
-      </form>
+        <form [formGroup]="workspace.targetSearchForm" class="filter-form" (submit)="$event.preventDefault()">
+          <mat-form-field>
+            <mat-label>Buscar evento ou grande evento</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput type="search" formControlName="query" />
+          </mat-form-field>
+        </form>
 
-      @if (workspace.targetSearchLoading()) {
-        <mat-progress-bar mode="indeterminate" aria-label="Buscando contextos de formulário" />
-      }
+        @if (workspace.targetSearchLoading()) {
+          <mat-progress-bar mode="indeterminate" aria-label="Buscando contextos de formulário" />
+        }
 
-      <div class="scope-results">
-        <section aria-labelledby="forms-event-scopes">
-          <h3 id="forms-event-scopes">Eventos</h3>
-          @for (event of workspace.events(); track event.id) {
-            <app-workspace-record
-              [title]="event.name"
-              [label]="'Mostrar formulários de ' + event.name"
-              [selected]="workspace.targetFilterId() === 'event:' + event.id"
-              [link]="['/forms', 'event', event.id]">
-              <lib-twemoji recordIcon [emoji]="event.emoji" />
-              <span recordDescription>{{ event.startDate | date: 'dd/MM/yyyy' }}</span>
-            </app-workspace-record>
-          } @empty {
-            <p class="empty-note">Nenhum evento encontrado.</p>
-          }
-        </section>
-        <section aria-labelledby="forms-major-event-scopes">
-          <h3 id="forms-major-event-scopes">Grandes eventos</h3>
-          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-            <app-workspace-record
-              [title]="majorEvent.name"
-              [label]="'Mostrar formulários de ' + majorEvent.name"
-              [selected]="workspace.targetFilterId() === 'major-event:' + majorEvent.id"
-              [link]="['/forms', 'major-event', majorEvent.id]">
-              <lib-twemoji recordIcon [emoji]="majorEvent.emoji" />
-              <span recordDescription>{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
-            </app-workspace-record>
-          } @empty {
-            <p class="empty-note">Nenhum grande evento encontrado.</p>
-          }
-        </section>
+        <div class="scope-results">
+          <section aria-labelledby="forms-event-scopes">
+            <h3 id="forms-event-scopes">Eventos</h3>
+            @for (event of workspace.events(); track event.id) {
+              <app-workspace-record
+                [title]="event.name"
+                [label]="'Mostrar formulários de ' + event.name"
+                [selected]="workspace.targetFilterId() === 'event:' + event.id"
+                [link]="['/forms', 'event', event.id]">
+                <lib-twemoji recordIcon [emoji]="event.emoji" />
+                <span recordDescription>{{ event.startDate | date: 'dd/MM/yyyy' }}</span>
+              </app-workspace-record>
+            } @empty {
+              <p class="empty-note">Nenhum evento encontrado.</p>
+            }
+          </section>
+          <section aria-labelledby="forms-major-event-scopes">
+            <h3 id="forms-major-event-scopes">Grandes eventos</h3>
+            @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+              <app-workspace-record
+                [title]="majorEvent.name"
+                [label]="'Mostrar formulários de ' + majorEvent.name"
+                [selected]="workspace.targetFilterId() === 'major-event:' + majorEvent.id"
+                [link]="['/forms', 'major-event', majorEvent.id]">
+                <lib-twemoji recordIcon [emoji]="majorEvent.emoji" />
+                <span recordDescription>{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
+              </app-workspace-record>
+            } @empty {
+              <p class="empty-note">Nenhum grande evento encontrado.</p>
+            }
+          </section>
+        </div>
       </div>
-    </div>
-  </app-workspace-scope>
-}
+    </app-workspace-scope>
+  }
 
   <div class="tab-grid tab-grid-wide">
     <aside class="panel">
@@ -115,7 +118,8 @@
             [title]="form.name"
             [label]="'Abrir formulário ' + form.name"
             [selected]="workspace.selectedForm()?.id === form.id"
-            [link]="['/forms', form.id]" [queryParams]="workspace.targetFilter()">
+            [link]="['/forms', form.id]"
+            [queryParams]="workspace.targetFilter()">
             <mat-icon recordIcon>{{ form.publicationState === 'PUBLISHED' ? 'fact_check' : 'list_alt' }}</mat-icon>
             <span recordDescription>
               {{ stateLabel(form) }}, {{ form.responseCount }} resposta{{ form.responseCount === 1 ? '' : 's' }},
@@ -132,8 +136,22 @@
       <div class="list-pager" role="group" aria-label="Paginação de formulários">
         <span>{{ workspace.formsPagination.label() }}</span>
         <div class="list-pager-actions">
-          <button matIconButton type="button" aria-label="Página anterior" [disabled]="!workspace.formsPagination.hasPreviousPage()" (click)="workspace.previousFormsPage()"><mat-icon>chevron_left</mat-icon></button>
-          <button matIconButton type="button" aria-label="Próxima página" [disabled]="!workspace.formsPagination.hasNextPage()" (click)="workspace.nextFormsPage()"><mat-icon>chevron_right</mat-icon></button>
+          <button
+            matIconButton
+            type="button"
+            aria-label="Página anterior"
+            [disabled]="!workspace.formsPagination.hasPreviousPage()"
+            (click)="workspace.previousFormsPage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            matIconButton
+            type="button"
+            aria-label="Próxima página"
+            [disabled]="!workspace.formsPagination.hasNextPage()"
+            (click)="workspace.nextFormsPage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
         </div>
       </div>
     </aside>

@@ -79,7 +79,9 @@ export const Playground: Story = {
     await expect(args.queryChange).toHaveBeenLastCalledWith('Grace');
     await expect(args.searchRequested).toHaveBeenCalledWith('Grace');
     const firstResult = canvas.getAllByRole('button', { name: /selecionar/i })[0];
-    if (!firstResult) throw new Error('Expected at least one person search result.');
+    if (!firstResult) {
+      throw new Error('Expected at least one person search result.');
+    }
     await expect(firstResult).toBeVisible();
     await userEvent.click(firstResult);
     await expect(args.personSelected).toHaveBeenCalledTimes(1);

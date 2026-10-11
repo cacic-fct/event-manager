@@ -1,4 +1,10 @@
-import { applyPagedResult, createWorkspaceListPagination, loadNextPage, loadPreviousPage, resetPagination } from './list-pagination';
+import {
+  applyPagedResult,
+  createWorkspaceListPagination,
+  loadNextPage,
+  loadPreviousPage,
+  resetPagination,
+} from './list-pagination';
 
 describe('workspace list pagination', () => {
   it('reports only displayed records, including partial and empty pages', () => {
@@ -6,7 +12,10 @@ describe('workspace list pagination', () => {
     expect(pagination.label()).toBe('0');
     applyPagedResult(['one'], pagination);
     expect(pagination.label()).toBe('1-1');
-    applyPagedResult(Array.from({length:51}, (_, index) => index), pagination);
+    applyPagedResult(
+      Array.from({ length: 51 }, (_, index) => index),
+      pagination,
+    );
     expect(pagination.label()).toBe('1-50');
     pagination.pageIndex.set(1);
     applyPagedResult(['last', 'two'], pagination);
@@ -63,7 +72,10 @@ describe('workspace list pagination', () => {
 
   it('restores the previous page when loading rejects before applying a result', async () => {
     const pagination = createWorkspaceListPagination();
-    applyPagedResult(Array.from({ length: 51 }, (_, index) => index), pagination);
+    applyPagedResult(
+      Array.from({ length: 51 }, (_, index) => index),
+      pagination,
+    );
 
     await expect(loadNextPage(pagination, () => Promise.reject(new Error('offline')))).rejects.toThrow('offline');
 
@@ -72,7 +84,10 @@ describe('workspace list pagination', () => {
 
   it('restores the previous page when a handled failure applies no result', async () => {
     const pagination = createWorkspaceListPagination();
-    applyPagedResult(Array.from({ length: 51 }, (_, index) => index), pagination);
+    applyPagedResult(
+      Array.from({ length: 51 }, (_, index) => index),
+      pagination,
+    );
 
     await loadNextPage(pagination, () => Promise.resolve());
 

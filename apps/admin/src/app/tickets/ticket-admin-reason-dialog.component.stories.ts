@@ -2,7 +2,10 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { withScenarioControls } from '@cacic-fct/shared-angular/storybook';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { TicketAdminReasonDialogComponent, type TicketAdminReasonDialogData } from './ticket-admin-reason-dialog.component';
+import {
+  TicketAdminReasonDialogComponent,
+  type TicketAdminReasonDialogData,
+} from './ticket-admin-reason-dialog.component';
 
 interface TicketReasonStoryArgs extends TicketAdminReasonDialogData {
   initialReason: string;
@@ -26,28 +29,34 @@ const meta: Meta<TicketReasonStoryArgs> = {
   },
   decorators: [
     withScenarioControls<TicketReasonStoryArgs>(),
-    (story, context) => applicationConfig({
-      providers: [
-        { provide: MAT_DIALOG_DATA, useValue: context.args },
-        { provide: MatDialogRef, useValue: { close: fn() } },
-      ],
-    })(story, context),
+    (story, context) =>
+      applicationConfig({
+        providers: [
+          { provide: MAT_DIALOG_DATA, useValue: context.args },
+          { provide: MatDialogRef, useValue: { close: fn() } },
+        ],
+      })(story, context),
   ],
   parameters: { layout: 'centered', a11y: { test: 'error' } },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     const reason = canvas.getByRole('textbox', { name: 'Motivo para auditoria' });
-    if (args.initialReason) await userEvent.type(reason, args.initialReason);
+    if (args.initialReason) {
+      await userEvent.type(reason, args.initialReason);
+    }
     const action = canvas.getByRole('button', { name: args.actionLabel });
-    if (args.initialReason.trim()) await expect(action).toBeEnabled();
-    else await expect(action).toBeDisabled();
+    if (args.initialReason.trim()) {
+      await expect(action).toBeEnabled();
+    } else {
+      await expect(action).toBeDisabled();
+    }
   },
 };
 
 export default meta;
 type Story = StoryObj<TicketReasonStoryArgs>;
 
-export const Playground: Story = {  };
+export const Playground: Story = {};
 
 export const BlankReason: Story = {
   args: { initialReason: '   ' },
@@ -59,6 +68,7 @@ export const CompletedReason: Story = {
 
 export const LongReason: Story = {
   args: {
-    initialReason: 'O titular solicitou o cancelamento após a conferência de sua inscrição.\nA equipe manteve as movimentações anteriores no histórico para auditoria.',
+    initialReason:
+      'O titular solicitou o cancelamento após a conferência de sua inscrição.\nA equipe manteve as movimentações anteriores no histórico para auditoria.',
   },
 };

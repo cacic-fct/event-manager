@@ -5,18 +5,20 @@ describe('group parent consistency with restricted children', () => {
   it('checks hidden children before changing the group parent', async () => {
     const prisma = {
       event: {
-        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
-          ? [{ majorEventId: 'original-major' }, { majorEventId: 'requested-major' }]
-          : [{ majorEventId: 'requested-major' }]),
+        findMany: jest.fn(async () =>
+          audienceContext.getStore()?.bypass
+            ? [{ majorEventId: 'original-major' }, { majorEventId: 'requested-major' }]
+            : [{ majorEventId: 'requested-major' }],
+        ),
       },
       eventGroup: {
         findMany: jest.fn().mockResolvedValue([{ id: 'group-1', majorEventId: null }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    await expect(audienceContext.run(ANONYMOUS_AUDIENCE, async () =>
-      syncEventGroupMajorEvent(prisma as never, ['group-1']),
-    )).rejects.toThrow('grandes eventos diferentes');
+    await expect(
+      audienceContext.run(ANONYMOUS_AUDIENCE, async () => syncEventGroupMajorEvent(prisma as never, ['group-1'])),
+    ).rejects.toThrow('grandes eventos diferentes');
     expect(prisma.eventGroup.updateMany).not.toHaveBeenCalled();
     expect(audienceContext.getStore()).toBeUndefined();
   });
@@ -82,9 +84,11 @@ describe('group parent consistency with restricted children', () => {
   it('rejects a legacy group with restricted children from different parents', async () => {
     const prisma = {
       event: {
-        findMany: jest.fn(async () => audienceContext.getStore()?.bypass
-          ? [{ majorEventId: 'major-1' }, { majorEventId: 'major-2' }]
-          : [{ majorEventId: 'major-1' }]),
+        findMany: jest.fn(async () =>
+          audienceContext.getStore()?.bypass
+            ? [{ majorEventId: 'major-1' }, { majorEventId: 'major-2' }]
+            : [{ majorEventId: 'major-1' }],
+        ),
       },
       eventGroup: {
         findMany: jest.fn().mockResolvedValue([{ id: 'group-1', majorEventId: null }]),
@@ -92,9 +96,9 @@ describe('group parent consistency with restricted children', () => {
       },
     };
 
-    await expect(audienceContext.run(ANONYMOUS_AUDIENCE, async () =>
-      syncEventGroupMajorEvent(prisma as never, ['group-1']),
-    )).rejects.toThrow('grandes eventos diferentes');
+    await expect(
+      audienceContext.run(ANONYMOUS_AUDIENCE, async () => syncEventGroupMajorEvent(prisma as never, ['group-1'])),
+    ).rejects.toThrow('grandes eventos diferentes');
     expect(prisma.eventGroup.updateMany).not.toHaveBeenCalled();
   });
 });

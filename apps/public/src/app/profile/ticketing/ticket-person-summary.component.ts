@@ -8,7 +8,13 @@ import { Component, computed, input, linkedSignal } from '@angular/core';
     <div class="person-summary">
       <div class="person-avatar" aria-hidden="true">
         @if (avatarSource(); as picture) {
-          <img [ngSrc]="googlePictureUrl(picture)" width="56" height="56" alt="" referrerpolicy="no-referrer" (error)="avatarLoadFailed.set(true)" />
+          <img
+            [ngSrc]="googlePictureUrl(picture)"
+            width="56"
+            height="56"
+            alt=""
+            referrerpolicy="no-referrer"
+            (error)="avatarLoadFailed.set(true)" />
         } @else {
           <span>{{ initials() }}</span>
         }
@@ -84,21 +90,27 @@ export class TicketPersonSummaryComponent {
   readonly showDocument = input(true);
   readonly avatarOnly = input(false);
   readonly avatarLoadFailed = linkedSignal({ source: this.avatarUrl, computation: () => false });
-  readonly avatarSource = computed(() => this.avatarLoadFailed() ? null : this.avatarUrl());
+  readonly avatarSource = computed(() => (this.avatarLoadFailed() ? null : this.avatarUrl()));
 
   readonly initials = computed(() => {
     const words = this.fullName().trim().split(/\s+/u).filter(Boolean);
-    if (!words.length) return '?';
+    if (!words.length) {
+      return '?';
+    }
     const first = words[0]?.[0] ?? '';
     const last = words.length > 1 ? (words.at(-1)?.[0] ?? '') : '';
     return `${first}${last}`.toLocaleUpperCase();
   });
 
   googlePictureUrl(url: string): string {
-    if (!url) return '';
+    if (!url) {
+      return '';
+    }
     try {
       const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') return url;
+      if (parsed.protocol !== 'https:' || parsed.hostname !== 'lh3.googleusercontent.com') {
+        return url;
+      }
       return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
     } catch {
       return url;

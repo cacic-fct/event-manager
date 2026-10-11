@@ -48,6 +48,8 @@ export function sportsWorkspaceRoute(
   area: SportsWorkspaceArea,
   selection: { categoryId?: string; teamId?: string; matchId?: string } = {},
 ): string[] {
-  if (!majorEventId) return ['/sports'];
+  if (!majorEventId) {
+    return ['/sports'];
+  }
   return adminSportsWorkspaceRoute({ majorEventId, area, ...selection });
 }

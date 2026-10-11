@@ -134,28 +134,38 @@ describe('CertificateEligibilityService', () => {
     ).resolves.toEqual([{ person, events: [registeredEvent] }]);
   });
 
-  it.each([true, false])('evaluates INVITED_ONLY certificate eligibility from invite facts (invited=%s)', async (invited) => {
-    const walkInEvent = { ...event, majorEventId: null, majorEvent: null };
-    const audienceInvitations = {
-      getEventInvitationFacts: jest.fn().mockResolvedValue(new Map([
-        [`${person.id}:${walkInEvent.id}`, { event: invited, eventGroup: false, majorEvent: false }],
-      ])),
-    };
-    const service = createService({
-      event: { findFirst: jest.fn().mockResolvedValue(walkInEvent) },
-      eventAttendance: {
-        findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: walkInEvent.id, person }]),
-      },
-    }, audienceInvitations);
+  it.each([true, false])(
+    'evaluates INVITED_ONLY certificate eligibility from invite facts (invited=%s)',
+    async (invited) => {
+      const walkInEvent = { ...event, majorEventId: null, majorEvent: null };
+      const audienceInvitations = {
+        getEventInvitationFacts: jest
+          .fn()
+          .mockResolvedValue(
+            new Map([[`${person.id}:${walkInEvent.id}`, { event: invited, eventGroup: false, majorEvent: false }]]),
+          ),
+      };
+      const service = createService(
+        {
+          event: { findFirst: jest.fn().mockResolvedValue(walkInEvent) },
+          eventAttendance: {
+            findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: walkInEvent.id, person }]),
+          },
+        },
+        audienceInvitations,
+      );
 
-    await expect(service.resolveEligibleRecipients({
-      ...config,
-      scope: CertificateScope.EVENT,
-      eventId: walkInEvent.id,
-      attendeeEligibility: 'INVITED_ONLY',
-    } as never)).resolves.toEqual(invited ? [{ person, events: [walkInEvent] }] : []);
-    expect(audienceInvitations.getEventInvitationFacts).toHaveBeenCalledWith([walkInEvent], [person.id]);
-  });
+      await expect(
+        service.resolveEligibleRecipients({
+          ...config,
+          scope: CertificateScope.EVENT,
+          eventId: walkInEvent.id,
+          attendeeEligibility: 'INVITED_ONLY',
+        } as never),
+      ).resolves.toEqual(invited ? [{ person, events: [walkInEvent] }] : []);
+      expect(audienceInvitations.getEventInvitationFacts).toHaveBeenCalledWith([walkInEvent], [person.id]);
+    },
+  );
 
   it('requires confirmed major registration for an APPROVED certificate even when the event is free', async () => {
     const majorEvent = { ...event, majorEventId, majorEvent: null };
@@ -212,9 +222,7 @@ describe('CertificateEligibilityService', () => {
         eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
         majorEventSubscription: { findMany: majorEventSubscriptionFindMany },
         eventAttendance: {
-          findMany: jest.fn().mockResolvedValue([
-            { personId: person.id, eventId: pendingEvent.id, person },
-          ]),
+          findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: pendingEvent.id, person }]),
         },
       } as never);
 
@@ -341,9 +349,9 @@ describe('CertificateEligibilityService', () => {
       },
     });
 
-    await expect(
-      service.resolveEligibleRecipients({ ...config, paymentTiers: [' ALUNO '] } as never),
-    ).resolves.toEqual([{ person, events: [tierEvent] }]);
+    await expect(service.resolveEligibleRecipients({ ...config, paymentTiers: [' ALUNO '] } as never)).resolves.toEqual(
+      [{ person, events: [tierEvent] }],
+    );
   });
 
   it.each([CertificateIssuedTo.LECTURER, CertificateIssuedTo.OTHER, CertificateIssuedTo.SPORTS_PLAYER])(
@@ -351,22 +359,30 @@ describe('CertificateEligibilityService', () => {
     async (issuedTo) => {
       const recipients = [{ person, events: [event] }];
       const majorEventSubscription = { findMany: jest.fn() };
-      const service = new CertificateEligibilityService({
-        people: { findFirst: jest.fn().mockResolvedValue(person) },
-        eventLecturer: { findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: event.id, person }]) },
-        majorEventSubscription,
-      } as never, { resolve: jest.fn().mockResolvedValue(recipients) } as never,
-      { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never);
+      const service = new CertificateEligibilityService(
+        {
+          people: { findFirst: jest.fn().mockResolvedValue(person) },
+          eventLecturer: {
+            findMany: jest.fn().mockResolvedValue([{ personId: person.id, eventId: event.id, person }]),
+          },
+          majorEventSubscription,
+        } as never,
+        { resolve: jest.fn().mockResolvedValue(recipients) } as never,
+        { getEventInvitationFacts: jest.fn().mockResolvedValue(new Map()) } as never,
+      );
       await expect(
-        service.resolveEligibleRecipients({
-          ...config,
-          scope: CertificateScope.EVENT,
-          eventId: event.id,
-          event,
-          issuedTo,
-          paymentTiers: ['Aluno'],
-          attendeeEligibility: 'INVITED_ONLY',
-        } as never, person.id),
+        service.resolveEligibleRecipients(
+          {
+            ...config,
+            scope: CertificateScope.EVENT,
+            eventId: event.id,
+            event,
+            issuedTo,
+            paymentTiers: ['Aluno'],
+            attendeeEligibility: 'INVITED_ONLY',
+          } as never,
+          person.id,
+        ),
       ).resolves.toEqual(recipients);
       expect(majorEventSubscription.findMany).not.toHaveBeenCalled();
     },
@@ -519,9 +535,9 @@ describe('CertificateEligibilityService', () => {
         ]),
       },
       eventSubscription: {
-        findMany: jest.fn().mockResolvedValue(
-          groupedEvents.map((groupedEvent) => ({ eventId: groupedEvent.id, personId: person.id })),
-        ),
+        findMany: jest
+          .fn()
+          .mockResolvedValue(groupedEvents.map((groupedEvent) => ({ eventId: groupedEvent.id, personId: person.id }))),
       },
       event: {
         findMany: jest.fn().mockResolvedValue(groupedEvents),
@@ -956,7 +972,9 @@ describe('CertificateEligibilityService', () => {
       event: { findMany: eventFindMany },
     });
 
-    await expect(service.resolveEligibleRecipients({ ...config, attendeeEligibility: 'ANYONE' } as never)).resolves.toEqual([]);
+    await expect(
+      service.resolveEligibleRecipients({ ...config, attendeeEligibility: 'ANYONE' } as never),
+    ).resolves.toEqual([]);
     expect(majorEventSubscriptionFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ subscriptionStatus: SubscriptionStatus.CONFIRMED }),
@@ -1059,9 +1077,11 @@ describe('CertificateEligibilityService', () => {
       eventGroup: { findFirst: eventGroupFindFirst },
       event: { findMany: jest.fn().mockResolvedValue(groupedEvents) },
       eventAttendance: {
-        findMany: jest.fn().mockResolvedValue(
-          groupedEvents.map((groupedEvent) => ({ personId: person.id, eventId: groupedEvent.id, person })),
-        ),
+        findMany: jest
+          .fn()
+          .mockResolvedValue(
+            groupedEvents.map((groupedEvent) => ({ personId: person.id, eventId: groupedEvent.id, person })),
+          ),
       },
     });
 
@@ -1083,31 +1103,34 @@ describe('CertificateEligibilityService', () => {
     ).resolves.toEqual([{ person, events: [groupedEvents[0]] }]);
   });
 
-  it.each(['ANYONE', 'INVITED_ONLY'])('keeps certificate eligibility independent of the online %s policy', async (policy) => {
-    const policyEvent = {
-      ...event,
-      majorEventId: null,
-      majorEvent: null,
-      allowSubscription: true,
-      attendanceEligibility: policy,
-      shouldIssueCertificateForNonSubscribedAttendees: false,
-    };
-    const service = createService({
-      event: { findFirst: jest.fn().mockResolvedValue(policyEvent) },
-      eventAttendance: {
-        findMany: jest.fn().mockResolvedValue([{ personId: person.id, person }]),
-      },
-    });
+  it.each(['ANYONE', 'INVITED_ONLY'])(
+    'keeps certificate eligibility independent of the online %s policy',
+    async (policy) => {
+      const policyEvent = {
+        ...event,
+        majorEventId: null,
+        majorEvent: null,
+        allowSubscription: true,
+        attendanceEligibility: policy,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+      };
+      const service = createService({
+        event: { findFirst: jest.fn().mockResolvedValue(policyEvent) },
+        eventAttendance: {
+          findMany: jest.fn().mockResolvedValue([{ personId: person.id, person }]),
+        },
+      });
 
-    await expect(
-      service.resolveEligibleRecipients({
-        ...config,
-        scope: CertificateScope.EVENT,
-        eventId: policyEvent.id,
-        attendeeEligibility: null,
-      } as never),
-    ).resolves.toEqual([]);
-  });
+      await expect(
+        service.resolveEligibleRecipients({
+          ...config,
+          scope: CertificateScope.EVENT,
+          eventId: policyEvent.id,
+          attendeeEligibility: null,
+        } as never),
+      ).resolves.toEqual([]);
+    },
+  );
 
   it('resolves lecturer configs from event lecturers', async () => {
     const eventLecturerFindMany = jest.fn().mockResolvedValue([

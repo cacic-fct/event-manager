@@ -160,8 +160,12 @@ export class SubscriptionsService {
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((majorEventId) => {
-        if (this.selectedMajorEvent()?.id !== majorEventId) this.selectedMajorEvent.set(null);
-        if (!majorEventId) this.stopMajorEventLiveUpdates();
+        if (this.selectedMajorEvent()?.id !== majorEventId) {
+          this.selectedMajorEvent.set(null);
+        }
+        if (!majorEventId) {
+          this.stopMajorEventLiveUpdates();
+        }
       });
     bindLiveSearch({
       control: this.eventSubscriptionSearchForm.controls.query,
@@ -393,9 +397,13 @@ export class SubscriptionsService {
       this.selectMajorEventSubscription(null, false);
       return;
     }
-    if (!selected || this.editMode()) return;
+    if (!selected || this.editMode()) {
+      return;
+    }
     const refreshed = visibleSubscriptions.find((item) => item.id === selected.id);
-    if (refreshed) this.selectMajorEventSubscription(refreshed, false);
+    if (refreshed) {
+      this.selectMajorEventSubscription(refreshed, false);
+    }
   }
 
   private watchEventSubscriptions(eventId: string): void {

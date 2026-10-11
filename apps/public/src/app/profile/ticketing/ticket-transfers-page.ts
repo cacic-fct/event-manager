@@ -95,16 +95,22 @@ export class TicketTransfersPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (transfers) => {
-          if (requestId === this.requestId) this.state.set({ status: 'ready', transfers });
+          if (requestId === this.requestId) {
+            this.state.set({ status: 'ready', transfers });
+          }
         },
         error: (error: unknown) => {
-          if (requestId === this.requestId) void this.routeErrors.navigate(routePageErrorStatus(error));
+          if (requestId === this.requestId) {
+            void this.routeErrors.navigate(routePageErrorStatus(error));
+          }
         },
       });
   }
 
   private refreshForChange(invalidation: TicketRealtimeInvalidation): void {
-    if (invalidation.type === 'TRANSFERS_CHANGED' || invalidation.type === 'TICKETS_CHANGED') this.load();
+    if (invalidation.type === 'TRANSFERS_CHANGED' || invalidation.type === 'TICKETS_CHANGED') {
+      this.load();
+    }
   }
 
   private listItem(

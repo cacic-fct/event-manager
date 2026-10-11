@@ -3,10 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/shared-event-participation/src",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:util"
-  ],
+  "tags": ["scope:shared", "type:util"],
   "targets": {
     "test": {
       "executor": "nx:run-commands",

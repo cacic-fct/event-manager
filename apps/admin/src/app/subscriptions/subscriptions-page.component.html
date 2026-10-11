@@ -2,7 +2,10 @@
   @if (!inWorkspaceShell) {
     <h1>Inscrições e interesses</h1>
   }
-  <app-event-context-picker [hideInShell]="context() !== null" [allowGroups]="interestsMode()" [context]="context()"
+  <app-event-context-picker
+    [hideInShell]="context() !== null"
+    [allowGroups]="interestsMode()"
+    [context]="context()"
     (contextChange)="selectContext($event)" />
   @if (interestsMode()) {
     @if (context()?.kind !== 'group') {
@@ -11,8 +14,12 @@
   } @else {
     <a mat-button [routerLink]="interestsLink()">Consultar interesses</a>
   }
-  @if (contextLoading()) { <mat-progress-bar mode="indeterminate" aria-label="Carregando inscrições" /> }
-  @if (contextError()) { <p role="alert">{{ contextError() }}</p> }
+  @if (contextLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando inscrições" />
+  }
+  @if (contextError()) {
+    <p role="alert">{{ contextError() }}</p>
+  }
   @if (interestsMode()) {
     <app-workspace-event-interests [context]="context()" />
   } @else if (context() && !contextLoading() && !contextError()) {
@@ -23,6 +30,8 @@
         [pendingReceiptsCount]="selectedMajorEventPendingReceiptsCount()" />
     }
   } @else if (!context()) {
-    <p>Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.</p>
+    <p>
+      Escolha o evento ou grande evento acima para consultar inscrições, incluir participantes e acompanhar pagamentos.
+    </p>
   }
 </section>

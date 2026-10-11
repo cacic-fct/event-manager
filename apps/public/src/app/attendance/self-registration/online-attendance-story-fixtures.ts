@@ -56,7 +56,10 @@ export const onlineAttendanceStoryControlArgTypes = {
     description: 'Selects the response returned when the participant confirms the code.',
   },
   expectedCode: { control: 'text', description: 'Sets the four-character code accepted by the mock.' },
-  unregisteredWalkIn: { control: 'boolean', description: 'Allows manual attendance without a registration or prior interest.' },
+  unregisteredWalkIn: {
+    control: 'boolean',
+    description: 'Allows manual attendance without a registration or prior interest.',
+  },
   retryAfterSeconds: {
     control: { type: 'range', min: 1, max: 60, step: 1 },
     description: 'Sets the retry delay shown after too many attempts.',
@@ -127,18 +130,19 @@ export function onlineAttendanceStoryHandlers(context: MutableStoryContext<Onlin
       }
 
       if (query.includes('CurrentUserWalkInAttendanceEvent')) {
-        const publicEvent = controls.state === 'empty'
-          ? null
-          : {
-              ...createPublicStoryEventFromControls(controls, { id: 'event-1' }),
-              attendanceEligibility: 'ANYONE',
-              shouldCollectAttendance: true,
-              isOnlineAttendanceAllowed: true,
-              startDate: publicFixtureDateFromNow(-1),
-              endDate: publicFixtureDateFromNow(1),
-              onlineAttendanceStartDate: publicFixtureDateFromNow(-1),
-              onlineAttendanceEndDate: publicFixtureDateFromNow(1),
-            };
+        const publicEvent =
+          controls.state === 'empty'
+            ? null
+            : {
+                ...createPublicStoryEventFromControls(controls, { id: 'event-1' }),
+                attendanceEligibility: 'ANYONE',
+                shouldCollectAttendance: true,
+                isOnlineAttendanceAllowed: true,
+                startDate: publicFixtureDateFromNow(-1),
+                endDate: publicFixtureDateFromNow(1),
+                onlineAttendanceStartDate: publicFixtureDateFromNow(-1),
+                onlineAttendanceEndDate: publicFixtureDateFromNow(1),
+              };
         return HttpResponse.json({ data: { publicEvent, currentUserEventAttendance: null } });
       }
 
@@ -149,7 +153,10 @@ export function onlineAttendanceStoryHandlers(context: MutableStoryContext<Onlin
 
         return HttpResponse.json({
           data: {
-            currentUserPendingOnlineAttendanceEvents: (controls.unregisteredWalkIn ? [] : createOnlineAttendancePendingEvents(controls)).map((event) => ({
+            currentUserPendingOnlineAttendanceEvents: (controls.unregisteredWalkIn
+              ? []
+              : createOnlineAttendancePendingEvents(controls)
+            ).map((event) => ({
               eventId: event.id,
               event,
             })),

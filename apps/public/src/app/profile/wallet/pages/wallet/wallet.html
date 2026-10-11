@@ -24,13 +24,14 @@
   <button matIconButton type="button" aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
     <mat-icon>print</mat-icon>
   </button>
-  } @if (walletView() === 'detail') {
-    @if (selectedTicket(); as eventTicket) {
-      <a matIconButton [routerLink]="['/profile/wallet/tickets', eventTicket.id]" [attr.aria-label]="'Mais informações sobre ' + eventTicket.name">
-        <mat-icon>more_vert</mat-icon>
-      </a>
-    }
-  } @if (serviceWorkerService.hasServiceWorker()) {
+  } @if (walletView() === 'detail') { @if (selectedTicket(); as eventTicket) {
+  <a
+    matIconButton
+    [routerLink]="['/profile/wallet/tickets', eventTicket.id]"
+    [attr.aria-label]="'Mais informações sobre ' + eventTicket.name">
+    <mat-icon>more_vert</mat-icon>
+  </a>
+  } } @if (serviceWorkerService.hasServiceWorker()) {
   <button matIconButton aria-label="Disponível off-line" matTooltip="Disponível off-line" (click)="availableOffline()">
     <mat-icon>cloud_done</mat-icon>
   </button>
@@ -47,9 +48,8 @@
 
 <main class="global-container wallet-page" [class.wallet-page-detail]="walletView() === 'detail'">
   @if (ticketsLoading()) {
-    <mat-progress-bar mode="indeterminate" aria-label="Carregando seus bilhetes"></mat-progress-bar>
-  }
-  @if (walletView() !== 'detail') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando seus bilhetes"></mat-progress-bar>
+  } @if (walletView() !== 'detail') {
   <section
     #topCardSlot
     class="wallet-primary-card"
@@ -82,35 +82,35 @@
   } @else {
   <section #detailCardSlot class="wallet-card-detail" aria-label="Cartão selecionado">
     @if (selectedCardEntry(); as selectedEntry) {
-      <app-wallet-card
-        [user]="cardUser()"
-        [kind]="selectedEntry.kind"
-        [ticket]="selectedEntry.ticket ?? null"
-        [ticketStatus]="selectedEntry.ticketStatus ?? null"
-        [selectionId]="selectedEntry.selectionId"
-        (cardSelected)="selectCard($event)" />
+    <app-wallet-card
+      [user]="cardUser()"
+      [kind]="selectedEntry.kind"
+      [ticket]="selectedEntry.ticket ?? null"
+      [ticketStatus]="selectedEntry.ticketStatus ?? null"
+      [selectionId]="selectedEntry.selectionId"
+      (cardSelected)="selectCard($event)" />
     }
   </section>
-  }
-  @if (walletView() === 'list' && expiredTickets().length > 0) {
-    <section class="wallet-ticket-archive" aria-label="Bilhetes utilizados, revogados ou expirados">
-      <button
-        mat-stroked-button
-        type="button"
-        [attr.aria-expanded]="showExpiredTickets()"
-        (click)="toggleExpiredTickets()">
-        {{ showExpiredTickets() ? 'Ocultar bilhetes expirados' : 'Ver ' + expiredTickets().length + ' bilhetes expirados' }}
+  } @if (walletView() === 'list' && expiredTickets().length > 0) {
+  <section class="wallet-ticket-archive" aria-label="Bilhetes utilizados, revogados ou expirados">
+    <button
+      mat-stroked-button
+      type="button"
+      [attr.aria-expanded]="showExpiredTickets()"
+      (click)="toggleExpiredTickets()">
+      {{ showExpiredTickets() ? 'Ocultar bilhetes expirados' : 'Ver ' + expiredTickets().length + ' bilhetes expirados'
+      }}
+    </button>
+    @if (showExpiredTickets()) {
+    <mat-action-list aria-label="Bilhetes expirados">
+      @for (ticket of expiredTickets(); track ticket.id) {
+      <button mat-list-item class="wallet-expired-ticket" type="button" (click)="openArchivedTicket(ticket.id)">
+        <span matListItemTitle>{{ ticket.name }}</span>
+        <span matListItemLine>{{ ticketArchiveReason(ticket) }}</span>
       </button>
-      @if (showExpiredTickets()) {
-        <mat-action-list aria-label="Bilhetes expirados">
-          @for (ticket of expiredTickets(); track ticket.id) {
-            <button mat-list-item class="wallet-expired-ticket" type="button" (click)="openArchivedTicket(ticket.id)">
-              <span matListItemTitle>{{ ticket.name }}</span>
-              <span matListItemLine>{{ ticketArchiveReason(ticket) }}</span>
-            </button>
-          }
-        </mat-action-list>
       }
-    </section>
+    </mat-action-list>
+    }
+  </section>
   }
 </main>

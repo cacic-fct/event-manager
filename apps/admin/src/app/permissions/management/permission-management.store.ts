@@ -122,7 +122,9 @@ export class PermissionManagementStore {
   readonly groupAssignmentSearchActive = computed(() => this.groupAssignmentSearchQuery().trim().length >= 2);
   readonly groupAssignmentResults = computed(() => {
     const query = this.groupAssignmentSearchQuery().trim().toLocaleLowerCase('pt-BR');
-    if (query.length < 2) return [];
+    if (query.length < 2) {
+      return [];
+    }
     const assignedGroupIds = new Set(
       (this.roleDraft()?.assignments ?? [])
         .map((assignment) => assignment.groupId)
@@ -157,16 +159,22 @@ export class PermissionManagementStore {
       this.groups.set(groups);
       this.targets.set({ GLOBAL: [], EVENT: events, MAJOR_EVENT: majorEvents, EVENT_GROUP: eventGroups });
       const firstRole = roles[0];
-      if (firstRole) this.selectRole(firstRole, true);
+      if (firstRole) {
+        this.selectRole(firstRole, true);
+      }
       const firstGroup = groups[0];
-      if (firstGroup) this.selectGroup(firstGroup, true);
+      if (firstGroup) {
+        this.selectGroup(firstGroup, true);
+      }
       if (linkedPerson) {
         this.peopleResults.set([linkedPerson]);
         this.selectedPerson.set(linkedPerson);
         this.selectedTab.set(1);
       }
     } catch (error) {
-      if (personId && this.routeResourceErrors.redirectIfUnavailable(error)) return;
+      if (personId && this.routeResourceErrors.redirectIfUnavailable(error)) {
+        return;
+      }
       this.loadError.set(true);
       this.feedback.error(error, 'Não foi possível carregar o gerenciamento de permissões.');
     } finally {
@@ -180,26 +188,38 @@ export class PermissionManagementStore {
     for (let skip = 0; ; skip += pageSize) {
       const page = await firstValueFrom(this.api.listTargets(scope, skip, pageSize));
       targets.push(...page);
-      if (page.length < pageSize) return targets;
+      if (page.length < pageSize) {
+        return targets;
+      }
     }
   }
 
   async toggleArchived(checked: boolean): Promise<void> {
-    if (this.pending.blockNavigation()) return;
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.showArchived.set(checked);
     await this.load();
   }
 
   selectTab(index: number): void {
-    if (index === this.selectedTab()) return;
-    if (this.pending.blockNavigation()) return;
+    if (index === this.selectedTab()) {
+      return;
+    }
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedTab.set(index);
     this.pending.clear();
   }
 
   selectRole(role: PermissionRole, force = false): void {
-    if (!force && role.id === this.selectedRoleId()) return;
-    if (!force && role.id !== this.selectedRoleId() && this.pending.blockNavigation()) return;
+    if (!force && role.id === this.selectedRoleId()) {
+      return;
+    }
+    if (!force && role.id !== this.selectedRoleId() && this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedRoleId.set(role.id);
     this.groupAssignmentSearchQuery.set('');
     this.roleDraft.set(this.toRoleDraft(role));
@@ -207,16 +227,24 @@ export class PermissionManagementStore {
   }
 
   selectGroup(group: PermissionGroup, force = false): void {
-    if (!force && group.id === this.selectedGroupId()) return;
-    if (!force && group.id !== this.selectedGroupId() && this.pending.blockNavigation()) return;
+    if (!force && group.id === this.selectedGroupId()) {
+      return;
+    }
+    if (!force && group.id !== this.selectedGroupId() && this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedGroupId.set(group.id);
     this.groupDraft.set(this.toGroupDraft(group));
     this.pending.clear();
   }
 
   startNewRole(template: EventManagerRoleTemplate | null): void {
-    if (!this.canCreate()) return;
-    if (this.pending.blockNavigation()) return;
+    if (!this.canCreate()) {
+      return;
+    }
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedRoleId.set(null);
     this.groupAssignmentSearchQuery.set('');
     this.roleDraft.set({
@@ -238,8 +266,12 @@ export class PermissionManagementStore {
 
   duplicateRole(): void {
     const draft = this.roleDraft();
-    if (!draft || draft.isExternal || !this.canCreate()) return;
-    if (this.pending.blockNavigation()) return;
+    if (!draft || draft.isExternal || !this.canCreate()) {
+      return;
+    }
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.roleDraft.set({
       ...draft,
       id: null,
@@ -255,8 +287,12 @@ export class PermissionManagementStore {
   }
 
   startNewGroup(): void {
-    if (!this.canCreate()) return;
-    if (this.pending.blockNavigation()) return;
+    if (!this.canCreate()) {
+      return;
+    }
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedGroupId.set(null);
     this.groupDraft.set({
       id: null,
@@ -272,22 +308,30 @@ export class PermissionManagementStore {
 
   patchRole(patch: Partial<RoleDraft>): void {
     const draft = this.roleDraft();
-    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) return;
-    if (draft.isSystem && Object.keys(patch).some((key) => key !== 'assignments')) return;
+    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) {
+      return;
+    }
+    if (draft.isSystem && Object.keys(patch).some((key) => key !== 'assignments')) {
+      return;
+    }
     this.roleDraft.set({ ...draft, ...patch });
     this.pending.markDirty();
   }
 
   patchGroup(patch: Partial<GroupDraft>): void {
     const draft = this.groupDraft();
-    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) return;
+    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) {
+      return;
+    }
     this.groupDraft.set({ ...draft, ...patch });
     this.pending.markDirty();
   }
 
   async togglePermission(permission: Permission, checked: boolean): Promise<void> {
     const draft = this.roleDraft();
-    if (!draft || draft.isSystem || draft.inheritedPermissions.includes(permission)) return;
+    if (!draft || draft.isSystem || draft.inheritedPermissions.includes(permission)) {
+      return;
+    }
     let next = checked
       ? expandHardPermissionDependencies([...draft.permissions, permission])
       : removePermissionAndDependents(draft.permissions, permission);
@@ -302,7 +346,9 @@ export class PermissionManagementStore {
             })
             .afterClosed(),
         );
-        if (!accepted) return;
+        if (!accepted) {
+          return;
+        }
         next = expandHardPermissionDependencies([...next, ...missing.flatMap((item) => item.requires)]);
       }
     }
@@ -329,7 +375,9 @@ export class PermissionManagementStore {
       return 'O escopo global já cobre todos os demais. Remova os escopos redundantes.';
     }
     const keys = scopes.map((scope) => `${scope.scope}:${this.targetId(scope) ?? 'global'}`);
-    if (new Set(keys).size !== keys.length) return 'O mesmo escopo foi adicionado mais de uma vez.';
+    if (new Set(keys).size !== keys.length) {
+      return 'O mesmo escopo foi adicionado mais de uma vez.';
+    }
     for (let leftIndex = 0; leftIndex < scopes.length; leftIndex += 1) {
       for (let rightIndex = leftIndex + 1; rightIndex < scopes.length; rightIndex += 1) {
         const left = scopes[leftIndex];
@@ -360,7 +408,9 @@ export class PermissionManagementStore {
 
   toggleParentRole(parentRoleId: string, checked: boolean): void {
     const draft = this.roleDraft();
-    if (!draft || draft.isSystem) return;
+    if (!draft || draft.isSystem) {
+      return;
+    }
     const parentRoleIds = checked
       ? [...new Set([...draft.parentRoleIds, parentRoleId])]
       : draft.parentRoleIds.filter((id) => id !== parentRoleId);
@@ -372,26 +422,34 @@ export class PermissionManagementStore {
 
   addPersonAssignment(person: Person): void {
     const draft = this.roleDraft();
-    if (!draft || draft.assignments.some((assignment) => assignment.personId === person.id)) return;
+    if (!draft || draft.assignments.some((assignment) => assignment.personId === person.id)) {
+      return;
+    }
     this.patchRole({ assignments: [...draft.assignments, this.newAssignment({ personId: person.id })] });
   }
 
   addGroupAssignment(groupId: string): void {
     const draft = this.roleDraft();
-    if (!draft || !groupId || draft.assignments.some((assignment) => assignment.groupId === groupId)) return;
+    if (!draft || !groupId || draft.assignments.some((assignment) => assignment.groupId === groupId)) {
+      return;
+    }
     this.patchRole({ assignments: [...draft.assignments, this.newAssignment({ groupId })] });
     this.groupAssignmentSearchQuery.set('');
   }
 
   removeAssignment(index: number): void {
     const draft = this.roleDraft();
-    if (!draft) return;
+    if (!draft) {
+      return;
+    }
     this.patchRole({ assignments: draft.assignments.filter((_, itemIndex) => itemIndex !== index) });
   }
 
   patchAssignment(index: number, patch: Partial<PermissionRoleSaveInput['assignments'][number]>): void {
     const draft = this.roleDraft();
-    if (!draft) return;
+    if (!draft) {
+      return;
+    }
     this.patchRole({
       assignments: draft.assignments.map((assignment, itemIndex) =>
         itemIndex === index ? { ...assignment, ...patch } : assignment,
@@ -402,7 +460,9 @@ export class PermissionManagementStore {
   addScope(assignmentIndex: number): void {
     const draft = this.roleDraft();
     const assignment = draft?.assignments[assignmentIndex];
-    if (!draft || !assignment) return;
+    if (!draft || !assignment) {
+      return;
+    }
     this.patchAssignment(assignmentIndex, { scopes: [...assignment.scopes, this.newScope('EVENT')] });
   }
 
@@ -413,10 +473,16 @@ export class PermissionManagementStore {
   ): void {
     const draft = this.roleDraft();
     const assignment = draft?.assignments[assignmentIndex];
-    if (!draft || !assignment) return;
+    if (!draft || !assignment) {
+      return;
+    }
     const scopes = assignment.scopes.map((scope, itemIndex) => {
-      if (itemIndex !== scopeIndex) return scope;
-      if (patch.scope && patch.scope !== scope.scope) return { ...this.newScope(patch.scope), ...patch };
+      if (itemIndex !== scopeIndex) {
+        return scope;
+      }
+      if (patch.scope && patch.scope !== scope.scope) {
+        return { ...this.newScope(patch.scope), ...patch };
+      }
       return { ...scope, ...patch };
     });
     this.patchAssignment(assignmentIndex, { scopes });
@@ -424,12 +490,14 @@ export class PermissionManagementStore {
 
   removeScope(assignmentIndex: number, scopeIndex: number): void {
     const assignment = this.roleDraft()?.assignments[assignmentIndex];
-    if (!assignment || assignment.scopes.length === 1) return;
+    if (!assignment || assignment.scopes.length === 1) {
+      return;
+    }
     this.patchAssignment(assignmentIndex, { scopes: assignment.scopes.filter((_, index) => index !== scopeIndex) });
   }
 
   assignmentName(assignment: PermissionRoleSaveInput['assignments'][number]): string {
-    if (assignment.personId)
+    if (assignment.personId) {
       return (
         this.peopleResults().find((person) => person.id === assignment.personId)?.name ??
         this.roles()
@@ -437,13 +505,18 @@ export class PermissionManagementStore {
           .find((item) => item.personId === assignment.personId)?.subjectName ??
         'Pessoa'
       );
+    }
     return this.groups().find((group) => group.id === assignment.groupId)?.name ?? 'Grupo';
   }
 
   assignmentHasLinkedUser(assignment: PermissionRoleSaveInput['assignments'][number]): boolean {
-    if (!assignment.personId) return true;
+    if (!assignment.personId) {
+      return true;
+    }
     const result = this.peopleResults().find((person) => person.id === assignment.personId);
-    if (result) return Boolean(result.userId);
+    if (result) {
+      return Boolean(result.userId);
+    }
     return Boolean(
       this.roles()
         .flatMap((role) => role.assignments)
@@ -472,7 +545,9 @@ export class PermissionManagementStore {
   }
 
   selectPerson(person: Person): void {
-    if (this.pending.blockNavigation()) return;
+    if (this.pending.blockNavigation()) {
+      return;
+    }
     this.selectedPerson.set(person);
     this.pending.clear();
   }
@@ -491,7 +566,9 @@ export class PermissionManagementStore {
 
   addGroupMember(person: Person): void {
     const draft = this.groupDraft();
-    if (!draft || draft.members.some((member) => member.personId === person.id)) return;
+    if (!draft || draft.members.some((member) => member.personId === person.id)) {
+      return;
+    }
     this.patchGroup({
       members: [...draft.members, { personId: person.id, validFrom: null, validUntil: null, unlimited: true }],
     });
@@ -499,15 +576,18 @@ export class PermissionManagementStore {
 
   removeGroupMember(index: number): void {
     const draft = this.groupDraft();
-    if (draft) this.patchGroup({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) });
+    if (draft) {
+      this.patchGroup({ members: draft.members.filter((_, itemIndex) => itemIndex !== index) });
+    }
   }
 
   patchGroupMember(index: number, patch: Partial<PermissionGroupSaveInput['members'][number]>): void {
     const draft = this.groupDraft();
-    if (draft)
+    if (draft) {
       this.patchGroup({
         members: draft.members.map((member, itemIndex) => (itemIndex === index ? { ...member, ...patch } : member)),
       });
+    }
   }
 
   groupMemberName(personId: string): string {
@@ -533,9 +613,13 @@ export class PermissionManagementStore {
   }
 
   dateTimeForInput(value: string | Date | null | undefined): string {
-    if (!value) return '';
+    if (!value) {
+      return '';
+    }
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
     date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
     return date.toISOString().slice(0, 16);
   }
@@ -545,13 +629,19 @@ export class PermissionManagementStore {
   }
 
   private async saveCurrentDraft(): Promise<void> {
-    if (this.selectedTab() === 0) await this.saveRole();
-    if (this.selectedTab() === 2) await this.saveGroup();
+    if (this.selectedTab() === 0) {
+      await this.saveRole();
+    }
+    if (this.selectedTab() === 2) {
+      await this.saveGroup();
+    }
   }
 
   async archiveCurrentRole(): Promise<void> {
     const draft = this.roleDraft();
-    if (!draft?.id || draft.isSystem || !this.canDelete()) return;
+    if (!draft?.id || draft.isSystem || !this.canDelete()) {
+      return;
+    }
     const confirmed = await firstValueFrom(
       this.dialog
         .open(ConfirmationDialogComponent, {
@@ -564,15 +654,20 @@ export class PermissionManagementStore {
         })
         .afterClosed(),
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
     try {
       await firstValueFrom(this.api.archiveRole(draft.id));
       this.roles.update((roles) => roles.filter((role) => role.id !== draft.id));
       const next = this.roles()[0];
       this.roleDraft.set(null);
       this.selectedRoleId.set(null);
-      if (next) this.selectRole(next, true);
-      else this.pending.clear();
+      if (next) {
+        this.selectRole(next, true);
+      } else {
+        this.pending.clear();
+      }
       this.snackbar.open('Cargo arquivado.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível arquivar o cargo.');
@@ -581,7 +676,9 @@ export class PermissionManagementStore {
 
   async archiveCurrentGroup(): Promise<void> {
     const draft = this.groupDraft();
-    if (!draft?.id || !this.canDelete()) return;
+    if (!draft?.id || !this.canDelete()) {
+      return;
+    }
     const confirmed = await firstValueFrom(
       this.dialog
         .open(ConfirmationDialogComponent, {
@@ -594,15 +691,20 @@ export class PermissionManagementStore {
         })
         .afterClosed(),
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
     try {
       await firstValueFrom(this.api.archiveGroup(draft.id));
       this.groups.update((groups) => groups.filter((group) => group.id !== draft.id));
       const next = this.groups()[0];
       this.groupDraft.set(null);
       this.selectedGroupId.set(null);
-      if (next) this.selectGroup(next, true);
-      else this.pending.clear();
+      if (next) {
+        this.selectGroup(next, true);
+      } else {
+        this.pending.clear();
+      }
       this.snackbar.open('Grupo arquivado.', 'Fechar', { duration: 2500 });
     } catch (error) {
       this.feedback.error(error, 'Não foi possível arquivar o grupo.');
@@ -611,7 +713,9 @@ export class PermissionManagementStore {
 
   private async saveRole(): Promise<void> {
     const draft = this.roleDraft();
-    if (!draft || draft.isExternal || this.saving()) return;
+    if (!draft || draft.isExternal || this.saving()) {
+      return;
+    }
     if (!draft.name.trim()) {
       this.snackbar.open('Informe o nome do cargo.', 'Fechar', { duration: 3000 });
       return;
@@ -656,7 +760,9 @@ export class PermissionManagementStore {
 
   private async saveGroup(): Promise<void> {
     const draft = this.groupDraft();
-    if (!draft || this.saving()) return;
+    if (!draft || this.saving()) {
+      return;
+    }
     this.saving.set(true);
     try {
       const saved = await firstValueFrom(
@@ -686,12 +792,18 @@ export class PermissionManagementStore {
   private resetCurrentDraft(): void {
     if (this.selectedTab() === 0) {
       const role = this.roles().find((item) => item.id === this.selectedRoleId());
-      if (role) this.selectRole(role, true);
-      else this.roleDraft.set(null);
+      if (role) {
+        this.selectRole(role, true);
+      } else {
+        this.roleDraft.set(null);
+      }
     } else if (this.selectedTab() === 2) {
       const group = this.groups().find((item) => item.id === this.selectedGroupId());
-      if (group) this.selectGroup(group, true);
-      else this.groupDraft.set(null);
+      if (group) {
+        this.selectGroup(group, true);
+      } else {
+        this.groupDraft.set(null);
+      }
     }
     this.pending.clear();
   }
@@ -782,11 +894,17 @@ export class PermissionManagementStore {
     while (currentId && currentScope !== 'GLOBAL') {
       const target = this.targets()[currentScope].find((item) => item.id === currentId);
       const parentId = target?.parentId ?? null;
-      if (!parentId || ancestors.has(parentId)) break;
+      if (!parentId || ancestors.has(parentId)) {
+        break;
+      }
       ancestors.add(parentId);
-      if (this.targets().EVENT_GROUP.some((item) => item.id === parentId)) currentScope = 'EVENT_GROUP';
-      else if (this.targets().MAJOR_EVENT.some((item) => item.id === parentId)) currentScope = 'MAJOR_EVENT';
-      else break;
+      if (this.targets().EVENT_GROUP.some((item) => item.id === parentId)) {
+        currentScope = 'EVENT_GROUP';
+      } else if (this.targets().MAJOR_EVENT.some((item) => item.id === parentId)) {
+        currentScope = 'MAJOR_EVENT';
+      } else {
+        break;
+      }
       currentId = parentId;
     }
     return ancestors;

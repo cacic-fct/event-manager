@@ -83,10 +83,8 @@ describe('admin feature route access', () => {
   });
 
   async function runGuard(): Promise<boolean | RedirectCommand | UrlTree> {
-    return TestBed.runInInjectionContext(() => canReadFeatureGuard(
-      { data: { id: 'events' } } as never,
-      [],
-      {} as never,
-    )) as Promise<boolean | RedirectCommand | UrlTree>;
+    return TestBed.runInInjectionContext(() =>
+      canReadFeatureGuard({ data: { id: 'events' } } as never, [], {} as never),
+    ) as Promise<boolean | RedirectCommand | UrlTree>;
   }
 });

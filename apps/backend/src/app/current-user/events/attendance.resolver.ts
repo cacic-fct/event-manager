@@ -3,10 +3,7 @@ import { isValidCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, NotFoundException, Optional, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
-import {
-  AttendanceEligibility,
-  isAttendanceEligible,
-} from '@cacic-fct/shared-event-participation';
+import { AttendanceEligibility, isAttendanceEligible } from '@cacic-fct/shared-event-participation';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
@@ -323,7 +320,9 @@ export class CurrentUserEventAttendanceResolver {
     },
   ): Promise<void> {
     // Ticket attendance is classified from the consumed ticket in this transaction.
-    if (event.ticketConfig?.enabled) return;
+    if (event.ticketConfig?.enabled) {
+      return;
+    }
     const policy = eventAttendanceEligibility(event);
     if (policy === AttendanceEligibility.ANYONE) {
       return;

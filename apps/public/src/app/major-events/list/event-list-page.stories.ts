@@ -106,9 +106,7 @@ const meta: Meta<MajorEventStoryArgs> = {
           useValue: {
             isAuthenticated: () => activeArgs.authenticated,
             user: () =>
-              activeArgs.authenticated
-                ? { sub: 'major-event-story-user', claims: { name: 'Storybook User' } }
-                : null,
+              activeArgs.authenticated ? { sub: 'major-event-story-user', claims: { name: 'Storybook User' } } : null,
             login: loginMock,
           },
         },

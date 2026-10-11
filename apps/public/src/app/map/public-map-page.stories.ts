@@ -235,7 +235,7 @@ const meta: Meta<PublicMapStoryArgs> = {
             provide: AuthService,
             useValue: {
               isAuthenticated: () => context.args.authenticated,
-              user: () => context.args.authenticated ? { sub: 'storybook-map-user' } : null,
+              user: () => (context.args.authenticated ? { sub: 'storybook-map-user' } : null),
             },
           },
           { provide: PublicMapCacheService, useClass: StoryMapCacheService },
@@ -358,7 +358,13 @@ export const DeepLinkedEvent: Story = {
 };
 
 export const OfflineCache: Story = {
-  args: { authenticated: false, apiState: 'offline', coordinateLayout: 'nearby', eventCount: 9, spreadRadiusMeters: 14 },
+  args: {
+    authenticated: false,
+    apiState: 'offline',
+    coordinateLayout: 'nearby',
+    eventCount: 9,
+    spreadRadiusMeters: 14,
+  },
   globals: { network: 'offline' },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
@@ -427,9 +433,15 @@ function storyLocation(args: PublicMapStoryArgs): PublicMapUserLocation {
 }
 
 function locationPermission(state: LocationState): PublicMapLocationPermission {
-  if (state === 'live') return 'granted';
-  if (state === 'denied') return 'denied';
-  if (state === 'unsupported') return 'unsupported';
+  if (state === 'live') {
+    return 'granted';
+  }
+  if (state === 'denied') {
+    return 'denied';
+  }
+  if (state === 'unsupported') {
+    return 'unsupported';
+  }
   return 'prompt';
 }
 

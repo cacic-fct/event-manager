@@ -79,10 +79,13 @@ export interface OfflineAttendanceSubmissionDialogData {
           <dd>
             @if (hasLocation()) {
               {{ data.submission.collectedLatitude | number: '1.6-6' }},
-              {{ data.submission.collectedLongitude | number: '1.6-6' }}@if (
+              {{ data.submission.collectedLongitude | number: '1.6-6' }}
+              @if (
                 data.submission.collectedAccuracyMeters !== null &&
                 data.submission.collectedAccuracyMeters !== undefined
-              ) {, precisão de {{ data.submission.collectedAccuracyMeters | number: '1.0-1' }} m}
+              ) {
+                , precisão de {{ data.submission.collectedAccuracyMeters | number: '1.0-1' }} m
+              }
             } @else {
               -
             }

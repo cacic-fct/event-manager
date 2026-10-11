@@ -4,12 +4,25 @@ import { TicketIssuanceService } from './ticket-issuance.service';
 function setup() {
   const now = new Date();
   const event = {
-    id: 'event', name: 'Kit', startDate: now, endDate: new Date(now.getTime() + 86_400_000), deletedAt: null,
-    majorEventId: 'major', eventGroup: null, majorEvent: { isPaymentRequired: false },
+    id: 'event',
+    name: 'Kit',
+    startDate: now,
+    endDate: new Date(now.getTime() + 86_400_000),
+    deletedAt: null,
+    majorEventId: 'major',
+    eventGroup: null,
+    majorEvent: { isPaymentRequired: false },
     ticketConfig: {
-      id: 'config', enabled: true, displayName: null, issueOnEventSubscription: false,
-      issueOnMajorEventSubscription: true, includedPriceTierIds: [] as string[], expirationMode: 'EVENT_END', customExpiresAt: null,
-      createdAt: new Date(now.getTime() - 60_000), updatedAt: new Date(now.getTime() - 60_000),
+      id: 'config',
+      enabled: true,
+      displayName: null,
+      issueOnEventSubscription: false,
+      issueOnMajorEventSubscription: true,
+      includedPriceTierIds: [] as string[],
+      expirationMode: 'EVENT_END',
+      customExpiresAt: null,
+      createdAt: new Date(now.getTime() - 60_000),
+      updatedAt: new Date(now.getTime() - 60_000),
     },
   };
   const existing = {
@@ -27,13 +40,18 @@ function setup() {
     $executeRaw: jest.fn().mockResolvedValue(0),
     $queryRaw: jest.fn().mockResolvedValue([]),
     event: { findUnique: jest.fn().mockResolvedValue(event) },
-    people: { findFirst: jest.fn().mockResolvedValue({ id: 'person', userId: 'user' }), findUnique: jest.fn().mockResolvedValue({ userId: 'user' }) },
+    people: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'person', userId: 'user' }),
+      findUnique: jest.fn().mockResolvedValue({ userId: 'user' }),
+    },
     user: { findUnique: jest.fn().mockResolvedValue({ name: 'Coletor', email: null }) },
     eventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
     majorEventSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
     eventTicket: {
-      findUnique: jest.fn().mockResolvedValue(existing), findFirst: jest.fn().mockResolvedValue(null),
-      findMany: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue(existing),
+      findUnique: jest.fn().mockResolvedValue(existing),
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn().mockResolvedValue(existing),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     ticketTransfer: { findMany: jest.fn().mockResolvedValue([]) },
@@ -53,38 +71,80 @@ describe('ticket issuance and redemption safety', () => {
     tx.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription' } as never);
     tx.eventTicket.findUnique.mockResolvedValue(null as never);
 
-    await expect(service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person')).resolves.toBeUndefined();
+    await expect(
+      service.syncForPerson(
+        tx as never,
+        'event',
+        'person',
+        'MAJOR_EVENT_SUBSCRIPTION',
+        'major-event-subscription:event:person',
+      ),
+    ).resolves.toBeUndefined();
     expect(tx.eventTicket.create).not.toHaveBeenCalled();
-    await expect(service.issueForPerson(tx as never, 'event', 'person', EventTicketIssueSource.ADMIN)).resolves.toBeDefined();
-    expect(tx.eventTicket.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ source: 'ADMIN', expiresAt: event.endDate }),
-    }));
+    await expect(
+      service.issueForPerson(tx as never, 'event', 'person', EventTicketIssueSource.ADMIN),
+    ).resolves.toBeDefined();
+    expect(tx.eventTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ source: 'ADMIN', expiresAt: event.endDate }),
+      }),
+    );
   });
 
   it.each(['cancellation', 'tier downgrade'])('revokes merged automatic provenance after %s', async (change) => {
     const { service, tx, event, existing } = setup();
     tx.$queryRaw.mockResolvedValue([{ id: 'merged-person' }] as never);
     tx.eventTicket.findUnique.mockResolvedValue(null as never);
-    tx.eventTicket.findFirst.mockResolvedValue({ ...existing, originalHolderPersonId: 'merged-person', sourceKey: 'major-event-subscription:event:merged-person' });
+    tx.eventTicket.findFirst.mockResolvedValue({
+      ...existing,
+      originalHolderPersonId: 'merged-person',
+      sourceKey: 'major-event-subscription:event:merged-person',
+    });
     if (change === 'tier downgrade') {
       event.ticketConfig.includedPriceTierIds = ['allowed-tier'];
       tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: 'Bronze' } as never);
     }
 
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
 
-    expect(tx.eventTicket.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ originalHolderPersonId: { in: ['person', 'merged-person'] }, holderPersonId: 'person', source: 'MAJOR_EVENT_SUBSCRIPTION' }),
-    }));
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'REVOKED' }) }));
+    expect(tx.eventTicket.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          originalHolderPersonId: { in: ['person', 'merged-person'] },
+          holderPersonId: 'person',
+          source: 'MAJOR_EVENT_SUBSCRIPTION',
+        }),
+      }),
+    );
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'REVOKED' }) }),
+    );
   });
 
   it('revokes a surviving ticket whose source key points to an archived duplicate', async () => {
     const { service, tx, existing } = setup();
     tx.eventTicket.findUnique.mockResolvedValue({ ...existing, status: 'REVOKED' });
-    tx.eventTicket.findFirst.mockResolvedValue({ ...existing, id: 'merged-ticket', originalHolderPersonId: 'merged-person' });
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'merged-ticket' }) }));
+    tx.eventTicket.findFirst.mockResolvedValue({
+      ...existing,
+      id: 'merged-ticket',
+      originalHolderPersonId: 'merged-person',
+    });
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'merged-ticket' }) }),
+    );
   });
 
   it('preserves transferred rights when cancellation resolves merged provenance', async () => {
@@ -92,7 +152,13 @@ describe('ticket issuance and redemption safety', () => {
     tx.eventTicket.findUnique.mockResolvedValue(null as never);
     tx.eventTicket.findFirst.mockResolvedValue({ ...existing, originalHolderPersonId: 'merged-person' });
     tx.eventTicketHistory.findFirst.mockResolvedValue({ id: 'transfer' } as never);
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
@@ -105,9 +171,11 @@ describe('ticket issuance and redemption safety', () => {
 
     expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.$executeRaw.mock.invocationCallOrder[0]);
     expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.event.findUnique.mock.invocationCallOrder[0]);
-    expect(tx.eventTicket.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ issuedAt: expect.any(Date), expiresAt: event.endDate }),
-    }));
+    expect(tx.eventTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ issuedAt: expect.any(Date), expiresAt: event.endDate }),
+      }),
+    );
   });
 
   it('revokes unused included tickets on cancellation even when event-level issuance is disabled', async () => {
@@ -115,8 +183,16 @@ describe('ticket issuance and redemption safety', () => {
     tx.ticketTransfer.findMany.mockResolvedValue([
       { authorUserId: 'author', senderUserId: 'holder', recipientUserId: 'recipient' },
     ] as never);
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'REVOKED' }) }));
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'REVOKED' }) }),
+    );
     expect(tx.auditLogEntry.create).toHaveBeenCalled();
     expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['author', 'holder', 'recipient'], {
       type: 'TRANSFERS_CHANGED',
@@ -138,12 +214,20 @@ describe('ticket issuance and redemption safety', () => {
       { authorUserId: 'author', senderUserId: 'holder', recipientUserId: 'recipient' },
     ] as never);
 
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
 
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ id: 'ticket', holderPersonId: 'person', status: 'ACTIVE' }),
-      data: expect.objectContaining({ status: 'REVOKED' }),
-    }));
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'ticket', holderPersonId: 'person', status: 'ACTIVE' }),
+        data: expect.objectContaining({ status: 'REVOKED' }),
+      }),
+    );
     expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['author', 'holder', 'recipient'], {
       type: 'TRANSFERS_CHANGED',
       eventId: 'event',
@@ -155,7 +239,13 @@ describe('ticket issuance and redemption safety', () => {
     const { service, tx, realtime } = setup();
     tx.eventTicket.updateMany.mockResolvedValue({ count: 0 });
 
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
 
     expect(tx.eventTicketHistory.create).not.toHaveBeenCalled();
     expect(tx.auditLogEntry.create).not.toHaveBeenCalled();
@@ -166,14 +256,26 @@ describe('ticket issuance and redemption safety', () => {
   it('preserves transferred tickets after cancellation, even if returned to the original holder', async () => {
     const { service, tx } = setup();
     tx.eventTicketHistory.findFirst.mockResolvedValue({ id: 'transfer-history' } as never);
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not revoke an already consumed pass when the subscription is canceled', async () => {
     const { service, tx, existing } = setup();
     tx.eventTicket.findUnique.mockResolvedValue({ ...existing, status: 'CONSUMED' });
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
@@ -187,33 +289,55 @@ describe('ticket issuance and redemption safety', () => {
       revokedAt: oldExpiresAt,
       revokedReason: 'SUBSCRIPTION_NO_LONGER_ELIGIBLE',
     };
-    tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: null, receiptValidatedAt: null, majorEvent: { isPaymentRequired: false } } as never);
+    tx.majorEventSubscription.findFirst.mockResolvedValue({
+      paymentTier: null,
+      receiptValidatedAt: null,
+      majorEvent: { isPaymentRequired: false },
+    } as never);
     tx.eventTicket.findUnique.mockResolvedValue(revokedTicket as never);
 
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
 
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        id: existing.id,
-        eventId: 'event',
-        holderPersonId: 'person',
-        status: 'REVOKED',
-        expiresAt: oldExpiresAt,
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: existing.id,
+          eventId: 'event',
+          holderPersonId: 'person',
+          status: 'REVOKED',
+          expiresAt: oldExpiresAt,
+        }),
+        data: expect.objectContaining({ status: 'ACTIVE', expiresAt: event.endDate, issuedAt: expect.any(Date) }),
       }),
-      data: expect.objectContaining({ status: 'ACTIVE', expiresAt: event.endDate, issuedAt: expect.any(Date) }),
-    }));
+    );
     const reactivation = tx.eventTicket.updateMany.mock.calls[0]?.[0];
     expect(reactivation?.data.issuedAt.getTime()).toBeGreaterThan(existing.issuedAt.getTime());
-    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ ticketId: existing.id, operation: 'ISSUED' }),
-    }));
-    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        entityId: existing.id,
-        before: expect.objectContaining({ issuedAt: existing.issuedAt.toISOString(), expiresAt: oldExpiresAt.toISOString() }),
-        after: expect.objectContaining({ issuedAt: reactivation?.data.issuedAt.toISOString(), expiresAt: event.endDate.toISOString() }),
+    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ ticketId: existing.id, operation: 'ISSUED' }),
       }),
-    }));
+    );
+    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          entityId: existing.id,
+          before: expect.objectContaining({
+            issuedAt: existing.issuedAt.toISOString(),
+            expiresAt: oldExpiresAt.toISOString(),
+          }),
+          after: expect.objectContaining({
+            issuedAt: reactivation?.data.issuedAt.toISOString(),
+            expiresAt: event.endDate.toISOString(),
+          }),
+        }),
+      }),
+    );
   });
 
   it('materializes expired waived-tier tickets at scan time without receipt validation', async () => {
@@ -230,21 +354,27 @@ describe('ticket issuance and redemption safety', () => {
 
     await service.syncForAttendance(tx as never, 'event', 'person', attendedAt);
 
-    expect(tx.eventTicket.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        source: EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION,
-        sourceKey: 'major-event-subscription:event:person',
-        issuedAt: attendedAt,
+    expect(tx.eventTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source: EventTicketIssueSource.MAJOR_EVENT_SUBSCRIPTION,
+          sourceKey: 'major-event-subscription:event:person',
+          issuedAt: attendedAt,
+        }),
       }),
-    }));
-    expect(tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        subscriptionStatus: 'CONFIRMED',
-        createdAt: { lte: attendedAt },
-        updatedAt: { lte: attendedAt },
+    );
+    expect(tx.majorEventSubscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          subscriptionStatus: 'CONFIRMED',
+          createdAt: { lte: attendedAt },
+          updatedAt: { lte: attendedAt },
+        }),
       }),
-    }));
-    const subscriptionQuery = tx.majorEventSubscription.findFirst.mock.calls[0]?.[0] as { where: Record<string, unknown> };
+    );
+    const subscriptionQuery = tx.majorEventSubscription.findFirst.mock.calls[0]?.[0] as {
+      where: Record<string, unknown>;
+    };
     expect(subscriptionQuery.where).not.toHaveProperty('receiptValidatedAt');
   });
 
@@ -254,16 +384,28 @@ describe('ticket issuance and redemption safety', () => {
     { label: 'transferred', status: 'REVOKED', revokedReason: 'SUBSCRIPTION_NO_LONGER_ELIGIBLE', transferred: true },
   ])('does not reactivate a $label ticket', async ({ status, revokedReason, transferred }) => {
     const { service, tx, existing } = setup();
-    tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: null, receiptValidatedAt: null, majorEvent: { isPaymentRequired: false } } as never);
+    tx.majorEventSubscription.findFirst.mockResolvedValue({
+      paymentTier: null,
+      receiptValidatedAt: null,
+      majorEvent: { isPaymentRequired: false },
+    } as never);
     tx.eventTicket.findUnique.mockResolvedValue({
       ...existing,
       status,
       revokedReason,
       expiresAt: new Date(Date.now() - 86_400_000),
     } as never);
-    if (transferred) tx.eventTicketHistory.findFirst.mockResolvedValue({ id: 'transfer-history' } as never);
+    if (transferred) {
+      tx.eventTicketHistory.findFirst.mockResolvedValue({ id: 'transfer-history' } as never);
+    }
 
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
 
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
     expect(tx.eventTicketHistory.create).not.toHaveBeenCalled();
@@ -272,42 +414,79 @@ describe('ticket issuance and redemption safety', () => {
   it('does not remint transferred rights when another subscription qualifies', async () => {
     const { service, tx, existing, event } = setup();
     event.ticketConfig.issueOnEventSubscription = true;
-    const transferred = { ...existing, holderPersonId: 'colleague', source: 'EVENT_SUBSCRIPTION', sourceKey: 'event-subscription:event:person' };
-    tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: null, receiptValidatedAt: new Date(), majorEvent: { isPaymentRequired: false } } as never);
-    tx.eventTicket.findUnique.mockImplementation(async (input) => input.where.sourceKey === transferred.sourceKey ? transferred : null);
-    tx.eventTicket.findFirst.mockImplementation(async (input) => input.where.originalHolderPersonId?.in?.includes('person') ? transferred : null);
-    tx.eventTicket.findMany.mockImplementation(async (input) => input.where.originalHolderPersonId?.in?.includes('person') ? [transferred] : []);
+    const transferred = {
+      ...existing,
+      holderPersonId: 'colleague',
+      source: 'EVENT_SUBSCRIPTION',
+      sourceKey: 'event-subscription:event:person',
+    };
+    tx.majorEventSubscription.findFirst.mockResolvedValue({
+      paymentTier: null,
+      receiptValidatedAt: new Date(),
+      majorEvent: { isPaymentRequired: false },
+    } as never);
+    tx.eventTicket.findUnique.mockImplementation(async (input) =>
+      input.where.sourceKey === transferred.sourceKey ? transferred : null,
+    );
+    tx.eventTicket.findFirst.mockImplementation(async (input) =>
+      input.where.originalHolderPersonId?.in?.includes('person') ? transferred : null,
+    );
+    tx.eventTicket.findMany.mockImplementation(async (input) =>
+      input.where.originalHolderPersonId?.in?.includes('person') ? [transferred] : [],
+    );
     tx.eventTicketHistory.findFirst.mockResolvedValue({ id: 'transfer-history' } as never);
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
     expect(tx.eventTicket.create).not.toHaveBeenCalled();
   });
 
   it('does not remint rights transferred by a person later merged into the account', async () => {
     const { service, tx, existing } = setup();
     tx.$queryRaw.mockResolvedValue([{ id: 'person' }, { id: 'old-person' }] as never);
-    tx.majorEventSubscription.findFirst.mockResolvedValue({ paymentTier: null, receiptValidatedAt: null, majorEvent: { isPaymentRequired: false } } as never);
+    tx.majorEventSubscription.findFirst.mockResolvedValue({
+      paymentTier: null,
+      receiptValidatedAt: null,
+      majorEvent: { isPaymentRequired: false },
+    } as never);
     tx.eventTicket.findUnique.mockResolvedValue(null as never);
     tx.eventTicket.findFirst.mockImplementation(async (input) =>
       input.where.originalHolderPersonId?.in?.includes('old-person') && input.where.history
         ? { ...existing, originalHolderPersonId: 'old-person', holderPersonId: 'colleague' }
         : null,
     );
-    await service.syncForPerson(tx as never, 'event', 'person', 'MAJOR_EVENT_SUBSCRIPTION', 'major-event-subscription:event:person');
+    await service.syncForPerson(
+      tx as never,
+      'event',
+      'person',
+      'MAJOR_EVENT_SUBSCRIPTION',
+      'major-event-subscription:event:person',
+    );
     expect(tx.eventTicket.create).not.toHaveBeenCalled();
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
   it('only consumes a ticket if the holder and unconsumed state still match at the atomic update', async () => {
     const { service, tx, realtime, existing } = setup();
-    tx.eventTicket.findMany.mockResolvedValue([{
-      ...existing,
-      holder: { userId: 'user' },
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      transfers: [],
-    }] as never);
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
+        ...existing,
+        holder: { userId: 'user' },
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        transfers: [],
+      },
+    ] as never);
     tx.eventTicket.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.consumeForAttendance(tx as never, 'event', 'person')).resolves.toBe(false);
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ holderPersonId: 'person', eventId: 'event', status: 'ACTIVE' }) }));
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ holderPersonId: 'person', eventId: 'event', status: 'ACTIVE' }),
+      }),
+    );
     expect(tx.eventTicketHistory.create).not.toHaveBeenCalled();
     expect(tx.auditLogEntry.create).not.toHaveBeenCalled();
     expect(realtime.enqueueForUsers).not.toHaveBeenCalled();
@@ -320,17 +499,19 @@ describe('ticket issuance and redemption safety', () => {
     const attendedAt = new Date(processedAt.getTime() - 2 * 60 * 60 * 1_000);
     const issuedAt = new Date(attendedAt.getTime() - 60 * 60 * 1_000);
     const expiresAt = new Date(attendedAt.getTime() - 30 * 60 * 1_000);
-    tx.eventTicket.findMany.mockResolvedValue([{
-      id: 'ticket',
-      eventId: 'event',
-      holderPersonId: 'person',
-      issuedAt,
-      expiresAt,
-      status: 'ACTIVE',
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      holder: { userId: 'user' },
-      transfers: [],
-    }] as never);
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
+        id: 'ticket',
+        eventId: 'event',
+        holderPersonId: 'person',
+        issuedAt,
+        expiresAt,
+        status: 'ACTIVE',
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        holder: { userId: 'user' },
+        transfers: [],
+      },
+    ] as never);
     tx.eventTicket.updateMany.mockResolvedValue({ count: 1 });
     tx.ticketTransfer.findMany.mockResolvedValue([
       { authorUserId: 'author', senderUserId: 'holder', recipientUserId: 'recipient' },
@@ -338,28 +519,34 @@ describe('ticket issuance and redemption safety', () => {
 
     await expect(service.consumeForAttendance(tx as never, 'event', 'person', { attendedAt })).resolves.toBe(true);
 
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        issuedAt: { lte: attendedAt },
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          issuedAt: { lte: attendedAt },
+        }),
       }),
-    }));
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        holderPersonId: 'person',
-        status: EventTicketStatus.ACTIVE,
-        issuedAt: { lte: attendedAt },
+    );
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          holderPersonId: 'person',
+          status: EventTicketStatus.ACTIVE,
+          issuedAt: { lte: attendedAt },
+        }),
+        data: expect.objectContaining({ consumedAt: attendedAt, consumedByPersonId: 'person' }),
       }),
-      data: expect.objectContaining({ consumedAt: attendedAt, consumedByPersonId: 'person' }),
-    }));
+    );
     expect(tx.eventTicket.findMany.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
     expect(tx.eventTicket.updateMany.mock.calls[0][0].where).not.toHaveProperty('expiresAt');
-    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        after: expect.objectContaining({ consumedAt: attendedAt.toISOString() }),
-        metadata: undefined,
-        firstRecordedAt: expect.any(Date),
+    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          after: expect.objectContaining({ consumedAt: attendedAt.toISOString() }),
+          metadata: undefined,
+          firstRecordedAt: expect.any(Date),
+        }),
       }),
-    }));
+    );
     expect(realtime.enqueueForUsers).toHaveBeenCalledWith(tx, ['author', 'holder', 'recipient'], {
       type: 'TRANSFERS_CHANGED',
       eventId: 'event',
@@ -373,62 +560,68 @@ describe('ticket issuance and redemption safety', () => {
     const issuedAt = new Date(attendedAt.getTime() + 60_000);
     const candidate = { id: 'ticket', issuedAt };
     tx.eventTicket.findMany.mockImplementation(async ({ where }: { where: { issuedAt: { lte: Date } } }) =>
-      issuedAt <= where.issuedAt.lte ? [candidate] as never : [],
+      issuedAt <= where.issuedAt.lte ? ([candidate] as never) : [],
     );
 
     await expect(service.consumeForAttendance(tx as never, 'event', 'person', { attendedAt })).resolves.toBe(false);
 
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ issuedAt: { lte: attendedAt } }),
-    }));
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ issuedAt: { lte: attendedAt } }),
+      }),
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not consume a ticket accepted by this holder after the recorded attendance time', async () => {
     const { service, tx } = setup();
     const attendedAt = new Date(Date.now() - 60 * 60 * 1_000);
-    tx.eventTicket.findMany.mockResolvedValue([{
-      id: 'ticket',
-      eventId: 'event',
-      holderPersonId: 'person',
-      issuedAt: new Date(attendedAt.getTime() - 60_000),
-      status: EventTicketStatus.ACTIVE,
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      holder: { userId: 'user' },
-      transfers: [{ senderPersonId: 'old-holder', acceptedAt: new Date(attendedAt.getTime() + 60_000) }],
-    }] as never);
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
+        id: 'ticket',
+        eventId: 'event',
+        holderPersonId: 'person',
+        issuedAt: new Date(attendedAt.getTime() - 60_000),
+        status: EventTicketStatus.ACTIVE,
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        holder: { userId: 'user' },
+        transfers: [{ senderPersonId: 'old-holder', acceptedAt: new Date(attendedAt.getTime() + 60_000) }],
+      },
+    ] as never);
 
     await expect(service.consumeForAttendance(tx as never, 'event', 'person', { attendedAt })).resolves.toBe(false);
 
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        OR: expect.arrayContaining([
-          { holderPersonId: 'person' },
-          {
-            transfers: {
-              some: {
-                senderPersonId: 'person',
-                senderStatus: 'ACCEPTED',
-                recipientStatus: 'ACCEPTED',
-                acceptedAt: { gt: attendedAt },
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            { holderPersonId: 'person' },
+            {
+              transfers: {
+                some: {
+                  senderPersonId: 'person',
+                  senderStatus: 'ACCEPTED',
+                  recipientStatus: 'ACCEPTED',
+                  acceptedAt: { gt: attendedAt },
+                },
               },
             },
+          ]),
+        }),
+        include: expect.objectContaining({
+          transfers: {
+            where: {
+              senderStatus: 'ACCEPTED',
+              recipientStatus: 'ACCEPTED',
+              acceptedAt: { gt: attendedAt },
+            },
+            select: { senderPersonId: true, acceptedAt: true },
+            orderBy: { acceptedAt: 'asc' },
+            take: 1,
           },
-        ]),
+        }),
       }),
-      include: expect.objectContaining({
-        transfers: {
-          where: {
-            senderStatus: 'ACCEPTED',
-            recipientStatus: 'ACCEPTED',
-            acceptedAt: { gt: attendedAt },
-          },
-          select: { senderPersonId: true, acceptedAt: true },
-          orderBy: { acceptedAt: 'asc' },
-          take: 1,
-        },
-      }),
-    }));
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
@@ -436,58 +629,71 @@ describe('ticket issuance and redemption safety', () => {
     const { service, tx } = setup();
     const attendedAt = new Date(Date.now() - 60 * 60 * 1_000);
     const acceptedAt = new Date(attendedAt.getTime() + 10 * 60 * 1_000);
-    tx.eventTicket.findMany.mockResolvedValue([{
-      id: 'ticket',
-      eventId: 'event',
-      holderPersonId: 'current-holder',
-      issuedAt: new Date(attendedAt.getTime() - 60_000),
-      status: EventTicketStatus.ACTIVE,
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      holder: { userId: 'current-holder-user' },
-      transfers: [{ senderPersonId: 'person', acceptedAt }],
-    }] as never);
-
-    await expect(service.consumeForAttendance(tx as never, 'event', 'person', { attendedAt })).resolves.toBe(true);
-
-    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
         id: 'ticket',
         eventId: 'event',
         holderPersonId: 'current-holder',
+        issuedAt: new Date(attendedAt.getTime() - 60_000),
         status: EventTicketStatus.ACTIVE,
-        issuedAt: { lte: attendedAt },
-      }),
-      data: expect.objectContaining({ consumedAt: attendedAt, consumedByPersonId: 'person' }),
-    }));
-    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ previousHolderPersonId: 'current-holder', newHolderPersonId: 'current-holder' }),
-    }));
-    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        before: expect.objectContaining({ holderPersonId: 'current-holder' }),
-        after: expect.objectContaining({
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        holder: { userId: 'current-holder-user' },
+        transfers: [{ senderPersonId: 'person', acceptedAt }],
+      },
+    ] as never);
+
+    await expect(service.consumeForAttendance(tx as never, 'event', 'person', { attendedAt })).resolves.toBe(true);
+
+    expect(tx.eventTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'ticket',
+          eventId: 'event',
           holderPersonId: 'current-holder',
-          consumedByPersonId: 'person',
-          consumedAt: attendedAt.toISOString(),
+          status: EventTicketStatus.ACTIVE,
+          issuedAt: { lte: attendedAt },
         }),
-        metadata: undefined,
+        data: expect.objectContaining({ consumedAt: attendedAt, consumedByPersonId: 'person' }),
       }),
-    }));
+    );
+    expect(tx.eventTicketHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          previousHolderPersonId: 'current-holder',
+          newHolderPersonId: 'current-holder',
+        }),
+      }),
+    );
+    expect(tx.auditLogEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          before: expect.objectContaining({ holderPersonId: 'current-holder' }),
+          after: expect.objectContaining({
+            holderPersonId: 'current-holder',
+            consumedByPersonId: 'person',
+            consumedAt: attendedAt.toISOString(),
+          }),
+          metadata: undefined,
+        }),
+      }),
+    );
   });
 
   it('does not redeem for a new holder before the transfer was accepted', async () => {
     const { service, tx } = setup();
     const attendedAt = new Date(Date.now() - 60 * 60 * 1_000);
-    tx.eventTicket.findMany.mockResolvedValue([{
-      id: 'ticket',
-      eventId: 'event',
-      holderPersonId: 'new-holder',
-      issuedAt: new Date(attendedAt.getTime() - 60_000),
-      status: EventTicketStatus.ACTIVE,
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      holder: { userId: 'new-holder-user' },
-      transfers: [{ senderPersonId: 'previous-holder', acceptedAt: new Date(attendedAt.getTime() + 60_000) }],
-    }] as never);
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
+        id: 'ticket',
+        eventId: 'event',
+        holderPersonId: 'new-holder',
+        issuedAt: new Date(attendedAt.getTime() - 60_000),
+        status: EventTicketStatus.ACTIVE,
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        holder: { userId: 'new-holder-user' },
+        transfers: [{ senderPersonId: 'previous-holder', acceptedAt: new Date(attendedAt.getTime() + 60_000) }],
+      },
+    ] as never);
 
     await expect(service.consumeForAttendance(tx as never, 'event', 'new-holder', { attendedAt })).resolves.toBe(false);
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
@@ -496,17 +702,19 @@ describe('ticket issuance and redemption safety', () => {
 
   it('uses processing time when no persisted attendance time is provided', async () => {
     const { service, tx } = setup();
-    tx.eventTicket.findMany.mockResolvedValue([{
-      id: 'ticket',
-      eventId: 'event',
-      holderPersonId: 'person',
-      issuedAt: new Date(Date.now() - 60_000),
-      expiresAt: new Date(Date.now() + 60_000),
-      status: 'ACTIVE',
-      event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
-      holder: { userId: 'user' },
-      transfers: [],
-    }] as never);
+    tx.eventTicket.findMany.mockResolvedValue([
+      {
+        id: 'ticket',
+        eventId: 'event',
+        holderPersonId: 'person',
+        issuedAt: new Date(Date.now() - 60_000),
+        expiresAt: new Date(Date.now() + 60_000),
+        status: 'ACTIVE',
+        event: { name: 'Kit', majorEventId: 'major', eventGroup: null, ticketConfig: null },
+        holder: { userId: 'user' },
+        transfers: [],
+      },
+    ] as never);
 
     await expect(service.consumeForAttendance(tx as never, 'event', 'person')).resolves.toBe(true);
 
@@ -519,30 +727,38 @@ describe('ticket issuance and redemption safety', () => {
   it('does not redeem an unrelated ticket for a person with no matching ownership history', async () => {
     const { service, tx } = setup();
 
-    await expect(service.consumeForAttendance(tx as never, 'event', 'old-holder', {
-      attendedAt: new Date(Date.now() - 60 * 60 * 1_000),
-    })).resolves.toBe(false);
-
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        eventId: 'event',
-        OR: expect.arrayContaining([
-          { holderPersonId: 'old-holder' },
-          { transfers: { some: expect.objectContaining({ senderPersonId: 'old-holder' }) } },
-        ]),
+    await expect(
+      service.consumeForAttendance(tx as never, 'event', 'old-holder', {
+        attendedAt: new Date(Date.now() - 60 * 60 * 1_000),
       }),
-    }));
+    ).resolves.toBe(false);
+
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventId: 'event',
+          OR: expect.arrayContaining([
+            { holderPersonId: 'old-holder' },
+            { transfers: { some: expect.objectContaining({ senderPersonId: 'old-holder' }) } },
+          ]),
+        }),
+      }),
+    );
     expect(tx.eventTicket.updateMany).not.toHaveBeenCalled();
   });
 
   it('uses the event/holder lookup rather than accepting a barcode ticket ID as ownership', async () => {
     const { service, tx } = setup();
     await expect(service.consumeForAttendance(tx as never, 'event', 'person')).resolves.toBe(false);
-    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      eventId: 'event',
-      status: 'ACTIVE',
-      OR: expect.arrayContaining([{ holderPersonId: 'person' }]),
-    }) }));
+    expect(tx.eventTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventId: 'event',
+          status: 'ACTIVE',
+          OR: expect.arrayContaining([{ holderPersonId: 'person' }]),
+        }),
+      }),
+    );
     expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.eventTicket.findMany.mock.invocationCallOrder[0]);
   });
 });

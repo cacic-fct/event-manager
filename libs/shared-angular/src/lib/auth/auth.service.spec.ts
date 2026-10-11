@@ -155,10 +155,14 @@ describe('AuthService silent SSO fallback', () => {
   it('does not reuse successful recovery after refreshMe clears the user and refresh is denied', async () => {
     const denied = new HttpErrorResponse({ status: 401, url: '/api/auth/refresh' });
     const http = {
-      post: vi.fn()
+      post: vi
+        .fn()
         .mockReturnValueOnce(of({ expiresAt: Date.now() + 60_000 }))
         .mockReturnValue(throwError(() => denied)),
-      get: vi.fn().mockReturnValueOnce(of({ sub: 'restored-user' })).mockReturnValue(of(null)),
+      get: vi
+        .fn()
+        .mockReturnValueOnce(of({ sub: 'restored-user' }))
+        .mockReturnValue(of(null)),
     };
     Reflect.set(service, 'http', http);
 
@@ -196,7 +200,9 @@ describe('AuthService silent SSO fallback', () => {
     const previousBaseHref = base?.getAttribute('href') ?? null;
     const createdBase = base ?? document.createElement('base');
     createdBase.setAttribute('href', '/app/');
-    if (!base) document.head.append(createdBase);
+    if (!base) {
+      document.head.append(createdBase);
+    }
 
     try {
       const returnTo = '/profile?filter=upcoming&sort=desc#details';
@@ -218,8 +224,11 @@ describe('AuthService silent SSO fallback', () => {
       expect(window.sessionStorage.getItem('cacic-eventos:onboarding-refresh-attempted')).toBeNull();
     } finally {
       if (base) {
-        if (previousBaseHref === null) base.removeAttribute('href');
-        else base.setAttribute('href', previousBaseHref);
+        if (previousBaseHref === null) {
+          base.removeAttribute('href');
+        } else {
+          base.setAttribute('href', previousBaseHref);
+        }
       } else {
         createdBase.remove();
       }
@@ -312,7 +321,10 @@ describe('AuthService SSR login redirect', () => {
     }
   });
 
-  function createServerAuthService(request: Request | null, response: ResponseInit): {
+  function createServerAuthService(
+    request: Request | null,
+    response: ResponseInit,
+  ): {
     injector: EnvironmentInjector;
     service: AuthService;
   } {

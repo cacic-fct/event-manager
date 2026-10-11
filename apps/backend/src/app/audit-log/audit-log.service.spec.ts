@@ -400,16 +400,18 @@ describe('AuditLogService', () => {
   });
 
   it('squashes compact snapshots when a later edit changes a different field', async () => {
-    prisma.auditLogEntry.findFirst.mockResolvedValue(createAuditEntry({
-      operation: AuditLogOperation.UPDATE,
-      actorId: null,
-      actorName: 'Sistema',
-      permission: null,
-      before: { name: 'Original' },
-      after: { name: 'Edited' },
-      changedFields: ['name'],
-      lastRecordedAt: new Date(),
-    }));
+    prisma.auditLogEntry.findFirst.mockResolvedValue(
+      createAuditEntry({
+        operation: AuditLogOperation.UPDATE,
+        actorId: null,
+        actorName: 'Sistema',
+        permission: null,
+        before: { name: 'Original' },
+        after: { name: 'Edited' },
+        changedFields: ['name'],
+        lastRecordedAt: new Date(),
+      }),
+    );
 
     await service.record({
       entityType: AuditLogEntityType.PERSON,
@@ -431,16 +433,18 @@ describe('AuditLogService', () => {
   });
 
   it('drops fields restored to their original values when squashing compact updates', async () => {
-    prisma.auditLogEntry.findFirst.mockResolvedValue(createAuditEntry({
-      operation: AuditLogOperation.UPDATE,
-      actorId: null,
-      actorName: 'Sistema',
-      permission: null,
-      before: { name: 'Original', email: 'old@example.com' },
-      after: { name: 'Edited', email: 'new@example.com' },
-      changedFields: ['email', 'name'],
-      lastRecordedAt: new Date(),
-    }));
+    prisma.auditLogEntry.findFirst.mockResolvedValue(
+      createAuditEntry({
+        operation: AuditLogOperation.UPDATE,
+        actorId: null,
+        actorName: 'Sistema',
+        permission: null,
+        before: { name: 'Original', email: 'old@example.com' },
+        after: { name: 'Edited', email: 'new@example.com' },
+        changedFields: ['email', 'name'],
+        lastRecordedAt: new Date(),
+      }),
+    );
 
     await service.record({
       entityType: AuditLogEntityType.PERSON,
@@ -510,7 +514,9 @@ describe('AuditLogService', () => {
       });
       tx.auditLogEntry.update.mockImplementation(async ({ where, data }) => {
         const entry = records.find((candidate) => candidate.id === where.id);
-        if (!entry) throw new Error(`Audit entry ${where.id} was not found.`);
+        if (!entry) {
+          throw new Error(`Audit entry ${where.id} was not found.`);
+        }
         Object.assign(entry, data);
         return entry as never;
       });
@@ -563,7 +569,9 @@ describe('AuditLogService', () => {
 
       expect(records).toHaveLength(contentChanged ? 2 : 1);
       const lifecycleEntry = records.at(-1);
-      if (!lifecycleEntry) throw new Error('Publication lifecycle audit entry was not recorded.');
+      if (!lifecycleEntry) {
+        throw new Error('Publication lifecycle audit entry was not recorded.');
+      }
       expect(lifecycleEntry.changedFields).toEqual(['publicationState', 'publishedAt']);
       expect(lifecycleEntry.after).toEqual({
         publicationState: 'PUBLISHED',
@@ -590,7 +598,9 @@ describe('AuditLogService', () => {
       expect(tx.auditLogEntry.update).not.toHaveBeenCalled();
       expect(records).toHaveLength(contentChanged ? 3 : 2);
       const laterContentEntry = records.at(-1);
-      if (!laterContentEntry) throw new Error('Content audit entry was not recorded.');
+      if (!laterContentEntry) {
+        throw new Error('Content audit entry was not recorded.');
+      }
       expect(laterContentEntry.before).toEqual(currentContent);
       expect(laterContentEntry.after).toEqual({ ...currentContent, name: 'Edited after publication' });
       expect(lifecycleEntry.after).toEqual({
@@ -1723,8 +1733,9 @@ describe('AuditLogService', () => {
       }),
     });
     expect(ticketIssuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
-    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0])
-      .toBeLessThan(tx.event.update.mock.invocationCallOrder[0]);
+    expect(ticketIssuance.lockEventExpirationAlignment.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.event.update.mock.invocationCallOrder[0],
+    );
     expect(frozenResources.assertEventUpdateMutable).toHaveBeenCalledWith(
       'event-1',
       {
@@ -1866,7 +1877,9 @@ describe('AuditLogService', () => {
       service.revertEntry({ entryId: 'audit-event-policy', mode: AuditLogRevertMode.ENTRY_ONLY }, undefined),
     ).resolves.toEqual(expect.objectContaining({ id: 'audit-event-policy-revert' }));
 
-    expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: { attendanceEligibility: 'ANYONE' } }));
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { attendanceEligibility: 'ANYONE' } }),
+    );
     expect(attendanceCategories.refreshForEvent).toHaveBeenCalledWith('event-1', tx);
   });
 
@@ -1892,11 +1905,14 @@ describe('AuditLogService', () => {
     const tx = createTransaction({ ...currentEvent, interestEnabled: false }, revertLog);
     prisma.auditLogEntry.findUnique.mockResolvedValue(targetEntry);
     prisma.event.findUnique.mockResolvedValue(currentEvent);
-    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx));
+    prisma.$transaction.mockImplementation(async (operation: (transaction: typeof tx) => Promise<unknown>) =>
+      operation(tx),
+    );
     prisma.auditLogEntry.findUniqueOrThrow.mockResolvedValue(revertLog);
 
-    await expect(service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined))
-      .resolves.toEqual(expect.objectContaining({ id: revertLog.id }));
+    await expect(
+      service.revertEntry({ entryId: targetEntry.id, mode: AuditLogRevertMode.ENTRY_ONLY }, undefined),
+    ).resolves.toEqual(expect.objectContaining({ id: revertLog.id }));
 
     expect(tx.event.update).toHaveBeenCalledWith(expect.objectContaining({ data: { interestEnabled: false } }));
     expect(tx.auditLogEntry.create).toHaveBeenCalledWith({

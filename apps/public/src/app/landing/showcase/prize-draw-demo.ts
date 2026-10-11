@@ -80,22 +80,25 @@ export class PrizeDrawDemoComponent {
       this.prefersReducedMotion.set(this.storybookPrefersReducedMotion());
     }
 
-    playShowcaseSequence((schedule) => {
-      let automaticDrawStarted = false;
-      schedule(() => {
-        if (this.userInitiatedDraw()) {
-          return;
-        }
+    playShowcaseSequence(
+      (schedule) => {
+        let automaticDrawStarted = false;
+        schedule(() => {
+          if (this.userInitiatedDraw()) {
+            return;
+          }
 
-        automaticDrawStarted = this.startDraw(true);
-      }, 350);
+          automaticDrawStarted = this.startDraw(true);
+        }, 350);
 
-      return () => {
-        if (automaticDrawStarted) {
-          this.cancelAutomaticDraw();
-        }
-      };
-    }, () => !this.userInitiatedDraw() && !this.reducedMotionRequested());
+        return () => {
+          if (automaticDrawStarted) {
+            this.cancelAutomaticDraw();
+          }
+        };
+      },
+      () => !this.userInitiatedDraw() && !this.reducedMotionRequested(),
+    );
   }
 
   requestDraw(): void {

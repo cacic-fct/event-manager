@@ -61,10 +61,7 @@ export class RoleDemoComponent {
   readonly savedRole = signal<SavedRole | null>(null);
   readonly lastSaveAction = signal<'created' | 'updated'>('created');
   readonly canSave = computed(
-    () =>
-      !this.roleForm().invalid() &&
-      this.draft().name.trim().length >= 3 &&
-      this.selectedPermissionIds().length > 0,
+    () => !this.roleForm().invalid() && this.draft().name.trim().length >= 3 && this.selectedPermissionIds().length > 0,
   );
   readonly saveButtonLabel = computed(() => (this.mode() === 'edit' ? 'Salvar alterações' : 'Criar cargo'));
   readonly savedPermissionChoices = computed(() => {

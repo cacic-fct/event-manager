@@ -96,7 +96,9 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
       },
       update: { count: { increment: 1 } },
     });
-    if (counter.count < 3) return;
+    if (counter.count < 3) {
+      return;
+    }
 
     await this.prisma.attendanceReviewFlag.upsert({
       where: { dedupeKey: `repeated-attempts:${dedupeKey}` },

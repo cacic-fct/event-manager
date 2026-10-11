@@ -586,43 +586,114 @@ function validatePermissionGrantTargetInput(
 
 function contextPage(variables: Record<string, unknown>) {
   const nodes: AdminEventContextNode[] = [
-    ...majorEvents.map((item) => ({ kind: 'MAJOR_EVENT' as const, id: item.id, name: item.name, emoji: item.emoji, startDate: item.startDate, endDate: item.endDate, ancestors: [], hasChildren: false })),
-    ...eventGroups.map((item) => ({ kind: 'EVENT_GROUP' as const, id: item.id, name: item.name, emoji: item.emoji, ancestors: [], hasChildren: events.some((event) => event.eventGroupId === item.id) })),
-    ...events.map((item) => ({ kind: 'EVENT' as const, id: item.id, name: item.name, emoji: item.emoji, startDate: item.startDate, endDate: item.endDate,
-      eventType: item.type === 'MINICURSO' ? 'MINICURSO' as const : item.type === 'PALESTRA' ? 'PALESTRA' as const : 'OTHER' as const,
-      locationDescription: item.locationDescription, ancestors: [{kind:'EVENT_GROUP' as const,id:item.eventGroup.id,name:item.eventGroup.name,emoji:item.eventGroup.emoji}], hasChildren:false })),
+    ...majorEvents.map((item) => ({
+      kind: 'MAJOR_EVENT' as const,
+      id: item.id,
+      name: item.name,
+      emoji: item.emoji,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      ancestors: [],
+      hasChildren: false,
+    })),
+    ...eventGroups.map((item) => ({
+      kind: 'EVENT_GROUP' as const,
+      id: item.id,
+      name: item.name,
+      emoji: item.emoji,
+      ancestors: [],
+      hasChildren: events.some((event) => event.eventGroupId === item.id),
+    })),
+    ...events.map((item) => ({
+      kind: 'EVENT' as const,
+      id: item.id,
+      name: item.name,
+      emoji: item.emoji,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      eventType:
+        item.type === 'MINICURSO'
+          ? ('MINICURSO' as const)
+          : item.type === 'PALESTRA'
+            ? ('PALESTRA' as const)
+            : ('OTHER' as const),
+      locationDescription: item.locationDescription,
+      ancestors: [
+        {
+          kind: 'EVENT_GROUP' as const,
+          id: item.eventGroup.id,
+          name: item.eventGroup.name,
+          emoji: item.eventGroup.emoji,
+        },
+      ],
+      hasChildren: false,
+    })),
   ];
-  const query = String(variables['query'] ?? '').trim().toLocaleLowerCase('pt-BR');
+  const query = String(variables['query'] ?? '')
+    .trim()
+    .toLocaleLowerCase('pt-BR');
   const parentId = variables['parentId'];
   const parentKind = variables['parentKind'];
   const childKind = variables['childKind'];
-  const hasFilters = Boolean(variables['startDateFrom'] || variables['startDateUntil']) ||
-    typeof variables['isInGroup'] === 'boolean' || typeof variables['isInMajorEvent'] === 'boolean';
+  const hasFilters =
+    Boolean(variables['startDateFrom'] || variables['startDateUntil']) ||
+    typeof variables['isInGroup'] === 'boolean' ||
+    typeof variables['isInMajorEvent'] === 'boolean';
   const filtered = nodes.filter((node) => {
     if (hasFilters) {
-      if (node.kind !== 'EVENT') return false;
+      if (node.kind !== 'EVENT') {
+        return false;
+      }
       const event = events.find((item) => item.id === node.id);
-      if (!event) return false;
-      if (variables['startDateFrom'] && event.startDate < String(variables['startDateFrom'])) return false;
-      if (variables['startDateUntil'] && event.startDate > String(variables['startDateUntil'])) return false;
-      if (typeof variables['isInGroup'] === 'boolean' && Boolean(event.eventGroupId) !== variables['isInGroup']) return false;
-      if (typeof variables['isInMajorEvent'] === 'boolean' && Boolean(event.majorEventId) !== variables['isInMajorEvent']) return false;
+      if (!event) {
+        return false;
+      }
+      if (variables['startDateFrom'] && event.startDate < String(variables['startDateFrom'])) {
+        return false;
+      }
+      if (variables['startDateUntil'] && event.startDate > String(variables['startDateUntil'])) {
+        return false;
+      }
+      if (typeof variables['isInGroup'] === 'boolean' && Boolean(event.eventGroupId) !== variables['isInGroup']) {
+        return false;
+      }
+      if (
+        typeof variables['isInMajorEvent'] === 'boolean' &&
+        Boolean(event.majorEventId) !== variables['isInMajorEvent']
+      ) {
+        return false;
+      }
     }
-    if (childKind && node.kind !== childKind) return false;
+    if (childKind && node.kind !== childKind) {
+      return false;
+    }
     if (parentId) {
       const parent = node.ancestors.at(-1);
-      if (parent?.id !== parentId || parent.kind !== parentKind) return false;
-    } else if (!query && !hasFilters && node.ancestors.length > 0) return false;
-    return !query || [node.name,node.locationDescription,node.eventType,...node.ancestors.map((parent) => parent.name)]
-      .some((value) => value?.toLocaleLowerCase('pt-BR').includes(query));
+      if (parent?.id !== parentId || parent.kind !== parentKind) {
+        return false;
+      }
+    } else if (!query && !hasFilters && node.ancestors.length > 0) {
+      return false;
+    }
+    return (
+      !query ||
+      [node.name, node.locationDescription, node.eventType, ...node.ancestors.map((parent) => parent.name)].some(
+        (value) => value?.toLocaleLowerCase('pt-BR').includes(query),
+      )
+    );
   });
   const offset = Math.max(0, Number(variables['cursor'] ?? 0));
   const take = Math.max(1, Number(variables['take'] ?? 20));
-  return { nodes: filtered.slice(offset, offset + take), nextCursor: offset + take < filtered.length ? String(offset + take) : null };
+  return {
+    nodes: filtered.slice(offset, offset + take),
+    nextCursor: offset + take < filtered.length ? String(offset + take) : null,
+  };
 }
 
 function graphqlData(query: string, variables: Record<string, unknown>) {
-  if (query.includes('AdminEventContextPage')) return { adminEventContextPage: contextPage(variables) };
+  if (query.includes('AdminEventContextPage')) {
+    return { adminEventContextPage: contextPage(variables) };
+  }
 
   if (query.includes('ListPeople') || query.includes('GetPerson')) {
     return { people, person: people.find((item) => item.id === variables['id']) ?? people[0] };
@@ -1101,8 +1172,12 @@ export function createCertificateTemplatesStoryHandler(getOptions: () => Certifi
     const query = body.query ?? '';
 
     if (query.includes('ListCertificateTemplates')) {
-      if (options.state === 'loading') await delay('infinite');
-      if (options.latencyMs > 0) await delay(options.latencyMs);
+      if (options.state === 'loading') {
+        await delay('infinite');
+      }
+      if (options.latencyMs > 0) {
+        await delay(options.latencyMs);
+      }
       if (options.state === 'error') {
         return HttpResponse.json({ errors: [{ message: 'Template registry unavailable' }] });
       }

@@ -130,7 +130,7 @@ type TicketConfigRecord = {
   priceOptions: Array<{ id: string; priceTierId: string | null; label: string; amountCents: number }>;
   event: EventSummaryRecord & {
     majorEventId: string | null;
-    eventGroup?: NonNullable<EventSummaryRecord['eventGroup']> & { majorEventId: string | null } | null;
+    eventGroup?: (NonNullable<EventSummaryRecord['eventGroup']> & { majorEventId: string | null }) | null;
   };
 };
 
@@ -163,15 +163,16 @@ export function mapWalletTicket(
   includeAztecPayload: boolean,
   now = new Date(),
 ): WalletTicketModel {
-  const status = ticket.status === EventTicketStatus.CONSUMED
-    ? TicketLifecycleState.Consumed
-    : ticket.status === EventTicketStatus.REVOKED
-      ? TicketLifecycleState.Revoked
-      : ticket.expiresAt <= now
-        ? TicketLifecycleState.Expired
-        : !ticket.ticketConfig.enabled || ticket.event.deletedAt != null
-          ? TicketLifecycleState.Unavailable
-          : TicketLifecycleState.Active;
+  const status =
+    ticket.status === EventTicketStatus.CONSUMED
+      ? TicketLifecycleState.Consumed
+      : ticket.status === EventTicketStatus.REVOKED
+        ? TicketLifecycleState.Revoked
+        : ticket.expiresAt <= now
+          ? TicketLifecycleState.Expired
+          : !ticket.ticketConfig.enabled || ticket.event.deletedAt != null
+            ? TicketLifecycleState.Unavailable
+            : TicketLifecycleState.Active;
   const name = ticket.ticketConfig.displayName?.trim() || ticket.event.name;
   const emoji = ticket.ticketConfig.displayEmoji?.trim() || ticket.event.emoji;
   const transferEligibilityDescription = describeTransferEligibility(ticket.ticketConfig, ticket.event);
@@ -194,25 +195,30 @@ export function mapWalletTicket(
   };
 }
 
-function describeTransferEligibility(
-  config: TicketRecord['ticketConfig'],
-  event: EventSummaryRecord,
-): string | null {
+function describeTransferEligibility(config: TicketRecord['ticketConfig'], event: EventSummaryRecord): string | null {
   const configuredDescription = config.transferEligibilityDescription?.trim() || null;
-  if (!config.transferable) return configuredDescription;
+  if (!config.transferable) {
+    return configuredDescription;
+  }
 
   const criteria: string[] = [];
   const isMajorEventSubscription = Boolean(event.majorEventId || event.eventGroup?.majorEvent);
   if (config.recipientSubscriptionRequirement === 'REQUIRED') {
-    criteria.push(isMajorEventSubscription
-      ? 'É necessário estar inscrito no grande evento.'
-      : 'É necessário estar inscrito neste evento.');
+    criteria.push(
+      isMajorEventSubscription
+        ? 'É necessário estar inscrito no grande evento.'
+        : 'É necessário estar inscrito neste evento.',
+    );
   } else if (config.recipientSubscriptionRequirement === 'NONE') {
-    criteria.push(isMajorEventSubscription
-      ? 'O destinatário não pode estar inscrito no grande evento.'
-      : 'O destinatário não pode estar inscrito neste evento.');
+    criteria.push(
+      isMajorEventSubscription
+        ? 'O destinatário não pode estar inscrito no grande evento.'
+        : 'O destinatário não pode estar inscrito neste evento.',
+    );
   }
-  if (config.recipientRequiresUnesp) criteria.push('É necessário possuir vínculo UNESP.');
+  if (config.recipientRequiresUnesp) {
+    criteria.push('É necessário possuir vínculo UNESP.');
+  }
   if (config.recipientAcademicIdPrefixes.length > 0) {
     criteria.push(`Matrícula com prefixo ${formatList(config.recipientAcademicIdPrefixes)}.`);
   }
@@ -228,15 +234,14 @@ function describeTransferEligibility(
   if (config.recipientAllowedPriceTierIds.length > 0) {
     const majorEvent = event.majorEvent ?? event.eventGroup?.majorEvent;
     const tiers = majorEvent?.majorEventPrices?.flatMap(({ tiers: priceTiers }) => priceTiers) ?? [];
-    const allowedTierNames = config.recipientAllowedPriceTierIds.map((tierId) =>
-      tiers.find((tier) => tier.id === tierId)?.name ?? 'faixa de preço ativa',
+    const allowedTierNames = config.recipientAllowedPriceTierIds.map(
+      (tierId) => tiers.find((tier) => tier.id === tierId)?.name ?? 'faixa de preço ativa',
     );
     criteria.push(`Faixas de preço permitidas: ${formatList(allowedTierNames)}.`);
   }
 
-  const audienceSummary = criteria.length === 0
-    ? 'Qualquer pessoa com conta ativa pode receber este bilhete.'
-    : criteria.join(' ');
+  const audienceSummary =
+    criteria.length === 0 ? 'Qualquer pessoa com conta ativa pode receber este bilhete.' : criteria.join(' ');
   return [audienceSummary, configuredDescription].filter((value): value is string => Boolean(value)).join('\n\n');
 }
 
@@ -246,7 +251,8 @@ function formatList(values: readonly string[]): string {
 
 export function mapTicketConfig(config: TicketConfigRecord): TicketConfigModel {
   const recipientPolicy: TicketRecipientPolicyModel = {
-    subscriptionRequirement: config.recipientSubscriptionRequirement as TicketRecipientPolicyModel['subscriptionRequirement'],
+    subscriptionRequirement:
+      config.recipientSubscriptionRequirement as TicketRecipientPolicyModel['subscriptionRequirement'],
     requiresUnesp: config.recipientRequiresUnesp,
     requiredAcademicIdPrefixes: config.recipientAcademicIdPrefixes,
     requiredCourseCodes: config.recipientCourseCodes,
@@ -298,9 +304,10 @@ export function mapAdminTicketConfig(
   });
 }
 
-export function mapAdminEligibilityWarnings(
-  value: { eligible: boolean; warnings: readonly { code: string; message: string }[] },
-): AdminTicketEligibilityModel {
+export function mapAdminEligibilityWarnings(value: {
+  eligible: boolean;
+  warnings: readonly { code: string; message: string }[];
+}): AdminTicketEligibilityModel {
   return {
     eligible: value.eligible,
     warnings: value.warnings.map((warning) => Object.assign(new AdminTicketEligibilityWarningModel(), warning)),
@@ -316,13 +323,14 @@ export function mapTicketTransfer(
   const isAuthor = view === 'AUTHOR';
   const isRecipient = view === 'RECIPIENT';
   const senderFacing = isAuthor || view === 'ADMIN_SENDER';
-  const effectiveUpdatedAt = senderFacing && transfer.senderStatus === TicketTransferSenderStatus.PENDING
-    ? transfer.createdAt
-    : senderFacing && transfer.senderStatus === TicketTransferSenderStatus.CANCELED
-      ? transfer.canceledAt ?? transfer.createdAt
-      : senderFacing && transfer.senderStatus === TicketTransferSenderStatus.ACCEPTED
-        ? transfer.acceptedAt ?? transfer.createdAt
-        : transfer.updatedAt;
+  const effectiveUpdatedAt =
+    senderFacing && transfer.senderStatus === TicketTransferSenderStatus.PENDING
+      ? transfer.createdAt
+      : senderFacing && transfer.senderStatus === TicketTransferSenderStatus.CANCELED
+        ? (transfer.canceledAt ?? transfer.createdAt)
+        : senderFacing && transfer.senderStatus === TicketTransferSenderStatus.ACCEPTED
+          ? (transfer.acceptedAt ?? transfer.createdAt)
+          : transfer.updatedAt;
   const ignoredForList = isRecipient && transfer.recipientStatus !== TicketTransferRecipientStatus.PENDING;
   const canceledForList = isAuthor && transfer.senderStatus === TicketTransferSenderStatus.CANCELED;
   const ticket = mapWalletTicket(transfer.ticket, false, now);
@@ -348,11 +356,9 @@ export function mapTicketTransfer(
         : null,
     createdAt: transfer.createdAt,
     updatedAt: effectiveUpdatedAt,
-    expiresFromListAt: ignoredForList || canceledForList
-      ? new Date(transfer.event.endDate.getTime() + 30 * 24 * 60 * 60 * 1_000)
-      : null,
-    canCancel:
-      isAuthor && transfer.senderStatus === TicketTransferSenderStatus.PENDING,
+    expiresFromListAt:
+      ignoredForList || canceledForList ? new Date(transfer.event.endDate.getTime() + 30 * 24 * 60 * 60 * 1_000) : null,
+    canCancel: isAuthor && transfer.senderStatus === TicketTransferSenderStatus.PENDING,
     canAccept:
       isRecipient &&
       transfer.senderStatus === TicketTransferSenderStatus.PENDING &&
@@ -399,29 +405,31 @@ export function mapAdminTicketHistory(row: {
 }
 
 export function isEventPubliclyVisible(event: EventSummaryRecord): boolean {
-  return event.isPubliclyListed &&
+  return (
+    event.isPubliclyListed &&
     event.deletedAt == null &&
     event.publicationState === PublicationState.PUBLISHED &&
     event.audience === EventAudience.PUBLIC &&
-    (!event.eventGroup || (
-      event.eventGroup.deletedAt == null &&
-      event.eventGroup.audience === EventAudience.PUBLIC &&
-      (!event.eventGroup.publicationState || event.eventGroup.publicationState === PublicationState.PUBLISHED) &&
-      (!event.eventGroup.majorEvent || (
-        event.eventGroup.majorEvent.deletedAt == null &&
-        event.eventGroup.majorEvent.audience === EventAudience.PUBLIC &&
-        (!event.eventGroup.majorEvent.publicationState || event.eventGroup.majorEvent.publicationState === PublicationState.PUBLISHED)
-      ))
-    )) &&
-    (!event.majorEvent || (
-      event.majorEvent.deletedAt == null &&
-      event.majorEvent.audience === EventAudience.PUBLIC &&
-      (!event.majorEvent.publicationState || event.majorEvent.publicationState === PublicationState.PUBLISHED)
-    ));
+    (!event.eventGroup ||
+      (event.eventGroup.deletedAt == null &&
+        event.eventGroup.audience === EventAudience.PUBLIC &&
+        (!event.eventGroup.publicationState || event.eventGroup.publicationState === PublicationState.PUBLISHED) &&
+        (!event.eventGroup.majorEvent ||
+          (event.eventGroup.majorEvent.deletedAt == null &&
+            event.eventGroup.majorEvent.audience === EventAudience.PUBLIC &&
+            (!event.eventGroup.majorEvent.publicationState ||
+              event.eventGroup.majorEvent.publicationState === PublicationState.PUBLISHED))))) &&
+    (!event.majorEvent ||
+      (event.majorEvent.deletedAt == null &&
+        event.majorEvent.audience === EventAudience.PUBLIC &&
+        (!event.majorEvent.publicationState || event.majorEvent.publicationState === PublicationState.PUBLISHED)))
+  );
 }
 
 function redactIdentityDocument(value: string | null | undefined, isCPF: boolean | null | undefined): string | null {
-  if (!value?.trim()) return null;
+  if (!value?.trim()) {
+    return null;
+  }
   const digits = value.replace(/\D/g, '');
   const isCpf = isCPF === true || (isCPF == null && isValidCPF(value));
   return isCpf && digits.length === 11 ? maskCPF(value) : '••••';

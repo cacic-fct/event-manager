@@ -79,21 +79,33 @@ export class EventsPageComponent {
   protected associationEmoji(kind: 'group' | 'major-event'): string | null {
     if (kind === 'group') {
       const id = this.workspace.eventForm.controls.eventGroupId.value;
-      return this.workspace.eventGroupSearchResults().find((group) => group.id === id)?.emoji
-        ?? (this.workspace.selectedEvent()?.eventGroup?.id === id ? this.workspace.selectedEvent()?.eventGroup?.emoji : null) ?? null;
+      return (
+        this.workspace.eventGroupSearchResults().find((group) => group.id === id)?.emoji ??
+        (this.workspace.selectedEvent()?.eventGroup?.id === id
+          ? this.workspace.selectedEvent()?.eventGroup?.emoji
+          : null) ??
+        null
+      );
     }
     const id = this.workspace.eventForm.controls.majorEventId.value;
-    return this.workspace.majorEventSearchResults().find((major) => major.id === id)?.emoji
-      ?? this.workspace.majorEvents().find((major) => major.id === id)?.emoji
-      ?? (this.workspace.selectedEvent()?.majorEvent?.id === id ? this.workspace.selectedEvent()?.majorEvent?.emoji : null) ?? null;
+    return (
+      this.workspace.majorEventSearchResults().find((major) => major.id === id)?.emoji ??
+      this.workspace.majorEvents().find((major) => major.id === id)?.emoji ??
+      (this.workspace.selectedEvent()?.majorEvent?.id === id
+        ? this.workspace.selectedEvent()?.majorEvent?.emoji
+        : null) ??
+      null
+    );
   }
 
   readonly workspace = inject(EventsService);
   private readonly pendingChanges = inject(WorkspacePendingChangesService);
-  private readonly pendingRegistration = this.pendingChanges.register(() => this.workspace.discardChanges({
-    majorEventId: this.lastContext?.query?.get('majorEventId'),
-    eventGroupId: this.lastContext?.query?.get('eventGroupId'),
-  }));
+  private readonly pendingRegistration = this.pendingChanges.register(() =>
+    this.workspace.discardChanges({
+      majorEventId: this.lastContext?.query?.get('majorEventId'),
+      eventGroupId: this.lastContext?.query?.get('eventGroupId'),
+    }),
+  );
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
@@ -106,20 +118,23 @@ export class EventsPageComponent {
   readonly contextReady = computed(() => !this.contextLoading() && !this.contextError());
   readonly creationParents = signal<CreationParentSummary[]>([]);
   private contextRequest = 0;
-  private lastContext: {params: ParamMap; query: ParamMap | null} | null = null;
+  private lastContext: { params: ParamMap; query: ParamMap | null } | null = null;
 
   constructor() {
     effect(() => this.pendingRegistration.set(this.workspace.unsavedChanges()));
     this.destroyRef.onDestroy(() => this.pendingRegistration.destroy());
     combineLatest([this.route.paramMap, this.route.queryParamMap ?? of(null)])
-      .pipe(takeUntilDestroyed()).subscribe(([params, query]) => {
-        this.lastContext = {params, query};
+      .pipe(takeUntilDestroyed())
+      .subscribe(([params, query]) => {
+        this.lastContext = { params, query };
         void this.initializeContext(params, query);
       });
   }
 
   retryContext(): void {
-    if (this.lastContext) void this.initializeContext(this.lastContext.params, this.lastContext.query);
+    if (this.lastContext) {
+      void this.initializeContext(this.lastContext.params, this.lastContext.query);
+    }
   }
 
   private async initializeContext(params: ParamMap, query: ParamMap | null): Promise<void> {
@@ -132,13 +147,30 @@ export class EventsPageComponent {
     try {
       if (id) {
         const selected = await this.workspace.selectEventById(id, { skipIfCurrent: true });
-        if (selected === false && request === this.contextRequest) this.contextError.set('A seleção da versão foi cancelada. Tente novamente para abrir este evento.');
+        if (selected === false && request === this.contextRequest) {
+          this.contextError.set('A seleção da versão foi cancelada. Tente novamente para abrir este evento.');
+        }
+      } else {
+        const parents = await this.workspace.initializeNewEvent({
+          eventGroupId: query?.get('eventGroupId'),
+          majorEventId: query?.get('majorEventId'),
+        });
+        if (request === this.contextRequest) {
+          this.creationParents.set(parents);
+        }
       }
-      else { const parents = await this.workspace.initializeNewEvent({eventGroupId:query?.get('eventGroupId'),majorEventId:query?.get('majorEventId')}); if (request === this.contextRequest) this.creationParents.set(parents); }
     } catch (error) {
-      if (request === this.contextRequest) this.contextError.set(error instanceof CreationParentError ? error.message : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.');
+      if (request === this.contextRequest) {
+        this.contextError.set(
+          error instanceof CreationParentError
+            ? error.message
+            : 'Não foi possível carregar este contexto. Confira o vínculo e tente novamente.',
+        );
+      }
     } finally {
-      if (request === this.contextRequest) this.contextLoading.set(false);
+      if (request === this.contextRequest) {
+        this.contextLoading.set(false);
+      }
     }
   }
 
@@ -160,7 +192,9 @@ export class EventsPageComponent {
       .open(LocationCoordinatePickerDialogComponent, { data: { coordinates }, maxWidth: 'calc(100vw - 32px)' })
       .afterClosed()
       .subscribe((result: LocationCoordinates | undefined) => {
-        if (!result) return;
+        if (!result) {
+          return;
+        }
         this.workspace.eventForm.patchValue({
           latitude: result.latitude.toString(),
           longitude: result.longitude.toString(),
@@ -292,8 +326,15 @@ export class EventsPageComponent {
     option: AttendanceEligibility | null,
     value: AttendanceEligibility | null,
   ): boolean => {
-    return option ===
-      displayAttendanceEligibility(value, 'EVENT', this.attendanceEligibilityParent(), this.attendanceEligibilityHasMajorContext());
+    return (
+      option ===
+      displayAttendanceEligibility(
+        value,
+        'EVENT',
+        this.attendanceEligibilityParent(),
+        this.attendanceEligibilityHasMajorContext(),
+      )
+    );
   };
 
   protected attendanceEligibilityHint(): string {

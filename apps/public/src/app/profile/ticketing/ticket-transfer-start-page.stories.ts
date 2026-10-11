@@ -46,34 +46,32 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
   decorators: [
     withScenarioControls<TicketTransferStartStoryArgs>(),
     (story, context) => {
-      const ticket = createWalletStoryTicket(
-        {
+      const ticket = createWalletStoryTicket({
+        name: context.args.ticketName,
+        emoji: context.args.ticketEmoji,
+        description: context.args.description || null,
+        transferEligibilityDescription: context.args.eligibilityDescription || null,
+        event: {
+          ...createWalletStoryTicket().event,
           name: context.args.ticketName,
           emoji: context.args.ticketEmoji,
-          description: context.args.description || null,
-          transferEligibilityDescription: context.args.eligibilityDescription || null,
-          event: {
-            ...createWalletStoryTicket().event,
-            name: context.args.ticketName,
-            emoji: context.args.ticketEmoji,
-          },
-          ...(context.args.mode === 'expired'
-            ? { status: 'EXPIRED', effectiveExpiresAt: new Date(Date.now() - 1000).toISOString() }
-            : {}),
         },
-      );
+        ...(context.args.mode === 'expired'
+          ? { status: 'EXPIRED', effectiveExpiresAt: new Date(Date.now() - 1000).toISOString() }
+          : {}),
+      });
       const pendingTransfer = createTicketStoryTransfer({
         ticket,
         recipient: null,
         submittedDestinationIdentityDocument: 'XK7654321',
         canCancel: true,
       });
-      const ticketResponse = context.args.apiState === 'loading'
-        ? NEVER
-        : of(ticket);
-      const transferResponse = of(createTicketStoryTransferLists({
-            outgoing: context.args.mode === 'pending' ? [pendingTransfer] : [],
-          }));
+      const ticketResponse = context.args.apiState === 'loading' ? NEVER : of(ticket);
+      const transferResponse = of(
+        createTicketStoryTransferLists({
+          outgoing: context.args.mode === 'pending' ? [pendingTransfer] : [],
+        }),
+      );
 
       return applicationConfig({
         providers: [
@@ -92,12 +90,13 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
                 sub: 'ticket-sender-user',
                 claims: {
                   name: 'Marina da Silva',
-                      picture: 'https://lh3.googleusercontent.com/a/story-user=s96-c',
-                  identity_document: context.args.identityKind === 'cpf'
-                    ? '52998224725'
-                    : context.args.identityKind === 'passport'
-                      ? 'XK1234567'
-                      : '',
+                  picture: 'https://lh3.googleusercontent.com/a/story-user=s96-c',
+                  identity_document:
+                    context.args.identityKind === 'cpf'
+                      ? '52998224725'
+                      : context.args.identityKind === 'passport'
+                        ? 'XK1234567'
+                        : '',
                 },
               }),
             },
@@ -108,11 +107,13 @@ const meta: Meta<TicketTransferStartStoryArgs> = {
               myWalletTicket: () => ticketResponse,
               myTicketTransfers: () => transferResponse,
               startTicketTransfer: (_ticketId: string, document: string) =>
-                of(createTicketStoryTransfer({
-                  ticket,
-                  recipient: null,
-                  submittedDestinationIdentityDocument: document,
-                })),
+                of(
+                  createTicketStoryTransfer({
+                    ticket,
+                    recipient: null,
+                    submittedDestinationIdentityDocument: document,
+                  }),
+                ),
               cancelTicketTransfer: () => of(pendingTransfer),
               watchCurrentUser: () => EMPTY,
             },

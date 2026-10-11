@@ -2,10 +2,7 @@ import { MajorEventSubscription } from '@prisma/client';
 
 type MajorEventSubscriptionAuditSource = Pick<
   MajorEventSubscription,
-  | 'id'
-  | 'majorEventId'
-  | 'personId'
-  | 'subscriptionStatus'
+  'id' | 'majorEventId' | 'personId' | 'subscriptionStatus'
 > &
   Partial<
     Pick<

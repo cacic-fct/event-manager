@@ -13,10 +13,12 @@ describe('OrganizerShowcaseComponent', () => {
   it('exposes both event operations and the smart dashboard', () => {
     const element = fixture.nativeElement as HTMLElement;
     const featureButtons = [...element.querySelectorAll('.feature-picker button')];
-    expect(featureButtons.map((button) => button.textContent)).toEqual(expect.arrayContaining([
-      expect.stringContaining('Eventos e inscrições'),
-      expect.stringContaining('Painel inteligente'),
-      expect.stringContaining('Presenças'),
-    ]));
+    expect(featureButtons.map((button) => button.textContent)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Eventos e inscrições'),
+        expect.stringContaining('Painel inteligente'),
+        expect.stringContaining('Presenças'),
+      ]),
+    );
   });
 });

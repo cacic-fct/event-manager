@@ -1,5 +1,9 @@
 import type { Page, Route } from '@playwright/test';
-import { createTicketPurchase, createTicketPurchaseOption, createTicketPurchaseReceipt } from '@cacic-fct/shared-ticketing/testing';
+import {
+  createTicketPurchase,
+  createTicketPurchaseOption,
+  createTicketPurchaseReceipt,
+} from '@cacic-fct/shared-ticketing/testing';
 import type { TicketPurchase, TicketPurchaseOption } from '@cacic-fct/shared-ticketing';
 import { expect, test } from './support/e2e-test';
 import { authenticatedUserFixture } from './support/authenticated-user.fixture';
@@ -17,9 +21,7 @@ test.beforeEach(async ({ page }) => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
-  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
-    route.fulfill({ json: { toggles: [] } }),
-  );
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) => route.fulfill({ json: { toggles: [] } }));
   await page.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({
       status: 200,
@@ -36,18 +38,22 @@ test('uploads a tier-priced ticket receipt through the ticket purchase endpoint'
   await page.goto(paymentUrl(2500));
   await expect(page.getByRole('heading', { name: 'Festa de encerramento' })).toBeVisible();
   await expect(page.getByText('R$ 25,00')).toBeVisible();
-  await expect(page.getByText('A compra só será registrada depois que o envio do comprovante for concluído.')).toBeVisible();
+  await expect(
+    page.getByText('A compra só será registrada depois que o envio do comprovante for concluído.'),
+  ).toBeVisible();
 
   await uploadReceipt(page);
 
   await expect(page.getByText('Comprovante em análise')).toBeVisible();
   await expect(page.getByText('O comprovante do bilhete foi enviado e está vinculado a esta compra.')).toBeVisible();
   expect(state.uploads).toHaveLength(1);
-  expect(state.uploads[0]).toEqual(expect.objectContaining({
-    path: '/api/ticket-purchases/party-event/receipt',
-    contentType: expect.stringContaining('multipart/form-data'),
-    body: expect.stringContaining('ticket-config-e2e'),
-  }));
+  expect(state.uploads[0]).toEqual(
+    expect.objectContaining({
+      path: '/api/ticket-purchases/party-event/receipt',
+      contentType: expect.stringContaining('multipart/form-data'),
+      body: expect.stringContaining('ticket-config-e2e'),
+    }),
+  );
   expect(state.uploads[0].body).toContain('expectedAmountCents');
   expect(state.subscriptionReceiptQueries).toBe(0);
 });
@@ -73,16 +79,18 @@ test('keeps a fixed-price offer disabled when its linked amount changes', async 
 test('shows upload errors and leaves the rejected ticket receipt available for another attempt', async ({ page }) => {
   const state = createPaymentApiState();
   state.uploadResult = 'failure';
-  state.purchases = [createTicketPurchase({
-    id: 'rejected-ticket-purchase',
-    eventId: 'party-event',
-    majorEventId: 'major-1',
-    ticketConfigId: 'ticket-config-e2e',
-    name: 'Festa de encerramento',
-    amountCents: 2500,
-    status: 'REJECTED',
-    rejectionReason: 'O comprovante está ilegível.',
-  })];
+  state.purchases = [
+    createTicketPurchase({
+      id: 'rejected-ticket-purchase',
+      eventId: 'party-event',
+      majorEventId: 'major-1',
+      ticketConfigId: 'ticket-config-e2e',
+      name: 'Festa de encerramento',
+      amountCents: 2500,
+      status: 'REJECTED',
+      rejectionReason: 'O comprovante está ilegível.',
+    }),
+  ];
   await mockPaymentApi(page, state);
 
   await page.goto(paymentUrl(2500));

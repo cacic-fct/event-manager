@@ -32,7 +32,8 @@ const meta: Meta<App> = {
   parameters: {
     docs: {
       description: {
-        component: 'Root application view for checking navigation and startup behavior. Use the network global to inspect the offline shell.',
+        component:
+          'Root application view for checking navigation and startup behavior. Use the network global to inspect the offline shell.',
       },
     },
     layout: 'fullscreen',

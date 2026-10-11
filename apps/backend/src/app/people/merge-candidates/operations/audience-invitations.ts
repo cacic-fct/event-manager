@@ -60,10 +60,12 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
-      (row) => tx.eventAudienceInvitation.delete({
-        where: { eventId_personId: { eventId: row.targetId, personId: sourcePersonId } },
-      }),
-    )));
+      (row) =>
+        tx.eventAudienceInvitation.delete({
+          where: { eventId_personId: { eventId: row.targetId, personId: sourcePersonId } },
+        }),
+    )),
+  );
 
   const eventGroupRows = await tx.eventGroupAudienceInvitation.findMany({
     where: { personId: sourcePersonId },
@@ -95,10 +97,12 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
-      (row) => tx.eventGroupAudienceInvitation.delete({
-        where: { eventGroupId_personId: { eventGroupId: row.targetId, personId: sourcePersonId } },
-      }),
-    )));
+      (row) =>
+        tx.eventGroupAudienceInvitation.delete({
+          where: { eventGroupId_personId: { eventGroupId: row.targetId, personId: sourcePersonId } },
+        }),
+    )),
+  );
 
   const majorEventRows = await tx.majorEventAudienceInvitation.findMany({
     where: { personId: sourcePersonId },
@@ -130,10 +134,12 @@ export async function moveAudienceInvitations(
           },
           data: { personId: targetPersonId },
         }),
-      (row) => tx.majorEventAudienceInvitation.delete({
-        where: { majorEventId_personId: { majorEventId: row.targetId, personId: sourcePersonId } },
-      }),
-    )));
+      (row) =>
+        tx.majorEventAudienceInvitation.delete({
+          where: { majorEventId_personId: { majorEventId: row.targetId, personId: sourcePersonId } },
+        }),
+    )),
+  );
 
   return snapshots;
 }
@@ -159,9 +165,15 @@ export async function restoreAudienceInvitations(
         notificationAttemptedAt: snapshot.notificationAttemptedAt ? new Date(snapshot.notificationAttemptedAt) : null,
       };
       switch (snapshot.targetType) {
-        case 'EVENT': await tx.eventAudienceInvitation.create({ data: { ...data, eventId: snapshot.targetId } }); break;
-        case 'EVENT_GROUP': await tx.eventGroupAudienceInvitation.create({ data: { ...data, eventGroupId: snapshot.targetId } }); break;
-        case 'MAJOR_EVENT': await tx.majorEventAudienceInvitation.create({ data: { ...data, majorEventId: snapshot.targetId } }); break;
+        case 'EVENT':
+          await tx.eventAudienceInvitation.create({ data: { ...data, eventId: snapshot.targetId } });
+          break;
+        case 'EVENT_GROUP':
+          await tx.eventGroupAudienceInvitation.create({ data: { ...data, eventGroupId: snapshot.targetId } });
+          break;
+        case 'MAJOR_EVENT':
+          await tx.majorEventAudienceInvitation.create({ data: { ...data, majorEventId: snapshot.targetId } });
+          break;
       }
       continue;
     }
@@ -173,11 +185,19 @@ export async function restoreAudienceInvitations(
           })
         : snapshot.targetType === 'EVENT_GROUP'
           ? await tx.eventGroupAudienceInvitation.updateMany({
-              where: { eventGroupId: snapshot.targetId, personId: targetPersonId, createdAt: new Date(snapshot.createdAt) },
+              where: {
+                eventGroupId: snapshot.targetId,
+                personId: targetPersonId,
+                createdAt: new Date(snapshot.createdAt),
+              },
               data: { personId: sourcePersonId },
             })
           : await tx.majorEventAudienceInvitation.updateMany({
-              where: { majorEventId: snapshot.targetId, personId: targetPersonId, createdAt: new Date(snapshot.createdAt) },
+              where: {
+                majorEventId: snapshot.targetId,
+                personId: targetPersonId,
+                createdAt: new Date(snapshot.createdAt),
+              },
               data: { personId: sourcePersonId },
             });
     if (result.count !== 1) {
@@ -199,8 +219,11 @@ async function moveInvitationRows(
   const snapshots: AudienceInvitationSnapshot[] = [];
   for (const row of sourceRows) {
     const coalesced = targetIdSet.has(row.targetId);
-    if (coalesced) await remove(row);
-    else await update(row);
+    if (coalesced) {
+      await remove(row);
+    } else {
+      await update(row);
+    }
     snapshots.push({
       ...(coalesced ? { coalesced: true } : {}),
       targetType,

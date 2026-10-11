@@ -79,7 +79,6 @@ export const Playground: Story = {
   },
 };
 
-
 export const LongFolderName: Story = {
   args: {
     newFolderName: 'Atividades complementares de extensão, pesquisa e formação acadêmica continuada',

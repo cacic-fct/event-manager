@@ -1,7 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import {
-  EventFormLink as EventFormLinkModel,
-} from '@cacic-fct/shared-data-types';
+import { EventFormLink as EventFormLinkModel } from '@cacic-fct/shared-data-types';
 import { matchesEventFormAudience } from '@cacic-fct/shared-event-participation';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import {
@@ -220,7 +218,9 @@ async function isPersonSubscriber(
           })
         : Promise.resolve(null),
     ]);
-    return Boolean(selection || (majorSubscription && isActiveMajorEventRegistration(majorSubscription.subscriptionStatus)));
+    return Boolean(
+      selection || (majorSubscription && isActiveMajorEventRegistration(majorSubscription.subscriptionStatus)),
+    );
   }
 
   if (link.majorEventId) {
@@ -327,10 +327,7 @@ async function isPersonInterested(
         where: {
           personId,
           deletedAt: null,
-          OR: [
-            { eventId: link.eventId },
-            ...(event?.eventGroupId ? [{ eventGroupId: event.eventGroupId }] : []),
-          ],
+          OR: [{ eventId: link.eventId }, ...(event?.eventGroupId ? [{ eventGroupId: event.eventGroupId }] : [])],
         },
         select: { id: true },
       }),

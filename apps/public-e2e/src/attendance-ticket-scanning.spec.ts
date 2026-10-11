@@ -37,9 +37,13 @@ test('routes a ticket barcode through the existing scanner attendance mutation',
   await page.evaluate((barcode) => {
     const angularDebug = (window as unknown as { ng?: { getComponent(target: Element): unknown } }).ng;
     const scannerElement = document.querySelector('lib-aztec-scanner');
-    if (!angularDebug || !scannerElement) throw new Error('The routed scanner component is not available.');
+    if (!angularDebug || !scannerElement) {
+      throw new Error('The routed scanner component is not available.');
+    }
     const scanner = angularDebug.getComponent(scannerElement) as { scan?: { emit(value: string): void } };
-    if (!scanner.scan) throw new Error('The scanner output is not available.');
+    if (!scanner.scan) {
+      throw new Error('The scanner output is not available.');
+    }
     scanner.scan.emit(barcode);
   }, `ticket:018f47a1-3d5b-7abc-8def-0123456789ab:${TICKET_FIXTURE_HOLDER_USER_ID}`);
 

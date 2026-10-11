@@ -56,10 +56,12 @@
   color: #f4fff9;
   background: #23453e;
 
-  @include mat.button-overrides((
-    filled-container-color: #d1f2de,
-    filled-label-text-color: #10362e,
-  ));
+  @include mat.button-overrides(
+    (
+      filled-container-color: #d1f2de,
+      filled-label-text-color: #10362e,
+    )
+  );
 }
 
 .wallet-card--offline {
@@ -233,7 +235,11 @@
   min-width: 0;
   margin: 1rem 0 0.5rem;
 
-  @include mat.progress-spinner-overrides((active-indicator-color: #fff));
+  @include mat.progress-spinner-overrides(
+    (
+      active-indicator-color: #fff,
+    )
+  );
 }
 
 .offline-card-code strong {

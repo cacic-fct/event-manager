@@ -8,10 +8,13 @@ class AnimatedPreview {
   readonly step = signal(0);
 
   constructor() {
-    playShowcaseSequence((schedule) => {
-      schedule(() => this.step.set(1), 400);
-      schedule(() => this.step.set(2), 800);
-    }, () => this.active());
+    playShowcaseSequence(
+      (schedule) => {
+        schedule(() => this.step.set(1), 400);
+        schedule(() => this.step.set(2), 800);
+      },
+      () => this.active(),
+    );
   }
 }
 
@@ -21,21 +24,31 @@ describe('playShowcaseSequence', () => {
 
   beforeEach(async () => {
     reducedMotion = false;
-    vi.stubGlobal('IntersectionObserver', class {
-      constructor(callback: IntersectionObserverCallback) {
-        reportVisibility = (visible) => callback(
-          [{ isIntersecting: visible, intersectionRatio: visible ? 1 : 0 } as IntersectionObserverEntry],
-          this as unknown as IntersectionObserver,
-        );
-      }
-      observe() { /* Visibility is reported explicitly by each test. */ }
-      disconnect() { /* No observer resources exist in this fixture. */ }
-    });
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          reportVisibility = (visible) =>
+            callback(
+              [{ isIntersecting: visible, intersectionRatio: visible ? 1 : 0 } as IntersectionObserverEntry],
+              this as unknown as IntersectionObserver,
+            );
+        }
+        observe() {
+          /* Visibility is reported explicitly by each test. */
+        }
+        disconnect() {
+          /* No observer resources exist in this fixture. */
+        }
+      },
+    );
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn(() => ({
-        get matches() { return reducedMotion; },
+        get matches() {
+          return reducedMotion;
+        },
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       })),

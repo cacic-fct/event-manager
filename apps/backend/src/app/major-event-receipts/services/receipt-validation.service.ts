@@ -335,7 +335,11 @@ export class ReceiptValidationService {
         actorId,
       );
       await this.sync.refreshSportsParticipantPayment(tx, existingAction.subscriptionId);
-      await this.ticketSubscriptions?.forMajorEvent(tx, existingAction.subscription.majorEventId, existingAction.subscription.personId);
+      await this.ticketSubscriptions?.forMajorEvent(
+        tx,
+        existingAction.subscription.majorEventId,
+        existingAction.subscription.personId,
+      );
       await this.attendanceCategories.refreshForMajorEventPerson(
         existingAction.subscription.majorEventId,
         existingAction.subscription.personId,

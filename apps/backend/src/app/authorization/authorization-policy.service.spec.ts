@@ -20,11 +20,17 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it.each([Permission.Event.Create, Permission.EventGroup.Create, Permission.MajorEvent.Create])(
-    'ignores explicit new IDs for %s while retaining actual parents', (permission) => {
-      const context = service.buildResourceContext({ input: { id: 'new-resource', eventGroupId: 'parent-group', majorEventId: 'parent-major' } }, [permission]);
+    'ignores explicit new IDs for %s while retaining actual parents',
+    (permission) => {
+      const context = service.buildResourceContext(
+        { input: { id: 'new-resource', eventGroupId: 'parent-group', majorEventId: 'parent-major' } },
+        [permission],
+      );
       expect(context.genericId).toBeUndefined();
       expect(context).toMatchObject({ eventGroupId: 'parent-group', majorEventId: 'parent-major' });
-      expect(service.buildResourceContext({ id: 'existing-event' }, [Permission.Event.Update]).genericId).toBe('existing-event');
+      expect(service.buildResourceContext({ id: 'existing-event' }, [Permission.Event.Update]).genericId).toBe(
+        'existing-event',
+      );
     },
   );
 

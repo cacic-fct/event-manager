@@ -61,7 +61,11 @@ const meta: Meta<FilterDialogStoryArgs> = {
           },
           {
             provide: MatDialogRef,
-            useValue: { close: (value?: ReceiptValidationFilters) => { appliedFilters = value; } },
+            useValue: {
+              close: (value?: ReceiptValidationFilters) => {
+                appliedFilters = value;
+              },
+            },
           },
         ],
       })(story, context);
@@ -70,7 +74,8 @@ const meta: Meta<FilterDialogStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Receipt queue filters for category, subscription tier, and sort order. Use the controls to compare available filter combinations.',
+        component:
+          'Receipt queue filters for category, subscription tier, and sort order. Use the controls to compare available filter combinations.',
       },
     },
     layout: 'centered',

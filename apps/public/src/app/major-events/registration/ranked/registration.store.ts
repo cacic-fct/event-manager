@@ -77,7 +77,9 @@ export class RankedSubscriptionStore {
   private readonly subscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   readonly isAuthenticated = this.auth.isAuthenticated;
-  readonly interestedEventIds = computed(() => interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []));
+  readonly interestedEventIds = computed(() =>
+    interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []),
+  );
   readonly isSubmitting = signal(false);
   readonly isPreparingSubscriptionFlow = signal(false);
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;

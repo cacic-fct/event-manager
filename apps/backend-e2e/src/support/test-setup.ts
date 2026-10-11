@@ -8,7 +8,9 @@ let app: INestApplication | undefined;
 beforeAll(async () => {
   const currentTestPath = (expect.getState() as unknown as { testPath?: string }).testPath ?? '';
   const isTicketingHttpSpec = currentTestPath.includes('ticketing.spec.ts');
-  if (isTicketingHttpSpec && process.env['TICKETING_HTTP_E2E_TEST'] !== '1') return;
+  if (isTicketingHttpSpec && process.env['TICKETING_HTTP_E2E_TEST'] !== '1') {
+    return;
+  }
   if (process.env['TICKETING_HTTP_E2E_TEST'] === '1') {
     useTicketingDisposableDatabase();
     process.env['BACKEND_E2E_IN_MEMORY_INFRA'] = 'true';
@@ -36,7 +38,9 @@ afterAll(async () => {
 });
 
 export function getBackendE2eApp(): INestApplication {
-  if (!app) throw new Error('The backend E2E application is not running for this test file.');
+  if (!app) {
+    throw new Error('The backend E2E application is not running for this test file.');
+  }
   return app;
 }
 

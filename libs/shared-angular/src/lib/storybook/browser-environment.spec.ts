@@ -6,23 +6,28 @@ const originalMatchMedia = window.matchMedia;
 describe('Storybook browser environment', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.stubGlobal('MediaQueryListEvent', class extends Event {
-      readonly media: string;
-      readonly matches: boolean;
+    vi.stubGlobal(
+      'MediaQueryListEvent',
+      class extends Event {
+        readonly media: string;
+        readonly matches: boolean;
 
-      constructor(type: string, options: MediaQueryListEventInit) {
-        super(type);
-        this.media = options.media ?? '';
-        this.matches = options.matches ?? false;
-      }
-    });
+        constructor(type: string, options: MediaQueryListEventInit) {
+          super(type);
+          this.media = options.media ?? '';
+          this.matches = options.matches ?? false;
+        }
+      },
+    );
     window.matchMedia = vi.fn((query: string) => ({ media: query, matches: false }) as MediaQueryList);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     window.matchMedia = originalMatchMedia;
-    if (originalOnline) Object.defineProperty(Navigator.prototype, 'onLine', originalOnline);
+    if (originalOnline) {
+      Object.defineProperty(Navigator.prototype, 'onLine', originalOnline);
+    }
   });
 
   it('updates existing preference queries and notifies subscribers only on changes', async () => {
@@ -97,7 +102,9 @@ describe('Storybook browser environment', () => {
     try {
       const { waitForStorybookAnnouncements } = await import('./browser-environment');
       let announced = false;
-      const announcement = waitForStorybookAnnouncements().then(() => { announced = true; });
+      const announcement = waitForStorybookAnnouncements().then(() => {
+        announced = true;
+      });
       await Promise.resolve();
       expect(announced).toBe(false);
       container.firstElementChild?.removeAttribute('aria-hidden');

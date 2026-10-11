@@ -138,10 +138,14 @@ function normalizeReceiptValidationQueue(queue: ReceiptValidationQueue): Receipt
     pendingCount: Number.isFinite(queue?.pendingCount) ? queue.pendingCount : 0,
     subscriptionCount: Number.isFinite(queue?.subscriptionCount)
       ? queue.subscriptionCount
-      : (Array.isArray(queue?.items) ? queue.items.filter((item) => item.category !== 'TICKET').length : 0),
+      : Array.isArray(queue?.items)
+        ? queue.items.filter((item) => item.category !== 'TICKET').length
+        : 0,
     ticketCount: Number.isFinite(queue?.ticketCount)
       ? queue.ticketCount
-      : (Array.isArray(queue?.items) ? queue.items.filter((item) => item.category === 'TICKET').length : 0),
+      : Array.isArray(queue?.items)
+        ? queue.items.filter((item) => item.category === 'TICKET').length
+        : 0,
     availablePaymentTiers: Array.isArray(queue?.availablePaymentTiers) ? queue.availablePaymentTiers : [],
     items: Array.isArray(queue?.items)
       ? queue.items.map((item) => ({

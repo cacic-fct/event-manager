@@ -215,7 +215,9 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
     const markerSource = new VectorSource();
     const updateMarker = (coordinates: LocationCoordinates | null) => {
       markerSource.clear();
-      if (!coordinates) return;
+      if (!coordinates) {
+        return;
+      }
       const marker = new Feature({ geometry: new Point(fromLonLat([coordinates.longitude, coordinates.latitude])) });
       marker.setStyle(
         new Style({

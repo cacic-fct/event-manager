@@ -17,7 +17,9 @@ export function parseUserAztecCode(code: string): string | null {
 
 export function scannerUserIdForStorage(code: string | null | undefined): string | null {
   const normalizedCode = code?.trim();
-  if (!normalizedCode || !parseUserAztecCode(normalizedCode)) return null;
+  if (!normalizedCode || !parseUserAztecCode(normalizedCode)) {
+    return null;
+  }
   // Keep ticket identity for validation when reviewing an offline submission.
   return normalizedCode.startsWith('ticket:') ? normalizedCode : parseUserAztecCode(normalizedCode);
 }

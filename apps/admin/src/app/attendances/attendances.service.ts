@@ -153,7 +153,6 @@ export class AttendancesService {
   private attendanceLoadRequestId = 0;
   private majorEventAttendanceLoadRequestId = 0;
 
-
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
@@ -731,10 +730,12 @@ export class AttendancesService {
     }
     const query = this.majorEventAttendanceSearchForm.controls.query.value.trim() || undefined;
     const [attendances, count] = await Promise.all([
-      firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, {
-        ...(query ? { query } : {}),
-        ...pageVariables(this.majorEventUserAttendancesPagination.pageIndex()),
-      })),
+      firstValueFrom(
+        this.api.listMajorEventUserAttendances(majorEventId, {
+          ...(query ? { query } : {}),
+          ...pageVariables(this.majorEventUserAttendancesPagination.pageIndex()),
+        }),
+      ),
       firstValueFrom(this.api.getMajorEventUserAttendanceCount(majorEventId, query)),
     ]);
     if (
@@ -750,9 +751,7 @@ export class AttendancesService {
 
     const selected = this.selectedMajorEventUserAttendance();
     if (selected) {
-      const refreshedSelection = visibleAttendances.find(
-        (attendance) => attendance.personId === selected.personId,
-      );
+      const refreshedSelection = visibleAttendances.find((attendance) => attendance.personId === selected.personId);
       if (refreshedSelection) {
         this.selectMajorEventUserAttendance(refreshedSelection);
       }
@@ -783,7 +782,9 @@ export class AttendancesService {
 
   async selectMajorEventAttendancesById(majorEventId: string, navigate = true): Promise<void> {
     this.majorEventAttendanceForm.controls.majorEventId.setValue(majorEventId);
-    if (navigate) void this.router.navigate(['/attendances/major-event', majorEventId]);
+    if (navigate) {
+      void this.router.navigate(['/attendances/major-event', majorEventId]);
+    }
     this.selectMajorEventUserAttendance(null);
     resetPagination(this.majorEventUserAttendancesPagination);
     await this.loadMajorEventUserAttendances();
@@ -794,10 +795,16 @@ export class AttendancesService {
   }
 
   async selectMajorEventUserAttendanceById(majorEventId: string, personId: string): Promise<void> {
-    const attendances = await firstValueFrom(this.api.listMajorEventUserAttendances(majorEventId, { personId, take: 1 }));
-    if (this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId) return;
+    const attendances = await firstValueFrom(
+      this.api.listMajorEventUserAttendances(majorEventId, { personId, take: 1 }),
+    );
+    if (this.majorEventAttendanceForm.controls.majorEventId.value !== majorEventId) {
+      return;
+    }
     const attendance = attendances.find((item) => item.personId === personId);
-    if (!attendance) throw new Error('Participante não encontrado neste grande evento.');
+    if (!attendance) {
+      throw new Error('Participante não encontrado neste grande evento.');
+    }
     this.selectMajorEventUserAttendance(attendance);
   }
 

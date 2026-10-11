@@ -186,7 +186,9 @@ function normalizeElement(value: unknown, index: number): FormElement {
 }
 
 function normalizeImageReferences(value: unknown): FormImage[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    return [];
+  }
   return value
     .filter((item): item is Record<string, unknown> => isRecord(item))
     .map((item) => ({

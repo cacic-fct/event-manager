@@ -58,7 +58,9 @@ export class TicketTransferDetailsPage {
   readonly now = signal(Date.now());
   readonly canCancel = computed(() => {
     const current = this.state();
-    if (current.status !== 'ready' || current.transfer.senderStatus !== 'PENDING') return false;
+    if (current.status !== 'ready' || current.transfer.senderStatus !== 'PENDING') {
+      return false;
+    }
     return current.transfer.canCancel;
   });
   readonly canAccept = computed(() => {
@@ -133,7 +135,9 @@ export class TicketTransferDetailsPage {
 
   cancelTransfer(): void {
     const transfer = this.readyTransfer();
-    if (!transfer || !this.canCancel() || this.isCanceling()) return;
+    if (!transfer || !this.canCancel() || this.isCanceling()) {
+      return;
+    }
 
     this.isCanceling.set(true);
     this.api
@@ -187,14 +191,22 @@ export class TicketTransferDetailsPage {
       case 'CONSUMED':
         return 'Este bilhete já foi utilizado e não pode ser transferido.';
       case 'EXPIRED':
-        if (!transfer.initiatedByAdmin) return 'Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.';
+        if (!transfer.initiatedByAdmin) {
+          return 'Este bilhete expirou. Não é possível recebê-lo ou transferi-lo.';
+        }
         break;
       case 'REVOKED':
         return 'Este bilhete foi revogado e não pode ser transferido.';
     }
-    if (transfer.senderStatus === 'ACCEPTED') return 'Este bilhete foi recebido.';
-    if (transfer.senderStatus === 'CANCELED') return 'Este pedido foi cancelado.';
-    if (transfer.senderStatus === 'EXPIRED') return 'Este pedido expirou.';
+    if (transfer.senderStatus === 'ACCEPTED') {
+      return 'Este bilhete foi recebido.';
+    }
+    if (transfer.senderStatus === 'CANCELED') {
+      return 'Este pedido foi cancelado.';
+    }
+    if (transfer.senderStatus === 'EXPIRED') {
+      return 'Este pedido expirou.';
+    }
     if (
       transfer.recipientStatus === 'IGNORED' ||
       transfer.recipientStatus === 'SYSTEM_INELIGIBLE' ||
@@ -211,8 +223,12 @@ export class TicketTransferDetailsPage {
   }
 
   private confirm(action: 'accept' | 'ignore', transfer: TicketTransfer): void {
-    if (action === 'accept' && (!this.canAccept() || this.isAccepting())) return;
-    if (action === 'ignore' && !this.canAccept()) return;
+    if (action === 'accept' && (!this.canAccept() || this.isAccepting())) {
+      return;
+    }
+    if (action === 'ignore' && !this.canAccept()) {
+      return;
+    }
 
     const data: TicketTransferActionDialogData = { action, ticketName: transfer.ticket.name };
     this.dialog
@@ -224,9 +240,14 @@ export class TicketTransferDetailsPage {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
-        if (!confirmed) return;
-        if (action === 'accept') this.accept(transfer);
-        else this.ignore(transfer);
+        if (!confirmed) {
+          return;
+        }
+        if (action === 'accept') {
+          this.accept(transfer);
+        } else {
+          this.ignore(transfer);
+        }
       });
   }
 
@@ -289,7 +310,9 @@ export class TicketTransferDetailsPage {
   }
 
   private load(): void {
-    if (!this.transferId) return;
+    if (!this.transferId) {
+      return;
+    }
     const requestId = ++this.requestId;
     this.state.set({ status: 'loading' });
     this.api
@@ -297,7 +320,9 @@ export class TicketTransferDetailsPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (transfer) => {
-          if (requestId !== this.requestId) return;
+          if (requestId !== this.requestId) {
+            return;
+          }
           if (transfer) {
             this.state.set({ status: 'ready', transfer });
             this.now.set(Date.now());
@@ -320,7 +345,9 @@ export class TicketTransferDetailsPage {
 
   private scheduleExpiryRefresh(transfer: TicketTransfer): void {
     this.clearExpiryTimer();
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
 
     const now = Date.now();
     this.now.set(now);
@@ -336,7 +363,9 @@ export class TicketTransferDetailsPage {
     this.lastExpiryRefreshKey = '';
 
     const delay = nextDeadlineDelay([ticket.effectiveExpiresAt], now);
-    if (delay === null) return;
+    if (delay === null) {
+      return;
+    }
 
     this.expiryTimer = window.setTimeout(() => {
       this.expiryTimer = null;
@@ -344,12 +373,16 @@ export class TicketTransferDetailsPage {
       if (ticketStatusAt(ticket, this.now()) === 'EXPIRED') {
         this.lastExpiryRefreshKey = `${ticket.id}:${ticket.effectiveExpiresAt}`;
         this.load();
-      } else this.scheduleExpiryRefresh(transfer);
+      } else {
+        this.scheduleExpiryRefresh(transfer);
+      }
     }, delay);
   }
 
   private clearExpiryTimer(): void {
-    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) window.clearTimeout(this.expiryTimer);
+    if (this.expiryTimer !== null && isPlatformBrowser(this.platformId)) {
+      window.clearTimeout(this.expiryTimer);
+    }
     this.expiryTimer = null;
   }
 

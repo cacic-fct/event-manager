@@ -25,7 +25,9 @@ const invalidEventId = `${fixturePrefix}-invalid-event`;
 const invalidMajorEventId = `${fixturePrefix}-invalid-major-event`;
 
 function postgresErrorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
   const code = error.code;
   return typeof code === 'string' ? code : undefined;
 }
@@ -161,7 +163,13 @@ try {
     '23514',
   );
 
-  await assertInterestMigrationIntegrity(pool, { prefix: fixturePrefix, eventId, eventGroupId, majorEventId, personId });
+  await assertInterestMigrationIntegrity(pool, {
+    prefix: fixturePrefix,
+    eventId,
+    eventGroupId,
+    majorEventId,
+    personId,
+  });
 
   const eventSubscriptionAttempts = await Promise.allSettled([
     pool.query(`INSERT INTO "event_subscriptions" ("id", "eventId", "personId") VALUES ($1, $2, $3)`, [

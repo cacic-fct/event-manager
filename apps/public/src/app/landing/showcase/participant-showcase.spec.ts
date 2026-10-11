@@ -17,7 +17,9 @@ describe('ParticipantShowcaseComponent', () => {
 
   function enterCode(value: string): void {
     const input = (fixture.nativeElement as HTMLElement).querySelector('input');
-    if (!input) throw new Error('Attendance code input was not rendered');
+    if (!input) {
+      throw new Error('Attendance code input was not rendered');
+    }
     input.value = value;
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -37,7 +39,9 @@ describe('ParticipantShowcaseComponent', () => {
     fixture.componentInstance.confirmAttendance();
     fixture.detectChanges();
 
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Presença confirmada para Interfaces que incluem.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Presença confirmada para Interfaces que incluem.',
+    );
     expect(fixture.componentInstance.attendanceConfirmed()).toBe(true);
 
     fixture.componentInstance.resetAttendance();
@@ -60,8 +64,9 @@ describe('ParticipantShowcaseComponent', () => {
   it('connects the next activity to the attendance demo', () => {
     fixture.componentRef.setInput('feature', 'day');
     fixture.detectChanges();
-    const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')]
-      .find((item) => item.textContent?.includes('Confirmar presença'));
+    const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find((item) =>
+      item.textContent?.includes('Confirmar presença'),
+    );
     button?.click();
     fixture.detectChanges();
 

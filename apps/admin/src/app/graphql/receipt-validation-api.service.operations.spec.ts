@@ -99,7 +99,9 @@ describe('ReceiptValidationApiService operation contracts', () => {
   });
 
   it('rejects a ticket purchase with the required reviewer reason', async () => {
-    await expect(firstValueFrom(service.rejectTicketPurchase('purchase-1', 'Comprovante ilegível'))).resolves.toBe(true);
+    await expect(firstValueFrom(service.rejectTicketPurchase('purchase-1', 'Comprovante ilegível'))).resolves.toBe(
+      true,
+    );
     expect(graphqlHttp.request).toHaveBeenCalledWith(
       expect.stringContaining('rejectTicketPurchase(purchaseId: $purchaseId, reason: $reason)'),
       { purchaseId: 'purchase-1', reason: 'Comprovante ilegível' },

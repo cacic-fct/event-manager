@@ -249,7 +249,8 @@ const meta: Meta<SportsStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component: 'Sports tournament workspace with controls for tournament status, categories, teams, review queues, and loading behavior.',
+        component:
+          'Sports tournament workspace with controls for tournament status, categories, teams, review queues, and loading behavior.',
       },
     },
     layout: 'fullscreen',

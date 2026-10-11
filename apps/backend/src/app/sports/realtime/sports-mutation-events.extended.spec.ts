@@ -232,8 +232,12 @@ function prismaClient() {
     },
     sportsOfficialAssignment: {
       findUnique: jest.fn().mockImplementation(async ({ select }) => {
-        if ('tournamentId' in select) return { tournamentId: 'tournament-1' };
-        if ('personId' in select) return { personId: 'person-official' };
+        if ('tournamentId' in select) {
+          return { tournamentId: 'tournament-1' };
+        }
+        if ('personId' in select) {
+          return { personId: 'person-official' };
+        }
         return { matchId: 'match-official', categoryId: null };
       }),
     },

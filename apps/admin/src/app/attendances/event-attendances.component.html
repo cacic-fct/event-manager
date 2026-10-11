@@ -1,6 +1,4 @@
 <section class="subtab-layout event-attendance-layout">
-
-
   <section class="panel attendance-workbench">
     <div class="panel-heading">
       <div>
@@ -15,7 +13,9 @@
         <p>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
             Evento em {{ selectedAttendanceEvent.startDate | date: 'medium' }}.
-            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']">Editar política de presença</a>
+            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedAttendanceEvent.id, 'settings']"
+              >Editar política de presença</a
+            >
           } @else {
             A lista de presença e os registros manuais aparecem aqui.
           }
@@ -140,8 +140,12 @@
                 </span>
                 <span matListItemLine class="attendance-item-line">
                   Coletada em {{ submission.collectedAt | date: 'short' }} por
-                  {{ submission.authorName || submission.authorEmail || submission.authorUserId || 'autor não identificado' }},
-                  enviada por {{ submission.submittedByFullName || submission.submittedById }}
+                  {{
+                    submission.authorName ||
+                      submission.authorEmail ||
+                      submission.authorUserId ||
+                      'autor não identificado'
+                  }}, enviada por {{ submission.submittedByFullName || submission.submittedById }}
                 </span>
                 <span matListItemLine class="attendance-item-line review-line">
                   <span class="review-badge">{{

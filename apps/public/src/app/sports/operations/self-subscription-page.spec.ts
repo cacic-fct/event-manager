@@ -79,13 +79,19 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.selectedTeam()).toBeUndefined();
 
     const data = page.data();
-    if (!data) throw new Error('Expected tournament fixture data.');
+    if (!data) {
+      throw new Error('Expected tournament fixture data.');
+    }
     const team = data.tournament.teams[0];
-    if (!team) throw new Error('Expected a team fixture.');
+    if (!team) {
+      throw new Error('Expected a team fixture.');
+    }
     page.form.controls.requestedTeamId.setValue(team.id);
     expect(page.selectedTeam()).toEqual(team);
     const category = data.tournament.categories[0];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     page.toggleCategory(category.id, true);
     expect(page.selectedCategories().size).toBe(1);
     page.toggleCategory(category.id, false);
@@ -116,7 +122,9 @@ describe('SportsSelfSubscriptionPage', () => {
   it('prefills an editable pending application and changes the submit action', () => {
     const data = createCurrentUserTournamentOperations();
     const category = data.tournament.categories[1];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     currentUserApplications.mockReturnValue(
       of([
         {
@@ -179,7 +187,9 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.selectedCategories()).toEqual(new Set([data.tournament.categories[0]?.id]));
 
     const category = data.tournament.categories[0];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     page.form.controls.requestedTeamId.setValue(data.tournament.teams[0]?.id ?? '');
     page.form.controls.noticeAccepted.setValue(true);
     page.toggleCategory(category.id, true);
@@ -209,7 +219,9 @@ describe('SportsSelfSubscriptionPage', () => {
     page.form.controls.requestedTeamId.setValue('team-home');
     page.form.controls.noticeAccepted.setValue(true);
     const category = allCategories.tournament.categories[0];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     page.toggleCategory(category.id, true);
     expect(page.canSubmit()).toBe(true);
     page.teamSelectionChanged('team-home');
@@ -252,9 +264,13 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const data = page.data();
-    if (!data) throw new Error('Expected tournament fixture data.');
+    if (!data) {
+      throw new Error('Expected tournament fixture data.');
+    }
     const category = data.tournament.categories[0];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     page.form.controls.noticeAccepted.setValue(true);
     page.form.controls.requestedTeamId.setValue('   ');
     page.toggleCategory(category.id, true);
@@ -293,10 +309,14 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const data = page.data();
-    if (!data) throw new Error('Expected tournament fixture data.');
+    if (!data) {
+      throw new Error('Expected tournament fixture data.');
+    }
     const team = data.tournament.teams[0];
     const category = data.tournament.categories[0];
-    if (!team || !category) throw new Error('Expected tournament options.');
+    if (!team || !category) {
+      throw new Error('Expected tournament options.');
+    }
     page.form.controls.requestedTeamId.setValue(team.id);
     page.form.controls.noticeAccepted.setValue(true);
     page.form.controls.imageLicenseAgreementAccepted.setValue(true);
@@ -324,9 +344,13 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const data = page.data();
-    if (!data) throw new Error('Expected tournament fixture data.');
+    if (!data) {
+      throw new Error('Expected tournament fixture data.');
+    }
     const category = data.tournament.categories[0];
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
     await page.submit();
     expect(open).toHaveBeenCalledWith('Escolha pelo menos uma modalidade.', 'Fechar', { duration: 4000 });
 
@@ -374,7 +398,9 @@ describe('SportsSelfSubscriptionPage', () => {
     tournament.mockReturnValue(of(data));
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
-    if (!category) throw new Error('Expected a category fixture.');
+    if (!category) {
+      throw new Error('Expected a category fixture.');
+    }
 
     page.form.controls.requestedTeamId.setValue('team-away');
     page.toggleCategory(category.id, true);
@@ -500,7 +526,9 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const firstStream = realtimeStreams[0];
-    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    if (!firstStream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
 
     firstStream.error(new Error('closed'));
 
@@ -535,7 +563,9 @@ describe('SportsSelfSubscriptionPage', () => {
     page.ngOnInit();
     page.form.controls.requestedTeamId.setValue('team-away');
     const firstStream = realtimeStreams[0];
-    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    if (!firstStream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
 
     firstStream.error(new Error('closed'));
 
@@ -556,7 +586,9 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const firstStream = realtimeStreams[0];
-    if (!firstStream) throw new Error('Expected the initial realtime subscription.');
+    if (!firstStream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
 
     firstStream.error(new Error('closed'));
     page.teamSelectionChanged('team-home');
@@ -573,7 +605,9 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
     const stream = realtimeStreams[0];
-    if (!stream) throw new Error('Expected the initial realtime subscription.');
+    if (!stream) {
+      throw new Error('Expected the initial realtime subscription.');
+    }
 
     page.ngOnDestroy();
     stream.next({

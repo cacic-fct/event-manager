@@ -1,14 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  OnInit,
-  PLATFORM_ID,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';

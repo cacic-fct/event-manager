@@ -2,7 +2,9 @@ import { expect, test } from './support/e2e-test';
 import axe from 'axe-core';
 
 declare global {
-  interface Window { adminAuditAxe: typeof axe }
+  interface Window {
+    adminAuditAxe: typeof axe;
+  }
 }
 
 const storybookURL = process.env['STORYBOOK_URL'];
@@ -21,7 +23,9 @@ test.describe('admin view widths', () => {
 
   test('permission management follows the active tab column count', async ({ page }) => {
     await page.setViewportSize({ width: 3440, height: 1000 });
-    await page.goto(`${storybookURL}/iframe.html?id=admin-access-permissions-management--playground&viewMode=story`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${storybookURL}/iframe.html?id=admin-access-permissions-management--playground&viewMode=story`, {
+      waitUntil: 'domcontentloaded',
+    });
     const container = page.locator('app-permission-management-page');
     await expect.poll(async () => (await container.boundingBox())?.width).toBe(1280);
     await page.getByRole('tab', { name: 'Pessoas', exact: true }).click();

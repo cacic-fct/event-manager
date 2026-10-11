@@ -570,12 +570,14 @@ describe('AccountMergeService', () => {
 
   it('moves interests and records duplicate retirement for account merge undo', async () => {
     const tx = createTransactionMock();
-    tx.eventInterest.findMany.mockResolvedValueOnce([
-      { id: 'moved-interest', eventId: 'event-1', eventGroupId: null, majorEventId: null, deletedAt: null },
-      { id: 'retired-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
-    ]).mockResolvedValueOnce([
-      { id: 'existing-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
-    ]);
+    tx.eventInterest.findMany
+      .mockResolvedValueOnce([
+        { id: 'moved-interest', eventId: 'event-1', eventGroupId: null, majorEventId: null, deletedAt: null },
+        { id: 'retired-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'existing-interest', eventId: 'event-2', eventGroupId: null, majorEventId: null, deletedAt: null },
+      ]);
 
     const result = await service['moveRelations'](tx as never, 'target-person', 'source-person');
 
@@ -607,12 +609,8 @@ describe('AccountMergeService', () => {
         },
       ])
       .mockResolvedValueOnce([]);
-    tx.eventGroupAudienceInvitation.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
-    tx.majorEventAudienceInvitation.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    tx.eventGroupAudienceInvitation.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    tx.majorEventAudienceInvitation.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const result = await service['moveRelations'](tx as never, 'target-person', 'source-person');
 

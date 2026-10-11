@@ -1,6 +1,4 @@
 <section class="subtab-layout event-subscription-layout">
-
-
   <section class="panel subscription-workbench">
     <div class="panel-heading">
       <div>
@@ -16,7 +14,9 @@
           @if (workspace.selectedEvent(); as selectedEvent) {
             {{ selectedEvent.startDate | date: 'medium' }}.
             {{ selectedEvent.allowSubscription ? 'Inscrições públicas ativas.' : 'Inscrições públicas desativadas.' }}
-            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedEvent.id, 'settings']">Editar política</a>
+            <a matButton="text" [routerLink]="['/event-workspace', 'event', selectedEvent.id, 'settings']"
+              >Editar política</a
+            >
           } @else {
             As inscrições do evento aparecem aqui.
           }

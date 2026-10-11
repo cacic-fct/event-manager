@@ -83,10 +83,7 @@ function createFixture(): ComponentFixture<RoleDemoComponent> {
   return fixture;
 }
 
-function permissionCheckbox(
-  fixture: ComponentFixture<RoleDemoComponent>,
-  permissionId: string,
-): HTMLInputElement {
+function permissionCheckbox(fixture: ComponentFixture<RoleDemoComponent>, permissionId: string): HTMLInputElement {
   const element = fixture.nativeElement.querySelector(
     `[data-permission-id="${permissionId}"] input[type="checkbox"]`,
   ) as HTMLInputElement | null;

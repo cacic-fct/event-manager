@@ -58,7 +58,11 @@ describe('EventFormsService', () => {
       prisma as unknown as jest.Mocked<PrismaService>,
       notifications as unknown as jest.Mocked<NovuNotificationsService>,
       featureFlags as unknown as BackendFeatureFlagService,
-      { principalForStoredUser: jest.fn().mockResolvedValue({ personIds: ['person-1'], isUnesp: false, verifiedCourseCode: null, bypass: false }) } as never,
+      {
+        principalForStoredUser: jest
+          .fn()
+          .mockResolvedValue({ personIds: ['person-1'], isUnesp: false, verifiedCourseCode: null, bypass: false }),
+      } as never,
     );
     const resultEvents = new EventFormResultEventsService({
       scope: jest.fn((channel: string, formId: string) => `${channel}:${formId}`),
@@ -984,9 +988,18 @@ describe('EventFormsService', () => {
 
   it.each([
     [{}, { skip: 0, take: 50 }],
-    [{ skip: -1, take: 2147483647 }, { skip: 0, take: 1000 }],
-    [{ skip: 0, take: -1 }, { skip: 0, take: 0 }],
-    [{ skip: null, take: null }, { skip: 0, take: 50 }],
+    [
+      { skip: -1, take: 2147483647 },
+      { skip: 0, take: 1000 },
+    ],
+    [
+      { skip: 0, take: -1 },
+      { skip: 0, take: 0 },
+    ],
+    [
+      { skip: null, take: null },
+      { skip: 0, take: 50 },
+    ],
   ])('bounds admin pagination %j', async (filters, expected) => {
     prisma.eventForm.findMany.mockResolvedValue([]);
     await service.listAdminForms(authenticatedUser, filters);
@@ -1047,9 +1060,10 @@ describe('EventFormsService', () => {
   it.each([EventFormTargetType.EVENT, EventFormTargetType.MAJOR_EVENT])(
     'does not expose subscription-flow forms for an inaccessible %s to a non-participant',
     async (targetType) => {
-      const target = targetType === EventFormTargetType.EVENT
-        ? { targetType, eventId: 'event-1', majorEventId: null }
-        : { targetType, eventId: null, majorEventId: 'major-1' };
+      const target =
+        targetType === EventFormTargetType.EVENT
+          ? { targetType, eventId: 'event-1', majorEventId: null }
+          : { targetType, eventId: null, majorEventId: 'major-1' };
       prisma.eventForm.findMany.mockResolvedValue([
         formRecord({ links: [linkRecord({ ...target, insertInSubscriptionFlow: true })] }),
       ]);
@@ -1057,28 +1071,30 @@ describe('EventFormsService', () => {
       await expect(service.listCurrentUserForms(context, target)).resolves.toEqual([]);
       await expect(service.listCurrentUserForms(context, target, { subscriptionFlowOnly: true })).resolves.toEqual([]);
 
-      expect(targetType === EventFormTargetType.EVENT
-        ? prisma.event.findFirst
-        : prisma.majorEvent.findFirst).toHaveBeenCalled();
+      expect(
+        targetType === EventFormTargetType.EVENT ? prisma.event.findFirst : prisma.majorEvent.findFirst,
+      ).toHaveBeenCalled();
     },
   );
 
   it.each([EventFormTargetType.EVENT, EventFormTargetType.MAJOR_EVENT])(
     'allows future subscribers only in an open public %s subscription flow',
     async (targetType) => {
-      const target = targetType === EventFormTargetType.EVENT
-        ? { targetType, eventId: 'event-1', majorEventId: null }
-        : { targetType, eventId: null, majorEventId: 'major-1' };
-      const targetQuery = targetType === EventFormTargetType.EVENT
-        ? prisma.event.findFirst
-        : prisma.majorEvent.findFirst;
+      const target =
+        targetType === EventFormTargetType.EVENT
+          ? { targetType, eventId: 'event-1', majorEventId: null }
+          : { targetType, eventId: null, majorEventId: 'major-1' };
+      const targetQuery =
+        targetType === EventFormTargetType.EVENT ? prisma.event.findFirst : prisma.majorEvent.findFirst;
       targetQuery.mockResolvedValue({ id: target.eventId ?? target.majorEventId });
       prisma.eventForm.findMany.mockResolvedValue([
         formRecord({ links: [linkRecord({ ...target, insertInSubscriptionFlow: true })] }),
       ]);
 
       await expect(service.listCurrentUserForms(context, target)).resolves.toEqual([]);
-      await expect(service.listCurrentUserForms(context, target, { subscriptionFlowOnly: true })).resolves.toHaveLength(1);
+      await expect(service.listCurrentUserForms(context, target, { subscriptionFlowOnly: true })).resolves.toHaveLength(
+        1,
+      );
     },
   );
 
@@ -1088,11 +1104,13 @@ describe('EventFormsService', () => {
     ]);
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
 
-    await expect(service.listCurrentUserForms(
-      context,
-      { targetType: EventFormTargetType.EVENT, eventId: 'event-1' },
-      { subscriptionFlowOnly: true },
-    )).resolves.toHaveLength(1);
+    await expect(
+      service.listCurrentUserForms(
+        context,
+        { targetType: EventFormTargetType.EVENT, eventId: 'event-1' },
+        { subscriptionFlowOnly: true },
+      ),
+    ).resolves.toHaveLength(1);
   });
 
   it('lists released public results for attendees who cannot answer the form audience', async () => {
@@ -1545,33 +1563,41 @@ describe('EventFormsService', () => {
       }),
     );
     const linkQuery = prisma.eventFormLink.findMany.mock.calls[0]?.[0];
-    expect(linkQuery?.where?.OR?.[0]?.event).toEqual(expect.objectContaining({
-      deletedAt: null,
-      endDate: { gt: expect.any(Date) },
-    }));
-    expect(linkQuery?.where?.OR?.[0]?.event?.OR).toEqual(expect.arrayContaining([
-      expect.objectContaining({ subscriptions: { some: { personId: 'person-1', deletedAt: null } } }),
+    expect(linkQuery?.where?.OR?.[0]?.event).toEqual(
       expect.objectContaining({
-        majorEventSelections: expect.objectContaining({
-          some: expect.objectContaining({
-            deletedAt: null,
-            subscription: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
-          }),
-        }),
+        deletedAt: null,
+        endDate: { gt: expect.any(Date) },
       }),
-      expect.objectContaining({
-        autoSubscribe: true,
-        majorEvent: expect.objectContaining({
-          is: expect.objectContaining({
-            subscriptions: expect.objectContaining({
-              some: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
+    );
+    expect(linkQuery?.where?.OR?.[0]?.event?.OR).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ subscriptions: { some: { personId: 'person-1', deletedAt: null } } }),
+        expect.objectContaining({
+          majorEventSelections: expect.objectContaining({
+            some: expect.objectContaining({
+              deletedAt: null,
+              subscription: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
             }),
           }),
         }),
-      }),
-    ]));
+        expect.objectContaining({
+          autoSubscribe: true,
+          majorEvent: expect.objectContaining({
+            is: expect.objectContaining({
+              subscriptions: expect.objectContaining({
+                some: expect.objectContaining({ personId: 'person-1', deletedAt: null }),
+              }),
+            }),
+          }),
+        }),
+      ]),
+    );
     expect(linkQuery.where.OR[1].majorEvent.subscriptions.some.subscriptionStatus).toEqual({
-      in: [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, SubscriptionStatus.RECEIPT_UNDER_REVIEW, SubscriptionStatus.CONFIRMED],
+      in: [
+        SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+        SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+        SubscriptionStatus.CONFIRMED,
+      ],
     });
   });
 
@@ -1599,28 +1625,42 @@ describe('EventFormsService', () => {
       },
     ]);
     const eventAudienceWhere = prisma.eventFormLink.findMany.mock.calls[0]?.[0]?.where?.OR?.[0]?.event;
-    expect(eventAudienceWhere.OR).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        majorEventSelections: expect.objectContaining({
-          some: expect.objectContaining({
-            subscription: expect.objectContaining({ personId: 'person-1' }),
+    expect(eventAudienceWhere.OR).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          majorEventSelections: expect.objectContaining({
+            some: expect.objectContaining({
+              subscription: expect.objectContaining({ personId: 'person-1' }),
+            }),
           }),
         }),
-      }),
-    ]));
+      ]),
+    );
     expect(prisma.eventSubscription.findFirst).not.toHaveBeenCalled();
     expect(prisma.majorEventSubscriptionEventSelection.findFirst).not.toHaveBeenCalled();
   });
 
   it('does not interrupt rejected or canceled major registrants with inaccessible required forms', async () => {
-    const statuses = [SubscriptionStatus.CONFIRMED, SubscriptionStatus.REJECTED_INVALID_RECEIPT, SubscriptionStatus.CANCELED];
+    const statuses = [
+      SubscriptionStatus.CONFIRMED,
+      SubscriptionStatus.REJECTED_INVALID_RECEIPT,
+      SubscriptionStatus.CANCELED,
+    ];
     prisma.eventFormLink.findMany.mockImplementation(({ where }) => {
-      const allowedStatuses: SubscriptionStatus[] | undefined = where.OR[1].majorEvent.subscriptions.some.subscriptionStatus?.in;
-      return Promise.resolve(statuses.filter((status) => !allowedStatuses || allowedStatuses.includes(status)).map((status) => ({
-        id: `link-${status}`, targetType: EventFormTargetType.MAJOR_EVENT, eventId: null,
-        majorEventId: `major-${status}`, displayOrder: 0,
-        form: { id: `form-${status}`, responseMode: EventFormResponseMode.SINGLE_PER_FORM },
-      })));
+      const allowedStatuses: SubscriptionStatus[] | undefined =
+        where.OR[1].majorEvent.subscriptions.some.subscriptionStatus?.in;
+      return Promise.resolve(
+        statuses
+          .filter((status) => !allowedStatuses || allowedStatuses.includes(status))
+          .map((status) => ({
+            id: `link-${status}`,
+            targetType: EventFormTargetType.MAJOR_EVENT,
+            eventId: null,
+            majorEventId: `major-${status}`,
+            displayOrder: 0,
+            form: { id: `form-${status}`, responseMode: EventFormResponseMode.SINGLE_PER_FORM },
+          })),
+      );
     });
     prisma.eventFormResponse.findMany.mockResolvedValue([]);
 
@@ -1770,41 +1810,63 @@ describe('EventFormsService', () => {
     );
   });
 
-  it.each([true, false])('notifies mixed required-form audiences with the required notification flag %s', async (enabled) => {
-    const form = formRecord({ links: [linkRecord({
-      audiences: [EventFormAudience.SUBSCRIBERS, ContractAudience.INTERESTED, EventFormAudience.ATTENDEES],
-      insertInSubscriptionFlow: true, requiredInSubscriptionFlow: true, notifyOnPublish: true,
-    })] });
-    const person = (id: string) => ({ id, name: id, email: `${id}@example.com` });
-    prisma.eventSubscription.findMany.mockResolvedValue([
-      { person: person('answered') }, { person: person('unanswered') },
-    ]);
-    prisma.eventFormResponse.findMany.mockResolvedValue([{ personId: 'answered' }]);
-    prisma.eventInterest.findMany.mockResolvedValue([
-      { person: person('interested') }, { person: person('answered') },
-    ]);
-    prisma.eventAttendance.findMany.mockResolvedValue([
-      { person: person('attendee') }, { person: person('unanswered') },
-    ]);
-    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
-    featureFlags.isEnabled.mockReturnValue(enabled);
-    notifications.notifyEventFormAvailable.mockResolvedValue(true);
+  it.each([true, false])(
+    'notifies mixed required-form audiences with the required notification flag %s',
+    async (enabled) => {
+      const form = formRecord({
+        links: [
+          linkRecord({
+            audiences: [EventFormAudience.SUBSCRIBERS, ContractAudience.INTERESTED, EventFormAudience.ATTENDEES],
+            insertInSubscriptionFlow: true,
+            requiredInSubscriptionFlow: true,
+            notifyOnPublish: true,
+          }),
+        ],
+      });
+      const person = (id: string) => ({ id, name: id, email: `${id}@example.com` });
+      prisma.eventSubscription.findMany.mockResolvedValue([
+        { person: person('answered') },
+        { person: person('unanswered') },
+      ]);
+      prisma.eventFormResponse.findMany.mockResolvedValue([{ personId: 'answered' }]);
+      prisma.eventInterest.findMany.mockResolvedValue([
+        { person: person('interested') },
+        { person: person('answered') },
+      ]);
+      prisma.eventAttendance.findMany.mockResolvedValue([
+        { person: person('attendee') },
+        { person: person('unanswered') },
+      ]);
+      prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+      featureFlags.isEnabled.mockReturnValue(enabled);
+      notifications.notifyEventFormAvailable.mockResolvedValue(true);
 
-    await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(1);
+      await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(1);
 
-    const payload = notifications.notifyEventFormAvailable.mock.calls[0][0];
-    expect(payload.requiredSubscriptionForm).toBe(enabled);
-    expect(payload.recipients.map((recipient: { subscriberId: string }) => recipient.subscriberId).sort())
-      .toEqual(['attendee', 'interested', 'unanswered']);
-    expect(prisma.eventFormResponse.findMany).toHaveBeenCalledTimes(enabled ? 1 : 0);
-  });
+      const payload = notifications.notifyEventFormAvailable.mock.calls[0][0];
+      expect(payload.requiredSubscriptionForm).toBe(enabled);
+      expect(payload.recipients.map((recipient: { subscriberId: string }) => recipient.subscriberId).sort()).toEqual([
+        'attendee',
+        'interested',
+        'unanswered',
+      ]);
+      expect(prisma.eventFormResponse.findMany).toHaveBeenCalledTimes(enabled ? 1 : 0);
+    },
+  );
 
   it.each([true, false])('filters interested people and attendees by major-event tiers (tiered=%s)', async (tiered) => {
-    const form = formRecord({ links: [linkRecord({
-      targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: 'major-1', eventId: null,
-      audiences: [ContractAudience.INTERESTED, EventFormAudience.ATTENDEES], notifyOnPublish: true,
-      priceTierIds: tiered ? ['Premium'] : [],
-    })] });
+    const form = formRecord({
+      links: [
+        linkRecord({
+          targetType: EventFormTargetType.MAJOR_EVENT,
+          majorEventId: 'major-1',
+          eventId: null,
+          audiences: [ContractAudience.INTERESTED, EventFormAudience.ATTENDEES],
+          notifyOnPublish: true,
+          priceTierIds: tiered ? ['Premium'] : [],
+        }),
+      ],
+    });
     const person = (id: string) => ({ id, name: id, email: `${id}@example.com` });
     prisma.majorEventSubscription.findMany.mockResolvedValue([
       { person: person('allowed'), paymentTier: ' premium ' },
@@ -1812,28 +1874,47 @@ describe('EventFormsService', () => {
     ]);
     prisma.eventInterest.findMany.mockResolvedValue([{ person: person('unsubscribed') }]);
     prisma.eventAttendance.findMany.mockResolvedValue([
-      { person: person('allowed') }, { person: person('wrong-tier') }, { person: person('unsubscribed') },
+      { person: person('allowed') },
+      { person: person('wrong-tier') },
+      { person: person('unsubscribed') },
     ]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockResolvedValue(true);
     await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(1);
     const payload = notifications.notifyEventFormAvailable.mock.calls[0][0];
-    expect(payload.recipients.map((recipient: { subscriberId: string }) => recipient.subscriberId).sort())
-      .toEqual(tiered ? ['allowed'] : ['allowed', 'unsubscribed', 'wrong-tier']);
+    expect(payload.recipients.map((recipient: { subscriberId: string }) => recipient.subscriberId).sort()).toEqual(
+      tiered ? ['allowed'] : ['allowed', 'unsubscribed', 'wrong-tier'],
+    );
   });
 
   it('notifies only active major registrants about unanswered required forms', async () => {
-    const form = formRecord({ links: [linkRecord({
-      targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: 'major-1', eventId: null,
-      audiences: [EventFormAudience.SUBSCRIBERS], insertInSubscriptionFlow: true,
-      requiredInSubscriptionFlow: true, notifyOnPublish: true,
-    })] });
-    const statuses = [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, SubscriptionStatus.CONFIRMED, SubscriptionStatus.REJECTED_INVALID_RECEIPT];
+    const form = formRecord({
+      links: [
+        linkRecord({
+          targetType: EventFormTargetType.MAJOR_EVENT,
+          majorEventId: 'major-1',
+          eventId: null,
+          audiences: [EventFormAudience.SUBSCRIBERS],
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    const statuses = [
+      SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      SubscriptionStatus.CONFIRMED,
+      SubscriptionStatus.REJECTED_INVALID_RECEIPT,
+    ];
     prisma.majorEventSubscription.findMany.mockImplementation(({ where }) => {
       const allowedStatuses: SubscriptionStatus[] | undefined = where.subscriptionStatus?.in;
-      return Promise.resolve(statuses.filter((status) => !allowedStatuses || allowedStatuses.includes(status)).map((status) => ({
-        person: { id: status, name: status, email: `${status}@example.com` },
-      })));
+      return Promise.resolve(
+        statuses
+          .filter((status) => !allowedStatuses || allowedStatuses.includes(status))
+          .map((status) => ({
+            person: { id: status, name: status, email: `${status}@example.com` },
+          })),
+      );
     });
     prisma.eventFormResponse.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
@@ -1841,12 +1922,14 @@ describe('EventFormsService', () => {
 
     await formNotifications.notifyEligiblePeople(form);
 
-    expect(notifications.notifyEventFormAvailable).toHaveBeenCalledWith(expect.objectContaining({
-      recipients: [
-        expect.objectContaining({ subscriberId: SubscriptionStatus.WAITING_RECEIPT_UPLOAD }),
-        expect.objectContaining({ subscriberId: SubscriptionStatus.CONFIRMED }),
-      ],
-    }));
+    expect(notifications.notifyEventFormAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: [
+          expect.objectContaining({ subscriberId: SubscriptionStatus.WAITING_RECEIPT_UPLOAD }),
+          expect.objectContaining({ subscriberId: SubscriptionStatus.CONFIRMED }),
+        ],
+      }),
+    );
   });
 
   it('does not send an interest-only notification to a pending major-event selection', async () => {

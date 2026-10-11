@@ -40,7 +40,12 @@ describe('audit log snapshot helpers', () => {
   });
 
   it('keeps merge subject references without retaining unrelated person lists', () => {
-    const before = { personAId: 'person-1', personBId: 'person-2', invitationPersonIds: ['person-3'], status: 'PENDING' };
+    const before = {
+      personAId: 'person-1',
+      personBId: 'person-2',
+      invitationPersonIds: ['person-3'],
+      status: 'PENDING',
+    };
     const after = { ...before, status: 'REJECTED' };
     expect(compactAuditSnapshots(before, after, diffAuditRecords(before, after))).toEqual({
       before: { personAId: 'person-1', personBId: 'person-2', status: 'PENDING' },

@@ -23,9 +23,10 @@ describe('MajorEvent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [MajorEvent],
-      providers: [provideHttpClient(),
-      { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})) } },
-      { provide: PublicEventFormApiService, useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])) } },
+      providers: [
+        provideHttpClient(),
+        { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})) } },
+        { provide: PublicEventFormApiService, useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])) } },
         {
           provide: AnalyticsService,
           useValue: {
@@ -109,16 +110,24 @@ describe('MajorEvent', () => {
     TestBed.resetTestingModule();
     const updates = new Subject<void>();
     const endsAt = publicFixtureDateFromNow(1);
-    const getStates = vi.fn(() => of({
-      'major-1': { interest: null, subscribed: false, enabled: true, endsAt },
-      'major-2': { interest: null, subscribed: false, enabled: true, endsAt },
-    }));
+    const getStates = vi.fn(() =>
+      of({
+        'major-1': { interest: null, subscribed: false, enabled: true, endsAt },
+        'major-2': { interest: null, subscribed: false, enabled: true, endsAt },
+      }),
+    );
     const getState = vi.fn();
     const listCurrentUserFormsForMajorEvents = vi.fn(() => of([]));
     const { fixture } = await createMajorEventFixture({
-      events: [createPublicMajorEvent({ id: 'major-1', endDate: endsAt }), createPublicMajorEvent({ id: 'major-2', endDate: endsAt })],
-      availability: vi.fn(() => of([])), watchCatalog: () => updates, authenticated: true,
-      interestApi: { getStates, getState }, formsApi: { listCurrentUserFormsForMajorEvents },
+      events: [
+        createPublicMajorEvent({ id: 'major-1', endDate: endsAt }),
+        createPublicMajorEvent({ id: 'major-2', endDate: endsAt }),
+      ],
+      availability: vi.fn(() => of([])),
+      watchCatalog: () => updates,
+      authenticated: true,
+      interestApi: { getStates, getState },
+      formsApi: { listCurrentUserFormsForMajorEvents },
     });
     await waitForDrawRefresh(fixture);
     expect(getStates).toHaveBeenCalledExactlyOnceWith('MAJOR_EVENT', ['major-1', 'major-2']);
@@ -235,9 +244,16 @@ async function createMajorEventFixture(input: {
 }): Promise<{ component: MajorEvent; fixture: ComponentFixture<MajorEvent> }> {
   await TestBed.configureTestingModule({
     imports: [MajorEvent],
-    providers: [provideHttpClient(),
-      { provide: InterestApiService, useValue: { changes: NEVER, getStates: vi.fn(() => of({})), ...input.interestApi } },
-      { provide: PublicEventFormApiService, useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])), ...input.formsApi } },
+    providers: [
+      provideHttpClient(),
+      {
+        provide: InterestApiService,
+        useValue: { changes: NEVER, getStates: vi.fn(() => of({})), ...input.interestApi },
+      },
+      {
+        provide: PublicEventFormApiService,
+        useValue: { listCurrentUserFormsForMajorEvents: vi.fn(() => of([])), ...input.formsApi },
+      },
       {
         provide: AnalyticsService,
         useValue: { trackEvent: vi.fn() },
@@ -256,7 +272,7 @@ async function createMajorEventFixture(input: {
       {
         provide: MajorEventSubscriptionApiService,
         useValue: {
-          listMajorEvents: vi.fn(() => input.apiError ? throwError(() => input.apiError) : of(input.events)),
+          listMajorEvents: vi.fn(() => (input.apiError ? throwError(() => input.apiError) : of(input.events))),
           listCurrentUserSubscriptions: vi.fn(() => of([])),
           getPreviewMajorEvents: vi.fn(() =>
             input.previewError

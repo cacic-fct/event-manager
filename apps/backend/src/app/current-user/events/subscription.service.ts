@@ -1,11 +1,6 @@
 import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import { BadRequestException, Optional, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  EventFormTargetType,
-  SubscriptionCreationMethod,
-} from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, EventFormTargetType, SubscriptionCreationMethod } from '@prisma/client';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
@@ -912,7 +907,11 @@ export class CurrentUserEventSubscriptionService {
         tx,
       );
     }
-    await this.ticketSubscriptions?.forEvents(tx, [...childEventIds, ...eventsToCreate.map((event) => event.id)], personId);
+    await this.ticketSubscriptions?.forEvents(
+      tx,
+      [...childEventIds, ...eventsToCreate.map((event) => event.id)],
+      personId,
+    );
     await this.refreshEventSubscriptionCounters(tx, [...childEventIds, ...eventsToCreate.map((event) => event.id)]);
 
     const events = await tx.eventSubscription.findMany({

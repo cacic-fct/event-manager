@@ -506,7 +506,9 @@ async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<voi
   await userEvent.click(await canvas.findByRole('radio', { name: 'Sim' }));
   await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
   await userEvent.click(
-    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença de uso de imagem/i }),
+    await canvas.findByRole('checkbox', {
+      name: /Li e concordo com o contrato de concessão de licença de uso de imagem/i,
+    }),
   );
   await userEvent.click(await canvas.findByRole('button', { name: /Revisar inscrição/i }));
   const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));

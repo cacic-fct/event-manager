@@ -8,9 +8,7 @@ describe('CurrentUserMyDayService helpers', () => {
 
     expect(association).toEqual(
       expect.objectContaining({
-        OR: expect.arrayContaining([
-          { interests: { some: { personId: 'person-1', deletedAt: null } } },
-        ]),
+        OR: expect.arrayContaining([{ interests: { some: { personId: 'person-1', deletedAt: null } } }]),
       }),
     );
   });

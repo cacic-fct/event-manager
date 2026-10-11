@@ -7,9 +7,13 @@ async function openStory(page, url, id) {
   await page.goto(`${url}/?path=/story/${id}`);
   const iframe = await page.locator('#storybook-preview-iframe').elementHandle();
   const frame = await iframe.contentFrame();
-  await frame.waitForFunction((storyId) =>
-    window.__STORYBOOK_PREVIEW__?.storyRenders.some((render) => render.story?.id === storyId && render.phase === 'finished'),
-  id);
+  await frame.waitForFunction(
+    (storyId) =>
+      window.__STORYBOOK_PREVIEW__?.storyRenders.some(
+        (render) => render.story?.id === storyId && render.phase === 'finished',
+      ),
+    id,
+  );
   await page.getByRole('tab', { name: /^Controls/ }).click();
   return frame;
 }

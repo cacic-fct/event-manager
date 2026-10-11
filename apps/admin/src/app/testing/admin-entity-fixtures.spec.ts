@@ -29,7 +29,11 @@ describe('admin entity fixtures', () => {
     const queue = createAdminReceiptValidationQueue({ items: [subscription, ticketPurchase] });
 
     expect(queue).toMatchObject({ pendingCount: 2, subscriptionCount: 1, ticketCount: 1 });
-    expect(ticketPurchase).toMatchObject({ category: 'TICKET', purchaseId: 'purchase-1', ticketName: 'Acesso à festa de boas-vindas' });
+    expect(ticketPurchase).toMatchObject({
+      category: 'TICKET',
+      purchaseId: 'purchase-1',
+      ticketName: 'Acesso à festa de boas-vindas',
+    });
     expect(subscription.receipt?.imageUrl).toContain('data:image/svg+xml');
     expect(Date.parse(subscription.receipt?.expiresAt ?? '')).toBeGreaterThan(now.getTime());
     expect(queue.availablePaymentTiers?.map((tier) => tier.name)).toEqual(['Estudante', 'Visitante']);

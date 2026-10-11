@@ -56,14 +56,18 @@ export class OfflineCodeStateService {
   }
 
   initialize(): void {
-    if (this.initialized || !this.isBrowser) return;
+    if (this.initialized || !this.isBrowser) {
+      return;
+    }
 
     this.initialized = true;
     this.loadSeed();
   }
 
   reload(): void {
-    if (!this.isBrowser) return;
+    if (!this.isBrowser) {
+      return;
+    }
 
     this.initialized = true;
     this.loadSeed();
@@ -74,7 +78,9 @@ export class OfflineCodeStateService {
     this.state.set({ status: 'loading' });
     this.session.getWalletSeed().then(
       (seed) => {
-        if (request !== this.seedRequest) return;
+        if (request !== this.seedRequest) {
+          return;
+        }
         this.state.set(
           seed
             ? { status: 'ready', seed }
@@ -86,7 +92,9 @@ export class OfflineCodeStateService {
         );
       },
       () => {
-        if (request !== this.seedRequest) return;
+        if (request !== this.seedRequest) {
+          return;
+        }
         this.state.set({
           status: 'error',
           message: 'Não foi possível preparar o código agora. Verifique sua conexão e tente novamente.',
@@ -99,9 +107,13 @@ export class OfflineCodeStateService {
     const request = ++this.codeRequest;
     try {
       const code = await generateTotpCode({ seed, timestamp });
-      if (request === this.codeRequest) this.code.set(code);
+      if (request === this.codeRequest) {
+        this.code.set(code);
+      }
     } catch {
-      if (request === this.codeRequest) this.code.set('');
+      if (request === this.codeRequest) {
+        this.code.set('');
+      }
     }
   }
 }

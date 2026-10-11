@@ -8,9 +8,7 @@ function hasStories(directory) {
     return false;
   }
   return readdirSync(directory, { withFileTypes: true }).some((entry) =>
-    entry.isDirectory()
-      ? hasStories(join(directory, entry.name))
-      : entry.isFile() && storyFilePattern.test(entry.name),
+    entry.isDirectory() ? hasStories(join(directory, entry.name)) : entry.isFile() && storyFilePattern.test(entry.name),
   );
 }
 

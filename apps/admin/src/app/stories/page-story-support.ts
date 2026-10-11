@@ -127,19 +127,22 @@ export function createPageStoryProviders(args: PageStoryArgs): Provider[] {
 
 export const withPageStoryProviders: Decorator<PageStoryArgs> = (story, context) =>
   withScenarioControls<PageStoryArgs>()(
-    () => applicationConfig({
-      providers: createPageStoryProviders({
-        ...defaultPageStoryArgs,
-        ...context.args,
-      }),
-    })(story, context),
+    () =>
+      applicationConfig({
+        providers: createPageStoryProviders({
+          ...defaultPageStoryArgs,
+          ...context.args,
+        }),
+      })(story, context),
     context,
   );
 
 export async function exercisePageStory(canvasElement: HTMLElement): Promise<void> {
   const { expect, userEvent, within } = await import('storybook/test');
   const canvas = within(canvasElement);
-  await expect(canvas.getByRole('heading', { name: /(?:novo|nova|editar) (?:evento|grupo|grande evento|rascunho)/i })).toBeVisible();
+  await expect(
+    canvas.getByRole('heading', { name: /(?:novo|nova|editar) (?:evento|grupo|grande evento|rascunho)/i }),
+  ).toBeVisible();
   await userEvent.tab();
   const enabledButton = canvas
     .queryAllByRole('button')
@@ -250,7 +253,8 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
       contactType: selectedMajorEvent.contactType ?? '',
       additionalPaymentInfo: selectedMajorEvent.additionalPaymentInfo ?? '',
       shouldIssueCertificateForNonPayingAttendees: selectedMajorEvent.shouldIssueCertificateForNonPayingAttendees,
-      shouldIssueCertificateForNonSubscribedAttendees: selectedMajorEvent.shouldIssueCertificateForNonSubscribedAttendees,
+      shouldIssueCertificateForNonSubscribedAttendees:
+        selectedMajorEvent.shouldIssueCertificateForNonSubscribedAttendees,
     });
   }
 
@@ -272,7 +276,15 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     majorEventEvents: signal(linkedEvents),
     majorEventEventSearchResults: signal(searchResults),
     majorEventAudienceInvitations: signal(
-      selectedMajorEvent?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? [],
+      selectedMajorEvent?.audienceInvitations?.map(
+        (invitation) =>
+          invitation.person ?? {
+            id: invitation.personId,
+            name: 'Pessoa convidada (dados indisponíveis)',
+            email: null,
+            unresolved: true,
+          },
+      ) ?? [],
     ),
     majorEventForm,
     majorEventEventSearchForm: formBuilder.nonNullable.group({ query: ['Angular', [Validators.required]] }),
@@ -332,7 +344,7 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
   });
 
   if (selectedGroup) {
-    eventGroupForm.patchValue({...selectedGroup, majorEventId: selectedGroup.majorEventId ?? ''});
+    eventGroupForm.patchValue({ ...selectedGroup, majorEventId: selectedGroup.majorEventId ?? '' });
   }
 
   const eventSummariesSignal = signal<EventSummary[]>(eventSummaries);
@@ -358,7 +370,17 @@ function createEventGroupsStoryService(formBuilder: FormBuilder, args: PageStory
     selectedEventGroup: signal(selectedGroup),
     eventGroupEvents: signal(linkedEvents),
     eventGroupEventSearchResults: signal(eventSummaries.slice(0, 2)),
-    eventGroupAudienceInvitations: signal(selectedGroup?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? []),
+    eventGroupAudienceInvitations: signal(
+      selectedGroup?.audienceInvitations?.map(
+        (invitation) =>
+          invitation.person ?? {
+            id: invitation.personId,
+            name: 'Pessoa convidada (dados indisponíveis)',
+            email: null,
+            unresolved: true,
+          },
+      ) ?? [],
+    ),
     savingEventGroup: signal(args.mode === 'loading'),
     selectedEventGroupHasMajorEventEvents: computed(() =>
       linkedEvents.some((eventItem) => Boolean(eventItem.majorEvent)),
@@ -515,7 +537,17 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     eventsPagination: createWorkspaceListPagination(),
     selectedEvent: signal(selectedEvent),
     selectedEventDraft: signal(draft),
-    eventAudienceInvitations: signal(selectedEvent?.audienceInvitations?.map((invitation) => invitation.person ?? { id: invitation.personId, name: 'Pessoa convidada (dados indisponíveis)', email: null, unresolved: true }) ?? []),
+    eventAudienceInvitations: signal(
+      selectedEvent?.audienceInvitations?.map(
+        (invitation) =>
+          invitation.person ?? {
+            id: invitation.personId,
+            name: 'Pessoa convidada (dados indisponíveis)',
+            email: null,
+            unresolved: true,
+          },
+      ) ?? [],
+    ),
     eventLecturers: signal([{ personId: people[0].id, name: people[0].name }]),
     eventAttendanceCollectors: signal([{ personId: people[1].id, name: people[1].name }]),
     selectedMajorEventName: signal(selectedEvent?.majorEvent?.name ?? ''),

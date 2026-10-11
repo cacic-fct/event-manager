@@ -24,7 +24,9 @@ describe('MatchOperationsDemoComponent', () => {
 
   it('clamps scores at zero, blocks edits after finalization, and resets the shared state', () => {
     const component = fixture.componentInstance;
-    for (let index = 0; index < 3; index += 1) component.adjustScore('home', -1);
+    for (let index = 0; index < 3; index += 1) {
+      component.adjustScore('home', -1);
+    }
     expect(component.score().home).toBe(0);
 
     component.finishMatch();

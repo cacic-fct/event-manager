@@ -411,9 +411,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
 
     return events.flatMap((event) => {
       const policy = eventAttendanceEligibility(event);
-      const majorSubscription = event.majorEventId
-        ? majorSubscriptionById.get(event.majorEventId)
-        : undefined;
+      const majorSubscription = event.majorEventId ? majorSubscriptionById.get(event.majorEventId) : undefined;
       const registrationEvidence = {
         hasEventSubscription: eventSubscriptionIds.has(event.id),
         majorEventSubscriptionStatus: majorSubscription?.subscriptionStatus,
@@ -421,10 +419,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         autoSubscribe: event.autoSubscribe,
       };
       const registered = isRegisteredAttendanceEvidence(event, registrationEvidence);
-      const approved = isApprovedAttendance(
-        event,
-        registrationEvidence,
-      );
+      const approved = isApprovedAttendance(event, registrationEvidence);
       return isAttendanceEligible(policy, {
         registered,
         approved,
@@ -537,7 +532,9 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     force: boolean,
   ): Promise<void> {
     try {
-      const payload = await audienceContext.run(principal, () => this.getMajorEventSubscriptionDeltaPayload(majorEventId));
+      const payload = await audienceContext.run(principal, () =>
+        this.getMajorEventSubscriptionDeltaPayload(majorEventId),
+      );
       const message = {
         type: 'event',
         channel: MAJOR_EVENT_SUBSCRIPTION_CHANNEL,
@@ -604,11 +601,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     return [...groups.values()];
   }
 
-  private snapshotKey(
-    kind: 'major' | 'event',
-    id: string,
-    principal: EventAudiencePrincipal,
-  ): string {
+  private snapshotKey(kind: 'major' | 'event', id: string, principal: EventAudiencePrincipal): string {
     return `${kind}:${id}:${this.audiencePrincipalKey(principal)}`;
   }
 

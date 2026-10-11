@@ -200,7 +200,9 @@ export class AttendanceAnalyticsService {
       orderBy: { _count: { eventId: 'desc' } },
       take: 20,
     });
-    if (!flags.length) return [];
+    if (!flags.length) {
+      return [];
+    }
 
     const events = await this.prisma.event.findMany({
       where: { id: { in: flags.map((flag) => flag.eventId) }, deletedAt: null },
@@ -234,7 +236,9 @@ export class AttendanceAnalyticsService {
       throw new BadRequestException('Revise esta operação na central esportiva.');
     }
     const existing = await this.prisma.attendanceReviewFlag.findUnique({ where: { id: flagId } });
-    if (!existing) throw new NotFoundException(`Attendance review flag ${flagId} was not found.`);
+    if (!existing) {
+      throw new NotFoundException(`Attendance review flag ${flagId} was not found.`);
+    }
     if (eventId && existing.eventId !== eventId) {
       throw new NotFoundException(`Attendance review flag ${flagId} was not found.`);
     }
@@ -275,7 +279,9 @@ export class AttendanceAnalyticsService {
         },
       },
     });
-    if (!event) throw new NotFoundException(`Event ${eventId} was not found.`);
+    if (!event) {
+      throw new NotFoundException(`Event ${eventId} was not found.`);
+    }
     return event;
   }
 
@@ -348,7 +354,9 @@ export class AttendanceAnalyticsService {
     }
 
     for (const volume of volumeByActorMinute.values()) {
-      if (volume.count < UNUSUAL_SCANS_PER_MINUTE) continue;
+      if (volume.count < UNUSUAL_SCANS_PER_MINUTE) {
+        continue;
+      }
       candidates.push({
         eventId: event.id,
         actorId: volume.actorId.startsWith('method:') ? undefined : volume.actorId,
@@ -444,7 +452,9 @@ export class AttendanceAnalyticsService {
     });
     await Promise.all(
       entries.flatMap((entry) => {
-        if (!entry.eventId) return [];
+        if (!entry.eventId) {
+          return [];
+        }
         const removal = entry.operation === 'DELETE';
         return [
           this.upsertFlag({
@@ -665,7 +675,9 @@ export function buildHeatmapPoints(attendances: AnalyticsAttendance[]): Attendan
     { latitude: number; longitude: number; count: number; accuracyTotal: number; accuracyCount: number }
   >();
   for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
-    if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) continue;
+    if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) {
+      continue;
+    }
     const latitude = Number(attendance.collectedLatitude.toFixed(4));
     const longitude = Number(attendance.collectedLongitude.toFixed(4));
     const key = `${latitude}:${longitude}`;
@@ -690,7 +702,9 @@ function collectorId(attendance: AnalyticsAttendance): string {
 }
 
 function collectorFallbackName(actorId: string): string {
-  if (!actorId.startsWith('method:')) return 'Pessoa coletora não identificada';
+  if (!actorId.startsWith('method:')) {
+    return 'Pessoa coletora não identificada';
+  }
   return methodLabel(actorId.slice('method:'.length) as AttendanceCreationMethod);
 }
 
@@ -718,7 +732,9 @@ function isOfflineAttendance(attendance: AnalyticsAttendance): boolean {
 function truncateDate(date: Date, precision: 'minute' | 'hour'): Date {
   const result = new Date(date);
   result.setUTCSeconds(0, 0);
-  if (precision === 'hour') result.setUTCMinutes(0);
+  if (precision === 'hour') {
+    result.setUTCMinutes(0);
+  }
   return result;
 }
 
@@ -745,7 +761,9 @@ export function findInconsistentLocationPatterns(
 ): Array<{ actorId: string; transitionCount: number; scanCount: number }> {
   const scansByActor = new Map<string, AnalyticsAttendance[]>();
   for (const attendance of attendances) {
-    if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) continue;
+    if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) {
+      continue;
+    }
     const actorId = collectorId(attendance);
     const scans = scansByActor.get(actorId) ?? [];
     scans.push(attendance);
@@ -754,7 +772,9 @@ export function findInconsistentLocationPatterns(
 
   const patterns: Array<{ actorId: string; transitionCount: number; scanCount: number }> = [];
   for (const [actorId, unorderedScans] of scansByActor) {
-    if (unorderedScans.length < MIN_GEOLOCATED_SCANS_FOR_REVIEW) continue;
+    if (unorderedScans.length < MIN_GEOLOCATED_SCANS_FOR_REVIEW) {
+      continue;
+    }
     const scans = [...unorderedScans].sort((left, right) => left.attendedAt.getTime() - right.attendedAt.getTime());
     let transitionCount = 0;
     for (let index = 1; index < scans.length; index += 1) {
@@ -769,10 +789,13 @@ export function findInconsistentLocationPatterns(
         previousLongitude === null ||
         currentLatitude === null ||
         currentLongitude === null
-      )
+      ) {
         continue;
+      }
       const seconds = (current.attendedAt.getTime() - previous.attendedAt.getTime()) / 1_000;
-      if (seconds <= 0 || seconds > MAX_TRANSITION_SECONDS) continue;
+      if (seconds <= 0 || seconds > MAX_TRANSITION_SECONDS) {
+        continue;
+      }
 
       const previousEventDistance = haversineMeters(eventLatitude, eventLongitude, previousLatitude, previousLongitude);
       const currentEventDistance = haversineMeters(eventLatitude, eventLongitude, currentLatitude, currentLongitude);

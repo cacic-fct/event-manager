@@ -14,8 +14,12 @@ import { EventsService } from './events.service';
 
 describe('EventsPageComponent', () => {
   it('loads the existing event identified by workspace route metadata', async () => {
-    await configureComponent('populated', undefined,
-      { targetId: 'workspace-event' }, { targetType: 'event', section: 'settings' });
+    await configureComponent(
+      'populated',
+      undefined,
+      { targetId: 'workspace-event' },
+      { targetType: 'event', section: 'settings' },
+    );
     const select = vi.spyOn(TestBed.inject(EventsService), 'selectEventById');
     await createComponent();
     expect(select).toHaveBeenCalledWith('workspace-event', { skipIfCurrent: true });
@@ -160,8 +164,8 @@ describe('EventsPageComponent', () => {
     await configureComponent('populated');
     const permissions = TestBed.inject(PermissionsService);
     const has = permissions.has.bind(permissions);
-    vi.spyOn(permissions, 'has').mockImplementation((scope) =>
-      scope === Permission.Subscription.Read || scope === Permission.EventAttendance.Read || has(scope),
+    vi.spyOn(permissions, 'has').mockImplementation(
+      (scope) => scope === Permission.Subscription.Read || scope === Permission.EventAttendance.Read || has(scope),
     );
     const { element, fixture } = await createComponent();
     const eventId = fixture.componentInstance.workspace.selectedEvent()?.id;
@@ -181,7 +185,9 @@ describe('EventsPageComponent', () => {
 
     controls.isOnlineAttendanceAllowed.setValue(true);
     fixture.detectChanges();
-    expect(element.querySelector<HTMLInputElement>('input[formcontrolname="onlineAttendanceCode"]')?.value).toBe('PRESERVAR');
+    expect(element.querySelector<HTMLInputElement>('input[formcontrolname="onlineAttendanceCode"]')?.value).toBe(
+      'PRESERVAR',
+    );
   });
 
   it('keeps oral collection and certificate exceptions with their enabling policy', async () => {
@@ -198,7 +204,9 @@ describe('EventsPageComponent', () => {
     controls.shouldIssueCertificate.setValue(true);
     fixture.detectChanges();
     expect(element.querySelector('#presenca [formcontrolname="shouldAllowOralAttendance"]')).not.toBeNull();
-    expect(element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonSubscribedAttendees"]')).not.toBeNull();
+    expect(
+      element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonSubscribedAttendees"]'),
+    ).not.toBeNull();
     expect(element.querySelector('#inscricao [formcontrolname="attendanceEligibility"]')).toBeNull();
   });
 

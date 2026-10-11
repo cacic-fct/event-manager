@@ -16,7 +16,8 @@ const meta: Meta<AudienceEditorComponent> = {
   parameters: {
     docs: {
       description: {
-        component: 'Audience editor for public, course, and invitation-based access. Use the stories to compare editable and permission-limited states.',
+        component:
+          'Audience editor for public, course, and invitation-based access. Use the stories to compare editable and permission-limited states.',
       },
     },
     layout: 'centered',
@@ -70,7 +71,6 @@ const publicStory: Story = {
 };
 
 export const Playground: Story = publicStory;
-
 
 export const CourseOnly: Story = {
   args: {
@@ -134,10 +134,12 @@ async function expectNoAxeViolations(canvasElement: HTMLElement): Promise<void> 
     const result = await axe.run(canvasElement);
     canvasElement.dataset['audienceAxeComplete'] = 'true';
     canvasElement.dataset['audienceAxeViolations'] = String(result.violations.length);
-    canvasElement.dataset['audienceAxeDetails'] = JSON.stringify(result.violations.map((violation) => ({
-      id: violation.id,
-      nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
-    })));
+    canvasElement.dataset['audienceAxeDetails'] = JSON.stringify(
+      result.violations.map((violation) => ({
+        id: violation.id,
+        nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })),
+      })),
+    );
     expect(result.violations).toEqual([]);
   } catch (error) {
     canvasElement.dataset['audienceAxeError'] = error instanceof Error ? error.message : String(error);

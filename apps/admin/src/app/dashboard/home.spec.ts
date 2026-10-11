@@ -72,7 +72,9 @@ describe('Home', () => {
   });
 
   afterEach(() => {
-    if (!fixtureDestroyed) fixture.destroy();
+    if (!fixtureDestroyed) {
+      fixture.destroy();
+    }
   });
 
   it('creates action links for dashboard targets', () => {
@@ -99,12 +101,9 @@ describe('Home', () => {
       'new',
       'major-event',
     ]);
-    expect(component.routerLinkForAction({ action: 'OPEN_EVENT', label: 'Abrir evento', targetId: 'event-1' })).toEqual([
-      '/event-workspace',
-      'event',
-      'event-1',
-      'settings',
-    ]);
+    expect(component.routerLinkForAction({ action: 'OPEN_EVENT', label: 'Abrir evento', targetId: 'event-1' })).toEqual(
+      ['/event-workspace', 'event', 'event-1', 'settings'],
+    );
     expect(component.routerLinkForAction({ action: 'OPEN_EVENT', label: 'Abrir eventos' })).toEqual([
       '/event-workspace',
     ]);

@@ -26,11 +26,15 @@ export class TicketNotificationOutboxService implements OnModuleInit, OnModuleDe
 
   onModuleDestroy(): void {
     this.stopped = true;
-    if (this.pollTimer) clearInterval(this.pollTimer);
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+    }
   }
 
   private async processPending(): Promise<void> {
-    if (this.stopped || this.processing) return;
+    if (this.stopped || this.processing) {
+      return;
+    }
     this.processing = true;
     try {
       const now = new Date();
@@ -45,7 +49,9 @@ export class TicketNotificationOutboxService implements OnModuleInit, OnModuleDe
       });
 
       for (const item of pending) {
-        if (this.stopped) return;
+        if (this.stopped) {
+          return;
+        }
         const leaseUntil = new Date(Date.now() + OUTBOX_LEASE_MS);
         const claim = await this.prisma.ticketNotificationOutbox.updateMany({
           where: {
@@ -55,7 +61,9 @@ export class TicketNotificationOutboxService implements OnModuleInit, OnModuleDe
           },
           data: { leaseUntil },
         });
-        if (claim.count !== 1) continue;
+        if (claim.count !== 1) {
+          continue;
+        }
 
         const sent = await this.novu.notifyTicketTransfer({
           notificationType: item.notificationType,
@@ -76,7 +84,9 @@ export class TicketNotificationOutboxService implements OnModuleInit, OnModuleDe
         }
       }
     } catch (error: unknown) {
-      this.logger.warn(`Ticket notification outbox polling failed (${error instanceof Error ? error.name : 'unknown'}).`);
+      this.logger.warn(
+        `Ticket notification outbox polling failed (${error instanceof Error ? error.name : 'unknown'}).`,
+      );
     } finally {
       this.processing = false;
     }

@@ -30,7 +30,11 @@ export const Playground: Story = {
     await waitFor(() => expect(toggle).toBeEnabled());
     await userEvent.click(toggle);
     await waitFor(() => expect(toggle).toHaveAttribute('aria-pressed', 'true'));
-    await expect(await within(document.body).findByText('Seu interesse foi registrado! A inscrição, quando necessária, é feita separadamente.')).toBeVisible();
+    await expect(
+      await within(document.body).findByText(
+        'Seu interesse foi registrado! A inscrição, quando necessária, é feita separadamente.',
+      ),
+    ).toBeVisible();
     await userEvent.click(await within(document.body).findByRole('button', { name: 'Fechar' }));
   },
 };
@@ -85,23 +89,48 @@ export const Finished: Story = {
 
 function mockInterest(initiallyInterested: boolean, failSave = false, finished = false, enabled = true) {
   let interested = initiallyInterested;
-  return { msw: { handlers: { graphql: [http.post('/api/graphql', async ({ request }) => {
-    const { query, variables } = await request.json() as {
-      query: string;
-      variables: { targetId: string; targetType: string; interested?: boolean };
-    };
-    await delay(100);
-    const mutation = query.includes('SetCurrentUserInterest');
-    if (mutation && failSave) return HttpResponse.json({ errors: [{ message: 'Falha de conexão.' }] });
-    if (mutation) interested = variables.interested === true;
-    const key = variables.targetType === 'MAJOR_EVENT' ? 'majorEventId'
-      : variables.targetType === 'EVENT_GROUP' ? 'eventGroupId' : 'eventId';
-    const record = interested ? createPublicEventInterest({ [key]: variables.targetId }) : null;
-    if (query.includes('CurrentUserInterestState')) {
-      return HttpResponse.json({ data: { currentUserInterestState: {
-        interest: record, subscribed: false, endsAt: publicFixtureDateFromNow(finished ? -1 : 1), enabled,
-      } } });
-    }
-    return HttpResponse.json({ data: { [mutation ? 'setCurrentUserInterest' : 'currentUserInterest']: record } });
-  })] } } };
+  return {
+    msw: {
+      handlers: {
+        graphql: [
+          http.post('/api/graphql', async ({ request }) => {
+            const { query, variables } = (await request.json()) as {
+              query: string;
+              variables: { targetId: string; targetType: string; interested?: boolean };
+            };
+            await delay(100);
+            const mutation = query.includes('SetCurrentUserInterest');
+            if (mutation && failSave) {
+              return HttpResponse.json({ errors: [{ message: 'Falha de conexão.' }] });
+            }
+            if (mutation) {
+              interested = variables.interested === true;
+            }
+            const key =
+              variables.targetType === 'MAJOR_EVENT'
+                ? 'majorEventId'
+                : variables.targetType === 'EVENT_GROUP'
+                  ? 'eventGroupId'
+                  : 'eventId';
+            const record = interested ? createPublicEventInterest({ [key]: variables.targetId }) : null;
+            if (query.includes('CurrentUserInterestState')) {
+              return HttpResponse.json({
+                data: {
+                  currentUserInterestState: {
+                    interest: record,
+                    subscribed: false,
+                    endsAt: publicFixtureDateFromNow(finished ? -1 : 1),
+                    enabled,
+                  },
+                },
+              });
+            }
+            return HttpResponse.json({
+              data: { [mutation ? 'setCurrentUserInterest' : 'currentUserInterest']: record },
+            });
+          }),
+        ],
+      },
+    },
+  };
 }

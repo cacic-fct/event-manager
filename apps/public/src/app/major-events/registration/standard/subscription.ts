@@ -106,7 +106,9 @@ export class MajorEventSubscription {
     );
   });
   readonly selectedEventIds = signal<Set<string>>(new Set());
-  readonly interestedEventIds = computed(() => interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []));
+  readonly interestedEventIds = computed(() =>
+    interestedEventIds(this.data()?.events ?? [], this.data()?.interests ?? []),
+  );
   readonly selectedPriceTierName = signal<string | null>(null);
   readonly flowPhase = signal<'tier' | 'selection' | 'loading-forms' | 'forms'>('tier');
   readonly subscriptionForms = signal<SubscriptionFormContext[]>([]);
@@ -436,8 +438,9 @@ export class MajorEventSubscription {
       this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
       !this.confirmedSportsOnlySubscription() &&
       !this.needsImageLicenseAgreement()
-    )
+    ) {
       return;
+    }
 
     if (this.decisions().includesEvents && this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
@@ -521,8 +524,9 @@ export class MajorEventSubscription {
       !this.priceTiers().some((tier) => tier.name === tierName) ||
       this.isSubmitting() ||
       this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'
-    )
+    ) {
       return;
+    }
     if (tierName !== this.selectedPriceTierName()) {
       this.selectedPriceTierName.set(tierName);
       this.selectedEventIds.set(new Set());
@@ -534,13 +538,21 @@ export class MajorEventSubscription {
 
   continueFromTier(): void {
     const data = this.data();
-    if (!data || !this.decisions().tierResolved || this.currentUserSubscription() === undefined || this.isSubmitting())
+    if (
+      !data ||
+      !this.decisions().tierResolved ||
+      this.currentUserSubscription() === undefined ||
+      this.isSubmitting()
+    ) {
       return;
+    }
     this.flowPhase.set('selection');
     if (!this.decisions().includesEvents) {
       if (this.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !this.needsImageLicenseAgreement()) {
         const route = subscriptionSuccessRoute(data.majorEvent, this.selectedPriceTier());
-        if (route) void this.router.navigate(route.commands, { queryParams: route.queryParams });
+        if (route) {
+          void this.router.navigate(route.commands, { queryParams: route.queryParams });
+        }
       } else {
         this.startSubscriptionFlow();
       }
@@ -549,7 +561,9 @@ export class MajorEventSubscription {
   }
 
   returnToTier(): void {
-    if (this.isSubmitting()) return;
+    if (this.isSubmitting()) {
+      return;
+    }
     this.flowPhase.set('tier');
     this.focusStep();
   }

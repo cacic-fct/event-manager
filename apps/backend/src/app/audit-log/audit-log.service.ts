@@ -752,7 +752,9 @@ export class AuditLogService {
       return false;
     }
 
-    return ['majorEventId', 'regularAttendancePriceTierIds', 'attendanceEligibility', 'deletedAt'].some((field) => field in revertData);
+    return ['majorEventId', 'regularAttendancePriceTierIds', 'attendanceEligibility', 'deletedAt'].some(
+      (field) => field in revertData,
+    );
   }
 
   private canRevertEntry(entry: PrismaAuditLogEntry): boolean {
@@ -809,10 +811,7 @@ function isPublicationLifecycleMetadata(metadata: Record<string, unknown> | unde
 }
 
 function isPublicationLifecycleEntry(entry: PrismaAuditLogEntry): boolean {
-  if (
-    entry.entityType !== AuditLogEntityType.EVENT &&
-    entry.entityType !== AuditLogEntityType.MAJOR_EVENT
-  ) {
+  if (entry.entityType !== AuditLogEntityType.EVENT && entry.entityType !== AuditLogEntityType.MAJOR_EVENT) {
     return false;
   }
 

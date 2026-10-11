@@ -57,7 +57,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
-    if (this.cleanupTimer) clearInterval(this.cleanupTimer);
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+    }
     this.cleanupTimer = null;
   }
 
@@ -72,7 +74,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     const duplicate = await this.prisma.eventFormImage.findFirst({
       where: { formId, sha256 },
     });
-    if (duplicate) return this.toImage(duplicate);
+    if (duplicate) {
+      return this.toImage(duplicate);
+    }
 
     const imageId = randomUUID();
     const objectKey = buildEventFormImageObjectKey(formId, imageId);
@@ -116,7 +120,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
       majorEventId: target.ownerMajorEventId ?? undefined,
       allowScopedCollection: true,
     });
-    if (!user?.sub) throw new ForbiddenException('Você não pode enviar imagens para este formulário.');
+    if (!user?.sub) {
+      throw new ForbiddenException('Você não pode enviar imagens para este formulário.');
+    }
     const pendingCount = await this.prisma.eventFormImage.count({
       where: { formId: null, createdById: user.sub },
     });
@@ -128,7 +134,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     const duplicate = await this.prisma.eventFormImage.findFirst({
       where: { formId: null, createdById: user.sub, sha256 },
     });
-    if (duplicate) return this.toImage(duplicate);
+    if (duplicate) {
+      return this.toImage(duplicate);
+    }
 
     const imageId = randomUUID();
     const objectKey = `event-forms/pending/${encodeURIComponent(user.sub)}/${imageId}.avif`;
@@ -162,7 +170,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
   async delete(formId: string, imageId: string, user: AuthenticatedUser | undefined): Promise<void> {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], { eventFormId: formId });
     const image = await this.prisma.eventFormImage.findFirst({ where: { id: imageId, formId } });
-    if (!image) throw new NotFoundException('Imagem do formulário não encontrada.');
+    if (!image) {
+      throw new NotFoundException('Imagem do formulário não encontrada.');
+    }
     const [form, drafts] = await Promise.all([
       this.prisma.eventForm.findUnique({
         where: { id: formId },
@@ -175,7 +185,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     ]);
     const referenced = form ? collectStoredImageIds(form.descriptionImages, form.elements) : new Set<string>();
     for (const draft of drafts) {
-      for (const id of collectDraftImageIds(draft.payload)) referenced.add(id);
+      for (const id of collectDraftImageIds(draft.payload)) {
+        referenced.add(id);
+      }
     }
     if (referenced.has(imageId)) {
       throw new BadRequestException('Remova a imagem do formulário e dos rascunhos antes de excluí-la.');
@@ -193,7 +205,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
       where: { id: imageId, formId },
       include: { form: { include: eventFormInclude } },
     });
-    if (!image?.form || image.form.deletedAt) throw new NotFoundException('Imagem do formulário não encontrada.');
+    if (!image?.form || image.form.deletedAt) {
+      throw new NotFoundException('Imagem do formulário não encontrada.');
+    }
     if (image.form.publicationState === PublicationState.PUBLISHED) {
       await this.assertPublishedFormAccess(image.form, user);
     } else {
@@ -219,10 +233,13 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
       where: { id: imageId },
       include: { form: { include: eventFormInclude } },
     });
-    if (!image) throw new NotFoundException('Imagem do formulário não encontrada.');
+    if (!image) {
+      throw new NotFoundException('Imagem do formulário não encontrada.');
+    }
     if (!image.formId) {
-      if (!user?.sub || image.createdById !== user.sub)
+      if (!user?.sub || image.createdById !== user.sub) {
         throw new ForbiddenException('Você não pode acessar esta imagem.');
+      }
     } else if (image.form?.deletedAt) {
       throw new NotFoundException('Imagem do formulário não encontrada.');
     } else if (image.form?.publicationState === PublicationState.PUBLISHED) {
@@ -286,11 +303,15 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
   }
 
   async deleteObjectsBestEffort(objectKeys: readonly string[]): Promise<void> {
-    for (const key of new Set(objectKeys)) await this.deleteObjectBestEffort(key);
+    for (const key of new Set(objectKeys)) {
+      await this.deleteObjectBestEffort(key);
+    }
   }
 
   async cleanupUnusedImages(now = new Date()): Promise<number> {
-    if (this.cleanupRunning) return 0;
+    if (this.cleanupRunning) {
+      return 0;
+    }
     this.cleanupRunning = true;
     try {
       const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1_000);
@@ -303,7 +324,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
           skip: retainedOffset,
           take: 200,
         });
-        if (!candidates.length) return totalCleaned;
+        if (!candidates.length) {
+          return totalCleaned;
+        }
 
         const formIds = [...new Set(candidates.flatMap((image) => (image.formId ? [image.formId] : [])))];
         const [forms, drafts] = await Promise.all([
@@ -318,12 +341,16 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
         ]);
         const referencedByForm = new Map<string, Set<string>>();
         for (const form of forms) {
-          if (form.deletedAt) continue;
+          if (form.deletedAt) {
+            continue;
+          }
           referencedByForm.set(form.id, collectStoredImageIds(form.descriptionImages, form.elements));
         }
         for (const draft of drafts) {
           const references = referencedByForm.get(draft.sourceFormId) ?? new Set<string>();
-          for (const id of collectDraftImageIds(draft.payload)) references.add(id);
+          for (const id of collectDraftImageIds(draft.payload)) {
+            references.add(id);
+          }
           referencedByForm.set(draft.sourceFormId, references);
         }
 
@@ -337,11 +364,15 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
           const deleted = await this.prisma.eventFormImage.deleteMany({
             where: { id: image.id, updatedAt: { lt: cutoff } },
           });
-          if (!deleted.count) continue;
+          if (!deleted.count) {
+            continue;
+          }
           await this.deleteObjectBestEffort(image.objectKey);
           cleaned += 1;
         }
-        if (cleaned) this.logger.log(`Removed ${cleaned} unused event form image${cleaned === 1 ? '' : 's'}.`);
+        if (cleaned) {
+          this.logger.log(`Removed ${cleaned} unused event form image${cleaned === 1 ? '' : 's'}.`);
+        }
         totalCleaned += cleaned;
         retainedOffset += retained;
       }
@@ -365,7 +396,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
   }
 
   private normalizeReferences(images: readonly FormImageReference[] | undefined): FormImageReference[] {
-    if (!images?.length) return [];
+    if (!images?.length) {
+      return [];
+    }
     if (images.length > MAX_IMAGES_PER_DESCRIPTION) {
       throw new BadRequestException(`Cada descrição pode incluir no máximo ${MAX_IMAGES_PER_DESCRIPTION} imagens.`);
     }
@@ -374,7 +407,9 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     }
     return images.map((image) => {
       const id = image.id.trim();
-      if (!id) throw new BadRequestException('O identificador da imagem do formulário é obrigatório.');
+      if (!id) {
+        throw new BadRequestException('O identificador da imagem do formulário é obrigatório.');
+      }
       return {
         id,
         altText: cleanOptionalText(image.altText) ?? undefined,
@@ -402,18 +437,26 @@ export class EventFormImagesService implements OnModuleInit, OnModuleDestroy {
     } catch {
       // Public access is evaluated below using the same audience rules as form listings.
     }
-    if (!user) throw new ForbiddenException('Você não pode acessar esta imagem do formulário.');
+    if (!user) {
+      throw new ForbiddenException('Você não pode acessar esta imagem do formulário.');
+    }
     const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
-    if (!person) throw new ForbiddenException('Você não pode acessar esta imagem do formulário.');
+    if (!person) {
+      throw new ForbiddenException('Você não pode acessar esta imagem do formulário.');
+    }
     const model = toEventFormModel(form);
     for (const link of model.links) {
-      if (!isLinkAvailable(link as never)) continue;
+      if (!isLinkAvailable(link as never)) {
+        continue;
+      }
       const allowFutureSubscriber =
         link.insertInSubscriptionFlow && (await canStartPublicSubscriptionForLink(this.prisma, link));
       if (await canPersonAnswerLink(this.prisma, person.id, link, { allowFutureSubscriber })) {
         return;
       }
-      if (!(await canPersonAccessLinkPriceTier(this.prisma, person.id, link))) continue;
+      if (!(await canPersonAccessLinkPriceTier(this.prisma, person.id, link))) {
+        continue;
+      }
       if (
         arePublicResultsReleasedForLink(model, link) &&
         (await canPersonViewPublicResults(this.prisma, person.id, link))
@@ -450,7 +493,9 @@ function collectStoredImageIds(descriptionImages: Prisma.JsonValue, elements: Pr
 
 function collectDraftImageIds(payload: Prisma.JsonValue): Set<string> {
   const ids = new Set<string>();
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return ids;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return ids;
+  }
   const descriptionImagesJson = payload['descriptionImagesJson'];
   const elementsJson = payload['elementsJson'];
   if (typeof descriptionImagesJson === 'string') {
@@ -478,28 +523,40 @@ function collectDraftImageIds(payload: Prisma.JsonValue): Set<string> {
 }
 
 function collectReferenceIds(value: Prisma.JsonValue, ids: Set<string>): void {
-  if (!Array.isArray(value)) return;
+  if (!Array.isArray(value)) {
+    return;
+  }
   for (const reference of value) {
     if (reference && typeof reference === 'object' && !Array.isArray(reference)) {
       const id = reference['id'];
-      if (typeof id === 'string' && id.trim()) ids.add(id.trim());
+      if (typeof id === 'string' && id.trim()) {
+        ids.add(id.trim());
+      }
     }
   }
 }
 
 export function parseEventFormImageReferences(value: string | null | undefined): FormImageReference[] {
-  if (!value) return [];
+  if (!value) {
+    return [];
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
     throw new BadRequestException('JSON das imagens da descrição do formulário inválido.');
   }
-  if (!Array.isArray(parsed)) throw new BadRequestException('As imagens da descrição devem ser uma lista.');
+  if (!Array.isArray(parsed)) {
+    throw new BadRequestException('As imagens da descrição devem ser uma lista.');
+  }
   return parsed.flatMap((item) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return [];
+    }
     const id = 'id' in item && typeof item.id === 'string' ? item.id.trim() : '';
-    if (!id) return [];
+    if (!id) {
+      return [];
+    }
     const altText = 'altText' in item && typeof item.altText === 'string' ? cleanOptionalText(item.altText) : null;
     const caption = 'caption' in item && typeof item.caption === 'string' ? cleanOptionalText(item.caption) : null;
     return [{ id, altText: altText ?? undefined, caption: caption ?? undefined }];

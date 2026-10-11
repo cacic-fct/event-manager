@@ -46,9 +46,7 @@ const meta: Meta<TicketDetailsStoryArgs> = {
   decorators: [
     withScenarioControls<TicketDetailsStoryArgs>(),
     (story, context) => {
-      const ticketResponse = context.args.apiState === 'loading'
-        ? NEVER
-        : null;
+      const ticketResponse = context.args.apiState === 'loading' ? NEVER : null;
       const ticket = createWalletStoryTicket({
         name: context.args.ticketName,
         emoji: context.args.ticketEmoji,
@@ -146,7 +144,9 @@ export const NotTransferable: Story = {
 export const Loading: Story = {
   args: { apiState: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole('progressbar', { name: 'Carregando informações do bilhete' })).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('progressbar', { name: 'Carregando informações do bilhete' }),
+    ).toBeVisible();
   },
 };
 
