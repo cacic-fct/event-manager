@@ -46,6 +46,12 @@ export class WorkspaceMajorEventSubscriptionEvent {
   @Field(() => String)
   eventId!: string;
 
+  @Field(() => String, { nullable: true })
+  eventGroupId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  eventGroupName?: string | null;
+
   @Field(() => String)
   eventName!: string;
 

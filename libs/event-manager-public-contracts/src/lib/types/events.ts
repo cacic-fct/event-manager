@@ -19,6 +19,12 @@ export interface PublicMajorEventPriceTier {
   value: number;
   includesEventRegistration?: boolean;
   includesSportsRegistration: boolean;
+  restrictEventSelection?: boolean;
+  allowedEventIds?: string[];
+  customizeSubscriptionLimits?: boolean;
+  maxCoursesPerAttendee?: number | null;
+  maxLecturesPerAttendee?: number | null;
+  maxUncategorizedPerAttendee?: number | null;
 }
 
 export interface PublicMajorEventPrice {

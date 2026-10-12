@@ -160,3 +160,19 @@
 .event-selection mat-list-option {
   min-height: 4.5rem;
 }
+
+.major-subscription-event-group {
+  display: grid;
+  gap: 0.35rem;
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--mat-sys-outline-variant);
+}
+
+.major-subscription-event-group > p {
+  margin: 0 0 0 2rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.major-subscription-event-group > lib-subscription-event-option {
+  margin-inline-start: 1rem;
+}

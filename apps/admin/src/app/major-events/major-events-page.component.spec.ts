@@ -1,6 +1,7 @@
 import { By } from '@angular/platform-browser';
 import { MatAnchor } from '@angular/material/button';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import axe from 'axe-core';
 import { MatDialog } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
@@ -141,6 +142,29 @@ describe('MajorEventsPageComponent', () => {
     expect(
       element.querySelector('#certificados [formcontrolname="shouldIssueCertificateForNonPayingAttendees"]'),
     ).not.toBeNull();
+  });
+
+  it('keeps tier-rule opt-ins accessible in the rendered admin form', async () => {
+    const { fixture } = await createFixture();
+    const firstTier = fixture.componentInstance.workspace.priceTiers.at(0);
+    firstTier.patchValue({ restrictEventSelection: true, customizeSubscriptionLimits: true });
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const ruleFields = element.querySelector('.tier-rule-fields');
+    expect(ruleFields?.querySelector('mat-checkbox[formcontrolname="restrictEventSelection"]')).not.toBeNull();
+    expect(ruleFields?.querySelector('mat-checkbox[formcontrolname="customizeSubscriptionLimits"]')).not.toBeNull();
+    if (!ruleFields) {
+      throw new Error('Expected tier rule controls');
+    }
+    const accessibility = await axe.run(ruleFields, {
+      runOnly: {
+        type: 'rule',
+        values: ['label', 'button-name', 'aria-required-attr', 'aria-valid-attr-value', 'select-name'],
+      },
+    });
+
+    expect(accessibility.violations).toEqual([]);
   });
 
   it('links activities directly to their event editor', async () => {

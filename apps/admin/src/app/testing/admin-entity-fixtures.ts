@@ -431,6 +431,12 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
               value: tier.value,
               includesEventRegistration: tier.includesEventRegistration ?? true,
               includesSportsRegistration: tier.includesSportsRegistration ?? false,
+              restrictEventSelection: tier.restrictEventSelection ?? false,
+              allowedEventIds: tier.allowedEventIds ?? [],
+              customizeSubscriptionLimits: tier.customizeSubscriptionLimits ?? false,
+              maxCoursesPerAttendee: tier.maxCoursesPerAttendee ?? null,
+              maxLecturesPerAttendee: tier.maxLecturesPerAttendee ?? null,
+              maxUncategorizedPerAttendee: tier.maxUncategorizedPerAttendee ?? null,
             })),
           },
         ]
@@ -842,6 +848,8 @@ export function createAdminWorkspaceMajorEventSubscriptionEvent(
 ): WorkspaceMajorEventSubscriptionEvent {
   return {
     eventId: event.id,
+    eventGroupId: event.eventGroupId ?? null,
+    eventGroupName: event.eventGroup?.name ?? null,
     eventName: event.name,
     eventStartDate: event.startDate,
     subscribed: true,

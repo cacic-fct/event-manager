@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
+import type { MajorEventPriceTier } from '@cacic-fct/event-manager-admin-contracts';
 import {
   SubscriptionCsvColumnDialogComponent,
   type SubscriptionCsvColumnDialogData,
@@ -18,6 +19,7 @@ interface CsvColumnStoryArgs {
   extraColumnCount: number;
   previewRowCount: number;
   longValues: boolean;
+  tierRules: boolean;
 }
 
 const defaultArgs: CsvColumnStoryArgs = {
@@ -29,6 +31,7 @@ const defaultArgs: CsvColumnStoryArgs = {
   extraColumnCount: 2,
   previewRowCount: 4,
   longValues: false,
+  tierRules: false,
 };
 
 function buildData(args: CsvColumnStoryArgs): SubscriptionCsvColumnDialogData {
@@ -60,7 +63,32 @@ function buildData(args: CsvColumnStoryArgs): SubscriptionCsvColumnDialogData {
       }),
     ),
   );
-  return { fileName: args.fileName, headers, previewRows };
+  const paymentTiers: MajorEventPriceTier[] = [
+    {
+      id: 'student-tier',
+      name: 'Estudante com limites',
+      value: 0,
+      includesSportsRegistration: false,
+      restrictEventSelection: true,
+      allowedEventIds: ['event-1', 'event-2'],
+      customizeSubscriptionLimits: true,
+      maxCoursesPerAttendee: 0,
+      maxLecturesPerAttendee: 2,
+      maxUncategorizedPerAttendee: null,
+    },
+    {
+      id: 'guest-tier',
+      name: 'Comunidade externa',
+      value: 8000,
+      includesSportsRegistration: false,
+    },
+  ];
+  return {
+    fileName: args.fileName,
+    headers,
+    previewRows,
+    ...(args.tierRules ? { paymentTiers, paymentTierRequired: true } : {}),
+  };
 }
 
 @Component({
@@ -79,6 +107,7 @@ class CsvColumnStoryHost {
   readonly extraColumnCount = input(defaultArgs.extraColumnCount);
   readonly previewRowCount = input(defaultArgs.previewRowCount);
   readonly longValues = input(defaultArgs.longValues);
+  readonly tierRules = input(defaultArgs.tierRules);
 
   readonly storyInjector = computed(() =>
     Injector.create({
@@ -95,6 +124,7 @@ class CsvColumnStoryHost {
             extraColumnCount: this.extraColumnCount(),
             previewRowCount: this.previewRowCount(),
             longValues: this.longValues(),
+            tierRules: this.tierRules(),
           }),
         },
         { provide: MatDialogRef, useValue: { close: () => undefined } },
@@ -117,6 +147,7 @@ const meta: Meta<CsvColumnStoryArgs> = {
     extraColumnCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     previewRowCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     longValues: { control: 'boolean' },
+    tierRules: { control: 'boolean' },
   },
   parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
@@ -135,6 +166,16 @@ export const Playground: Story = {
 
 export const DenseCsv: Story = {
   args: { extraColumnCount: 20, previewRowCount: 30 },
+};
+
+export const TierRulesRequired: Story = {
+  args: { tierRules: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('combobox', { name: 'Faixa de pagamento para as inscrições' })).toBeVisible();
+    await expect(canvas.getByText(/Obrigatória porque há faixas/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Importar' })).toBeDisabled();
+  },
 };
 
 export const MinimalHeaders: Story = {

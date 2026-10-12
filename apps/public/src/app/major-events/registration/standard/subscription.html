@@ -32,12 +32,12 @@
   </header>
 
   <mat-chip-set aria-label="Resumo da inscrição">
-    @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxCoursesPerAttendee !== null &&
-    majorEvent.maxCoursesPerAttendee !== undefined) {
-    <mat-chip> {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos </mat-chip>
-    } @if (!showingTierStep() && decisions().includesEvents && majorEvent.maxLecturesPerAttendee !== null &&
-    majorEvent.maxLecturesPerAttendee !== undefined) {
-    <mat-chip> {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras </mat-chip>
+    @if (!showingTierStep() && decisions().includesEvents && effectiveCategoryLimits().course !== null) {
+    <mat-chip> {{ courseCount() }} / {{ effectiveCategoryLimits().course }} minicursos </mat-chip>
+    } @if (!showingTierStep() && decisions().includesEvents && effectiveCategoryLimits().lecture !== null) {
+    <mat-chip> {{ lectureCount() }} / {{ effectiveCategoryLimits().lecture }} palestras </mat-chip>
+    } @if (!showingTierStep() && decisions().includesEvents && effectiveCategoryLimits().uncategorized !== null) {
+    <mat-chip> {{ uncategorizedCount() }} / {{ effectiveCategoryLimits().uncategorized }} outros eventos </mat-chip>
     } @if (!showingTierStep() && majorEvent.isPaymentRequired && selectedPriceTier()?.value !== 0) {
     <mat-chip>
       <mat-icon matChipAvatar>payments</mat-icon>
@@ -57,6 +57,7 @@
   <app-subscription-tier-selection
     [majorEvent]="majorEvent"
     [tiers]="priceTiers()"
+    [events]="state.data.events"
     [selectedName]="selectedPriceTierName()"
     [locked]="currentUserSubscription()?.subscriptionStatus === 'CONFIRMED'"
     [busy]="isSubmitting() || currentUserSubscription() === undefined"
@@ -66,10 +67,16 @@
   selectedPriceTier(); as tier) {
   <section class="selected-tier-summary" aria-label="Modalidade selecionada">
     <p><strong>{{ tier.name }}</strong>: {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
+    @for (summary of selectedTierRuleSummaries(); track summary) {
+    <p>{{ summary }}</p>
+    }
     <button matButton type="button" (click)="returnToTier()">Alterar modalidade</button>
   </section>
   } @if (decisions().includesEvents) {
   <h2 data-step-title tabindex="-1">Escolha seus eventos</h2>
+  @if (automaticSelectionErrors().length > 0) {
+  <p class="rate-limit-message" role="status">{{ automaticSelectionErrors()[0] }}</p>
+  }
   <app-subscription-event-list
     [interestedEventIds]="interestedEventIds()"
     [events]="sortedEvents()"
@@ -97,7 +104,8 @@
       type="button"
       [disabled]="
         isSubmitting() ||
-        (decisions().includesEvents && selectedEvents().length === 0) ||
+        (requiresEventChoice() && selectedEvents().length === 0) ||
+        automaticSelectionErrors().length > 0 ||
         currentUserSubscription() === undefined ||
         (currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
           !confirmedSportsOnlySubscription() &&

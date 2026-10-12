@@ -200,6 +200,14 @@ model PriceTier {
   includesEventRegistration  Boolean @default(true)
   includesSportsRegistration Boolean @default(false)
 
+  // Disabled options preserve the major-event rules. Null custom limits mean unlimited.
+  restrictEventSelection       Boolean @default(false)
+  allowedEventIds              String[] @default([])
+  customizeSubscriptionLimits  Boolean @default(false)
+  maxCoursesPerAttendee        Int?
+  maxLecturesPerAttendee       Int?
+  maxUncategorizedPerAttendee  Int?
+
   eventFormLinks EventFormLinkPriceTier[]
   ticketPriceOptions TicketPriceOption[]
   ticketPurchases TicketPurchase[]

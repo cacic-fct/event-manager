@@ -67,11 +67,52 @@ describe('public event models', () => {
               value: 2500,
               includesEventRegistration: true,
               includesSportsRegistration: undefined,
+              restrictEventSelection: false,
+              allowedEventIds: [],
+              customizeSubscriptionLimits: false,
+              maxCoursesPerAttendee: null,
+              maxLecturesPerAttendee: null,
+              maxUncategorizedPerAttendee: null,
             },
           ],
         },
       ],
     });
+  });
+
+  it('exposes optional tier rules including zero and unlimited quotas', () => {
+    const majorEvent = majorEventFixture({
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'SINGLE',
+          tiers: [
+            {
+              id: 'tier-1',
+              name: 'Especial',
+              value: 2500,
+              includesSportsRegistration: false,
+              restrictEventSelection: true,
+              allowedEventIds: ['course-1'],
+              customizeSubscriptionLimits: true,
+              maxCoursesPerAttendee: 0,
+              maxLecturesPerAttendee: 3,
+              maxUncategorizedPerAttendee: null,
+            },
+          ],
+        },
+      ],
+    });
+    expect(mapPublicMajorEvent(majorEvent as never).majorEventPrices[0].tiers[0]).toEqual(
+      expect.objectContaining({
+        restrictEventSelection: true,
+        allowedEventIds: ['course-1'],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 0,
+        maxLecturesPerAttendee: 3,
+        maxUncategorizedPerAttendee: null,
+      }),
+    );
   });
 
   it('maps payment info nullables to undefined', () => {

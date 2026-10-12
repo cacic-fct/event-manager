@@ -49,6 +49,13 @@ h2 {
 .tier-access mat-icon {
   flex-shrink: 0;
 }
+.tier-access .tier-policy {
+  color: var(--mat-sys-on-surface-variant);
+}
+.tier-policy-warning {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}
 .next-step {
   margin-top: 24px;
   max-width: 70ch;

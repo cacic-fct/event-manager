@@ -104,6 +104,7 @@ export class AttendanceApiService {
     majorEventId: string;
     csvContent: string;
     subscriptionStatus: SubscriptionStatus;
+    paymentTier?: string | null;
     columnMapping: {
       emailHeader?: string | null;
       fullNameHeader?: string | null;

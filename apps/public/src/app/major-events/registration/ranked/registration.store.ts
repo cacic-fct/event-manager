@@ -37,6 +37,13 @@ import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
 import { resolveRegistrationDecisions } from '../tier/registration-decisions';
+import {
+  automaticEventIds as getAutomaticEventIds,
+  automaticSelectionLimitViolations,
+  categoryLimits,
+  selectableEventIds as getSelectableEventIds,
+  subscriptionTierRuleSummaries,
+} from '../tier/subscription-tier-policy';
 
 export type RankedSubscriptionPageState =
   | { status: 'loading' }
@@ -132,10 +139,19 @@ export class RankedSubscriptionStore {
     return state.status === 'ready' ? state.data : null;
   });
 
-  readonly sortedEvents = computed(() =>
+  readonly allSortedEvents = computed(() =>
     [...(this.data()?.events ?? [])].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)),
   );
-  readonly eventsById = computed(() => new Map(this.sortedEvents().map((event) => [event.id, event])));
+  readonly policyPriceTier = computed(() =>
+    this.data()?.majorEvent.isPaymentRequired === true ? this.selectedPriceTier() : null,
+  );
+  readonly selectableEventIds = computed(() =>
+    getSelectableEventIds(this.decisions().includesEvents ? this.allSortedEvents() : [], this.policyPriceTier()),
+  );
+  readonly sortedEvents = computed(() =>
+    this.allSortedEvents().filter((event) => this.selectableEventIds().has(event.id)),
+  );
+  readonly eventsById = computed(() => new Map(this.allSortedEvents().map((event) => [event.id, event])));
   readonly summariesByEventId = computed(
     () => new Map(this.data()?.subscriptionSummaries.map((summary) => [summary.eventId, summary]) ?? []),
   );
@@ -143,15 +159,14 @@ export class RankedSubscriptionStore {
     if (!this.decisions().includesEvents) {
       return new Set<string>();
     }
-    return new Set(
-      this.sortedEvents()
-        .filter((event) => event.autoSubscribe)
-        .map((event) => event.id),
-    );
+    return getAutomaticEventIds(this.sortedEvents(), this.policyPriceTier());
   });
   readonly effectiveSelectedEventIds = computed(() =>
     this.decisions().includesEvents
-      ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
+      ? new Set([
+          ...[...this.selectedEventIds()].filter((eventId) => this.selectableEventIds().has(eventId)),
+          ...this.autoSelectedEventIds(),
+        ])
       : new Set<string>(),
   );
   readonly selectedEvents = computed(() =>
@@ -165,6 +180,17 @@ export class RankedSubscriptionStore {
   readonly selectedPriceTier = computed(() => {
     const selectedName = this.selectedPriceTierName();
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
+  });
+  readonly effectiveCategoryLimits = computed(() =>
+    categoryLimits(this.data()?.majorEvent ?? null, this.policyPriceTier()),
+  );
+  readonly selectedTierRuleSummaries = computed(() => {
+    const data = this.data();
+    return data ? subscriptionTierRuleSummaries(data.majorEvent, this.policyPriceTier(), data.events) : [];
+  });
+  readonly automaticSelectionErrors = computed(() => {
+    const data = this.data();
+    return data ? automaticSelectionLimitViolations(data.majorEvent, data.events, this.policyPriceTier()) : [];
   });
   readonly decisions = computed(() =>
     resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()),
@@ -271,7 +297,11 @@ export class RankedSubscriptionStore {
   }
 
   toggleEvent(event: PublicEvent): void {
-    if (!this.decisions().includesEvents || this.autoSelectedEventIds().has(event.id)) {
+    if (
+      !this.decisions().includesEvents ||
+      !this.selectableEventIds().has(event.id) ||
+      this.autoSelectedEventIds().has(event.id)
+    ) {
       return;
     }
     const eventIds = this.getEventIdsForStepOneToggle(event);
@@ -292,7 +322,7 @@ export class RankedSubscriptionStore {
   openInfo(event: PublicEvent): void {
     void this.router.navigate(['event', event.id], {
       relativeTo: this.route,
-      queryParams: { returnUrl: this.router.url },
+      queryParams: { returnUrl: this.router.url, tierEventAllowed: this.selectableEventIds().has(event.id) },
     });
   }
 
@@ -323,13 +353,12 @@ export class RankedSubscriptionStore {
     if (tierName === this.selectedPriceTierName()) {
       return;
     }
+    const previousSelection = this.selectedEventIds();
     this.selectedPriceTierName.set(tierName);
-    this.selectedEventIds.set(new Set());
-    this.rankingItems.set([]);
-    this.notWantedItems.set([]);
-    this.desiredCourses.set(0);
-    this.desiredLectures.set(0);
-    this.desiredUncategorized.set(0);
+    const availableIds = this.selectableEventIds();
+    this.selectedEventIds.set(new Set([...previousSelection].filter((eventId) => availableIds.has(eventId))));
+    this.syncRankedItems();
+    this.syncDesiredDefaults();
     this.subscriptionFormFlow.set(null);
     this.subscriptionFlowDraft.set(null);
   }
@@ -342,6 +371,11 @@ export class RankedSubscriptionStore {
       this.isSubmitting() ||
       this.isPreparingSubscriptionFlow()
     ) {
+      return;
+    }
+
+    if (this.automaticSelectionErrors().length > 0) {
+      this.snackBar.open(this.automaticSelectionErrors()[0], 'OK', { duration: 5000 });
       return;
     }
 
@@ -447,7 +481,7 @@ export class RankedSubscriptionStore {
       this.syncSelectedPriceTier(currentUserSubscription);
     }
 
-    const validEventIds = new Set(data.events.map((event) => event.id));
+    const validEventIds = this.selectableEventIds();
     const selected = this.decisions().includesEvents
       ? new Set([...this.selectedEventIds()].filter((eventId) => validEventIds.has(eventId)))
       : new Set<string>();
@@ -640,8 +674,11 @@ export class RankedSubscriptionStore {
         .filter((item) => item.eventIds.some((eventId) => this.effectiveSelectedEventIds().has(eventId)))
         .map((item) => item.key),
     );
+    const automaticEventIds = this.autoSelectedEventIds();
     const autoKeys = new Set(
-      allItems.filter((item) => item.events.every((event) => event.autoSubscribe)).map((item) => item.key),
+      allItems
+        .filter((item) => item.eventIds.every((eventId) => automaticEventIds.has(eventId)))
+        .map((item) => item.key),
     );
     const nextRanking = [
       ...this.rankingItems()
@@ -693,36 +730,25 @@ export class RankedSubscriptionStore {
 
   private clampDesired(value: number, category: RankedCategory): number {
     const options = this.categoryOptions(category);
-    const fallback = options.at(-1) ?? 0;
-    if (!options.includes(value)) {
-      return fallback;
-    }
-    return value;
+    const minimum = options[0] ?? 0;
+    const maximum = options.at(-1) ?? minimum;
+    return Math.max(minimum, Math.min(value, maximum));
   }
 
   private categoryOptions(category: RankedCategory): number[] {
     const events = this.sortedEvents().filter((event) => this.eventCategory(event) === category);
-    const autoCount = events.filter((event) => event.autoSubscribe).length;
+    const automaticEventIds = this.autoSelectedEventIds();
+    const autoCount = events.filter((event) => automaticEventIds.has(event.id)).length;
     const configuredMax = this.configuredMax(category);
-    const max = configuredMax ?? events.length;
-    if (events.length > 0 && events.every((event) => event.autoSubscribe)) {
-      return [autoCount];
-    }
-    return Array.from({ length: Math.max(max - autoCount, 0) + 1 }, (_, index) => index + autoCount);
+    const maximum = Math.max(
+      autoCount,
+      configuredMax === null ? events.length : Math.min(configuredMax, events.length),
+    );
+    return Array.from({ length: maximum - autoCount + 1 }, (_, index) => index + autoCount);
   }
 
   private configuredMax(category: RankedCategory): number | null {
-    const majorEvent = this.data()?.majorEvent;
-    if (!majorEvent) {
-      return null;
-    }
-    if (category === 'course') {
-      return majorEvent.maxCoursesPerAttendee ?? null;
-    }
-    if (category === 'lecture') {
-      return majorEvent.maxLecturesPerAttendee ?? null;
-    }
-    return majorEvent.maxUncategorizedPerAttendee ?? null;
+    return this.effectiveCategoryLimits()[category];
   }
 
   private eventCategory(event: PublicEvent): RankedCategory {

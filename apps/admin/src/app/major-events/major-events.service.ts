@@ -8,9 +8,18 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AttendanceEligibility, EventAudience } from '@cacic-fct/shared-event-participation';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
+import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PublicationApiService } from '../graphql/publishing-api.service';
-import { Event, MajorEvent, MajorEventInput, PriceType } from '@cacic-fct/event-manager-admin-contracts';
+import {
+  Event,
+  EventGroup,
+  MajorEvent,
+  MajorEventInput,
+  MajorEventPriceTier,
+  PriceTierInput,
+  PriceType,
+} from '@cacic-fct/event-manager-admin-contracts';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { addDays, format, parseISO, subDays } from 'date-fns';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../events/dialogs/clone-asset-dialog.component';
@@ -36,6 +45,12 @@ type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
 const DEFAULT_DRAFT_MAJOR_EVENT_EMOJI = '📌';
 const DEFAULT_MAJOR_EVENT_DURATION_DAYS = 1;
+const PRICE_TIER_TARGET_PAGE_SIZE = 200;
+const GRAPHQL_INT_MAX = 2_147_483_647;
+
+export type PriceTierEventTarget =
+  | { id: string; kind: 'event'; name: string; events: readonly Event[] }
+  | { id: string; kind: 'event-group'; name: string; events: readonly Event[] };
 
 @Service()
 export class MajorEventsService {
@@ -44,6 +59,7 @@ export class MajorEventsService {
   private loadedSelectionId: string | null = null;
   private readonly api = inject(MajorEventApiService);
   private readonly eventsApi = inject(EventApiService);
+  private readonly eventGroupsApi = inject(EventGroupApiService);
   private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
@@ -61,6 +77,9 @@ export class MajorEventsService {
   readonly majorEventsSearchForm = this.formBuilder.nonNullable.group({ query: [''] });
   readonly selectedMajorEvent = signal<MajorEvent | null>(null);
   readonly majorEventEvents = signal<Event[]>([]);
+  readonly priceTierEventTargets = signal<PriceTierEventTarget[]>([]);
+  readonly priceTierEventTargetsLoading = signal(false);
+  readonly priceTierEventTargetsError = signal('');
   readonly majorEventEventSearchResults = signal<Event[]>([]);
   readonly majorEventAudienceInvitations = signal<AudienceInvitationPerson[]>([]);
 
@@ -117,6 +136,9 @@ export class MajorEventsService {
   });
   private readonly editorRevision = signal(0);
   private readonly editorBaseline = signal('');
+  private priceTierTargetsLoadedForMajorEventId: string | null = null;
+  private priceTierTargetsRequest = 0;
+  private priceTierTargetsLoad: { majorEventId: string; promise: Promise<void> } | null = null;
   readonly unsavedChanges = computed(() => {
     this.editorRevision();
     return this.editorBaseline() !== this.editorSignature();
@@ -184,6 +206,142 @@ export class MajorEventsService {
     this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
+  async loadPriceTierEventTargets(): Promise<void> {
+    const majorEventId = this.selectedMajorEvent()?.id;
+    if (!majorEventId || this.priceTierTargetsLoadedForMajorEventId === majorEventId) {
+      return;
+    }
+    if (this.priceTierTargetsLoad?.majorEventId === majorEventId) {
+      return this.priceTierTargetsLoad.promise;
+    }
+
+    const request = ++this.priceTierTargetsRequest;
+    this.priceTierEventTargetsLoading.set(true);
+    this.priceTierEventTargetsError.set('');
+
+    const promise = (async () => {
+      try {
+        const [directEvents, eventGroups] = await Promise.all([
+          this.loadAllEvents({ majorEventId, isInGroup: false }),
+          this.loadAllEventGroups(majorEventId),
+        ]);
+        const eventsByGroup = new Map<string, Event[]>();
+        for (let index = 0; index < eventGroups.length; index += 8) {
+          const groupBatch = eventGroups.slice(index, index + 8);
+          const childPages = await Promise.all(
+            groupBatch.map((eventGroup) => this.loadAllEvents({ eventGroupId: eventGroup.id })),
+          );
+          for (const [batchIndex, groupEvents] of childPages.entries()) {
+            eventsByGroup.set(groupBatch[batchIndex].id, groupEvents);
+          }
+        }
+        if (request !== this.priceTierTargetsRequest || this.selectedMajorEvent()?.id !== majorEventId) {
+          return;
+        }
+
+        const directTargets: PriceTierEventTarget[] = directEvents.map((eventItem) => ({
+          id: eventItem.id,
+          kind: 'event',
+          name: eventItem.name,
+          events: [eventItem],
+        }));
+        const groupTargets: PriceTierEventTarget[] = eventGroups.flatMap((eventGroup) => {
+          const children = eventsByGroup.get(eventGroup.id) ?? [];
+          return children.length > 0
+            ? [{ id: eventGroup.id, kind: 'event-group' as const, name: eventGroup.name, events: children }]
+            : [];
+        });
+
+        this.priceTierEventTargets.set(
+          [...directTargets, ...groupTargets].sort((left, right) => {
+            if (left.kind !== right.kind) {
+              return left.kind === 'event' ? -1 : 1;
+            }
+            return left.name.localeCompare(right.name, 'pt-BR');
+          }),
+        );
+        this.priceTierTargetsLoadedForMajorEventId = majorEventId;
+      } catch {
+        if (request === this.priceTierTargetsRequest && this.selectedMajorEvent()?.id === majorEventId) {
+          this.priceTierEventTargetsError.set(
+            'Não foi possível carregar as atividades deste grande evento. Tente novamente.',
+          );
+        }
+      } finally {
+        if (request === this.priceTierTargetsRequest) {
+          this.priceTierEventTargetsLoading.set(false);
+          this.priceTierTargetsLoad = null;
+        }
+      }
+    })();
+
+    this.priceTierTargetsLoad = { majorEventId, promise };
+    return promise;
+  }
+
+  updateTierAllowedEventIds(index: number, selectedIds: string[]): void {
+    const tier = this.priceTiers.at(index);
+    if (!tier) {
+      return;
+    }
+
+    const preservedUnresolvedIds = this.unresolvedTierEventIds(tier.controls.allowedEventIds.value);
+    const targetsById = new Map(this.priceTierEventTargets().map((target) => [target.id, target]));
+    const selectedEventIds = selectedIds.flatMap(
+      (id) => targetsById.get(id)?.events.map((eventItem) => eventItem.id) ?? [],
+    );
+    tier.controls.allowedEventIds.setValue([...new Set([...preservedUnresolvedIds, ...selectedEventIds])]);
+  }
+
+  tierEventTargetSelection(selectedEventIds: readonly string[]): string[] {
+    const selected = new Set(selectedEventIds);
+    return this.priceTierEventTargets()
+      .filter((target) =>
+        target.kind === 'event'
+          ? selected.has(target.events[0]?.id ?? target.id)
+          : target.events.length > 0 && target.events.every((eventItem) => selected.has(eventItem.id)),
+      )
+      .map((target) => target.id);
+  }
+
+  unavailableTierEventCount(selectedIds: readonly string[]): number {
+    return this.unresolvedTierEventIds(selectedIds).length;
+  }
+
+  priceTierEventTargetDetails(target: PriceTierEventTarget): string {
+    return target.kind === 'event-group'
+      ? `${target.events.length} atividades: ${target.events.map((eventItem) => eventItem.name).join(', ')}`
+      : '';
+  }
+
+  removeUnavailableTierEventIds(index: number): void {
+    const tier = this.priceTiers.at(index);
+    if (!tier) {
+      return;
+    }
+
+    const unresolvedIds = new Set(this.unresolvedTierEventIds(tier.controls.allowedEventIds.value));
+    tier.controls.allowedEventIds.setValue(tier.controls.allowedEventIds.value.filter((id) => !unresolvedIds.has(id)));
+  }
+
+  private unresolvedTierEventIds(selectedIds: readonly string[]): string[] {
+    const selected = new Set(selectedIds);
+    const recognizedEventIds = new Set<string>();
+    for (const target of this.priceTierEventTargets()) {
+      if (target.kind === 'event') {
+        const eventId = target.events[0]?.id ?? target.id;
+        if (selected.has(eventId)) {
+          recognizedEventIds.add(eventId);
+        }
+      } else if (target.events.length > 0 && target.events.every((eventItem) => selected.has(eventItem.id))) {
+        for (const eventItem of target.events) {
+          recognizedEventIds.add(eventItem.id);
+        }
+      }
+    }
+    return selectedIds.filter((id) => !recognizedEventIds.has(id));
+  }
+
   async loadMajorEvents(): Promise<void> {
     const request = ++this.majorEventListRequest;
     const query = this.majorEventsSearchForm.controls.query.value.trim();
@@ -221,7 +379,7 @@ export class MajorEventsService {
 
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
     const saveRequest = this.selectionRequest;
-    if (this.hasInvalidDateRange()) {
+    if (this.hasInvalidDateRange() || this.hasInvalidTierLimits()) {
       this.majorEventForm.markAllAsTouched();
       return;
     }
@@ -320,6 +478,16 @@ export class MajorEventsService {
     return this.majorEventForm.hasError('majorEventDateRange') || this.majorEventForm.hasError('subscriptionDateRange');
   }
 
+  private hasInvalidTierLimits(): boolean {
+    return this.priceTiers.controls.some((tier) =>
+      [
+        tier.controls.maxCoursesPerAttendee,
+        tier.controls.maxLecturesPerAttendee,
+        tier.controls.maxUncategorizedPerAttendee,
+      ].some((control) => control.hasError('nonNegativeInteger')),
+    );
+  }
+
   openMajorEventPublication(): void {
     const selectedMajorEvent = this.selectedMajorEvent();
     if (!selectedMajorEvent) {
@@ -356,6 +524,7 @@ export class MajorEventsService {
     }
     this.selectedMajorEvent.set(null);
     this.majorEventEvents.set([]);
+    this.resetPriceTierEventTargets();
     this.majorEventEventSearchResults.set([]);
     this.majorEventAudienceInvitations.set([]);
     this.majorEventEventSearchForm.reset(
@@ -420,12 +589,19 @@ export class MajorEventsService {
     }
     this.populateMajorEventSelection(majorEvent);
     await this.loadEventsForMajorEvent(majorEventId, request);
+    if (
+      request === this.selectionRequest &&
+      this.priceTiers.controls.some((tier) => tier.controls.restrictEventSelection.value)
+    ) {
+      await this.loadPriceTierEventTargets();
+    }
     if (request === this.selectionRequest) {
       this.loadedSelectionId = majorEventId;
     }
   }
 
   private populateMajorEventSelection(majorEvent: MajorEvent): void {
+    this.resetPriceTierEventTargets();
     this.selectedMajorEvent.set(majorEvent);
     this.majorEventEventSearchForm.reset(
       {
@@ -494,6 +670,7 @@ export class MajorEventsService {
               this.fromCentsToCurrencyInput(tier.value),
               Boolean(majorEvent.sportsTournament && tier.includesSportsRegistration),
               tier.includesEventRegistration !== false,
+              tier,
             ),
           )
         : [this.createPriceTierGroup(null, 'Preço único', '', false)],
@@ -612,7 +789,7 @@ export class MajorEventsService {
       pixCity: raw.pixCity.trim(),
     };
     const hasAnyPaymentInfo = Object.values(paymentInfoInput).some((value) => value.length > 0);
-    const priceTiers = this.priceTiers.controls
+    const priceTiers: (Omit<PriceTierInput, 'value'> & { value: number | null })[] = this.priceTiers.controls
       .map((tierControl) => tierControl.getRawValue())
       .map((tier) => ({
         ...(tier.id ? { id: tier.id } : {}),
@@ -622,18 +799,15 @@ export class MajorEventsService {
         ...(Boolean(this.selectedMajorEvent()?.sportsTournament) && tier.includesSportsRegistration
           ? { includesSportsRegistration: true }
           : {}),
+        restrictEventSelection: tier.restrictEventSelection,
+        allowedEventIds: [...tier.allowedEventIds],
+        customizeSubscriptionLimits: tier.customizeSubscriptionLimits,
+        maxCoursesPerAttendee: this.toOptionalTierLimit(tier.maxCoursesPerAttendee),
+        maxLecturesPerAttendee: this.toOptionalTierLimit(tier.maxLecturesPerAttendee),
+        maxUncategorizedPerAttendee: this.toOptionalTierLimit(tier.maxUncategorizedPerAttendee),
       }))
       .filter((tier) => tier.name.length > 0 || tier.value !== null);
-    const validPriceTiers = priceTiers.filter(
-      (
-        tier,
-      ): tier is {
-        name: string;
-        value: number;
-        includesEventRegistration?: false;
-        includesSportsRegistration?: true;
-      } => tier.value !== null,
-    );
+    const validPriceTiers = priceTiers.flatMap((tier) => (tier.value === null ? [] : [{ ...tier, value: tier.value }]));
 
     return {
       name: raw.name.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_MAJOR_EVENT_NAME : ''),
@@ -726,6 +900,43 @@ export class MajorEventsService {
     this.majorEventEvents.set([...events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate)));
   }
 
+  private async loadAllEvents(
+    filters: { majorEventId: string; isInGroup: boolean } | { eventGroupId: string },
+  ): Promise<Event[]> {
+    const events: Event[] = [];
+    for (let skip = 0; ; skip += PRICE_TIER_TARGET_PAGE_SIZE) {
+      const page = await firstValueFrom(
+        this.eventsApi.listEvents({ ...filters, skip, take: PRICE_TIER_TARGET_PAGE_SIZE }),
+      );
+      events.push(...page);
+      if (page.length < PRICE_TIER_TARGET_PAGE_SIZE) {
+        return events;
+      }
+    }
+  }
+
+  private async loadAllEventGroups(majorEventId: string): Promise<EventGroup[]> {
+    const eventGroups: EventGroup[] = [];
+    for (let skip = 0; ; skip += PRICE_TIER_TARGET_PAGE_SIZE) {
+      const page = await firstValueFrom(
+        this.eventGroupsApi.listEventGroups({ majorEventId, skip, take: PRICE_TIER_TARGET_PAGE_SIZE }),
+      );
+      eventGroups.push(...page);
+      if (page.length < PRICE_TIER_TARGET_PAGE_SIZE) {
+        return eventGroups;
+      }
+    }
+  }
+
+  private resetPriceTierEventTargets(): void {
+    this.priceTierTargetsRequest++;
+    this.priceTierTargetsLoad = null;
+    this.priceTierTargetsLoadedForMajorEventId = null;
+    this.priceTierEventTargets.set([]);
+    this.priceTierEventTargetsLoading.set(false);
+    this.priceTierEventTargetsError.set('');
+  }
+
   private toIsoDateTime(rawValue: string): string {
     return parseISO(rawValue).toISOString();
   }
@@ -742,6 +953,14 @@ export class MajorEventsService {
       return null;
     }
     return rawValue.trim() ? Number(rawValue) : null;
+  }
+
+  private toOptionalTierLimit(rawValue: string | number | null | undefined): number | null {
+    if (rawValue === null || rawValue === undefined || (typeof rawValue === 'string' && !rawValue.trim())) {
+      return null;
+    }
+    const parsed = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    return Number.isInteger(parsed) && parsed >= 0 && parsed <= GRAPHQL_INT_MAX ? parsed : null;
   }
 
   private toCents(rawValue: string | number | null | undefined): number | null {
@@ -763,14 +982,63 @@ export class MajorEventsService {
     value: string,
     includesSportsRegistration: boolean,
     includesEventRegistration = true,
+    configuration: Partial<MajorEventPriceTier> = {},
   ) {
-    return this.formBuilder.nonNullable.group({
+    const group = this.formBuilder.nonNullable.group({
       id: [id],
       name: [name],
       value: [value],
       includesEventRegistration: [includesEventRegistration],
       includesSportsRegistration: [includesSportsRegistration],
+      restrictEventSelection: [configuration.restrictEventSelection ?? false],
+      allowedEventIds: this.formBuilder.nonNullable.control([...(configuration.allowedEventIds ?? [])]),
+      customizeSubscriptionLimits: [configuration.customizeSubscriptionLimits ?? false],
+      maxCoursesPerAttendee: this.formBuilder.control<string | number | null>(
+        configuration.maxCoursesPerAttendee?.toString() ?? '',
+        [this.nonNegativeInteger()],
+      ),
+      maxLecturesPerAttendee: this.formBuilder.control<string | number | null>(
+        configuration.maxLecturesPerAttendee?.toString() ?? '',
+        [this.nonNegativeInteger()],
+      ),
+      maxUncategorizedPerAttendee: this.formBuilder.control<string | number | null>(
+        configuration.maxUncategorizedPerAttendee?.toString() ?? '',
+        [this.nonNegativeInteger()],
+      ),
     });
+    this.syncPriceTierRuleControls(group);
+    return group;
+  }
+
+  private syncPriceTierRuleControls(group: ReturnType<MajorEventsService['createPriceTierGroup']>): void {
+    const sync = () => {
+      const includesEvents = group.controls.includesEventRegistration.value;
+      const isSavedMajorEvent = Boolean(this.selectedMajorEvent()?.id);
+      const canRestrictEvents = includesEvents && isSavedMajorEvent;
+      this.setControlDisabled(group.controls.restrictEventSelection, !canRestrictEvents);
+      this.setControlDisabled(
+        group.controls.allowedEventIds,
+        !canRestrictEvents || !group.controls.restrictEventSelection.value,
+      );
+      this.setControlDisabled(group.controls.customizeSubscriptionLimits, !includesEvents);
+      const canCustomizeLimits = includesEvents && group.controls.customizeSubscriptionLimits.value;
+      this.setControlDisabled(group.controls.maxCoursesPerAttendee, !canCustomizeLimits);
+      this.setControlDisabled(group.controls.maxLecturesPerAttendee, !canCustomizeLimits);
+      this.setControlDisabled(group.controls.maxUncategorizedPerAttendee, !canCustomizeLimits);
+    };
+
+    group.controls.includesEventRegistration.valueChanges.subscribe(sync);
+    group.controls.restrictEventSelection.valueChanges.subscribe(sync);
+    group.controls.customizeSubscriptionLimits.valueChanges.subscribe(sync);
+    sync();
+  }
+
+  private setControlDisabled(control: AbstractControl, disabled: boolean): void {
+    if (disabled && control.enabled) {
+      control.disable({ emitEvent: false });
+    } else if (!disabled && control.disabled) {
+      control.enable({ emitEvent: false });
+    }
   }
 
   private resetPriceTiers(groups: ReturnType<MajorEventsService['createPriceTierGroup']>[]): void {
@@ -848,6 +1116,21 @@ export class MajorEventsService {
     }
 
     this.majorEventForm.controls.shouldIssueCertificateForNonSubscribedAttendees.enable({ emitEvent: false });
+  }
+
+  private nonNegativeInteger() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const rawValue = control.value;
+      if (rawValue === null || rawValue === undefined || rawValue === '') {
+        return null;
+      }
+
+      const value = String(rawValue).trim();
+      const parsed = Number(value);
+      return /^\d+$/.test(value) && Number.isInteger(parsed) && parsed <= GRAPHQL_INT_MAX
+        ? null
+        : { nonNegativeInteger: true };
+    };
   }
 
   private async openCloneDialog(majorEvent: MajorEvent): Promise<CloneAssetDialogResult | null | undefined> {

@@ -113,7 +113,7 @@ describe('CurrentUserEventMapperService', () => {
     );
   });
 
-  it('preserves the sports-registration flag on mapped major-event price tiers', () => {
+  it('preserves registration and event-access policy fields on mapped major-event price tiers', () => {
     const event = eventFixture();
     (event.majorEvent as { majorEventPrices: unknown[] }).majorEventPrices = [
       {
@@ -125,13 +125,27 @@ describe('CurrentUserEventMapperService', () => {
             name: 'Atividades e torneio',
             value: 7000,
             includesSportsRegistration: true,
+            restrictEventSelection: true,
+            allowedEventIds: ['event-1'],
+            customizeSubscriptionLimits: true,
+            maxCoursesPerAttendee: 2,
+            maxLecturesPerAttendee: 0,
+            maxUncategorizedPerAttendee: null,
           },
         ],
       },
     ];
 
     expect(service.mapPublicEvent(event as never).majorEvent?.majorEventPrices[0]?.tiers[0]).toEqual(
-      expect.objectContaining({ includesSportsRegistration: true }),
+      expect.objectContaining({
+        includesSportsRegistration: true,
+        restrictEventSelection: true,
+        allowedEventIds: ['event-1'],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 2,
+        maxLecturesPerAttendee: 0,
+        maxUncategorizedPerAttendee: null,
+      }),
     );
   });
 

@@ -127,6 +127,32 @@ export const OptionalPaymentWithPrices: Story = {
   },
 };
 
+export const PriceTierRules: Story = {
+  args: { priceTierRules: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Limitar as atividades disponíveis para este preço' }),
+    ).toBeChecked();
+    await expect(canvas.getByText(/Grupos são selecionados como uma unidade/)).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Personalizar limites de inscrição desta faixa' })).toBeChecked();
+    await expect(canvas.getByRole('spinbutton', { name: 'Máximo de minicursos por participante' })).toHaveValue(0);
+    await expect(canvas.getByRole('spinbutton', { name: 'Máximo de palestras por participante' })).toHaveValue(2);
+  },
+};
+
+export const NewMajorEventBeforeProgramming: Story = {
+  args: { mode: 'empty', selectedIndex: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const restriction = canvas.getByRole('checkbox', {
+      name: 'Limitar as atividades disponíveis para este preço',
+    });
+    await expect(restriction).toBeDisabled();
+    await expect(canvas.getByText(/Salve o grande evento e cadastre a programação/)).toBeVisible();
+  },
+};
+
 export const SearchMajorEvents: Story = {
   name: 'Major event activity editor',
   play: async ({ canvasElement }) => {

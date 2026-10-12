@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
+import { createPublicEvent, createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
 import { expect, userEvent, within } from 'storybook/test';
 import { SubscriptionTierSelection } from './tier-selection';
 
@@ -20,6 +20,37 @@ const tiers = [
     includesEventRegistration: false,
     includesSportsRegistration: false,
   },
+  {
+    id: 'limited',
+    name: 'Eventos autorizados',
+    value: 2500,
+    includesEventRegistration: true,
+    includesSportsRegistration: false,
+    restrictEventSelection: true,
+    allowedEventIds: ['course-a', 'course-b', 'lecture'],
+    customizeSubscriptionLimits: true,
+    maxCoursesPerAttendee: 1,
+    maxLecturesPerAttendee: null,
+    maxUncategorizedPerAttendee: 0,
+  },
+  {
+    id: 'empty-events',
+    name: 'Sem eventos liberados',
+    value: 1500,
+    includesEventRegistration: true,
+    includesSportsRegistration: false,
+    restrictEventSelection: true,
+    allowedEventIds: [],
+    customizeSubscriptionLimits: true,
+    maxCoursesPerAttendee: null,
+    maxLecturesPerAttendee: null,
+    maxUncategorizedPerAttendee: null,
+  },
+];
+const events = [
+  createPublicEvent({ id: 'course-a', name: 'Minicurso A', eventGroupId: 'course-series', type: 'MINICURSO' }),
+  createPublicEvent({ id: 'course-b', name: 'Minicurso B', eventGroupId: 'course-series', type: 'MINICURSO' }),
+  createPublicEvent({ id: 'lecture', name: 'Palestra', eventGroupId: null, type: 'PALESTRA' }),
 ];
 const meta: Meta<SubscriptionTierSelection> = {
   component: SubscriptionTierSelection,
@@ -31,12 +62,14 @@ const meta: Meta<SubscriptionTierSelection> = {
       sportsTournament: { id: 'tournament', selfSubscriptionEnabled: true, registrationOpen: true },
     }),
     tiers,
+    events,
     selectedName: null,
     busy: false,
   },
   argTypes: {
     majorEvent: { control: false, table: { category: 'Fixture Data' } },
     tiers: { control: false, table: { category: 'Fixture Data' } },
+    events: { control: false, table: { category: 'Fixture Data' } },
     selectedName: {
       control: {
         type: 'select',
@@ -46,6 +79,8 @@ const meta: Meta<SubscriptionTierSelection> = {
           Esportes: 'Sports',
           'Eventos e esportes': 'Events and sports',
           'Participação no grande evento': 'Major event participation',
+          'Eventos autorizados': 'Events allowed by tier',
+          'Sem eventos liberados': 'No events allowed',
         },
       },
       options: [null, ...tiers.map((tier) => tier.name)],
@@ -62,7 +97,7 @@ const meta: Meta<SubscriptionTierSelection> = {
   },
   render: (args) => ({
     props: args,
-    template: `<app-subscription-tier-selection [majorEvent]="majorEvent" [tiers]="tiers" [selectedName]="selectedName"
+    template: `<app-subscription-tier-selection [majorEvent]="majorEvent" [tiers]="tiers" [events]="events" [selectedName]="selectedName"
       [busy]="busy" (selectTier)="selectedName = $event" />`,
   }),
 };
@@ -83,6 +118,12 @@ export const SportsOnly: Story = { args: { selectedName: 'Esportes' } };
 export const NoActivities: Story = { args: { selectedName: 'Participação no grande evento' } };
 
 export const SingleTier: Story = { args: { tiers: [tiers[0]], selectedName: 'Eventos' } };
+export const RestrictedSelection: Story = {
+  args: { tiers: [tiers[4]], selectedName: 'Eventos autorizados' },
+};
+export const EmptyWhitelist: Story = {
+  args: { tiers: [tiers[5]], selectedName: 'Sem eventos liberados' },
+};
 export const TournamentClosed: Story = {
   args: {
     selectedName: 'Esportes',

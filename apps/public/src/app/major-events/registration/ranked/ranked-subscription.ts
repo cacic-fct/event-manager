@@ -85,7 +85,12 @@ export class RankedMajorEventSubscription {
   }
 
   continueFromTier(): void {
-    if (!this.store.decisions().tierResolved || this.store.currentUserSubscription() === undefined) {
+    if (
+      !this.store.decisions().tierResolved ||
+      this.store.currentUserSubscription() === undefined ||
+      (this.store.decisions().includesEvents && this.store.sortedEvents().length === 0) ||
+      this.store.automaticSelectionErrors().length > 0
+    ) {
       return;
     }
     if (this.store.decisions().includesEvents) {

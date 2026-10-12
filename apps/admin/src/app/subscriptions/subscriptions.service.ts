@@ -43,6 +43,7 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { AttendancesService } from '../attendances/attendances.service';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { formatDateOnly, parseDateOnly } from '@cacic-fct/shared-utils';
+import { getTierSelectableEventIds } from '@cacic-fct/shared-event-participation';
 import { PermissionsService } from '../permissions/permissions.service';
 import type { SportsApplication } from '../sports/sports.models';
 import { SportsTextDialogComponent } from '../sports/sports-text-dialog.component';
@@ -54,6 +55,10 @@ import { RealtimeApiService } from '../graphql/realtime-api.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 const EXPORT_PAGE_SIZE = 1000;
+
+export type MajorEventSubscriptionEventSection =
+  | { kind: 'event'; id: string; event: WorkspaceMajorEventSubscriptionEvent }
+  | { kind: 'event-group'; id: string; name: string; events: WorkspaceMajorEventSubscriptionEvent[] };
 
 @Service()
 export class SubscriptionsService {
@@ -123,6 +128,23 @@ export class SubscriptionsService {
   readonly majorEventSubscriptionCount = signal(0);
   readonly majorEventSubscriptionsPagination = createWorkspaceListPagination();
   readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
+  readonly selectedMajorEventEvents = computed(
+    () => this.selectedMajorEventSubscription()?.events ?? this.majorEventEvents(),
+  );
+  readonly majorEventEventGroupIds = signal(new Map<string, string>());
+  readonly majorEventEventGroupNames = signal(new Map<string, string>());
+  readonly majorEventGroupEventIds = computed(() => {
+    const groupedEvents = new Map<string, string[]>();
+    for (const eventItem of this.majorEventEvents()) {
+      const groupId = this.majorEventEventGroupIds().get(eventItem.eventId);
+      if (groupId) {
+        const eventIds = groupedEvents.get(groupId) ?? [];
+        eventIds.push(eventItem.eventId);
+        groupedEvents.set(groupId, eventIds);
+      }
+    }
+    return groupedEvents;
+  });
   readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
   readonly majorEventSportsWorkspace = signal<MajorEventSportsSubscriptionWorkspace | null>(null);
   private readonly sportsAssignedTeams = signal<Record<string, string | null>>({});
@@ -135,7 +157,11 @@ export class SubscriptionsService {
     const majorEvent = this.selectedMajorEvent()?.id === majorEventId ? this.selectedMajorEvent() : null;
     const tiers = majorEvent?.majorEventPrices[0]?.tiers ?? [];
     const selectedTier = this.selectedMajorEventSubscription()?.paymentTier?.trim();
-    if (!selectedTier || tiers.some((tier) => tier.name === selectedTier)) {
+    if (
+      !selectedTier ||
+      tiers.some((tier) => tier.name === selectedTier) ||
+      tiers.some((tier) => this.tierHasActiveRules(tier))
+    ) {
       return tiers;
     }
 
@@ -149,14 +175,89 @@ export class SubscriptionsService {
       ...tiers,
     ];
   });
+  private readonly majorEventTierRevision = signal(0);
+  readonly selectedMajorEventPaymentTier = computed(() => {
+    this.majorEventTierRevision();
+    if (this.selectedMajorEvent()?.isPaymentRequired === false) {
+      return null;
+    }
+    const name = this.majorEventEditForm.controls.paymentTier.value?.trim();
+    if (!name) {
+      return null;
+    }
+    const matchingTier = this.majorEventPaymentTiers().find((tier) => tier.name === name) ?? null;
+    return matchingTier && this.majorEventTierSelectionRequired() && matchingTier.id.startsWith('selected-')
+      ? null
+      : matchingTier;
+  });
+  readonly majorEventTierSelectionRequired = computed(
+    () =>
+      this.selectedMajorEvent()?.isPaymentRequired !== false &&
+      this.majorEventPaymentTiers().some((tier) => this.tierHasActiveRules(tier)),
+  );
+  readonly majorEventTierSelectableEventIds = computed(() => {
+    const events = this.majorEventEvents().map((eventItem) => ({
+      id: eventItem.eventId,
+      eventGroupId: this.majorEventEventGroupIds().get(eventItem.eventId) ?? null,
+    }));
+    const tier = this.selectedMajorEventPaymentTier();
+    if (!tier) {
+      return this.majorEventTierSelectionRequired()
+        ? new Set<string>()
+        : new Set(events.map((eventItem) => eventItem.id));
+    }
+    return getTierSelectableEventIds(events, tier);
+  });
   readonly majorEventPersonMatches = signal<Person[]>([]);
   readonly selectedMajorEventPerson = signal<Person | null>(null);
   readonly editMode = signal(false);
   readonly selectedEventIds = signal<Set<string>>(new Set());
+  readonly selectedMajorEventEventSections = computed<MajorEventSubscriptionEventSection[]>(() => {
+    const events = this.selectedMajorEventEvents();
+    const eventsByGroup = new Map<string, WorkspaceMajorEventSubscriptionEvent[]>();
+    for (const eventItem of events) {
+      const groupId = this.majorEventEventGroupIds().get(eventItem.eventId);
+      if (!groupId) {
+        continue;
+      }
+      const groupEvents = eventsByGroup.get(groupId) ?? [];
+      groupEvents.push(eventItem);
+      eventsByGroup.set(groupId, groupEvents);
+    }
+
+    const sections: MajorEventSubscriptionEventSection[] = [];
+    const addedGroupIds = new Set<string>();
+    for (const eventItem of events) {
+      const groupId = this.majorEventEventGroupIds().get(eventItem.eventId);
+      if (!groupId) {
+        if (this.shouldShowMajorEventEvent(eventItem.eventId)) {
+          sections.push({ kind: 'event', id: eventItem.eventId, event: eventItem });
+        }
+        continue;
+      }
+      if (addedGroupIds.has(groupId)) {
+        continue;
+      }
+      addedGroupIds.add(groupId);
+      const groupEvents = eventsByGroup.get(groupId) ?? [];
+      if (groupEvents.some((groupEvent) => this.shouldShowMajorEventEvent(groupEvent.eventId))) {
+        sections.push({
+          kind: 'event-group',
+          id: groupId,
+          name: this.majorEventEventGroupNames().get(groupId) ?? 'Grupo de eventos',
+          events: groupEvents,
+        });
+      }
+    }
+    return sections;
+  });
   readonly isImportingCsv = signal(false);
 
   constructor() {
     this.setMajorEventEditMode(false);
+    this.majorEventEditForm.controls.paymentTier.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.majorEventTierRevision.update((revision) => revision + 1));
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((majorEventId) => {
@@ -322,6 +423,8 @@ export class SubscriptionsService {
       this.majorEventSubscriptions.set([]);
       this.majorEventSubscriptionCount.set(0);
       this.majorEventEvents.set([]);
+      this.majorEventEventGroupIds.set(new Map());
+      this.majorEventEventGroupNames.set(new Map());
       this.selectMajorEventSubscription(null, false);
       this.majorEventSportsWorkspace.set(null);
       this.sportsAssignedTeams.set({});
@@ -372,6 +475,18 @@ export class SubscriptionsService {
     ) {
       return;
     }
+    const eventGroupIds = new Map<string, string>();
+    const eventGroupNames = new Map<string, string>();
+    for (const eventItem of events) {
+      if (eventItem.eventGroupId) {
+        eventGroupIds.set(eventItem.eventId, eventItem.eventGroupId);
+        if (eventItem.eventGroupName) {
+          eventGroupNames.set(eventItem.eventGroupId, eventItem.eventGroupName);
+        }
+      }
+    }
+    this.majorEventEventGroupIds.set(eventGroupIds);
+    this.majorEventEventGroupNames.set(eventGroupNames);
     this.majorEventSportsWorkspace.set(sportsWorkspace);
     if (options.preserveSelection) {
       this.sportsAssignedTeams.set(
@@ -615,10 +730,6 @@ export class SubscriptionsService {
     this.selectedEventIds.set(new Set());
   }
 
-  readonly selectedMajorEventEvents = computed(
-    () => this.selectedMajorEventSubscription()?.events ?? this.majorEventEvents(),
-  );
-
   enableMajorEventEdit(): void {
     if (!this.selectedMajorEventSubscription()) {
       return;
@@ -634,17 +745,20 @@ export class SubscriptionsService {
     if (!this.editMode()) {
       return;
     }
-    const selectedEventIds = new Set(this.selectedEventIds());
-    if (selectedEventIds.has(eventId)) {
-      selectedEventIds.delete(eventId);
-    } else {
-      selectedEventIds.add(eventId);
-    }
-    this.selectedEventIds.set(selectedEventIds);
+    this.setSelectedEvent(eventId, !this.selectedEventIds().has(eventId));
   }
 
   setSelectedEvent(eventId: string, selected: boolean): void {
     if (!this.editMode()) {
+      return;
+    }
+
+    const groupId = this.majorEventEventGroupIds().get(eventId);
+    if (groupId) {
+      this.setSelectedEventGroup(groupId, selected);
+      return;
+    }
+    if (selected && !this.isMajorEventEventAllowed(eventId)) {
       return;
     }
 
@@ -655,6 +769,93 @@ export class SubscriptionsService {
       selectedEventIds.delete(eventId);
     }
     this.selectedEventIds.set(selectedEventIds);
+  }
+
+  setSelectedEventGroup(groupId: string, selected: boolean): void {
+    if (!this.editMode()) {
+      return;
+    }
+    const eventIds = this.majorEventGroupEventIds().get(groupId) ?? [];
+    if (selected && (!eventIds.length || !this.canSelectMajorEventEventGroup(groupId))) {
+      return;
+    }
+
+    const selectedEventIds = new Set(this.selectedEventIds());
+    for (const eventId of eventIds) {
+      if (selected) {
+        selectedEventIds.add(eventId);
+      } else {
+        selectedEventIds.delete(eventId);
+      }
+    }
+    this.selectedEventIds.set(selectedEventIds);
+  }
+
+  canSelectMajorEventEvent(eventId: string): boolean {
+    return this.isMajorEventEventAllowed(eventId);
+  }
+
+  isMajorEventEventAllowed(eventId: string): boolean {
+    return (
+      this.majorEventTierSelectableEventIds().has(eventId) ||
+      (!this.majorEventTierSelectionRequired() && this.majorEventEvents().length === 0)
+    );
+  }
+
+  canSelectMajorEventEventGroup(groupId: string): boolean {
+    const eventIds = this.majorEventGroupEventIds().get(groupId) ?? [];
+    return eventIds.length > 0 && eventIds.every((eventId) => this.isMajorEventEventAllowed(eventId));
+  }
+
+  isMajorEventEventGroupSelected(groupId: string): boolean {
+    const eventIds = this.majorEventGroupEventIds().get(groupId) ?? [];
+    return eventIds.length > 0 && eventIds.every((eventId) => this.selectedEventIds().has(eventId));
+  }
+
+  isMajorEventEventGroupPartiallySelected(groupId: string): boolean {
+    const eventIds = this.majorEventGroupEventIds().get(groupId) ?? [];
+    const selectedCount = eventIds.filter((eventId) => this.selectedEventIds().has(eventId)).length;
+    return selectedCount > 0 && selectedCount < eventIds.length;
+  }
+
+  majorEventSubscriptionSelectionError(): string | null {
+    if (this.majorEventTierSelectionRequired() && !this.selectedMajorEventPaymentTier()) {
+      return 'Escolha uma faixa de pagamento com as regras de inscrição configuradas.';
+    }
+    for (const [groupId, eventIds] of this.majorEventGroupEventIds()) {
+      const selectedCount = eventIds.filter((eventId) => this.selectedEventIds().has(eventId)).length;
+      if (selectedCount > 0 && selectedCount < eventIds.length) {
+        const groupName = this.majorEventEventGroupNames().get(groupId) ?? 'Um grupo de eventos';
+        return `${groupName} precisa ser selecionado por completo.`;
+      }
+    }
+    if ([...this.selectedEventIds()].some((eventId) => !this.isMajorEventEventAllowed(eventId))) {
+      return 'A faixa escolhida não permite algumas atividades selecionadas. Remova-as ou escolha outra faixa.';
+    }
+    return null;
+  }
+
+  majorEventTierLimitLabel(value: number | null | undefined): string {
+    return value === null || value === undefined ? 'ilimitado' : String(value);
+  }
+
+  private shouldShowMajorEventEvent(eventId: string): boolean {
+    if (this.isMajorEventEventAllowed(eventId) || this.selectedEventIds().has(eventId)) {
+      return true;
+    }
+    const groupId = this.majorEventEventGroupIds().get(eventId);
+    return Boolean(
+      groupId &&
+        (this.majorEventGroupEventIds().get(groupId) ?? []).some((groupEventId) =>
+          this.selectedEventIds().has(groupEventId),
+        ),
+    );
+  }
+
+  private tierHasActiveRules(tier: MajorEventPriceTier): boolean {
+    return Boolean(
+      tier.includesEventRegistration === false || tier.restrictEventSelection || tier.customizeSubscriptionLimits,
+    );
   }
 
   async findMajorEventPerson(): Promise<void> {
@@ -676,6 +877,11 @@ export class SubscriptionsService {
 
   async saveMajorEventSubscription(): Promise<void> {
     if (!this.editMode()) {
+      return;
+    }
+    const selectionError = this.majorEventSubscriptionSelectionError();
+    if (selectionError) {
+      this.snackbar.open(selectionError, 'Fechar', { duration: 4000 });
       return;
     }
     const selected = this.selectedMajorEventSubscription();
@@ -805,6 +1011,8 @@ export class SubscriptionsService {
           fileName: file.name,
           headers: parsedCsv.headers,
           previewRows: parsedCsv.rows.slice(0, 12),
+          paymentTiers: this.majorEventPaymentTiers(),
+          paymentTierRequired: this.majorEventTierSelectionRequired(),
         },
       });
       const importConfig = await firstValueFrom(columnDialogRef.afterClosed());
@@ -817,6 +1025,7 @@ export class SubscriptionsService {
           majorEventId,
           csvContent,
           subscriptionStatus: importConfig.subscriptionStatus,
+          ...(importConfig.paymentTier ? { paymentTier: importConfig.paymentTier } : {}),
           columnMapping: importConfig.columnMapping,
         }),
       );

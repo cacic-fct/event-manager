@@ -3,6 +3,10 @@
     Selecione todos os eventos que você quer participar
   </h2>
 
+  @if (store.automaticSelectionErrors().length > 0) {
+  <p class="rate-limit-message" role="status">{{ store.automaticSelectionErrors()[0] }}</p>
+  }
+
   <section class="desired-grid" aria-label="Quantidade desejada por categoria">
     @if (store.courseOptions().length > 1) {
     <mat-form-field appearance="outline">

@@ -27,6 +27,10 @@ Em grandes eventos pagos, a inscrição pode exigir seleção de faixa de pagame
 
 Quando há apenas um preço, ele é exibido como referência. Quando há múltiplas faixas, o participante deve escolher a faixa correta antes de concluir.
 
+A organização pode definir atividades e limites diferentes para cada faixa. A escolha da faixa mostra essas regras antes da seleção. Quando houver restrição de atividades, somente os eventos e grupos liberados para a faixa aparecem para inscrição. Os limites podem ser diferentes para minicursos, palestras e outras atividades.
+
+Trocar de faixa remove as seleções que não estão disponíveis na nova faixa. Confira os limites novamente antes de confirmar. Uma faixa que inclui eventos, mas não oferece nenhuma atividade disponível, não permite avançar para a inscrição nessa modalidade.
+
 ## Confirmação
 
 Antes de submeter a inscrição, o participante pode conferir novamente a seleção de atividades.

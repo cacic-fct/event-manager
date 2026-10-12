@@ -396,7 +396,11 @@
                   <mat-icon>close</mat-icon>
                   Cancelar
                 </button>
-                <button mat-flat-button type="button" (click)="workspace.saveMajorEventSubscription()">
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="workspace.majorEventSubscriptionSelectionError() !== null"
+                  (click)="workspace.saveMajorEventSubscription()">
                   <mat-icon>save</mat-icon>
                   Salvar
                 </button>
@@ -505,6 +509,33 @@
               </mat-select>
             </mat-form-field>
 
+            @if (
+              workspace.majorEventTierSelectionRequired() && !workspace.majorEventEditForm.controls.paymentTier.value
+            ) {
+              <p class="span-2" role="alert">Escolha uma faixa porque há regras próprias de inscrição configuradas.</p>
+            }
+            @if (workspace.selectedMajorEventPaymentTier(); as tier) {
+              @if (tier.restrictEventSelection) {
+                <p class="span-2">
+                  Esta faixa permite apenas atividades e grupos incluídos na programação autorizada. Ao escolher um
+                  grupo, todas as atividades dele são incluídas.
+                </p>
+              }
+              @if (tier.customizeSubscriptionLimits) {
+                <p class="span-2">
+                  Limites desta faixa: minicursos {{ workspace.majorEventTierLimitLabel(tier.maxCoursesPerAttendee) }};
+                  palestras {{ workspace.majorEventTierLimitLabel(tier.maxLecturesPerAttendee) }}; outras atividades
+                  {{ workspace.majorEventTierLimitLabel(tier.maxUncategorizedPerAttendee) }}. Zero não permite
+                  inscrições na categoria.
+                </p>
+              } @else {
+                <p class="span-2">Esta faixa usa os limites gerais do grande evento.</p>
+              }
+              @if (tier.includesEventRegistration === false) {
+                <p class="span-2">Esta faixa não inclui inscrições em atividades.</p>
+              }
+            }
+
             <mat-checkbox formControlName="imageLicenseAgreementAccepted">
               Concordou com o
               <a
@@ -524,24 +555,76 @@
             <span>{{ workspace.selectedEventIds().size }} selecionados</span>
           </div>
 
+          @if (workspace.editMode() && workspace.majorEventSubscriptionSelectionError(); as selectionError) {
+            <p class="notice" role="alert">{{ selectionError }}</p>
+          }
+
           <mat-list>
-            @for (eventItem of workspace.selectedMajorEventEvents(); track eventItem.eventId) {
-              <lib-subscription-event-option
-                [option]="eventOption(eventItem)"
-                [selected]="workspace.selectedEventIds().has(eventItem.eventId)"
-                [disabled]="!workspace.editMode()"
-                [readOnly]="!workspace.editMode()"
-                [showFullDate]="true"
-                [warningReason]="
-                  eventItem.isLecturerSubscription && workspace.selectedEventIds().has(eventItem.eventId)
-                    ? 'Palestrante inscrito no próprio evento'
-                    : null
-                "
-                (selectionChange)="workspace.setSelectedEvent(eventItem.eventId, $event)" />
+            @for (section of workspace.selectedMajorEventEventSections(); track section.id) {
+              @if (section.kind === 'event-group') {
+                <div class="major-subscription-event-group">
+                  <mat-checkbox
+                    [checked]="workspace.isMajorEventEventGroupSelected(section.id)"
+                    [indeterminate]="workspace.isMajorEventEventGroupPartiallySelected(section.id)"
+                    [disabled]="
+                      !workspace.editMode() ||
+                      (!workspace.canSelectMajorEventEventGroup(section.id) &&
+                        !workspace.isMajorEventEventGroupSelected(section.id))
+                    "
+                    (change)="workspace.setSelectedEventGroup(section.id, $event.checked)">
+                    {{ section.name }} ({{ section.events.length }} atividades)
+                  </mat-checkbox>
+                  <p>Escolher o grupo inclui todas as atividades dele.</p>
+                  @for (eventItem of section.events; track eventItem.eventId) {
+                    <lib-subscription-event-option
+                      [option]="eventOption(eventItem)"
+                      [selected]="workspace.selectedEventIds().has(eventItem.eventId)"
+                      [disabled]="
+                        !workspace.editMode() ||
+                        (!workspace.canSelectMajorEventEvent(eventItem.eventId) &&
+                          !workspace.selectedEventIds().has(eventItem.eventId))
+                      "
+                      [readOnly]="!workspace.editMode()"
+                      [showFullDate]="true"
+                      [warningReason]="
+                        eventItem.isLecturerSubscription && workspace.selectedEventIds().has(eventItem.eventId)
+                          ? 'Palestrante inscrito no próprio evento'
+                          : null
+                      "
+                      (selectionChange)="workspace.setSelectedEvent(eventItem.eventId, $event)" />
+                  }
+                </div>
+              } @else {
+                <lib-subscription-event-option
+                  [option]="eventOption(section.event)"
+                  [selected]="workspace.selectedEventIds().has(section.event.eventId)"
+                  [disabled]="
+                    !workspace.editMode() ||
+                    (!workspace.canSelectMajorEventEvent(section.event.eventId) &&
+                      !workspace.selectedEventIds().has(section.event.eventId))
+                  "
+                  [readOnly]="!workspace.editMode()"
+                  [showFullDate]="true"
+                  [warningReason]="
+                    section.event.isLecturerSubscription && workspace.selectedEventIds().has(section.event.eventId)
+                      ? 'Palestrante inscrito no próprio evento'
+                      : null
+                  "
+                  (selectionChange)="workspace.setSelectedEvent(section.event.eventId, $event)" />
+              }
             } @empty {
               <div class="admin-list-empty">
                 <mat-icon aria-hidden="true">hide_source</mat-icon>
-                <p>Nenhum evento carregado</p>
+                @if (
+                  workspace.majorEventTierSelectionRequired() &&
+                  !workspace.majorEventEditForm.controls.paymentTier.value
+                ) {
+                  <p>Selecione uma faixa para carregar as atividades permitidas.</p>
+                } @else if (workspace.selectedMajorEventPaymentTier()?.restrictEventSelection) {
+                  <p>Esta faixa não possui atividades disponíveis no grande evento.</p>
+                } @else {
+                  <p>Nenhum evento carregado</p>
+                }
               </div>
             }
           </mat-list>

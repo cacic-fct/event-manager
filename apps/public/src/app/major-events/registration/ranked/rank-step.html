@@ -6,6 +6,10 @@
     Tentaremos garantir sua vaga na opção mais alta possível
   </h2>
 
+  @if (store.automaticSelectionErrors().length > 0) {
+  <p class="rate-limit-message" role="status">{{ store.automaticSelectionErrors()[0] }}</p>
+  }
+
   <section class="ranking-board">
     <div class="ranking-section">
       <h3>Quero participar</h3>
@@ -127,8 +131,9 @@
     [disabled]="
       store.isSubmitting() ||
       store.isPreparingSubscriptionFlow() ||
+      store.automaticSelectionErrors().length > 0 ||
       store.currentUserSubscription() === undefined ||
-      (store.decisions().includesEvents && store.effectiveSelectedEventIds().size === 0) ||
+      (store.decisions().includesEvents && store.sortedEvents().length > 0 && store.effectiveSelectedEventIds().size === 0) ||
       (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
         !store.confirmedSportsOnlySubscription() &&
         !store.needsImageLicenseAgreement()) ||

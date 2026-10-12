@@ -415,6 +415,75 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     expect(tx.event.findMany).not.toHaveBeenCalled();
   });
 
+  it('rechecks the selected tier event whitelist inside the serializable transaction', async () => {
+    const harness = createHarness();
+    const preflightMajorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [tierPrice(['event-1'])],
+    });
+    const transactionMajorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [tierPrice(['event-2'])],
+    });
+    const selectedEvent = eventRecord('event-1');
+    const tx = createUpsertTransaction(transactionMajorEvent, selectedEvent, subscriptionRecord(transactionMajorEvent));
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(preflightMajorEvent);
+    harness.prisma.event.findMany
+      .mockResolvedValueOnce([selectedEvent])
+      .mockResolvedValueOnce([{ id: 'event-1', eventGroupId: null }]);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 3000,
+      paymentTier: 'Student',
+    });
+    tx.majorEvent.findFirst.mockResolvedValue(transactionMajorEvent);
+    tx.event.findMany
+      .mockReset()
+      .mockResolvedValueOnce([selectedEvent])
+      .mockResolvedValueOnce([{ id: 'event-1', eventGroupId: null }]);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'], paymentTier: 'Student' },
+        { req: {} } as never,
+      ),
+    ).rejects.toThrow('O evento event-1 não é permitido para a faixa selecionada.');
+
+    expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
+    expect(tx.majorEventSubscriptionEventSelection.createMany).not.toHaveBeenCalled();
+  });
+
+  it('denies an allowed child when another active child in its group is absent from the tier whitelist', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord({
+      isPaymentRequired: true,
+      majorEventPrices: [tierPrice(['event-1'])],
+    });
+    const selectedEvent = { ...eventRecord('event-1'), eventGroupId: 'group-1' };
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([
+      { id: 'event-1', eventGroupId: 'group-1' },
+      { id: 'hidden-event', eventGroupId: 'group-1' },
+    ]);
+    harness.majorEventSubscriptions.resolveSelfServicePayment.mockReturnValue({
+      amountPaid: 3000,
+      paymentTier: 'Student',
+    });
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'], paymentTier: 'Student' },
+        { req: {} } as never,
+      ),
+    ).rejects.toThrow('não permite todos os eventos do grupo');
+
+    expect(harness.prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('allows image consent after registration closes and before the event ends without changing registration', async () => {
     const harness = createHarness();
     const majorEvent = majorEventRecord({
@@ -586,6 +655,68 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     );
     expect(harness.eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
     expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith('major-1', 'person-1', tx);
+  });
+
+  it('reuses an active staff enrollment for a child linked through its event group', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord();
+    const selectedEvent = { ...eventRecord('event-1'), majorEventId: null, eventGroupId: 'group-1' };
+    const existingSubscription = subscriptionRecord(majorEvent, {
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+    });
+    const updatedSubscription = subscriptionRecord(majorEvent, {
+      subscriptionStatus: SubscriptionStatus.CONFIRMED,
+    });
+    const tx = createUpsertTransaction(majorEvent, selectedEvent, updatedSubscription);
+    tx.majorEventSubscription.findFirst
+      .mockReset()
+      .mockResolvedValueOnce({
+        id: 'subscription-1',
+        subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+        imageLicenseAgreementAccepted: false,
+        amountPaid: 2500,
+        paymentTier: 'student',
+        selectedEvents: [],
+        sportsTournamentParticipants: [],
+      })
+      .mockResolvedValueOnce(existingSubscription)
+      .mockResolvedValueOnce({ id: 'subscription-1', subscriptionStatus: SubscriptionStatus.CONFIRMED })
+      .mockResolvedValueOnce(updatedSubscription);
+    tx.eventSubscription.findMany.mockImplementation((args: { where: { event?: { OR?: unknown[] } } }) => {
+      const matchesThroughEventGroup =
+        args.where.event?.OR?.some(
+          (condition) => typeof condition === 'object' && condition !== null && 'eventGroup' in condition,
+        ) ?? false;
+      return Promise.resolve(matchesThroughEventGroup ? [{ eventId: selectedEvent.id }] : []);
+    });
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]);
+    harness.majorEventSubscriptions.resolveNextSubscriptionStatus.mockReturnValue(SubscriptionStatus.CONFIRMED);
+    harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
+      operation(tx),
+    );
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
+    harness.mapper.mapPublicEvent.mockImplementation((event: { id: string }) => ({ id: event.id }));
+
+    await harness.resolver.upsertCurrentUserMajorEventSubscription(
+      { majorEventId: 'major-1', selectedEventIds: ['event-1'] },
+      { req: {} } as never,
+    );
+
+    expect(tx.eventSubscription.findMany).toHaveBeenCalledWith({
+      where: {
+        personId: 'person-1',
+        deletedAt: null,
+        event: {
+          deletedAt: null,
+          OR: [{ majorEventId: 'major-1' }, { eventGroup: { majorEventId: 'major-1', deletedAt: null } }],
+        },
+      },
+      select: { eventId: true },
+    });
+    expect(tx.eventSubscription.createMany).not.toHaveBeenCalled();
   });
 
   it('audits image consent accepted after the major-event subscription window closes', async () => {
@@ -920,6 +1051,28 @@ function eventRecord(id: string) {
   });
 }
 
+function tierPrice(allowedEventIds: string[]) {
+  return {
+    id: 'price-1',
+    type: 'TIERED',
+    tiers: [
+      {
+        id: 'tier-student',
+        name: 'Student',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds,
+        customizeSubscriptionLimits: false,
+        maxCoursesPerAttendee: null,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+    ],
+  };
+}
+
 function subscriptionRecord(majorEvent: ReturnType<typeof majorEventRecord>, overrides: Record<string, unknown> = {}) {
   return {
     id: 'subscription-1',
@@ -944,7 +1097,7 @@ function subscriptionRecord(majorEvent: ReturnType<typeof majorEventRecord>, ove
 function createUpsertTransaction(
   majorEvent: ReturnType<typeof majorEventRecord>,
   selectedEvent: ReturnType<typeof eventRecord>,
-  updatedSubscription: ReturnType<typeof subscriptionRecord>,
+  updatedSubscription: Record<string, unknown>,
 ) {
   return {
     majorEvent: {

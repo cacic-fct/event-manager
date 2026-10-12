@@ -8,17 +8,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { SUBSCRIPTION_STATUS_VALUES, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { startWith } from 'rxjs';
-import { MajorEventSubscriptionCsvColumnMapping, SubscriptionStatus } from '@cacic-fct/event-manager-admin-contracts';
+import {
+  MajorEventPriceTier,
+  MajorEventSubscriptionCsvColumnMapping,
+  SubscriptionStatus,
+} from '@cacic-fct/event-manager-admin-contracts';
 
 export interface SubscriptionCsvColumnDialogData {
   fileName: string;
   headers: string[];
   previewRows: Record<string, string>[];
+  paymentTiers?: MajorEventPriceTier[];
+  paymentTierRequired?: boolean;
 }
 
 export interface SubscriptionCsvColumnDialogResult {
   columnMapping: MajorEventSubscriptionCsvColumnMapping;
   subscriptionStatus: SubscriptionStatus;
+  paymentTier: string | null;
 }
 
 type ColumnRole =
@@ -56,6 +63,26 @@ const COLUMN_ROLE_OPTIONS: Array<{ value: ColumnRole; label: string }> = [
             }
           </mat-select>
         </mat-form-field>
+
+        @if (data.paymentTiers?.length) {
+          <mat-form-field>
+            <mat-label>Faixa de pagamento para as inscrições</mat-label>
+            <mat-select formControlName="paymentTier">
+              @if (!data.paymentTierRequired) {
+                <mat-option [value]="null">Manter a faixa atual</mat-option>
+              }
+              @for (tier of data.paymentTiers; track tier.id) {
+                <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
+              }
+            </mat-select>
+            @if (data.paymentTierRequired) {
+              <mat-hint>Obrigatória porque há faixas com regras próprias de inscrição.</mat-hint>
+            }
+            @if (data.paymentTierRequired) {
+              <mat-error>Selecione uma faixa de pagamento.</mat-error>
+            }
+          </mat-form-field>
+        }
 
         @for (header of data.headers; track header) {
           <mat-form-field>
@@ -100,6 +127,10 @@ export class SubscriptionCsvColumnDialogComponent {
 
   readonly form = this.formBuilder.nonNullable.group({
     subscriptionStatus: ['CONFIRMED' as SubscriptionStatus, Validators.required],
+    paymentTier: this.formBuilder.control<string | null>(
+      null,
+      this.data.paymentTierRequired ? [Validators.required] : [],
+    ),
     ...this.data.headers.reduce<Record<string, [ColumnRole]>>((controls, header) => {
       controls[header] = [''];
       return controls;
@@ -124,6 +155,7 @@ export class SubscriptionCsvColumnDialogComponent {
   });
 
   readonly canConfirm = computed(() => {
+    this.formValue();
     if (this.form.invalid) {
       return false;
     }
@@ -162,6 +194,7 @@ export class SubscriptionCsvColumnDialogComponent {
     this.dialogRef.close({
       columnMapping: this.buildColumnMapping(),
       subscriptionStatus: this.form.controls.subscriptionStatus.value,
+      paymentTier: this.form.controls.paymentTier.value,
     });
   }
 
@@ -188,6 +221,7 @@ export class SubscriptionCsvColumnDialogComponent {
   }
 
   private currentFormValue(): Record<string, ColumnRole | SubscriptionStatus | undefined> {
-    return this.formValue() as Record<string, ColumnRole | SubscriptionStatus | undefined>;
+    this.formValue();
+    return this.form.getRawValue() as Record<string, ColumnRole | SubscriptionStatus | undefined>;
   }
 }

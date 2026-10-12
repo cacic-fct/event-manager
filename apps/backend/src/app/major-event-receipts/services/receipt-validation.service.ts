@@ -1,3 +1,8 @@
+import {
+  ensureWorkspaceTierSubscriptionPolicy,
+  loadWorkspaceTierSubscriptionPolicy,
+} from '../../events/tier-subscription-policy';
+import { getTierAutomaticEventIds, PriceTierEventPolicy } from '../../current-user/major-events/tier-event-policy';
 import { TicketSubscriptionSyncService } from '../../events/ticket-subscription-sync.service';
 import {
   BadRequestException,
@@ -96,7 +101,10 @@ export class ReceiptValidationService {
     const actorId = getActorId(authenticatedUser);
     const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const subscription = await this.findActionableSubscription(tx, subscriptionId, receiptId);
-      const eventIdsToConfirm = await this.resolveAdminSelectedEventIds(tx, subscription, selectedEventIds);
+      const tierPolicy = await loadWorkspaceTierSubscriptionPolicy(tx, subscription.majorEventId);
+      const policy = tierPolicy.resolvePolicy(subscription.paymentTier);
+      const eventIdsToConfirm = await this.resolveAdminSelectedEventIds(tx, subscription, selectedEventIds, policy);
+      tierPolicy.validate(subscription.paymentTier, eventIdsToConfirm);
       const now = new Date();
 
       const action = await tx.majorEventReceiptValidationAction.create({
@@ -302,6 +310,14 @@ export class ReceiptValidationService {
       }
 
       const selectedEventIds = existingAction.subscription.selectedEvents.map((selection) => selection.eventId);
+      if (existingAction.previousStatus === SubscriptionStatus.CONFIRMED) {
+        await ensureWorkspaceTierSubscriptionPolicy(
+          tx,
+          existingAction.subscription.majorEventId,
+          existingAction.subscription.paymentTier,
+          selectedEventIds,
+        );
+      }
       const now = new Date();
 
       await tx.majorEventSubscription.update({
@@ -384,6 +400,7 @@ export class ReceiptValidationService {
     tx: Prisma.TransactionClient,
     subscription: ActionableReceiptSubscription,
     requestedEventIds: string[] | undefined,
+    tierPolicy?: PriceTierEventPolicy,
   ): Promise<string[]> {
     const storedEventIds = subscription.selectedEvents.map((selection) => selection.eventId);
     if (subscription.subscriptionFlow !== MajorEventSubscriptionFlow.RANKED_VOTING) {
@@ -396,18 +413,22 @@ export class ReceiptValidationService {
       desiredLectures: subscription.desiredLectures ?? 0,
       desiredUncategorized: subscription.desiredUncategorized ?? 0,
     };
-    const recommendedEventIds = this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts);
+    const recommendedEventIds = tierPolicy
+      ? this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts, tierPolicy)
+      : this.majorEventSubscriptions.allocateRankedEventIds(rankedEvents, desiredCounts);
     if (!requestedEventIds?.length) {
       return recommendedEventIds;
     }
 
     const normalizedRequestedEventIds = normalizeRequestedEventIds(requestedEventIds, storedEventIds);
     const requestedEventIdSet = new Set(normalizedRequestedEventIds);
-    const autoEventIds = new Set(
-      subscription.selectedEvents
-        .filter((selection) => selection.event.autoSubscribe)
-        .map((selection) => selection.eventId),
-    );
+    const autoEventIds = tierPolicy
+      ? new Set(getTierAutomaticEventIds(tierPolicy, rankedEvents))
+      : new Set(
+          subscription.selectedEvents
+            .filter((selection) => selection.event.autoSubscribe)
+            .map((selection) => selection.eventId),
+        );
     for (const autoEventId of autoEventIds) {
       if (!requestedEventIdSet.has(autoEventId)) {
         throw new BadRequestException(`Automatic event ${autoEventId} must be confirmed.`);

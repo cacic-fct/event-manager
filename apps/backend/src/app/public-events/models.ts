@@ -64,6 +64,12 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
           value: true,
           includesEventRegistration: true,
           includesSportsRegistration: true,
+          restrictEventSelection: true,
+          allowedEventIds: true,
+          customizeSubscriptionLimits: true,
+          maxCoursesPerAttendee: true,
+          maxLecturesPerAttendee: true,
+          maxUncategorizedPerAttendee: true,
         },
       },
     },
@@ -320,6 +326,12 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
         value: tier.value,
         includesEventRegistration: tier.includesEventRegistration ?? true,
         includesSportsRegistration: tier.includesSportsRegistration,
+        restrictEventSelection: tier.restrictEventSelection ?? false,
+        allowedEventIds: tier.allowedEventIds ?? [],
+        customizeSubscriptionLimits: tier.customizeSubscriptionLimits ?? false,
+        maxCoursesPerAttendee: tier.maxCoursesPerAttendee ?? null,
+        maxLecturesPerAttendee: tier.maxLecturesPerAttendee ?? null,
+        maxUncategorizedPerAttendee: tier.maxUncategorizedPerAttendee ?? null,
       })),
     })),
     hasEvents: majorEvent._count ? majorEvent._count.events > 0 : undefined,
@@ -432,6 +444,35 @@ export class PublicMajorEventPriceTier {
     description: 'Whether choosing this tier continues into the linked sports tournament registration flow.',
   })
   includesSportsRegistration!: boolean;
+
+  @Field(() => Boolean, { description: 'Whether activity registration is limited to the allowed event identifiers.' })
+  restrictEventSelection = false;
+
+  @Field(() => [String], {
+    description: 'Activity identifiers available when tier-specific event selection is enabled.',
+  })
+  allowedEventIds: string[] = [];
+
+  @Field(() => Boolean, { description: 'Whether this tier replaces the major-event category registration limits.' })
+  customizeSubscriptionLimits = false;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Custom minicurso limit. Zero disables this category; null is unlimited.',
+  })
+  maxCoursesPerAttendee?: number | null;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Custom palestra limit. Zero disables this category; null is unlimited.',
+  })
+  maxLecturesPerAttendee?: number | null;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Custom limit for other activities. Zero disables this category; null is unlimited.',
+  })
+  maxUncategorizedPerAttendee?: number | null;
 }
 
 @ObjectType({

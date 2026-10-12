@@ -1,3 +1,4 @@
+import { ensureWorkspaceTierSubscriptionPolicy } from './tier-subscription-policy';
 import { TicketSubscriptionSyncService } from './ticket-subscription-sync.service';
 import { BadRequestException, Optional, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
@@ -164,6 +165,8 @@ const EVENT_SELECT = {
 
 const MAJOR_EVENT_SUBSCRIPTION_EVENT_SELECT = {
   id: true,
+  eventGroupId: true,
+  eventGroup: { select: { name: true } },
   name: true,
   startDate: true,
   endDate: true,
@@ -322,10 +325,30 @@ export class EventSubscriptionsResolver {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const createdById = this.getActorId(context);
     await this.ensurePersonExists(input.personId);
-    await this.ensureEventExists(input.eventId);
+    const targetEvent = await this.ensureEventExists(input.eventId);
     await this.ensurePersonIsNotLecturer(input.personId, [input.eventId]);
 
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const majorEventId = targetEvent.majorEventId ?? targetEvent.eventGroup?.majorEventId;
+      if (majorEventId) {
+        const majorSubscription = await tx.majorEventSubscription.findFirst({
+          where: { majorEventId, personId: input.personId, deletedAt: null },
+          select: { paymentTier: true },
+        });
+        const activeSubscriptions = await tx.eventSubscription.findMany({
+          where: {
+            personId: input.personId,
+            deletedAt: null,
+            event: {
+              OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
+            },
+          },
+          select: { eventId: true },
+        });
+        await ensureWorkspaceTierSubscriptionPolicy(tx, majorEventId, majorSubscription?.paymentTier, [
+          ...new Set([...activeSubscriptions.map((entry) => entry.eventId), input.eventId]),
+        ]);
+      }
       await this.eventSubscriptionSync.ensureEventIdsHaveAvailableSlots(tx, [input.eventId]);
       const created = await tx.eventSubscription.create({
         data: {
@@ -488,6 +511,12 @@ export class EventSubscriptionsResolver {
     await this.ensurePersonIsNotLecturer(input.personId, selectedEventIds);
 
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const paymentTier = await ensureWorkspaceTierSubscriptionPolicy(
+        tx,
+        input.majorEventId,
+        input.paymentTier,
+        selectedEventIds,
+      );
       const majorEventSubscription = await tx.majorEventSubscription.create({
         data: {
           majorEventId: input.majorEventId,
@@ -495,7 +524,7 @@ export class EventSubscriptionsResolver {
           subscriptionStatus: status,
           amountPaid: input.amountPaid ?? undefined,
           paymentDate: input.paymentDate ?? undefined,
-          paymentTier: this.normalizeNullableText(input.paymentTier),
+          paymentTier: this.normalizeNullableText(paymentTier),
           imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted ?? false,
           createdById,
           createdByMethod: 'ADMIN_DASHBOARD',
@@ -630,6 +659,25 @@ export class EventSubscriptionsResolver {
         updateData.imageLicenseAgreementAccepted = input.imageLicenseAgreementAccepted;
       }
 
+      const effectiveSelectedEventIds =
+        selectedEventIds ?? previousSelectedEventIds.map((selection) => selection.eventId);
+      const nextStatus =
+        input.subscriptionStatus !== undefined
+          ? this.normalizeStatus(input.subscriptionStatus)
+          : previousRecord.subscriptionStatus;
+      if (
+        selectedEventIds !== undefined ||
+        input.paymentTier !== undefined ||
+        nextStatus === SubscriptionStatus.CONFIRMED
+      ) {
+        const paymentTier = await ensureWorkspaceTierSubscriptionPolicy(
+          tx,
+          existing.majorEventId,
+          input.paymentTier !== undefined ? input.paymentTier : previousRecord.paymentTier,
+          effectiveSelectedEventIds,
+        );
+        updateData.paymentTier = this.normalizeNullableText(paymentTier);
+      }
       const updated = await tx.majorEventSubscription.update({
         where: {
           id,
@@ -637,9 +685,6 @@ export class EventSubscriptionsResolver {
         data: updateData,
         select: this.majorEventSubscriptionSelect(),
       });
-
-      const effectiveSelectedEventIds =
-        selectedEventIds ?? previousSelectedEventIds.map((selection) => selection.eventId);
 
       await this.ensureMajorEventSubscriptionHasTarget(id, existing.majorEventId, effectiveSelectedEventIds, tx);
 
@@ -809,7 +854,7 @@ export class EventSubscriptionsResolver {
   ): Promise<MajorEventSubscriptionEventRecord[]> {
     const events = await prisma.event.findMany({
       where: {
-        majorEventId,
+        OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
         deletedAt: null,
         sportsMatch: { is: null },
       },
@@ -834,6 +879,8 @@ export class EventSubscriptionsResolver {
 
     return events.map((event) => ({
       eventId: event.id,
+      eventGroupId: event.eventGroupId ?? null,
+      eventGroupName: event.eventGroup?.name ?? null,
       eventName: event.name,
       eventEmoji: event.emoji,
       eventType: event.type,
@@ -938,7 +985,7 @@ export class EventSubscriptionsResolver {
     }
   }
 
-  private async ensureEventExists(eventId: string): Promise<void> {
+  private async ensureEventExists(eventId: string) {
     const event = await this.prisma.event.findFirst({
       where: {
         id: eventId,
@@ -946,11 +993,14 @@ export class EventSubscriptionsResolver {
       },
       select: {
         id: true,
+        majorEventId: true,
+        eventGroup: { select: { majorEventId: true } },
       },
     });
     if (!event) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
+    return event;
   }
 
   private async ensureMajorEventExists(majorEventId: string): Promise<void> {
@@ -978,7 +1028,7 @@ export class EventSubscriptionsResolver {
         id: {
           in: eventIds,
         },
-        majorEventId,
+        OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
         deletedAt: null,
         sportsMatch: { is: null },
       },

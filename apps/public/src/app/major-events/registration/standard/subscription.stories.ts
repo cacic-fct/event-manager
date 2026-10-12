@@ -28,6 +28,7 @@ interface SubscriptionStoryArgs {
   majorEventName: string;
   description: string;
   requiresPayment: boolean;
+  tierPolicy: boolean;
   requiresLicenseAgreement: boolean;
   slotsAvailable: number;
   fullEvery: number;
@@ -51,6 +52,7 @@ const defaultArgs: SubscriptionStoryArgs = {
   majorEventName: 'CACiC Inscrições',
   description: 'Grande evento de demonstração com seleção de atividades e formulários condicionais.',
   requiresPayment: false,
+  tierPolicy: false,
   requiresLicenseAgreement: true,
   slotsAvailable: 18,
   fullEvery: 4,
@@ -86,6 +88,7 @@ const meta: Meta<SubscriptionStoryArgs> = {
     majorEventName: { control: 'text' },
     description: { control: 'text' },
     requiresPayment: { control: 'boolean' },
+    tierPolicy: { control: 'boolean', description: 'Shows event allowlists and tier-specific category limits.' },
     requiresLicenseAgreement: { control: 'boolean' },
     slotsAvailable: { control: { type: 'range', min: 0, max: 100, step: 1 } },
     fullEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
@@ -135,6 +138,10 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nenhum evento disponível para inscrição.')).toBeVisible();
   },
+};
+
+export const TierPolicy: Story = {
+  args: { requiresPayment: true, tierPolicy: true, eventCount: 6, formMode: 'none', latencyMs: 0 },
 };
 
 export const Loading: Story = {
@@ -356,36 +363,59 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
           {
             id: 'price',
             type: 'TIERED',
-            tiers: [
-              {
-                id: 'events',
-                name: 'Eventos',
-                value: 3000,
-                includesEventRegistration: true,
-                includesSportsRegistration: false,
-              },
-              {
-                id: 'sports',
-                name: 'Esportes',
-                value: 2000,
-                includesEventRegistration: false,
-                includesSportsRegistration: true,
-              },
-              {
-                id: 'both',
-                name: 'Eventos e esportes',
-                value: 4500,
-                includesEventRegistration: true,
-                includesSportsRegistration: true,
-              },
-              {
-                id: 'support',
-                name: 'Participação no grande evento',
-                value: 0,
-                includesEventRegistration: false,
-                includesSportsRegistration: false,
-              },
-            ],
+            tiers: args.tierPolicy
+              ? [
+                  {
+                    id: 'restricted',
+                    name: 'Eventos autorizados',
+                    value: 2500,
+                    includesEventRegistration: true,
+                    includesSportsRegistration: false,
+                    restrictEventSelection: true,
+                    allowedEventIds: ['event-1', 'event-2'],
+                    customizeSubscriptionLimits: true,
+                    maxCoursesPerAttendee: 0,
+                    maxLecturesPerAttendee: null,
+                    maxUncategorizedPerAttendee: 1,
+                  },
+                  {
+                    id: 'general',
+                    name: 'Eventos gerais',
+                    value: 4000,
+                    includesEventRegistration: true,
+                    includesSportsRegistration: false,
+                  },
+                ]
+              : [
+                  {
+                    id: 'events',
+                    name: 'Eventos',
+                    value: 3000,
+                    includesEventRegistration: true,
+                    includesSportsRegistration: false,
+                  },
+                  {
+                    id: 'sports',
+                    name: 'Esportes',
+                    value: 2000,
+                    includesEventRegistration: false,
+                    includesSportsRegistration: true,
+                  },
+                  {
+                    id: 'both',
+                    name: 'Eventos e esportes',
+                    value: 4500,
+                    includesEventRegistration: true,
+                    includesSportsRegistration: true,
+                  },
+                  {
+                    id: 'support',
+                    name: 'Participação no grande evento',
+                    value: 0,
+                    includesEventRegistration: false,
+                    includesSportsRegistration: false,
+                  },
+                ],
           },
         ]
       : [],

@@ -458,6 +458,132 @@
                     Inclui inscrição em eventos
                   </mat-checkbox>
 
+                  <div class="span-2 field-group tier-rule-fields" aria-label="Regras de inscrição desta faixa">
+                    <h4>Regras de inscrição</h4>
+
+                    <mat-checkbox
+                      formControlName="restrictEventSelection"
+                      (change)="workspace.loadPriceTierEventTargets()">
+                      Limitar as atividades disponíveis para este preço
+                    </mat-checkbox>
+
+                    @if (!workspace.selectedMajorEvent()) {
+                      <p>Salve o grande evento e cadastre a programação para escolher atividades nesta faixa.</p>
+                    } @else if (!tier.controls.includesEventRegistration.value) {
+                      <p>
+                        Esta faixa não inclui inscrição em eventos. As regras de atividades e limites salvas continuam
+                        guardadas enquanto essa opção estiver desativada.
+                      </p>
+                    } @else if (tier.controls.restrictEventSelection.value) {
+                      @if (workspace.priceTierEventTargetsLoading()) {
+                        <div role="status" class="span-2">
+                          <mat-progress-bar mode="indeterminate" aria-label="Carregando atividades do grande evento" />
+                          <span>Carregando atividades e grupos vinculados…</span>
+                        </div>
+                      }
+
+                      @if (workspace.priceTierEventTargetsError()) {
+                        <div class="notice span-2" role="alert">
+                          <span>{{ workspace.priceTierEventTargetsError() }}</span>
+                          <button mat-button type="button" (click)="workspace.loadPriceTierEventTargets()">
+                            Tentar novamente
+                          </button>
+                        </div>
+                      } @else if (!workspace.priceTierEventTargetsLoading()) {
+                        <mat-form-field class="span-2">
+                          <mat-label>Atividades e grupos permitidos</mat-label>
+                          <mat-select
+                            [value]="workspace.tierEventTargetSelection(tier.controls.allowedEventIds.value)"
+                            [disabled]="workspace.priceTierEventTargetsLoading()"
+                            multiple
+                            (selectionChange)="workspace.updateTierAllowedEventIds($index, $event.value)">
+                            <mat-select-trigger>
+                              {{ workspace.tierEventTargetSelection(tier.controls.allowedEventIds.value).length }}
+                              opção(ões) selecionada(s)
+                            </mat-select-trigger>
+                            @for (target of workspace.priceTierEventTargets(); track target.id) {
+                              <mat-option [value]="target.id">
+                                <span
+                                  >{{ target.kind === 'event-group' ? 'Grupo: ' : 'Evento: ' }}{{ target.name }}</span
+                                >
+                                @if (target.kind === 'event-group') {
+                                  <small>{{ workspace.priceTierEventTargetDetails(target) }}</small>
+                                }
+                              </mat-option>
+                            }
+                          </mat-select>
+                          <mat-hint>
+                            Nenhuma seleção significa que esta faixa não oferece atividades. Grupos são selecionados
+                            como uma unidade com todas as atividades do grupo.
+                          </mat-hint>
+                        </mat-form-field>
+                        @if (workspace.unavailableTierEventCount(tier.controls.allowedEventIds.value) > 0) {
+                          <p class="span-2" role="status">
+                            {{ workspace.unavailableTierEventCount(tier.controls.allowedEventIds.value) }} atividade(s)
+                            salva(s) não corresponde(m) a uma opção atual nem a um grupo completo e será(ão) mantida(s).
+                            <button mat-button type="button" (click)="workspace.removeUnavailableTierEventIds($index)">
+                              Remover seleções indisponíveis
+                            </button>
+                          </p>
+                        }
+                      }
+                    } @else if (tier.controls.allowedEventIds.value.length > 0) {
+                      <p>O limite está desativado. A seleção salva será mantida caso você o reative.</p>
+                    }
+
+                    <mat-checkbox formControlName="customizeSubscriptionLimits">
+                      Personalizar limites de inscrição desta faixa
+                    </mat-checkbox>
+
+                    @if (!tier.controls.includesEventRegistration.value) {
+                      <p>Os limites configurados para esta faixa serão preservados.</p>
+                    } @else if (tier.controls.customizeSubscriptionLimits.value) {
+                      <p>
+                        Deixe um campo em branco para usar ilimitado. O valor 0 não permite inscrições nessa categoria.
+                      </p>
+                      <div class="field-grid span-2">
+                        <mat-form-field>
+                          <mat-label>Máximo de minicursos por participante</mat-label>
+                          <input
+                            matInput
+                            type="number"
+                            inputmode="numeric"
+                            min="0"
+                            max="2147483647"
+                            step="1"
+                            formControlName="maxCoursesPerAttendee" />
+                          <mat-error>Informe um inteiro entre 0 e 2.147.483.647.</mat-error>
+                        </mat-form-field>
+                        <mat-form-field>
+                          <mat-label>Máximo de palestras por participante</mat-label>
+                          <input
+                            matInput
+                            type="number"
+                            inputmode="numeric"
+                            min="0"
+                            max="2147483647"
+                            step="1"
+                            formControlName="maxLecturesPerAttendee" />
+                          <mat-error>Informe um inteiro entre 0 e 2.147.483.647.</mat-error>
+                        </mat-form-field>
+                        <mat-form-field class="span-2">
+                          <mat-label>Máximo de outras atividades por participante</mat-label>
+                          <input
+                            matInput
+                            type="number"
+                            inputmode="numeric"
+                            min="0"
+                            max="2147483647"
+                            step="1"
+                            formControlName="maxUncategorizedPerAttendee" />
+                          <mat-error>Informe um inteiro entre 0 e 2.147.483.647.</mat-error>
+                        </mat-form-field>
+                      </div>
+                    } @else {
+                      <p>Esta faixa usa os limites gerais do grande evento.</p>
+                    }
+                  </div>
+
                   @if (workspace.selectedMajorEvent()?.sportsTournament) {
                     <mat-checkbox
                       formControlName="includesSportsRegistration"

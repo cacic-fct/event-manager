@@ -20,6 +20,7 @@ import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 import { normalizeMajorEventPaymentTier, resolveMajorEventSelfServicePayment } from './major-event-payment-selection';
+import { ensureTierEventLimits, getTierAutomaticEventIds, PriceTierEventPolicy } from './tier-event-policy';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 
@@ -103,8 +104,9 @@ export class CurrentUserMajorEventSubscriptionService {
       desiredLectures?: number | null;
       desiredUncategorized?: number | null;
     },
+    tierPolicy?: PriceTierEventPolicy,
   ): RankedDesiredCounts {
-    const capacity = this.getRankedCapacityByCategory(majorEvent, events);
+    const capacity = this.getRankedCapacityByCategory(majorEvent, events, tierPolicy);
     const counts = {
       desiredCourses: this.normalizeDesiredCount(input.desiredCourses, capacity.course),
       desiredLectures: this.normalizeDesiredCount(input.desiredLectures, capacity.lecture),
@@ -112,31 +114,55 @@ export class CurrentUserMajorEventSubscriptionService {
     };
 
     if (counts.desiredCourses > capacity.course) {
-      throw new BadRequestException(`Desired course count exceeds available course choices (${capacity.course}).`);
+      throw new BadRequestException(
+        tierPolicy?.customizeSubscriptionLimits
+          ? `A quantidade de minicursos excede o limite da faixa (${capacity.course}).`
+          : `Desired course count exceeds available course choices (${capacity.course}).`,
+      );
     }
     if (counts.desiredLectures > capacity.lecture) {
-      throw new BadRequestException(`Desired lecture count exceeds available lecture choices (${capacity.lecture}).`);
+      throw new BadRequestException(
+        tierPolicy?.customizeSubscriptionLimits
+          ? `A quantidade de palestras excede o limite da faixa (${capacity.lecture}).`
+          : `Desired lecture count exceeds available lecture choices (${capacity.lecture}).`,
+      );
     }
     if (counts.desiredUncategorized > capacity.uncategorized) {
       throw new BadRequestException(
-        `Desired uncategorized event count exceeds available uncategorized choices (${capacity.uncategorized}).`,
+        tierPolicy?.customizeSubscriptionLimits
+          ? `A quantidade de outras atividades excede o limite da faixa (${capacity.uncategorized}).`
+          : `Desired uncategorized event count exceeds available uncategorized choices (${capacity.uncategorized}).`,
       );
     }
 
-    const autoCounts = this.countEventsByCategory(events.filter((event) => event.autoSubscribe));
+    const automaticIds = tierPolicy ? new Set(getTierAutomaticEventIds(tierPolicy, events)) : null;
+    const autoCounts = this.countEventsByCategory(
+      events.filter((event) => (automaticIds ? automaticIds.has(event.id) : event.autoSubscribe)),
+    );
     if (
       counts.desiredCourses < autoCounts.course ||
       counts.desiredLectures < autoCounts.lecture ||
       counts.desiredUncategorized < autoCounts.uncategorized
     ) {
-      throw new BadRequestException('Desired counts cannot be lower than automatic subscriptions.');
+      throw new BadRequestException(
+        tierPolicy?.customizeSubscriptionLimits
+          ? 'As quantidades escolhidas não podem ser menores do que as inscrições automáticas.'
+          : 'Desired counts cannot be lower than automatic subscriptions.',
+      );
     }
 
     return counts;
   }
 
-  allocateRankedEventIds(events: RankedEventLike[], desiredCounts: RankedDesiredCounts): string[] {
-    const orderedEvents = [...events];
+  allocateRankedEventIds(
+    events: RankedEventLike[],
+    desiredCounts: RankedDesiredCounts,
+    tierPolicy?: PriceTierEventPolicy,
+  ): string[] {
+    const automaticIds = tierPolicy ? new Set(getTierAutomaticEventIds(tierPolicy, events)) : null;
+    const orderedEvents = automaticIds
+      ? events.map((event) => ({ ...event, autoSubscribe: automaticIds.has(event.id) }))
+      : [...events];
     const eventsByPreferenceItem = this.groupRankedEventsByPreferenceItem(orderedEvents);
     const selected: RankedEventLike[] = [];
     const counts = {
@@ -194,18 +220,40 @@ export class CurrentUserMajorEventSubscriptionService {
     }
   }
 
-  ensureMajorEventEventLimits(majorEvent: MajorEventBaseRecord, selectedEvents: EventRecord[]): void {
+  ensureMajorEventEventLimits(
+    majorEvent: MajorEventBaseRecord,
+    selectedEvents: EventRecord[],
+    tierPolicy?: PriceTierEventPolicy,
+  ): void {
+    if (tierPolicy?.customizeSubscriptionLimits) {
+      ensureTierEventLimits(tierPolicy, selectedEvents);
+      return;
+    }
+
+    const maxCoursesPerAttendee = tierPolicy?.maxCoursesPerAttendee ?? majorEvent.maxCoursesPerAttendee;
+    const maxLecturesPerAttendee = tierPolicy?.maxLecturesPerAttendee ?? majorEvent.maxLecturesPerAttendee;
+    const maxUncategorizedPerAttendee =
+      tierPolicy?.maxUncategorizedPerAttendee ?? majorEvent.maxUncategorizedPerAttendee;
     const selectedCourseCount = selectedEvents.filter((event) => event.type === EventType.MINICURSO).length;
-    if (majorEvent.maxCoursesPerAttendee != null && selectedCourseCount > majorEvent.maxCoursesPerAttendee) {
+    if (maxCoursesPerAttendee != null && selectedCourseCount > maxCoursesPerAttendee) {
       throw new BadRequestException(
-        `Selected ${selectedCourseCount} courses, but maximum is ${majorEvent.maxCoursesPerAttendee}.`,
+        `Selected ${selectedCourseCount} courses, but maximum is ${maxCoursesPerAttendee}.`,
       );
     }
 
     const selectedLectureCount = selectedEvents.filter((event) => event.type === EventType.PALESTRA).length;
-    if (majorEvent.maxLecturesPerAttendee != null && selectedLectureCount > majorEvent.maxLecturesPerAttendee) {
+    if (maxLecturesPerAttendee != null && selectedLectureCount > maxLecturesPerAttendee) {
       throw new BadRequestException(
-        `Selected ${selectedLectureCount} lectures, but maximum is ${majorEvent.maxLecturesPerAttendee}.`,
+        `Selected ${selectedLectureCount} lectures, but maximum is ${maxLecturesPerAttendee}.`,
+      );
+    }
+
+    const selectedUncategorizedCount = selectedEvents.filter(
+      (event) => event.type !== EventType.MINICURSO && event.type !== EventType.PALESTRA,
+    ).length;
+    if (maxUncategorizedPerAttendee != null && selectedUncategorizedCount > maxUncategorizedPerAttendee) {
+      throw new BadRequestException(
+        `Foram selecionadas ${selectedUncategorizedCount} outras atividades, mas o limite máximo é ${maxUncategorizedPerAttendee}.`,
       );
     }
   }
@@ -405,7 +453,12 @@ export class CurrentUserMajorEventSubscriptionService {
   }> {
     const events = await this.prisma.event.findMany({
       where: {
-        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId }],
+        AND: [
+          PUBLIC_REGULAR_EVENT_WHERE,
+          {
+            OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
+          },
+        ],
         allowSubscription: true,
       },
       select: {
@@ -860,12 +913,15 @@ export class CurrentUserMajorEventSubscriptionService {
   private getRankedCapacityByCategory(
     majorEvent: MajorEventBaseRecord,
     events: RankedEventLike[],
+    tierPolicy?: PriceTierEventPolicy,
   ): Record<RankedCategory, number> {
     const counts = this.countEventsByCategory(events);
     return {
-      course: majorEvent.maxCoursesPerAttendee ?? counts.course,
-      lecture: majorEvent.maxLecturesPerAttendee ?? counts.lecture,
-      uncategorized: majorEvent.maxUncategorizedPerAttendee ?? counts.uncategorized,
+      course: (tierPolicy ? tierPolicy.maxCoursesPerAttendee : majorEvent.maxCoursesPerAttendee) ?? counts.course,
+      lecture: (tierPolicy ? tierPolicy.maxLecturesPerAttendee : majorEvent.maxLecturesPerAttendee) ?? counts.lecture,
+      uncategorized:
+        (tierPolicy ? tierPolicy.maxUncategorizedPerAttendee : majorEvent.maxUncategorizedPerAttendee) ??
+        counts.uncategorized,
     };
   }
 

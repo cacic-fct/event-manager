@@ -26,7 +26,7 @@ import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 
 const now = new Date();
 
-type StoryScenario = 'default' | 'payment' | 'auto-only' | 'existing';
+type StoryScenario = 'default' | 'payment' | 'tier-rules' | 'auto-only' | 'existing';
 type RankedApiState = 'ready' | 'loading' | 'error';
 
 interface RankedStoryArgs {
@@ -68,7 +68,7 @@ const meta: Meta<RankedStoryArgs> = {
   args: defaultArgs,
   argTypes: {
     apiState: { control: 'select', options: ['ready', 'loading', 'error'] },
-    scenario: { control: 'select', options: ['default', 'payment', 'auto-only', 'existing'] },
+    scenario: { control: 'select', options: ['default', 'payment', 'tier-rules', 'auto-only', 'existing'] },
     eventCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     maxCourses: { control: { type: 'range', min: 0, max: 10, step: 1 } },
@@ -121,9 +121,14 @@ const isoDaysFromNow = (days: number, hour: number): string => {
 };
 
 function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): PublicMajorEvent {
+  const eventCount = Math.max(0, Math.min(30, Math.round(args.eventCount)));
+  const restrictedEventIds = Array.from({ length: eventCount }, (_, index) => {
+    const eventGroupId = index % 5 === 0 ? null : index % 2 === 0 ? 'group-data' : 'group-web';
+    return index !== 0 && (eventGroupId === null || eventGroupId === 'group-web') ? `event-${index + 1}` : null;
+  }).filter((eventId): eventId is string => eventId !== null);
   return createPublicMajorEvent({
     id: 'major-1',
-    name: scenario === 'payment' ? 'SECOMPP Preferencial' : 'CACiC Preferencial',
+    name: scenario === 'payment' || scenario === 'tier-rules' ? 'SECOMPP Preferencial' : 'CACiC Preferencial',
     emoji: faker.helpers.arrayElement(['💻', '🚀', '🎓']),
     startDate: isoDaysFromNow(10, 9),
     endDate: isoDaysFromNow(13, 18),
@@ -138,7 +143,7 @@ function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): Publi
     buttonLink: 'https://cacic.dev',
     contactInfo: faker.internet.email(),
     contactType: 'EMAIL',
-    isPaymentRequired: scenario === 'payment' || scenario === 'existing',
+    isPaymentRequired: scenario === 'payment' || scenario === 'tier-rules' || scenario === 'existing',
     additionalPaymentInfo: 'Pagamento confirmado por comprovante.',
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
@@ -158,22 +163,46 @@ function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): Publi
       createPublicMajorEventPrice({
         id: 'price-1',
         type: 'TIERED',
-        tiers: [
-          {
-            id: 'tier-student',
-            name: 'Estudante',
-            value: 2500,
-            includesEventRegistration: true,
-            includesSportsRegistration: false,
-          },
-          {
-            id: 'tier-community',
-            name: 'Comunidade',
-            value: 5000,
-            includesEventRegistration: true,
-            includesSportsRegistration: false,
-          },
-        ],
+        tiers:
+          scenario === 'tier-rules'
+            ? [
+                {
+                  id: 'tier-restricted',
+                  name: 'Eventos liberados',
+                  value: 2500,
+                  includesEventRegistration: true,
+                  includesSportsRegistration: false,
+                  restrictEventSelection: true,
+                  allowedEventIds: restrictedEventIds,
+                  customizeSubscriptionLimits: true,
+                  maxCoursesPerAttendee: 0,
+                  maxLecturesPerAttendee: 1,
+                  maxUncategorizedPerAttendee: null,
+                },
+                {
+                  id: 'tier-general',
+                  name: 'Todos os eventos',
+                  value: 4000,
+                  includesEventRegistration: true,
+                  includesSportsRegistration: false,
+                },
+              ]
+            : [
+                {
+                  id: 'tier-student',
+                  name: 'Estudante',
+                  value: 2500,
+                  includesEventRegistration: true,
+                  includesSportsRegistration: false,
+                },
+                {
+                  id: 'tier-community',
+                  name: 'Comunidade',
+                  value: 5000,
+                  includesEventRegistration: true,
+                  includesSportsRegistration: false,
+                },
+              ],
       }),
     ],
   });
@@ -533,6 +562,19 @@ export const PaymentRanking: Story = {
     await goToRankingStep(canvasElement);
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Estudante')).toBeVisible();
+  },
+};
+
+export const TierRules: Story = {
+  args: { scenario: 'tier-rules', eventCount: 8, autoSubscribeEvery: 0 },
+  globals: { network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Escolha sua modalidade de inscrição' })).toBeVisible();
+    await expect(await canvas.findByText(/seleção fica limitada/i)).toBeVisible();
+    await userEvent.click(await canvas.findByRole('radio', { name: /Eventos liberados/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Continuar para eventos/i }));
+    await expect(await canvas.findByRole('heading', { name: /Selecione todos os eventos/i })).toBeVisible();
   },
 };
 

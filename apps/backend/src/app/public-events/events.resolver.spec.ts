@@ -366,29 +366,57 @@ describe('PublicEventsResolver lecturer profiles', () => {
       expect.objectContaining({
         where: {
           AND: [
+            expect.any(Object),
             {
-              AND: [
-                {
-                  AND: [
-                    PUBLIC_REGULAR_EVENT_WHERE,
-                    {
-                      allowSubscription: true,
-                      OR: [
-                        { subscriptionEndDate: null },
-                        { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
-                      ],
-                    },
-                  ],
-                },
-                { majorEventId: { not: null } },
-              ],
+              OR: [{ majorEventId: 'major-1' }, { eventGroup: { majorEventId: 'major-1', deletedAt: null } }],
             },
-            { majorEventId: 'major-1' },
           ],
         },
         orderBy: { startDate: 'asc' },
       }),
     );
+  });
+
+  it('hides a restricted group when an active member is not publicly selectable', async () => {
+    const visibleEvent = { id: 'visible', eventGroupId: 'group-1', slots: null, queueCount: 0 };
+    const majorEvent = createPublicMajorEventRecord({
+      id: 'major-1',
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'SINGLE',
+          tiers: [
+            {
+              id: 'tier-1',
+              name: 'Aluno',
+              value: 1000,
+              includesEventRegistration: true,
+              includesSportsRegistration: false,
+              restrictEventSelection: true,
+              allowedEventIds: ['visible', 'hidden'],
+            },
+          ],
+        },
+      ],
+    } as never);
+    const prisma = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue(majorEvent) },
+      event: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([visibleEvent])
+          .mockResolvedValueOnce([
+            { id: 'visible', eventGroupId: 'group-1' },
+            { id: 'hidden', eventGroupId: 'group-1' },
+          ]),
+      },
+      eventSubscription: { groupBy: jest.fn().mockResolvedValue([]) },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+    const page = await resolver.publicMajorEventSubscriptionPage('major-1');
+    expect(page.majorEvent.majorEventPrices[0].tiers[0].allowedEventIds).toEqual([]);
+    expect(majorEvent.majorEventPrices[0].tiers[0].allowedEventIds).toEqual(['visible', 'hidden']);
   });
 
   it('does not query subscription counts for an empty major-event subscription page', async () => {

@@ -22,6 +22,13 @@ import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage
 import { SubscriptionEventList } from './event-list';
 import { SubscriptionTierSelection } from '../tier/tier-selection';
 import { resolveRegistrationDecisions } from '../tier/registration-decisions';
+import {
+  automaticEventIds as getAutomaticEventIds,
+  automaticSelectionLimitViolations,
+  categoryLimits,
+  selectableEventIds as getSelectableEventIds,
+  subscriptionTierRuleSummaries,
+} from '../tier/subscription-tier-policy';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { subscriptionSuccessRoute } from '../subscription-success-route';
 import { interestedEventIds } from '@cacic-fct/shared-event-participation';
@@ -158,7 +165,7 @@ export class MajorEventSubscription {
     return state.data;
   });
 
-  readonly sortedEvents = computed(() => {
+  readonly allSortedEvents = computed(() => {
     const data = this.data();
     if (!data || !this.decisions().includesEvents) {
       return [];
@@ -167,13 +174,22 @@ export class MajorEventSubscription {
     return [...data.events].sort((left, right) => compareIsoDateAsc(left.startDate, right.startDate));
   });
 
+  readonly policyPriceTier = computed(() =>
+    this.data()?.majorEvent.isPaymentRequired === true ? this.selectedPriceTier() : null,
+  );
+  readonly selectableEventIds = computed(() => getSelectableEventIds(this.allSortedEvents(), this.policyPriceTier()));
+
+  readonly sortedEvents = computed(() =>
+    this.allSortedEvents().filter((event) => this.selectableEventIds().has(event.id)),
+  );
+
   readonly summariesByEventId = computed(
     () => new Map(this.data()?.subscriptionSummaries.map((summary) => [summary.eventId, summary]) ?? []),
   );
 
   readonly eventIdsByGroupKey = computed(() => {
     const eventsByGroupKey = new Map<string, string[]>();
-    for (const event of this.sortedEvents()) {
+    for (const event of this.allSortedEvents()) {
       const groupKey = event.eventGroupId ?? event.id;
       const groupEventIds = eventsByGroupKey.get(groupKey) ?? [];
       groupEventIds.push(event.id);
@@ -182,20 +198,16 @@ export class MajorEventSubscription {
     return eventsByGroupKey;
   });
 
-  readonly eventsById = computed(() => new Map(this.sortedEvents().map((event) => [event.id, event])));
+  readonly eventsById = computed(() => new Map(this.allSortedEvents().map((event) => [event.id, event])));
 
-  readonly autoSelectedEventIds = computed(
-    () =>
-      new Set(
-        this.sortedEvents()
-          .filter((event) => event.autoSubscribe)
-          .map((event) => event.id),
-      ),
-  );
+  readonly autoSelectedEventIds = computed(() => getAutomaticEventIds(this.allSortedEvents(), this.policyPriceTier()));
 
   readonly effectiveSelectedEventIds = computed(() =>
     this.decisions().includesEvents
-      ? new Set([...this.selectedEventIds(), ...this.autoSelectedEventIds()])
+      ? new Set([
+          ...[...this.selectedEventIds()].filter((eventId) => this.selectableEventIds().has(eventId)),
+          ...this.autoSelectedEventIds(),
+        ])
       : new Set<string>(),
   );
 
@@ -207,17 +219,33 @@ export class MajorEventSubscription {
 
   readonly lectureCount = computed(() => this.selectedEvents().filter((event) => event.type === 'PALESTRA').length);
 
+  readonly uncategorizedCount = computed(
+    () => this.selectedEvents().filter((event) => event.type !== 'MINICURSO' && event.type !== 'PALESTRA').length,
+  );
+
   readonly disabledReasons = computed(() => this.computeDisabledReasons());
   readonly priceTiers = computed(() => this.data()?.majorEvent.majorEventPrices?.flatMap((price) => price.tiers) ?? []);
   readonly selectedPriceTier = computed(() => {
     const selectedName = this.selectedPriceTierName();
     return this.priceTiers().find((tier) => tier.name === selectedName) ?? null;
   });
+  readonly effectiveCategoryLimits = computed(() =>
+    categoryLimits(this.data()?.majorEvent ?? null, this.policyPriceTier()),
+  );
+  readonly selectedTierRuleSummaries = computed(() => {
+    const data = this.data();
+    return data ? subscriptionTierRuleSummaries(data.majorEvent, this.policyPriceTier(), data.events) : [];
+  });
+  readonly automaticSelectionErrors = computed(() => {
+    const data = this.data();
+    return data ? automaticSelectionLimitViolations(data.majorEvent, data.events, this.policyPriceTier()) : [];
+  });
 
   readonly decisions = computed(() =>
     resolveRegistrationDecisions(this.data()?.majorEvent ?? null, this.selectedPriceTier()),
   );
   readonly showingTierStep = computed(() => this.decisions().hasTierStep && this.flowPhase() === 'tier');
+  readonly requiresEventChoice = computed(() => this.decisions().includesEvents);
 
   statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
@@ -316,7 +344,7 @@ export class MajorEventSubscription {
         return;
       }
 
-      const validEventIds = new Set(data.events.map((event) => event.id));
+      const validEventIds = this.selectableEventIds();
       const requiredEventIds = this.autoSelectedEventIds();
       const nextSelected = new Set([...this.selectedEventIds()].filter((eventId) => validEventIds.has(eventId)));
       for (const eventId of requiredEventIds) {
@@ -392,7 +420,12 @@ export class MajorEventSubscription {
   }
 
   toggleEvent(event: PublicEvent): void {
-    if (!this.decisions().includesEvents || this.showingTierStep() || this.autoSelectedEventIds().has(event.id)) {
+    if (
+      !this.decisions().includesEvents ||
+      this.showingTierStep() ||
+      !this.selectableEventIds().has(event.id) ||
+      this.autoSelectedEventIds().has(event.id)
+    ) {
       return;
     }
 
@@ -418,6 +451,7 @@ export class MajorEventSubscription {
       relativeTo: this.route,
       queryParams: {
         returnUrl: this.router.url,
+        tierEventAllowed: this.selectableEventIds().has(event.id),
       },
     });
   }
@@ -442,7 +476,12 @@ export class MajorEventSubscription {
       return;
     }
 
-    if (this.decisions().includesEvents && this.selectedEvents().length === 0) {
+    if (this.automaticSelectionErrors().length > 0) {
+      this.snackBar.open(this.automaticSelectionErrors()[0], 'OK', { duration: 5000 });
+      return;
+    }
+
+    if (this.requiresEventChoice() && this.selectedEvents().length === 0) {
       this.snackBar.open('Selecione pelo menos um evento.', 'OK', {
         duration: 3000,
       });
@@ -528,8 +567,10 @@ export class MajorEventSubscription {
       return;
     }
     if (tierName !== this.selectedPriceTierName()) {
+      const previousSelection = this.selectedEventIds();
       this.selectedPriceTierName.set(tierName);
-      this.selectedEventIds.set(new Set());
+      const availableIds = this.selectableEventIds();
+      this.selectedEventIds.set(new Set([...previousSelection].filter((eventId) => availableIds.has(eventId))));
       this.subscriptionForms.set([]);
       this.subscriptionFlowDraft.set(null);
       this.subscriptionFlowSelection.set(null);
@@ -542,7 +583,9 @@ export class MajorEventSubscription {
       !data ||
       !this.decisions().tierResolved ||
       this.currentUserSubscription() === undefined ||
-      this.isSubmitting()
+      this.isSubmitting() ||
+      (this.decisions().includesEvents && this.sortedEvents().length === 0) ||
+      this.automaticSelectionErrors().length > 0
     ) {
       return;
     }
@@ -700,7 +743,7 @@ export class MajorEventSubscription {
     }
 
     const now = new Date();
-    const selectedEventIds = this.selectedEventIds();
+    const selectedEventIds = this.effectiveSelectedEventIds();
     const autoSelectedEventIds = this.autoSelectedEventIds();
 
     for (const event of this.sortedEvents()) {
@@ -734,29 +777,27 @@ export class MajorEventSubscription {
   }
 
   private getLimitReason(event: PublicEvent): string | null {
-    const majorEvent = this.data()?.majorEvent;
-    if (!majorEvent) {
+    if (!this.data()) {
       return null;
     }
 
     const groupEvents = this.getGroupEvents(event);
-    const selectedEventIds = this.selectedEventIds();
+    const selectedEventIds = this.effectiveSelectedEventIds();
     const newEvents = groupEvents.filter((groupEvent) => !selectedEventIds.has(groupEvent.id));
-    const newCourses = newEvents.filter((groupEvent) => groupEvent.type === 'MINICURSO').length;
-    const newLectures = newEvents.filter((groupEvent) => groupEvent.type === 'PALESTRA').length;
-
-    if (
-      majorEvent.maxCoursesPerAttendee != null &&
-      this.courseCount() + newCourses > majorEvent.maxCoursesPerAttendee
-    ) {
-      return `Limite de ${majorEvent.maxCoursesPerAttendee} minicurso(s).`;
-    }
-
-    if (
-      majorEvent.maxLecturesPerAttendee != null &&
-      this.lectureCount() + newLectures > majorEvent.maxLecturesPerAttendee
-    ) {
-      return `Limite de ${majorEvent.maxLecturesPerAttendee} palestra(s).`;
+    const counts = {
+      course: this.courseCount() + newEvents.filter((item) => item.type === 'MINICURSO').length,
+      lecture: this.lectureCount() + newEvents.filter((item) => item.type === 'PALESTRA').length,
+      uncategorized:
+        this.uncategorizedCount() +
+        newEvents.filter((item) => item.type !== 'MINICURSO' && item.type !== 'PALESTRA').length,
+    };
+    const labels = { course: 'minicurso(s)', lecture: 'palestra(s)', uncategorized: 'outro(s) evento(s)' };
+    const scope = this.policyPriceTier()?.customizeSubscriptionLimits === true ? 'nesta modalidade' : 'geral';
+    for (const category of ['course', 'lecture', 'uncategorized'] as const) {
+      const limit = this.effectiveCategoryLimits()[category];
+      if (limit !== null && counts[category] > limit) {
+        return `Limite ${scope} de ${limit} ${labels[category]}.`;
+      }
     }
 
     return null;

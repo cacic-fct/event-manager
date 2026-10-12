@@ -13,9 +13,11 @@ import {
   createAdminPerson,
   createAdminWorkspaceEventSubscription,
   createAdminWorkspaceMajorEventSubscription,
+  createAdminWorkspaceMajorEventSubscriptionEvent,
 } from '../testing/admin-entity-fixtures';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
+import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
@@ -45,6 +47,7 @@ describe('SubscriptionsService', () => {
     downloadMajorEventSubscriptionBadgeArchive: ReturnType<typeof vi.fn>;
   };
   let eventApi: { listEvents: ReturnType<typeof vi.fn>; getEvent: ReturnType<typeof vi.fn> };
+  let eventGroupApi: { listEventGroups: ReturnType<typeof vi.fn> };
   let peopleApi: { listPeopleSummaries: ReturnType<typeof vi.fn> };
   let attendanceApi: { importMajorEventSubscriptionsFromCsv: ReturnType<typeof vi.fn> };
   let attendancesService: { refreshMajorEventUserAttendancesFor: ReturnType<typeof vi.fn> };
@@ -82,6 +85,7 @@ describe('SubscriptionsService', () => {
       listEvents: vi.fn(() => of([event])),
       getEvent: vi.fn(() => of(event)),
     };
+    eventGroupApi = { listEventGroups: vi.fn(() => of([])) };
     peopleApi = { listPeopleSummaries: vi.fn(() => of([person])) };
     attendanceApi = {
       importMajorEventSubscriptionsFromCsv: vi.fn(() =>
@@ -110,6 +114,7 @@ describe('SubscriptionsService', () => {
         SubscriptionsService,
         { provide: SubscriptionApiService, useValue: api },
         { provide: EventApiService, useValue: eventApi },
+        { provide: EventGroupApiService, useValue: eventGroupApi },
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: AttendanceApiService, useValue: attendanceApi },
         { provide: AttendancesService, useValue: attendancesService },
@@ -138,6 +143,40 @@ describe('SubscriptionsService', () => {
     await service.selectMajorEventById(majorEvent.id, false);
     expect(TestBed.inject(MajorEventApiService).getMajorEvent).toHaveBeenCalledWith(majorEvent.id);
     expect(service.selectedMajorEvent()).toEqual(majorEvent);
+  });
+
+  it.each([false, true])('loads group metadata without catalog grants (subscribers=%s)', async (hasSubscribers) => {
+    const firstChild = createAdminWorkspaceMajorEventSubscriptionEvent({
+      eventId: 'child-a',
+      eventGroupId: 'group-1',
+      eventGroupName: 'Grupo de cursos',
+    });
+    const secondChild = createAdminWorkspaceMajorEventSubscriptionEvent({
+      eventId: 'child-b',
+      eventGroupId: 'group-1',
+      eventGroupName: 'Grupo de cursos',
+    });
+    const events = [firstChild, secondChild];
+    const subscription = createAdminWorkspaceMajorEventSubscription({ events });
+    permissions.has.mockReturnValue(false);
+    eventGroupApi.listEventGroups.mockReturnValue(throwError(() => new Error('Missing EventGroup.Read')));
+    eventApi.listEvents.mockReturnValue(throwError(() => new Error('Unexpected event catalog request')));
+    api.listMajorEventSubscriptions.mockReturnValue(of(hasSubscribers ? [subscription] : []));
+    api.listMajorEventSubscriptionEvents.mockReturnValue(of(events));
+
+    await service.selectMajorEventById(majorEvent.id, false);
+    service.startNewMajorEventSubscription();
+    service.setSelectedEvent(firstChild.eventId, true);
+
+    expect(service.majorEventEvents()).toEqual(events);
+    expect(service.majorEventEventGroupNames().get('group-1')).toBe('Grupo de cursos');
+    expect(service.selectedMajorEventEventSections()).toEqual([
+      { kind: 'event-group', id: 'group-1', name: 'Grupo de cursos', events },
+    ]);
+    expect(service.selectedEventIds()).toEqual(new Set(['child-a', 'child-b']));
+    expect(eventGroupApi.listEventGroups).not.toHaveBeenCalled();
+    expect(eventApi.listEvents).not.toHaveBeenCalled();
+    expect(api.listMajorEventSubscriptionEvents).toHaveBeenCalledTimes(hasSubscribers ? 0 : 1);
   });
 
   it('selects events, finds a person, creates a subscription, and refreshes attendance', async () => {
@@ -439,6 +478,91 @@ describe('SubscriptionsService', () => {
     expect(service.editMode()).toBe(false);
   });
 
+  it('applies a restricted payment tier to complete event groups in the manual subscription editor', async () => {
+    const firstChild = createAdminEvent({ id: 'event-child-a', majorEventId: majorEvent.id, eventGroupId: 'group-1' });
+    const secondChild = createAdminEvent({ id: 'event-child-b', majorEventId: majorEvent.id, eventGroupId: 'group-1' });
+    const directEvent = createAdminEvent({ id: 'event-direct', majorEventId: majorEvent.id, eventGroupId: null });
+    api.listMajorEventSubscriptions.mockReturnValue(of([]));
+    api.listMajorEventSubscriptionEvents.mockReturnValue(
+      of([
+        createAdminWorkspaceMajorEventSubscriptionEvent({ eventGroupName: 'Grupo de cursos' }, firstChild),
+        createAdminWorkspaceMajorEventSubscriptionEvent({ eventGroupName: 'Grupo de cursos' }, secondChild),
+        createAdminWorkspaceMajorEventSubscriptionEvent({}, directEvent),
+      ]),
+    );
+    await service.selectMajorEventById(majorEvent.id, false);
+    service.selectedMajorEvent.set({
+      ...majorEvent,
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'SINGLE',
+          tiers: [
+            {
+              id: 'tier-1',
+              name: 'Grupo completo',
+              value: 0,
+              includesSportsRegistration: false,
+              restrictEventSelection: true,
+              allowedEventIds: [firstChild.id, secondChild.id],
+              customizeSubscriptionLimits: true,
+              maxCoursesPerAttendee: 0,
+              maxLecturesPerAttendee: null,
+              maxUncategorizedPerAttendee: 2,
+            },
+          ],
+        },
+      ],
+    });
+    service.startNewMajorEventSubscription();
+    service.selectMajorEventPerson(person);
+    service.majorEventEditForm.controls.paymentTier.setValue('Grupo completo');
+
+    expect(service.majorEventTierSelectionRequired()).toBe(true);
+    expect(service.selectedMajorEventEventSections().map((section) => section.kind)).toEqual(['event-group']);
+    expect(service.canSelectMajorEventEventGroup('group-1')).toBe(true);
+    expect(service.isMajorEventEventAllowed(directEvent.id)).toBe(false);
+
+    service.setSelectedEvent(firstChild.id, true);
+    expect(service.selectedEventIds()).toEqual(new Set([firstChild.id, secondChild.id]));
+    service.setSelectedEvent(secondChild.id, false);
+    expect(service.selectedEventIds()).toEqual(new Set());
+
+    service.setSelectedEventGroup('group-1', true);
+    expect(service.selectedEventIds()).toEqual(new Set([firstChild.id, secondChild.id]));
+    expect(service.majorEventSubscriptionSelectionError()).toBeNull();
+  });
+
+  it('requires a configured tier before allowing a manual subscription when tier rules are active', async () => {
+    service.majorEventForm.controls.majorEventId.setValue(majorEvent.id);
+    service.selectedMajorEvent.set({
+      ...majorEvent,
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'SINGLE',
+          tiers: [
+            {
+              id: 'tier-1',
+              name: 'Sem inscrição em eventos',
+              value: 0,
+              includesSportsRegistration: false,
+              includesEventRegistration: false,
+            },
+          ],
+        },
+      ],
+    });
+    service.startNewMajorEventSubscription();
+    service.selectMajorEventPerson(person);
+
+    expect(service.majorEventSubscriptionSelectionError()).toContain('Escolha uma faixa');
+    await service.saveMajorEventSubscription();
+    expect(api.createMajorEventSubscription).not.toHaveBeenCalled();
+  });
+
   it('converts stored cents to reais in the editor and back to cents when saving', async () => {
     const storedSubscription = createAdminWorkspaceMajorEventSubscription({ amountPaid: 4_000 });
 
@@ -537,6 +661,51 @@ describe('SubscriptionsService', () => {
     await service.importMajorEventSubscriptionsFromCsv(file);
     expect(feedback.error).toHaveBeenCalledWith(expect.any(Error), 'Não foi possível importar o CSV.');
     expect(service.isImportingCsv()).toBe(false);
+  });
+
+  it('passes a required price tier through CSV import when tier rules are active', async () => {
+    const importTier = {
+      id: 'tier-limited',
+      name: 'Estudante com limites',
+      value: 0,
+      includesSportsRegistration: false,
+      customizeSubscriptionLimits: true,
+      maxCoursesPerAttendee: 0,
+    };
+    service.majorEventForm.controls.majorEventId.setValue(majorEvent.id);
+    service.selectedMajorEvent.set({
+      ...majorEvent,
+      isPaymentRequired: true,
+      majorEventPrices: [{ id: 'price-1', type: 'SINGLE', tiers: [importTier] }],
+    });
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          subscriptionStatus: 'CONFIRMED',
+          paymentTier: importTier.name,
+          columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'eventos' },
+        }),
+    });
+
+    await service.importMajorEventSubscriptionsFromCsv(csvFile('inscricoes.csv', 'email\nada@example.com'));
+
+    expect(dialog.open).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          paymentTierRequired: true,
+          paymentTiers: [importTier],
+        }),
+      }),
+    );
+    expect(attendanceApi.importMajorEventSubscriptionsFromCsv).toHaveBeenCalledWith({
+      majorEventId: majorEvent.id,
+      csvContent: 'email\nada@example.com',
+      subscriptionStatus: 'CONFIRMED',
+      paymentTier: importTier.name,
+      columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'eventos' },
+    });
   });
 
   it('validates exports and supports export-dialog cancellation without downloading', async () => {

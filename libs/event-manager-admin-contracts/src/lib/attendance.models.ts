@@ -166,6 +166,8 @@ export interface WorkspaceEventSubscription {
 
 export interface WorkspaceMajorEventSubscriptionEvent {
   eventId: string;
+  eventGroupId?: string | null;
+  eventGroupName?: string | null;
   eventName: string;
   eventEmoji?: string | null;
   eventType?: EventType | null;

@@ -19,6 +19,12 @@ export const PUBLIC_MAJOR_EVENT_PRICE_FIELDS = `
     value
     includesEventRegistration
     includesSportsRegistration
+    restrictEventSelection
+    allowedEventIds
+    customizeSubscriptionLimits
+    maxCoursesPerAttendee
+    maxLecturesPerAttendee
+    maxUncategorizedPerAttendee
   }
 `;
 
@@ -120,6 +126,7 @@ export const PUBLIC_NAMED_ENTITY_FIELDS = `
 `;
 
 export const PUBLIC_EVENT_GROUP_DETAIL_FIELDS = `
+  majorEventId
   interestEnabled
   attendanceEligibility
   id

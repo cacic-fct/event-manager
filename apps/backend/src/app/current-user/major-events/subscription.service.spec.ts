@@ -3,12 +3,42 @@ import { SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
 import { PUBLIC_REGULAR_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
+import { resolvePriceTierEventPolicy } from './tier-event-policy';
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   let service: CurrentUserMajorEventSubscriptionService;
 
   beforeEach(() => {
     service = new CurrentUserMajorEventSubscriptionService({} as never, {} as never);
+  });
+
+  it('counts all members of a restricted automatic group in ranked desired counts and allocation', () => {
+    const events = [
+      { ...rankedEvent('first', 'MINICURSO', 0, 1, true), eventGroupId: 'group-1' },
+      { ...rankedEvent('second', 'MINICURSO', 2, 3), eventGroupId: 'group-1' },
+    ];
+    const majorEvent = {
+      maxCoursesPerAttendee: 1,
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['first', 'second'],
+              customizeSubscriptionLimits: true,
+              maxCoursesPerAttendee: 2,
+            },
+          ],
+        },
+      ],
+    };
+    const policy = resolvePriceTierEventPolicy(majorEvent, 'Aluno');
+    expect(() =>
+      service.resolveRankedDesiredCounts(majorEvent as never, events, { desiredCourses: 1 }, policy),
+    ).toThrow('inscrições automáticas');
+    const desired = service.resolveRankedDesiredCounts(majorEvent as never, events, { desiredCourses: 2 }, policy);
+    expect(service.allocateRankedEventIds(events, desired, policy)).toEqual(['first', 'second']);
   });
 
   it('allocates the highest ranked available events up to desired category counts', () => {
@@ -124,6 +154,115 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         desiredUncategorized: 0,
       }),
     ).toThrow('Desired course count exceeds available course choices (1).');
+  });
+
+  it('applies customized ranked category limits while treating null as unlimited', () => {
+    const majorEvent = {
+      maxCoursesPerAttendee: 1,
+      maxLecturesPerAttendee: 1,
+      maxUncategorizedPerAttendee: 1,
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Student',
+              customizeSubscriptionLimits: true,
+              maxCoursesPerAttendee: 3,
+              maxLecturesPerAttendee: 0,
+              maxUncategorizedPerAttendee: null,
+            },
+          ],
+        },
+      ],
+    } as never;
+    const policy = resolvePriceTierEventPolicy(majorEvent, 'student');
+    const events = [rankedEvent('course-1', 'MINICURSO', 8, 9), rankedEvent('course-2', 'MINICURSO', 10, 11)];
+
+    expect(
+      service.resolveRankedDesiredCounts(
+        majorEvent,
+        events,
+        { desiredCourses: 2, desiredLectures: 0, desiredUncategorized: 0 },
+        policy,
+      ),
+    ).toEqual({ desiredCourses: 2, desiredLectures: 0, desiredUncategorized: 0 });
+    expect(() =>
+      service.resolveRankedDesiredCounts(
+        majorEvent,
+        events,
+        { desiredCourses: 2, desiredLectures: 1, desiredUncategorized: 0 },
+        policy,
+      ),
+    ).toThrow('A quantidade de palestras excede o limite da faixa (0).');
+  });
+
+  it('enforces tier quotas for regular selections, including larger, zero, and unlimited limits', () => {
+    const majorEvent = {
+      maxCoursesPerAttendee: 1,
+      maxLecturesPerAttendee: 1,
+      maxUncategorizedPerAttendee: 1,
+    } as never;
+    const selectedEvents = [
+      rankedEvent('course-1', 'MINICURSO', 8, 9),
+      rankedEvent('course-2', 'MINICURSO', 10, 11),
+    ] as never;
+    const policy = (courseLimit: number | null) =>
+      resolvePriceTierEventPolicy(
+        {
+          maxCoursesPerAttendee: 1,
+          maxLecturesPerAttendee: 1,
+          maxUncategorizedPerAttendee: 1,
+          majorEventPrices: [
+            {
+              tiers: [
+                {
+                  name: 'Custom',
+                  customizeSubscriptionLimits: true,
+                  maxCoursesPerAttendee: courseLimit,
+                  maxLecturesPerAttendee: null,
+                  maxUncategorizedPerAttendee: null,
+                },
+              ],
+            },
+          ],
+        },
+        'custom',
+      );
+
+    expect(() => service.ensureMajorEventEventLimits(majorEvent, selectedEvents, policy(0))).toThrow(
+      BadRequestException,
+    );
+    expect(() => service.ensureMajorEventEventLimits(majorEvent, selectedEvents, policy(3))).not.toThrow();
+    expect(() => service.ensureMajorEventEventLimits(majorEvent, selectedEvents, policy(null))).not.toThrow();
+
+    const zeroUncategorizedPolicy = resolvePriceTierEventPolicy(
+      {
+        maxCoursesPerAttendee: null,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: 3,
+        majorEventPrices: [
+          {
+            tiers: [
+              {
+                name: 'No other activities',
+                customizeSubscriptionLimits: true,
+                maxCoursesPerAttendee: null,
+                maxLecturesPerAttendee: null,
+                maxUncategorizedPerAttendee: 0,
+              },
+            ],
+          },
+        ],
+      },
+      'No other activities',
+    );
+    expect(() =>
+      service.ensureMajorEventEventLimits(
+        majorEvent,
+        [rankedEvent('other-1', 'OTHER', 8, 9)] as never,
+        zeroUncategorizedPolicy,
+      ),
+    ).toThrow(BadRequestException);
   });
 
   it('skips unavailable and conflicting ranked preference items', () => {
@@ -281,7 +420,12 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: {
-        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId: 'major-1' }],
+        AND: [
+          PUBLIC_REGULAR_EVENT_WHERE,
+          {
+            OR: [{ majorEventId: 'major-1' }, { eventGroup: { majorEventId: 'major-1', deletedAt: null } }],
+          },
+        ],
         allowSubscription: true,
       },
       select: expect.objectContaining({

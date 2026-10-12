@@ -19,10 +19,12 @@
       </mat-radio-button>
       <ul [id]="'tier-access-' + tier.id" class="tier-access">
         <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição no grande evento</li>
-        @if (tier.includesEventRegistration !== false) {
+        @if (tier.includesEventRegistration !== false && hasSelectableEvents(tier)) {
         <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição em eventos</li>
         } @if (majorEvent().sportsTournament && tier.includesSportsRegistration) {
         <li><mat-icon aria-hidden="true">check</mat-icon>Inscrição em esportes</li>
+        } @for (summary of tierRuleSummaries(tier); track summary) {
+        <li class="tier-policy"><mat-icon aria-hidden="true">info</mat-icon>{{ summary }}</li>
         }
       </ul>
     </div>
@@ -30,7 +32,9 @@
   </mat-radio-group>
 
   <div class="next-step" aria-live="polite">
-    @if (selectedTier(); as tier) { @if (tier.includesEventRegistration !== false) {
+    @if (selectedTier(); as tier) { @if (tierAvailabilityMessage(tier); as message) {
+    <p class="tier-policy-warning" role="status">{{ message }}</p>
+    } @else if (tier.includesEventRegistration !== false) {
     <p>Em seguida, você escolherá os eventos de que deseja participar.</p>
     } @else if (majorEvent().sportsTournament && tier.includesSportsRegistration) {
     <p>Revise sua inscrição antes de escolher os esportes.</p>
@@ -51,8 +55,12 @@
     }
   </div>
   <div class="tier-actions">
-    <button matButton="filled" type="button" [disabled]="!selectedTier() || busy()" (click)="continue.emit()">
-      {{ selectedTier()?.includesEventRegistration !== false ? 'Continuar para eventos' : 'Continuar inscrição' }}
+    <button
+      matButton="filled"
+      type="button"
+      [disabled]="!canContinueSelectedTier() || busy()"
+      (click)="continue.emit()">
+      {{ continueLabel() }}
       <mat-icon>arrow_forward</mat-icon>
     </button>
   </div>

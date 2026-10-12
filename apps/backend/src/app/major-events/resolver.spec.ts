@@ -51,6 +51,86 @@ describe('MajorEventsResolver', () => {
     ).toThrow('Os nomes das faixas de preço devem ser únicos.');
   });
 
+  it('preserves both independent tier options, unlimited limits, and zero quotas', () => {
+    const { resolver } = createResolver();
+    expect(
+      resolver['buildPriceTierPayloads']({
+        type: 'TIERED',
+        tiers: [
+          {
+            name: 'Especial',
+            value: 2000,
+            restrictEventSelection: true,
+            allowedEventIds: [' course-1 ', 'course-1'],
+            customizeSubscriptionLimits: true,
+            maxCoursesPerAttendee: 0,
+            maxLecturesPerAttendee: 5,
+            maxUncategorizedPerAttendee: null,
+          },
+        ],
+      } as never)[0],
+    ).toEqual(
+      expect.objectContaining({
+        restrictEventSelection: true,
+        allowedEventIds: ['course-1'],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 0,
+        maxLecturesPerAttendee: 5,
+        maxUncategorizedPerAttendee: null,
+      }),
+    );
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, 2147483648])('rejects invalid custom tier quotas: %s', (limit) => {
+    const { resolver } = createResolver();
+    expect(() =>
+      resolver['buildPriceTierPayloads']({
+        type: 'SINGLE',
+        tiers: [{ name: 'Única', value: 1000, maxCoursesPerAttendee: limit }],
+      } as never),
+    ).toThrow('inteiros não negativos');
+  });
+
+  it('rejects activity identifiers from another major event before saving a tier', async () => {
+    const { resolver, tx } = createResolver();
+    tx.event.findMany.mockResolvedValue([{ id: 'own-event', eventGroupId: null }]);
+    await expect(
+      resolver['validateTierEventSelection'](tx as never, 'major-1', {
+        type: 'SINGLE',
+        tiers: [{ name: 'Única', value: 1000, restrictEventSelection: true, allowedEventIds: ['foreign-event'] }],
+      } as never),
+    ).rejects.toThrow('pertencer à programação');
+  });
+
+  it('requires complete groups in a tier whitelist and accepts complete selections', async () => {
+    const { resolver, tx } = createResolver();
+    tx.event.findMany.mockResolvedValue([
+      { id: 'group-first', eventGroupId: 'group-1' },
+      { id: 'group-second', eventGroupId: 'group-1' },
+    ]);
+    const input = {
+      type: 'SINGLE',
+      tiers: [{ name: 'Única', value: 1000, restrictEventSelection: true, allowedEventIds: ['group-first'] }],
+    };
+    await expect(resolver['validateTierEventSelection'](tx as never, 'major-1', input as never)).rejects.toThrow(
+      'todos os eventos',
+    );
+    input.tiers[0].allowedEventIds.push('group-second');
+    await expect(
+      resolver['validateTierEventSelection'](tx as never, 'major-1', input as never),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects program IDs during creation before the major event exists', () => {
+    const { resolver } = createResolver();
+    expect(() =>
+      resolver['buildPricePayload']({
+        type: 'SINGLE',
+        tiers: [{ name: 'Única', value: 1000, restrictEventSelection: true, allowedEventIds: ['existing-event'] }],
+      } as never),
+    ).toThrow('Salve o grande evento');
+  });
+
   it('filters current major-event lookups by end date when requested', async () => {
     const endDateFrom = new Date('2026-07-05T12:00:00.000Z');
     const prisma = {
@@ -1262,7 +1342,7 @@ function createResolver(
   const tx = {
     ticketConfig: { findFirst: jest.fn().mockResolvedValue(null) },
     $executeRaw: jest.fn().mockResolvedValue(1),
-    event: { findFirst: jest.fn().mockResolvedValue(null) },
+    event: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
     majorEvent: {
       create: jest.fn(),
       findFirst: jest.fn(),

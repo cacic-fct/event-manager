@@ -55,6 +55,8 @@ describe('SubscriptionApiService', () => {
             workspaceMajorEventSubscriptionEvents: [
               {
                 eventId: 'event-1',
+                eventGroupId: 'group-1',
+                eventGroupName: 'Grupo de palestras',
                 eventName: 'Abertura',
                 eventEmoji: '🎓',
                 eventType: 'PALESTRA',
@@ -164,7 +166,12 @@ describe('SubscriptionApiService', () => {
       firstValueFrom(service.listMajorEventSubscriptions('major-1', { query: 'Ada', skip: 1, take: 10 })),
     ).resolves.toEqual([majorSubscriptionFixture()]);
     await expect(firstValueFrom(service.listMajorEventSubscriptionEvents('major-1'))).resolves.toEqual([
-      expect.objectContaining({ eventId: 'event-1', availableSlots: 12 }),
+      expect.objectContaining({
+        eventId: 'event-1',
+        availableSlots: 12,
+        eventGroupId: 'group-1',
+        eventGroupName: 'Grupo de palestras',
+      }),
     ]);
     await expect(firstValueFrom(service.getMajorEventSubscription('major-1', 'major-sub-detail'))).resolves.toEqual(
       majorSubscriptionFixture({ id: 'major-sub-detail' }),
@@ -204,6 +211,9 @@ describe('SubscriptionApiService', () => {
       expect.stringContaining('query WorkspaceMajorEventSubscriptionEvents'),
       { majorEventId: 'major-1' },
     );
+    expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('eventGroupId\n  eventGroupName'), {
+      majorEventId: 'major-1',
+    });
     expect(graphqlHttp.request).toHaveBeenCalledWith(expect.stringContaining('query WorkspaceMajorEventSubscription'), {
       majorEventId: 'major-1',
       subscriptionId: 'major-sub-detail',

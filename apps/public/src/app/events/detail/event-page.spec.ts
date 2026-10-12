@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event-page';
+import { createPublicEventGroup } from '@cacic-fct/event-manager-public-testing';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
 import { InterestApiService } from '../../interests/interest-api.service';
@@ -618,6 +619,42 @@ describe('Event', () => {
       expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
     },
   );
+
+  it('does not offer standalone registration when an event group belongs to a major event', () => {
+    const groupChild = {
+      ...defaultEventPageData().event,
+      allowSubscription: true,
+      eventGroupId: 'major-group',
+      eventGroup: createPublicEventGroup({ id: 'major-group', majorEventId: 'major-1' }),
+    };
+
+    expect(component.hasStandaloneSubscription(groupChild)).toBe(false);
+  });
+
+  it('explains when the selected tier does not allow an event opened from registration', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, majorEventId: 'major-1', allowSubscription: true };
+    const newFixture = await createEventComponentFixture(
+      { tierEventAllowed: 'false' },
+      {
+        eventPageData,
+        parentRoutePath: 'major-event/:majorEventId/subscription',
+      },
+    );
+    newFixture.detectChanges();
+    await newFixture.whenStable();
+    const eventPage = newFixture.componentInstance;
+
+    expect(eventPage.unavailableInSelectedTier()).toBe(true);
+    expect(eventPage.canSubscribe(eventPageData)).toBe(false);
+    expect(eventPage.subscriptionStatusLine(eventPageData)).toBe(
+      'Este evento não está incluído na modalidade selecionada do grande evento.',
+    );
+    expect((newFixture.nativeElement as HTMLElement).textContent).toContain(
+      'Este evento não está incluído na modalidade selecionada do grande evento.',
+    );
+  });
 
   it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map'])(
     'should reject unsafe back URL %s',

@@ -268,9 +268,10 @@ export class CurrentUserEventSubscriptionService {
         throw new NotFoundException(`Event ${eventId} was not found.`);
       }
 
-      if (targetEvent.majorEventId) {
+      const effectiveParentMajorEventId = targetEvent.majorEventId ?? targetEvent.eventGroup?.majorEventId ?? null;
+      if (effectiveParentMajorEventId) {
         throw new BadRequestException(
-          `Event ${eventId} belongs to major event ${targetEvent.majorEventId}. Direct event subscription for major-event content is still pending.`,
+          `Event ${eventId} belongs to major event ${effectiveParentMajorEventId}. Direct event subscription for major-event content is still pending.`,
         );
       }
 
@@ -812,9 +813,12 @@ export class CurrentUserEventSubscriptionService {
       throw new BadRequestException(`Event group ${eventGroupId} has no active events available for subscription.`);
     }
 
-    if (groupEvents.some((event) => event.majorEventId != null)) {
+    const effectiveParentMajorEventId =
+      groupEvents.find((event) => event.eventGroup?.majorEventId)?.eventGroup?.majorEventId ??
+      groupEvents.find((event) => event.majorEventId != null)?.majorEventId;
+    if (effectiveParentMajorEventId) {
       throw new BadRequestException(
-        `Event group ${eventGroupId} belongs to a major event. Major-event integration for group subscriptions is still pending.`,
+        `Event group ${eventGroupId} belongs to major event ${effectiveParentMajorEventId}. Major-event integration for group subscriptions is still pending.`,
       );
     }
 

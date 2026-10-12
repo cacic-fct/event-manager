@@ -27,7 +27,7 @@ import { createWorkspaceListPagination } from '../pagination/list-pagination';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { EventGroupsService } from '../event-groups/event-groups.service';
 import { EventsService } from '../events/events.service';
-import { MajorEventsService } from '../major-events/major-events.service';
+import { MajorEventsService, type PriceTierEventTarget } from '../major-events/major-events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
 export type PageStoryMode = 'populated' | 'empty' | 'readonly' | 'loading' | 'drafts';
@@ -41,6 +41,7 @@ export interface PageStoryArgs {
   sportsEvery: number;
   frozenSelected: boolean;
   requiresPayment: boolean;
+  priceTierRules?: boolean;
   restrictAttendancePriceTiers?: boolean;
   coordinates: boolean;
   certificateMode: 'mixed' | 'all' | 'none';
@@ -55,6 +56,7 @@ export const defaultPageStoryArgs: PageStoryArgs = {
   sportsEvery: 3,
   frozenSelected: false,
   requiresPayment: true,
+  priceTierRules: false,
   coordinates: true,
   certificateMode: 'mixed',
 };
@@ -68,6 +70,7 @@ export const pageStoryArgTypes = {
   sportsEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   frozenSelected: { control: 'boolean' },
   requiresPayment: { control: 'boolean' },
+  priceTierRules: { control: 'boolean' },
   restrictAttendancePriceTiers: { control: 'boolean' },
   coordinates: { control: 'boolean' },
   certificateMode: { control: 'select', options: ['mixed', 'all', 'none'] },
@@ -182,6 +185,23 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     : [];
   const searchResults =
     args.mode === 'empty' ? [] : buildEvents({ ...args, itemCount: 2 }, majorEvents, buildEventGroups(args), 20);
+  const directTierEvent = linkedEvents.find((eventItem) => !eventItem.eventGroupId);
+  const groupedTierEvents = linkedEvents.filter((eventItem) => eventItem.eventGroupId);
+  const tierEventTargets: PriceTierEventTarget[] = [
+    ...(directTierEvent
+      ? [{ id: directTierEvent.id, kind: 'event' as const, name: directTierEvent.name, events: [directTierEvent] }]
+      : []),
+    ...(groupedTierEvents.length
+      ? [
+          {
+            id: 'story-event-group-1',
+            kind: 'event-group' as const,
+            name: 'Grupo de atividades de demonstração',
+            events: groupedTierEvents,
+          },
+        ]
+      : []),
+  ];
   const majorEventForm = formBuilder.nonNullable.group({
     id: [''],
     name: ['', [Validators.required]],
@@ -222,12 +242,26 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
         value: ['40'],
         includesEventRegistration: [true],
         includesSportsRegistration: [false],
+        restrictEventSelection: [{ value: Boolean(args.priceTierRules), disabled: !selectedMajorEvent }],
+        allowedEventIds: formBuilder.nonNullable.control(
+          args.priceTierRules ? tierEventTargets.map((target) => target.id) : [],
+        ),
+        customizeSubscriptionLimits: [Boolean(args.priceTierRules)],
+        maxCoursesPerAttendee: [args.priceTierRules ? '0' : ''],
+        maxLecturesPerAttendee: [args.priceTierRules ? '2' : ''],
+        maxUncategorizedPerAttendee: [args.priceTierRules ? '3' : ''],
       }),
       formBuilder.nonNullable.group({
         name: ['Comunidade externa'],
         value: ['80'],
         includesEventRegistration: [true],
         includesSportsRegistration: [false],
+        restrictEventSelection: [{ value: false, disabled: !selectedMajorEvent }],
+        allowedEventIds: formBuilder.nonNullable.control<string[]>([]),
+        customizeSubscriptionLimits: [false],
+        maxCoursesPerAttendee: [''],
+        maxLecturesPerAttendee: [''],
+        maxUncategorizedPerAttendee: [''],
       }),
     ]),
   });
@@ -274,6 +308,34 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     majorEventsPagination: createWorkspaceListPagination(),
     selectedMajorEvent: signal(selectedMajorEvent),
     majorEventEvents: signal(linkedEvents),
+    priceTierEventTargets: signal(tierEventTargets),
+    priceTierEventTargetsLoading: signal(false),
+    priceTierEventTargetsError: signal(''),
+    loadPriceTierEventTargets: async () => undefined,
+    updateTierAllowedEventIds: (index: number, selectedIds: string[]) =>
+      majorEventForm.controls.priceTiers
+        .at(index)
+        ?.controls.allowedEventIds.setValue(
+          selectedIds.flatMap(
+            (id) => tierEventTargets.find((target) => target.id === id)?.events.map((eventItem) => eventItem.id) ?? [],
+          ),
+        ),
+    tierEventTargetSelection: (selectedEventIds: string[]) => {
+      const selected = new Set(selectedEventIds);
+      return tierEventTargets
+        .filter((target) =>
+          target.kind === 'event'
+            ? selected.has(target.events[0]?.id ?? target.id)
+            : target.events.length > 0 && target.events.every((eventItem) => selected.has(eventItem.id)),
+        )
+        .map((target) => target.id);
+    },
+    unavailableTierEventCount: () => 0,
+    priceTierEventTargetDetails: (target: PriceTierEventTarget) =>
+      target.kind === 'event-group'
+        ? `${target.events.length} atividades: ${target.events.map((eventItem) => eventItem.name).join(', ')}`
+        : '',
+    removeUnavailableTierEventIds: () => undefined,
     majorEventEventSearchResults: signal(searchResults),
     majorEventAudienceInvitations: signal(
       selectedMajorEvent?.audienceInvitations?.map(

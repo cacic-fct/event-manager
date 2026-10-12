@@ -166,7 +166,7 @@
     }
   </section>
 
-  @if (event.allowSubscription) {
+  @if (event.allowSubscription || unavailableInSelectedTier()) {
   <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
   } @if (availableFormLinks().length > 0) {
   <section class="form-actions" aria-label="Formulários disponíveis">

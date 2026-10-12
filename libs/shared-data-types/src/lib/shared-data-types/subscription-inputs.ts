@@ -91,6 +91,12 @@ export class MajorEventSubscriptionCsvImportInput {
   @Field(() => SubscriptionStatus)
   subscriptionStatus!: SubscriptionStatus;
 
+  @Field(() => String, {
+    nullable: true,
+    description: 'Price tier applied to all rows; omitted values preserve the existing subscription tier.',
+  })
+  paymentTier?: string | null;
+
   @Field(() => MajorEventSubscriptionCsvColumnMappingInput)
   columnMapping!: MajorEventSubscriptionCsvColumnMappingInput;
 }

@@ -6,11 +6,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
+import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { MajorEventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PublicationApiService } from '../graphql/publishing-api.service';
 import {
   createAdminEvent,
+  createAdminEventGroup,
   createAdminMajorEventFromInput,
   createAdminMajorEvent,
 } from '../testing/admin-entity-fixtures';
@@ -55,6 +57,9 @@ describe('MajorEventsService', () => {
     listEvents: ReturnType<typeof vi.fn>;
     updateEvent: ReturnType<typeof vi.fn>;
   };
+  let eventGroupApi: {
+    listEventGroups: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
@@ -74,6 +79,9 @@ describe('MajorEventsService', () => {
       listEvents: vi.fn(() => of([])),
       updateEvent: vi.fn(() => of(createAdminEvent())),
     };
+    eventGroupApi = {
+      listEventGroups: vi.fn(() => of([])),
+    };
     publicationApi = {
       setPublicationState: vi.fn(() => of({ ok: true })),
     };
@@ -90,6 +98,7 @@ describe('MajorEventsService', () => {
         { provide: EventWorkspaceContextService, useValue: { context: signal(null) } },
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: eventApi },
+        { provide: EventGroupApiService, useValue: eventGroupApi },
         { provide: PublicationApiService, useValue: publicationApi },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -206,7 +215,18 @@ describe('MajorEventsService', () => {
 
     expect(lastPayload?.price).toEqual({
       type: 'SINGLE',
-      tiers: [{ name: 'Preço único', value: 4000 }],
+      tiers: [
+        {
+          name: 'Preço único',
+          value: 4000,
+          restrictEventSelection: false,
+          allowedEventIds: [],
+          customizeSubscriptionLimits: false,
+          maxCoursesPerAttendee: null,
+          maxLecturesPerAttendee: null,
+          maxUncategorizedPerAttendee: null,
+        },
+      ],
     });
   });
 
@@ -292,7 +312,7 @@ describe('MajorEventsService', () => {
     expect(lastPayload?.shouldIssueCertificateForNonPayingAttendees).toBe(true);
   });
 
-  it('serializes an event-disabled tier while leaving the default-enabled value omitted', async () => {
+  it('preserves rule values for a tier that excludes event registration', async () => {
     service.priceTiers.at(0).controls.value.setValue('40');
     service.priceTiers.at(0).controls.includesEventRegistration.setValue(false);
 
@@ -300,7 +320,19 @@ describe('MajorEventsService', () => {
 
     expect(lastPayload?.price).toEqual({
       type: 'SINGLE',
-      tiers: [{ name: 'Preço único', value: 4000, includesEventRegistration: false }],
+      tiers: [
+        {
+          name: 'Preço único',
+          value: 4000,
+          includesEventRegistration: false,
+          restrictEventSelection: false,
+          allowedEventIds: [],
+          customizeSubscriptionLimits: false,
+          maxCoursesPerAttendee: null,
+          maxLecturesPerAttendee: null,
+          maxUncategorizedPerAttendee: null,
+        },
+      ],
     });
   });
 
@@ -330,8 +362,26 @@ describe('MajorEventsService', () => {
     expect(lastPayload?.price).toEqual({
       type: 'TIERED',
       tiers: [
-        { name: 'Aluno', value: 4000 },
-        { name: 'Professor', value: 6050 },
+        {
+          name: 'Aluno',
+          value: 4000,
+          restrictEventSelection: false,
+          allowedEventIds: [],
+          customizeSubscriptionLimits: false,
+          maxCoursesPerAttendee: null,
+          maxLecturesPerAttendee: null,
+          maxUncategorizedPerAttendee: null,
+        },
+        {
+          name: 'Professor',
+          value: 6050,
+          restrictEventSelection: false,
+          allowedEventIds: [],
+          customizeSubscriptionLimits: false,
+          maxCoursesPerAttendee: null,
+          maxLecturesPerAttendee: null,
+          maxUncategorizedPerAttendee: null,
+        },
       ],
     });
   });
@@ -348,7 +398,19 @@ describe('MajorEventsService', () => {
 
     expect(lastPayload?.price).toEqual({
       type: 'SINGLE',
-      tiers: [{ name: 'Preço único', value: 7000, includesSportsRegistration: true }],
+      tiers: [
+        {
+          name: 'Preço único',
+          value: 7000,
+          includesSportsRegistration: true,
+          restrictEventSelection: false,
+          allowedEventIds: [],
+          customizeSubscriptionLimits: false,
+          maxCoursesPerAttendee: null,
+          maxLecturesPerAttendee: null,
+          maxUncategorizedPerAttendee: null,
+        },
+      ],
     });
   });
 
@@ -452,6 +514,12 @@ describe('MajorEventsService', () => {
       value: '30.00',
       includesEventRegistration: true,
       includesSportsRegistration: false,
+      restrictEventSelection: false,
+      allowedEventIds: [],
+      customizeSubscriptionLimits: false,
+      maxCoursesPerAttendee: '',
+      maxLecturesPerAttendee: '',
+      maxUncategorizedPerAttendee: '',
     });
   });
 
@@ -486,6 +554,12 @@ describe('MajorEventsService', () => {
         value: '30.00',
         includesEventRegistration: true,
         includesSportsRegistration: false,
+        restrictEventSelection: false,
+        allowedEventIds: [],
+        customizeSubscriptionLimits: false,
+        maxCoursesPerAttendee: '',
+        maxLecturesPerAttendee: '',
+        maxUncategorizedPerAttendee: '',
       },
       {
         id: 'major-event-1-price-tier-2',
@@ -493,14 +567,192 @@ describe('MajorEventsService', () => {
         value: '60.50',
         includesEventRegistration: true,
         includesSportsRegistration: false,
+        restrictEventSelection: false,
+        allowedEventIds: [],
+        customizeSubscriptionLimits: false,
+        maxCoursesPerAttendee: '',
+        maxLecturesPerAttendee: '',
+        maxUncategorizedPerAttendee: '',
       },
     ]);
 
     await service.saveMajorEvent();
 
     expect(lastPayload?.price?.tiers).toEqual([
-      { id: 'major-event-1-price-tier-1', name: 'Aluno', value: 3000 },
-      { id: 'major-event-1-price-tier-2', name: 'Professor', value: 6050 },
+      {
+        id: 'major-event-1-price-tier-1',
+        name: 'Aluno',
+        value: 3000,
+        restrictEventSelection: false,
+        allowedEventIds: [],
+        customizeSubscriptionLimits: false,
+        maxCoursesPerAttendee: null,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+      {
+        id: 'major-event-1-price-tier-2',
+        name: 'Professor',
+        value: 6050,
+        restrictEventSelection: false,
+        allowedEventIds: [],
+        customizeSubscriptionLimits: false,
+        maxCoursesPerAttendee: null,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+    ]);
+  });
+
+  it('keeps event whitelists disabled and empty until a new major event is saved', async () => {
+    service.resetMajorEventForm(false);
+    const tier = service.priceTiers.at(0);
+
+    expect(service.selectedMajorEvent()).toBeNull();
+    expect(tier.controls.restrictEventSelection.disabled).toBe(true);
+    expect(tier.controls.restrictEventSelection.value).toBe(false);
+    expect(tier.controls.allowedEventIds.value).toEqual([]);
+
+    await service.loadPriceTierEventTargets();
+
+    expect(eventApi.listEvents).not.toHaveBeenCalled();
+    expect(eventGroupApi.listEventGroups).not.toHaveBeenCalled();
+  });
+
+  it('restores tier rules on discard and preserves them when the rules are switched off', async () => {
+    const savedMajorEvent = createAdminMajorEventFromInput({
+      id: 'major-event-1',
+      name: 'SECOMPP26',
+      emoji: '😀',
+      startDate: '2026-05-15T03:00:00.000Z',
+      endDate: '2026-05-20T03:00:00.000Z',
+      isPaymentRequired: true,
+      price: {
+        type: 'SINGLE',
+        tiers: [
+          {
+            name: 'Estudante',
+            value: 3000,
+            restrictEventSelection: true,
+            allowedEventIds: ['event-direct', 'event-child-a', 'event-child-b', 'event-removed'],
+            customizeSubscriptionLimits: true,
+            maxCoursesPerAttendee: 0,
+            maxLecturesPerAttendee: null,
+            maxUncategorizedPerAttendee: 4,
+          },
+        ],
+      },
+    });
+    api.getMajorEvent.mockReturnValue(of(savedMajorEvent));
+
+    await service.pickMajorEventById(savedMajorEvent.id);
+    service.priceTiers.at(0).patchValue({ maxCoursesPerAttendee: '8', allowedEventIds: ['changed'] });
+    await service.discardChanges();
+
+    expect(service.priceTiers.at(0).getRawValue()).toMatchObject({
+      restrictEventSelection: true,
+      allowedEventIds: ['event-direct', 'event-child-a', 'event-child-b', 'event-removed'],
+      customizeSubscriptionLimits: true,
+      maxCoursesPerAttendee: '0',
+      maxLecturesPerAttendee: '',
+      maxUncategorizedPerAttendee: '4',
+    });
+
+    service.priceTiers.at(0).patchValue({
+      includesEventRegistration: false,
+      restrictEventSelection: false,
+      customizeSubscriptionLimits: false,
+    });
+    await service.saveMajorEvent();
+
+    expect(lastPayload?.price?.tiers[0]).toMatchObject({
+      includesEventRegistration: false,
+      restrictEventSelection: false,
+      allowedEventIds: ['event-direct', 'event-child-a', 'event-child-b', 'event-removed'],
+      customizeSubscriptionLimits: false,
+      maxCoursesPerAttendee: 0,
+      maxLecturesPerAttendee: null,
+      maxUncategorizedPerAttendee: 4,
+    });
+  });
+
+  it('validates numeric tier limit model values and preserves zero and null unlimited values', async () => {
+    const tier = service.priceTiers.at(0);
+    tier.patchValue({
+      name: 'Estudante',
+      value: '30',
+      customizeSubscriptionLimits: true,
+      maxCoursesPerAttendee: -1,
+      maxLecturesPerAttendee: 1.5,
+      maxUncategorizedPerAttendee: 2_147_483_648,
+    });
+
+    await service.saveMajorEvent();
+
+    expect(api.createMajorEvent).not.toHaveBeenCalled();
+    expect(lastPayload).toBeNull();
+
+    tier.patchValue({
+      maxCoursesPerAttendee: 0,
+      maxLecturesPerAttendee: null,
+      maxUncategorizedPerAttendee: '4',
+    });
+    await service.saveMajorEvent();
+
+    expect(lastPayload?.price?.tiers[0]).toMatchObject({
+      maxCoursesPerAttendee: 0,
+      maxLecturesPerAttendee: null,
+      maxUncategorizedPerAttendee: 4,
+    });
+  });
+
+  it('loads every scoped direct event and keeps grouped activities selectable as complete units', async () => {
+    const majorEventId = 'major-event-1';
+    const directEventsFirstPage = Array.from({ length: 200 }, (_unused, index) =>
+      createAdminEvent({ id: `direct-${index}`, majorEventId, eventGroupId: null }),
+    );
+    const finalDirectEvent = createAdminEvent({ id: 'direct-last', majorEventId, eventGroupId: null });
+    const groupChildren = [
+      createAdminEvent({ id: 'group-child-a', majorEventId, eventGroupId: 'group-1' }),
+      createAdminEvent({ id: 'group-child-b', majorEventId, eventGroupId: 'group-1' }),
+    ];
+    eventApi.listEvents.mockImplementation((filters: { eventGroupId?: string; skip?: number }) => {
+      if (filters.eventGroupId === 'group-1') {
+        return of(groupChildren);
+      }
+      return filters.skip === 200 ? of([finalDirectEvent]) : of(directEventsFirstPage);
+    });
+    eventGroupApi.listEventGroups.mockReturnValue(
+      of([createAdminEventGroup({ id: 'group-1', name: 'Grupo de palestras', majorEventId })]),
+    );
+    service.selectedMajorEvent.set(createAdminMajorEventFromInput({ id: majorEventId }));
+
+    await service.loadPriceTierEventTargets();
+    const targets = service.priceTierEventTargets();
+    const groupTarget = targets.find((target) => target.kind === 'event-group');
+
+    expect(targets).toHaveLength(202);
+    expect(targets.some((target) => target.id === finalDirectEvent.id && target.kind === 'event')).toBe(true);
+    expect(groupTarget).toMatchObject({
+      id: 'group-1',
+      name: 'Grupo de palestras',
+      kind: 'event-group',
+      events: groupChildren,
+    });
+    expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId, isInGroup: false, skip: 0, take: 200 });
+    expect(eventApi.listEvents).toHaveBeenCalledWith({ majorEventId, isInGroup: false, skip: 200, take: 200 });
+    expect(eventApi.listEvents).toHaveBeenCalledWith({ eventGroupId: 'group-1', skip: 0, take: 200 });
+    expect(eventGroupApi.listEventGroups).toHaveBeenCalledWith({ majorEventId, skip: 0, take: 200 });
+
+    service.updateTierAllowedEventIds(0, ['group-1', finalDirectEvent.id]);
+    expect(service.priceTiers.at(0).controls.allowedEventIds.value).toEqual([
+      'group-child-a',
+      'group-child-b',
+      'direct-last',
+    ]);
+    expect(service.tierEventTargetSelection(service.priceTiers.at(0).controls.allowedEventIds.value)).toEqual([
+      'direct-last',
+      'group-1',
     ]);
   });
 });

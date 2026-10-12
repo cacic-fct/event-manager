@@ -26,16 +26,35 @@ const tiers = [
     includesEventRegistration: false,
     includesSportsRegistration: false,
   },
+  {
+    id: 'restricted',
+    name: 'Lista autorizada',
+    value: 3500,
+    includesEventRegistration: true,
+    includesSportsRegistration: false,
+    restrictEventSelection: true,
+    allowedEventIds: ['event'],
+  },
+  {
+    id: 'empty',
+    name: 'Sem eventos liberados',
+    value: 1000,
+    includesEventRegistration: true,
+    includesSportsRegistration: false,
+    restrictEventSelection: true,
+    allowedEventIds: [],
+  },
 ];
 
 async function setup(
   existingTier: string | null = null,
   single = false,
   subscriptionStatus = 'WAITING_RECEIPT_UPLOAD',
+  isPaymentRequired = true,
 ) {
   const majorEvent = createPublicMajorEvent({
     id: 'major',
-    isPaymentRequired: true,
+    isPaymentRequired,
     requiresImageLicenseAgreement: false,
     majorEventPrices: [{ id: 'price', type: 'TIERED', tiers: single ? [tiers[0]] : tiers }],
   });
@@ -132,11 +151,52 @@ describe('tier-first standard registration', () => {
     expect(fixture.nativeElement.querySelector('app-subscription-event-list')).toBeNull();
   });
 
+  it('ignores retained tier policies when payment is disabled on the major event', async () => {
+    const { component } = await setup('Lista autorizada', false, 'WAITING_RECEIPT_UPLOAD', false);
+
+    expect(component.selectedPriceTierName()).toBe('Lista autorizada');
+    expect(component.sortedEvents().map((item) => item.id)).toEqual(['event', 'automatic']);
+    expect(component.autoSelectedEventIds()).toEqual(new Set(['automatic']));
+    expect(component.policyPriceTier()).toBeNull();
+  });
+
   it('does not treat a confirmed participation-only tier as an editable sports subscription', async () => {
     const { component, upsert } = await setup('Participação', false, 'CONFIRMED');
     expect(component.confirmedSportsOnlySubscription()).toBe(false);
     component.flowPhase.set('selection');
     component.startSubscriptionFlow();
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('removes newly unavailable automatic events and preserves selected events still allowed by the tier', async () => {
+    const { component, event } = await setup();
+    component.selectPriceTier('Eventos');
+    component.continueFromTier();
+    component.toggleEvent(event);
+
+    expect(component.effectiveSelectedEventIds().has('automatic')).toBe(true);
+    expect(component.effectiveSelectedEventIds().has(event.id)).toBe(true);
+
+    component.selectPriceTier('Lista autorizada');
+
+    expect(component.sortedEvents().map((item) => item.id)).toEqual(['event']);
+    expect(component.autoSelectedEventIds()).toEqual(new Set());
+    expect(component.effectiveSelectedEventIds()).toEqual(new Set(['event']));
+  });
+
+  it('keeps an event-enabled tier with an empty whitelist from submitting an invalid empty selection', async () => {
+    const { component, upsert, loadForms, open } = await setup();
+    component.selectPriceTier('Sem eventos liberados');
+    component.continueFromTier();
+
+    expect(component.sortedEvents()).toEqual([]);
+    expect(component.autoSelectedEventIds()).toEqual(new Set());
+    expect(component.requiresEventChoice()).toBe(true);
+    expect(component.showingTierStep()).toBe(true);
+
+    component.startSubscriptionFlow();
+    expect(loadForms).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
     expect(upsert).not.toHaveBeenCalled();
   });
 

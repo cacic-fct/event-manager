@@ -201,6 +201,15 @@ export class Event {
     this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
     { initialValue: false },
   );
+  private readonly tierEventAllowed = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => (params.has('tierEventAllowed') ? params.get('tierEventAllowed') === 'true' : null)),
+    ),
+    { initialValue: null },
+  );
+  readonly unavailableInSelectedTier = computed(
+    () => this.isRegistrationEventDetail && this.tierEventAllowed() === false,
+  );
   private readonly imageLicenseAgreementFlowOpened = signal(false);
   private readonly subscriptionFlowDraft = signal<SubscriptionFlowDraft | null>(null);
 
@@ -636,7 +645,7 @@ export class Event {
   }
 
   canSubscribe(data: EventPageData): boolean {
-    if (data.preview) {
+    if (data.preview || this.unavailableInSelectedTier()) {
       return false;
     }
 
@@ -727,6 +736,10 @@ export class Event {
   }
 
   subscriptionStatusLine(data: EventPageData): string {
+    if (this.unavailableInSelectedTier()) {
+      return 'Este evento não está incluído na modalidade selecionada do grande evento.';
+    }
+
     if (!this.hasStandaloneSubscription(data.event)) {
       return '';
     }
@@ -1024,7 +1037,7 @@ export class Event {
   }
 
   hasStandaloneSubscription(event: PublicEvent): boolean {
-    return Boolean(event.allowSubscription) && !event.majorEventId;
+    return Boolean(event.allowSubscription) && !event.majorEventId && !event.eventGroup?.majorEventId;
   }
 
   private loadAvailableFormLinks(data: EventPageData): Observable<EventFormPageLink[]> {

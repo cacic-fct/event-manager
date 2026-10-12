@@ -55,6 +55,7 @@
   <app-subscription-tier-selection
     [majorEvent]="majorEvent"
     [tiers]="store.priceTiers()"
+    [events]="state.data.events"
     [selectedName]="store.selectedPriceTierName()"
     [busy]="store.isSubmitting() || store.isPreparingSubscriptionFlow() || store.currentUserSubscription() === undefined"
     [locked]="store.tierSelectionLocked()"
@@ -64,6 +65,9 @@
   && store.selectedPriceTier(); as tier) {
   <section class="selected-tier-summary" aria-label="Modalidade selecionada">
     <p><strong>{{ tier.name }}</strong>: {{ tier.value === 0 ? 'Gratuito' : (tier.value / 100 | currency: 'BRL') }}</p>
+    @for (summary of store.selectedTierRuleSummaries(); track summary) {
+    <p>{{ summary }}</p>
+    }
     <button matButton type="button" [disabled]="store.tierSelectionLocked()" (click)="returnToTier()">
       Alterar modalidade
     </button>

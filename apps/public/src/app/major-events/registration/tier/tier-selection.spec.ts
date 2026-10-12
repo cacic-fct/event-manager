@@ -40,6 +40,39 @@ describe('tier benefits', () => {
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('Inscrição no grande evento');
     expect(content).toContain('Gratuito');
-    expect(content).not.toMatch(/esport|torneio|não inclui/i);
+    expect(content).toContain('Esta modalidade não inclui inscrição em eventos.');
+    expect(content).not.toMatch(/esport|torneio/i);
+  });
+
+  it('explains an empty whitelist and displays custom zero and unlimited quotas', async () => {
+    await TestBed.configureTestingModule({ imports: [SubscriptionTierSelection] }).compileComponents();
+    const fixture = TestBed.createComponent(SubscriptionTierSelection);
+    fixture.componentRef.setInput('majorEvent', createPublicMajorEvent({ sportsTournament: null }));
+    fixture.componentRef.setInput('events', []);
+    fixture.componentRef.setInput('tiers', [
+      {
+        id: 'restricted',
+        name: 'Sem eventos',
+        value: 0,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds: [],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 0,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: 1,
+      },
+    ]);
+    fixture.componentRef.setInput('selectedName', 'Sem eventos');
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Esta modalidade não tem eventos disponíveis para seleção.');
+    expect(content).toContain('minicursos: não permitidos.');
+    expect(content).toContain('palestras: sem limite.');
+    expect(content).toContain('outros eventos: até 1.');
+    expect(content).toContain('Esta modalidade não tem eventos disponíveis. Escolha outra modalidade para continuar.');
+    expect((fixture.nativeElement.querySelector('button') as HTMLButtonElement).disabled).toBe(true);
   });
 });

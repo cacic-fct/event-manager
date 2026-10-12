@@ -57,6 +57,8 @@ const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
 
 const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_EVENT_FIELDS = `
   eventId
+  eventGroupId
+  eventGroupName
   eventName
   eventEmoji
   eventType

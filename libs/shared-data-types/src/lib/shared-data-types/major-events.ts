@@ -50,6 +50,24 @@ export class MajorEventPriceTier {
 
   @Field(() => Boolean)
   includesSportsRegistration!: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  restrictEventSelection?: boolean;
+
+  @Field(() => [String], { nullable: true })
+  allowedEventIds?: string[];
+
+  @Field(() => Boolean, { nullable: true })
+  customizeSubscriptionLimits?: boolean;
+
+  @Field(() => Int, { nullable: true })
+  maxCoursesPerAttendee?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  maxLecturesPerAttendee?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  maxUncategorizedPerAttendee?: number | null;
 }
 
 @ObjectType()

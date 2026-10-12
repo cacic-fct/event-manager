@@ -78,6 +78,12 @@ const MAJOR_EVENT_PRICE_SELECT = {
       value: true,
       includesEventRegistration: true,
       includesSportsRegistration: true,
+      restrictEventSelection: true,
+      allowedEventIds: true,
+      customizeSubscriptionLimits: true,
+      maxCoursesPerAttendee: true,
+      maxLecturesPerAttendee: true,
+      maxUncategorizedPerAttendee: true,
     },
     orderBy: {
       value: 'asc',
@@ -624,6 +630,12 @@ export class MajorEventsResolver {
                     value: tier.value,
                     includesEventRegistration: tier.includesEventRegistration,
                     includesSportsRegistration: false,
+                    restrictEventSelection: tier.restrictEventSelection,
+                    ...(tier.restrictEventSelection !== undefined ? { allowedEventIds: [] } : {}),
+                    customizeSubscriptionLimits: tier.customizeSubscriptionLimits,
+                    maxCoursesPerAttendee: tier.maxCoursesPerAttendee,
+                    maxLecturesPerAttendee: tier.maxLecturesPerAttendee,
+                    maxUncategorizedPerAttendee: tier.maxUncategorizedPerAttendee,
                   })),
                 }
               : undefined,
@@ -1073,6 +1085,12 @@ export class MajorEventsResolver {
 
     const tiers = this.buildPriceTierPayloads(input);
 
+    if (input.tiers.some((tier) => (tier.allowedEventIds?.length ?? 0) > 0)) {
+      throw new BadRequestException(
+        'Salve o grande evento e sua programação antes de escolher os eventos por faixa de preço.',
+      );
+    }
+
     if (tiers.some((tier) => tier.includesSportsRegistration)) {
       throw new BadRequestException(
         'Sports registration can only be included after a tournament is linked to the major event.',
@@ -1158,12 +1176,24 @@ export class MajorEventsResolver {
       requestedIds.length > 0
         ? await tx.priceTier.findMany({
             where: { id: { in: requestedIds }, priceId: price.id },
-            select: { id: true, name: true },
+            select: { id: true, name: true, restrictEventSelection: true, allowedEventIds: true },
           })
         : [];
     if (existingRequestedTiers.length !== requestedIds.length) {
       throw new BadRequestException('A price tier does not belong to this major event.');
     }
+
+    await this.validateTierEventSelection(tx, majorEventId, {
+      ...input,
+      tiers: input.tiers.map((tier) => {
+        const existing = existingRequestedTiers.find((entry) => entry.id === tier.id);
+        return {
+          ...tier,
+          restrictEventSelection: tier.restrictEventSelection ?? existing?.restrictEventSelection ?? false,
+          allowedEventIds: tier.allowedEventIds ?? existing?.allowedEventIds ?? [],
+        };
+      }),
+    });
 
     const requestedTierNames = new Map(
       input.tiers.flatMap((tier, index) => (tier.id ? [[tier.id, tiers[index].name] as const] : [])),
@@ -1338,11 +1368,81 @@ export class MajorEventsResolver {
     }
   }
 
+  private async validateTierEventSelection(
+    tx: Prisma.TransactionClient,
+    majorEventId: string,
+    input: MajorEventPriceInput,
+  ): Promise<void> {
+    const eventIds = [
+      ...new Set(
+        input.tiers
+          .filter((tier) => tier.restrictEventSelection)
+          .flatMap((tier) => tier.allowedEventIds ?? [])
+          .map((id) => id.trim()),
+      ),
+    ];
+    if (eventIds.length === 0) {
+      return;
+    }
+    const events = await tx.event.findMany({
+      where: {
+        deletedAt: null,
+        sportsMatch: { is: null },
+        OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
+      },
+      select: { id: true, eventGroupId: true },
+    });
+    const eventIdSet = new Set(events.map((event) => event.id));
+    if (eventIds.some((id) => !eventIdSet.has(id))) {
+      throw new BadRequestException(
+        'Os eventos disponíveis por faixa de preço devem pertencer à programação deste grande evento.',
+      );
+    }
+    for (const tier of input.tiers) {
+      if (!tier.restrictEventSelection) {
+        continue;
+      }
+      const allowedIds = new Set((tier.allowedEventIds ?? []).map((id) => id.trim()));
+      const selectedGroups = new Set(
+        events.filter((event) => allowedIds.has(event.id) && event.eventGroupId).map((event) => event.eventGroupId),
+      );
+      const hasIncompleteGroup = events.some(
+        (event) => event.eventGroupId && selectedGroups.has(event.eventGroupId) && !allowedIds.has(event.id),
+      );
+      if (hasIncompleteGroup) {
+        throw new BadRequestException('Selecione todos os eventos de cada grupo nas regras da faixa de preço.');
+      }
+    }
+  }
+
   private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {
+    for (const tier of input.tiers) {
+      const limits = [tier.maxCoursesPerAttendee, tier.maxLecturesPerAttendee, tier.maxUncategorizedPerAttendee];
+      for (const limit of limits) {
+        if (limit != null && (!Number.isInteger(limit) || limit < 0 || limit > 2147483647)) {
+          throw new BadRequestException('Os limites por faixa de preço devem ser números inteiros não negativos.');
+        }
+      }
+      if (tier.allowedEventIds?.some((id) => !id.trim())) {
+        throw new BadRequestException('Os identificadores dos eventos disponíveis não podem estar vazios.');
+      }
+    }
     const tiers = input.tiers.map((tier) => ({
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
       includesEventRegistration: tier.includesEventRegistration !== false,
+      ...(tier.restrictEventSelection != null ? { restrictEventSelection: tier.restrictEventSelection } : {}),
+      ...(tier.allowedEventIds != null
+        ? { allowedEventIds: [...new Set(tier.allowedEventIds.map((id) => id.trim()))] }
+        : {}),
+      ...(tier.customizeSubscriptionLimits != null
+        ? { customizeSubscriptionLimits: tier.customizeSubscriptionLimits }
+        : {}),
+      ...(tier.maxCoursesPerAttendee !== undefined ? { maxCoursesPerAttendee: tier.maxCoursesPerAttendee } : {}),
+      ...(tier.maxLecturesPerAttendee !== undefined ? { maxLecturesPerAttendee: tier.maxLecturesPerAttendee } : {}),
+      ...(tier.maxUncategorizedPerAttendee !== undefined
+        ? { maxUncategorizedPerAttendee: tier.maxUncategorizedPerAttendee }
+        : {}),
       ...(tier.includesSportsRegistration != null
         ? { includesSportsRegistration: tier.includesSportsRegistration }
         : {}),

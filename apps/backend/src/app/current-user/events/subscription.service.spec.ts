@@ -173,6 +173,27 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
+  it('blocks a direct subscription when the event group supplies the effective major-event parent', async () => {
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'event-1',
+          majorEventId: null,
+          eventGroupId: 'group-1',
+          eventGroup: { majorEventId: 'major-1' },
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(service.subscribeCurrentUserEvent('person-1', 'event-1')).rejects.toThrow(
+      'belongs to major event major-1',
+    );
+  });
+
   it('allows an existing user to accept an image-license agreement after a standalone event has started', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-16T12:00:00.000Z'));
 
@@ -515,6 +536,33 @@ describe('CurrentUserEventSubscriptionService', () => {
       },
       select: expect.any(Object),
     });
+  });
+
+  it('blocks a group subscription when its event records inherit the major-event parent from the group', async () => {
+    const tx = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'event-1',
+            majorEventId: null,
+            eventGroupId: 'group-1',
+            eventGroup: { majorEventId: 'major-1' },
+          },
+        ]),
+      },
+      eventGroupSubscription: { findFirst: jest.fn(), create: jest.fn() },
+      eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const prisma = {
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(service.subscribeCurrentUserEventGroup('person-1', 'group-1')).rejects.toThrow(
+      'belongs to major event major-1',
+    );
+
+    expect(tx.eventGroupSubscription.create).not.toHaveBeenCalled();
   });
 
   it('enforces subscription-flow forms for every event subscribed through an event group', async () => {

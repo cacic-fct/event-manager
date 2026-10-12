@@ -22,6 +22,267 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
     );
   });
 
+  it('applies and persists the selected import tier when tier rules are enabled', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValue(personMatch('person-1'));
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['event-1'],
+            },
+          ],
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    await resolver.importMajorEventSubscriptionsFromCsv(
+      {
+        majorEventId: 'major-1',
+        subscriptionStatus: 'CONFIRMED',
+        paymentTier: ' aluno ',
+        csvContent: 'email,events\nada@example.com,event-1',
+        columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+      } as MajorEventSubscriptionCsvImportInput,
+      { req: { user: { sub: 'admin-1' } } } as never,
+    );
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ paymentTier: 'Aluno' }),
+      }),
+    );
+    expect(tx.majorEventSubscriptionEventSelection.createMany).toHaveBeenCalledWith({
+      data: [{ subscriptionId: 'subscription-1', eventId: 'event-1', createdById: 'admin-1' }],
+    });
+  });
+
+  it('reports missing-tier rows without creating subscriptions', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValue(personMatch('person-1'));
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['event-1'],
+            },
+          ],
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          csvContent: 'email,events\nada@example.com,event-1',
+          columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+        } as MajorEventSubscriptionCsvImportInput,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        failedCount: 1,
+        failedRows: [expect.stringContaining('política de inscrição válida')],
+      }),
+    );
+    expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
+    expect(tx.eventSubscription.createMany).not.toHaveBeenCalled();
+  });
+
+  it('preserves the existing tier during an import without an explicit tier', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValue(personMatch('person-1'));
+    tx.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1', paymentTier: 'Aluno' });
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['event-1'],
+            },
+          ],
+        },
+      ],
+    });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    await resolver.importMajorEventSubscriptionsFromCsv(
+      {
+        majorEventId: 'major-1',
+        subscriptionStatus: 'CONFIRMED',
+        csvContent: 'email,events\nada@example.com,event-1',
+        columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+      } as MajorEventSubscriptionCsvImportInput,
+      { req: { user: { sub: 'admin-1' } } } as never,
+    );
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { subscriptionStatus: 'CONFIRMED', paymentTier: 'Aluno' },
+      }),
+    );
+  });
+
+  it('keeps valid people in a CSV import when another selection is disallowed', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValueOnce(personMatch('person-1')).mockResolvedValueOnce(personMatch('person-2'));
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['event-1'],
+            },
+          ],
+        },
+      ],
+    });
+    tx.event.findMany.mockResolvedValue([
+      { id: 'event-1', type: 'MINICURSO', eventGroupId: null },
+      { id: 'event-2', type: 'MINICURSO', eventGroupId: null },
+    ]);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          paymentTier: 'Aluno',
+          csvContent: 'email,events\nada@example.com,event-1\ngrace@example.com,event-2',
+          columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+        } as MajorEventSubscriptionCsvImportInput,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        createdSubscriptionCount: 1,
+        failedCount: 1,
+        failedRows: [expect.stringContaining('Linha 3:')],
+      }),
+    );
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retain a newly imported person when combined rows exceed the tier quota', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(personMatch('new-person'));
+    tx.people.create.mockResolvedValue(personMatch('new-person'));
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              customizeSubscriptionLimits: true,
+              maxCoursesPerAttendee: 1,
+            },
+          ],
+        },
+      ],
+    });
+    tx.event.findMany.mockResolvedValue([
+      { id: 'event-1', type: 'MINICURSO', eventGroupId: null },
+      { id: 'event-2', type: 'MINICURSO', eventGroupId: null },
+    ]);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          paymentTier: 'Aluno',
+          csvContent: 'email,events\nada@example.com,event-1\nada@example.com,event-2',
+          columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+        } as MajorEventSubscriptionCsvImportInput,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        createdSubscriptionCount: 0,
+        createdPeopleCount: 0,
+        createdPeople: [],
+        failedCount: 2,
+      }),
+    );
+    expect(tx.people.delete).toHaveBeenCalledWith({ where: { id: 'new-person' } });
+    expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
+  });
+
+  it('validates grouped event selections after combining rows for a new person', async () => {
+    prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
+    const tx = createTx();
+    tx.people.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(personMatch('new-person'));
+    tx.people.create.mockResolvedValue(personMatch('new-person'));
+    tx.majorEvent.findFirst.mockResolvedValue({
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: ['event-1', 'event-2'],
+            },
+          ],
+        },
+      ],
+    });
+    tx.event.findMany.mockResolvedValue([
+      { id: 'event-1', type: 'MINICURSO', eventGroupId: 'group-1' },
+      { id: 'event-2', type: 'MINICURSO', eventGroupId: 'group-1' },
+    ]);
+    tx.eventSubscription.createMany.mockResolvedValue({ count: 2 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.importMajorEventSubscriptionsFromCsv(
+        {
+          majorEventId: 'major-1',
+          subscriptionStatus: 'CONFIRMED',
+          paymentTier: 'Aluno',
+          csvContent: 'email,events\nada@example.com,event-1\nada@example.com,event-2',
+          columnMapping: { emailHeader: 'email', subscribedEventIdsHeader: 'events' },
+        } as MajorEventSubscriptionCsvImportInput,
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        createdPeopleCount: 1,
+        createdSubscriptionCount: 1,
+        failedCount: 0,
+        failedRows: [],
+      }),
+    );
+
+    expect(tx.people.create).toHaveBeenCalledTimes(1);
+    expect(tx.people.delete).not.toHaveBeenCalled();
+    expect(tx.eventSubscription.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ eventId: 'event-1', personId: 'new-person' }),
+        expect.objectContaining({ eventId: 'event-2', personId: 'new-person' }),
+      ],
+    });
+  });
+
   it('requires subscription import permission for CSV subscription imports', () => {
     expect(
       Reflect.getMetadata(
@@ -145,6 +406,7 @@ describe('MajorEventSubscriptionCsvImportResolver', () => {
     tx.people.findFirst.mockResolvedValue(personMatch('person-1'));
     tx.majorEventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1', subscriptionStatus: 'CONFIRMED' });
     tx.eventSubscription.findMany.mockResolvedValue([{ eventId: 'event-1' }]);
+    tx.majorEventSubscriptionEventSelection.findMany.mockResolvedValue([{ eventId: 'event-1' }]);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
@@ -222,20 +484,29 @@ function createPrisma() {
     people: {
       findFirst: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
     },
   };
 }
 
 function createTx() {
   return {
+    majorEvent: { findFirst: jest.fn().mockResolvedValue({ majorEventPrices: [] } as unknown) },
+    event: { findMany: jest.fn().mockResolvedValue([{ id: 'event-1', type: 'MINICURSO', eventGroupId: null }]) },
     people: {
       findFirst: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
     },
     majorEventSubscription: {
       findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'subscription-1' }),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    majorEventSubscriptionEventSelection: {
+      findMany: jest.fn().mockResolvedValue([]),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     eventSubscription: {

@@ -65,6 +65,12 @@ describe('MajorEventApiService', () => {
       id: 'major-1',
       input: { name: 'Editado' },
     });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('allowedEventIds'), {
+      id: 'major-detail',
+    });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('customizeSubscriptionLimits'), {
+      id: 'major-detail',
+    });
   });
 });
 

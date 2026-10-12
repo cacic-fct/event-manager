@@ -260,6 +260,8 @@ describe('EventSubscriptionsResolver', () => {
           {
             id: 'event-1',
             name: 'Abertura',
+            eventGroupId: 'group-1',
+            eventGroup: { name: 'Grupo de palestras' },
             startDate: firstEventStartDate,
             endDate: new Date(firstEventStartDate.getTime() + 60 * 60 * 1000),
             emoji: '🎓',
@@ -311,11 +313,15 @@ describe('EventSubscriptionsResolver', () => {
         events: [
           expect.objectContaining({
             eventId: 'event-1',
+            eventGroupId: 'group-1',
+            eventGroupName: 'Grupo de palestras',
             subscribed: true,
             isLecturerSubscription: false,
           }),
           expect.objectContaining({
             eventId: 'event-2',
+            eventGroupId: null,
+            eventGroupName: null,
             subscribed: false,
             isLecturerSubscription: true,
           }),
@@ -365,6 +371,8 @@ describe('EventSubscriptionsResolver', () => {
             id: 'event-1',
             name: 'Abertura',
             startDate,
+            eventGroupId: 'group-1',
+            eventGroup: { name: 'Grupo de palestras' },
             endDate,
             emoji: '🎓',
             type: 'PALESTRA',
@@ -392,6 +400,8 @@ describe('EventSubscriptionsResolver', () => {
       expect.objectContaining({
         eventId: 'event-1',
         eventName: 'Abertura',
+        eventGroupId: 'group-1',
+        eventGroupName: 'Grupo de palestras',
         eventEmoji: '🎓',
         eventType: 'PALESTRA',
         eventShortDescription: 'Recepção',
@@ -704,6 +714,7 @@ describe('EventSubscriptionsResolver', () => {
       createdAt,
     });
     const tx = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ majorEventPrices: [] }) },
       majorEventSubscription: {
         create: jest.fn().mockResolvedValue(majorEventSubscription),
       },
@@ -793,7 +804,7 @@ describe('EventSubscriptionsResolver', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           id: { in: ['event-1', 'event-2'] },
-          majorEventId: 'major-1',
+          OR: [{ majorEventId: 'major-1' }, { eventGroup: { majorEventId: 'major-1', deletedAt: null } }],
           deletedAt: null,
         }),
       }),
@@ -859,6 +870,7 @@ describe('EventSubscriptionsResolver', () => {
       paymentTier: 'Lote 2',
     });
     const tx = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ majorEventPrices: [] }) },
       majorEventSubscription: {
         findUnique: jest
           .fn()

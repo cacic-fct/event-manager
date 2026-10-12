@@ -73,6 +73,12 @@ export class CurrentUserEventMapperService {
           value: tier.value,
           includesEventRegistration: tier.includesEventRegistration ?? true,
           includesSportsRegistration: tier.includesSportsRegistration,
+          restrictEventSelection: tier.restrictEventSelection ?? false,
+          allowedEventIds: tier.allowedEventIds ?? [],
+          customizeSubscriptionLimits: tier.customizeSubscriptionLimits ?? false,
+          maxCoursesPerAttendee: tier.maxCoursesPerAttendee,
+          maxLecturesPerAttendee: tier.maxLecturesPerAttendee,
+          maxUncategorizedPerAttendee: tier.maxUncategorizedPerAttendee,
         })),
       })),
       sportsTournament:

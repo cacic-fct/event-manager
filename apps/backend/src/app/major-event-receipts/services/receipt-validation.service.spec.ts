@@ -44,6 +44,66 @@ describe('ReceiptValidationService', () => {
     );
   });
 
+  it('does not approve a receipt whose stored events violate the current tier', async () => {
+    tx.majorEventSubscription.findUnique.mockResolvedValue({ ...createSubscription(), paymentTier: 'Aluno' } as never);
+    tx.majorEvent.findFirst.mockResolvedValue({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: [],
+            },
+          ],
+        },
+      ],
+    });
+    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(
+      'não é permitido',
+    );
+    expect(tx.majorEventReceiptValidationAction.create).not.toHaveBeenCalled();
+    expect(tx.majorEventSubscription.update).not.toHaveBeenCalled();
+    expect(sync.syncConfirmedEventSubscriptions).not.toHaveBeenCalled();
+  });
+
+  it('does not undo a rejection into a confirmation that violates the current tier', async () => {
+    tx.majorEvent.findFirst.mockResolvedValue({
+      isPaymentRequired: true,
+      majorEventPrices: [
+        {
+          tiers: [
+            {
+              name: 'Aluno',
+              restrictEventSelection: true,
+              allowedEventIds: [],
+            },
+          ],
+        },
+      ],
+    });
+    tx.majorEventReceiptValidationAction.findUnique.mockResolvedValue({
+      id: 'action-1',
+      subscriptionId: 'subscription-1',
+      receiptId: 'receipt-1',
+      previousStatus: SubscriptionStatus.CONFIRMED,
+      nextStatus: SubscriptionStatus.REJECTED_INVALID_RECEIPT,
+      undoneAt: null,
+      subscription: {
+        majorEventId: 'major-1',
+        personId: 'person-1',
+        paymentTier: 'Aluno',
+        subscriptionStatus: SubscriptionStatus.REJECTED_INVALID_RECEIPT,
+        selectedEvents: [{ eventId: 'event-1' }],
+        receipts: [{ id: 'receipt-1' }],
+      },
+    });
+    await expect(service.undoValidationAction('action-1', user)).rejects.toThrow('não é permitido');
+    expect(tx.majorEventSubscription.update).not.toHaveBeenCalled();
+    expect(sync.syncConfirmedEventSubscriptions).not.toHaveBeenCalled();
+  });
+
   it('approves a direct-selection receipt and syncs confirmed event subscriptions', async () => {
     await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).resolves.toEqual({
       actionId: 'action-1',
@@ -209,6 +269,8 @@ describe('ReceiptValidationService', () => {
 
 function createTx() {
   return {
+    majorEvent: { findFirst: jest.fn().mockResolvedValue({ majorEventPrices: [] } as unknown) },
+    event: { findMany: jest.fn().mockResolvedValue([{ id: 'event-1', type: 'MINICURSO', eventGroupId: null }]) },
     majorEventSubscription: {
       findUnique: jest.fn().mockResolvedValue(createSubscription()),
       update: jest.fn(),

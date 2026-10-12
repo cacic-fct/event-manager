@@ -190,6 +190,12 @@ export const MAJOR_EVENT_LIST_FIELDS = `
       value
       includesEventRegistration
       includesSportsRegistration
+      restrictEventSelection
+      allowedEventIds
+      customizeSubscriptionLimits
+      maxCoursesPerAttendee
+      maxLecturesPerAttendee
+      maxUncategorizedPerAttendee
     }
   }
 `;
@@ -255,6 +261,12 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
       value
       includesEventRegistration
       includesSportsRegistration
+      restrictEventSelection
+      allowedEventIds
+      customizeSubscriptionLimits
+      maxCoursesPerAttendee
+      maxLecturesPerAttendee
+      maxUncategorizedPerAttendee
     }
   }
   deletedAt

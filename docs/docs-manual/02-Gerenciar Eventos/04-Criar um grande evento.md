@@ -55,3 +55,18 @@ Na criação do evento, você precisará indicar um grande evento já existente.
 - **Preço único**
 - **Preços por tipos**
  - Se definido, os participantes deverão escolher um tipo ao se inscrever, e o preço do grande evento será o preço definido para o tipo escolhido.
+
+### Regras de inscrição por faixa de preço
+
+Em **Configuração do grande evento → Preços**, cada faixa oferece duas opções independentes, desativadas por padrão:
+
+- **Limitar as atividades disponíveis para este preço:** permite escolher os eventos e grupos disponíveis para quem selecionar essa faixa. Salve o grande evento e cadastre sua programação antes de configurar essa opção. Os grupos são liberados como uma unidade, com todos os eventos que os compõem. Nenhuma atividade selecionada significa que a faixa não oferece atividades para inscrição.
+- **Personalizar limites de inscrição desta faixa:** substitui os limites gerais de minicursos, palestras e outras atividades. Deixe um campo em branco para permitir inscrições sem limite nessa categoria; use **0** para impedir inscrições nessa categoria. Os limites podem ser maiores ou menores que os limites gerais.
+
+Com as opções desativadas, a faixa mantém as atividades e os limites gerais do grande evento. A seleção e os limites salvos ficam guardados para uma eventual reativação. Faixas que não incluem inscrição em eventos não oferecem essas atividades, mesmo que tenham regras salvas.
+
+As regras valem para a inscrição tradicional, a inscrição por preferência e as inscrições feitas pelo painel administrativo. Atividades automáticas permitidas também contam para o limite; configure um limite que comporte todas as atividades obrigatórias disponíveis na faixa.
+
+Ao importar inscrições por CSV, escolha a faixa de preço aplicável ao arquivo quando houver regras por faixa. Quando nenhuma faixa é informada, a importação preserva a faixa das inscrições existentes. Novas inscrições precisam de uma faixa válida se houver regras por faixa.
+
+Salvar novas regras não cancela automaticamente inscrições existentes. Ao alterar a faixa ou a seleção de atividades de uma inscrição, o sistema verifica as regras atuais. Ao copiar um grande evento com regras de atividades, a nova faixa mantém a restrição com a seleção vazia: escolha a programação do novo grande evento antes de abrir as inscrições.

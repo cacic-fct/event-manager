@@ -26,7 +26,7 @@ export class EventSubscriptionSyncService {
         personId,
         deletedAt: null,
         event: {
-          majorEventId,
+          OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
           deletedAt: null,
         },
       },

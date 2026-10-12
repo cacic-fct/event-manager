@@ -7,6 +7,7 @@ import { parseDateOnly } from '@cacic-fct/shared-utils';
 import { of } from 'rxjs';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
+import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import {
@@ -124,6 +125,7 @@ describe('workspace subscription and attendance management integration', () => {
             getEvent: vi.fn(),
           },
         },
+        { provide: EventGroupApiService, useValue: { listEventGroups: vi.fn(() => of([])) } },
         { provide: PeopleApiService, useValue: { listPeopleSummaries: vi.fn(() => of([])) } },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackbar },

@@ -209,6 +209,199 @@ describe('RankedMajorEventSubscription', () => {
     expect(store.subscriptionFormFlow()).toBeNull();
   });
 
+  it('drops unavailable automatic events and keeps complete groups allowed by the new tier', () => {
+    const majorEvent = paidMajorEvent([
+      {
+        id: 'all',
+        name: 'Todos',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'group-only',
+        name: 'Trilha Web',
+        value: 2500,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds: ['event-2', 'event-3'],
+      },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    store.selectPriceTier('Todos');
+    store.toggleEvent(eventFixtures[1] as PublicEvent);
+    expect(store.effectiveSelectedEventIds()).toEqual(new Set(['event-1', 'event-2', 'event-3']));
+
+    store.selectPriceTier('Trilha Web');
+
+    expect(store.sortedEvents().map((event) => event.id)).toEqual(['event-2', 'event-3']);
+    expect(store.autoSelectedEventIds()).toEqual(new Set());
+    expect(store.effectiveSelectedEventIds()).toEqual(new Set(['event-2', 'event-3']));
+    expect(store.rankingItems().map((item) => item.label)).toEqual(['Trilha Web']);
+  });
+
+  it('normalizes ranked category choices to tier quotas and available event counts', () => {
+    const additionalEvents = [
+      ...eventFixtures,
+      {
+        id: 'event-4',
+        name: 'Palestra de teste',
+        emoji: '🎤',
+        type: 'PALESTRA',
+        startDate: '2026-06-02T12:00:00.000Z',
+        endDate: '2026-06-02T13:00:00.000Z',
+        majorEventId: 'major-1',
+        eventGroupId: null,
+        autoSubscribe: false,
+        allowSubscription: true,
+        queueCount: 0,
+      },
+    ] as PublicEvent[];
+    const majorEvent = paidMajorEvent([
+      {
+        id: 'base',
+        name: 'Global',
+        value: 2500,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'rules',
+        name: 'Limites por categoria',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 0,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+    ]);
+    flushInitialRequests(http, majorEvent, additionalEvents);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+    store.desiredLectures.set(8);
+    store.selectPriceTier('Limites por categoria');
+
+    expect(store.courseOptions()).toEqual([0]);
+    expect(store.lectureOptions()).toEqual([0, 1]);
+    expect(store.uncategorizedOptions()).toEqual([1]);
+    expect(store.desiredLectures()).toBe(1);
+  });
+
+  it('counts every member of a restricted mixed-automatic group against ranked minimums and caps', () => {
+    const eventsWithMixedAutomaticGroup = eventFixtures.map((event) =>
+      event.id === 'event-2' ? ({ ...event, autoSubscribe: true } as PublicEvent) : (event as PublicEvent),
+    );
+    const majorEvent = paidMajorEvent([
+      {
+        id: 'capacity-two',
+        name: 'Duas vagas',
+        value: 3000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds: ['event-2', 'event-3'],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 2,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+      {
+        id: 'capacity-one',
+        name: 'Uma vaga',
+        value: 2500,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds: ['event-2', 'event-3'],
+        customizeSubscriptionLimits: true,
+        maxCoursesPerAttendee: 1,
+        maxLecturesPerAttendee: null,
+        maxUncategorizedPerAttendee: null,
+      },
+    ]);
+    flushInitialRequests(http, majorEvent, eventsWithMixedAutomaticGroup);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+    store.selectPriceTier('Duas vagas');
+
+    expect(store.autoSelectedEventIds()).toEqual(new Set(['event-2', 'event-3']));
+    expect(store.courseOptions()).toEqual([2]);
+    expect(store.desiredCourses()).toBe(2);
+    expect(store.rankingItems()).toEqual([]);
+    expect(store.notWantedItems()).toEqual([]);
+    expect(store.automaticSelectionErrors()).toEqual([]);
+
+    store.selectPriceTier('Uma vaga');
+
+    expect(store.courseOptions()).toEqual([2]);
+    expect(store.desiredCourses()).toBe(2);
+    expect(store.automaticSelectionErrors()).toHaveLength(1);
+  });
+
+  it('ignores saved tier policies for unpaid major events', () => {
+    const eventsWithMixedAutomaticGroup = eventFixtures.map((event) =>
+      event.id === 'event-2' ? ({ ...event, autoSubscribe: true } as PublicEvent) : (event as PublicEvent),
+    );
+    const majorEvent: PublicMajorEvent = {
+      ...paidMajorEvent([
+        {
+          id: 'restricted',
+          name: 'Restrita',
+          value: 0,
+          includesEventRegistration: true,
+          includesSportsRegistration: false,
+          restrictEventSelection: true,
+          allowedEventIds: ['event-2', 'event-3'],
+        },
+      ]),
+      isPaymentRequired: false,
+    };
+    flushInitialRequests(http, majorEvent, eventsWithMixedAutomaticGroup);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    expect(store.selectedPriceTierName()).toBe('Restrita');
+    expect(store.policyPriceTier()).toBeNull();
+    expect(store.sortedEvents().map((event) => event.id)).toEqual(eventFixtures.map((event) => event.id));
+    expect(store.autoSelectedEventIds()).toEqual(new Set(['event-1', 'event-2']));
+  });
+
+  it('blocks an event-enabled tier with an empty whitelist from submitting an invalid empty selection', () => {
+    const majorEvent = paidMajorEvent([
+      {
+        id: 'empty',
+        name: 'Sem eventos liberados',
+        value: 1000,
+        includesEventRegistration: true,
+        includesSportsRegistration: false,
+        restrictEventSelection: true,
+        allowedEventIds: [],
+      },
+    ]);
+    flushInitialRequests(http, majorEvent);
+    fixture.detectChanges();
+    const store = fixture.debugElement.injector.get(RankedSubscriptionStore);
+
+    expect(store.sortedEvents()).toEqual([]);
+    component.continueFromTier();
+    expect(component.showingTierStep()).toBe(true);
+    store.submit();
+    expect(
+      http.match(
+        (request) =>
+          request.url === '/api/graphql' &&
+          typeof request.body === 'object' &&
+          String(request.body?.query).includes('UpsertCurrentUserRankedMajorEventSubscription'),
+      ),
+    ).toHaveLength(0);
+  });
+
   it.each([true, false])(
     'submits an empty ranked selection with sports access %s',
     async (includesSportsRegistration) => {
@@ -491,12 +684,20 @@ describe('RankedMajorEventSubscription', () => {
   });
 });
 
-function flushInitialRequests(http: HttpTestingController, majorEvent: PublicMajorEvent = majorEventFixture): void {
-  flushPageRequest(http, majorEvent);
+function flushInitialRequests(
+  http: HttpTestingController,
+  majorEvent: PublicMajorEvent = majorEventFixture,
+  events: PublicEvent[] = eventFixtures as PublicEvent[],
+): void {
+  flushPageRequest(http, majorEvent, events);
   flushCurrentSubscriptionRequest(http);
 }
 
-function flushPageRequest(http: HttpTestingController, majorEvent: PublicMajorEvent = majorEventFixture): void {
+function flushPageRequest(
+  http: HttpTestingController,
+  majorEvent: PublicMajorEvent = majorEventFixture,
+  events: PublicEvent[] = eventFixtures as PublicEvent[],
+): void {
   const pageRequest = http.expectOne(
     (request) =>
       request.url === '/api/graphql' &&
@@ -507,8 +708,8 @@ function flushPageRequest(http: HttpTestingController, majorEvent: PublicMajorEv
     data: {
       publicMajorEventSubscriptionPage: {
         majorEvent,
-        events: eventFixtures,
-        subscriptionSummaries: eventFixtures.map((event) => ({ eventId: event.id, hasAvailableSlots: true })),
+        events,
+        subscriptionSummaries: events.map((event) => ({ eventId: event.id, hasAvailableSlots: true })),
       },
     },
   });

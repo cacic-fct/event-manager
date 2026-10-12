@@ -1,3 +1,4 @@
+import { getTierSelectableEventIds } from '@cacic-fct/shared-event-participation';
 import { IncludePastParticipation } from '../audiences/past-participation.decorator';
 import { Args, Context, Int, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { NotFoundException, UseGuards } from '@nestjs/common';
@@ -565,7 +566,12 @@ export class PublicEventsResolver {
       }),
       this.prisma.event.findMany({
         where: {
-          AND: [this.publicSlotSummaryEventWhere(now), { majorEventId }],
+          AND: [
+            publicRegularSubscriptionEventWhere(now),
+            {
+              OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
+            },
+          ],
         },
         select: PUBLIC_EVENT_SELECT,
         orderBy: {
@@ -580,8 +586,34 @@ export class PublicEventsResolver {
 
     const subscribedPeopleCount = await this.countSubscribedPeopleByEventId(events.map((event) => event.id));
 
+    const publicMajorEvent = mapPublicMajorEvent(majorEvent);
+    if (
+      majorEvent.isPaymentRequired &&
+      publicMajorEvent.majorEventPrices.some((price) => price.tiers.some((tier) => tier.restrictEventSelection))
+    ) {
+      const groupUniverse = await this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          OR: [{ majorEventId }, { eventGroup: { majorEventId, deletedAt: null } }],
+        },
+        select: { id: true, eventGroupId: true },
+      });
+      // Public choices must hide groups with members outside the participant's visible program.
+      publicMajorEvent.majorEventPrices = publicMajorEvent.majorEventPrices.map((price) => ({
+        ...price,
+        tiers: price.tiers.map((tier) =>
+          tier.restrictEventSelection
+            ? {
+                ...tier,
+                allowedEventIds: [...getTierSelectableEventIds(events, tier, groupUniverse)],
+              }
+            : tier,
+        ),
+      }));
+    }
+
     return {
-      majorEvent: mapPublicMajorEvent(majorEvent),
+      majorEvent: publicMajorEvent,
       events,
       subscriptionSummaries: events.map((event) =>
         this.mapPublicEventSubscriptionSummary(event, subscribedPeopleCount.get(event.id) ?? 0),
@@ -607,19 +639,6 @@ export class PublicEventsResolver {
 
   async getPublicEventSubscriptionPagePayload(majorEventId: string): Promise<PublicMajorEventSubscriptionPage> {
     return this.publicMajorEventSubscriptionPage(majorEventId);
-  }
-
-  private publicSlotSummaryEventWhere(now: Date): Prisma.EventWhereInput {
-    return {
-      AND: [
-        publicRegularSubscriptionEventWhere(now),
-        {
-          majorEventId: {
-            not: null,
-          },
-        },
-      ],
-    };
   }
 
   private getLecturerProfileLoader(context?: PublicEventsGraphqlContext): PublicEventLecturerProfileLoader {
