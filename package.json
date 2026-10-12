@@ -19,7 +19,7 @@
     "test:attendance-access-migration": "node --test tools/attendance-access-migration.test.mts",
     "test:ticketing:database": "node tools/run-ticketing-database-tests.mjs",
     "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json",
-    "prepare": "node .husky/install.mjs",
+    "prepare": "node -e \"if (require('node:fs').existsSync('.git')) import('./.husky/install.mjs')\"",
     "format:staged": "node node_modules/lint-staged/bin/lint-staged.js"
   },
   "nx": {
