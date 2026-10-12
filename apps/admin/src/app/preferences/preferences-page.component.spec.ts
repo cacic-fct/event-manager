@@ -86,7 +86,7 @@ describe('PreferencesPageComponent', () => {
     );
     expect(component.personalGoogleCalendarUrl()).toBe(
       `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
-        new URL('/api/calendar/admin/feeds/admin-key.ics', document.baseURI).toString(),
+        new URL('/api/calendar/admin/feeds/admin-key.ics', document.baseURI).toString().replace(/^https?:/, 'webcal:'),
       )}`,
     );
     expect(
@@ -116,6 +116,7 @@ describe('PreferencesPageComponent', () => {
     const { component } = await createComponent();
 
     expect(component.personalFeedUrl()).toBeNull();
+    expect(component.personalGoogleCalendarUrl()).toBeNull();
   });
 
   it('loads only the shared feed for super-admin users', async () => {
@@ -130,7 +131,9 @@ describe('PreferencesPageComponent', () => {
     );
     expect(component.superAdminGoogleCalendarUrl()).toBe(
       `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
-        new URL('/api/calendar/admin/super-admin/super-key.ics', document.baseURI).toString(),
+        new URL('/api/calendar/admin/super-admin/super-key.ics', document.baseURI)
+          .toString()
+          .replace(/^https?:/, 'webcal:'),
       )}`,
     );
   });

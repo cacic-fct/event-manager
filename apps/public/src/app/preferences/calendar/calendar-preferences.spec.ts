@@ -80,9 +80,31 @@ describe('CalendarPreferences', () => {
     expect(component.feedUrl()).toBe(new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString());
     expect(component.googleCalendarUrl()).toBe(
       `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(
-        new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString(),
+        new URL('/api/calendar/feeds/user-key.ics', document.baseURI).toString().replace(/^https?:/, 'webcal:'),
       )}`,
     );
+  });
+
+  it.each(['https', 'http'])('builds a webcal subscription from a %s feed without losing URL data', async (scheme) => {
+    const feedUrl = `${scheme}://calendar.example.test:8443/api/calendar/feeds/key%2Bvalue.ics?name=A%26B&lang=pt-BR`;
+    api.getSettings.mockReturnValueOnce(of(settingsFixture({ feedPath: feedUrl })));
+    const { component } = await createComponent();
+    const googleUrl = new URL(component.googleCalendarUrl()!);
+
+    expect(component.feedUrl()).toBe(feedUrl);
+    expect(googleUrl.origin).toBe('https://calendar.google.com');
+    expect(googleUrl.searchParams.get('cid')).toBe(
+      'webcal://calendar.example.test:8443/api/calendar/feeds/key%2Bvalue.ics?name=A%26B&lang=pt-BR',
+    );
+    expect([...googleUrl.searchParams.keys()]).toEqual(['cid']);
+  });
+
+  it('hides the subscription link while the feed is disabled', async () => {
+    api.getSettings.mockReturnValueOnce(of(settingsFixture({ enabled: false })));
+    const { component } = await createComponent();
+
+    expect(component.feedUrl()).toBeNull();
+    expect(component.googleCalendarUrl()).toBeNull();
   });
 
   it('persists an explicit default item view preference', async () => {

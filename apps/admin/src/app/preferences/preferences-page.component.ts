@@ -333,7 +333,8 @@ export class PreferencesPageComponent {
     }
 
     const url = new URL('https://calendar.google.com/calendar/render');
-    url.searchParams.set('cid', feedUrl);
+    // Google Calendar recognizes external subscriptions through the webcal scheme.
+    url.searchParams.set('cid', feedUrl.replace(/^https?:/, 'webcal:'));
     return url.toString();
   }
 
