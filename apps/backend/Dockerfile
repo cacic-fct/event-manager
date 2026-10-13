@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
 FROM deps AS playwright
-RUN bun x playwright install chromium
+RUN bun x playwright install --only-shell chromium
 
 FROM deps AS prisma-deps
 COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
@@ -65,7 +65,7 @@ COPY --from=prisma-deps /workspace/node_modules/@prisma ./node_modules/@prisma
 COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
 COPY apps/backend/prisma ./apps/backend/prisma
 
-FROM base AS runtime
+FROM node:26-trixie-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -74,7 +74,7 @@ WORKDIR /app
 
 RUN --mount=type=bind,from=deps,source=/workspace,target=/workspace-src,readonly \
     cd /workspace-src \
-    && bun x playwright install-deps chromium \
+    && node node_modules/playwright/cli.js install-deps chromium \
     && apt-get update \
     && apt-get install -y --no-install-recommends dumb-init poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
@@ -88,7 +88,6 @@ COPY --from=production-deps --chown=app:app /workspace/apps/backend/prisma ./app
 COPY --from=builder --chown=app:app /workspace/dist/apps/backend ./
 COPY --from=playwright --chown=app:app /ms-playwright /ms-playwright
 
-COPY --chown=app:app certificate-templates ./certificate-templates
 COPY --chown=app:app tools/evcomp-import ./tools/evcomp-import
 
 USER app

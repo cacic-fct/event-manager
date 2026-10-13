@@ -1,5 +1,6 @@
 import Typesense from 'typesense';
 import { TypesenseSearchService } from './typesense-search.service';
+import { SEARCH_REINDEX_BATCH_SIZE, TYPESENSE_COLLECTIONS } from './typesense-search.collections';
 
 jest.mock('typesense', () => ({
   __esModule: true,
@@ -707,6 +708,122 @@ describe('TypesenseSearchService', () => {
     );
   });
 
+  it('bounds every startup collection query and replaces empty collections', async () => {
+    const prisma = createPrismaMock();
+    const { client, service } = createEnabledService(prisma);
+
+    await service['reindexAll']();
+
+    for (const model of [
+      'event',
+      'majorEvent',
+      'eventGroup',
+      'people',
+      'placePreset',
+      'certificateTemplate',
+    ] as const) {
+      expect(prisma[model].findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { deletedAt: null },
+          orderBy: { id: 'asc' },
+          take: SEARCH_REINDEX_BATCH_SIZE,
+        }),
+      );
+    }
+    expect(client.documents.import).not.toHaveBeenCalled();
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledTimes(7);
+  });
+
+  it('waits for each startup import before loading another batch or swapping its alias', async () => {
+    const prisma = createPrismaMock();
+    const firstBatch = createPlacePresetBatch();
+    const lastBatch = [{ id: 'place-last', name: 'Última sala', locationDescription: null }];
+    prisma.placePreset.findMany.mockResolvedValueOnce(firstBatch).mockResolvedValueOnce(lastBatch);
+    const { client, service } = createEnabledService(prisma);
+    let finishImport: () => void = () => undefined;
+    let notifyImportStarted: () => void = () => undefined;
+    const importStarted = new Promise<void>((resolve) => {
+      notifyImportStarted = resolve;
+    });
+    client.documents.import.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishImport = resolve;
+          notifyImportStarted();
+        }),
+    );
+
+    const reindex = service['reindexAll']();
+    await importStarted;
+
+    expect(prisma.placePreset.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.certificateTemplate.findMany).not.toHaveBeenCalled();
+    expect(client.aliasesRoot.upsert).not.toHaveBeenCalledWith(TYPESENSE_COLLECTIONS.placePresets, expect.anything());
+
+    finishImport();
+    await reindex;
+
+    expect(prisma.placePreset.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        cursor: { id: firstBatch.at(-1)?.id },
+        skip: 1,
+        take: SEARCH_REINDEX_BATCH_SIZE,
+        orderBy: { id: 'asc' },
+      }),
+    );
+    expect(client.documents.import).toHaveBeenNthCalledWith(1, firstBatch, { action: 'upsert' });
+    expect(client.documents.import).toHaveBeenNthCalledWith(
+      2,
+      [
+        expect.objectContaining({
+          id: 'place-last',
+          locationDescription: undefined,
+        }),
+      ],
+      { action: 'upsert' },
+    );
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledWith(TYPESENSE_COLLECTIONS.placePresets, {
+      collection_name: expect.stringContaining(`${TYPESENSE_COLLECTIONS.placePresets}_reindex_`),
+    });
+  });
+
+  it('finishes a startup collection whose size is an exact multiple of the batch size', async () => {
+    const prisma = createPrismaMock();
+    const batch = createPlacePresetBatch();
+    prisma.placePreset.findMany.mockResolvedValueOnce(batch).mockResolvedValueOnce([]);
+    const { client, service } = createEnabledService(prisma);
+
+    await service['reindexAll']();
+
+    expect(prisma.placePreset.findMany).toHaveBeenCalledTimes(2);
+    expect(client.documents.import).toHaveBeenCalledTimes(1);
+    expect(client.aliasesRoot.upsert).toHaveBeenCalledWith(TYPESENSE_COLLECTIONS.placePresets, expect.anything());
+  });
+
+  it('preserves the previous alias when a later startup batch fails', async () => {
+    const prisma = createPrismaMock();
+    prisma.placePreset.findMany
+      .mockResolvedValueOnce(createPlacePresetBatch())
+      .mockResolvedValueOnce([{ id: 'place-last', name: 'Última sala' }]);
+    const { client, service } = createEnabledService(prisma);
+    client.alias.retrieve.mockResolvedValue({ collection_name: 'previous-index' });
+    client.documents.import
+      .mockResolvedValueOnce([{ success: true }])
+      .mockResolvedValueOnce([{ success: false, error: 'Disk unavailable' }]);
+    const errorLog = jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+
+    await service['reindexAll']();
+
+    expect(errorLog).toHaveBeenCalledWith(
+      `Failed to replace Typesense documents for ${TYPESENSE_COLLECTIONS.placePresets}.`,
+      expect.any(Error),
+    );
+    expect(client.aliasesRoot.upsert).not.toHaveBeenCalledWith(TYPESENSE_COLLECTIONS.placePresets, expect.anything());
+    expect(prisma.placePreset.findMany).toHaveBeenCalledTimes(2);
+    expect(prisma.certificateTemplate.findMany).toHaveBeenCalledTimes(1);
+  });
+
   it('updates existing collections when schema fields are missing', async () => {
     const { client, service } = createEnabledService();
     client.collection.retrieve.mockResolvedValue({ fields: [] });
@@ -885,4 +1002,12 @@ function createAuditLogEntry(overrides: Record<string, unknown> = {}) {
     metadata: { source: 'spec' },
     ...overrides,
   };
+}
+
+function createPlacePresetBatch() {
+  return Array.from({ length: SEARCH_REINDEX_BATCH_SIZE }, (_, index) => ({
+    id: `place-${index.toString().padStart(4, '0')}`,
+    name: `Sala ${index}`,
+    locationDescription: `Bloco ${index}`,
+  }));
 }

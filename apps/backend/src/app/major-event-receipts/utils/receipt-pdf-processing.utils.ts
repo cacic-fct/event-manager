@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import sharp from 'sharp';
+import { loadSharp } from '../../shared/load-sharp';
 import { promisify } from 'util';
 import {
   MAX_RECEIPT_PDF_PAGES,
@@ -191,6 +191,7 @@ async function renderPdfPreview(inputPath: string, directory: string, pageCount:
 }
 
 async function mergeReceiptPdfPages(pageBuffers: Buffer[]): Promise<Buffer> {
+  const sharp = await loadSharp();
   const pageMetadata = await Promise.all(pageBuffers.map((page) => sharp(page).metadata()));
   const pageWidth = Math.max(...pageMetadata.map((metadata) => metadata.width ?? 0));
   const pageHeight = Math.max(...pageMetadata.map((metadata) => metadata.height ?? 0));

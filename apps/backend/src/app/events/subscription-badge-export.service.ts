@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { toBuffer, toSVG } from '@bwip-js/node';
 import { Readable } from 'node:stream';
 import {
   isValidCpf,
@@ -313,6 +312,7 @@ export class SubscriptionBadgeExportService {
       eclevel: Number(input.errorCorrectionLevel),
     };
 
+    const { toBuffer, toSVG } = await import('@bwip-js/node');
     return input.format === 'svg' ? toSVG(options) : toBuffer(options);
   }
 

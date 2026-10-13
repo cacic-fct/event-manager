@@ -3,7 +3,8 @@ module.exports = {
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   transform: {
-    '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
+    // Compile lazy imports to CommonJS so unit-test mocks work without Node's experimental VM modules.
+    '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.unit.json' }],
   },
   transformIgnorePatterns: ['node_modules/(?!@cacic-fct/form-contracts/)'],
   // PGlite loads WebAssembly through ESM; its isolated integration target enables Node's VM modules.

@@ -1,4 +1,5 @@
-import sharp from 'sharp';
+import type sharp from 'sharp';
+import { loadSharp } from '../../shared/load-sharp';
 import {
   MAX_RECEIPT_DECODED_IMAGE_PIXELS,
   MAX_RECEIPT_IMAGE_DIMENSION_PIXELS,
@@ -28,7 +29,8 @@ export class ReceiptImageProcessingTimeoutError extends Error {
   }
 }
 
-export function createReceiptSharp(buffer: Buffer): ReturnType<typeof sharp> {
+export async function createReceiptSharp(buffer: Buffer): Promise<ReturnType<typeof sharp>> {
+  const sharp = await loadSharp();
   return sharp(buffer, RECEIPT_SHARP_INPUT_OPTIONS);
 }
 
@@ -38,9 +40,8 @@ export async function readProcessableReceiptImageMetadata(buffer: Buffer): Promi
   pages?: number;
 }> {
   try {
-    const metadata = await createReceiptSharp(buffer)
-      .timeout({ seconds: RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS })
-      .metadata();
+    const image = await createReceiptSharp(buffer);
+    const metadata = await image.timeout({ seconds: RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS }).metadata();
     assertReceiptImageMetadataWithinProcessingLimits(metadata);
 
     return {

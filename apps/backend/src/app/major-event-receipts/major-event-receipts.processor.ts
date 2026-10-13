@@ -2,8 +2,6 @@ import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ReceiptProcessingStatus } from '@prisma/client';
 import { Job, Queue, UnrecoverableError } from 'bullmq';
-import sharp from 'sharp';
-import { createWorker } from 'tesseract.js';
 import { Readable } from 'stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
@@ -32,9 +30,6 @@ import { isPdfReceiptMimeType } from './utils/receipt-file.utils';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 const RECONCILE_PENDING_RECEIPTS_JOB = 'reconcile-pending-receipts';
-
-sharp.cache({ files: 0, items: 0, memory: 32 });
-sharp.concurrency(1);
 
 @Processor(MAJOR_EVENT_RECEIPTS_QUEUE, {
   concurrency: 1,
@@ -223,8 +218,9 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
   }
 
   private async prepareForOcr(buffer: Buffer): Promise<Buffer> {
+    const image = await createReceiptSharp(buffer);
     return this.runReceiptImageOperation(
-      createReceiptSharp(buffer)
+      image
         .rotate()
         .resize({
           width: MAX_RECEIPT_OCR_IMAGE_DIMENSION_PIXELS,
@@ -254,8 +250,9 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
     originalBuffer: Buffer,
     expiresAt: Date,
   ): Promise<void> {
+    const image = await createReceiptSharp(originalBuffer);
     const avifBuffer = await this.runReceiptImageOperation(
-      createReceiptSharp(originalBuffer)
+      image
         .rotate()
         .avif({
           quality: 62,
@@ -318,6 +315,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
   }
 
   private async recognizeReceiptText(ocrBuffer: Buffer): Promise<string> {
+    const { createWorker } = await import('tesseract.js');
     const worker = await createWorker('por', undefined, {
       errorHandler: (error: unknown) => this.logger.warn(`Receipt OCR worker error: ${this.formatErrorMessage(error)}`),
       logger: () => undefined,

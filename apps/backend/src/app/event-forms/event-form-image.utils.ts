@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { FormImage } from '@cacic-fct/form-contracts';
 import { assertSafeSvg, detectImageMimeType, UnsafeSvgError } from '@cacic-fct/shared-utils';
-import sharp from 'sharp';
+import type sharp from 'sharp';
+import { loadSharp } from '../shared/load-sharp';
 
 export type UploadedEventFormImageFile = {
   buffer: Buffer;
@@ -65,7 +66,8 @@ export async function convertEventFormImageToAvif(file: UploadedEventFormImageFi
     }
   }
   const metadata = await readProcessableImageMetadata(validFile.buffer, originalMimeType);
-  const operation = createSharp(validFile.buffer, originalMimeType).rotate();
+  const image = await createSharp(validFile.buffer, originalMimeType);
+  const operation = image.rotate();
   if (originalMimeType === 'image/svg+xml') {
     const longEdge = Math.max(metadata.width, metadata.height);
     const targetLongEdge = Math.min(SVG_OUTPUT_MAXIMUM_LONG_EDGE, Math.max(SVG_OUTPUT_MINIMUM_LONG_EDGE, longEdge));
@@ -122,7 +124,8 @@ export function toEventFormImageModel(image: { id: string; width: number; height
   };
 }
 
-function createSharp(buffer: Buffer, mimeType?: string): ReturnType<typeof sharp> {
+async function createSharp(buffer: Buffer, mimeType?: string): Promise<ReturnType<typeof sharp>> {
+  const sharp = await loadSharp();
   return sharp(buffer, {
     ...SHARP_INPUT_OPTIONS,
     ...(mimeType === 'image/svg+xml' ? { density: 144 } : {}),
@@ -133,8 +136,9 @@ async function readProcessableImageMetadata(
   buffer: Buffer,
   mimeType: string,
 ): Promise<{ width: number; height: number; pages?: number }> {
+  const image = await createSharp(buffer, mimeType);
   const metadata = await runImageOperation(
-    createSharp(buffer, mimeType).timeout({ seconds: IMAGE_METADATA_TIMEOUT_SECONDS }).metadata(),
+    image.timeout({ seconds: IMAGE_METADATA_TIMEOUT_SECONDS }).metadata(),
     'Leitura da imagem',
   );
   if (!metadata.width || !metadata.height) {

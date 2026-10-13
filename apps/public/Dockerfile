@@ -25,24 +25,16 @@ ENV APP_VERSION=$APP_VERSION
 COPY apps/public ./apps/public
 COPY libs ./libs
 
-RUN find . -type f \
+RUN find ./apps/public ./libs -type f \
     \( -name "*.ts" -o -name "*.js" -o -name "*.html" -o -name "*.json" \) \
     -exec sed -i "s/APP_VERSION_PLACEHOLDER/${APP_VERSION}/g" {} +
 RUN bun x nx build public --configuration=production
-
-FROM base AS production-deps
-COPY package.json bun.lock ./
-COPY .npmrc ./
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    set -eu; \
-    bun install --frozen-lockfile --production
 
 FROM node:26-alpine AS runtime
 ENV NODE_ENV=production \
   PORT=4000
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
-COPY --from=production-deps --chown=app:app /workspace/node_modules ./node_modules
 COPY --from=builder --chown=app:app /workspace/dist/apps/public ./
 COPY --from=builder --chown=app:app /workspace/dist/apps/public/3rdpartylicenses.txt ./browser/3rdpartylicenses.txt
 

@@ -8,9 +8,8 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { chromium, type Browser, type Page } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import { Readable } from 'node:stream';
-import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
 import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
@@ -178,7 +177,7 @@ export class CertificateDownloadService {
     );
     deadline.unref();
     try {
-      browser = await chromium.launch({ headless: true });
+      browser = await this.launchBrowser();
       for await (const certificateId of certificateIds) {
         if (archive.destroyed) {
           return;
@@ -294,6 +293,7 @@ export class CertificateDownloadService {
     variables.qrcode = verificationUrl;
     variables.url = verificationUrl;
 
+    const { toBuffer } = await import('@bwip-js/node');
     const qrCodePng = await toBuffer({
       bcid: 'qrcode',
       text: verificationUrl,
@@ -323,8 +323,13 @@ export class CertificateDownloadService {
     return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => this.escapeHtml(variables[key] ?? ''));
   }
 
+  private async launchBrowser(): Promise<Browser> {
+    const { chromium } = await import('playwright');
+    return chromium.launch({ headless: true });
+  }
+
   private async renderPdf(renderedHtml: string, sharedBrowser?: Browser): Promise<Buffer> {
-    const browser = sharedBrowser ?? (await chromium.launch({ headless: true }));
+    const browser = sharedBrowser ?? (await this.launchBrowser());
     let page: Page | undefined;
     const timeout = setTimeout(() => {
       void (page ? page.close() : browser.close()).catch(() => undefined);
