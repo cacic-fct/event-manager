@@ -4,6 +4,7 @@ import {
   reindexEventSearchDocuments,
   replaceAuditLogSearchDocuments,
 } from './typesense-search.reindex';
+import { SEARCH_REINDEX_BATCH_SIZE } from './typesense-search.collections';
 
 describe('typesense reindex helpers', () => {
   it('replaces every collection during a full reindex', async () => {
@@ -54,6 +55,8 @@ describe('typesense reindex helpers', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: { deletedAt: null },
       select: expect.objectContaining({ id: true, publicationState: true }),
+      orderBy: { id: 'asc' },
+      take: SEARCH_REINDEX_BATCH_SIZE,
     });
     expect(client.rootCollections.create).toHaveBeenCalledWith(
       expect.objectContaining({ name: expect.stringMatching(/^cacic_event_manager_events_reindex_/) }),

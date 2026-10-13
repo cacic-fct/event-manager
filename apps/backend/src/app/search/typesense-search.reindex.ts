@@ -5,6 +5,7 @@ import type { Client as TypesenseClient } from 'typesense';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AUDIT_LOG_REINDEX_BATCH_SIZE,
+  SEARCH_REINDEX_BATCH_SIZE,
   TYPESENSE_COLLECTIONS,
   createTypesenseCollectionSchemas,
 } from './typesense-search.collections';
@@ -28,9 +29,55 @@ import { AUDIT_LOG_SEARCH_SELECT, toAuditLogSearchDocument } from './typesense-s
 import {
   assertTypesenseImportSucceeded,
   replaceTypesenseCollection,
-  replaceTypesenseCollectionDocuments,
   upsertTypesenseDocument,
 } from './typesense-search.writer';
+
+type ReindexPage = {
+  orderBy: { id: 'asc' };
+  take: number;
+  cursor?: { id: string };
+  skip?: number;
+};
+
+async function replaceSearchDocumentsInBatches<T extends { id: string }>(input: {
+  client: TypesenseClient | null;
+  logger: Logger;
+  schema: CollectionCreateSchema;
+  loadDocuments: (page: ReindexPage) => Promise<T[]>;
+}): Promise<void> {
+  const client = input.client;
+  if (!client) {
+    return;
+  }
+
+  await replaceTypesenseCollection({
+    client,
+    logger: input.logger,
+    schema: input.schema,
+    importDocuments: async (collectionName) => {
+      const collection = client.collections<T & Record<string, unknown>>(collectionName);
+      let cursor: { id: string } | undefined;
+      for (;;) {
+        const documents = await input.loadDocuments({
+          orderBy: { id: 'asc' },
+          take: SEARCH_REINDEX_BATCH_SIZE,
+          ...(cursor ? { cursor, skip: 1 } : {}),
+        });
+        if (documents.length === 0) {
+          return;
+        }
+
+        // The SDK's import API has no client-side timeout, including on slow HDDs.
+        const importResult = await collection.documents().import(documents, { action: 'upsert' });
+        assertTypesenseImportSucceeded(importResult, input.schema.name);
+        cursor = { id: documents[documents.length - 1].id };
+        if (documents.length < SEARCH_REINDEX_BATCH_SIZE) {
+          return;
+        }
+      }
+    },
+  });
+}
 
 export async function reindexAllSearchDocuments(input: {
   client: TypesenseClient | null;
@@ -41,12 +88,29 @@ export async function reindexAllSearchDocuments(input: {
     return;
   }
 
-  const [events, majorEvents, eventGroups, people, placePresets, certificateTemplates] = await Promise.all([
-    input.prisma.event.findMany({
+  const getSchema = buildSchemaResolver();
+  const replaceCollection = <T extends { id: string }>(
+    collectionName: string,
+    loadDocuments: (page: ReindexPage) => Promise<T[]>,
+  ) =>
+    replaceSearchDocumentsInBatches({
+      ...input,
+      schema: getSchema(collectionName),
+      loadDocuments,
+    });
+
+  // One collection and one batch at a time keeps startup memory and HDD contention bounded.
+  // Do not impose a total deadline: large indexes on slow disks must be allowed to finish.
+  await replaceCollection<EventSearchDocument>(TYPESENSE_COLLECTIONS.events, async (page) => {
+    const events = await input.prisma.event.findMany({
       where: { deletedAt: null },
       select: EVENT_SEARCH_SELECT,
-    }),
-    input.prisma.majorEvent.findMany({
+      ...page,
+    });
+    return events.map((event) => toEventSearchDocument(event));
+  });
+  await replaceCollection<MajorEventSearchDocument>(TYPESENSE_COLLECTIONS.majorEvents, async (page) => {
+    const majorEvents = await input.prisma.majorEvent.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
@@ -56,8 +120,12 @@ export async function reindexAllSearchDocuments(input: {
         endDate: true,
         publicationState: true,
       },
-    }),
-    input.prisma.eventGroup.findMany({
+      ...page,
+    });
+    return majorEvents.map((majorEvent) => toMajorEventSearchDocument(majorEvent));
+  });
+  await replaceCollection<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, async (page) => {
+    const eventGroups = await input.prisma.eventGroup.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
@@ -66,8 +134,18 @@ export async function reindexAllSearchDocuments(input: {
         majorEventId: true,
         majorEvent: { select: { name: true, deletedAt: true } },
       },
-    }),
-    input.prisma.people.findMany({
+      ...page,
+    });
+    return eventGroups.map((eventGroup) => ({
+      id: eventGroup.id,
+      name: eventGroup.name,
+      emoji: eventGroup.emoji,
+      majorEventId: eventGroup.majorEventId ?? undefined,
+      majorEventName: eventGroup.majorEvent?.deletedAt ? undefined : eventGroup.majorEvent?.name,
+    }));
+  });
+  await replaceCollection<PersonSearchDocument>(TYPESENSE_COLLECTIONS.people, async (page) => {
+    const people = await input.prisma.people.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
@@ -79,74 +157,40 @@ export async function reindexAllSearchDocuments(input: {
         academicId: true,
         userId: true,
       },
-    }),
-    input.prisma.placePreset.findMany({
+      ...page,
+    });
+    return people.map((person) => toPersonSearchDocument(person));
+  });
+  await replaceCollection<PlacePresetSearchDocument>(TYPESENSE_COLLECTIONS.placePresets, async (page) => {
+    const placePresets = await input.prisma.placePreset.findMany({
       where: { deletedAt: null },
       select: {
         id: true,
         name: true,
         locationDescription: true,
       },
-    }),
-    input.prisma.certificateTemplate.findMany({
-      where: { deletedAt: null },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        isActive: true,
-      },
-    }),
-  ]);
-
-  const getSchema = buildSchemaResolver();
-
-  await Promise.all([
-    replaceTypesenseCollectionDocuments<EventSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.events),
-      documents: events.map((event) => toEventSearchDocument(event)),
-    }),
-    replaceTypesenseCollectionDocuments<MajorEventSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.majorEvents),
-      documents: majorEvents.map((majorEvent) => toMajorEventSearchDocument(majorEvent)),
-    }),
-    replaceTypesenseCollectionDocuments<EventGroupSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.eventGroups),
-      documents: eventGroups.map((eventGroup) => ({
-        id: eventGroup.id,
-        name: eventGroup.name,
-        emoji: eventGroup.emoji,
-        majorEventId: eventGroup.majorEventId ?? undefined,
-        majorEventName: eventGroup.majorEvent?.deletedAt ? undefined : eventGroup.majorEvent?.name,
-      })),
-    }),
-    replaceTypesenseCollectionDocuments<PersonSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.people),
-      documents: people.map((person) => toPersonSearchDocument(person)),
-    }),
-    replaceTypesenseCollectionDocuments<PlacePresetSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.placePresets),
-      documents: placePresets.map((placePreset) => toPlacePresetSearchDocument(placePreset)),
-    }),
-    replaceTypesenseCollectionDocuments<CertificateTemplateSearchDocument>({
-      client: input.client,
-      logger: input.logger,
-      schema: getSchema(TYPESENSE_COLLECTIONS.certificateTemplates),
-      documents: certificateTemplates.map((certificateTemplate) =>
+      ...page,
+    });
+    return placePresets.map((placePreset) => toPlacePresetSearchDocument(placePreset));
+  });
+  await replaceCollection<CertificateTemplateSearchDocument>(
+    TYPESENSE_COLLECTIONS.certificateTemplates,
+    async (page) => {
+      const certificateTemplates = await input.prisma.certificateTemplate.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+        },
+        ...page,
+      });
+      return certificateTemplates.map((certificateTemplate) =>
         toCertificateTemplateSearchDocument(certificateTemplate),
-      ),
-    }),
-  ]);
+      );
+    },
+  );
   await replaceAuditLogSearchDocuments({
     client: input.client,
     logger: input.logger,

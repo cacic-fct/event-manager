@@ -408,7 +408,8 @@ export class TicketPurchasesService {
         return (await processReceiptPdf(file.buffer)).previewBuffer;
       }
       await assertReceiptBufferWithinProcessingLimits(file.buffer);
-      return await createReceiptSharp(file.buffer).timeout({ seconds: 15 }).rotate().png().toBuffer();
+      const image = await createReceiptSharp(file.buffer);
+      return await image.timeout({ seconds: 15 }).rotate().png().toBuffer();
     } catch (error) {
       if (error instanceof ReceiptPdfProcessingError || isReceiptImageProcessingError(error)) {
         throw new BadRequestException(error.message);

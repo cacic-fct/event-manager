@@ -1,7 +1,8 @@
 import type { CollectionCreateSchema, CollectionFieldSchema, CollectionSchema } from 'typesense';
 
 export const TYPESENSE_MAX_PER_PAGE = 250;
-export const AUDIT_LOG_REINDEX_BATCH_SIZE = 500;
+export const SEARCH_REINDEX_BATCH_SIZE = 500;
+export const AUDIT_LOG_REINDEX_BATCH_SIZE = SEARCH_REINDEX_BATCH_SIZE;
 export const TYPESENSE_COLLECTION_PREFIX = 'cacic_event_manager_';
 export const TYPESENSE_COLLECTIONS = {
   events: `${TYPESENSE_COLLECTION_PREFIX}events`,
