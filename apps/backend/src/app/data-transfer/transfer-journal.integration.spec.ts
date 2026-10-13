@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
 
 type SqlClient = Pick<PGlite, 'query'>;
 type Row = Record<string, unknown>;
@@ -89,6 +90,10 @@ function delegates(client: SqlClient) {
     return {
       findMany,
       create,
+      createMany: async ({ data }: { data: Row[] }) => {
+        for (const row of data) await create({ data: row });
+        return { count: data.length };
+      },
       updateMany,
       deleteMany,
       findFirst: async (args: { where?: unknown } = {}) => (await findMany(args))[0] ?? null,
@@ -105,6 +110,8 @@ function delegates(client: SqlClient) {
     ticketConfig: delegate('ticketConfig'),
     eventGroupAudienceInvitation: delegate('eventGroupAudienceInvitation'),
     eventSubscription: delegate('eventSubscription'),
+    eventFormLink: delegate('eventFormLink'),
+    placePreset: delegate('placePreset'),
     auditLogEntry: delegate('auditLogEntry'),
   };
 }
@@ -188,6 +195,47 @@ describe('durable audit-backed import rollback and undo', () => {
     expect(execute.mock.calls[0][1]).toBe(-1n);
   });
 
+  it('journals and undoes createMany rows when an archived row matches the creation fields', async () => {
+    const data = {
+      eventId: 'event-1',
+      personId: 'person-1',
+      createdById: actor.sub,
+      createdByMethod: 'ADMIN_DASHBOARD',
+    } satisfies Prisma.EventSubscriptionCreateManyInput;
+    const archived = await client.eventSubscription.create({
+      data: {
+        ...data,
+        id: 'archived-subscription',
+        deletedAt: new Date(Date.now() - 60000),
+      },
+    });
+    const resource = {
+      kind: 'event-subscription',
+      id: 'imported-subscription',
+      data: {
+        eventId: data.eventId,
+        person: { id: data.personId },
+      },
+    } satisfies ResourceOfKind<'event-subscription'>;
+    const doc: ResolvedTransferDocument = { format: 'cacic-event-data', version: 1, resources: [resource] };
+    const batch = await prisma.$transaction(async (tx) => {
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, 'create', { eventId: data.eventId });
+      await recorder.tx.eventSubscription.createMany({ data: [data] });
+      expect(recorder.mutations).toEqual([
+        expect.objectContaining({
+          model: 'eventSubscription',
+          before: null,
+          after: expect.objectContaining({ deletedAt: null }),
+        }),
+      ]);
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'create'));
+    });
+    expect(await client.eventSubscription.findMany()).toHaveLength(2);
+    await journal.undo(batch.batchId, actor);
+    expect(await client.eventSubscription.findMany()).toEqual([archived]);
+  });
+
   const document = (rows: Array<{ id: string; name: string }>): ResolvedTransferDocument => ({
     format: 'cacic-event-data',
     version: 1,
@@ -208,6 +256,74 @@ describe('durable audit-backed import rollback and undo', () => {
       message: 'Aplicado.',
       changes: [],
     }));
+
+  it.each(['create', 'update'] as const)('atomically journals and undoes a place-preset %s', async (action) => {
+    const resource = {
+      kind: 'place-preset',
+      id: 'place-1',
+      data: { name: 'Ginásio importado', latitude: -22, longitude: -51 },
+    } satisfies ResourceOfKind<'place-preset'>;
+    const doc: ResolvedTransferDocument = { format: 'cacic-event-data', version: 1, resources: [resource] };
+    if (action === 'update')
+      await client.placePreset.create({
+        data: {
+          id: resource.id,
+          name: 'Nome anterior',
+          latitude: null,
+          longitude: null,
+          locationDescription: 'Preservada',
+        },
+      });
+    const adapter = new ConfigurationTransferAdapter(
+      prisma,
+      authorization,
+      frozen,
+      { record: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const batch = await prisma.$transaction(async (tx) => {
+      const context = { tx, actor, document: doc, frozenResources: frozen };
+      const snapshot = await adapter.resolve(resource, context);
+      await adapter.assertRead(snapshot, context);
+      await adapter.assertWrite(snapshot, action, context);
+      await adapter.validate(snapshot, context);
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, action, snapshot.scope);
+      await adapter.apply(snapshot, action, { ...context, tx: recorder.tx });
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, action));
+    });
+    expect(await client.placePreset.findUnique({ where: { id: resource.id } })).toMatchObject({
+      name: 'Ginásio importado',
+      latitude: -22,
+      longitude: -51,
+    });
+    await new DataTransferJournalService(prisma, authorization, frozen).undo(batch.batchId, actor);
+    if (action === 'create') expect(await client.placePreset.findMany()).toEqual([]);
+    else
+      expect(await client.placePreset.findUnique({ where: { id: resource.id } })).toMatchObject({
+        name: 'Nome anterior',
+        latitude: null,
+        longitude: null,
+        locationDescription: 'Preservada',
+      });
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(
+      actor,
+      [
+        Permission.DataTransfer.Undo,
+        Permission.PlacePreset.Read,
+        action === 'create' ? Permission.PlacePreset.Delete : Permission.PlacePreset.Update,
+      ],
+      {},
+    );
+  });
 
   it('rolls back earlier writes and the audit batch after an unrecoverable exception or client shutdown', async () => {
     const id = randomUUID();
@@ -360,6 +476,81 @@ describe('durable audit-backed import rollback and undo', () => {
       actor,
       [Permission.DataTransfer.Undo, Permission.EventGroup.Read],
       { eventGroupId: id },
+    );
+  });
+
+  it.each([false, true])(
+    'requires event update only when subscription imports change event content: %s',
+    async (contentChanged) => {
+      const eventId = 'limited-event';
+      await client.event.create({ data: { id: eventId, name: 'Evento', slotsAvailable: 2, queueCount: 0 } });
+      await client.eventSubscription.create({ data: { id: 'subscription-1', eventId, personId: 'person-1' } });
+      const resource = {
+        kind: 'event-subscription',
+        id: 'subscription-1',
+        data: { eventId, person: { id: 'person-1' } },
+      } satisfies ResourceOfKind<'event-subscription'>;
+      const doc: ResolvedTransferDocument = { format: 'cacic-event-data', version: 1, resources: [resource] };
+      const batch = await prisma.$transaction(async (tx) => {
+        const recorder = journal.begin(tx);
+        recorder.setSource(resource, 'update', { eventId });
+        await recorder.tx.eventSubscription.update({
+          where: { id: resource.id },
+          data: { subscriptionStatus: 'CONFIRMED' },
+        });
+        await recorder.tx.event.update({
+          where: { id: eventId },
+          data: {
+            slotsAvailable: 1,
+            queueCount: 1,
+            ...(contentChanged ? { name: 'Nome alterado' } : {}),
+          },
+        });
+        return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'update'));
+      });
+      jest.mocked(authorization.assertPermissions).mockImplementation(async (_actor, permissions) => {
+        if (permissions.includes(Permission.Event.Update)) throw new ForbiddenException();
+      });
+      if (contentChanged) {
+        await expect(journal.undo(batch.batchId, actor)).rejects.toThrow(ForbiddenException);
+        expect((await client.event.findUnique({ where: { id: eventId } }))?.['slotsAvailable']).toBe(1);
+      } else {
+        await journal.undo(batch.batchId, actor);
+        expect(await client.event.findUnique({ where: { id: eventId } })).toMatchObject({
+          slotsAvailable: 2,
+          queueCount: 0,
+        });
+        expect(authorization.assertPermissions).toHaveBeenCalledWith(
+          actor,
+          [Permission.DataTransfer.Undo, Permission.Subscription.Read, Permission.Subscription.Update],
+          { eventId },
+        );
+      }
+    },
+  );
+
+  it('undoes a link-only import with form update permission without requiring form deletion', async () => {
+    const resource = {
+      kind: 'form-link',
+      id: 'new-link',
+      data: { formId: 'existing-form', targetType: 'EVENT', eventId: 'event-1' },
+    } satisfies ResourceOfKind<'form-link'>;
+    const doc: ResolvedTransferDocument = { format: 'cacic-event-data', version: 1, resources: [resource] };
+    const batch = await prisma.$transaction(async (tx) => {
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, 'create', { eventId: 'event-1', eventFormId: 'existing-form' });
+      await recorder.tx.eventFormLink.create({ data: { id: resource.id, ...resource.data } });
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'create'));
+    });
+    jest.mocked(authorization.assertPermissions).mockImplementation(async (_actor, permissions) => {
+      if (permissions.includes(Permission.EventForm.Delete)) throw new ForbiddenException();
+    });
+    await journal.undo(batch.batchId, actor);
+    expect(await client.eventFormLink.findMany()).toEqual([]);
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(
+      actor,
+      [Permission.DataTransfer.Undo, Permission.EventForm.Read, Permission.EventForm.Update],
+      { eventFormLinkId: resource.id },
     );
   });
 

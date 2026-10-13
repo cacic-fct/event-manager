@@ -250,6 +250,15 @@ export class EventTreeTransferAdapter implements DataTransferAdapter {
   readonly kinds = ['major-event', 'group', 'event'] as const;
   readonly dependencyOrder = 10;
 
+  async readAppliedResource(
+    snapshot: ResolvedTransferResource,
+    context: TransferAdapterContext,
+  ): Promise<TransferResource> {
+    const persisted = await this.resolve({ ...snapshot.resource, data: {} } as TransferResource, context);
+    if (!persisted.current) throw new ConflictException('O recurso aplicado não está disponível.');
+    return persisted.current;
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationPolicyService,

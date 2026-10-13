@@ -33,6 +33,38 @@ describe('SportsMutationEventsService', () => {
     jest.clearAllMocks();
   });
 
+  it.each(['MATCH', 'CATEGORY', 'VENUE'] as const)(
+    'publishes deletion of %s without querying the deleted entity',
+    async (entity) => {
+      const findMany = jest.fn().mockResolvedValue([{ id: 'remaining-match' }]);
+      const service = new SportsMutationEventsService(
+        { sportsMatch: { findMany } } as never,
+        realtime as never,
+        autorouting as never,
+        dashboardInsights as never,
+        defaultRedirect as never,
+        eventEffects as never,
+      );
+      await service.publishForDeletedEntity(entity, 'deleted-entity', 'tournament-1');
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { category: { tournamentId: 'tournament-1' } },
+        }),
+      );
+      const payload = expect.objectContaining({
+        type: 'INVALIDATE',
+        entity,
+        entityId: 'deleted-entity',
+        tournamentId: 'tournament-1',
+      });
+      expect(realtime.publish).toHaveBeenCalledWith('admin-tournament:tournament-1', payload);
+      expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', payload);
+      expect(realtime.publish).toHaveBeenCalledWith('match:remaining-match', payload);
+      if (entity === 'MATCH') expect(realtime.publish).toHaveBeenCalledWith('match:deleted-entity', payload);
+      expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('publishes administrator, tournament, and match invalidations', async () => {
     const prisma = {
       sportsMatch: {

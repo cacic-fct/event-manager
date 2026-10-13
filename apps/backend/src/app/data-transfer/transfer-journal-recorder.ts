@@ -299,6 +299,22 @@ function keyOf(model: string, row: Record<string, JsonValue>): Record<string, Js
   return Object.fromEntries(fields.map((field) => [field, row[field]]));
 }
 
+/** Compound primary-key selectors are accepted by single-row writes, but not by findMany. */
+function journalReadWhere(model: string, input: unknown): unknown {
+  const fields = primaryFields(model);
+  if (fields.length < 2) return input;
+  const where = object(input);
+  const selector = fields.join('_');
+  if (!Object.prototype.hasOwnProperty.call(where, selector)) return input;
+  const compound = object(where[selector]);
+  if (fields.some((field) => compound[field] === undefined) || Object.keys(compound).length !== fields.length)
+    throw new BadRequestException('Não foi possível identificar a chave deste recurso.');
+  const remaining = { ...where };
+  delete remaining[selector];
+  const key = Object.fromEntries(fields.map((field) => [field, compound[field]]));
+  return Object.keys(remaining).length ? { AND: [remaining, key] } : key;
+}
+
 /** Restore trusted scalar database snapshots; relations and client-supplied fields never enter this function. */
 export function journalRestoreData(
   modelName: string,
@@ -390,7 +406,7 @@ export class TransferJournalRecorder {
   ): Promise<unknown> {
     const args = object(input);
     const source = this.requireSource();
-    const where = args['where'] ?? this.createWhere(model, args['data']);
+    const where = journalReadWhere(model, args['where'] ?? this.createWhere(model, args['data']));
     const nestedData = args['data'] ?? { ...object(args['create']), ...object(args['update']) };
     this.assertNoNestedMutation(model, nestedData);
     // Deletes with cascades need complete child backups; transfer writers use soft deletion or explicit delegates.
@@ -398,11 +414,19 @@ export class TransferJournalRecorder {
       throw new BadRequestException('Use uma alteração reversível sem exclusão em cascata neste lote.');
     const before = await this.rows(model, where);
     const result = await perform();
+    // createMany returns only a count. Its creation filter can match archived
+    // predecessors, so retain that filter to discover newly generated IDs too.
     const afterWhere =
       operation === 'delete' || operation === 'deleteMany'
         ? { OR: before.map((row) => keyOf(model, row)) }
         : before.length
-          ? { OR: [...before.map((row) => keyOf(model, row)), ...this.resultKeys(model, result)] }
+          ? {
+              OR: [
+                ...before.map((row) => keyOf(model, row)),
+                ...this.resultKeys(model, result),
+                ...(operation === 'createMany' ? [where] : []),
+              ],
+            }
           : where;
     const after = await this.rows(model, afterWhere);
     this.record(model, before, after, source);

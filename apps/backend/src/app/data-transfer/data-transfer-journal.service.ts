@@ -102,7 +102,7 @@ const permissionsByKind = {
   'form-link': {
     read: Permission.EventForm.Read,
     update: Permission.EventForm.Update,
-    remove: Permission.EventForm.Delete,
+    remove: Permission.EventForm.Update,
   },
   'certificate-config': {
     read: Permission.CertificateConfig.Read,
@@ -583,11 +583,14 @@ export class DataTransferJournalService {
     };
     const creatingUndo = mutation.before === null;
     if (mutation.model === 'event' && id) {
-      await this.authorization.assertPermissions(
-        actor,
-        [Permission.Event.Read, creatingUndo ? Permission.Event.Delete : Permission.Event.Update],
-        { eventId: id },
-      );
+      // Source subscription permissions are checked separately; counters are derived participation state.
+      if (!isSubscriptionCounterMutation(mutation)) {
+        await this.authorization.assertPermissions(
+          actor,
+          [Permission.Event.Read, creatingUndo ? Permission.Event.Delete : Permission.Event.Update],
+          { eventId: id },
+        );
+      }
       await this.frozen.assertEventMutable(id, actor, creatingUndo ? 'delete' : 'edit');
     } else if (mutation.model === 'eventGroup' && id) {
       await this.authorization.assertPermissions(
@@ -699,6 +702,24 @@ export class DataTransferJournalService {
       if (Object.keys(data).length) await journalDelegate(tx, mutation.model).updateMany({ where: mutation.key, data });
     }
   }
+}
+
+function isSubscriptionCounterMutation(mutation: JournalMutation): boolean {
+  if (
+    !['event-subscription', 'group-subscription', 'major-event-subscription'].includes(mutation.source.kind) ||
+    !mutation.before ||
+    !mutation.after
+  ) {
+    return false;
+  }
+  const derivedFields = new Set(['slotsAvailable', 'queueCount', 'updatedAt']);
+  const fields = new Set([...Object.keys(mutation.before), ...Object.keys(mutation.after)]);
+  return [...fields].every(
+    (field) =>
+      derivedFields.has(field) ||
+      canonicalTransferJson(mutation.before?.[field] ?? null) ===
+        canonicalTransferJson(mutation.after?.[field] ?? null),
+  );
 }
 
 function jsonInput(value: object): Prisma.InputJsonObject {

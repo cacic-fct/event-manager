@@ -14,6 +14,7 @@ import {
   TRANSFER_FORMAT,
   TRANSFER_SCHEMA_ID,
   TRANSFER_VERSION,
+  TRANSFER_MAX_RESOURCES,
   TransferDocumentSchema,
   TransferValidationError,
   canonicalTransferJson,
@@ -163,29 +164,29 @@ export class DataTransferService {
       async (tx) => {
         const context = this.adapterContext(tx, user, this.emptyDocument(), input.target);
         const outputs: TransferAdapterExportResult[] = [];
+        let resources: TransferResource[] = [];
         for (const adapter of this.adapters()) {
-          outputs.push(
-            await adapter.exportTarget(
-              input.target,
-              {
-                includeDescendants: input.includeDescendants,
-                includeConfiguration: input.includeConfiguration,
-                includeSubscriptions: input.includeSubscriptions ?? false,
-                includeAttendances: input.includeAttendances ?? false,
-                includeChildSubscriptions: input.includeChildSubscriptions ?? false,
-                includeChildAttendances: input.includeChildAttendances ?? false,
-              },
-              context,
-            ),
+          const output = await adapter.exportTarget(
+            input.target,
+            {
+              includeDescendants: input.includeDescendants,
+              includeConfiguration: input.includeConfiguration,
+              includeSubscriptions: input.includeSubscriptions ?? false,
+              includeAttendances: input.includeAttendances ?? false,
+              includeChildSubscriptions: input.includeChildSubscriptions ?? false,
+              includeChildAttendances: input.includeChildAttendances ?? false,
+            },
+            context,
           );
+          outputs.push(output);
+          resources = deduplicateExportResources([...resources, ...output.resources]);
         }
 
-        const resources = deduplicateExportResources(outputs.flatMap((output) => output.resources));
         const issues = outputs.flatMap((output) => output.issues);
         if (resources.length === 0) {
           throw new NotFoundException(ACCESS_BLOCKED_MESSAGE);
         }
-        const document = parseTransferDocument({
+        const document = this.parseDocument({
           $schema: TRANSFER_SCHEMA_ID,
           format: TRANSFER_FORMAT,
           version: TRANSFER_VERSION,
@@ -331,11 +332,17 @@ export class DataTransferService {
             executableResources,
           );
         }
+        const appliedResources: TransferResource[] = [];
+        for (const row of plan.rows) {
+          if (row.item.status !== 'applied' || !row.snapshot || !row.adapter) continue;
+          const resource = row.adapter.readAppliedResource
+            ? await row.adapter.readAppliedResource(row.snapshot, this.adapterContext(tx, user, document, input.scope))
+            : normalizedAppliedResource(row.snapshot);
+          appliedResources.push(normalizeAppliedResource(resource));
+        }
         const auditedDocument: ResolvedTransferDocument = {
           ...document,
-          resources: plan.rows.flatMap((row) =>
-            row.item.status === 'applied' && row.snapshot ? [normalizedAppliedResource(row.snapshot)] : [],
-          ),
+          resources: appliedResources,
         };
         const audit = await journal.record(
           recorder,
@@ -467,7 +474,7 @@ export class DataTransferService {
           );
           continue;
         }
-        if (!isWithinRequestedScope(snapshot.scope, resource, scope)) {
+        if (!isWithinRequestedScope(snapshot.scope, snapshot.resource, scope, snapshot.current)) {
           rows.push(this.blockedRow(resource, sourceIndex, ACCESS_BLOCKED_MESSAGE, adapter, snapshot));
           continue;
         }
@@ -916,8 +923,14 @@ function isWithinRequestedScope(
   scope: ResolvedTransferResource['scope'],
   resource: TransferResource,
   requestedScope: TransferTarget | undefined,
+  current: TransferResource | null,
 ): boolean {
   if (!requestedScope) {
+    return true;
+  }
+  // Global places can accompany scoped sports exports as unchanged dependencies.
+  // Creating or editing a global place still requires an unscoped import.
+  if (resource.kind === 'place-preset' && current && diffResourceData(current, resource).length === 0) {
     return true;
   }
   if (resource.kind === SCOPE_ROOT_KIND[requestedScope.kind] && resource.id === requestedScope.id) {
@@ -1110,6 +1123,11 @@ function deduplicateExportResources(resources: readonly TransferResource[]): Tra
       );
     }
     unique.set(key, resource);
+    if (unique.size > TRANSFER_MAX_RESOURCES) {
+      throw new BadRequestException(
+        `Este conjunto excede ${TRANSFER_MAX_RESOURCES} registros. Use um contexto menor ou reduza as opções de exportação.`,
+      );
+    }
   }
   return [...unique.values()];
 }

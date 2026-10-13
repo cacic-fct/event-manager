@@ -38,7 +38,7 @@ New resources can refer to one another by their bare key strings. The key is not
 }
 ```
 
-For a key-only preview, keep the returned `allocation.token` and submit it with the unchanged source file to `POST /api/admin/data-transfer/apply`. Allocations are bound to the authenticated actor and the canonical file, expire after 15 minutes, and are held in memory; a server restart invalidates pending allocations. The apply response contains a normalized document with generated or matched IDs, no local keys, and only normalized person IDs. Save that document before using it as a later update file.
+For a key-only preview, keep the returned `allocation.token` and submit it with the unchanged source file to `POST /api/admin/data-transfer/apply`. Allocations are bound to the authenticated actor and the canonical file, expire after 15 minutes, and are held in memory; a server restart invalidates pending allocations. The apply response contains a normalized document with generated or matched IDs, no local keys, and only normalized person IDs. Its fields are reread after all writes in the apply transaction, including domain normalization and defaults; exact-request retries return that same persisted document. Save that document before using it as a later update file.
 
 Subscriptions can match an existing target/person pair even when the input uses a local key. Attendance has a compound database key; its portable ID is derived from the resolved event and person IDs. The preview reports these actual identities instead of an unused generated ID.
 
@@ -81,6 +81,8 @@ If an apply commits but its response is lost, retry the exact request as the sam
 ## Permissions, history, and undo
 
 Import and export require their corresponding `DataTransfer` gate plus the owning resource permissions in the current server-resolved event, group, major-event, or sports scope. Participation imports additionally require subscription or attendance permissions; sports attendance checks match read/operate rights when it would start check-in. A requested import scope narrows which target rows can be changed; file-supplied IDs do not grant access.
+
+Place presets are global resources and require global place permissions. Unchanged place presets can accompany a scoped sports import as dependencies; creating or editing a place preset requires an unscoped import. Place changes and their undo are synchronized to search through the durable journal. New price tiers validate the final parent table even when the table itself is omitted from the file; a `SINGLE` table must retain exactly one tier.
 
 `GET /api/admin/data-transfer/history` lists recent authorized batch summaries. `POST /api/admin/data-transfer/undo` reverses an applied batch only for its importing actor or a superadmin, with `DataTransfer.Undo` and current permissions for every affected resource. Undo is atomic and is blocked if the schema changed or any affected row changed after the import. Search and realtime synchronization are recorded for retry after a restart.
 

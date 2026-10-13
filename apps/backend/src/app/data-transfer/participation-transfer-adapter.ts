@@ -151,6 +151,17 @@ export class ParticipationTransferAdapter implements DataTransferAdapter {
     'event-attendance',
   ] as const;
   readonly dependencyOrder = 90;
+
+  async readAppliedResource(
+    snapshot: ResolvedTransferResource,
+    context: TransferAdapterContext,
+  ): Promise<TransferResource> {
+    const value = snapshotOf(snapshot);
+    if (!value.personId) throw new TransferValidationException('Pessoa não resolvida.');
+    const current = await this.loadCurrent(value.resource, value.target, value.personId, context.tx);
+    if (!current) throw new ConflictException('A participação aplicada não está disponível.');
+    return { ...current, revision: participationRevision(current) };
+  }
   private readonly plannedSportsCheckIns = new WeakMap<TransferAdapterContext, Set<string>>();
 
   constructor(

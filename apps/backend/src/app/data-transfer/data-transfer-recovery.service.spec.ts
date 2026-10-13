@@ -50,6 +50,7 @@ function entry(id: string, batchMetadata: ReturnType<typeof metadata>, overrides
 function fixture(entries: unknown[]) {
   const prisma = {
     auditLogEntry: { findMany: jest.fn().mockResolvedValue(entries) },
+    placePreset: { findUnique: jest.fn().mockResolvedValue(null) },
     majorEvent: {
       findUnique: jest.fn().mockImplementation(async ({ where }: { where: { id: string } }) => ({
         id: where.id,
@@ -77,23 +78,148 @@ function fixture(entries: unknown[]) {
     refreshCatalogsAndSitemap: jest.fn().mockResolvedValue(undefined),
   };
   const search = {
+    upsertPlacePreset: jest.fn().mockResolvedValue(undefined),
+    deletePlacePreset: jest.fn().mockResolvedValue(undefined),
     upsertMajorEvent: jest.fn().mockResolvedValue(undefined),
     deleteMajorEvent: jest.fn().mockResolvedValue(undefined),
     upsertAuditLogEntry: jest.fn().mockResolvedValue(undefined),
   };
-  const sportsEvents = { publishForEntity: jest.fn().mockResolvedValue(undefined) };
+  const sportsEvents = {
+    publishForEntity: jest.fn().mockResolvedValue(undefined),
+    publishForDeletedEntity: jest.fn().mockResolvedValue(undefined),
+    publishAttendanceMutation: jest.fn().mockResolvedValue(undefined),
+  };
+  const realtime = { scope: (channel: string) => channel, publish: jest.fn().mockResolvedValue(undefined) };
+  const attendanceRealtime = { notifyAllConnectedPeople: jest.fn().mockResolvedValue(undefined) };
   const service = new DataTransferRecoveryService(
     prisma as never,
     journal as never,
     effects as never,
     search as never,
     sportsEvents as never,
+    realtime as never,
+    attendanceRealtime as never,
   );
 
-  return { service, prisma, journal, effects, search, sportsEvents };
+  return { service, prisma, journal, effects, search, sportsEvents, realtime, attendanceRealtime };
 }
 
 describe('DataTransferRecoveryService', () => {
+  it.each([false, true])('recovers place search documents after import and undo (undone: %s)', async (undone) => {
+    const source = mutation('place-preset', 'place-1', {}, 'placePreset');
+    source.source.action = 'create';
+    const batch = entry('batch-place', metadata([source], { undone }));
+    const { service, prisma, journal, search } = fixture([batch]);
+    if (!undone)
+      prisma.placePreset.findUnique.mockResolvedValue({
+        id: 'place-1',
+        name: 'Ginásio',
+        locationDescription: null,
+        deletedAt: null,
+      } as never);
+    await service.recoverPending();
+    if (undone) expect(search.deletePlacePreset).toHaveBeenCalledWith('place-1', true);
+    else
+      expect(search.upsertPlacePreset).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'place-1', name: 'Ginásio' }),
+        true,
+      );
+    expect(journal.markSynchronized).toHaveBeenCalledWith('batch-place', undone);
+  });
+
+  it('keeps a failed place search update pending until it succeeds', async () => {
+    const batch = entry('batch-place', metadata([mutation('place-preset', 'place-1', {}, 'placePreset')]));
+    const { service, prisma, journal, search } = fixture([batch]);
+    prisma.placePreset.findUnique.mockResolvedValue({ id: 'place-1', name: 'Ginásio', deletedAt: null } as never);
+    search.upsertPlacePreset.mockRejectedValueOnce(new Error('search unavailable'));
+    const warning = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await service.recoverPending();
+      expect(journal.markSynchronized).not.toHaveBeenCalled();
+      await service.recoverPending();
+      expect(journal.markSynchronized).toHaveBeenCalledWith('batch-place', false);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it.each(['sports-category', 'sports-venue', 'sports-match', 'sports-tournament'])(
+    'recovers hard-deleted %s from its journaled tournament scope',
+    async (kind) => {
+      const source = mutation(kind, 'deleted-1', { sportsTournamentId: 'tournament-1' });
+      source.source.action = 'create';
+      const batch = entry('batch-deleted', metadata([source], { undone: true }));
+      const { service, journal, sportsEvents } = fixture([batch]);
+      await service.recoverPending();
+      expect(sportsEvents.publishForEntity).not.toHaveBeenCalled();
+      expect(sportsEvents.publishForDeletedEntity).toHaveBeenCalledWith(
+        expect.any(String),
+        'deleted-1',
+        kind === 'sports-tournament' ? 'deleted-1' : 'tournament-1',
+      );
+      expect(journal.markSynchronized).toHaveBeenCalledWith('batch-deleted', true);
+    },
+  );
+
+  it.each([false, true])(
+    'replays form and attendance invalidations before completing recovery (undone: %s)',
+    async (undone) => {
+      const link = mutation('form-link', 'link-1', {}, 'eventFormLink');
+      link.after = { id: 'link-1', formId: 'form-linked' };
+      const attendance = mutation('event-attendance', 'attendance-1', {}, 'eventAttendance');
+      attendance.after = { eventId: 'event-attended', personId: 'person-1' };
+      const batch = entry(
+        'batch-notifications',
+        metadata(
+          [
+            mutation('event-form', 'form-1', {}, 'eventForm'),
+            link,
+            attendance,
+            mutation('event', 'event-1', {}, 'event'),
+          ],
+          { undone },
+        ),
+      );
+      const { service, journal, realtime, attendanceRealtime, sportsEvents } = fixture([batch]);
+      await service.recoverPending();
+      expect(realtime.publish).toHaveBeenCalledWith(
+        'admin-workspace',
+        expect.objectContaining({
+          type: 'EVENT_FORMS_INVALIDATED',
+          formId: 'form-linked',
+        }),
+      );
+      expect(realtime.publish).toHaveBeenCalledWith(
+        'admin-workspace',
+        expect.objectContaining({
+          type: 'EVENT_FORMS_INVALIDATED',
+          formId: 'form-1',
+        }),
+      );
+      expect(sportsEvents.publishAttendanceMutation).toHaveBeenCalledWith('event-attended');
+      expect(attendanceRealtime.notifyAllConnectedPeople).toHaveBeenCalledTimes(1);
+      expect(journal.markSynchronized).toHaveBeenCalledWith('batch-notifications', undone);
+      expect(journal.markSynchronized.mock.invocationCallOrder[0]).toBeGreaterThan(
+        attendanceRealtime.notifyAllConnectedPeople.mock.invocationCallOrder[0],
+      );
+    },
+  );
+
+  it('keeps failed realtime effects pending and replays them on retry', async () => {
+    const batch = entry('batch-notifications', metadata([mutation('event-form', 'form-1', {}, 'eventForm')]));
+    const { service, journal, realtime } = fixture([batch]);
+    realtime.publish.mockRejectedValueOnce(new Error('realtime unavailable'));
+    const warning = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      await service.recoverPending();
+      expect(journal.markSynchronized).not.toHaveBeenCalled();
+      await service.recoverPending();
+      expect(journal.markSynchronized).toHaveBeenCalledWith('batch-notifications', false);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
   it('replays undone configuration-only batches using source scopes and refreshes linked audit entries', async () => {
     const batchMetadata = metadata(
       [

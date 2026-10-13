@@ -322,15 +322,19 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id);
   }
 
-  async upsertPlacePreset(input: { id: string; name: string; locationDescription?: string | null }): Promise<void> {
+  async upsertPlacePreset(
+    input: { id: string; name: string; locationDescription?: string | null },
+    throwOnError = false,
+  ): Promise<void> {
     await this.upsertDocument<PlacePresetSearchDocument>(
       TYPESENSE_COLLECTIONS.placePresets,
       toPlacePresetSearchDocument(input),
+      throwOnError,
     );
   }
 
-  async deletePlacePreset(id: string): Promise<void> {
-    await this.deleteDocument(TYPESENSE_COLLECTIONS.placePresets, id);
+  async deletePlacePreset(id: string, throwOnError = false): Promise<void> {
+    await this.deleteDocument(TYPESENSE_COLLECTIONS.placePresets, id, throwOnError);
   }
 
   async upsertCertificateTemplate(input: {

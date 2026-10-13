@@ -13,7 +13,7 @@ interface StoredAllocation {
   actorId: string;
   fingerprint: string;
   expiresAt: number;
-  ids: Record<string, string>;
+  ids: Map<string, string>;
 }
 
 const referenceKinds: Readonly<Record<string, TransferResourceKind>> = {
@@ -53,16 +53,16 @@ export class TransferKeyAllocations {
     actorId: string,
   ): { document: ResolvedTransferDocument; allocation?: TransferAllocation } {
     this.prune();
-    if (!document.resources.some((resource) => !resource.id)) return { document: this.resolve(document, {}) };
-    const ids: Record<string, string> = {};
-    for (const resource of document.resources) if (!resource.id && resource.key) ids[resource.key] = randomUUID();
+    if (!document.resources.some((resource) => !resource.id)) return { document: this.resolve(document, new Map()) };
+    const ids = new Map<string, string>();
+    for (const resource of document.resources) if (!resource.id && resource.key) ids.set(resource.key, randomUUID());
     const token = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + this.lifetimeMs;
     if (this.entries.size >= this.maximumEntries) this.entries.delete(this.entries.keys().next().value ?? '');
     this.entries.set(token, { actorId, fingerprint: this.fingerprint(document), expiresAt, ids });
     return {
       document: this.resolve(document, ids),
-      allocation: { token, expiresAt: new Date(expiresAt).toISOString(), ids },
+      allocation: { token, expiresAt: new Date(expiresAt).toISOString(), ids: Object.fromEntries(ids) },
     };
   }
 
@@ -70,7 +70,7 @@ export class TransferKeyAllocations {
     this.prune();
     if (!document.resources.some((resource) => !resource.id)) {
       if (token) throw new BadRequestException('Este arquivo não utiliza uma alocação de IDs.');
-      return this.resolve(document, {});
+      return this.resolve(document, new Map());
     }
     const allocation = token ? this.entries.get(token) : undefined;
     if (!allocation || allocation.actorId !== actorId || allocation.fingerprint !== this.fingerprint(document))
@@ -82,10 +82,10 @@ export class TransferKeyAllocations {
     if (token) this.entries.delete(token);
   }
 
-  private resolve(document: TransferDocument, ids: Record<string, string>): ResolvedTransferDocument {
+  private resolve(document: TransferDocument, ids: ReadonlyMap<string, string>): ResolvedTransferDocument {
     const keys = new Map<string, { id: string; kind: TransferResourceKind }>();
     for (const resource of document.resources) {
-      const id = resource.id ?? (resource.key ? ids[resource.key] : undefined);
+      const id = resource.id ?? (resource.key ? ids.get(resource.key) : undefined);
       if (!id) throw new BadRequestException('Informe um ID existente ou uma chave local para cada registro.');
       if (resource.key) keys.set(resource.key, { id, kind: resource.kind });
     }
@@ -101,7 +101,7 @@ export class TransferKeyAllocations {
     };
     const resources = document.resources.map((resource) => ({
       ...resource,
-      id: resource.id ?? ids[resource.key ?? ''],
+      id: resource.id ?? ids.get(resource.key ?? ''),
       data: Object.fromEntries(
         Object.entries(resource.data).map(([field, value]) => [field, resolveReference(field, value)]),
       ),

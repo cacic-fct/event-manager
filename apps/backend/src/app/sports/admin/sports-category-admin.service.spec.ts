@@ -287,6 +287,58 @@ describe('SportsCategoryAdminService', () => {
     expect(tx.sportsCategory.updateMany).not.toHaveBeenCalled();
   });
 
+  it('refreshes attendance assessments when imported backing-group policy changes', async () => {
+    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+    service = new SportsCategoryAdminService(
+      prisma as never,
+      frozen as never,
+      auditLog as never,
+      payments as never,
+      attendanceCategories as never,
+    );
+    prisma.sportsCategory.findFirst.mockResolvedValue(sportsAdminCategoryRecord());
+    tx.sportsCategory.findFirst.mockResolvedValue(null);
+    tx.sportsCategory.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsCategory.findUniqueOrThrow.mockResolvedValue(sportsAdminCategoryRecord());
+    tx.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'hidden-event-2' }]);
+    await service.updateCategory(
+      'category-1',
+      {
+        expectedRevision: 2,
+        backingEventGroup: { attendanceEligibility: 'ANYONE', audience: 'PUBLIC' },
+      },
+      actor,
+    );
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(1, 'event-1', tx);
+    expect(attendanceCategories.refreshForEvent).toHaveBeenNthCalledWith(2, 'hidden-event-2', tx);
+  });
+
+  it('cascades disabled imported group certificate flags to backing match events', async () => {
+    prisma.sportsCategory.findFirst.mockResolvedValue(sportsAdminCategoryRecord());
+    tx.sportsCategory.findFirst.mockResolvedValue(null);
+    tx.sportsCategory.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsCategory.findUniqueOrThrow.mockResolvedValue(sportsAdminCategoryRecord());
+    await service.updateCategory(
+      'category-1',
+      {
+        expectedRevision: 2,
+        backingEventGroup: {
+          shouldIssueCertificateForNonPayingAttendees: false,
+          shouldIssueCertificateForNonSubscribedAttendees: false,
+        },
+      },
+      actor,
+    );
+    expect(tx.event.updateMany).toHaveBeenCalledWith({
+      where: { eventGroupId: 'event-group-1', sportsMatch: { isNot: null }, deletedAt: null },
+      data: {
+        shouldIssueCertificateForNonPayingAttendees: false,
+        shouldIssueCertificateForNonSubscribedAttendees: false,
+        updatedById: 'admin-1',
+      },
+    });
+  });
+
   it('rejects missing, duplicate, and concurrently changed category updates', async () => {
     prisma.sportsCategory.findFirst.mockResolvedValueOnce(null);
     await expect(
@@ -407,7 +459,7 @@ function createTransaction() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-    event: { findFirst: jest.fn(), updateMany: jest.fn() },
+    event: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     sportsCategory: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),

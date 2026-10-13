@@ -361,6 +361,15 @@ describe('TypesenseSearchService', () => {
     expect(client.document.delete).toHaveBeenCalledTimes(1);
   });
 
+  it('propagates strict place search failures for import recovery', async () => {
+    const { client, service } = createEnabledService();
+    const failure = new Error('Typesense place index unavailable');
+    client.documents.upsert.mockRejectedValueOnce(failure);
+    await expect(service.upsertPlacePreset({ id: 'place-recovery', name: 'Ginásio' }, true)).rejects.toBe(failure);
+    client.document.delete.mockRejectedValueOnce(failure);
+    await expect(service.deletePlacePreset('place-recovery', true)).rejects.toBe(failure);
+  });
+
   it('propagates strict event search write failures for recovery callers', async () => {
     const { client, service } = createEnabledService();
     const failure = new Error('Typesense event index unavailable');

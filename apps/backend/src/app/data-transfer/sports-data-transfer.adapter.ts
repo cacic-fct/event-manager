@@ -24,6 +24,7 @@ import {
   type TransferResource,
   type TransferResourceKind,
   type TransferTarget,
+  TRANSFER_MAX_RESOURCES,
   canonicalTransferJson,
 } from '@cacic-fct/shared-data-transfer';
 import { assertSportsOverallScoringRules } from '../sports/domain/sports-overall-scoring';
@@ -37,6 +38,8 @@ import type { FrozenOperation } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SportsAdminService } from '../sports/sports-admin.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import { normalizeEventCertificateSettings } from '../events/event-certificate-settings';
 import { assertSportsTimerRules, assertSportsScoreRules } from './sports-transfer-rules';
 import type {
   DataTransferAdapter,
@@ -95,6 +98,41 @@ type MatchExportRow = Prisma.SportsMatchGetPayload<{
 export class SportsDataTransferAdapter implements DataTransferAdapter {
   readonly kinds = SPORTS_TRANSFER_KINDS;
   readonly dependencyOrder = 30;
+
+  async readAppliedResource(
+    snapshot: ResolvedTransferResource,
+    context: TransferAdapterContext,
+  ): Promise<TransferResource> {
+    const { kind, id } = snapshot.resource;
+    switch (kind) {
+      case 'sports-tournament':
+        return this.tournamentResource(await context.tx.sportsTournament.findUniqueOrThrow({ where: { id } }));
+      case 'sports-category':
+        return this.categoryResource(
+          await context.tx.sportsCategory.findUniqueOrThrow({
+            where: { id },
+            include: { eventGroup: true },
+          }),
+        );
+      case 'sports-venue':
+        return this.venueResource(await context.tx.sportsVenue.findUniqueOrThrow({ where: { id } }));
+      case 'sports-stage':
+        return this.stageResource(await context.tx.sportsStage.findUniqueOrThrow({ where: { id } }));
+      case 'sports-match':
+        return this.matchResource(
+          await context.tx.sportsMatch.findUniqueOrThrow({
+            where: { id },
+            include: { event: true },
+          }),
+        );
+      case 'group':
+        return this.groupResource(await context.tx.eventGroup.findUniqueOrThrow({ where: { id } }));
+      case 'event':
+        return this.backingEventResource(await context.tx.event.findUniqueOrThrow({ where: { id } }));
+      default:
+        throw new TransferValidationException('O recurso não pertence à modalidade esportiva.');
+    }
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -244,7 +282,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
           permission(Permission.SportsMatch.Create, Permission.SportsMatch.Update),
           scope,
         );
-        await this.assertPermission(context, Permission.Event.Create, scope);
+        await this.assertPermission(context, permission(Permission.Event.Create, Permission.Event.Update), scope);
         return this.assertMatchReferencesReadable(snapshot, context, scope);
       case 'group':
         await this.assertPermission(
@@ -518,7 +556,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
       issues.push(this.omittedIssue('sports-venue'));
       return false;
     }
-    if (!(await this.canExport(placeResource, {}, context))) {
+    if (!(await this.canExport(placeResource, scope, context))) {
       issues.push(this.omittedIssue('sports-venue'));
       return false;
     }
@@ -584,7 +622,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
     try {
       await this.assertPermission(context, Permission.DataTransfer.Export, scope);
       for (const permission of permissions) {
-        await this.assertPermission(context, permission, scope);
+        await this.assertPermission(context, permission, permission === Permission.PlacePreset.Read ? {} : scope);
       }
       return true;
     } catch (error: unknown) {
@@ -855,6 +893,12 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
       snapshot.skip ??= { message: 'O grupo de apoio não está disponível para esta modalidade.' };
     }
     await this.assertRead(snapshot, context);
+    if (current && proposedGroup) {
+      snapshot.relatedRevisions = [
+        { kind: 'group', id: current.eventGroupId, revision: current.eventGroup.updatedAt.toISOString() },
+      ];
+      await this.planCategoryCertificateCascade(snapshot, proposedGroup, context);
+    }
     return snapshot;
   }
 
@@ -885,6 +929,67 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
     }
     await this.assertRead(snapshot, context);
     return snapshot;
+  }
+
+  private async planCategoryCertificateCascade(
+    snapshot: ResolvedTransferResource,
+    group: TransferResource,
+    context: TransferAdapterContext,
+  ): Promise<void> {
+    const data = this.data(snapshot.resource);
+    const groupData = this.data(group);
+    const tournamentId = this.text(data.tournamentId) ?? this.text(this.data(snapshot.current).tournamentId);
+    const tournament = tournamentId ? await this.lookupTournament(tournamentId, context) : null;
+    const patch = normalizeEventCertificateSettings({
+      ...(data.shouldIssueCertificate !== undefined
+        ? {
+            shouldIssueCertificate:
+              this.nullableBoolean(data.shouldIssueCertificate) ?? tournament?.shouldIssueCertificate ?? false,
+          }
+        : {}),
+      ...(groupData.shouldIssueCertificateForNonPayingAttendees === false
+        ? { shouldIssueCertificateForNonPayingAttendees: false }
+        : {}),
+      ...(groupData.shouldIssueCertificateForNonSubscribedAttendees === false
+        ? { shouldIssueCertificateForNonSubscribedAttendees: false }
+        : {}),
+    });
+    if (Object.keys(patch).length === 0) return;
+    const events = await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, () =>
+      context.tx.event.findMany({
+        where: { eventGroupId: group.id, sportsMatch: { isNot: null }, deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          updatedAt: true,
+          shouldIssueCertificate: true,
+          shouldIssueCertificateForNonPayingAttendees: true,
+          shouldIssueCertificateForNonSubscribedAttendees: true,
+        },
+        take: TRANSFER_MAX_RESOURCES + 1,
+      }),
+    );
+    if (events.length > TRANSFER_MAX_RESOURCES)
+      throw new TransferValidationException('Esta modalidade afeta mais de 500 partidas. Use um contexto menor.');
+    const fields = Object.keys(patch) as Array<keyof typeof patch>;
+    const changes: TransferChange[] = [];
+    for (const event of events) {
+      if (!fields.some((field) => event[field] !== patch[field])) continue;
+      await this.authorization.assertPermissions(context.actor, [Permission.Event.Read, Permission.Event.Update], {
+        eventId: event.id,
+      });
+      await context.frozenResources.assertEventMutable(event.id, context.actor, 'edit');
+      changes.push({
+        field: `Certificados da partida: ${event.name}`,
+        before: Object.fromEntries(fields.map((field) => [field, event[field]])),
+        after: Object.fromEntries(fields.map((field) => [field, patch[field]])) as JsonValue,
+      });
+    }
+    snapshot.relatedRevisions = [
+      ...(snapshot.relatedRevisions ?? []),
+      ...events.map((event) => ({ kind: 'event' as const, id: event.id, revision: event.updatedAt.toISOString() })),
+    ];
+    snapshot.additionalChanges = [...(snapshot.additionalChanges ?? []), ...changes];
   }
 
   private async resolveStage(resource: TransferResource, context: TransferAdapterContext) {
@@ -2574,7 +2679,7 @@ export class SportsDataTransferAdapter implements DataTransferAdapter {
         bracketPosition: match.bracketPosition,
         groupKey: match.groupKey,
       },
-      `${match.revision}:${match.event.updatedAt.toISOString()}`,
+      match.updatedAt.toISOString(),
     );
   }
 

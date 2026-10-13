@@ -15,6 +15,7 @@ import { SportsVenueAdminService } from './admin/sports-venue-admin.service';
 import { SportsPaymentService } from './sports-payment.service';
 import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
 import { sportsPrismaForTransaction } from './sports-transaction';
+import { AttendanceCategoryService } from '../events/attendance-category.service';
 
 export * from './sports-admin.types';
 
@@ -36,10 +37,11 @@ export class SportsAdminService {
     private readonly payments: SportsPaymentService,
     private readonly publication: PublicationTransitionService,
     private readonly ticketIssuance: TicketIssuanceService,
+    private readonly attendanceCategories: AttendanceCategoryService = new AttendanceCategoryService(prisma),
   ) {
     const dependencies = [prisma, frozen, auditLog, payments] as const;
     this.tournaments = new SportsTournamentAdminService(...dependencies);
-    this.categories = new SportsCategoryAdminService(...dependencies);
+    this.categories = new SportsCategoryAdminService(...dependencies, attendanceCategories);
     this.teams = new SportsTeamAdminService(...dependencies);
     this.registrations = new SportsRegistrationAdminService(...dependencies);
     this.venues = new SportsVenueAdminService(...dependencies);
@@ -56,6 +58,7 @@ export class SportsAdminService {
       this.payments,
       this.publication,
       this.ticketIssuance,
+      this.attendanceCategories,
     );
   }
 

@@ -94,6 +94,8 @@ export interface TransferAdapterExportResult {
  * preview hashing, partial-apply policy, and transaction coordination.
  */
 export interface DataTransferAdapter {
+  /** Read persisted values inside the apply transaction, without repeating preview authorization. */
+  readAppliedResource?(snapshot: ResolvedTransferResource, context: TransferAdapterContext): Promise<TransferResource>;
   readonly kinds: readonly TransferResourceKind[];
   readonly dependencyOrder: number;
 

@@ -10,6 +10,16 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { eventContentAuditSnapshot } from '../../events/event-content-audit';
+import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import {
+  normalizeEventCertificateSettings,
+  type EventCertificateSettings,
+} from '../../events/event-certificate-settings';
+import { ANONYMOUS_AUDIENCE, audienceContext } from '../../audiences/audience-context';
+import { PrismaService } from '../../prisma/prisma.service';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { SportsPaymentService } from '../sports-payment.service';
 import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsCategoryInput } from '../sports-admin.types';
@@ -17,6 +27,16 @@ import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsCategoryAdminService extends SportsAdminBaseService {
+  constructor(
+    prisma: PrismaService,
+    frozen: FrozenResourceService,
+    auditLog: AuditLogService,
+    payments: SportsPaymentService,
+    private readonly attendanceCategories = new AttendanceCategoryService(prisma),
+  ) {
+    super(prisma, frozen, auditLog, payments);
+  }
+
   async createCategory(input: CreateSportsCategoryInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     this.validateRosterLimits(input);
@@ -351,6 +371,15 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           input.shouldIssueCertificate === undefined
             ? false
             : (input.shouldIssueCertificate ?? tournamentPolicy?.shouldIssueCertificate ?? false);
+        const certificatePatch: EventCertificateSettings = normalizeEventCertificateSettings({
+          ...(input.shouldIssueCertificate !== undefined ? { shouldIssueCertificate: effectiveCertificatePolicy } : {}),
+          ...(input.backingEventGroup?.shouldIssueCertificateForNonPayingAttendees === false
+            ? { shouldIssueCertificateForNonPayingAttendees: false }
+            : {}),
+          ...(input.backingEventGroup?.shouldIssueCertificateForNonSubscribedAttendees === false
+            ? { shouldIssueCertificateForNonSubscribedAttendees: false }
+            : {}),
+        });
         const backingGroupData = {
           ...(name !== undefined || input.division !== undefined
             ? {
@@ -368,6 +397,14 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
             : {}),
           ...(input.shouldIssueCertificate !== undefined ? { shouldIssueCertificate: effectiveCertificatePolicy } : {}),
           ...(input.backingEventGroup ?? {}),
+          ...(certificatePatch.shouldIssueCertificate === false
+            ? {
+                shouldIssueCertificateForNonPayingAttendees: false,
+                shouldIssueCertificateForNonSubscribedAttendees: false,
+                shouldIssueCertificateForEachEvent: false,
+                shouldIssuePartialCertificate: false,
+              }
+            : {}),
           updatedById: actorId,
         };
         const updatedEventGroup =
@@ -391,10 +428,23 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           },
           tx,
         );
-        if (input.shouldIssueCertificate !== undefined) {
+        if (Object.keys(certificatePatch).length > 0) {
           await tx.event.updateMany({
             where: { eventGroupId: existing.eventGroupId, sportsMatch: { isNot: null }, deletedAt: null },
-            data: { shouldIssueCertificate: effectiveCertificatePolicy, updatedById: actorId },
+            data: { ...certificatePatch, updatedById: actorId },
+          });
+        }
+        if (
+          input.backingEventGroup?.attendanceEligibility !== undefined ||
+          input.backingEventGroup?.audience !== undefined ||
+          input.backingEventGroup?.audienceCourseCodes !== undefined
+        ) {
+          await audienceContext.run({ ...ANONYMOUS_AUDIENCE, bypass: true }, async () => {
+            const events = await tx.event.findMany({
+              where: { eventGroupId: existing.eventGroupId, deletedAt: null },
+              select: { id: true },
+            });
+            for (const event of events) await this.attendanceCategories.refreshForEvent(event.id, tx);
           });
         }
       }

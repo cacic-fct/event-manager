@@ -9,16 +9,37 @@ import {
   type SportsMutationEntity,
 } from '../sports/realtime/sports-mutation-events.service';
 import { ANONYMOUS_AUDIENCE, audienceContext } from '../audiences/audience-context';
+import { RealtimeInvalidationService } from '../realtime/realtime-invalidation.service';
+import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { DataTransferJournalService, readTransferJournal } from './data-transfer-journal.service';
+
+type SportsRecoveryTarget = {
+  entity: SportsMutationEntity;
+  id: string;
+  tournamentId?: string;
+  deleted: boolean;
+};
 
 type RecoveryTargets = {
   eventIds: Set<string>;
   groupIds: Set<string>;
   majorIds: Set<string>;
-  sportsEntities: Map<string, { entity: SportsMutationEntity; id: string }>;
+  sportsEntities: Map<string, SportsRecoveryTarget>;
+  formIds: Set<string>;
+  placeIds: Set<string>;
+  attendanceEventIds: Set<string>;
+  attendanceSettingsChanged: boolean;
 };
 
 const SEARCH_SYNC_OPTIONS = { throwOnSearchError: true } as const;
+const ATTENDANCE_AVAILABILITY_MODELS = new Set([
+  'event',
+  'eventGroup',
+  'majorEvent',
+  'eventAudienceInvitation',
+  'eventGroupAudienceInvitation',
+  'majorEventAudienceInvitation',
+]);
 
 /** Audit-backed outbox: a shutdown between database commit and synchronization remains recoverable. */
 @Injectable()
@@ -33,6 +54,8 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
     private readonly effects: EventPostCommitEffectsService,
     private readonly search: TypesenseSearchService,
     private readonly sportsEvents: SportsMutationEventsService,
+    private readonly realtime: RealtimeInvalidationService,
+    private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -73,7 +96,7 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
           const metadata = readTransferJournal(entry.metadata);
           if (!metadata) continue;
           try {
-            const targets = this.collectTargets(metadata.mutations);
+            const targets = this.collectTargets(metadata.mutations, metadata.undone);
             await this.collectSportsBackingTargets(targets);
 
             await this.effects.syncEvents([...targets.eventIds], SEARCH_SYNC_OPTIONS);
@@ -96,8 +119,35 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
               else await this.search.upsertMajorEvent(major, true);
             }
 
-            for (const { entity, id } of targets.sportsEntities.values()) {
-              await this.sportsEvents.publishForEntity(entity, id, true);
+            for (const id of targets.placeIds) {
+              const place = await this.prisma.placePreset.findUnique({
+                where: { id },
+                select: { id: true, name: true, locationDescription: true, deletedAt: true },
+              });
+              if (!place || place.deletedAt) await this.search.deletePlacePreset(id, true);
+              else await this.search.upsertPlacePreset(place, true);
+            }
+
+            for (const { entity, id, tournamentId, deleted } of targets.sportsEntities.values()) {
+              if (deleted) {
+                if (!tournamentId) throw new Error('The deleted sports entity has no journaled tournament scope.');
+                await this.sportsEvents.publishForDeletedEntity(entity, id, tournamentId);
+              } else {
+                await this.sportsEvents.publishForEntity(entity, id, true);
+              }
+            }
+            for (const formId of targets.formIds) {
+              await this.realtime.publish(this.realtime.scope('admin-workspace'), {
+                type: 'EVENT_FORMS_INVALIDATED',
+                formId,
+                occurredAt: new Date().toISOString(),
+              });
+            }
+            for (const eventId of targets.attendanceEventIds) {
+              await this.sportsEvents.publishAttendanceMutation(eventId);
+            }
+            if (targets.attendanceSettingsChanged) {
+              await this.attendanceRealtime.notifyAllConnectedPeople();
             }
 
             await this.effects.refreshCatalogsAndSitemap();
@@ -118,28 +168,40 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
       model: string;
       before: Record<string, unknown> | null;
       after: Record<string, unknown> | null;
-      source: { kind: string; id: string; scope: Record<string, unknown> };
+      source: { kind: string; id: string; action: string; scope: Record<string, unknown> };
     }[],
+    undone: boolean,
   ): RecoveryTargets {
     const targets: RecoveryTargets = {
       eventIds: new Set(),
       groupIds: new Set(),
       majorIds: new Set(),
       sportsEntities: new Map(),
+      formIds: new Set(),
+      placeIds: new Set(),
+      attendanceEventIds: new Set(),
+      attendanceSettingsChanged: false,
     };
 
     for (const mutation of mutations) {
       this.addScopeTargets(targets, mutation.source.scope);
-      this.addSourceTargets(targets, mutation.source.kind, mutation.source.id, mutation.source.scope);
+      const { kind, id, action, scope } = mutation.source;
+      this.addSourceTargets(targets, kind, id, scope, undone && action === 'create' && kind !== 'sports-stage');
+      if (kind === 'event-form') this.addTarget(targets.formIds, id);
+      // Tree and invitation mutations may change attendance availability, including through inherited settings.
+      if (ATTENDANCE_AVAILABILITY_MODELS.has(mutation.model)) targets.attendanceSettingsChanged = true;
 
       for (const row of [mutation.before, mutation.after]) {
         if (!row) continue;
         if (mutation.model === 'event') this.addTarget(targets.eventIds, row['id']);
         if (mutation.model === 'eventGroup') this.addTarget(targets.groupIds, row['id']);
         if (mutation.model === 'majorEvent') this.addTarget(targets.majorIds, row['id']);
+        if (mutation.model === 'placePreset') this.addTarget(targets.placeIds, row['id']);
         this.addTarget(targets.eventIds, row['eventId']);
         this.addTarget(targets.groupIds, row['eventGroupId']);
         this.addTarget(targets.majorIds, row['majorEventId']);
+        if (kind === 'form-link') this.addTarget(targets.formIds, row['formId']);
+        if (mutation.model === 'eventAttendance') this.addTarget(targets.attendanceEventIds, row['eventId']);
       }
     }
 
@@ -152,13 +214,28 @@ export class DataTransferRecoveryService implements OnApplicationBootstrap, OnMo
     this.addTarget(targets.majorIds, scope['majorEventId']);
   }
 
-  private addSourceTargets(targets: RecoveryTargets, kind: string, id: string, scope: Record<string, unknown>): void {
+  private addSourceTargets(
+    targets: RecoveryTargets,
+    kind: string,
+    id: string,
+    scope: Record<string, unknown>,
+    deleted: boolean,
+  ): void {
     if (kind === 'event') this.addTarget(targets.eventIds, id);
     if (kind === 'group') this.addTarget(targets.groupIds, id);
     if (kind === 'major-event') this.addTarget(targets.majorIds, id);
 
     const sportsEntity = this.sportsEntityForSource(kind, id, scope);
-    if (sportsEntity) targets.sportsEntities.set(`${sportsEntity.entity}:${sportsEntity.id}`, sportsEntity);
+    if (sportsEntity) {
+      const key = `${sportsEntity.entity}:${sportsEntity.id}`;
+      const previous = targets.sportsEntities.get(key);
+      const tournamentId = sportsEntity.entity === 'TOURNAMENT' ? sportsEntity.id : scope['sportsTournamentId'];
+      targets.sportsEntities.set(key, {
+        ...sportsEntity,
+        tournamentId: typeof tournamentId === 'string' ? tournamentId : previous?.tournamentId,
+        deleted: deleted || previous?.deleted === true,
+      });
+    }
   }
 
   private sportsEntityForSource(

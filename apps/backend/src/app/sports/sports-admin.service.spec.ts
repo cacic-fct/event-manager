@@ -113,12 +113,10 @@ describe('SportsAdminService', () => {
     const committed = { majorEvent: { findFirst: jest.fn().mockResolvedValue({ createdAt: sportsTestDate() }) } };
     const caller = {
       majorEvent: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValue({
-            createdAt: sportsTestDate(-365 * 86_400_000),
-            endDate: sportsTestDate(-364 * 86_400_000),
-          }),
+        findFirst: jest.fn().mockResolvedValue({
+          createdAt: sportsTestDate(-365 * 86_400_000),
+          endDate: sportsTestDate(-364 * 86_400_000),
+        }),
       },
       sportsTournament: { create: jest.fn() },
     };

@@ -94,18 +94,16 @@ it('resolves Nest providers and uses the injected authorization services for tre
     expect(exported.document.resources).toEqual([
       expect.objectContaining({ kind: 'event', id: event.id, data: expect.objectContaining({ name: event.name }) }),
     ]);
-    await module
-      .get(ConfigurationTransferAdapter)
-      .assertRead(
-        {
-          resource: { kind: 'place-preset', id: 'place-1', data: { name: 'Local' } },
-          current: { kind: 'place-preset', id: 'place-1', data: { name: 'Local' } },
-          revision: null,
-          dependencies: [],
-          scope: {},
-        },
-        { actor, tx } as unknown as TransferAdapterContext,
-      );
+    await module.get(ConfigurationTransferAdapter).assertRead(
+      {
+        resource: { kind: 'place-preset', id: 'place-1', data: { name: 'Local' } },
+        current: { kind: 'place-preset', id: 'place-1', data: { name: 'Local' } },
+        revision: null,
+        dependencies: [],
+        scope: {},
+      },
+      { actor, tx } as unknown as TransferAdapterContext,
+    );
     expect(authorization.assertPermissions).toHaveBeenLastCalledWith(
       actor,
       [Permission.DataTransfer.Import, Permission.PlacePreset.Read],

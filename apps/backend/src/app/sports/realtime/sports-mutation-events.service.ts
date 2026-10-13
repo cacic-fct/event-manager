@@ -214,6 +214,19 @@ export class SportsMutationEventsService {
     ]);
   }
 
+  /** Publish from the durable scope after hard deletion, without resolving the missing entity. */
+  async publishForDeletedEntity(entity: SportsMutationEntity, entityId: string, tournamentId: string): Promise<void> {
+    const payload = { type: 'INVALIDATE', entity, entityId, tournamentId, occurredAt: new Date().toISOString() };
+    const matchIds = new Set(await this.findMatchIds(tournamentId));
+    if (entity === 'MATCH') matchIds.add(entityId);
+    await Promise.all([
+      this.dashboardInsights.invalidateCachedInsights(),
+      this.realtime.publish(this.realtime.scope('admin-tournament', tournamentId), payload),
+      this.realtime.publish(this.realtime.scope('tournament', tournamentId), payload),
+      ...[...matchIds].map((matchId) => this.realtime.publish(this.realtime.scope('match', matchId), payload)),
+    ]);
+  }
+
   async publishForBackingEvent(eventId: string): Promise<void> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: { eventId, deletedAt: null },

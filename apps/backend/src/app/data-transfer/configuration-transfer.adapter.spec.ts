@@ -3,12 +3,346 @@ import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.in
 import { diffResourceData } from './data-transfer.service';
 import type { ResolvedTransferResource, TransferAdapterContext } from './data-transfer-adapter';
 import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { DataTransferService } from './data-transfer.service';
 import { TransferKeyAllocations } from './transfer-key-allocations';
+import { SportsDataTransferAdapter } from './sports-data-transfer.adapter';
 
 describe('ConfigurationTransferAdapter', () => {
+  it('reads normalized persisted form values for a reusable apply result', async () => {
+    const now = new Date();
+    let stored: Record<string, unknown> | null = null;
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1', majorEventId: null, eventGroupId: null }) },
+      eventForm: {
+        findFirst: jest.fn(async () => stored),
+        create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          stored = {
+            ownerMajorEventId: null,
+            sigilo: 'SECRET',
+            responseMode: 'ONE_PER_TARGET',
+            resultsPublic: false,
+            resultsLive: false,
+            allowResponseEdits: false,
+            updatedAt: now,
+            deletedAt: null,
+            ...data,
+          };
+          return stored;
+        }),
+      },
+    };
+    const adapter = createAdapter(tx);
+    const resource = transferResource('event-form', 'form-1', {
+      ownerEventId: 'event-1',
+      name: '  Inscrição  ',
+      description: '  ',
+      elements: [],
+    });
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+    await adapter.apply(snapshot, 'create', context);
+    const applied = await adapter.readAppliedResource(snapshot, context);
+    expect(applied.data).toMatchObject({ name: 'Inscrição', description: null, elements: [] });
+    const fresh = await adapter.resolve(applied, context);
+    expect(diffResourceData(fresh.current, applied)).toEqual([]);
+  });
+
+  it('creates and updates place presets with normalized fields and a guarded revision', async () => {
+    const now = new Date();
+    let stored: Record<string, unknown> | null = null;
+    const placePreset = {
+      findUnique: jest.fn(async () => stored),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        stored = { ...data, deletedAt: null, updatedAt: now };
+        return stored;
+      }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    };
+    const authorization = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const tx = { placePreset, authorization, audit };
+    const adapter = createAdapter(tx);
+    const resource = transferResource('place-preset', 'place-1', {
+      name: '  Ginásio  ',
+      latitude: -22,
+      longitude: -51,
+      locationDescription: '  Bloco A  ',
+    });
+    const context = createContext(tx, [resource]);
+    const created = await adapter.resolve(resource, context);
+    await adapter.assertRead(created, context);
+    await adapter.assertWrite(created, 'create', context);
+    await adapter.validate(created, context);
+    await adapter.apply(created, 'create', context);
+    expect(placePreset.create).toHaveBeenCalledWith({
+      data: {
+        id: 'place-1',
+        name: 'Ginásio',
+        latitude: -22,
+        longitude: -51,
+        locationDescription: 'Bloco A',
+        createdById: context.actor.sub,
+        updatedById: context.actor.sub,
+      },
+    });
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(
+      context.actor,
+      [Permission.DataTransfer.Import, Permission.PlacePreset.Create],
+      {},
+    );
+    const update = transferResource('place-preset', 'place-1', { name: 'Ginásio novo', locationDescription: null });
+    const updated = await adapter.resolve(update, createContext(tx, [update]));
+    await adapter.assertWrite(updated, 'update', context);
+    await adapter.apply(updated, 'update', context);
+    expect(placePreset.updateMany).toHaveBeenCalledWith({
+      where: { id: 'place-1', deletedAt: null, updatedAt: now },
+      data: { name: 'Ginásio novo', locationDescription: null, updatedById: context.actor.sub },
+    });
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(
+      context.actor,
+      [Permission.DataTransfer.Import, Permission.PlacePreset.Update],
+      {},
+    );
+    placePreset.updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(adapter.apply(updated, 'update', context)).rejects.toThrow(ConflictException);
+    expect(audit.record).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects deleted places and new places without a nonblank name', async () => {
+    const tx = { placePreset: { findUnique: jest.fn().mockResolvedValue({ deletedAt: new Date() }) } };
+    const adapter = createAdapter(tx);
+    const resource = transferResource('place-preset', 'place-1', { name: ' ' });
+    const context = createContext(tx, [resource]);
+    await expect(adapter.resolve(resource, context)).rejects.toThrow(NotFoundException);
+    tx.placePreset.findUnique.mockResolvedValue(null);
+    const snapshot = await adapter.resolve(resource, context);
+    await expect(adapter.validate(snapshot, context)).rejects.toThrow('O local precisa ter um nome.');
+  });
+
+  it.each([false, true])(
+    'keeps an exported place dependency available in a sports preview (scoped: %s)',
+    async (scoped) => {
+      const now = new Date();
+      const place = {
+        id: 'place-1',
+        name: 'Ginásio',
+        latitude: null,
+        longitude: null,
+        locationDescription: null,
+        deletedAt: null,
+        updatedAt: now,
+      };
+      const tournament = {
+        id: 'tournament-1',
+        majorEventId: 'major-1',
+        majorEvent: { name: 'Jogos' },
+        registrationStartDate: null,
+        registrationEndDate: null,
+        scoringMode: 'PER_SPORT',
+        selfSubscriptionEnabled: false,
+        selfSubscriptionAllowNoTeam: false,
+        selfSubscriptionAllowNoCategory: false,
+        allowPlayerMultipleTeams: false,
+        shouldIssueCertificate: false,
+        revision: 1,
+        updatedAt: now,
+      };
+      const venue = {
+        id: 'venue-1',
+        tournamentId: tournament.id,
+        tournament,
+        placePresetId: place.id,
+        placePreset: place,
+        name: 'Quadra',
+        courtLabel: null,
+        capacity: null,
+        notes: null,
+        parentVenueId: null,
+        revision: 1,
+        updatedAt: now,
+      };
+      const authorization = {
+        assertPermissions: jest.fn(
+          async (_actor: AuthenticatedUser, permissions: Permission[], scope: { majorEventId?: string }) => {
+            if (
+              scoped &&
+              permissions.some(
+                (permission) =>
+                  permission === Permission.DataTransfer.Import || permission === Permission.DataTransfer.Export,
+              ) &&
+              scope.majorEventId !== 'major-1'
+            )
+              throw new ForbiddenException();
+            if (permissions.includes(Permission.PlacePreset.Read)) expect(scope).toEqual({});
+          },
+        ),
+      };
+      const tx = {
+        placePreset: { findUnique: jest.fn().mockResolvedValue(place) },
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
+        sportsTournament: { findFirst: jest.fn().mockResolvedValue(tournament) },
+        sportsCategory: { findMany: jest.fn().mockResolvedValue([]) },
+        sportsVenue: { findMany: jest.fn().mockResolvedValue([venue]), findFirst: jest.fn().mockResolvedValue(venue) },
+      };
+      const sports = new SportsDataTransferAdapter(
+        tx as never,
+        authorization as never,
+        {} as never,
+        {} as never,
+        {} as never,
+      );
+      const target = { kind: 'major-event', id: 'major-1' } as const;
+      const exported = await sports.exportTarget(
+        target,
+        { includeConfiguration: true, includeDescendants: true },
+        createContext(tx, []),
+      );
+      expect(exported.resources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: 'sports-venue' }),
+          expect.objectContaining({ kind: 'place-preset' }),
+        ]),
+      );
+      expect(exported.issues).toEqual([]);
+      const configuration = createAdapter({ ...tx, authorization });
+      const service = previewService(tx, [configuration, sports]);
+      const preview = await service.preview(
+        {
+          document: { format: 'cacic-event-data', version: 1, resources: exported.resources },
+          ...(scoped ? { scope: target } : {}),
+        },
+        createContext(tx, []).actor,
+      );
+      expect(preview.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: 'place-preset', status: 'unchanged' }),
+          expect.objectContaining({ kind: 'sports-venue', status: 'unchanged' }),
+        ]),
+      );
+      expect(preview.summary.skip).toBe(0);
+      if (scoped) {
+        const changed = exported.resources.map((resource) =>
+          resource.kind === 'place-preset'
+            ? transferResource('place-preset', resource.id, { name: 'Outro local' })
+            : resource,
+        );
+        const blocked = await service.preview(
+          { document: { format: 'cacic-event-data', version: 1, resources: changed }, scope: target },
+          createContext(tx, []).actor,
+        );
+        expect(blocked.items).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ kind: 'place-preset', status: 'blocked' }),
+            expect.objectContaining({ kind: 'sports-venue', status: 'blocked' }),
+          ]),
+        );
+      }
+    },
+  );
+
+  it.each([
+    ['SINGLE', undefined, 'blocked'],
+    ['TIERED', undefined, 'ready'],
+    ['SINGLE', 'TIERED', 'ready'],
+    ['TIERED', 'SINGLE', 'blocked'],
+  ] as const)(
+    'validates a tier against its parent %s table and proposed type %s',
+    async (type, proposedType, status) => {
+      const price = { id: 'price-1', majorEventId: 'major-1', type, majorEvent: { deletedAt: null } };
+      const tx = {
+        majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
+        majorEventPrice: { findFirst: jest.fn().mockResolvedValue(price) },
+        priceTier: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue([{ id: 'existing-tier' }]),
+        },
+      };
+      const frozen = { assertMajorEventMutable: jest.fn().mockResolvedValue(undefined) };
+      const adapter = createAdapter({ ...tx, frozen });
+      const tier = transferResource('price-tier', 'new-tier', { priceId: price.id, name: 'Nova faixa', value: 100 });
+      const resources = [
+        tier,
+        ...(proposedType ? [transferResource('major-event-price', price.id, { type: proposedType })] : []),
+      ];
+      const context = createContext(tx, resources);
+      const preview = await previewService(tx, [adapter]).preview({ document: context.document }, context.actor);
+      expect(preview.items.find((item) => item.id === tier.id)).toMatchObject({ status });
+      if (status === 'blocked') {
+        expect(preview.canApply).toBe(false);
+      } else {
+        tx.priceTier.findMany.mockResolvedValue([{ id: 'existing-tier' }, { id: 'new-tier' }]);
+        await expect(
+          adapter.validatePlan(await adapter.resolve(tier, context), context, resources),
+        ).resolves.toBeUndefined();
+      }
+    },
+  );
+  it('keeps an existing tier edit ready when an invalid new tier is skipped', async () => {
+    const price = { id: 'price-1', majorEventId: 'major-1', type: 'SINGLE', majorEvent: { deletedAt: null } };
+    const storedTier = {
+      id: 'existing-tier',
+      priceId: price.id,
+      price: { majorEventId: 'major-1' },
+      name: 'Regular',
+      value: 100,
+      includesEventRegistration: true,
+      includesSportsRegistration: false,
+      allowedEventIds: [],
+      restrictEventSelection: false,
+      customizeSubscriptionLimits: false,
+      maxCoursesPerAttendee: null,
+      maxLecturesPerAttendee: null,
+      maxUncategorizedPerAttendee: null,
+    };
+    const tx = {
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
+      majorEventPrice: { findFirst: jest.fn().mockResolvedValue(price) },
+      priceTier: {
+        findFirst: jest.fn(async ({ where }: { where: { id: string } }) =>
+          where.id === storedTier.id ? storedTier : null,
+        ),
+        findMany: jest.fn().mockResolvedValue([{ id: storedTier.id }]),
+      },
+    };
+    const adapter = createAdapter({ ...tx, frozen: { assertMajorEventMutable: jest.fn() } });
+    const resources = [
+      transferResource('price-tier', storedTier.id, { value: 200 }),
+      transferResource('price-tier', 'new-tier', { priceId: price.id, name: 'Extra', value: 100 }),
+    ];
+    const context = createContext(tx, resources);
+    const preview = await previewService(tx, [adapter]).preview({ document: context.document }, context.actor);
+    expect(preview.items).toEqual([
+      expect.objectContaining({ id: storedTier.id, action: 'update', status: 'ready' }),
+      expect.objectContaining({ id: 'new-tier', action: 'skip', status: 'blocked' }),
+    ]);
+    expect(preview.canApply).toBe(true);
+  });
+
+  it.each([true, false])('authorizes new ticket options according to parent existence: %s', async (parentExists) => {
+    const expected = parentExists ? Permission.TicketConfig.Update : Permission.TicketConfig.Create;
+    const denied = parentExists ? Permission.TicketConfig.Create : Permission.TicketConfig.Update;
+    const assertPermissions = jest.fn(async (_actor, permissions: Permission[]) => {
+      if (permissions.includes(denied)) throw new ForbiddenException();
+    });
+    const tx = {
+      ticketConfig: { findUnique: jest.fn().mockResolvedValue(parentExists ? { id: 'config-1' } : null) },
+      authorization: { assertPermissions },
+    };
+    const resource = transferResource('ticket-price-option', 'option-new', { ticketConfigId: 'config-1' });
+    const snapshot = { resource, current: null, revision: null, scope: {}, dependencies: [] };
+    const adapter = createAdapter(tx);
+    await expect(adapter.assertWrite(snapshot, 'create', createContext(tx, [resource]))).resolves.toBeUndefined();
+    expect(assertPermissions).toHaveBeenCalledWith(expect.anything(), [Permission.DataTransfer.Import, expected], {});
+    assertPermissions.mockImplementation(async (_actor, permissions: Permission[]) => {
+      if (permissions.includes(expected)) throw new ForbiddenException();
+    });
+    await expect(adapter.assertWrite(snapshot, 'create', createContext(tx, [resource]))).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
   it('blocks a price table and its descendants when its only proposed tier cannot apply', async () => {
     const tx = {
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
@@ -467,6 +801,16 @@ function createAdapter(prismaParts: Record<string, unknown>) {
     {} as never,
     {} as never,
     {} as never,
+  );
+}
+
+function previewService(tx: Record<string, unknown>, adapters: ConstructorParameters<typeof DataTransferService>[3]) {
+  return new DataTransferService(
+    { ...tx, $transaction: jest.fn(async (operation: (value: unknown) => Promise<unknown>) => operation(tx)) } as never,
+    { assertPermissions: jest.fn().mockResolvedValue(undefined) } as never,
+    {} as never,
+    adapters,
+    new TransferKeyAllocations(),
   );
 }
 

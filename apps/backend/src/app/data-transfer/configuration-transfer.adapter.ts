@@ -135,6 +135,7 @@ const PRICE_TIER_FIELDS = [
   'maxUncategorizedPerAttendee',
 ] as const;
 const PRICE_FIELDS = ['majorEventId', 'type'] as const;
+const PLACE_FIELDS = ['name', 'latitude', 'longitude', 'locationDescription'] as const;
 const TICKET_OPTION_FIELDS = ['ticketConfigId', 'priceTierId', 'label', 'amountCents'] as const;
 const FORM_DATES = new Set(['availableFrom', 'availableUntil']);
 const CERTIFICATE_DATE_FIELDS = new Set<string>();
@@ -239,6 +240,15 @@ const PRICE_SELECT = {
   type: true,
   majorEvent: { select: { deletedAt: true } },
 } satisfies Prisma.MajorEventPriceSelect;
+const PLACE_SELECT = {
+  id: true,
+  name: true,
+  latitude: true,
+  longitude: true,
+  locationDescription: true,
+  deletedAt: true,
+  updatedAt: true,
+} satisfies Prisma.PlacePresetSelect;
 const TIER_SELECT = {
   id: true,
   priceId: true,
@@ -270,8 +280,19 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     'ticket-price-option',
     'major-event-price',
     'price-tier',
+    'place-preset',
   ] as const;
   readonly dependencyOrder = 20;
+
+  async readAppliedResource(
+    snapshot: ResolvedTransferResource,
+    context: TransferAdapterContext,
+  ): Promise<TransferResource> {
+    const resource = { ...snapshot.resource, data: {} } as TransferResource;
+    const persisted = await this.resolve(resource, context);
+    if (!persisted.current) throw new ConflictException('A configuração aplicada não está disponível.');
+    return persisted.current;
+  }
 
   constructor(
     private readonly prisma: PrismaService,
@@ -292,6 +313,21 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
   async resolve(resource: TransferResource, context: TransferAdapterContext): Promise<ResolvedTransferResource> {
     const proposed = dataOf(resource);
     switch (resource.kind) {
+      case 'place-preset': {
+        const row = await context.tx.placePreset.findUnique({ where: { id: resource.id }, select: PLACE_SELECT });
+        if (row?.deletedAt) throw new NotFoundException('O local não está disponível para importação.');
+        const data = pickFields(proposed, PLACE_FIELDS);
+        if (typeof data['name'] === 'string') data['name'] = data['name'].trim();
+        if (typeof data['locationDescription'] === 'string')
+          data['locationDescription'] = data['locationDescription'].trim() || null;
+        const normalized = resourceFromData(resource.kind, resource.id, data);
+        return this.snapshot(
+          { ...resource, data: normalized.data } as TransferResource,
+          row ? pickFields(row, PLACE_FIELDS) : null,
+          row?.updatedAt,
+          {},
+        );
+      }
       case 'event-form': {
         const row = await context.tx.eventForm.findFirst({
           where: { id: resource.id, deletedAt: null },
@@ -434,6 +470,18 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
 
   async assertRead(snapshot: ResolvedTransferResource, context: TransferAdapterContext): Promise<void> {
     const permission = readPermission(snapshot.resource.kind);
+    if (snapshot.resource.kind === 'place-preset' && context.requestedScope) {
+      const target = context.requestedScope;
+      const transferScope =
+        target.kind === 'event'
+          ? { eventId: target.id }
+          : target.kind === 'group'
+            ? { eventGroupId: target.id }
+            : { majorEventId: target.id };
+      await this.authorization.assertPermissions(context.actor, [Permission.DataTransfer.Import], transferScope);
+      await this.authorization.assertPermissions(context.actor, [permission], {});
+      return;
+    }
     const scope = snapshot.current
       ? { ...snapshot.scope }
       : await this.scopeForPersistedAncestor(snapshot.scope, context);
@@ -484,11 +532,16 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       return;
     }
     const scope = snapshot.current ? snapshot.scope : await this.scopeForPersistedAncestor(snapshot.scope, context);
-    await this.authorization.assertPermissions(
-      context.actor,
-      [Permission.DataTransfer.Import, writePermission(snapshot.resource.kind, action)],
-      scope,
-    );
+    let permission = writePermission(snapshot.resource.kind, action);
+    if (snapshot.resource.kind === 'ticket-price-option') {
+      const configId = asId(dataOf(snapshot.resource)['ticketConfigId']);
+      const config = configId
+        ? await context.tx.ticketConfig.findUnique({ where: { id: configId }, select: { id: true } })
+        : null;
+      // Child options edit the existing aggregate, regardless of whether the option itself is new.
+      permission = config || snapshot.current ? Permission.TicketConfig.Update : Permission.TicketConfig.Create;
+    }
+    await this.authorization.assertPermissions(context.actor, [Permission.DataTransfer.Import, permission], scope);
     if (snapshot.resource.kind === 'price-tier' && snapshot.additionalChanges?.length) {
       await this.assertTierRenamePermissions(snapshot, context, 'write');
     }
@@ -513,6 +566,12 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     this.assertStableParents(resource.kind, before, data);
 
     switch (resource.kind) {
+      case 'place-preset': {
+        const name = data['name'] ?? before?.['name'];
+        if (typeof name !== 'string' || !name.trim())
+          throw new TransferValidationException('O local precisa ter um nome.');
+        break;
+      }
       case 'event-form':
         await this.validateForm(data, before, context);
         break;
@@ -547,6 +606,8 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       throw new ConflictException('A configuração mudou desde a prévia. Gere uma nova prévia.');
     }
     switch (snapshot.resource.kind) {
+      case 'place-preset':
+        return this.applyPlace(snapshot, action, context);
       case 'event-form':
         return this.applyForm(snapshot, action, context);
       case 'form-link':
@@ -570,11 +631,31 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
     context: TransferAdapterContext,
     executableResources: readonly TransferResource[],
   ): Promise<void> {
-    if (snapshot.resource.kind !== 'major-event-price') return;
+    if (snapshot.resource.kind === 'major-event-price') {
+      await this.validatePrice(
+        dataOf(snapshot.resource),
+        snapshot.current ? dataOf(snapshot.current) : null,
+        snapshot.resource.id,
+        context,
+        executableResources,
+      );
+      return;
+    }
+    // Only new tiers change cardinality. A blocked new tier must not prevent
+    // unrelated edits to existing tiers in a partial import.
+    if (snapshot.resource.kind !== 'price-tier' || snapshot.current !== null) return;
+    const priceId = asId(dataOf(snapshot.resource)['priceId']);
+    if (!priceId) throw new TransferValidationException('A faixa precisa pertencer a uma tabela de preços.');
+    const price = await context.tx.majorEventPrice.findFirst({ where: { id: priceId }, select: PRICE_SELECT });
+    const proposedPrice = executableResources.find(
+      (resource) => resource.kind === 'major-event-price' && resource.id === priceId,
+    );
+    if (!price && !proposedPrice)
+      throw new TransferValidationException('A tabela de preços da faixa não está disponível.');
     await this.validatePrice(
-      dataOf(snapshot.resource),
-      snapshot.current ? dataOf(snapshot.current) : null,
-      snapshot.resource.id,
+      proposedPrice ? dataOf(proposedPrice) : {},
+      price ? priceData(price) : null,
+      priceId,
       context,
       executableResources,
     );
@@ -1793,6 +1874,44 @@ export class ConfigurationTransferAdapter implements DataTransferAdapter {
       if (!tournament && !proposedTournament)
         throw new TransferValidationException('Inscrição esportiva exige um torneio associado ao grande evento.');
     }
+  }
+
+  private async applyPlace(
+    snapshot: ResolvedTransferResource,
+    action: TransferWriteAction,
+    context: TransferAdapterContext,
+  ): Promise<TransferAdapterApplyResult> {
+    const resource = snapshot.resource;
+    const data = pickFields(dataOf(resource), PLACE_FIELDS);
+    if (action === 'create') {
+      await context.tx.placePreset.create({
+        data: {
+          id: resource.id,
+          ...data,
+          createdById: context.actor.sub,
+          updatedById: context.actor.sub,
+        } as Prisma.PlacePresetUncheckedCreateInput,
+      });
+    } else {
+      const updated = await context.tx.placePreset.updateMany({
+        where: { id: resource.id, deletedAt: null, updatedAt: new Date(snapshot.revision as string) },
+        data: { ...data, updatedById: context.actor.sub } as Prisma.PlacePresetUpdateManyMutationInput,
+      });
+      if (updated.count !== 1) throw new ConflictException('O local mudou desde a prévia. Gere uma nova prévia.');
+    }
+    await this.recordAudit(
+      context,
+      AuditLogEntityType.PLACE_PRESET,
+      resource.id,
+      action === 'create' ? AuditLogOperation.CREATE : AuditLogOperation.UPDATE,
+      data['name'] as string | undefined,
+      snapshot.current ? dataOf(snapshot.current) : null,
+      data,
+      writePermission(resource.kind, action),
+      {},
+    );
+    // Search updates are replayed from the durable journal after commit and after undo.
+    return {};
   }
 
   private async applyForm(

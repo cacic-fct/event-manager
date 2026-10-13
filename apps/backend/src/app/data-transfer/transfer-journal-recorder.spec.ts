@@ -54,12 +54,44 @@ describe('TransferJournalRecorder fail-closed backups', () => {
   });
 
   it('uses the compound attendance key instead of requiring an invented row ID', async () => {
-    const { recorder } = fixture('eventAttendance', { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' });
+    const { recorder, delegate } = fixture('eventAttendance', {
+      personId: 'person-1',
+      eventId: 'event-1',
+      status: 'PRESENT',
+    });
     await recorder.tx.eventAttendance.update({
       where: { personId_eventId: { personId: 'person-1', eventId: 'event-1' } },
       data: { status: 'ABSENT' },
     });
+    expect(delegate.findMany).toHaveBeenNthCalledWith(1, {
+      where: { personId: 'person-1', eventId: 'event-1' } satisfies Prisma.EventAttendanceWhereInput,
+      take: 5001,
+    });
+    expect(delegate.update).toHaveBeenCalledWith({
+      where: { personId_eventId: { personId: 'person-1', eventId: 'event-1' } },
+      data: { status: 'ABSENT' },
+    });
     expect(recorder.mutations[0]?.key).toEqual({ personId: 'person-1', eventId: 'event-1' });
+  });
+
+  it('preserves additional write conditions when reading a compound-key snapshot', async () => {
+    const { recorder, delegate } = fixture('eventAttendance', {
+      personId: 'person-1',
+      eventId: 'event-1',
+      status: 'PRESENT',
+    });
+    await recorder.tx.eventAttendance.update({
+      where: { personId_eventId: { personId: 'person-1', eventId: 'event-1' }, status: 'PRESENT' },
+      data: { status: 'ABSENT' },
+    });
+    expect(delegate.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        AND: [{ status: 'PRESENT' }, { personId: 'person-1', eventId: 'event-1' }],
+      } satisfies Prisma.EventAttendanceWhereInput,
+      take: 5001,
+    });
+    expect(recorder.mutations[0]?.before?.['status']).toBe('PRESENT');
+    expect(recorder.mutations[0]?.after?.['status']).toBe('ABSENT');
   });
 
   it('normalizes one-to-one, list, and compound-key relation references deterministically', () => {

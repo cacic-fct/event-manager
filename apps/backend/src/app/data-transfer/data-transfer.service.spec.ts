@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type {
   TransferResource,
   TransferResourceKind,
@@ -69,6 +69,62 @@ const relativeAliasStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOS
 const relativeAliasEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString();
 
 describe('data transfer planning dependencies', () => {
+  it.each([
+    [500, false],
+    [501, true],
+  ])('bounds aggregate exports with %s distinct resources', async (count, oversized) => {
+    const resource = (id: number): TransferResource => ({ kind: 'event', id: `event-${id}`, data: { name: 'Evento' } });
+    const adapter = (
+      kinds: TransferResourceKind[],
+      resources: TransferResource[],
+      dependencyOrder: number,
+    ): DataTransferAdapter => ({
+      kinds,
+      dependencyOrder,
+      resolve: jest.fn(),
+      assertRead: jest.fn(),
+      assertWrite: jest.fn(),
+      assertMutable: jest.fn(),
+      validate: jest.fn(),
+      apply: jest.fn(),
+      exportTarget: jest.fn().mockResolvedValue({ resources, issues: [] }),
+    });
+    const first = adapter(
+      ['event'],
+      Array.from({ length: 300 }, (_, index) => resource(index)),
+      10,
+    );
+    const second = adapter(
+      ['group'],
+      Array.from({ length: count - 300 }, (_, index) => resource(index + 300)),
+      20,
+    );
+    // The shared row is emitted twice; the bound must count distinct resources.
+    jest.mocked(second.exportTarget).mockResolvedValue({
+      resources: [resource(0), ...Array.from({ length: count - 300 }, (_, index) => resource(index + 300))],
+      issues: [],
+    });
+    const last = adapter(['major-event'], [], 30);
+    const service = createServiceForPlan([first, second, last], {
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-0' }) },
+      $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation({})),
+    });
+    const result = service.export(
+      {
+        target: { kind: 'event', id: 'event-0' },
+        includeDescendants: true,
+        includeConfiguration: true,
+      },
+      organizer(),
+    );
+    if (oversized) {
+      await expect(result).rejects.toThrow(BadRequestException);
+      expect(last.exportTarget).not.toHaveBeenCalled();
+    } else {
+      expect((await result).document.resources).toHaveLength(count);
+    }
+  });
+
   it('propagates a blocked root through children regardless of row order', () => {
     const service = createServiceForPlan();
     const child = stateRow('event', 'event-1', { eventGroupId: 'group-1' }, 0);
@@ -392,12 +448,20 @@ describe('key-only participation result normalization', () => {
 
 describe('exact committed apply request replay', () => {
   function createReplayFixture() {
+    let appliedResource: TransferResource | null = null;
     const adapterCalls = {
       read: jest.fn().mockResolvedValue(undefined),
       write: jest.fn().mockResolvedValue(undefined),
       mutable: jest.fn().mockResolvedValue(undefined),
       validate: jest.fn().mockResolvedValue(undefined),
-      apply: jest.fn().mockResolvedValue({}),
+      apply: jest.fn(async (snapshot: ResolvedTransferResource) => {
+        appliedResource = {
+          kind: 'group',
+          id: 'stored-group-1',
+          data: { name: snapshot.resource.kind === 'group' ? snapshot.resource.data.name?.trim() : undefined },
+        };
+        return {};
+      }),
     };
     const adapter = createPlanningAdapter(['group'], adapterCalls, async (resource) => ({
       resource,
@@ -407,6 +471,10 @@ describe('exact committed apply request replay', () => {
       scope: { eventGroupId: 'stored-group-1' },
       dependencies: [],
     }));
+    adapter.readAppliedResource = jest.fn(async () => {
+      if (!appliedResource) throw new Error('The resource was not persisted.');
+      return appliedResource;
+    });
     const transaction = {};
     const prisma = {
       $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation(transaction)),
@@ -491,6 +559,29 @@ describe('exact committed apply request replay', () => {
     format: 'cacic-event-data',
     version: 1,
     resources: [{ kind: 'group', key: 'LOCAL-GROUP', data: { name: 'New group' } }],
+  });
+
+  it('stores persisted normalized values in both the apply response and durable retry result', async () => {
+    const fixture = createReplayFixture();
+    const service = fixture.createService();
+    const document = requestDocument();
+    document.resources[0].data.name = '  New group  ';
+    const preview = await service.preview({ document }, organizer());
+    const request = {
+      document,
+      planHash: preview.planHash,
+      allowPartial: false,
+      allocationToken: preview.allocation?.token,
+    };
+    const result = await service.apply(request, organizer());
+    expect(result.document?.resources[0]).toEqual({
+      kind: 'group',
+      id: 'stored-group-1',
+      data: { name: 'New group' },
+    });
+    const replay = await fixture.createService().apply(request, organizer());
+    expect(replay.document).toEqual(result.document);
+    expect(fixture.adapterCalls.apply).toHaveBeenCalledTimes(1);
   });
 
   it('returns the exact committed ID after a fresh allocation cache, without opening a write transaction', async () => {

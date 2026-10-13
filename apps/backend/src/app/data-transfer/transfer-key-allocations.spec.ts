@@ -3,6 +3,19 @@ import { createTransferTemplate, parseTransferDocument } from '@cacic-fct/shared
 import { TransferKeyAllocations } from './transfer-key-allocations';
 
 describe('preview-bound symbolic resource keys', () => {
+  it.each(['constructor', 'toString', 'hasOwnProperty'])(
+    'allocates the object property name %s as an ordinary key',
+    (key) => {
+      const template = createTransferTemplate('event');
+      const raw = parseTransferDocument({ ...template, resources: [{ ...template.resources[0], key }] });
+      const resolver = new TransferKeyAllocations();
+      const preview = resolver.preview(raw, 'organizer-1');
+      expect(preview.allocation?.ids[key]).toBe(preview.document.resources[0].id);
+      expect(preview.allocation?.ids[key]).toMatch(/^[0-9a-f-]{36}$/);
+      expect(resolver.apply(raw, 'organizer-1', preview.allocation?.token)).toEqual(preview.document);
+    },
+  );
+
   it('allocates UUIDs on the server and resolves the complete child graph', () => {
     const raw = createTransferTemplate('major-event');
     const resolver = new TransferKeyAllocations();
