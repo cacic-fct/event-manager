@@ -26,6 +26,10 @@ describe('TypesenseSearchService', () => {
     process.env = originalEnv;
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('builds a client from TYPESENSE_URL when search is enabled', () => {
     const client = createTypesenseClientMock();
     typesenseClientConstructor.mockReturnValue(client.instance);
@@ -734,7 +738,7 @@ describe('TypesenseSearchService', () => {
     expect(client.aliasesRoot.upsert).toHaveBeenCalledTimes(7);
   });
 
-  it('waits for each startup import before loading another batch or swapping its alias', async () => {
+  it('waits for slow startup imports before loading another batch or swapping its alias', async () => {
     const prisma = createPrismaMock();
     const firstBatch = createPlacePresetBatch();
     const lastBatch = [{ id: 'place-last', name: 'Última sala', locationDescription: null }];
@@ -753,8 +757,10 @@ describe('TypesenseSearchService', () => {
         }),
     );
 
+    jest.useFakeTimers();
     const reindex = service['reindexAll']();
     await importStarted;
+    jest.advanceTimersByTime(120_000);
 
     expect(prisma.placePreset.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.certificateTemplate.findMany).not.toHaveBeenCalled();
