@@ -118,7 +118,7 @@ try {
     process.platform === 'win32' ? 'junction' : 'dir',
   );
   for (const name of readdirSync(root)) {
-    if (name.startsWith('.prettier')) {
+    if (name === '.gitignore' || name.startsWith('.prettier')) {
       copyFileSync(join(root, name), join(sandbox, name));
     }
   }
