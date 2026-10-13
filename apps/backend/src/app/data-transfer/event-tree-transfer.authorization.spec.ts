@@ -198,4 +198,70 @@ describe('new event tree authorization', () => {
     expect(exported.issues).toEqual([{ kind: 'event', message: 'Um evento foi omitido por falta de acesso.' }]);
     expect(JSON.stringify(exported.issues)).not.toContain('private-event');
   });
+
+  it('authorizes a new event against its existing parents instead of its nonexistent ID', async () => {
+    const resource = {
+      kind: 'event',
+      id: 'event-new',
+      data: {
+        name: 'Final',
+        startDate: new Date(Date.now() + 86_400_000).toISOString(),
+        endDate: new Date(Date.now() + 90_000_000).toISOString(),
+        eventGroupId: 'group-existing',
+        majorEventId: 'major-existing',
+      },
+    } as const;
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue(null) },
+      eventGroup: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'group-existing', majorEventId: 'major-existing' }),
+      },
+      majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-existing' }) },
+    };
+    const assertPermissions = jest.fn().mockResolvedValue(undefined);
+    const adapter = new EventTreeTransferAdapter(
+      {} as never,
+      { assertPermissions } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const actor = { sub: 'organizer-1' } as AuthenticatedUser;
+    const context = {
+      tx,
+      actor,
+      document: { format: 'cacic-event-data', version: 1, resources: [resource] },
+      frozenResources: {},
+    } as never;
+    const snapshot = await adapter.resolve(resource, context);
+
+    await adapter.assertRead(snapshot, context);
+    await adapter.assertWrite(snapshot, 'create', context);
+
+    expect(assertPermissions).toHaveBeenCalledWith(
+      actor,
+      [Permission.DataTransfer.Import, Permission.EventGroup.Read],
+      { eventGroupId: 'group-existing' },
+    );
+    expect(assertPermissions).toHaveBeenCalledWith(
+      actor,
+      [Permission.DataTransfer.Import, Permission.MajorEvent.Read],
+      { majorEventId: 'major-existing' },
+    );
+    expect(assertPermissions).toHaveBeenCalledWith(actor, [Permission.DataTransfer.Import, Permission.Event.Create], {
+      eventGroupId: 'group-existing',
+    });
+    expect(assertPermissions).toHaveBeenCalledWith(actor, [Permission.DataTransfer.Import, Permission.Event.Create], {
+      majorEventId: 'major-existing',
+    });
+    expect(assertPermissions.mock.calls.flatMap(([, , scope]) => Object.values(scope))).not.toContain('event-new');
+  });
 });

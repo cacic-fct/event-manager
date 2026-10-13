@@ -129,8 +129,9 @@
     },
     "test-workbox": {
       "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/apps/public-workbox"],
       "options": {
-        "command": "bunx vitest run --config apps/public/workbox/vitest.config.ts"
+        "command": "bunx vitest run --coverage --config apps/public/workbox/vitest.config.ts"
       }
     },
     "serve-static": {

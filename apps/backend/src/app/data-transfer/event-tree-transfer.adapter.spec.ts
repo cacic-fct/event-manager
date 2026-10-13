@@ -242,6 +242,37 @@ describe('EventTreeTransferAdapter normalization and mutations', () => {
     expect(tx.eventGroup.findMany).not.toHaveBeenCalled();
   });
 
+  it.each(['eventGroupId', 'majorEventId'] as const)(
+    'rejects changing the existing event %s parent before writing',
+    async (field) => {
+      const event = eventRecord({ eventGroupId: 'group-current', majorEventId: 'major-current' });
+      const tx = {
+        event: {
+          findFirst: jest.fn().mockResolvedValue(event),
+          updateMany: jest.fn(),
+        },
+        eventGroup: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'group-current',
+            majorEventId: 'major-current',
+            shouldIssueCertificate: false,
+          }),
+        },
+      };
+      const adapter = createAdapter(tx);
+      const resource: TransferResource = {
+        kind: 'event',
+        id: event.id,
+        data: field === 'eventGroupId' ? { eventGroupId: 'group-other' } : { majorEventId: 'major-other' },
+      };
+      const context = createContext(tx, [resource]);
+      const snapshot = await adapter.resolve(resource, context);
+
+      await expect(adapter.validate(snapshot, context)).rejects.toThrow('não pode alterar o vínculo pai');
+      expect(tx.event.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
   it('shows and applies certificate flags derived from an explicit event disable', async () => {
     const event = eventRecord({
       shouldIssueCertificate: true,

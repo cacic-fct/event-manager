@@ -180,6 +180,41 @@ describe('ParticipationTransferAdapter', () => {
     );
   });
 
+  it('applies a partial subscription update without clearing omitted consent fields', async () => {
+    const harness = createHarness();
+    const existing = {
+      id: 'stored-subscription',
+      eventId: 'event-1',
+      personId: 'person-1',
+      imageLicenseAgreementAccepted: true,
+      createdAt: new Date(),
+      deletedAt: null,
+    };
+    const eventSubscription = {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(existing),
+      update: jest.fn().mockResolvedValue(existing),
+      create: jest.fn(),
+    };
+    const tx = activeEventTransaction({ eventSubscription });
+    const resource = participationResource('event-subscription', 'portable-subscription', {
+      eventId: 'event-1',
+      person: { id: 'person-1' },
+    });
+    const transferContext = context(tx, [resource]);
+    const snapshot = await harness.adapter.resolve(resource, transferContext);
+    jest.spyOn(harness.adapter, 'validate').mockResolvedValue(undefined);
+
+    await harness.adapter.apply(snapshot, 'update', transferContext);
+
+    expect(eventSubscription.update).toHaveBeenCalledWith({ where: { id: 'stored-subscription' }, data: {} });
+    expect(eventSubscription.create).not.toHaveBeenCalled();
+    expect(harness.audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'stored-subscription', before: expect.any(Object) }),
+      tx,
+    );
+  });
+
   it('rejects a subscription ID already owned by another person or target', async () => {
     const harness = createHarness();
     const tx = activeEventTransaction();

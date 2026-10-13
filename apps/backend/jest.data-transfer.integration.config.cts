@@ -8,5 +8,6 @@ module.exports = {
   },
   testMatch: ['<rootDir>/src/app/data-transfer/transfer-journal.integration.spec.ts'],
   testPathIgnorePatterns: ['/node_modules/'],
-  collectCoverage: false,
+  collectCoverage: true,
+  coverageDirectory: '../../coverage/apps/backend-data-transfer-integration',
 };

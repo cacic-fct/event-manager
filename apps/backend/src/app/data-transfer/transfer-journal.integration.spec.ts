@@ -14,7 +14,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import type { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import type { DataTransferAdapter } from './data-transfer-adapter';
+import { DataTransferService } from './data-transfer.service';
 import { ConfigurationTransferAdapter } from './configuration-transfer.adapter';
+import { TransferKeyAllocations } from './transfer-key-allocations';
 
 type SqlClient = Pick<PGlite, 'query'>;
 type Row = Record<string, unknown>;
@@ -110,9 +113,21 @@ function delegates(client: SqlClient) {
     ticketConfig: delegate('ticketConfig'),
     eventGroupAudienceInvitation: delegate('eventGroupAudienceInvitation'),
     eventSubscription: delegate('eventSubscription'),
+    eventTicketHistory: delegate('eventTicketHistory'),
     eventFormLink: delegate('eventFormLink'),
     placePreset: delegate('placePreset'),
     auditLogEntry: delegate('auditLogEntry'),
+    $executeRaw: async (parts: TemplateStringsArray, ...values: unknown[]) => {
+      const sql = parts.reduce(
+        (statement, part, index) => statement + part + (index < values.length ? `$${index + 1}` : ''),
+        '',
+      );
+      await client.query(
+        sql,
+        values.map((value) => (typeof value === 'bigint' ? value.toString() : value)),
+      );
+      return 1;
+    },
   };
 }
 
@@ -339,6 +354,85 @@ describe('durable audit-backed import rollback and undo', () => {
     expect(await client.auditLogEntry.findMany()).toEqual([]);
   });
 
+  it('applies through the service and rolls back earlier adapter writes before a successful journaled retry', async () => {
+    let failureId: string | undefined = 'second-imported-group';
+    const adapter: DataTransferAdapter = {
+      kinds: ['group'],
+      dependencyOrder: 1,
+      resolve: async (resource, context) => {
+        if (resource.kind !== 'group') throw new Error('Unexpected test resource kind.');
+        const current = await context.tx.eventGroup.findUnique({ where: { id: resource.id } });
+        return {
+          resource,
+          current: current ? { kind: 'group', id: resource.id, data: { name: current.name } } : null,
+          revision: null,
+          scope: { eventGroupId: resource.id },
+          dependencies: [],
+        };
+      },
+      assertRead: async () => undefined,
+      assertWrite: async () => undefined,
+      assertMutable: async () => undefined,
+      validate: async () => undefined,
+      apply: async (snapshot, action, context) => {
+        if (snapshot.resource.kind !== 'group') throw new Error('Unexpected test resource kind.');
+        if (action === 'create')
+          await context.tx.eventGroup.create({
+            data: { id: snapshot.resource.id, name: snapshot.resource.data.name ?? '' },
+          });
+        else
+          await context.tx.eventGroup.update({
+            where: { id: snapshot.resource.id },
+            data: { name: snapshot.resource.data.name ?? '' },
+          });
+        if (snapshot.resource.id === failureId) throw new Error('Simulated second write failure.');
+        return {};
+      },
+      exportTarget: async () => ({ resources: [], issues: [] }),
+    };
+    const transfer = new DataTransferService(
+      prisma,
+      authorization,
+      frozen,
+      [adapter],
+      new TransferKeyAllocations(),
+      journal,
+    );
+    // PGlite cannot serve a query through its outer client while a transaction callback is active.
+    const findCommittedRequest = jest.spyOn(journal, 'findCommittedRequest').mockResolvedValue(null);
+    const doc = document([
+      { id: 'first-imported-group', name: 'Primeiro grupo' },
+      { id: 'second-imported-group', name: 'Segundo grupo' },
+    ]);
+
+    try {
+      const preview = await transfer.preview({ document: doc }, actor);
+      const request = { document: doc, planHash: preview.planHash, allowPartial: false };
+
+      await expect(transfer.apply(request, actor)).rejects.toThrow('Simulated second write failure');
+      expect(await client.eventGroup.findMany()).toEqual([]);
+      expect(await client.auditLogEntry.findMany()).toEqual([]);
+
+      failureId = undefined;
+      const result = await transfer.apply(request, actor);
+      expect(result).toMatchObject({ applied: true, summary: { create: 2, update: 0, unchanged: 0, skip: 0 } });
+      expect(await client.eventGroup.findMany()).toHaveLength(2);
+      expect(await client.auditLogEntry.findUnique({ where: { id: result.batchId } })).toMatchObject({
+        entityId: `data-transfer:${result.batchId}`,
+        metadata: { type: 'data-transfer-batch', undone: false, synchronizationPending: true },
+      });
+
+      await transfer.undo(result.batchId, actor);
+      expect(await client.eventGroup.findMany()).toEqual([]);
+      expect((await client.auditLogEntry.findUnique({ where: { id: result.batchId } }))?.['metadata']).toMatchObject({
+        undone: true,
+        synchronizationPending: true,
+      });
+    } finally {
+      findCommittedRequest.mockRestore();
+    }
+  });
+
   it('persists complete before/after copies and undoes a committed batch after a service restart', async () => {
     const id = randomUUID();
     await client.eventGroup.create({ data: { id, name: 'Nome anterior' } });
@@ -355,6 +449,39 @@ describe('durable audit-backed import rollback and undo', () => {
     const audit = await client.auditLogEntry.findUnique({ where: { id: batch.auditEntryId } });
     expect(audit?.['revertedAt']).toBeInstanceOf(Date);
     await expect(freshJournal.undo(batch.batchId, actor)).rejects.toThrow('já foi desfeito');
+  });
+
+  it('restores a journaled deletion with its original database identity and timestamp', async () => {
+    const createdAt = new Date(Date.now() - 60_000);
+    const original = await client.eventTicketHistory.create({
+      data: {
+        id: 'ticket-history-1',
+        ticketId: 'ticket-1',
+        operation: 'ISSUED',
+        actorName: 'Organizador',
+        createdAt,
+      },
+    });
+    const doc = eventDocument('event-1');
+    const resource = doc.resources[0];
+    if (!resource) throw new Error('Missing test resource.');
+    const batch = await prisma.$transaction(async (tx) => {
+      const recorder = journal.begin(tx);
+      recorder.setSource(resource, 'update', { eventId: 'event-1' });
+      await recorder.tx.eventTicketHistory.deleteMany({ where: { id: original['id'] } });
+      return journal.record(recorder, tx, actor, undefined, doc, items(doc, 'update'));
+    });
+
+    expect(await client.eventTicketHistory.findMany()).toEqual([]);
+    await journal.undo(batch.batchId, actor);
+
+    expect(await client.eventTicketHistory.findUnique({ where: { id: original['id'] } })).toMatchObject({
+      id: 'ticket-history-1',
+      ticketId: 'ticket-1',
+      operation: 'ISSUED',
+      actorName: 'Organizador',
+      createdAt,
+    });
   });
 
   it('rejects undo before deleting a created group when another event later references it', async () => {

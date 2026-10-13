@@ -53,6 +53,34 @@ describe('TransferJournalRecorder fail-closed backups', () => {
     ]);
   });
 
+  it('preserves JSON snapshots and serializes database timestamps as stable ISO values', async () => {
+    const startedAt = new Date(Date.now() - 60_000);
+    const originalScoreboard = { home: { score: 1 }, away: { score: 0 }, periods: [1, 0] };
+    const importedScoreboard = { home: { score: 2 }, away: { score: 0 }, periods: [2, 0] };
+    const { recorder } = fixture('sportsMatch', {
+      id: 'match-1',
+      eventId: 'event-1',
+      startedAt,
+      scoreboard: originalScoreboard,
+    });
+    recorder.setSource({ kind: 'sports-match', id: 'match-1', data: {} } as never, 'update', {
+      eventId: 'event-1',
+    });
+
+    await recorder.tx.sportsMatch.update({
+      where: { id: 'match-1' },
+      data: { scoreboard: importedScoreboard },
+    });
+
+    expect(recorder.mutations[0]).toMatchObject({
+      model: 'sportsMatch',
+      key: { id: 'match-1' },
+      before: { startedAt: startedAt.toISOString(), scoreboard: originalScoreboard },
+      after: { startedAt: startedAt.toISOString(), scoreboard: importedScoreboard },
+      source: { kind: 'sports-match', id: 'match-1' },
+    });
+  });
+
   it('uses the compound attendance key instead of requiring an invented row ID', async () => {
     const { recorder, delegate } = fixture('eventAttendance', {
       personId: 'person-1',

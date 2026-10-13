@@ -6,7 +6,13 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject, of, Subject, throwError, type Observable } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Permission } from '@cacic-fct/shared-permissions';
-import type { TransferApplyRequest, TransferDocument, TransferResult } from '@cacic-fct/shared-data-transfer';
+import {
+  TRANSFER_MAX_BYTES,
+  type TransferApplyRequest,
+  type TransferDocument,
+  type TransferResult,
+  type TransferUndoResult,
+} from '@cacic-fct/shared-data-transfer';
 import { DataTransferApiService } from './data-transfer-api.service';
 import { DataTransferPageComponent } from './data-transfer-page.component';
 import {
@@ -52,22 +58,13 @@ describe('DataTransferPageComponent', () => {
   let fixture: ComponentFixture<DataTransferPageComponent>;
   let routeParams: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    routeParams = new BehaviorSubject(convertToParamMap({}));
-    granted.set(new Set([Permission.DataTransfer.Import, Permission.Event.Read]));
-    api.getSchema.mockReturnValue(of({ type: 'object' }));
-    api.export.mockReturnValue(of({ document: transferDocumentFixture, issues: [] }));
-    api.preview.mockReturnValue(of(createTransferPreviewFixture()));
-    api.apply.mockReturnValue(of(createTransferResultFixture()));
-    api.undo.mockReturnValue(of({ batchId: 'fixture-import-batch', auditEntryId: 'fixture-undo-audit', undone: true }));
-    api.history.mockReturnValue(of([transferBatchSummaryFixture]));
+  async function configureTestEnvironment(platformId: 'browser' | 'server'): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [DataTransferPageComponent],
       providers: [
         provideRouter([]),
         provideNoopAnimations(),
-        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: PLATFORM_ID, useValue: platformId },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -85,10 +82,35 @@ describe('DataTransferPageComponent', () => {
         { provide: MajorEventApiService, useValue: { getMajorEvent: vi.fn() } },
       ],
     }).compileComponents();
+  }
+
+  async function createFixture(): Promise<void> {
     fixture = TestBed.createComponent(DataTransferPageComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+  }
+
+  async function recreateFixtureForBrowser(): Promise<void> {
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    routeParams = new BehaviorSubject(convertToParamMap({}));
+    await configureTestEnvironment('browser');
+    await createFixture();
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    routeParams = new BehaviorSubject(convertToParamMap({}));
+    granted.set(new Set([Permission.DataTransfer.Import, Permission.Event.Read]));
+    api.getSchema.mockReturnValue(of({ type: 'object' }));
+    api.export.mockReturnValue(of({ document: transferDocumentFixture, issues: [] }));
+    api.preview.mockReturnValue(of(createTransferPreviewFixture()));
+    api.apply.mockReturnValue(of(createTransferResultFixture()));
+    api.undo.mockReturnValue(of({ batchId: 'fixture-import-batch', auditEntryId: 'fixture-undo-audit', undone: true }));
+    api.history.mockReturnValue(of([transferBatchSummaryFixture]));
+    await configureTestEnvironment('server');
+    await createFixture();
   });
 
   it.each([0, 500])(
@@ -105,6 +127,10 @@ describe('DataTransferPageComponent', () => {
       const originalRequest = api.apply.mock.calls[0][0];
       expect(findButton('Revisar importação').disabled).toBe(true);
       expect((fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).disabled).toBe(true);
+      expect((fixture.nativeElement.querySelector('#transfer-file') as HTMLInputElement).disabled).toBe(true);
+      const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+        .componentInstance as EventContextPickerComponent;
+      expect(picker.disabled()).toBe(true);
       expect(await fixture.componentInstance.canDeactivate()).toBe(false);
       expect(fixture.nativeElement.textContent).toContain('A importação pode ter sido salva');
 
@@ -119,11 +145,16 @@ describe('DataTransferPageComponent', () => {
   );
 
   it('allows a fresh review after an explicit rejection without committing', async () => {
-    api.apply.mockReturnValueOnce(
-      throwError(
-        () => new HttpErrorResponse({ status: 409, error: { message: 'A revisão mudou. Revise novamente.' } }),
-      ),
-    );
+    const currentPreview = createTransferPreviewFixture();
+    const freshPreview = { ...createTransferPreviewFixture(), planHash: 'fresh-reviewed-plan' };
+    api.preview.mockReturnValueOnce(of(currentPreview)).mockReturnValueOnce(of(freshPreview));
+    api.apply
+      .mockReturnValueOnce(
+        throwError(
+          () => new HttpErrorResponse({ status: 409, error: { message: 'A revisão mudou. Revise novamente.' } }),
+        ),
+      )
+      .mockReturnValueOnce(of(createTransferResultFixture()));
     setJsonText();
     clickButton('Revisar importação');
     await fixture.whenStable();
@@ -134,6 +165,19 @@ describe('DataTransferPageComponent', () => {
     expect(findButton('Revisar importação').disabled).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('A revisão mudou');
     expect(fixture.nativeElement.textContent).not.toContain('Verificar resultado / tentar novamente');
+    expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
+
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    expect(api.apply).toHaveBeenCalledTimes(2);
+    expect(api.apply.mock.calls[1][0].planHash).toBe('fresh-reviewed-plan');
+    expect(fixture.nativeElement.textContent).toContain('Importação concluída');
   });
 
   it('shows record names and Portuguese field labels, with Apply after the comparison', async () => {
@@ -187,6 +231,33 @@ describe('DataTransferPageComponent', () => {
     expect(api.preview).toHaveBeenLastCalledWith({ document: resolvedDocument });
   });
 
+  it('locks the source and recovery controls while an apply request is still running', async () => {
+    const pending = new Subject<TransferResult>();
+    api.apply.mockReturnValueOnce(pending);
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    clickButton('Aplicar alterações');
+
+    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+    expect(api.apply).toHaveBeenCalledOnce();
+    expect(textarea.disabled).toBe(true);
+    expect(findButton('Revisar importação').disabled).toBe(true);
+    expect(findButton('Verificar resultado / tentar novamente').disabled).toBe(true);
+    expect(await fixture.componentInstance.canDeactivate()).toBe(false);
+
+    pending.next(createTransferResultFixture());
+    pending.complete();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(textarea.disabled).toBe(false);
+    expect(api.apply).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.textContent).toContain('Importação concluída');
+  });
+
   it('shows schema issues before any server preview call', async () => {
     setJsonText('{"format":"desconhecido"}');
     clickButton('Revisar importação');
@@ -208,6 +279,40 @@ describe('DataTransferPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('registros filhos vinculados ao contexto atual');
   });
 
+  it('rejects oversized and unreadable files before previewing them', async () => {
+    await recreateFixtureForBrowser();
+    const input = fixture.nativeElement.querySelector('#transfer-file') as HTMLInputElement;
+
+    async function selectFile(file: { name: string; size: number; text(): Promise<string> }): Promise<void> {
+      Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    const oversizedFile = {
+      name: 'large.json',
+      size: TRANSFER_MAX_BYTES + 1,
+      text: vi.fn(async () => '{}'),
+    };
+    await selectFile(oversizedFile);
+    expect(fixture.nativeElement.textContent).toContain('O arquivo excede o limite de 5 MiB.');
+    expect(oversizedFile.text).not.toHaveBeenCalled();
+    expect(findButton('Revisar importação').disabled).toBe(true);
+
+    const unreadableFile = {
+      name: 'unreadable.json',
+      size: 12,
+      text: vi.fn(() => Promise.reject(new Error('read denied'))),
+    };
+    await selectFile(unreadableFile);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Não foi possível ler o arquivo. Escolha outro arquivo ou cole o JSON.',
+    );
+    expect(findButton('Revisar importação').disabled).toBe(true);
+    expect(api.preview).not.toHaveBeenCalled();
+  });
+
   it('invalidates a reviewed plan whenever the JSON text changes', async () => {
     setJsonText();
     clickButton('Revisar importação');
@@ -220,6 +325,64 @@ describe('DataTransferPageComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Aplicar alterações');
+  });
+
+  it('invalidates a reviewed plan when the import scope changes', async () => {
+    granted.set(new Set([Permission.DataTransfer.Import, Permission.Event.Read, Permission.MajorEvent.Read]));
+    fixture.detectChanges();
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.review-section')).not.toBeNull();
+
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
+    toggleCheckbox('Aplicar aos registros existentes do contexto escolhido acima');
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.preview).toHaveBeenLastCalledWith({
+      document: transferDocumentFixture,
+      scope: { kind: 'major-event', id: contextStoryMajor.id },
+    });
+  });
+
+  it('shows a rejected preview and lets the user retry the same source', async () => {
+    api.preview
+      .mockReturnValueOnce(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 400,
+              error: { issues: [{ message: 'O servidor recusou este documento.' }] },
+            }),
+        ),
+      )
+      .mockReturnValueOnce(of(createTransferPreviewFixture()));
+    setJsonText();
+
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('O servidor recusou este documento.');
+    expect(fixture.nativeElement.querySelector('.review-section')).toBeNull();
+    expect((fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).value).toBe(
+      JSON.stringify(transferDocumentFixture),
+    );
+
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.querySelector('.review-section')).not.toBeNull();
   });
 
   it('requires a new review when the server allocation has expired', async () => {
@@ -245,6 +408,7 @@ describe('DataTransferPageComponent', () => {
 
   it('requires fresh review after consenting to skip blocked records', async () => {
     api.preview.mockReturnValue(of(createTransferPreviewFixture(true)));
+    api.apply.mockReturnValueOnce(of(createTransferResultFixture(true)));
     setJsonText();
     clickButton('Revisar importação');
     await fixture.whenStable();
@@ -269,6 +433,94 @@ describe('DataTransferPageComponent', () => {
     expect(api.apply).toHaveBeenCalledWith(
       expect.objectContaining({ planHash: 'fixture-reviewed-plan', allowPartial: true }),
     );
+    expect(fixture.nativeElement.textContent).toContain('1 registros foram ignorados conforme sua confirmação.');
+    expect(fixture.nativeElement.textContent).toContain('Baixar relatório da importação');
+    expect(fixture.nativeElement.textContent).toContain('Baixar JSON com IDs gerados');
+
+    const resolvedDocument = JSON.parse(
+      (fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).value,
+    ) as TransferDocument;
+    expect(resolvedDocument.resources[0].id).toBeDefined();
+    expect(resolvedDocument.resources[0].key).toBeUndefined();
+  });
+
+  it('downloads the applied result and resolved JSON instead of the original keyed document', async () => {
+    await recreateFixtureForBrowser();
+    const createObjectUrlDescriptor = Object.getOwnPropertyDescriptor(window.URL, 'createObjectURL');
+    const revokeObjectUrlDescriptor = Object.getOwnPropertyDescriptor(window.URL, 'revokeObjectURL');
+    let objectUrlIndex = 0;
+    const createObjectURL = vi.fn((blob: Blob) => {
+      expect(blob).toBeInstanceOf(Blob);
+      return `blob:transfer-${++objectUrlIndex}`;
+    });
+    Object.defineProperty(window.URL, 'createObjectURL', { configurable: true, value: createObjectURL });
+    Object.defineProperty(window.URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    const downloads: Array<{ fileName: string; href: string }> = [];
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      downloads.push({ fileName: this.download, href: this.href });
+    });
+    api.preview.mockReturnValue(of(createTransferPreviewFixture(true)));
+    api.apply.mockReturnValueOnce(of(createTransferResultFixture(true)));
+
+    async function readBlob(blob: Blob): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(blob);
+      });
+    }
+
+    try {
+      setJsonText();
+      const source = JSON.parse(
+        (fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement).value,
+      ) as TransferDocument;
+      expect(source.resources[0].key).toBeDefined();
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      toggleCheckbox('Ignorar registros bloqueados');
+      clickButton('Revisar importação');
+      await fixture.whenStable();
+      fixture.detectChanges();
+      clickButton('Aplicar alterações');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('1 registros foram ignorados conforme sua confirmação.');
+      clickButton('Baixar relatório da importação');
+      clickButton('Baixar JSON com IDs gerados');
+
+      expect(createObjectURL).toHaveBeenCalledTimes(2);
+      expect(downloads.map((download) => download.fileName)).toEqual([
+        'relatorio-importacao-cacic.json',
+        'cacic-eventos-com-ids-gerados.json',
+      ]);
+      const report = JSON.parse(await readBlob(createObjectURL.mock.calls[0][0])) as TransferResult;
+      const resolvedDocument = JSON.parse(await readBlob(createObjectURL.mock.calls[1][0])) as TransferDocument;
+      expect(report.applied).toBe(true);
+      expect(report.summary.skip).toBe(1);
+      expect(report.document?.resources[0].id).toBeDefined();
+      expect(report.document?.resources[0].key).toBeUndefined();
+      expect(resolvedDocument.resources[0].id).toBeDefined();
+      expect(resolvedDocument.resources[0].key).toBeUndefined();
+    } finally {
+      fixture.destroy();
+      anchorClick.mockRestore();
+      if (createObjectUrlDescriptor) {
+        Object.defineProperty(window.URL, 'createObjectURL', createObjectUrlDescriptor);
+      } else {
+        Reflect.deleteProperty(window.URL, 'createObjectURL');
+      }
+      if (revokeObjectUrlDescriptor) {
+        Object.defineProperty(window.URL, 'revokeObjectURL', revokeObjectUrlDescriptor);
+      } else {
+        Reflect.deleteProperty(window.URL, 'revokeObjectURL');
+      }
+    }
   });
 
   it('exports root and child participation independently of child hierarchy', async () => {
@@ -305,6 +557,84 @@ describe('DataTransferPageComponent', () => {
       includeChildSubscriptions: true,
       includeChildAttendances: true,
     });
+  });
+
+  it('keeps export available after a server failure so the user can retry', async () => {
+    granted.set(
+      new Set([
+        Permission.DataTransfer.Import,
+        Permission.DataTransfer.Export,
+        Permission.Event.Read,
+        Permission.MajorEvent.Read,
+      ]),
+    );
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(EventContextPickerComponent))
+      .componentInstance as EventContextPickerComponent;
+    picker.choose(contextStoryMajor);
+    api.export
+      .mockReturnValueOnce(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 503,
+              error: { message: 'A exportação está temporariamente indisponível.' },
+            }),
+        ),
+      )
+      .mockReturnValueOnce(of({ document: transferDocumentFixture, issues: [] }));
+    fixture.detectChanges();
+
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('A exportação está temporariamente indisponível.');
+
+    clickButton('Exportar JSON');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.export).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain('Arquivo JSON exportado.');
+  });
+
+  it('keeps undo confirmation open after a failure and permits a retry', async () => {
+    granted.update((permissions) => new Set([...permissions, Permission.DataTransfer.Undo]));
+    fixture.detectChanges();
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    api.undo
+      .mockReturnValueOnce(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 409,
+              error: { issues: [{ message: 'Este lote contém alterações posteriores.' }] },
+            }),
+        ),
+      )
+      .mockReturnValueOnce(
+        of({ batchId: 'fixture-import-batch', auditEntryId: 'fixture-undo-audit', undone: true as const }),
+      );
+
+    clickButton('Desfazer esta importação');
+    clickButton('Confirmar reversão');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Este lote contém alterações posteriores.');
+    expect(fixture.nativeElement.querySelector('.undo-confirmation')).not.toBeNull();
+    expect(findButton('Confirmar reversão').disabled).toBe(false);
+
+    clickButton('Confirmar reversão');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.undo).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain('Importação revertida');
   });
 
   it('requires explicit confirmation before undoing a committed batch', async () => {
@@ -344,6 +674,89 @@ describe('DataTransferPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('fixture-history-batch');
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Desfazer este lote');
+  });
+
+  it('retries failed history loads, hides undone actions, and confirms the selected batch', async () => {
+    granted.update((permissions) => new Set([...permissions, Permission.DataTransfer.Undo]));
+    const undoneBatch = {
+      ...transferBatchSummaryFixture,
+      batchId: 'already-undone-batch',
+      auditEntryId: 'already-undone-audit',
+      undone: true,
+    };
+    const activeBatch = {
+      ...transferBatchSummaryFixture,
+      batchId: 'selected-history-batch',
+      auditEntryId: 'selected-history-audit',
+    };
+    api.history
+      .mockReturnValueOnce(
+        throwError(
+          () => new HttpErrorResponse({ status: 503, error: { message: 'Histórico temporariamente indisponível.' } }),
+        ),
+      )
+      .mockReturnValueOnce(of([undoneBatch, activeBatch]))
+      .mockReturnValueOnce(of([]));
+
+    clickButton('Atualizar histórico');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Histórico temporariamente indisponível.');
+
+    clickButton('Atualizar histórico');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const rows = [...fixture.nativeElement.querySelectorAll('.batch-history-row')] as HTMLLIElement[];
+    const undoneRow = rows.find((row) => row.textContent?.includes(undoneBatch.batchId));
+    const activeRow = rows.find((row) => row.textContent?.includes(activeBatch.batchId));
+    expect(rows).toHaveLength(2);
+    expect(undoneRow?.querySelector('button')).toBeNull();
+    const activeButton = activeRow?.querySelector('button');
+    expect(activeButton).not.toBeNull();
+    activeButton?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(`Reverter todas as alterações do lote ${activeBatch.batchId}?`);
+    expect(api.undo).not.toHaveBeenCalled();
+
+    clickButton('Cancelar');
+    clickButton('Atualizar histórico');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Nenhuma importação recente disponível');
+    expect(fixture.nativeElement.querySelector('.batch-history')).toBeNull();
+  });
+
+  it('locks undo while it is running and removes the action after success', async () => {
+    granted.update((permissions) => new Set([...permissions, Permission.DataTransfer.Undo]));
+    setJsonText();
+    clickButton('Revisar importação');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    clickButton('Aplicar alterações');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const pendingUndo = new Subject<TransferUndoResult>();
+    api.undo.mockReturnValueOnce(pendingUndo);
+    clickButton('Desfazer esta importação');
+    clickButton('Confirmar reversão');
+
+    expect(api.undo).toHaveBeenCalledOnce();
+    expect(findButton('Confirmar reversão').disabled).toBe(true);
+    expect(findButton('Cancelar').disabled).toBe(true);
+    expect(findButton('Desfazer esta importação').disabled).toBe(true);
+
+    pendingUndo.next({ batchId: 'fixture-import-batch', auditEntryId: 'fixture-undo-audit', undone: true });
+    pendingUndo.complete();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Importação revertida');
+    expect(
+      [...fixture.nativeElement.querySelectorAll('button')].some((button) =>
+        button.textContent.includes('Desfazer esta importação'),
+      ),
+    ).toBe(false);
   });
 
   it('uses only the user’s authorized transfer action', () => {

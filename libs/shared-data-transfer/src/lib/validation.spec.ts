@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Value } from '@sinclair/typebox/value';
 import { createTransferTreeFixture } from '../testing';
 import { TransferDocumentSchema } from './schema';
 import { TRANSFER_MAX_BYTES, TRANSFER_MAX_RESOURCES } from './schema-helpers';
-import { canonicalTransferJson, parseTransferDocument, parseTransferJson, TransferValidationError } from './validation';
+import {
+  canonicalTransferJson,
+  parseTransferDocument,
+  parseTransferJson,
+  TransferValidationError,
+  validateTransferDocument,
+} from './validation';
 import { createTransferTemplate } from './template';
 
 describe('portable event data contract', () => {
@@ -119,6 +125,64 @@ describe('portable event data contract', () => {
   it('fingerprints object key order consistently without conflating array order', () => {
     expect(canonicalTransferJson({ b: 2, a: { z: 1, x: 0 } })).toBe(canonicalTransferJson({ a: { x: 0, z: 1 }, b: 2 }));
     expect(canonicalTransferJson([1, 2])).not.toBe(canonicalTransferJson([2, 1]));
+  });
+
+  it('rejects accessor properties without executing untrusted code', () => {
+    const getter = vi.fn(() => 'Evento');
+    const document = createTransferTreeFixture();
+    Object.defineProperty(document.resources[2].data, 'name', { enumerable: true, get: getter });
+
+    expect(() => parseTransferDocument(document)).toThrow('propriedade inválida');
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  it('rejects JavaScript-only values before they can disappear or change during JSON serialization', () => {
+    const document = createTransferTreeFixture();
+    for (const value of [undefined, BigInt(1), () => 'value', new Date(), Object.create({ inherited: true })]) {
+      expect(() => parseTransferDocument({ ...document, source: value })).toThrow(TransferValidationError);
+    }
+    expect(() => parseTransferDocument({ ...document, [Symbol('hidden')]: 'not portable' })).toThrow(
+      TransferValidationError,
+    );
+  });
+
+  it('counts multibyte UTF-8 input against the byte limit in both upload and object validation', () => {
+    const input = { ...createTransferTreeFixture(), source: '💻'.repeat(Math.floor(TRANSFER_MAX_BYTES / 4)) };
+    const text = JSON.stringify(input);
+    expect(text.length).toBeLessThan(TRANSFER_MAX_BYTES);
+
+    expect(() => parseTransferJson(text)).toThrow('limite de 5 MiB');
+    expect(() => parseTransferDocument(input)).toThrow('limite de 5 MiB');
+  });
+
+  it('rejects duplicate local keys across resource kinds and rows without any identity', () => {
+    const document = createTransferTreeFixture();
+    expect(() =>
+      parseTransferDocument({ ...document, resources: [{ kind: 'event', data: { name: 'Evento' } }] }),
+    ).toThrow(TransferValidationError);
+    expect(() =>
+      parseTransferDocument({
+        ...document,
+        resources: [
+          { kind: 'group', key: 'SAME-KEY', data: { name: 'Grupo' } },
+          { kind: 'event', key: 'SAME-KEY', data: { name: 'Evento' } },
+        ],
+      }),
+    ).toThrow('chave local SAME-KEY aparece mais de uma vez');
+  });
+
+  it('returns bounded actionable issues to the editor without accepting an invalid document', () => {
+    const invalid = validateTransferDocument({
+      ...createTransferTreeFixture(),
+      resources: Array.from({ length: 50 }, () => ({})),
+    });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.issues).toHaveLength(30);
+    expect(invalid.issues[0].path).toContain('/resources');
+
+    const document = createTransferTreeFixture();
+    expect(validateTransferDocument(document)).toEqual({ valid: true, document, issues: [] });
+    expect(() => parseTransferJson('{"resources":')).toThrow('JSON inválido');
   });
 
   it('accepts personal references while rejecting automatic person creation and sports results', () => {

@@ -1,6 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { createBackendHttpApp } from './backend-http-app';
+import { SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { configureBackendHttpApp, createBackendHttpApp } from './backend-http-app';
 
 jest.mock('../app.module', () => ({ AppModule: class AppModule {} }));
 
@@ -29,4 +33,76 @@ describe('createBackendHttpApp ownership', () => {
       expect(errorLog).toHaveBeenCalledTimes(cleanupFails ? 1 : 0);
     },
   );
+});
+
+describe('configured HTTP raw-body preservation', () => {
+  let server: Server;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    const http = express();
+    const app = {
+      getHttpAdapter: () => ({ getInstance: () => http }),
+      use: http.use.bind(http),
+      setGlobalPrefix: jest.fn(),
+      get: jest.fn(() => ({})),
+      enableCors: jest.fn(),
+    };
+    jest.spyOn(SwaggerModule, 'setup').mockImplementation(() => undefined);
+    configureBackendHttpApp(app as never);
+    for (const route of ['/api/signed-webhook', '/api/admin/data-transfer/preview', '/api/a/glitchtip']) {
+      http.post(route, (request, response) => {
+        const rawBody = (request as typeof request & { rawBody?: Buffer }).rawBody;
+        response.json({ rawBody: rawBody?.toString('utf8'), body: request.body });
+      });
+    }
+    await new Promise<void>((resolve) => {
+      server = http.listen(0, '127.0.0.1', resolve);
+    });
+    baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    jest.restoreAllMocks();
+  });
+
+  it.each(['/api/signed-webhook', '/api/admin/data-transfer/preview'])(
+    'preserves the exact JSON bytes at %s for downstream signature verification',
+    async (route) => {
+      const body = ' { "name" : "Ação 💻", "enabled": true } ';
+      const response = await fetch(`${baseUrl}${route}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ rawBody: body, body: { name: 'Ação 💻', enabled: true } });
+    },
+  );
+
+  it('retains form-body bytes while decoding fields for existing integrations', async () => {
+    const body = 'name=A%C3%A7%C3%A3o&enabled=true';
+    const response = await fetch(`${baseUrl}/api/signed-webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ rawBody: body, body: { name: 'Ação', enabled: 'true' } });
+  });
+
+  it('keeps Sentry envelope content intact after selecting the JSON parser', async () => {
+    const body = '{"event_id":"test-event"}\n{"type":"event"}\n{"message":"Ação 💻"}';
+    const response = await fetch(`${baseUrl}/api/a/glitchtip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-sentry-envelope' },
+      body,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ rawBody: body, body: Buffer.from(body).toJSON() });
+  });
 });

@@ -1,6 +1,13 @@
 import type { BrowserContext, Page } from '@playwright/test';
 import { createTransferTemplate, type TransferDocument } from '@cacic-fct/shared-data-transfer';
 import { expect, test } from './support/e2e-test';
+import axe from 'axe-core';
+
+declare global {
+  interface Window {
+    axe: typeof axe;
+  }
+}
 
 type StoryRequest = {
   method: string;
@@ -66,6 +73,20 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await expect(firstItem).toContainText('Valor atual');
     await expect(firstItem).toContainText('Valor proposto');
 
+    await page.addScriptTag({ content: axe.source });
+    const violations = await page.evaluate(async () => {
+      const root = document.getElementById('storybook-root');
+      if (!root) {
+        throw new Error('Story content is unavailable');
+      }
+      return (
+        await window.axe.run(root, {
+          runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] },
+        })
+      ).violations.map((violation) => violation.id);
+    });
+    expect(violations).toEqual([]);
+
     await page.getByRole('button', { name: 'Aplicar alterações', exact: true }).click();
     await expect(page.getByText(/Importação concluída/)).toBeVisible();
     const appliedJson = JSON.parse(await editor.inputValue()) as TransferDocument;
@@ -120,6 +141,52 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await expect(page.getByRole('button', { name: 'Aplicar alterações', exact: true })).toHaveCount(0);
     expect(await requestLog(page, '/preview')).toHaveLength(1);
     expect(await requestLog(page, '/apply')).toHaveLength(0);
+  });
+
+  test('invalidates the reviewed plan when a replacement file is selected', async () => {
+    const page = await openTransferStory('connected-api');
+    const content = JSON.stringify(createTransferTemplate('event'), null, 2);
+    const fileInput = page.locator('#transfer-file');
+    await fileInput.setInputFiles({
+      name: 'first.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(content),
+    });
+    await expect(page.getByText('Arquivo selecionado: first.json', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
+    await expect(page.locator('.review-section')).toBeVisible();
+
+    const replacement = `${content}\n`;
+    await fileInput.setInputFiles({
+      name: 'replacement.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(replacement),
+    });
+    await expect(page.getByText('Arquivo selecionado: replacement.json', { exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Conteúdo JSON', exact: true })).toHaveValue(replacement);
+    await expect(page.locator('.review-section')).toHaveCount(0);
+    expect(await requestLog(page, '/preview')).toHaveLength(1);
+    expect(await requestLog(page, '/apply')).toHaveLength(0);
+  });
+
+  test('invalidates and rebuilds the plan after selecting an import context', async () => {
+    const page = await openTransferStory('connected-api');
+    await enterTemplate(page);
+    await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
+    await expect(page.locator('.review-section')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Selecionar Semana da Computação', exact: true }).click();
+    await expect(page.locator('.review-section')).toHaveCount(0);
+    expect(await requestLog(page, '/apply')).toHaveLength(0);
+    await page
+      .getByRole('checkbox', { name: 'Aplicar aos registros existentes do contexto escolhido acima', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Revisar importação', exact: true }).click();
+    await expect(page.locator('.review-section')).toBeVisible();
+
+    const previewBody = asRecord((await requestLog(page, '/preview')).at(-1)?.body);
+    expect(previewBody?.['scope']).toEqual({ kind: 'major-event', id: 'major-1' });
+    expect(await requestLog(page, '/preview')).toHaveLength(2);
   });
 
   test('recovers a committed import after a lost response without allocating another plan', async () => {
@@ -215,6 +282,11 @@ test.describe('JSON transfer Storybook with real HttpClient and MSW', () => {
     await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
     await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
     expect(await requestLog(page, '/undo')).toHaveLength(0);
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toHaveCount(0);
+    expect(await requestLog(page, '/undo')).toHaveLength(0);
+    await page.getByRole('button', { name: 'Desfazer esta importação', exact: true }).click();
+    await expect(page.getByRole('group', { name: /Reverter todas as alterações do lote/ })).toBeVisible();
     await page.getByRole('button', { name: 'Confirmar reversão', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('um registro foi alterado depois da importação');
     expect(await requestLog(page, '/undo')).toHaveLength(1);

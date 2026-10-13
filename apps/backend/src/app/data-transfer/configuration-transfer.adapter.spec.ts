@@ -49,6 +49,55 @@ describe('ConfigurationTransferAdapter', () => {
     expect(diffResourceData(fresh.current, applied)).toEqual([]);
   });
 
+  it('preserves stored image references when importing a form element without image metadata', async () => {
+    const now = new Date();
+    const element = {
+      id: 'question-1',
+      type: 'shortText',
+      title: 'Name',
+      required: false,
+      options: [],
+    };
+    const stored = {
+      id: 'form-1',
+      updatedAt: now,
+      deletedAt: null,
+      name: 'Feedback',
+      description: null,
+      elements: [{ ...element, descriptionImages: [{ id: 'image-1', altText: 'Logo' }] }],
+      ownerEventId: 'event-1',
+      ownerMajorEventId: null,
+      sigilo: 'SECRET',
+      responseMode: 'ONE_PER_TARGET',
+      resultsPublic: false,
+      resultsLive: false,
+      allowResponseEdits: false,
+      descriptionImages: [{ id: 'form-image-1', altText: 'Banner' }],
+    };
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'event-1', eventGroupId: null, majorEventId: null }),
+      },
+      eventForm: {
+        findFirst: jest.fn().mockResolvedValue(stored),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const adapter = createAdapter(tx);
+    const resource = transferResource('event-form', 'form-1', {
+      ownerEventId: 'event-1',
+      elements: [element],
+    });
+    const context = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, context);
+
+    await adapter.apply(snapshot, 'update', context);
+
+    const written = tx.eventForm.updateMany.mock.calls[0]?.[0].data as Record<string, unknown>;
+    expect(written['elements']).toEqual([{ ...element, descriptionImages: [{ id: 'image-1', altText: 'Logo' }] }]);
+    expect(written).not.toHaveProperty('descriptionImages');
+  });
+
   it('creates and updates place presets with normalized fields and a guarded revision', async () => {
     const now = new Date();
     let stored: Record<string, unknown> | null = null;
@@ -343,6 +392,114 @@ describe('ConfigurationTransferAdapter', () => {
     );
   });
 
+  it('stops a stale ticket-config update before reconciling issued tickets', async () => {
+    const now = new Date();
+    const resource = transferResource('ticket-config', 'config-1', {
+      eventId: 'event-1',
+      enabled: true,
+      displayName: 'Tickets',
+    });
+    const configRow = { id: 'config-1', updatedAt: now, eventId: 'event-1', enabled: false };
+    const tx = {
+      ticketConfig: {
+        findFirst: jest.fn().mockResolvedValue(configRow),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findUniqueOrThrow: jest.fn(),
+      },
+      event: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'event-1', eventGroupId: null, majorEventId: null }),
+      },
+      eventTicket: { findMany: jest.fn() },
+    };
+    const issuance = {
+      lockEventExpirationAlignment: jest.fn().mockResolvedValue(undefined),
+      alignActiveTicketExpirations: jest.fn().mockResolvedValue(undefined),
+      enqueueExistingSubscriptionReconciliation: jest.fn().mockResolvedValue(undefined),
+    };
+    const attendanceCategories = { refreshForEvent: jest.fn().mockResolvedValue(undefined) };
+    const ticketRealtime = { enqueueForUsers: jest.fn().mockResolvedValue(undefined) };
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const adapter = createTicketTransferAdapter(tx, { issuance, attendanceCategories, ticketRealtime, audit });
+    const transferContext = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, transferContext);
+
+    await expect(adapter.apply(snapshot, 'update', transferContext)).rejects.toThrow(ConflictException);
+
+    expect(tx.ticketConfig.updateMany).toHaveBeenCalledWith({
+      where: { id: 'config-1', updatedAt: now },
+      data: { eventId: 'event-1', enabled: true, displayName: 'Tickets' },
+    });
+    expect(issuance.lockEventExpirationAlignment).toHaveBeenCalledWith(tx, 'event-1', 'UPDATE');
+    expect(issuance.alignActiveTicketExpirations).not.toHaveBeenCalled();
+    expect(issuance.enqueueExistingSubscriptionReconciliation).not.toHaveBeenCalled();
+    expect(attendanceCategories.refreshForEvent).not.toHaveBeenCalled();
+    expect(tx.eventTicket.findMany).not.toHaveBeenCalled();
+    expect(ticketRealtime.enqueueForUsers).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it('creates a ticket option with its stable transfer ID and only portable fields', async () => {
+    const resource = transferResource('ticket-price-option', 'option-stable', {
+      ticketConfigId: 'config-1',
+      priceTierId: 'tier-1',
+      label: 'Regular',
+      amountCents: 2500,
+    });
+    const tx = {
+      ticketPriceOption: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: resource.id }),
+      },
+      ticketConfig: { findUnique: jest.fn().mockResolvedValue({ id: 'config-1', eventId: 'event-1' }) },
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1', eventGroupId: null, majorEventId: null }) },
+    };
+    const adapter = createTicketTransferAdapter(tx);
+    const transferContext = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, transferContext);
+
+    await adapter.apply(snapshot, 'create', transferContext);
+
+    expect(tx.ticketPriceOption.create).toHaveBeenCalledWith({
+      data: {
+        id: 'option-stable',
+        ticketConfigId: 'config-1',
+        priceTierId: 'tier-1',
+        label: 'Regular',
+        amountCents: 2500,
+      },
+    });
+  });
+
+  it('updates only explicitly imported ticket-option fields under the preview revision', async () => {
+    const updatedAt = new Date();
+    const resource = transferResource('ticket-price-option', 'option-1', { label: 'Revised label' });
+    const tx = {
+      ticketPriceOption: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'option-1',
+          updatedAt,
+          ticketConfigId: 'config-1',
+          priceTierId: 'tier-1',
+          label: 'Original label',
+          amountCents: 2500,
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      ticketConfig: { findUnique: jest.fn().mockResolvedValue({ id: 'config-1', eventId: 'event-1' }) },
+      event: { findFirst: jest.fn().mockResolvedValue({ id: 'event-1', eventGroupId: null, majorEventId: null }) },
+    };
+    const adapter = createTicketTransferAdapter(tx);
+    const transferContext = createContext(tx, [resource]);
+    const snapshot = await adapter.resolve(resource, transferContext);
+
+    await adapter.apply(snapshot, 'update', transferContext);
+
+    expect(tx.ticketPriceOption.updateMany).toHaveBeenCalledWith({
+      where: { id: 'option-1', updatedAt },
+      data: { label: 'Revised label' },
+    });
+  });
+
   it('blocks a price table and its descendants when its only proposed tier cannot apply', async () => {
     const tx = {
       majorEvent: { findFirst: jest.fn().mockResolvedValue({ id: 'major-1' }) },
@@ -468,6 +625,97 @@ describe('ConfigurationTransferAdapter', () => {
 
     expect(snapshot.skip?.message).toContain('paymentTier');
     expect(snapshot.additionalChanges).toBeUndefined();
+  });
+
+  it('renames only matching snapshots in the owning major event and requires rights for affected rows', async () => {
+    const tierRow = {
+      id: 'tier-1',
+      priceId: 'price-1',
+      name: 'Silver',
+      value: 100,
+      includesEventRegistration: true,
+      includesSportsRegistration: false,
+      restrictEventSelection: false,
+      allowedEventIds: [],
+      customizeSubscriptionLimits: false,
+      maxCoursesPerAttendee: null,
+      maxLecturesPerAttendee: null,
+      maxUncategorizedPerAttendee: null,
+      price: { majorEventId: 'major-1', majorEvent: { deletedAt: null } },
+    };
+    const subscriptions = [
+      { id: 'subscription-old', paymentTier: ' silver ' },
+      { id: 'subscription-current', paymentTier: 'Gold' },
+    ];
+    const certificateConfigs = [
+      { id: 'certificate-old', paymentTiers: ['Silver', 'Gold', 'silver'] },
+      { id: 'certificate-current', paymentTiers: ['Gold'] },
+    ];
+    const tierFindMany = jest.fn(async ({ select }: { select: Record<string, boolean> }) =>
+      select['id'] ? subscriptions : subscriptions.map(({ paymentTier }) => ({ paymentTier })),
+    );
+    const certificateFindMany = jest.fn(async ({ select }: { select: Record<string, boolean> }) =>
+      select['id'] ? certificateConfigs : certificateConfigs.map(({ paymentTiers }) => ({ paymentTiers })),
+    );
+    const assertPermissions = jest.fn().mockResolvedValue(undefined);
+    const tx = {
+      priceTier: { findFirst: jest.fn().mockResolvedValue(tierRow), update: jest.fn().mockResolvedValue(undefined) },
+      majorEventPrice: { findFirst: jest.fn().mockResolvedValue({ id: 'price-1', majorEventId: 'major-1' }) },
+      majorEventSubscription: {
+        findMany: tierFindMany,
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      certificateConfig: {
+        findMany: certificateFindMany,
+        update: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const resource = transferResource('price-tier', 'tier-1', { priceId: 'price-1', name: 'Gold' });
+    const context = createContext(tx, [resource]);
+    const adapter = createAdapter({ authorization: { assertPermissions } });
+    const snapshot = await adapter.resolve(resource, context);
+
+    expect(snapshot.scope).toEqual({ majorEventId: 'major-1' });
+    expect(snapshot.additionalChanges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: expect.stringContaining('Inscrições'), before: 1 }),
+        expect.objectContaining({ field: expect.stringContaining('Certificados'), before: 1 }),
+      ]),
+    );
+    await adapter.assertRead(snapshot, context);
+    await adapter.assertWrite(snapshot, 'update', context);
+    await adapter.validate(snapshot, context);
+    await adapter.apply(snapshot, 'update', context);
+
+    expect(tierFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { majorEventId: 'major-1', paymentTier: { not: null } } }),
+    );
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['subscription-old'] } },
+      data: { paymentTier: 'Gold' },
+    });
+    expect(certificateFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { majorEventId: 'major-1' },
+            { event: { majorEventId: 'major-1' } },
+            { eventGroup: { majorEventId: 'major-1' } },
+          ],
+        },
+      }),
+    );
+    expect(tx.certificateConfig.update).toHaveBeenCalledTimes(1);
+    expect(tx.certificateConfig.update).toHaveBeenCalledWith({
+      where: { id: 'certificate-old' },
+      data: { paymentTiers: ['Gold'] },
+    });
+    expect(assertPermissions).toHaveBeenCalledWith(context.actor, [Permission.Subscription.Update], {
+      majorEventId: 'major-1',
+    });
+    expect(assertPermissions).toHaveBeenCalledWith(context.actor, [Permission.CertificateConfig.Update], {
+      majorEventId: 'major-1',
+    });
   });
 
   it('requires a name when a new form is created', async () => {
@@ -801,6 +1049,24 @@ function createAdapter(prismaParts: Record<string, unknown>) {
     {} as never,
     {} as never,
     {} as never,
+  );
+}
+
+function createTicketTransferAdapter(prismaParts: Record<string, unknown>, dependencies: Record<string, unknown> = {}) {
+  return new ConfigurationTransferAdapter(
+    prismaParts as never,
+    (dependencies['authorization'] ?? { assertPermissions: jest.fn().mockResolvedValue(undefined) }) as never,
+    (dependencies['frozen'] ?? {}) as never,
+    (dependencies['audit'] ?? { record: jest.fn().mockResolvedValue(undefined) }) as never,
+    { match: jest.fn().mockResolvedValue({ id: 'person-1' }) } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    (dependencies['issuance'] ?? {}) as never,
+    (dependencies['ticketRealtime'] ?? {}) as never,
+    (dependencies['attendanceCategories'] ?? {}) as never,
   );
 }
 
